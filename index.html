@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Trusted Data Agent by Uderia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* Basic Reset & Font */
+        :root {
+            --brand-orange: #F15F22;
+            --brand-orange-dark: #D9501A;
+            --bg-dark: #111827;
+            --bg-panel: rgba(31, 41, 55, 0.5);
+            --text-light: #E5E7EB;
+            --text-medium: #9CA3AF;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            line-height: 1.6;
+            scroll-behavior: smooth;
+        }
+        /* Page Structure */
+        main {
+            padding-top: 64px; /* Offset for fixed header */
+        }
+        .container {
+            width: 100%;
+            max-width: 1280px;
+            margin-left: auto;
+            margin-right: auto;
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+        section {
+            padding-top: 5rem;
+            padding-bottom: 5rem;
+        }
+        /* Header & Navigation */
+        header {
+            width: 100%;
+            background-color: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.75rem 1rem;
+            position: fixed;
+            top: 0;
+            z-index: 50;
+        }
+        header .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        header .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        header nav {
+            display: none; /* Hidden on mobile */
+        }
+        @media (min-width: 768px) {
+            header nav {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+            }
+        }
+        header nav a {
+            font-size: 0.875rem;
+            color: var(--text-medium);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+        header nav a:hover {
+            color: white;
+        }
+        
+        /* Hero Section with CSS Animated Background */
+        .hero {
+            position: relative;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            overflow: hidden;
+            background-color: #0c1222;
+        }
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background-image:
+                radial-gradient(circle at center, rgba(241, 95, 34, 0.1) 0, transparent 3px),
+                radial-gradient(circle at center, rgba(255, 255, 255, 0.1) 0, transparent 1px);
+            background-size: 50px 50px, 25px 25px;
+            animation: moveParticles 20s linear infinite;
+        }
+        @keyframes moveParticles {
+            from { background-position: 0 0, 0 0; }
+            to { background-position: 500px 500px, 250px 250px; }
+        }
+        .hero-overlay {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at center, transparent 30%, #111827 100%);
+            z-index: 1;
+        }
+        .hero-content {
+            position: relative;
+            z-index: 10;
+            max-width: 56rem;
+            margin: 0 auto;
+            padding: 1rem;
+            animation: fadeIn 1.5s ease-in-out;
+        }
+        .hero-buttons {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+        @media (min-width: 640px) {
+            .hero-buttons {
+                flex-direction: row;
+            }
+        }
+
+        /* Typography */
+        h1, h2, h3 {
+            font-weight: 800;
+            color: white;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 1rem; }
+        @media (min-width: 768px) { h1 { font-size: 3.75rem; } }
+        h2 { font-size: 2.25rem; margin-bottom: 1rem; }
+        h3 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+        .header-title {
+            text-shadow: 0 0 15px rgba(241, 95, 34, 0.6);
+        }
+        .gradient-text {
+            background: linear-gradient(to right, var(--brand-orange), #FF8C00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .section-intro {
+            max-width: 48rem;
+            margin-left: auto;
+            margin-right: auto;
+            color: var(--text-medium);
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+        /* Buttons */
+        .btn {
+            padding: 0.75rem 2rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 1.125rem;
+            text-decoration: none;
+            text-align: center;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+        @media (min-width: 640px) {
+            .btn { width: auto; }
+        }
+        .btn-primary {
+            background-color: var(--brand-orange);
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: var(--brand-orange-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(241, 95, 34, 0.2);
+        }
+        .btn-secondary {
+            background-color: transparent;
+            border: 1px solid var(--brand-orange);
+            color: var(--brand-orange);
+        }
+        .btn-secondary:hover {
+            background-color: var(--brand-orange);
+            color: white;
+            transform: translateY(-2px);
+        }
+        /* Cards & Panels */
+        .card {
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+        }
+        .bg-gray-900-50 {
+            background-color: rgba(17, 24, 39, 0.5);
+        }
+        
+        /* Interactive Features Section */
+        .features-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            max-width: 64rem;
+            margin: auto;
+        }
+        @media (min-width: 768px) {
+            .features-container {
+                grid-template-columns: 1fr 2fr;
+            }
+        }
+        .feature-tabs { display: flex; flex-direction: column; gap: 0.5rem; }
+        .feature-tab {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-medium);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: left;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .feature-tab:hover { background-color: var(--bg-panel); color: white; }
+        .feature-tab.active { background-color: var(--brand-orange); color: white; border-color: var(--brand-orange); }
+        .feature-content { display: none; }
+        .feature-content.active { display: block; animation: fadeIn 0.5s ease-in-out; }
+        .feature-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 1.5rem; }
+        .feature-list li { display: flex; align-items: flex-start; gap: 1rem; }
+        .feature-list .icon { flex-shrink: 0; width: 1.5rem; height: 1.5rem; margin-top: 0.25rem; color: var(--brand-orange); }
+        .feature-list h4 { font-size: 1.125rem; color: white; margin: 0 0 0.25rem 0; }
+        .feature-list p { font-size: 0.875rem; color: var(--text-medium); margin: 0; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Optimizer Section with Candy Visuals */
+        .optimizer-flow { display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 2rem; }
+        .optimizer-card {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.4), rgba(17, 24, 39, 0.4));
+            border: 1px solid var(--border-color);
+            padding: 2rem; border-radius: 1rem; text-align: center; flex: 1; position: relative;
+            overflow: hidden; transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .optimizer-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.3); }
+        .optimizer-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(to right, transparent, var(--brand-orange), transparent); opacity: 0.7;
+        }
+        .optimizer-icon { margin: 0 auto 1.5rem auto; height: 3.5rem; width: 3.5rem; color: var(--brand-orange); filter: drop-shadow(0 0 10px var(--brand-orange)); }
+        .optimizer-card h3 { font-size: 1.5rem; margin-bottom: 0.75rem; color: white; }
+        .optimizer-card p { color: var(--text-medium); font-size: 0.9rem; }
+        .optimizer-arrow { display: none; }
+        @media (min-width: 1024px) {
+            .optimizer-flow { flex-direction: row; align-items: center; }
+            .optimizer-arrow { display: block; color: var(--border-color); flex-shrink: 0; }
+        }
+        
+        /* Optimizer Feature Grid */
+        .optimizer-features { margin-top: 4rem; }
+        .optimizer-features-title {
+            text-align: center;
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 2.5rem;
+            color: var(--text-light);
+        }
+        .optimizer-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+        @media (min-width: 768px) { .optimizer-grid { grid-template-columns: repeat(2, 1fr); } }
+        .optimizer-feature-card {
+            background-color: rgba(31, 41, 55, 0.3);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            transition: background-color 0.2s ease;
+        }
+        .optimizer-feature-card:hover { background-color: rgba(31, 41, 55, 0.6); }
+        .optimizer-feature-card .icon {
+            flex-shrink: 0; width: 2rem; height: 2rem;
+            color: var(--brand-orange); opacity: 0.8; margin-top: 0.25rem;
+        }
+        .optimizer-feature-card h4 { margin: 0 0 0.5rem 0; color: white; font-size: 1.1rem; font-weight: 600; }
+        .optimizer-feature-card p { margin: 0; color: var(--text-medium); font-size: 0.875rem; line-height: 1.5; }
+
+        /* "See It In Action" Section */
+        .action-container { display: grid; grid-template-columns: 1fr; gap: 2rem; align-items: flex-start; }
+        @media (min-width: 1024px) { .action-container { grid-template-columns: 1fr 1fr; gap: 3rem;} }
+        .action-text h3 { font-size: 1.75rem; color: white; margin-bottom: 1rem; }
+        .action-text p { color: var(--text-medium); margin-bottom: 1.5rem; }
+        .demo-console {
+            background-color: #0d1117; border: 1px solid var(--border-color); border-radius: 0.75rem;
+            padding: 1.5rem; font-family: monospace; box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        .demo-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .industry-badge {
+            background-color: var(--brand-orange);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+        .demo-line { display: flex; align-items: center; margin-bottom: 0.75rem; white-space: pre-wrap; min-height: 1.2em; }
+        .demo-line span:first-child { color: var(--brand-orange); margin-right: 0.5rem; }
+        .demo-line span:last-child { color: var(--text-light); }
+        .typing-effect {
+            width: 100%;
+            overflow: hidden;
+            border-right: .15em solid var(--brand-orange);
+            white-space: nowrap;
+            margin: 0;
+            letter-spacing: .1em;
+            animation: typing 3.5s steps(40, end), blink-caret .75s step-end infinite;
+        }
+        @keyframes typing { from { width: 0 } to { width: 100% } }
+        @keyframes blink-caret { from, to { border-color: transparent } 50% { border-color: var(--brand-orange); } }
+        .demo-result {
+            margin-top: 1.5rem; border-top: 1px dashed var(--border-color); padding-top: 1.5rem;
+            opacity: 0;
+        }
+        .demo-result.visible { animation: fadeInResult 1s ease-in-out forwards; }
+        @keyframes fadeInResult { from { opacity: 0; } to { opacity: 1; } }
+        .demo-result h4 { color: var(--brand-orange); font-size: 1rem; margin-bottom: 1rem; }
+        .demo-table { width: 100%; font-size: 0.875rem; border-collapse: collapse; }
+        .demo-table th, .demo-table td { padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .demo-table th { color: var(--text-medium); }
+        .demo-table td { color: var(--text-light); }
+
+        /* Industry Ticker Grid */
+        .industry-ticker-wrapper { margin-top: 1.5rem; }
+        .industry-ticker {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+        .ticker-item {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--text-medium);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+            position: relative;
+            text-align: center;
+        }
+        .ticker-item.active {
+            color: white;
+            background-color: var(--brand-orange);
+        }
+        .ticker-item.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background-color: rgba(255,255,255,0.5);
+            width: 0;
+            animation: fill-progress 6.5s linear forwards;
+        }
+        @keyframes fill-progress { from { width: 0%; } to { width: 100%; } }
+
+        /* "Get Started" Section */
+        .get-started { text-align: center; }
+        .get-started-steps { display: grid; grid-template-columns: 1fr; gap: 2rem; max-width: 64rem; margin: 3rem auto; }
+        @media (min-width: 768px) { .get-started-steps { grid-template-columns: repeat(3, 1fr); } }
+        .step-card {
+            background-color: rgba(31, 41, 55, 0.3); padding: 2rem;
+            border-radius: 1rem; border: 1px solid var(--border-color);
+        }
+        .step-card .icon { color: var(--brand-orange); width: 2.5rem; height: 2.5rem; margin: 0 auto 1rem auto; }
+        .step-card h3 { font-size: 1.25rem; color: white; margin-bottom: 0.5rem; }
+        .step-card p { color: var(--text-medium); font-size: 0.9rem; }
+        .get-started .hero-buttons { margin-top: 3rem; }
+
+        /* Table */
+        .license-table { width: 100%; max-width: 64rem; margin: auto; text-align: left; border-collapse: collapse; }
+        .license-table th, .license-table td { padding: 1rem; border-bottom: 1px solid var(--border-color); }
+        .license-table thead { border-bottom: 2px solid var(--border-color); }
+        .license-table .enterprise-row { background-color: rgba(241, 95, 34, 0.1); font-weight: bold; }
+        /* Platforms Section */
+        .platforms { display: flex; justify-content: center; align-items: center; gap: 2rem; flex-wrap: wrap; }
+        .platforms span { font-size: 1.5rem; font-weight: 600; color: var(--text-medium); opacity: 0.7; transition: opacity 0.2s ease; }
+        .platforms span:hover { opacity: 1; }
+        /* Footer */
+        footer { border-top: 1px solid var(--border-color); margin-top: 5rem; text-align: center; padding: 2rem 1rem; color: var(--text-medium); }
+        footer p { margin: 0.5rem 0; font-size: 0.875rem; }
+        footer a { color: var(--brand-orange); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="container">
+             <div class="logo-container">
+                <svg style="height:2rem; width:2rem; color: var(--brand-orange);" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                <h1 style="font-size: 1.25rem; font-weight: 700; color: white;">Trusted Data Agent</h1>
+            </div>
+            <nav>
+                <a href="#features">Features</a>
+                <a href="#optimizer">The Optimizer</a>
+                <a href="#license">License</a>
+                <a href="https://github.com/rgeissen/trusted-data-agent.git" target="_blank">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="particles"></div>
+            <div class="hero-overlay"></div>
+            <div class="hero-content">
+                <h1 class="header-title">A Paradigm Shift in Data Interaction.</h1>
+                <p style="font-size: 1.25rem; color: var(--text-light); margin-bottom: 2rem;">An advanced, fully transparent AI conversational interface for your most complex enterprise data. Go from question to insight in seconds.</p>
+                <div class="hero-buttons">
+                    <a href="https://tda.uderia.com" class="btn btn-primary">Access the Live Application</a>
+                    <a href="https://github.com/rgeissen/trusted-data-agent.git" target="_blank" class="btn btn-secondary">View Source on GitHub</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- See It In Action Section -->
+        <section id="action">
+            <div class="container">
+                <div class="action-container">
+                    <div class="action-text">
+                        <h2 class="header-title">From <span class="gradient-text">Question</span> to <span class="gradient-text">Insight</span> in Seconds</h2>
+                        <p>Stop translating business questions into complex code. Simply ask, and let the agent handle the planning, execution, and data retrieval to provide a clear, synthesized answer.</p>
+                        <p>What once took an expert now takes a single sentence.</p>
+                    </div>
+                    <div>
+                        <div class="demo-console">
+                            <div class="demo-header">
+                                <span id="industry-tag" class="industry-badge">Retail</span>
+                            </div>
+                            <div class="demo-line">
+                                <span>></span>
+                                <span id="typing-demo" class="typing-effect"></span>
+                            </div>
+                            <div class="demo-result">
+                                <h4>Agent Response:</h4>
+                                <table id="demo-table" class="demo-table">
+                                    <!-- Table content generated by JS -->
+                                </table>
+                            </div>
+                        </div>
+                        <div class="industry-ticker-wrapper">
+                            <div id="industry-ticker" class="industry-ticker">
+                                <!-- Ticker items will be generated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- The Optimizer Section -->
+        <section id="optimizer" class="bg-gray-900-50">
+            <div class="container">
+                <div style="text-align: center;">
+                    <h2 class="header-title">The Intelligent Core: <span class="gradient-text">The Optimizer</span></h2>
+                    <p class="section-intro">This is not a simple LLM wrapper. Our revolutionary engine features a multi-layered architecture for resilient, intelligent, and efficient task execution.</p>
+                </div>
+                
+                <div class="optimizer-flow">
+                    <div class="optimizer-card">
+                        <svg class="optimizer-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 1.085-1.085-1.085m1.085 1.085V18m2.25-2.25h-5.25a2.25 2.25 0 00-2.25 2.25v2.25a2.25 2.25 0 002.25 2.25H18a2.25 2.25 0 002.25-2.25v-2.25a2.25 2.25 0 00-2.25-2.25h-5.25" /></svg>
+                        <h3>Strategic Planner</h3>
+                        <p>Deconstructs complex requests into a high-level strategic blueprint, outlining the precise phases required to achieve the user's goal.</p>
+                    </div>
+                    
+                    <svg class="optimizer-arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1"><path d="M4 12H20M20 12L14 6M20 12L14 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                    
+                    <div class="optimizer-card">
+                         <svg class="optimizer-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+                        <h3>Tactical Execution</h3>
+                        <p>Within each phase, the agent operates with precision, determining the single best tool or prompt to advance the plan and drive towards the solution.</p>
+                    </div>
+                    
+                     <svg class="optimizer-arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1"><path d="M4 12H20M20 12L14 6M20 12L14 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+
+                    <div class="optimizer-card">
+                        <svg class="optimizer-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.667 0l3.181-3.183m-4.991-2.691L7.985 5.356m0 0v4.992m0 0h4.992m0 0l3.181-3.183a8.25 8.25 0 0111.667 0l3.181 3.183" /></svg>
+                        <h3>Autonomous Healing</h3>
+                        <p>When errors occur, a sophisticated multi-tiered recovery process engages, from pattern-based correction to complete strategic replanning.</p>
+                    </div>
+                </div>
+
+                <!-- Optimizer Features Grid -->
+                <div class="optimizer-features">
+                    <h3 class="optimizer-features-title">Advanced Optimizer Capabilities</h3>
+                    <div class="optimizer-grid">
+                        <div class="optimizer-feature-card">
+                            <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>
+                            <div>
+                                <h4>Plan Hydration</h4>
+                                <p>Intelligently reuses recent data to skip redundant steps, delivering answers faster and more efficiently.</p>
+                            </div>
+                        </div>
+                        <div class="optimizer-feature-card">
+                            <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.82m5.84-2.56a14.96 14.96 0 00-5.84-2.56m0 0A14.955 14.955 0 0112 3m0 0a14.953 14.953 0 01-2.75 9.07m2.75-9.07a14.92 14.92 0 012.75 9.07" /></svg>
+                            <div>
+                                <h4>Context Distillation</h4>
+                                <p>Automatically summarizes large datasets to prevent context overflow, ensuring robust performance at scale.</p>
+                            </div>
+                        </div>
+                        <div class="optimizer-feature-card">
+                            <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                            <div>
+                                <h4>Plan Validation</h4>
+                                <p>Proactively validates the AI's plan for structural errors and corrects them before execution begins.</p>
+                            </div>
+                        </div>
+                        <div class="optimizer-feature-card">
+                            <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 100 15h3a7.5 7.5 0 100-15h-3z" /><path stroke-linecap="round" stroke-linejoin="round" d="M9 9l6-6m0 0l6 6m-6-6v12" /></svg>
+                            <div>
+                                <h4>Tactical Fast Path</h4>
+                                <p>For simple tasks, the agent bypasses LLM calls entirely and executes tools directly, minimizing latency.</p>
+                            </div>
+                        </div>
+                        <div class="optimizer-feature-card">
+                            <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" /></svg>
+                            <div>
+                                <h4>Hallucination Prevention</h4>
+                                <p>Specialized orchestrators detect and correct "hallucinated loops" to ensure deterministic, correct execution.</p>
+                            </div>
+                        </div>
+                        <div class="optimizer-feature-card">
+                            <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <div>
+                                <h4>Definitive Error Handling</h4>
+                                <p>Instantly recognizes unrecoverable errors and halts execution, providing clear feedback instead of futile retries.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Key Features Section (Interactive) -->
+        <section id="features">
+            <div class="container">
+                <div style="text-align: center; margin-bottom: 3rem;">
+                    <h2 class="header-title">Unmatched Capability</h2>
+                    <p class="section-intro" style="margin-top: 1rem;">A suite of powerful features designed for ultimate clarity and control. Select a category to explore.</p>
+                </div>
+                <div class="features-container">
+                    <!-- Left Panel: Tabs -->
+                    <div class="feature-tabs">
+                        <button class="feature-tab active" data-tab="insights">Deep Insights</button>
+                        <button class="feature-tab" data-tab="flexibility">Unprecedented Flexibility</button>
+                        <button class="feature-tab" data-tab="analysis">Comparative LLM Analysis</button>
+                        <button class="feature-tab" data-tab="voice">Voice-to-Text Interaction</button>
+                    </div>
+                    <!-- Right Panel: Content -->
+                    <div class="card">
+                        <!-- Content for Deep Insights -->
+                        <div id="insights" class="feature-content active">
+                            <ul class="feature-list">
+                                <li>
+                                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                    <div>
+                                        <h4>Complete Transparency</h4>
+                                        <p>The Live Status panel is a real-time window into the AI's mind, revealing its plan, tool selection, and raw data.</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.667 0l3.181-3.183m-4.991-2.691L7.985 5.356m0 0v4.992m0 0h4.992m0 0l3.181-3.183a8.25 8.25 0 0111.667 0l3.181 3.183" /></svg>
+                                    <div>
+                                        <h4>Dynamic Capability Loading</h4>
+                                        <p>Automatically discovers and displays all available Tools, Prompts, and Resources from the connected MCP Server.</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h4.5M12 3v13.5" /></svg>
+                                    <div>
+                                        <h4>Rich Data Rendering</h4>
+                                        <p>Intelligently formats query results in interactive tables, SQL in highlighted code blocks, and key metrics in summary cards.</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
+                                    <div>
+                                        <h4>Integrated Charting Engine</h4>
+                                        <p>Renders insightful charts based on query results directly in the chat interface, bringing data to life instantly.</p>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                        <!-- Content for Flexibility -->
+                        <div id="flexibility" class="feature-content">
+                             <ul class="feature-list">
+                                 <li>
+                                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z" /></svg>
+                                    <div>
+                                        <h4>Intuitive Conversational UI</h4>
+                                        <p>Ask questions in plain English. The agent is designed to understand natural language and execute complex requests.</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" /></svg>
+                                    <div>
+                                        <h4>Dynamic Capability Management</h4>
+                                        <p>Enable or disable any MCP Tool or Prompt directly from the UI for safe testing and phased rollouts of new features.</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+                                    <div>
+                                        <h4>System Prompt Editor</h4>
+                                        <p>Take full control. An integrated editor allows privileged users to modify, save, and reset the agent's core persona and rules.</p>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                        <!-- Content for Analysis -->
+                        <div id="analysis" class="feature-content">
+                            <ul class="feature-list">
+                                <li>
+                                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h18" /><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3L21 7.5m0 0L16.5 12M21 7.5H3" /></svg>
+                                    <div>
+                                        <h4>Multi-Provider LLM Configuration</h4>
+                                        <p>Dynamically switch between LLM providers like Google, Anthropic, AWS Bedrock, OpenAI and local Ollama models.</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path d="M16.5 18.75h-9a9.75 9.75 0 100-13.5h9a9.75 9.75 0 100 13.5z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12.75 12.75L9 15m3.75-2.25L15 9.75" /></svg>
+                                    <div>
+                                        <h4>Support for AWS Bedrock</h4>
+                                        <p>Utilize foundational models directly or connect to custom, provisioned models via Bedrock Inference Profiles.</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m-6-12V3.75A2.25 2.25 0 0110.5 1.5h3A2.25 2.25 0 0115.75 3.75v.75m-6 0h6m-6 0a2.25 2.25 0 00-2.25 2.25v3.75a2.25 2.25 0 002.25 2.25h6a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25m0 0H9.75" /></svg>
+                                    <div>
+                                        <h4>Ollama (Local LLM) Integration</h4>
+                                        <p>Run the agent with open-source models on your local machine for privacy, offline use, and development.</p>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                        <!-- Content for Voice -->
+                        <div id="voice" class="feature-content">
+                            <ul class="feature-list">
+                                <li>
+                                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" /></svg>
+                                    <div>
+                                        <h4>High-Quality Speech API</h4>
+                                        <p>Utilizes Google's robust Text-to-Speech API for clear, natural-sounding audio output.</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5c.966 0 1.844.246 2.622.672a.75.75 0 01.228 1.054l-.298.447A.75.75 0 0114.25 9.75C13.505 9.263 12.784 9 12 9s-1.505.263-2.25.75a.75.75 0 01-1.102-.327l-.298-.447a.75.75 0 01.228-1.054A4.49 4.49 0 0112 7.5z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 15c2.247 0 4.26-1.005 5.66-2.612A.75.75 0 0118.247 11.2l.298-.447a.75.75 0 011.102.327 7.49 7.49 0 01-2.26 3.998.75.75 0 01-1.087.051A7.443 7.443 0 0112 15zm-5.66-2.612A.75.75 0 005.753 11.2l-.298-.447a.75.75 0 00-1.102.327A7.49 7.49 0 006.61 15a.75.75 0 001.087.051A7.443 7.443 0 0012 15z" /></svg>
+                                    <div>
+                                        <h4>Interactive Voice Recognition</h4>
+                                        <p>Employs the browser's Speech Recognition API for seamless voice input, enabling hands-free conversation.</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-2.25-1.313M21 7.5v2.25m0-2.25l-2.25 1.313M3 7.5l2.25-1.313M3 7.5l2.25 1.313M3 7.5v2.25m9 3l2.25-1.313M12 12.75l-2.25-1.313M12 12.75V15m0 6.75l2.25-1.313M12 21.75V19.5m0 2.25l-2.25-1.313m0-16.875L12 2.25l2.25 1.313M12 7.5V5.25" /></svg>
+                                    <div>
+                                        <h4>Flexible Voice Modes</h4>
+                                        <p>Control the conversational flow with configurable modes for handling "Key Observations" from the agent.</p>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Get Started Section -->
+        <section id="get-started" class="bg-gray-900-50">
+            <div class="container get-started">
+                <h2 class="header-title">Ready to Revolutionize Your Data Workflow?</h2>
+                <p class="section-intro">Get started in minutes and experience a new way to interact with your data ecosystem.</p>
+                <div class="get-started-steps">
+                    <div class="step-card">
+                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" /></svg>
+                        <h3>1. Clone the Repo</h3>
+                        <p>Get the complete source code and documentation from our official GitHub repository.</p>
+                    </div>
+                    <div class="step-card">
+                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" /></svg>
+                        <h3>2. Configure Your Agent</h3>
+                        <p>Connect to your MCP server and your preferred LLM provider through the simple configuration UI.</p>
+                    </div>
+                    <div class="step-card">
+                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <h3>3. Start Conversing</h3>
+                        <p>Ask your first question in natural language and watch the agent deliver insights in seconds.</p>
+                    </div>
+                </div>
+                <div class="hero-buttons">
+                    <a href="https://tda.uderia.com" class="btn btn-primary">Access the Live Application</a>
+                    <a href="https://github.com/rgeissen/trusted-data-agent.git" target="_blank" class="btn btn-secondary">View Source on GitHub</a>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- Supported Platforms -->
+        <section>
+            <div class="container">
+                <h2 class="header-title" style="text-align: center; margin-bottom: 2rem;">Connect to the Models You Trust</h2>
+                <div class="platforms">
+                    <span>Google</span>
+                    <span>Anthropic</span>
+                    <span>AWS Bedrock</span>
+                    <span>Ollama</span>
+                    <span>OpenAI</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Licensing Tiers Section -->
+        <section id="license" class="bg-gray-900-50">
+            <div class="container">
+                <div style="text-align: center; margin-bottom: 3rem;">
+                    <h2 class="header-title">Open for Community, Built for Enterprise</h2>
+                    <p class="section-intro" style="margin-top: 1rem;">Flexible licensing designed to foster open collaboration and support commercial innovation.</p>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="license-table card">
+                        <thead>
+                            <tr>
+                                <th>Tier</th>
+                                <th>License</th>
+                                <th>Intended User</th>
+                                <th>Key Feature</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>App Developer</td>
+                                <td>AGPLv3</td>
+                                <td>Developers integrating the agent.</td>
+                                <td>Standard, out-of-the-box agent use.</td>
+                            </tr>
+                            <tr>
+                                <td>Prompt Engineer</td>
+                                <td>AGPLv3</td>
+                                <td>AI specialists creating prompts.</td>
+                                <td>Includes prompt editing capabilities.</td>
+                            </tr>
+                            <tr>
+                                <td>Enterprise Light</td>
+                                <td>AGPLv3</td>
+                                <td>Business teams needing a tailored solution.</td>
+                                <td>Customized for specific business needs.</td>
+                            </tr>
+                            <tr class="enterprise-row">
+                                <td style="color: white;">Enterprise</td>
+                                <td style="color: white;">MIT License</td>
+                                <td style="color: white;">Commercial organizations.</td>
+                                <td style="color: white;">Proprietary use, full prompt editing.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 The Trusted Data Agent</p>
+            <p>Author/Initiator: Rainer Geissendoerfer, World-Wide Data Architecture</p>
+            <p>Source code available on <a href="https://github.com/rgeissen/trusted-data-agent.git" target="_blank">GitHub</a>. Contributions are highly welcome.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Feature tabs logic
+            const tabs = document.querySelectorAll('.feature-tab');
+            const contents = document.querySelectorAll('.feature-content');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    contents.forEach(c => c.classList.remove('active'));
+                    tab.classList.add('active');
+                    const contentId = tab.dataset.tab;
+                    document.getElementById(contentId).classList.add('active');
+                });
+            });
+
+            // Dynamic typing animation logic
+            const typingElement = document.getElementById('typing-demo');
+            const resultElement = document.querySelector('.demo-result');
+            const industryTagElement = document.getElementById('industry-tag');
+            const industryTickerElement = document.getElementById('industry-ticker');
+            const demoTable = document.getElementById('demo-table');
+
+            const questions = [
+                { 
+                    industry: "Retail", 
+                    query: "Which products have the highest return rates this quarter?",
+                    answer: {
+                        headers: ["Product", "Return Rate"],
+                        rows: [
+                            ["Smartwatch X", "12.5%"],
+                            ["Wireless Earbuds", "9.2%"],
+                            ["Yoga Mat", "4.1%"]
+                        ]
+                    } 
+                },
+                { 
+                    industry: "Finance", 
+                    query: "Identify high-risk loan applications from the last 30 days.",
+                    answer: {
+                        headers: ["Applicant ID", "Risk Score", "Reason"],
+                        rows: [
+                            ["APP-72391", "9.2", "High DTI Ratio"],
+                            ["APP-72156", "8.5", "Short Credit History"],
+                            ["APP-72884", "8.1", "Multiple Recent Inquiries"]
+                        ]
+                    } 
+                },
+                { 
+                    industry: "Manufacturing", 
+                    query: "What's our production line efficiency by shift and location?",
+                    answer: {
+                        headers: ["Location", "Shift", "Efficiency"],
+                        rows: [
+                            ["Factory A", "Morning", "92.1%"],
+                            ["Factory B", "Morning", "90.5%"],
+                            ["Factory A", "Night", "88.7%"]
+                        ]
+                    } 
+                },
+                { 
+                    industry: "Telecommunications", 
+                    query: "Show me customer churn rates in our top 5 urban markets.",
+                    answer: {
+                        headers: ["Market", "Churn Rate", "Trend"],
+                        rows: [
+                            ["New York", "4.2%", "  0.3%"],
+                            ["Los Angeles", "3.8%", "  0.1%"],
+                            ["Chicago", "5.1%", "  0.5%"]
+                        ]
+                    } 
+                },
+                { 
+                    industry: "Energy", 
+                    query: "Forecast energy consumption for the next 7 days.",
+                    answer: {
+                        headers: ["Day", "Forecast (MWh)", "Confidence"],
+                        rows: [
+                            ["Monday", "2,150", "95%"],
+                            ["Tuesday", "2,210", "94%"],
+                            ["Wednesday", "2,180", "92%"]
+                        ]
+                    } 
+                },
+                { 
+                    industry: "Entertainment", 
+                    query: "Correlate marketing spend with new subscriber growth.",
+                    answer: {
+                        headers: ["Campaign", "Spend", "New Subs"],
+                        rows: [
+                            ["Social Media Q3", "$250k", "12,500"],
+                            ["Streaming Ads Q3", "$400k", "19,800"],
+                            ["Influencer Q3", "$150k", "9,200"]
+                        ]
+                    } 
+                },
+                { 
+                    industry: "Transportation", 
+                    query: "What's the average delivery time for shipments by carrier?",
+                    answer: {
+                        headers: ["Carrier", "Avg. Time (Days)", "On-Time %"],
+                        rows: [
+                            ["Carrier A", "2.1", "98.5%"],
+                            ["Carrier B", "3.5", "92.1%"],
+                            ["Carrier C", "2.3", "97.9%"]
+                        ]
+                    }
+                },
+                { 
+                    industry: "Hospitality", 
+                    query: "Analyze booking patterns for the upcoming holiday season.",
+                    answer: {
+                        headers: ["Room Type", "Booking %", "Avg. Lead Time"],
+                        rows: [
+                            ["King Suite", "85%", "45 days"],
+                            ["Double Queen", "92%", "32 days"],
+                            ["Standard King", "78%", "28 days"]
+                        ]
+                    }
+                },
+                { 
+                    industry: "Agriculture", 
+                    query: "Which crop fields have the lowest yield projections?",
+                    answer: {
+                        headers: ["Field ID", "Crop", "Projected Yield"],
+                        rows: [
+                            ["F-09B", "Corn", "142 bu/acre"],
+                            ["F-12A", "Soybeans", "45 bu/acre"],
+                            ["F-07C", "Corn", "148 bu/acre"]
+                        ]
+                    }
+                }
+            ];
+            let questionIndex = 0;
+
+            // Generate ticker items
+            questions.forEach(q => {
+                const tickerItem = document.createElement('span');
+                tickerItem.className = 'ticker-item';
+                tickerItem.textContent = q.industry;
+                industryTickerElement.appendChild(tickerItem);
+            });
+            const tickerItems = document.querySelectorAll('.ticker-item');
+
+            function updateTable(answer) {
+                // Clear previous table content
+                demoTable.innerHTML = '';
+
+                // Create header
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                answer.headers.forEach(headerText => {
+                    const th = document.createElement('th');
+                    th.textContent = headerText;
+                    headerRow.appendChild(th);
+                });
+                thead.appendChild(headerRow);
+                demoTable.appendChild(thead);
+
+                // Create body
+                const tbody = document.createElement('tbody');
+                answer.rows.forEach(rowData => {
+                    const row = document.createElement('tr');
+                    rowData.forEach(cellData => {
+                        const td = document.createElement('td');
+                        td.textContent = cellData;
+                        row.appendChild(td);
+                    });
+                    tbody.appendChild(row);
+                });
+                demoTable.appendChild(tbody);
+            }
+
+            function animateQuestion() {
+                const current = questions[questionIndex];
+                const typingDuration = current.query.length * 0.08;
+                const totalAnimationTime = (typingDuration + 3) * 1000;
+
+                // Update Industry Tag and Table Data
+                industryTagElement.textContent = current.industry;
+                updateTable(current.answer);
+
+                // Reset animations and classes
+                typingElement.textContent = '';
+                typingElement.classList.remove('typing-effect');
+                resultElement.classList.remove('visible');
+                tickerItems.forEach(item => item.classList.remove('active'));
+                
+                void typingElement.offsetWidth; // Trigger reflow
+
+                // Set new text and animation properties
+                typingElement.textContent = current.query;
+                typingElement.style.setProperty('--typing-steps', current.query.length);
+                typingElement.style.setProperty('--typing-duration', `${typingDuration}s`);
+                
+                // Add classes back to start animations
+                typingElement.classList.add('typing-effect');
+                tickerItems[questionIndex].classList.add('active');
+                
+                setTimeout(() => {
+                    resultElement.classList.add('visible');
+                }, typingDuration * 1000);
+
+                questionIndex = (questionIndex + 1) % questions.length;
+                
+                setTimeout(animateQuestion, totalAnimationTime);
+            }
+
+            animateQuestion(); // Start the first cycle
+        });
+    </script>
+
+</body>
+</html>
+
