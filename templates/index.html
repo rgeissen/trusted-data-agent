@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trusted Data Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@antv/g2plot@latest/dist/g2plot.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body class="flex h-screen flex-col">
+
+    <nav class="w-full bg-black/30 backdrop-blur-md border-b border-white/10 px-4 py-2 flex items-center justify-between flex-shrink-0 z-40">
+        <div class="flex items-center gap-x-4">
+            <h1 class="header-title text-xl font-bold text-white">Trusted Data Agent</h1>
+        </div>
+        <div class="flex items-center gap-x-6">
+            <div class="flex items-center gap-x-4 pr-4 border-r border-white/10">
+                <div class="flex items-center gap-x-2" title="MCP Server Status">
+                    <div id="mcp-status-dot" class="connection-dot disconnected"></div>
+                    <span class="text-sm text-gray-300">MCP</span>
+                </div>
+                <div class="flex items-center gap-x-2" title="LLM Status">
+                    <div id="llm-status-dot" class="connection-dot disconnected"></div>
+                    <span class="text-sm text-gray-300">LLM</span>
+                </div>
+                <div class="flex items-center gap-x-2" title="Context Engine Status">
+                    <div id="context-status-dot" class="connection-dot disconnected"></div>
+                    <span class="text-sm text-gray-300">Context</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-x-1">
+                <div class="menu-item">
+                    <button id="chat-modal-button" class="px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-white/10 rounded-md transition-colors disabled:opacity-50" disabled>Chat</button>
+                </div>
+                <div class="menu-item">
+                    <button id="config-menu-button" class="px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-white/10 rounded-md transition-colors">Config</button>
+                </div>
+                <div class="menu-item">
+                    <button id="prompt-editor-button" class="px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-white/10 rounded-md transition-colors disabled:opacity-50" disabled>System Prompt</button>
+                </div>
+                <div class="menu-item">
+                    <button id="window-menu-button" class="px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-white/10 rounded-md transition-colors">Window</button>
+                    <div id="window-dropdown-menu" class="dropdown-menu mt-2 w-56 rounded-md shadow-lg glass-panel p-1">
+                        <label class="flex items-center justify-between w-full px-3 py-2 text-sm text-gray-200 rounded-md hover:bg-white/10 cursor-pointer">
+                            <span>History Panel</span>
+                            <input type="checkbox" id="toggle-history-checkbox" class="h-4 w-4 rounded text-teradata-orange bg-gray-700 border-gray-600 focus:ring-teradata-orange">
+                        </label>
+                        <label class="flex items-center justify-between w-full px-3 py-2 text-sm text-gray-200 rounded-md hover:bg-white/10 cursor-pointer">
+                            <span>Capabilities Panel</span>
+                            <input type="checkbox" id="toggle-header-checkbox" class="h-4 w-4 rounded text-teradata-orange bg-gray-700 border-gray-600 focus:ring-teradata-orange">
+                        </label>
+                        <label class="flex items-center justify-between w-full px-3 py-2 text-sm text-gray-200 rounded-md hover:bg-white/10 cursor-pointer">
+                            <span>Status Panel</span>
+                            <input type="checkbox" id="toggle-status-checkbox" class="h-4 w-4 rounded text-teradata-orange bg-gray-700 border-gray-600 focus:ring-teradata-orange">
+                        </label>
+                    </div>
+                </div>
+                <div class="menu-item">
+                    <button id="info-button" class="px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-white/10 rounded-md transition-colors">Info</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="flex flex-1 min-h-0">
+        <aside id="session-history-panel" class="w-1/4 max-w-xs h-full flex flex-col glass-panel rounded-r-2xl shadow-2xl border-r border-white/10 collapsed">
+            <header class="p-4 border-b border-white/10 flex justify-between items-center flex-shrink-0">
+                <h2 class="header-title text-lg font-bold text-white">History</h2>
+                <button id="new-chat-button" type="button" title="Start New Chat" class="p-2 text-gray-300 hover:text-white transition-colors rounded-md hover:bg-white/10">
+                    <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                </button>
+            </header>
+            <div id="session-list" class="flex-1 p-2 overflow-y-auto space-y-2">
+                </div>
+        </aside>
+
+        <div id="main-content" class="flex flex-col h-full flex-1 min-w-0 relative">
+             <div id="top-buttons-container" class="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-30 pointer-events-none">
+                <button id="toggle-history-button" title="Toggle History Panel" class="p-2 rounded-full bg-gray-800/50 hover:bg-teradata-orange transition-colors pointer-events-auto">
+                    <svg id="history-expand-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                    </svg>
+                    <svg id="history-collapse-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                    </svg>
+                </button>
+                 <button id="toggle-header-button" title="Toggle Capabilities Panel" class="p-2 rounded-full bg-gray-800/50 hover:bg-teradata-orange transition-colors pointer-events-auto">
+                     <svg id="header-collapse-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+                    </svg>
+                    <svg id="header-expand-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <button id="toggle-status-button" title="Toggle Status Panel" class="p-2 rounded-full bg-gray-800/50 hover:bg-teradata-orange transition-colors pointer-events-auto">
+                    <svg id="status-collapse-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                    </svg>
+                     <svg id="status-expand-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                    </svg>
+                </button>
+            </div>
+
+            <header id="tool-header" class="relative bg-[#262626] rounded-b-2xl shadow-2xl z-20 flex flex-col flex-shrink-0 border-b border-white/10 pt-16">
+                <nav id="resource-tabs" class="flex justify-center items-center gap-x-4 p-3 border-b border-white/10">
+                    <button class="resource-tab px-4 py-2 font-semibold text-sm text-gray-300 transition-colors hover:text-white active" data-type="tools">Tools</button>
+                    <button class="resource-tab px-4 py-2 font-semibold text-sm text-gray-300 transition-colors hover:text-white" data-type="prompts">Prompts</button>
+                    <button class="resource-tab px-4 py-2 font-semibold text-sm text-gray-300 transition-colors hover:text-white" data-type="resources">Resources</button>
+                </nav>
+                <div id="panels-container" class="flex-1 min-h-0">
+                    <div id="tools-panel" class="resource-panel flex flex-col h-full">
+                        <nav id="tools-categories" class="flex justify-center items-center gap-x-2 p-3 border-b border-white/10"></nav>
+                        <div id="tools-panels-container" class="flex-1 min-h-0 overflow-y-auto p-2"></div>
+                    </div>
+                    <div id="prompts-panel" class="resource-panel flex-col h-full" style="display: none;">
+                        <nav id="prompts-categories" class="flex justify-center items-center gap-x-2 p-3 border-b border-white/10"></nav>
+                        <div id="prompts-panels-container" class="flex-1 min-h-0 overflow-y-auto p-2"></div>
+                    </div>
+                    <div id="resources-panel" class="resource-panel flex-col h-full" style="display: none;">
+                        <nav id="resources-categories" class="flex justify-center items-center gap-x-2 p-3 border-b border-white/10"></nav>
+                        <div id="resources-panels-container" class="flex-1 min-h-0 overflow-y-auto p-2"></div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="flex-1 flex flex-col min-h-0">
+                 <main id="chat-container" class="flex-1 overflow-y-auto p-6">
+                    <div id="chat-log" class="max-w-4xl mx-auto space-y-8"></div>
+                </main>
+
+                <footer class="p-4">
+                    <div class="max-w-4xl mx-auto">
+                        <form id="chat-form" class="flex items-center gap-3 glass-panel rounded-xl p-2">
+                            <input type="text" id="user-input" placeholder="Ask about databases, tables, users..."
+                                class="flex-1 p-3 bg-transparent border-none rounded-lg focus:outline-none text-white placeholder-gray-400"
+                                autocomplete="off" disabled />
+                            <button type="button" id="voice-input-button"
+                                class="p-3 bg-gray-600 rounded-lg hover:bg-gray-500 disabled:bg-gray-700 flex items-center justify-center w-12 h-12 transition-all duration-200 transform hover:scale-110 hidden"
+                                title="Voice Conversation (Hold Ctrl)">
+                                <svg id="mic-icon" class="w-6 h-6 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 14a3 3 0 003-3V5a3 3 0 00-6 0v6a3 3 0 003 3z" />
+                                    <path d="M12 16.5a4.5 4.5 0 01-4.5-4.5V7a1 1 0 012 0v5a2.5 2.5 0 005 0V7a1 1 0 012 0v5a4.5 4.5 0 01-4.5 4.5z" />
+                                    <path d="M12 21a1 1 0 01-1-1v-2.06a7 7 0 01-5.9-6.84 1 1 0 012 0A5 5 0 0012 16a5 5 0 005-5.06 1 1 0 012 0 7 7 0 01-5.9 6.84V20a1 1 0 01-1 1z" />
+                                </svg>
+                            </button>
+                            <!-- --- MODIFICATION START: Add Key Observations Toggle Button --- -->
+                            <button type="button" id="key-observations-toggle-button" class="p-3 bg-gray-600 rounded-lg hover:bg-gray-500 disabled:bg-gray-700 flex items-center justify-center w-12 h-12 transition-all duration-200 transform hover:scale-110 hidden" title="Key Observations - Autoplay Off">
+                                <svg id="observations-autoplay-off-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4.804 21.644A6.707 6.707 0 0 0 6 21.75a6.721 6.721 0 0 0 3.583-1.029c.774.182 1.584.279 2.417.279 5.352 0 9.75-3.62 9.75-8.125s-4.398-8.125-9.75-8.125S2.25 6.22 2.25 10.725c0 2.21.849 4.234 2.27 5.769a.75.75 0 0 1 .104.515v.23a.75.75 0 0 0 .45.694ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clip-rule="evenodd" />
+                                    <path d="M12.982 4.555A.75.75 0 0 0 12 5.25v.162A8.25 8.25 0 0 1 20.25 13.5c0 2.25-.89 4.31-2.344 5.842a.75.75 0 0 0 .938 1.165A9.753 9.753 0 0 0 21.75 13.5c0-5.11-4.14-9.25-9.25-9.25a.75.75 0 0 0-.518.305Z" />
+                                </svg>
+                                <svg id="observations-autoplay-on-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white hidden" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12.982 4.555A.75.75 0 0 0 12 5.25v.162A8.25 8.25 0 0 1 20.25 13.5c0 2.25-.89 4.31-2.344 5.842a.75.75 0 0 0 .938 1.165A9.753 9.753 0 0 0 21.75 13.5c0-5.11-4.14-9.25-9.25-9.25a.75.75 0 0 0-.518.305Z" />
+                                    <path fill-rule="evenodd" d="M4.804 21.644A6.707 6.707 0 0 0 6 21.75a6.721 6.721 0 0 0 3.583-1.029c.774.182 1.584.279 2.417.279 5.352 0 9.75-3.62 9.75-8.125s-4.398-8.125-9.75-8.125S2.25 6.22 2.25 10.725c0 2.21.849 4.234 2.27 5.769a.75.75 0 0 1 .104.515v.23a.75.75 0 0 0 .45.694ZM9.402 9.242a.75.75 0 0 1 1.054-.168l3.75 2.25a.75.75 0 0 1 0 1.352l-3.75 2.25a.75.75 0 0 1-1.054-1.184L12.333 12 9.402 10.258a.75.75 0 0 1-.168-1.016Z" clip-rule="evenodd" />
+                                </svg>
+                                <svg id="observations-off-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white hidden" viewBox="0 0 24 24" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M3.553 4.453a.75.75 0 0 0-1.06 1.06l16.5 16.5a.75.75 0 0 0 1.06-1.06l-2.03-2.03A9.732 9.732 0 0 0 21.75 13.5c0-5.11-4.14-9.25-9.25-9.25a9.68 9.68 0 0 0-3.32.556L7.203 2.78a.75.75 0 0 0-1.06-1.06l-2.59 2.59Zm2.83 2.83 2.473 2.473A8.223 8.223 0 0 1 12 5.412a8.25 8.25 0 0 1 8.25 8.25c0 .64-.074 1.264-.214 1.86l2.311 2.311A9.73 9.73 0 0 0 20.25 13.5a9.75 9.75 0 0 0-13.867-8.217Z" clip-rule="evenodd" />
+                                    <path d="M4.804 21.644A6.707 6.707 0 0 0 6 21.75a6.721 6.721 0 0 0 3.583-1.029c.774.182 1.584.279 2.417.279 3.425 0 6.446-1.72 8.16-4.323l-1.68-1.68A8.253 8.253 0 0 1 12 19.088a8.138 8.138 0 0 1-4.145-1.13L4.82 21.436a.75.75 0 0 1-.015.208Z" />
+                                </svg>
+                            </button>
+                            <!-- --- MODIFICATION END --- -->
+                            <button type="submit" id="submit-button"
+                                class="p-3 bg-[#F15F22] rounded-lg hover:bg-[#D9501A] disabled:bg-gray-600 flex items-center justify-center w-12 h-12 transition-all duration-200 transform hover:scale-110"
+                                disabled>
+                                <svg id="send-icon" class="w-6 h-6 text-white flipped" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                                <svg id="loading-spinner" class="w-6 h-6 text-white animate-spin hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            </button>
+                        </form>
+                        <div id="input-hint" class="input-hint">
+                            <span><strong>Full Session Context:</strong> <span class="text-green-400 font-semibold">On</span></span>
+                            <div class="hint-icon">
+                                ?
+                                <span class="tooltip">Full session context is the default. Hold <kbd>Alt</kbd> to temporarily use 'Last Turn' context. Press <kbd>Shift</kbd> + <kbd>Alt</kbd> to lock 'Last Turn' context on.</span>
+                            </div>
+                        </div>
+                        </div>
+                </footer>
+            </div>
+        </div>
+
+        <aside id="status-window" class="w-1/3 max-w-md h-full flex flex-col glass-panel rounded-l-2xl shadow-2xl border-l border-white/10">
+            <header class="p-4 border-b border-white/10 flex flex-col justify-center items-center">
+                <h2 id="status-title" class="header-title text-lg font-bold text-white">Live Status</h2>
+                <div id="status-prompt-name" class="text-xs text-gray-400 mt-1 flex items-center justify-center gap-x-2 h-4">
+                    <span id="prompt-name-display">No Model/Prompt Loaded</span>
+                    <span id="thinking-indicator" class="hidden items-center gap-x-1 text-yellow-400">
+                        <svg class="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span>LLM Thinking...</span>
+                    </span>
+                </div>
+                <div id="token-usage-display" class="text-xs text-gray-400 mt-2 w-full">
+                    <div id="token-normal-display">
+                        <div class="flex justify-around items-center space-x-2">
+                            <div class="text-center">
+                                <span class="font-semibold text-gray-300">Last Statement</span>
+                                <div class="flex gap-x-2 justify-center">
+                                    <span title="Input Tokens">In: <strong id="statement-input-tokens" class="text-white">0</strong></span>
+                                    <span title="Output Tokens">Out: <strong id="statement-output-tokens" class="text-white">0</strong></span>
+                                </div>
+                            </div>
+                            <div class="border-l border-white/20 h-6"></div>
+                            <div class="text-center">
+                                <span class="font-semibold text-gray-300">Session Total</span>
+                                <div class="flex gap-x-2 justify-center">
+                                    <span title="Total Input Tokens">In: <strong id="total-input-tokens" class="text-white">0</strong></span>
+                                    <span title="Total Output Tokens">Out: <strong id="total-output-tokens" class="text-white">0</strong></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="token-aws-message" class="text-center hidden">Token usage not available for Amazon Bedrock</div>
+                </div>
+            </header>
+            <div id="status-window-content" class="flex-1 p-4 overflow-y-auto space-y-4">
+                <p class="text-gray-400">Waiting for a new request...</p>
+            </div>
+        </aside>
+    </div>
+
+    <div id="chat-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
+        <div id="chat-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-2xl p-6 transform scale-95 opacity-0 flex flex-col" style="height: 80vh;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold header-title">Direct Chat with Model</h3>
+                <button type="button" id="chat-modal-close" class="p-2 rounded-full text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="chat-modal-log" class="flex-1 w-full p-3 bg-gray-800/80 border border-gray-600 rounded-md overflow-y-auto space-y-4">
+            </div>
+            <form id="chat-modal-form" class="mt-4 flex items-center gap-3">
+                <input type="text" id="chat-modal-input" placeholder="Send a message..."
+                    class="flex-1 p-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teradata-orange text-white placeholder-gray-400"
+                    autocomplete="off" />
+                <button type="submit" id="chat-modal-submit"
+                    class="p-3 bg-teradata-orange rounded-lg hover:bg-teradata-orange-dark flex items-center justify-center w-12 h-12 transition-colors">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="info-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
+        <div id="info-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-lg p-6 transform scale-95 opacity-0">
+            <h3 class="text-xl font-bold mb-4 header-title">About This Project</h3>
+            <div class="text-gray-300 space-y-4 text-sm">
+                <div>
+                    <h4 class="font-semibold text-white mb-1">Overview</h4>
+                    <p>This Trusted Data Agent is a project designed to showcase AI-powered interaction with a MCP abstracted Relational Information System. It's initial goal was (and still is) to act as the perfect study buddy for LLM/MCP interaction - as it outlines clear conversation transparency on all interactions between the consumer, the MCP server, and the LLM.</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-white mb-1">Source Code & Contributions</h4>
+                    <p>The Trusted Data Agent is open source and contributions are welcome. Please visit the main git project to report issues or submit pull requests.</p>
+                    <p class="mt-2"><strong>Git Repository:</strong> <a href="https://github.com/rgeissen/trusted-data-agent.git" target="_blank" class="text-teradata-orange hover:underline">https://github.com/rgeissen/trusted-data-agent.git</a></p>
+                </div>
+                <hr class="border-white/10 my-4">
+                <div>
+                    <p class="text-xs text-gray-400">Trusted Data Agent Author/Initiator</p>
+                    <p class="font-semibold text-white">Rainer Geissendoerfer, Innovator & Founder, <Uderia class="com">Uderia</Uderia></p>
+                </div>
+            </div>
+            <div class="flex justify-end mt-6">
+                <button id="info-modal-close" class="px-4 py-2 rounded-md bg-teradata-orange hover:bg-teradata-orange-dark transition-colors font-semibold">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="config-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
+        <div id="config-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-2xl p-8 transform scale-95 opacity-0">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold header-title text-white">Application Configuration</h3>
+                <button type="button" id="config-modal-close" class="p-2 rounded-full text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="bg-white/5 border border-white/10 rounded-lg p-6 flex flex-col">
+                <div class="flex-grow">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-teradata-orange/20 text-teradata-orange rounded-lg p-2 mr-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                        </div>
+                        <h4 class="font-bold text-lg text-white">Core Services</h4>
+                    </div>
+                    <p class="text-sm text-gray-400 mb-6">Connect to the MCP Server and configure the Language Model. This is required for basic functionality.</p>
+                    <form id="config-form" class="space-y-4">
+                        <div>
+                            <label for="mcp-server-name" class="block text-sm font-medium text-gray-300 mb-1">MCP Server Name</label>
+                            <input type="text" id="mcp-server-name" name="server_name" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., my_mcp_server">
+                        </div>
+                        <div>
+                            <label for="mcp-host" class="block text-sm font-medium text-gray-300 mb-1">MCP Host</label>
+                            <input type="text" id="mcp-host" name="host" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
+                        </div>
+                        <div>
+                            <label for="mcp-port" class="block text-sm font-medium text-gray-300 mb-1">MCP Port</label>
+                            <input type="text" id="mcp-port" name="port" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
+                        </div>
+                        <div>
+                            <label for="mcp-path" class="block text-sm font-medium text-gray-300 mb-1">MCP Path</label>
+                            <input type="text" id="mcp-path" name="path" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
+                        </div>
+                        <div class="border-t border-white/10 my-4"></div>
+                        <div>
+                            <label for="llm-provider" class="block text-sm font-medium text-gray-300 mb-1">LLM Provider</label>
+                            <select id="llm-provider" name="provider" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
+                                <option value="Google">Google</option>
+                                <option value="Anthropic">Anthropic</option>
+                                <option value="OpenAI">OpenAI</option>
+                                <option value="Amazon">Amazon</option>
+                                <option value="Ollama">Ollama (Local)</option>
+                                <option value="Cohere" disabled>Cohere (coming soon)</option>
+                                <option value="Mistral" disabled>Mistral (coming soon)</option>
+                            </select>
+                        </div>
+
+                        <div id="api-key-container">
+                            <label for="llm-api-key" class="block text-sm font-medium text-gray-300 mb-1">LLM API Key</label>
+                            <input type="password" id="llm-api-key" name="apiKey" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your API Key">
+                        </div>
+
+                        <div id="ollama-host-container" class="hidden">
+                            <label for="ollama-host" class="block text-sm font-medium text-gray-300 mb-1">Ollama Host</label>
+                            <input type="text" id="ollama-host" name="ollama_host" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., http://localhost:11434">
+                        </div>
+
+                        <div id="aws-credentials-container" class="hidden space-y-4">
+                            <div>
+                                <label for="aws-access-key-id" class="block text-sm font-medium text-gray-300 mb-1">AWS Access Key ID</label>
+                                <input type="password" id="aws-access-key-id" name="aws_access_key_id" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your AWS Access Key ID">
+                            </div>
+                            <div>
+                                <label for="aws-secret-access-key" class="block text-sm font-medium text-gray-300 mb-1">AWS Secret Access Key</label>
+                                <input type="password" id="aws-secret-access-key" name="aws_secret_access_key" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your AWS Secret Access Key">
+                            </div>
+                            <div>
+                                <label for="aws-region" class="block text-sm font-medium text-gray-300 mb-1">AWS Region</label>
+                                <input type="text" id="aws-region" name="aws_region" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., us-east-1">
+                            </div>
+                        </div>
+
+                        <fieldset id="aws-listing-method-container" class="hidden">
+                            <legend class="block text-sm font-medium text-gray-300 mb-2">Model Listing Method</legend>
+                            <div class="flex items-center gap-x-6">
+                                <div class="flex items-center">
+                                    <input id="foundation_models" name="listing_method" type="radio" value="foundation_models" class="h-4 w-4 border-gray-300 text-teradata-orange focus:ring-teradata-orange" checked>
+                                    <label for="foundation_models" class="ml-3 block text-sm font-medium leading-6 text-gray-300">Foundation Models</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input id="inference_profiles" name="listing_method" type="radio" value="inference_profiles" class="h-4 w-4 border-gray-300 text-teradata-orange focus:ring-teradata-orange">
+                                    <label for="inference_profiles" class="ml-3 block text-sm font-medium leading-6 text-gray-300">Inference Profiles</label>
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <div>
+                            <label for="llm-model" class="block text-sm font-medium text-gray-300 mb-1">LLM Model</label>
+                            <div class="flex items-center gap-2">
+                                <select id="llm-model" name="model" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
+                                    <option value="">-- Select Provider & Enter Credentials --</option>
+                                </select>
+                                <button type="button" id="refresh-models-button" title="Refresh Model List" class="p-2 bg-gray-600 hover:bg-gray-500 rounded-md transition-colors">
+                                    <svg id="refresh-icon" class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.667 0l3.181-3.183m-4.991-2.691L7.985 5.356m0 0v4.992m0 0h4.992m0 0l3.181-3.183a8.25 8.25 0 0111.667 0l3.181 3.183" /></svg>
+                                    <svg id="refresh-spinner" class="w-5 h-5 animate-spin hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-white/10 my-4"></div>
+
+                        <div id="charting-intensity-container">
+                            <label for="charting-intensity" class="block text-sm font-medium text-gray-300 mb-1">Charting Intensity</label>
+                            <select id="charting-intensity" name="charting_intensity" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
+                                <option value="none" selected>No Charting</option>
+                                <option value="medium">Medium Charting</option>
+                                <option value="heavy">Heavy Charting</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="pt-6">
+                    <button id="config-action-button" form="config-form" type="submit" class="w-full px-4 py-3 rounded-md bg-blue-600 hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center text-white">
+                        <svg id="config-loading-spinner" class="w-5 h-5 mr-2 animate-spin hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span id="config-action-button-text">Connect & Load</span>
+                    </button>
+                </div>
+            </div>
+            <div id="config-status" class="text-sm min-h-[1.25rem] mt-6 text-center"></div>
+        </div>
+    </div>
+
+    <div id="prompt-editor-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
+        <div id="prompt-editor-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-3xl p-6 transform scale-95 opacity-0 flex flex-col" style="height: 80vh;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="prompt-editor-title" class="text-xl font-bold header-title">System Prompt Editor</h3>
+                <div id="prompt-editor-status" class="text-sm"></div>
+            </div>
+            <textarea id="prompt-editor-textarea" class="flex-1 w-full p-3 bg-gray-800/80 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none font-mono text-sm"></textarea>
+            <div class="flex justify-between items-center mt-4">
+                <button type="button" id="prompt-editor-reset" class="px-4 py-2 rounded-md bg-gray-600 hover:bg-gray-500 transition-colors">Reset to Default</button>
+                <div>
+                    <button type="button" id="prompt-editor-close" class="px-4 py-2 rounded-md bg-gray-600 hover:bg-gray-500 transition-colors mr-2">Close</button>
+                    <button type="button" id="prompt-editor-save" class="px-4 py-2 rounded-md bg-teradata-orange hover:bg-teradata-orange-dark transition-colors font-semibold">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirm-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
+        <div id="confirm-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-lg p-6 transform scale-95 opacity-0">
+            <h3 id="confirm-modal-title" class="text-xl font-bold mb-4">Confirm Action</h3>
+            <p id="confirm-modal-body" class="text-gray-300 mb-6"></p>
+            <div class="flex justify-end gap-3">
+                <button type="button" id="confirm-modal-cancel" class="px-4 py-2 rounded-md bg-gray-600 hover:bg-gray-500 transition-colors">Cancel</button>
+                <button type="button" id="confirm-modal-confirm" class="px-4 py-2 rounded-md bg-teradata-orange hover:bg-teradata-orange-dark transition-colors font-semibold">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="prompt-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
+        <div id="prompt-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-lg p-6 transform scale-95 opacity-0">
+            <h3 id="prompt-modal-title" class="text-xl font-bold mb-4"></h3>
+            <form id="prompt-modal-form">
+                <div id="prompt-modal-inputs" class="space-y-4 mb-6"></div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" id="prompt-modal-close" class="px-4 py-2 rounded-md bg-gray-600 hover:bg-gray-500 transition-colors">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-md bg-teradata-orange hover:bg-teradata-orange-dark transition-colors font-semibold">Run</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="system-prompt-popup-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
+        <div id="system-prompt-popup-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-3xl p-6 transform scale-95 opacity-0 flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="system-prompt-popup-title" class="text-xl font-bold header-title">Welcome to the Trusted Data Agent</h3>
+            </div>
+            <div id="system-prompt-popup-body" class="flex-1 w-full p-3 bg-gray-800/80 border border-gray-600 rounded-md overflow-y-auto">
+                <!-- Content will be generated by main.js -->
+            </div>
+            <div class="flex justify-between items-center mt-4">
+                <div id="countdown-container" class="text-sm text-gray-400" style="visibility: hidden;">
+                    Closing in <span id="countdown-timer" class="font-bold text-white">5</span>s...
+                </div>
+                <div>
+                    <button type="button" id="system-prompt-popup-view-full" class="px-4 py-2 rounded-md bg-gray-600 hover:bg-gray-500 transition-colors">View Full System Prompt</button>
+                    <button type="button" id="system-prompt-popup-close" class="px-4 py-2 rounded-md bg-teradata-orange hover:bg-teradata-orange-dark transition-colors font-semibold ml-2">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-prompt-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
+        <div id="view-prompt-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-3xl p-6 transform scale-95 opacity-0 flex flex-col" style="height: 80vh;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="view-prompt-modal-title" class="text-xl font-bold header-title"></h3>
+            </div>
+            <div class="flex-1 w-full p-3 bg-gray-800/80 border border-gray-600 rounded-md overflow-y-auto">
+                <pre id="view-prompt-modal-text" class="font-mono text-sm whitespace-pre-wrap"></pre>
+            </div>
+            <div class="flex justify-end items-center mt-4">
+                <button type="button" id="view-prompt-modal-close" class="px-4 py-2 rounded-md bg-teradata-orange hover:bg-teradata-orange-dark transition-colors font-semibold">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module"src="{{ url_for('static', filename='js/main.js') }}?v=2.6"></script>
+</body>
+</html>
+

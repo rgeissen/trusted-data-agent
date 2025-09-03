@@ -1,0 +1,12 @@
+quart
+quart-cors
+hypercorn
+python-dotenv
+google-generativeai
+langchain-mcp-adapters
+anthropic
+boto3
+openai
+cryptography
+google.cloud
+google-cloud-texttospeech
