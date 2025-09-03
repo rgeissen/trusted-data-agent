@@ -28,7 +28,7 @@ This solution provides unparalleled, real-time insight into the complete convers
 
 ## Overview: A Superior Approach
 
-The Trusted Data Agent transcends typical data chat applications by placing ultimate control and understanding in the hands of the user. It provides a seamless natural language interface to your Relation Information system, empowering you to ask complex questions and receive synthesized, accurate answers without writing a single line of SQL.
+The Trusted Data Agent transcends typical data chat applications by placing ultimate control and understanding in the hands of the user. It provides a seamless natural language interface to your Relational Information system, empowering you to ask complex questions and receive synthesized, accurate answers without writing a single line of SQL.
 
 Its core superiority lies in its revolutionary architecture, which delivers:
 
