@@ -893,7 +893,6 @@ class PlanExecutor:
             if tool_scope == 'column':
                 yield self._format_sse({"step": "Plan Optimization", "type": "plan_optimization", "details": f"FASTPATH Data Expansion: Preparing column-level iteration for '{tool_name}'."})
                 
-                # Get tool constraints upfront to check data types.
                 yield self._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
                 tool_constraints = await self._get_tool_constraints(tool_name)
                 yield self._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
@@ -924,7 +923,6 @@ class PlanExecutor:
                             col_name = col_info.get("ColumnName")
                             if not col_name: continue
                             
-                            # Proactive data type validation
                             col_type = next((v for k, v in col_info.items() if "type" in k.lower()), "").upper()
                             if required_type and col_type != "UNKNOWN":
                                 is_numeric = any(t in col_type for t in ["INT", "NUMERIC", "DECIMAL", "FLOAT", "BYTEINT", "SMALLINT", "BIGINT"])
@@ -983,7 +981,6 @@ class PlanExecutor:
                 all_loop_results.append(self.last_tool_output)
 
             yield self._format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
-            # --- MODIFICATION END ---
             
             phase_result_key = f"result_of_phase_{phase_num}"
             self.workflow_state[phase_result_key] = all_loop_results
@@ -1304,16 +1301,26 @@ class PlanExecutor:
         
         is_final_phase = self.meta_plan and phase.get("phase") == self.meta_plan[-1].get("phase")
         
+        # --- MODIFICATION START: Make final summary injection conditional ---
         if tool_name == "CoreLLMTask" and is_final_phase and self.execution_depth == 0 and not self.is_delegation_only_plan:
-            app_logger.info("FINAL_SUMMARY Prompt Injection: Overriding CoreLLMTask with standardized final summary prompt.")
-            yield self._format_sse({
-                "step": "Plan Optimization", 
-                "type": "plan_optimization",
-                "details": "FINAL_SUMMARY Prompt Injection"
-            })
-            arguments["task_description"] = GENERATE_FINAL_SUMMARY
+            planner_description = arguments.get("task_description", "")
+            # Heuristic: If the planner provides a short/generic description, override it for consistency.
+            # Otherwise, trust the detailed instructions from a workflow prompt.
+            if not planner_description or len(planner_description) < 200:
+                app_logger.info("FINAL_SUMMARY Prompt Injection: Overriding generic CoreLLMTask with standardized final summary prompt.")
+                yield self._format_sse({
+                    "step": "Plan Optimization", 
+                    "type": "plan_optimization",
+                    "details": "Using standardized final summary prompt for consistency."
+                })
+                arguments["task_description"] = GENERATE_FINAL_SUMMARY
+            else:
+                app_logger.info("FINAL_SUMMARY Prompt Injection: Preserving detailed task_description from planner.")
+            
+            # Always inject the user question for top-level context.
             arguments["user_question"] = self.original_user_input
             self.final_summary_was_injected = True
+        # --- MODIFICATION END ---
         
         if tool_name == "CoreLLMTask" and "synthesized_answer" in arguments:
             app_logger.info("Bypassing CoreLLMTask execution. Using synthesized answer from planner.")
