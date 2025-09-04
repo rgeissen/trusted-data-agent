@@ -639,18 +639,23 @@ class PlanExecutor:
         if not self.meta_plan:
             raise RuntimeError("Cannot execute plan: meta_plan is not generated.")
 
-        # --- MODIFICATION START ---
-        # The main execution is now a single `while` loop. The delegation logic
-        # is moved inside the loop to allow the plan to resume after a sub-process.
+        # --- MODIFICATION START: Refactor to a single master execution loop ---
+        # This centralizes control flow, removing the need for separate helper methods
+        # and allows for deterministic context passing in complex nested scenarios.
         while self.current_phase_index < len(self.meta_plan):
             current_phase = self.meta_plan[self.current_phase_index]
 
-            # Check if the current phase requires delegating to a sub-executor.
+            # Resolve any placeholders in the static arguments of the phase itself.
+            # This is crucial for passing context correctly to sub-executors.
+            if "arguments" in current_phase:
+                current_phase["arguments"] = self._resolve_arguments(current_phase["arguments"])
+
             is_delegated_prompt_phase = (
                 'executable_prompt' in current_phase and
                 self.execution_depth < self.MAX_EXECUTION_DEPTH
             )
 
+            # Scenario 1: The phase is a delegated prompt call.
             if is_delegated_prompt_phase:
                 prompt_name = current_phase.get('executable_prompt')
                 prompt_args = current_phase.get('arguments', {})
@@ -682,25 +687,16 @@ class PlanExecutor:
                 self.turn_action_history.extend(sub_executor.turn_action_history)
                 self.last_tool_output = sub_executor.last_tool_output
             
-            else:
-                # This is a standard phase (tool call, loop, etc.)
-                is_hallucinated_loop = (
-                    current_phase.get("type") == "loop" and
-                    isinstance(current_phase.get("loop_over"), list) and
-                    all(isinstance(item, str) for item in current_phase.get("loop_over"))
-                )
-                
-                if is_hallucinated_loop:
-                    async for event in orchestrators.execute_hallucinated_loop(self, current_phase):
-                        yield event
-                elif current_phase.get("type") == "loop":
-                    async for event in self._execute_looping_phase(current_phase):
-                        yield event
-                else:
-                    async for event in self._execute_standard_phase(current_phase):
-                        yield event
+            # Scenario 2: The phase is a loop.
+            elif current_phase.get("type") == "loop":
+                async for event in self._execute_looping_phase(current_phase):
+                    yield event
             
-            # After the phase (delegated or standard) is complete, move to the next one.
+            # Scenario 3: The phase is a standard, single action.
+            else:
+                async for event in self._execute_standard_phase(current_phase):
+                    yield event
+            
             self.current_phase_index += 1
         # --- MODIFICATION END ---
 
@@ -1249,13 +1245,11 @@ class PlanExecutor:
                             else:
                                 app_logger.info(f"Successfully recovered from tool failure by executing prompt '{corrected_action['prompt_name']}'.")
                                 self.last_tool_output = sub_executor.last_tool_output
-                                # --- MODIFICATION START ---
-                                # Do NOT terminate the plan. Allow the current phase to complete
+                                # --- MODIFICATION START: Allow plan to continue after successful prompt-based recovery ---
+                                # Do not terminate the plan. Allow the current phase to complete
                                 # and let the main execution loop continue to the next phase.
-                                # self.meta_plan = [] <-- REMOVED
-                                # self.is_delegation_only_plan = True <-- REMOVED
-                                # --- MODIFICATION END ---
                                 break # The recovery was successful, so break the retry loop.
+                                # --- MODIFICATION END ---
 
                         if "FINAL_ANSWER:" in corrected_action:
                             self.last_tool_output = {"status": "success", "results": [{"response": corrected_action}]}
@@ -1890,4 +1884,3 @@ class PlanExecutor:
             return None, events
             
         return None, events
-
