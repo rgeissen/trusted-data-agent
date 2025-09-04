@@ -114,17 +114,34 @@ def create_app():
 
 app = create_app()
 
-async def main():
+async def main(args): # MODIFIED: Accept args
     print("\n--- Starting Hypercorn Server for Quart App ---")
-    print("Web client initialized and ready. Navigate to http://127.0.0.1:5000")
+    # MODIFIED: Use args to build the address and the print statement
+    host = args.host
+    port = args.port
+    print(f"Web client initialized and ready. Navigate to http://{host}:{port}")
     config = Config()
-    config.bind = ["127.0.0.1:5000"]
+    config.bind = [f"{host}:{port}"] # MODIFIED: Use dynamic host and port
     config.accesslog = None
     config.errorlog = None 
     await hypercorn.asyncio.serve(app, config)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the Trusted Data Agent web client.")
+    # ADDED: Argument for the host address
+    parser.add_argument(
+        "--host", 
+        type=str, 
+        default="127.0.0.1", 
+        help="Host address to bind the server to. Use '0.0.0.0' for Docker."
+    )
+    # ADDED: Argument for the port
+    parser.add_argument(
+        "--port", 
+        type=int, 
+        default=5000, 
+        help="Port to bind the server to."
+    )
     parser.add_argument("--all-models", action="store_true", help="Allow selection of all available models.")
     args = parser.parse_args()
 
@@ -149,6 +166,7 @@ if APP_CONFIG.VOICE_CONVERSATION_ENABLED:
 # --- MODIFICATION END ---
 
 try:
-    asyncio.run(main())
+    # MODIFIED: Pass args to main
+    asyncio.run(main(args))
 except KeyboardInterrupt:
     print("\nServer shut down.")
