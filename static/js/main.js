@@ -10,9 +10,7 @@ import * as DOM from './domElements.js';
 import { state } from './state.js';
 import { checkAndUpdateDefaultPrompts } from './api.js';
 import { setupPanelToggle } from './utils.js';
-// --- MODIFICATION START: Import key observations UI updater ---
 import { updateHintAndIndicatorState, updateVoiceModeUI, updateKeyObservationsModeUI } from './ui.js';
-// --- MODIFICATION END ---
 import { initializeVoiceRecognition } from './voice.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -37,12 +35,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             DOM.chartingIntensitySelect.value = state.appConfig.default_charting_intensity || 'medium';
         }
         
-        // --- MODIFICATION START: Show key observations toggle if voice is enabled ---
         if (state.appConfig.voice_conversation_enabled) {
             DOM.voiceInputButton.classList.remove('hidden');
             DOM.keyObservationsToggleButton.classList.remove('hidden');
         }
-        // --- MODIFICATION END ---
 
     } catch (e) {
         console.error("Could not fetch app config", e);
@@ -60,6 +56,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('mcp-port').value = '8001';
         document.getElementById('mcp-path').value = '/mcp/';
     }
+
+    // --- MODIFICATION START: Load saved TTS credentials from local storage ---
+    const savedTtsCreds = localStorage.getItem('ttsCredentialsJson');
+    if (savedTtsCreds) {
+        DOM.ttsCredentialsJsonTextarea.value = savedTtsCreds;
+    }
+    // --- MODIFICATION END ---
 
     const lastProvider = localStorage.getItem('lastSelectedProvider');
     if (lastProvider) {
@@ -83,16 +86,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         await fetchModels();
     }
     
-    // --- MODIFICATION START: Initialize key observations mode from localStorage ---
     const savedKeyObservationsMode = localStorage.getItem('keyObservationsMode');
     if (['autoplay-off', 'autoplay-on', 'off'].includes(savedKeyObservationsMode)) {
         state.keyObservationsMode = savedKeyObservationsMode;
     }
-    // --- MODIFICATION END ---
 
     updateHintAndIndicatorState();
     updateVoiceModeUI();
-    // --- MODIFICATION START: Update key observations UI on load ---
     updateKeyObservationsModeUI();
-    // --- MODIFICATION END ---
 });

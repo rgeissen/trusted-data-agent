@@ -193,7 +193,6 @@ async function processStream(responseBody) {
     }
 }
 
-// --- MODIFICATION START: Simplify confirmation handler to only perform the action ---
 async function handleObservationConfirmation(transcribedText) {
     const classification = Utils.classifyConfirmation(transcribedText);
 
@@ -202,16 +201,13 @@ async function handleObservationConfirmation(transcribedText) {
         if (observationAudio) {
             const audioUrl = URL.createObjectURL(observationAudio);
             const audio = new Audio(audioUrl);
-            // Use a promise to wait for the audio to finish playing
             await new Promise(resolve => {
                 audio.onended = resolve;
                 audio.play();
             });
         }
     }
-    // No state changes here! All state management is now in voice.js onRecognitionEnd
 }
-// --- MODIFICATION END ---
 
 
 async function handleStreamRequest(endpoint, body) {
@@ -565,6 +561,12 @@ async function handleConfigFormSubmit(e) {
     } else {
         localStorage.setItem(`${config.provider.toLowerCase()}ApiKey`, config.apiKey);
     }
+    
+    // --- MODIFICATION START: Save TTS credentials to local storage ---
+    if (config.tts_credentials_json) {
+        localStorage.setItem('ttsCredentialsJson', config.tts_credentials_json);
+    }
+    // --- MODIFICATION END ---
 
     try {
         const res = await fetch('/configure', {
@@ -906,7 +908,6 @@ function handleKeyObservationsToggleClick() {
     localStorage.setItem('keyObservationsMode', state.keyObservationsMode);
     UI.updateKeyObservationsModeUI();
     
-    // --- MODIFICATION START: Add audible feedback for state change ---
     let announcementText = '';
     switch (state.keyObservationsMode) {
         case 'autoplay-off':
@@ -934,7 +935,6 @@ function handleKeyObservationsToggleClick() {
             }
         })();
     }
-    // --- MODIFICATION END ---
 }
 
 async function handleIntensityChange() {

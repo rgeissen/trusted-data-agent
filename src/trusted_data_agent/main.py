@@ -134,18 +134,19 @@ if __name__ == "__main__":
     
     print("\n--- CHARTING ENABLED: Charting configuration is active. ---")
 
+# --- MODIFICATION START: Adjust TTS startup check ---
+# This check now only prints a warning if the environment variable is missing,
+# but it NO LONGER disables the feature. This allows the UI-provided
+# credentials to be used later. The TTS client is now initialized on-demand
+# in routes.py instead of here at startup.
 if APP_CONFIG.VOICE_CONVERSATION_ENABLED:
-    # First, check if the required environment variable is set.
     if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
         print("\n--- ⚠️ VOICE FEATURE WARNING ---")
         print("The 'GOOGLE_APPLICATION_CREDENTIALS' environment variable is not set.")
-        print("The voice conversation feature requires valid Google Cloud credentials for Text-to-Speech.")
-        APP_CONFIG.VOICE_CONVERSATION_ENABLED = False
-        print("Voice feature has been DISABLED.")
+        print("The voice conversation feature will require credentials to be provided in the config UI.")
     else:
-        # If the variable is set, proceed with initialization.
-        print("\n--- VOICE FEATURE ENABLED: Checking Google TTS Credentials... ---")
-        APP_STATE["tts_client"] = get_tts_client()
+        print("\n--- VOICE FEATURE ENABLED: Credentials found in environment. ---")
+# --- MODIFICATION END ---
 
 try:
     asyncio.run(main())

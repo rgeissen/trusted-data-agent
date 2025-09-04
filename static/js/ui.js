@@ -529,7 +529,7 @@ export function addSessionToList(sessionId, name, isActive = false) {
     return sessionItem;
 }
 
-// MODIFIED: This function no longer sets onclick handlers, breaking a circular dependency.
+// --- MODIFICATION START: Update button colors to Teradata Orange using hex codes ---
 export function updateConfigButtonState() {
     const isConnected = DOM.mcpStatusDot.classList.contains('connected');
 
@@ -537,7 +537,7 @@ export function updateConfigButtonState() {
         DOM.configActionButtonText.textContent = 'Connect & Load';
         DOM.configActionButton.type = 'submit';
         DOM.configActionButton.classList.remove('bg-gray-600', 'hover:bg-gray-500');
-        DOM.configActionButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+        DOM.configActionButton.classList.add('bg-[#F15F22]', 'hover:bg-[#D9501A]');
         return;
     }
 
@@ -549,14 +549,15 @@ export function updateConfigButtonState() {
         DOM.configActionButtonText.textContent = 'Reconnect & Load';
         DOM.configActionButton.type = 'submit';
         DOM.configActionButton.classList.remove('bg-gray-600', 'hover:bg-gray-500');
-        DOM.configActionButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+        DOM.configActionButton.classList.add('bg-[#F15F22]', 'hover:bg-[#D9501A]');
     } else {
         DOM.configActionButtonText.textContent = 'Close';
         DOM.configActionButton.type = 'button';
-        DOM.configActionButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+        DOM.configActionButton.classList.remove('bg-[#F15F22]', 'hover:bg-[#D9501A]');
         DOM.configActionButton.classList.add('bg-gray-600', 'hover:bg-gray-500');
     }
 }
+// --- MODIFICATION END ---
 
 export function showConfirmation(title, body, onConfirm) {
     DOM.confirmModalTitle.textContent = title;
@@ -662,7 +663,6 @@ export function updateVoiceModeUI() {
     }
 }
 
-// --- MODIFICATION START: Add UI update function for key observations toggle ---
 export function updateKeyObservationsModeUI() {
     DOM.observationsAutoplayOffIcon.classList.add('hidden');
     DOM.observationsAutoplayOnIcon.classList.add('hidden');
@@ -687,7 +687,6 @@ export function updateKeyObservationsModeUI() {
             break;
     }
 }
-// --- MODIFICATION END ---
 
 // NEW: Pure UI function for closing the config modal
 export function closeConfigModal() {

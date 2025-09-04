@@ -14,12 +14,10 @@ export const loadingSpinner = document.getElementById('loading-spinner');
 export const newChatButton = document.getElementById('new-chat-button');
 export const voiceInputButton = document.getElementById('voice-input-button');
 export const micIcon = document.getElementById('mic-icon');
-// --- MODIFICATION START: Add Key Observations Toggle Button elements ---
 export const keyObservationsToggleButton = document.getElementById('key-observations-toggle-button');
 export const observationsAutoplayOffIcon = document.getElementById('observations-autoplay-off-icon');
 export const observationsAutoplayOnIcon = document.getElementById('observations-autoplay-on-icon');
 export const observationsOffIcon = document.getElementById('observations-off-icon');
-// --- MODIFICATION END ---
 export const thinkingIndicator = document.getElementById('thinking-indicator');
 export const promptNameDisplay = document.getElementById('prompt-name-display');
 export const inputHint = document.getElementById('input-hint');
@@ -95,6 +93,10 @@ export const awsListingMethodContainer = document.getElementById('aws-listing-me
 export const ollamaHostContainer = document.getElementById('ollama-host-container');
 export const ollamaHostInput = document.getElementById('ollama-host');
 export const chartingIntensitySelect = document.getElementById('charting-intensity');
+// --- MODIFICATION START: Add TTS credentials textarea ---
+export const ttsCredentialsJsonTextarea = document.getElementById('tts-credentials-json');
+// --- MODIFICATION END ---
+
 
 // Status indicators
 export const mcpStatusDot = document.getElementById('mcp-status-dot');

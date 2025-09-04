@@ -19,8 +19,10 @@ from mcp.shared.exceptions import McpError
 
 try:
     from google.cloud import texttospeech
+    from google.oauth2 import service_account
 except ImportError:
     texttospeech = None
+    service_account = None
 
 from trusted_data_agent.core.config import APP_CONFIG, APP_STATE as STATE
 from trusted_data_agent.core import session_manager
@@ -37,20 +39,42 @@ app_logger = logging.getLogger("quart.app")
 def get_tts_client():
     """
     Initializes and returns a Google Cloud TextToSpeechClient.
+    It prioritizes credentials provided via the UI, falling back to environment variables.
     """
     app_logger.info("AUDIO DEBUG: Attempting to get TTS client.")
     if texttospeech is None:
         app_logger.error("AUDIO DEBUG: The 'google-cloud-texttospeech' library is not installed.")
         app_logger.error("AUDIO DEBUG: Please install it to use the voice feature: pip install google-cloud-texttospeech")
         return None
-        
+
+    # --- MODIFICATION START: Prioritize UI-provided credentials ---
+    tts_creds_json_str = STATE.get("tts_credentials_json")
+
+    if tts_creds_json_str:
+        app_logger.info("AUDIO DEBUG: Attempting to initialize TTS client from UI-provided JSON credentials.")
+        try:
+            credentials_info = json.loads(tts_creds_json_str)
+            credentials = service_account.Credentials.from_service_account_info(credentials_info)
+            client = texttospeech.TextToSpeechClient(credentials=credentials)
+            app_logger.info("AUDIO DEBUG: Successfully initialized Google Cloud TTS client using UI credentials.")
+            return client
+        except json.JSONDecodeError:
+            app_logger.error("AUDIO DEBUG: Failed to parse TTS credentials JSON provided from the UI. It appears to be invalid JSON.")
+            return None
+        except Exception as e:
+            app_logger.error(f"AUDIO DEBUG: Failed to initialize TTS client with UI credentials: {e}", exc_info=True)
+            return None
+    # --- MODIFICATION END ---
+    
+    # Fallback to environment variables if no UI credentials are provided
+    app_logger.info("AUDIO DEBUG: No UI credentials found. Falling back to environment variable for TTS client.")
     try:
         client = texttospeech.TextToSpeechClient()
-        app_logger.info("AUDIO DEBUG: Successfully initialized Google Cloud TTS client. Credentials loaded.")
+        app_logger.info("AUDIO DEBUG: Successfully initialized Google Cloud TTS client using environment variables.")
         return client
     except Exception as e:
-        app_logger.error(f"AUDIO DEBUG: Failed to initialize Google Cloud TTS client: {e}", exc_info=True)
-        app_logger.error("AUDIO DEBUG: Please ensure the 'GOOGLE_APPLICATION_CREDENTIALS' environment variable is set correctly.")
+        app_logger.error(f"AUDIO DEBUG: Failed to initialize Google Cloud TTS client with environment variables: {e}", exc_info=True)
+        app_logger.error("AUDIO DEBUG: Please ensure the 'GOOGLE_APPLICATION_CREDENTIALS' environment variable is set correctly or provide credentials in the UI.")
         return None
 
 def synthesize_speech(client, text: str) -> bytes | None:
@@ -198,9 +222,7 @@ def _regenerate_contexts():
                         req_str = "required" if is_required else "optional"
                         arg_desc = arg_details.get('description', 'No description.')
                         prompt_str += f"\n    - `{arg_name}` ({arg_type}, {req_str}): {arg_desc}"
-                # --- MODIFICATION START: Corrected variable name ---
                 prompt_context_parts.append(prompt_str)
-                # --- MODIFICATION END ---
 
         if len(prompt_context_parts) > 1:
             STATE['prompts_context'] = "\n".join(prompt_context_parts)
@@ -226,7 +248,7 @@ async def add_security_headers(response):
         "connect-src 'self' *.googleapis.com https://*.withgoogle.com",
         "worker-src 'self' blob:",
         "img-src 'self' data:",
-        "media-src 'self' blob:" # Allow media from blobs for TTS audio
+        "media-src 'self' blob:"
     ]
     response.headers['Content-Security-Policy'] = "; ".join(csp_policy)
     return response
@@ -577,6 +599,7 @@ async def configure_services():
     provider = data.get("provider")
     model = data.get("model")
     server_name = data.get("server_name")
+    tts_credentials_json = data.get("tts_credentials_json")
 
     if not server_name:
         return jsonify({"status": "error", "message": "Configuration failed: 'MCP Server Name' is a required field."}), 400
@@ -642,6 +665,11 @@ async def configure_services():
         APP_CONFIG.MCP_SERVER_CONNECTED = True
         
         APP_CONFIG.CHART_MCP_CONNECTED = True
+
+        STATE['tts_credentials_json'] = tts_credentials_json
+        if APP_CONFIG.VOICE_CONVERSATION_ENABLED:
+            app_logger.info("AUDIO DEBUG: Configuration updated. Re-initializing TTS client.")
+            STATE['tts_client'] = get_tts_client()
 
         _regenerate_contexts()
 
@@ -748,9 +776,8 @@ async def invoke_prompt_stream():
     source = data.get("source", "text")
     
     async def stream_generator():
-        # --- MODIFICATION START: Synthesize user input from prompt details ---
         prompt_info = _get_prompt_info(prompt_name)
-        prompt_description = "Execute the requested prompt." # Fallback
+        prompt_description = "Execute the requested prompt."
         if prompt_info and prompt_info.get("description"):
             prompt_description = prompt_info["description"]
 
@@ -764,7 +791,6 @@ async def invoke_prompt_stream():
             synthetic_user_input += f" where {', and '.join(arg_parts)}."
         
         session_manager.add_to_history(session_id, 'user', synthetic_user_input)
-        # --- MODIFICATION END ---
         
         if disabled_history:
             yield PlanExecutor._format_sse(
@@ -779,7 +805,6 @@ async def invoke_prompt_stream():
             yield PlanExecutor._format_sse({"session_name_update": {"id": session_id, "name": new_name}}, "session_update")
 
         try:
-            # --- MODIFICATION START: Instantiate executor as a standard query ---
             executor = PlanExecutor(
                 session_id=session_id, 
                 original_user_input=synthetic_user_input, 
@@ -788,7 +813,6 @@ async def invoke_prompt_stream():
                 previous_turn_data=session_data.get("last_turn_data", []),
                 source=source
             )
-            # --- MODIFICATION END ---
 
             async for event in executor.run():
                 yield event
