@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 from langchain_mcp_adapters.tools import load_mcp_tools
 from trusted_data_agent.llm import handler as llm_handler
-from trusted_data_agent.core.config import APP_CONFIG
+from trusted_data_agent.core.config import APP_CONFIG, AppConfig
 
 app_logger = logging.getLogger("quart.app")
 
@@ -294,6 +294,27 @@ async def load_and_categorize_mcp_resources(STATE: dict):
                             "required": arg_details.get("required", False)
                         })
 
+            # --- MODIFICATION START: Infer tool scope from centralized hierarchy ---
+            STATE.setdefault('tool_scopes', {})
+            required_args_raw = {arg['name'] for arg in processed_args if arg.get('required')}
+            
+            canonical_required_args = set()
+            for arg_name in required_args_raw:
+                found_canonical = False
+                for canonical, synonyms in AppConfig.ARGUMENT_SYNONYM_MAP.items():
+                    if arg_name in synonyms:
+                        canonical_required_args.add(canonical)
+                        found_canonical = True
+                        break
+                if not found_canonical:
+                    canonical_required_args.add(arg_name)
+            
+            for scope, required_set in AppConfig.TOOL_SCOPE_HIERARCHY:
+                if required_set.issubset(canonical_required_args):
+                    STATE['tool_scopes'][tool.name] = scope
+                    break 
+            # --- MODIFICATION END ---
+
             is_disabled = tool.name in disabled_tools_list
             STATE['structured_tools'][category].append({
                 "name": tool.name,
@@ -375,9 +396,7 @@ async def load_and_categorize_mcp_resources(STATE: dict):
                             req_str = "required" if is_required else "optional"
                             arg_desc = arg_details.get('description', 'No description.')
                             prompt_str += f"\n    - `{arg_name}` ({arg_type}, {req_str}): {arg_desc}"
-                    # --- MODIFICATION START: Corrected variable name ---
                     prompt_context_parts.append(prompt_str)
-                    # --- MODIFICATION END ---
 
         if len(prompt_context_parts) > 1:
             STATE['prompts_context'] = "\n".join(prompt_context_parts)

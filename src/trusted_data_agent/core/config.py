@@ -30,6 +30,33 @@ class AppConfig:
     INITIALLY_DISABLED_PROMPTS = []
     INITIALLY_DISABLED_TOOLS = ["sales_top_customers"]
 
+    # Defines the hierarchy for inferring a tool's operational scope based on its
+    # required arguments. The list is ordered from most specific to least specific,
+    # and it uses canonical names defined in the ARGUMENT_SYNONYM_MAP below.
+    TOOL_SCOPE_HIERARCHY = [
+        ('column', {'database_name', 'object_name', 'column_name'}),
+        ('table', {'database_name', 'object_name'}),
+        ('database', {'database_name'}),
+    ]
+
+    # Defines a central map for all argument synonyms. This allows the application
+    # to correctly map different argument names (e.g., 'obj_name', 'view_name')
+    # to a single canonical concept (e.g., 'object_name').
+    ARGUMENT_SYNONYM_MAP = {
+        # Canonical Name : { Set of all synonyms }
+        'database_name': {
+            'database_name', 'db_name', 'DatabaseName'
+        },
+        'object_name':   {
+            'table_name', 'tablename', 'TableName',
+            'object_name', 'obj_name', 'ObjectName', 'objectname',
+            'view_name', 'viewname', 'ViewName'
+        },
+        'column_name':   {
+            'column_name', 'col_name', 'ColumnName'
+        },
+    }
+
 APP_CONFIG = AppConfig()
 
 APP_STATE = {

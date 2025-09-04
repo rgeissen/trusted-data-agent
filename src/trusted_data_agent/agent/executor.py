@@ -13,7 +13,7 @@ from trusted_data_agent.agent.formatter import OutputFormatter
 from trusted_data_agent.core import session_manager
 from trusted_data_agent.mcp import adapter as mcp_adapter
 from trusted_data_agent.llm import handler as llm_handler
-from trusted_data_agent.core.config import APP_CONFIG
+from trusted_data_agent.core.config import APP_CONFIG, AppConfig
 from trusted_data_agent.agent.prompts import (
     ERROR_RECOVERY_PROMPT,
     WORKFLOW_META_PLANNING_PROMPT,
@@ -274,7 +274,6 @@ class PlanExecutor:
                     }
                 })
     
-    # --- MODIFICATION START: Add Plan Optimizer ---
     def _optimize_plan(self):
         """
         Scans the generated meta-plan for inefficient patterns, such as looping
@@ -336,7 +335,6 @@ class PlanExecutor:
 
         if made_change:
             app_logger.info(f"PLAN OPTIMIZATION: Final optimized plan: {self.meta_plan}")
-    # --- MODIFICATION END ---
 
     async def run(self):
         """The main, unified execution loop for the agent."""
@@ -410,10 +408,8 @@ class PlanExecutor:
                     
                     break
 
-                # --- MODIFICATION START: Call plan optimizer ---
                 for event in self._optimize_plan():
                     yield event
-                # --- MODIFICATION END ---
                 
                 while True:
                     for event in self._validate_and_correct_plan():
@@ -890,21 +886,75 @@ class PlanExecutor:
 
         if is_fast_path_candidate:
             tool_name = relevant_tools[0]
+            
+            # --- MODIFICATION START: Make FASTPATH scope-aware with data expansion and type checking ---
+            tool_scope = self.dependencies['STATE'].get('tool_scopes', {}).get(tool_name)
+
+            if tool_scope == 'column':
+                yield self._format_sse({"step": "Plan Optimization", "type": "plan_optimization", "details": f"FASTPATH Data Expansion: Preparing column-level iteration for '{tool_name}'."})
+                
+                # Get tool constraints upfront to check data types.
+                yield self._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
+                tool_constraints = await self._get_tool_constraints(tool_name)
+                yield self._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
+                required_type = tool_constraints.get("dataType")
+
+                expanded_loop_items = []
+                tables_to_process = self.current_loop_items
+                db_name = phase.get("arguments", {}).get("database_name")
+
+                if not db_name:
+                    raise RuntimeError(f"Cannot perform column-level FASTPATH for tool '{tool_name}' because 'database_name' is missing from the phase arguments.")
+
+                yield self._format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
+                for table_item in tables_to_process:
+                    table_name = next((v for k, v in table_item.items() if k in AppConfig.ARGUMENT_SYNONYM_MAP.get('object_name', {})), None)
+                    if not table_name: continue
+
+                    args_for_col_tool = {'database_name': db_name}
+                    for synonym in AppConfig.ARGUMENT_SYNONYM_MAP.get('object_name', {}):
+                        args_for_col_tool[synonym] = table_name
+                    
+                    cols_command = {"tool_name": "base_columnDescription", "arguments": args_for_col_tool}
+                    cols_result, _, _ = await mcp_adapter.invoke_mcp_tool(self.dependencies['STATE'], cols_command)
+
+                    if cols_result and isinstance(cols_result, dict) and cols_result.get('status') == 'success' and cols_result.get('results'):
+                        columns_metadata = cols_result.get('results', [])
+                        for col_info in columns_metadata:
+                            col_name = col_info.get("ColumnName")
+                            if not col_name: continue
+                            
+                            # Proactive data type validation
+                            col_type = next((v for k, v in col_info.items() if "type" in k.lower()), "").upper()
+                            if required_type and col_type != "UNKNOWN":
+                                is_numeric = any(t in col_type for t in ["INT", "NUMERIC", "DECIMAL", "FLOAT", "BYTEINT", "SMALLINT", "BIGINT"])
+                                is_char = any(t in col_type for t in ["CHAR", "VARCHAR", "TEXT", "DATE", "TIMESTAMP"])
+                                if (required_type == "numeric" and not is_numeric) or (required_type == "character" and not is_char):
+                                    skip_details = f"Tool '{tool_name}' requires a {required_type} column, but '{col_name}' is '{col_type}'. Skipping."
+                                    yield self._format_sse({"step": "Skipping Incompatible Column", "type": "plan_optimization", "details": skip_details})
+                                    continue
+                            
+                            expanded_loop_items.append({**table_item, "ColumnName": col_name})
+                    else:
+                        app_logger.warning(f"Data expansion: Failed to get columns for table '{table_name}'. Tool `base_columnDescription` may have failed. Result: {cols_result}")
+                
+                yield self._format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
+                self.current_loop_items = expanded_loop_items
+                
+                if not self.current_loop_items:
+                    yield self._format_sse({"step": "Skipping Empty Loop", "type": "system_message", "details": f"No compatible columns found for '{tool_name}'."})
+                    yield self._format_sse({"step": f"Ending Plan Phase {phase_num}/{len(self.meta_plan)}", "type": "phase_end", "details": {"phase_num": phase_num, "total_phases": len(self.meta_plan), "status": "skipped"}})
+                    return
+            
             yield self._format_sse({
                 "step": "Plan Optimization", 
                 "type": "plan_optimization",
                 "details": f"FASTPATH enabled for tool loop: '{tool_name}'"
             })
             
-            session_context_args = {} # MODIFIED: No longer using entities
+            session_context_args = {}
             phase_context_args = phase.get("arguments", {})
             
-            synonym_map = {
-                'tablename': ['table_name', 'obj_name', 'object_name'],
-                'databasename': ['database_name', 'db_name'],
-                'columnname': ['column_name', 'col_name']
-            }
-
             all_loop_results = []
             yield self._format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
             for i, item in enumerate(self.current_loop_items):
@@ -913,10 +963,17 @@ class PlanExecutor:
                 merged_args = {**session_context_args, **phase_context_args}
                 if isinstance(item, dict):
                     for key, value in item.items():
-                        normalized_key = key.lower().replace('_', '')
-                        target_keys = synonym_map.get(normalized_key, [key])
-                        for target_key in target_keys:
-                            merged_args[target_key] = value
+                        found_canonical = None
+                        for canonical, synonyms in AppConfig.ARGUMENT_SYNONYM_MAP.items():
+                            if key in synonyms:
+                                found_canonical = canonical
+                                break
+                        
+                        if found_canonical:
+                            for synonym in AppConfig.ARGUMENT_SYNONYM_MAP[found_canonical]:
+                                merged_args[synonym] = value
+                        else:
+                            merged_args[key] = value
 
                 command = {"tool_name": tool_name, "arguments": merged_args}
                 async for event in self._execute_tool(command, phase, is_fast_path=True):
@@ -926,6 +983,7 @@ class PlanExecutor:
                 all_loop_results.append(self.last_tool_output)
 
             yield self._format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
+            # --- MODIFICATION END ---
             
             phase_result_key = f"result_of_phase_{phase_num}"
             self.workflow_state[phase_result_key] = all_loop_results
