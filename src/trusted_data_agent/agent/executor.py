@@ -274,6 +274,70 @@ class PlanExecutor:
                     }
                 })
     
+    # --- MODIFICATION START: Add Plan Optimizer ---
+    def _optimize_plan(self):
+        """
+        Scans the generated meta-plan for inefficient patterns, such as looping
+        over a dataset with a CoreLLMTask followed by another CoreLLMTask summary,
+        and consolidates them into a single, more efficient step.
+        """
+        if not self.meta_plan or len(self.meta_plan) < 2:
+            return
+
+        i = 0
+        made_change = False
+        while i < len(self.meta_plan) - 1:
+            current_phase = self.meta_plan[i]
+            next_phase = self.meta_plan[i+1]
+
+            is_inefficient_loop = (
+                current_phase.get("type") == "loop" and
+                current_phase.get("relevant_tools") == ["CoreLLMTask"]
+            )
+
+            is_followed_by_summary = (
+                next_phase.get("relevant_tools") == ["CoreLLMTask"] and
+                f"result_of_phase_{current_phase.get('phase')}" in next_phase.get("arguments", {}).get("source_data", [])
+            )
+
+            if is_inefficient_loop and is_followed_by_summary:
+                app_logger.info(f"PLAN OPTIMIZATION: Detected inefficient LLM loop pattern at phase {current_phase.get('phase')}. Consolidating.")
+
+                loop_source_data = [current_phase.get("loop_over")]
+                new_goal = next_phase.get("goal")
+                new_task_description = next_phase.get("arguments", {}).get("task_description")
+
+                consolidated_phase = {
+                    "phase": current_phase.get("phase"),
+                    "goal": new_goal,
+                    "relevant_tools": ["CoreLLMTask"],
+                    "arguments": {
+                        "task_description": new_task_description,
+                        "source_data": loop_source_data
+                    }
+                }
+
+                self.meta_plan[i] = consolidated_phase
+                del self.meta_plan[i+1]
+
+                for j, phase in enumerate(self.meta_plan):
+                    phase['phase'] = j + 1
+
+                yield self._format_sse({
+                    "step": "Plan Optimization",
+                    "type": "plan_optimization",
+                    "details": f"Consolidated an inefficient LLM loop into a single, efficient step to achieve the goal: '{new_goal}'"
+                })
+
+                made_change = True
+                i = 0 
+                continue 
+            i += 1
+
+        if made_change:
+            app_logger.info(f"PLAN OPTIMIZATION: Final optimized plan: {self.meta_plan}")
+    # --- MODIFICATION END ---
+
     async def run(self):
         """The main, unified execution loop for the agent."""
         final_answer_override = None
@@ -346,14 +410,17 @@ class PlanExecutor:
                     
                     break
 
+                # --- MODIFICATION START: Call plan optimizer ---
+                for event in self._optimize_plan():
+                    yield event
+                # --- MODIFICATION END ---
+                
                 while True:
                     for event in self._validate_and_correct_plan():
                         yield event
                     
                     if self.meta_plan:
-                        # --- MODIFICATION START: Add explicit type ---
                         yield self._format_sse({"step": "Strategic Meta-Plan Generated", "type": "system_message", "details": self.meta_plan})
-                        # --- MODIFICATION END ---
 
                     for event in self._hydrate_plan_from_previous_turn():
                         yield event
@@ -538,9 +605,7 @@ class PlanExecutor:
         explicit_parameters_section = ""
         
         if self.active_prompt_name:
-            # --- MODIFICATION START: Add explicit type ---
             yield self._format_sse({"step": "Loading Workflow Prompt", "type": "system_message", "details": f"Loading '{self.active_prompt_name}'"})
-            # --- MODIFICATION END ---
             mcp_client = self.dependencies['STATE'].get('mcp_client')
             if not mcp_client: raise RuntimeError("MCP client is not connected.")
             
@@ -594,9 +659,7 @@ class PlanExecutor:
             "summary": summary,
             "full_text": self.workflow_goal_prompt
         }
-        # --- MODIFICATION START: Add explicit type ---
         yield self._format_sse({"step": "Calling LLM for Planning", "type": "system_message", "details": details_payload})
-        # --- MODIFICATION END ---
 
         previous_turn_summary_str = self._create_summary_from_history(self.previous_turn_data)
         
@@ -662,9 +725,7 @@ class PlanExecutor:
             if isinstance(plan_object, dict) and plan_object.get("plan_type") == "conversational":
                 self.is_conversational_plan = True
                 self.temp_data_holder = plan_object.get("response", "I'm sorry, I don't have a response for that.")
-                # --- MODIFICATION START: Add explicit type ---
                 yield self._format_sse({"step": "Conversational Response Identified", "type": "system_message", "details": self.temp_data_holder})
-                # --- MODIFICATION END ---
                 return
 
             plan_object_is_dict = isinstance(plan_object, dict)
@@ -814,9 +875,7 @@ class PlanExecutor:
         self.current_loop_items = self._extract_loop_items(loop_over_key)
         
         if not self.current_loop_items:
-            # --- MODIFICATION START: Add explicit type ---
             yield self._format_sse({"step": "Skipping Empty Loop", "type": "system_message", "details": f"No items found from '{loop_over_key}' to loop over."})
-            # --- MODIFICATION END ---
             yield self._format_sse({
                 "step": f"Ending Plan Phase {phase_num}/{len(self.meta_plan)}",
                 "type": "phase_end",
@@ -849,9 +908,7 @@ class PlanExecutor:
             all_loop_results = []
             yield self._format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
             for i, item in enumerate(self.current_loop_items):
-                # --- MODIFICATION START: Add explicit type ---
                 yield self._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.current_loop_items)}", "type": "system_message", "details": item})
-                # --- MODIFICATION END ---
                 
                 merged_args = {**session_context_args, **phase_context_args}
                 if isinstance(item, dict):
@@ -880,9 +937,7 @@ class PlanExecutor:
             self.processed_loop_items = []
             
             for i, item in enumerate(self.current_loop_items):
-                # --- MODIFICATION START: Add explicit type ---
                 yield self._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.current_loop_items)}", "type": "system_message", "details": item})
-                # --- MODIFICATION END ---
                 
                 try:
                     async for event in self._execute_standard_phase(phase, is_loop_iteration=True, loop_item=item):
@@ -1749,9 +1804,7 @@ class PlanExecutor:
         Attempts to recover from a persistently failing phase by generating a new plan.
         This version is robust to conversational text mixed with the JSON output.
         """
-        # --- MODIFICATION START: Add explicit type ---
         yield self._format_sse({"step": "Attempting LLM-based Recovery", "type": "system_message", "details": "The current plan is stuck. Asking LLM to generate a new plan."})
-        # --- MODIFICATION END ---
 
         last_error = "No specific error message found."
         failed_tool_name = "N/A (Phase Failed)"
@@ -1807,9 +1860,7 @@ class PlanExecutor:
             else:
                 raise ValueError("Recovered plan is not a valid list or action object.")
 
-            # --- MODIFICATION START: Add explicit type ---
             yield self._format_sse({"step": "Recovery Plan Generated", "type": "system_message", "details": new_plan})
-            # --- MODIFICATION END ---
             
             self.meta_plan = new_plan
             self.current_phase_index = 0
