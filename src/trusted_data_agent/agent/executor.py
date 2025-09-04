@@ -319,7 +319,6 @@ class PlanExecutor:
                     ):
                         yield event
 
-                    # --- MODIFICATION START: Refined re-planning condition ---
                     plan_has_prompt = self.meta_plan and any('executable_prompt' in phase for phase in self.meta_plan)
                     replan_triggered = False
 
@@ -329,12 +328,11 @@ class PlanExecutor:
                             'executable_prompt' not in phase and phase.get('relevant_tools') != ['CoreLLMTask']
                             for phase in self.meta_plan
                         )
-                        # A single-phase prompt is a direct execution, not a complex plan.
+                        # A single-phase prompt is a direct execution, not a complex plan needing replan.
                         is_single_phase_prompt = len(self.meta_plan) == 1
                         
                         if has_other_significant_tool and not is_single_phase_prompt:
                             replan_triggered = True
-                    # --- MODIFICATION END ---
 
 
                     if replan_triggered and replan_attempt < max_replans:
@@ -342,11 +340,10 @@ class PlanExecutor:
                         yield self._format_sse({
                             "step": "Re-planning for Efficiency",
                             "type": "plan_optimization",
-                            "details": "MULTI PHASE PROMPT REPLANNING. Agent optimized the plan for an efficient, tool-only workflow."
+                            "details": "Initial plan uses a sub-prompt alongside other tools. Agent is re-planning to create a more efficient, tool-only workflow."
                         })
-                        continue # Go to the next iteration of the while loop to re-plan
+                        continue 
                     
-                    # If no re-plan is needed, or max re-plans reached, break the loop.
                     break
 
                 while True:
@@ -354,7 +351,9 @@ class PlanExecutor:
                         yield event
                     
                     if self.meta_plan:
-                        yield self._format_sse({"step": "Strategic Meta-Plan Generated", "details": self.meta_plan})
+                        # --- MODIFICATION START: Add explicit type ---
+                        yield self._format_sse({"step": "Strategic Meta-Plan Generated", "type": "system_message", "details": self.meta_plan})
+                        # --- MODIFICATION END ---
 
                     for event in self._hydrate_plan_from_previous_turn():
                         yield event
@@ -539,7 +538,9 @@ class PlanExecutor:
         explicit_parameters_section = ""
         
         if self.active_prompt_name:
-            yield self._format_sse({"step": "Loading Workflow Prompt", "details": f"Loading '{self.active_prompt_name}'"})
+            # --- MODIFICATION START: Add explicit type ---
+            yield self._format_sse({"step": "Loading Workflow Prompt", "type": "system_message", "details": f"Loading '{self.active_prompt_name}'"})
+            # --- MODIFICATION END ---
             mcp_client = self.dependencies['STATE'].get('mcp_client')
             if not mcp_client: raise RuntimeError("MCP client is not connected.")
             
@@ -593,7 +594,9 @@ class PlanExecutor:
             "summary": summary,
             "full_text": self.workflow_goal_prompt
         }
-        yield self._format_sse({"step": "Calling LLM for Planning", "details": details_payload})
+        # --- MODIFICATION START: Add explicit type ---
+        yield self._format_sse({"step": "Calling LLM for Planning", "type": "system_message", "details": details_payload})
+        # --- MODIFICATION END ---
 
         previous_turn_summary_str = self._create_summary_from_history(self.previous_turn_data)
         
@@ -659,7 +662,9 @@ class PlanExecutor:
             if isinstance(plan_object, dict) and plan_object.get("plan_type") == "conversational":
                 self.is_conversational_plan = True
                 self.temp_data_holder = plan_object.get("response", "I'm sorry, I don't have a response for that.")
-                yield self._format_sse({"step": "Conversational Response Identified", "details": self.temp_data_holder})
+                # --- MODIFICATION START: Add explicit type ---
+                yield self._format_sse({"step": "Conversational Response Identified", "type": "system_message", "details": self.temp_data_holder})
+                # --- MODIFICATION END ---
                 return
 
             plan_object_is_dict = isinstance(plan_object, dict)
@@ -698,14 +703,9 @@ class PlanExecutor:
         if not self.meta_plan:
             raise RuntimeError("Cannot execute plan: meta_plan is not generated.")
 
-        # --- MODIFICATION START: Refactor to a single master execution loop ---
-        # This centralizes control flow, removing the need for separate helper methods
-        # and allows for deterministic context passing in complex nested scenarios.
         while self.current_phase_index < len(self.meta_plan):
             current_phase = self.meta_plan[self.current_phase_index]
 
-            # Resolve any placeholders in the static arguments of the phase itself.
-            # This is crucial for passing context correctly to sub-executors.
             if "arguments" in current_phase:
                 current_phase["arguments"] = self._resolve_arguments(current_phase["arguments"])
 
@@ -714,7 +714,6 @@ class PlanExecutor:
                 self.execution_depth < self.MAX_EXECUTION_DEPTH
             )
 
-            # Scenario 1: The phase is a delegated prompt call.
             if is_delegated_prompt_phase:
                 prompt_name = current_phase.get('executable_prompt')
                 prompt_args = current_phase.get('arguments', {})
@@ -740,24 +739,20 @@ class PlanExecutor:
                 async for event in sub_executor.run():
                     yield event
                 
-                # Propagate state from the sub-executor back to the main one.
                 self.structured_collected_data.update(sub_executor.structured_collected_data)
                 self.workflow_state.update(sub_executor.workflow_state)
                 self.turn_action_history.extend(sub_executor.turn_action_history)
                 self.last_tool_output = sub_executor.last_tool_output
             
-            # Scenario 2: The phase is a loop.
             elif current_phase.get("type") == "loop":
                 async for event in self._execute_looping_phase(current_phase):
                     yield event
             
-            # Scenario 3: The phase is a standard, single action.
             else:
                 async for event in self._execute_standard_phase(current_phase):
                     yield event
             
             self.current_phase_index += 1
-        # --- MODIFICATION END ---
 
         app_logger.info("Meta-plan has been fully executed. Transitioning to summarization.")
         self.state = self.AgentState.SUMMARIZING
@@ -819,7 +814,9 @@ class PlanExecutor:
         self.current_loop_items = self._extract_loop_items(loop_over_key)
         
         if not self.current_loop_items:
-            yield self._format_sse({"step": "Skipping Empty Loop", "details": f"No items found from '{loop_over_key}' to loop over."})
+            # --- MODIFICATION START: Add explicit type ---
+            yield self._format_sse({"step": "Skipping Empty Loop", "type": "system_message", "details": f"No items found from '{loop_over_key}' to loop over."})
+            # --- MODIFICATION END ---
             yield self._format_sse({
                 "step": f"Ending Plan Phase {phase_num}/{len(self.meta_plan)}",
                 "type": "phase_end",
@@ -852,7 +849,9 @@ class PlanExecutor:
             all_loop_results = []
             yield self._format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
             for i, item in enumerate(self.current_loop_items):
-                yield self._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.current_loop_items)}", "details": item})
+                # --- MODIFICATION START: Add explicit type ---
+                yield self._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.current_loop_items)}", "type": "system_message", "details": item})
+                # --- MODIFICATION END ---
                 
                 merged_args = {**session_context_args, **phase_context_args}
                 if isinstance(item, dict):
@@ -881,7 +880,9 @@ class PlanExecutor:
             self.processed_loop_items = []
             
             for i, item in enumerate(self.current_loop_items):
-                yield self._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.current_loop_items)}", "details": item})
+                # --- MODIFICATION START: Add explicit type ---
+                yield self._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.current_loop_items)}", "type": "system_message", "details": item})
+                # --- MODIFICATION END ---
                 
                 try:
                     async for event in self._execute_standard_phase(phase, is_loop_iteration=True, loop_item=item):
@@ -1318,11 +1319,7 @@ class PlanExecutor:
                             else:
                                 app_logger.info(f"Successfully recovered from tool failure by executing prompt '{corrected_action['prompt_name']}'.")
                                 self.last_tool_output = sub_executor.last_tool_output
-                                # --- MODIFICATION START: Allow plan to continue after successful prompt-based recovery ---
-                                # Do not terminate the plan. Allow the current phase to complete
-                                # and let the main execution loop continue to the next phase.
                                 break # The recovery was successful, so break the retry loop.
-                                # --- MODIFICATION END ---
 
                         if "FINAL_ANSWER:" in corrected_action:
                             self.last_tool_output = {"status": "success", "results": [{"response": corrected_action}]}
@@ -1752,7 +1749,9 @@ class PlanExecutor:
         Attempts to recover from a persistently failing phase by generating a new plan.
         This version is robust to conversational text mixed with the JSON output.
         """
-        yield self._format_sse({"step": "Attempting LLM-based Recovery", "details": "The current plan is stuck. Asking LLM to generate a new plan."})
+        # --- MODIFICATION START: Add explicit type ---
+        yield self._format_sse({"step": "Attempting LLM-based Recovery", "type": "system_message", "details": "The current plan is stuck. Asking LLM to generate a new plan."})
+        # --- MODIFICATION END ---
 
         last_error = "No specific error message found."
         failed_tool_name = "N/A (Phase Failed)"
@@ -1808,7 +1807,9 @@ class PlanExecutor:
             else:
                 raise ValueError("Recovered plan is not a valid list or action object.")
 
-            yield self._format_sse({"step": "Recovery Plan Generated", "details": new_plan})
+            # --- MODIFICATION START: Add explicit type ---
+            yield self._format_sse({"step": "Recovery Plan Generated", "type": "system_message", "details": new_plan})
+            # --- MODIFICATION END ---
             
             self.meta_plan = new_plan
             self.current_phase_index = 0
