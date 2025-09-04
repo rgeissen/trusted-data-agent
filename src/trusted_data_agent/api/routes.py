@@ -15,6 +15,7 @@ from botocore.exceptions import ClientError
 import google.generativeai as genai
 import boto3
 from langchain_mcp_adapters.client import MultiServerMCPClient
+from langchain_mcp_adapters.prompts import load_mcp_prompt
 from mcp.shared.exceptions import McpError
 
 try:
@@ -446,7 +447,8 @@ async def toggle_prompt_status():
 @api_bp.route("/prompt/<prompt_name>", methods=["GET"])
 async def get_prompt_content(prompt_name):
     """
-    Retrieves the raw content of a specific MCP prompt.
+    Retrieves the content of a specific MCP prompt. For dynamic prompts
+    with arguments, it renders them with placeholder values for preview.
     """
     mcp_client = STATE.get("mcp_client")
     if not mcp_client:
@@ -457,14 +459,36 @@ async def get_prompt_content(prompt_name):
          return jsonify({"error": "MCP server name not configured."}), 400
 
     try:
+        prompt_info = _get_prompt_info(prompt_name)
+        placeholder_args = {}
+
+        if prompt_info and prompt_info.get("arguments"):
+            app_logger.info(f"'{prompt_name}' is a dynamic prompt. Building placeholder arguments for preview.")
+            for arg in prompt_info["arguments"]:
+                arg_name = arg.get("name")
+                if arg_name:
+                    placeholder_args[arg_name] = f"<{arg_name}>"
+        
         async with mcp_client.session(server_name) as temp_session:
-            prompt_obj = await temp_session.get_prompt(name=prompt_name)
+            if placeholder_args:
+                prompt_obj = await load_mcp_prompt(
+                    temp_session, name=prompt_name, arguments=placeholder_args
+                )
+            else:
+                prompt_obj = await temp_session.get_prompt(name=prompt_name)
         
         if not prompt_obj:
             return jsonify({"error": f"Prompt '{prompt_name}' not found."}), 404
         
         prompt_text = "Prompt content is not available."
-        if (hasattr(prompt_obj, 'messages') and 
+        if isinstance(prompt_obj, str):
+            prompt_text = prompt_obj
+        elif (isinstance(prompt_obj, list) and len(prompt_obj) > 0 and hasattr(prompt_obj[0], 'content')):
+             if isinstance(prompt_obj[0].content, str):
+                 prompt_text = prompt_obj[0].content
+             elif hasattr(prompt_obj[0].content, 'text'):
+                 prompt_text = prompt_obj[0].content.text
+        elif (hasattr(prompt_obj, 'messages') and 
             isinstance(prompt_obj.messages, list) and 
             len(prompt_obj.messages) > 0 and
             hasattr(prompt_obj.messages[0], 'content') and
@@ -477,15 +501,7 @@ async def get_prompt_content(prompt_name):
     
     except Exception as e:
         root_exception = unwrap_exception(e)
-        
-        if isinstance(root_exception, McpError) and "Missing required arguments" in str(root_exception):
-            app_logger.warning(f"Handled dynamic prompt error for '{prompt_name}': {root_exception}")
-            return jsonify({
-                "error": "dynamic_prompt_error",
-                "message": "This is a dynamic prompt. Its content is generated at runtime and cannot be previewed."
-            }), 400
-        
-        app_logger.error(f"Error fetching prompt content for '{prompt_name}': {e}", exc_info=True)
+        app_logger.error(f"Error fetching prompt content for '{prompt_name}': {root_exception}", exc_info=True)
         return jsonify({"error": "An unexpected error occurred while fetching the prompt."}), 500
 
 
@@ -809,6 +825,8 @@ async def invoke_prompt_stream():
                 session_id=session_id, 
                 original_user_input=synthetic_user_input, 
                 dependencies={'STATE': STATE},
+                active_prompt_name=prompt_name,
+                prompt_arguments=arguments,
                 disabled_history=disabled_history,
                 previous_turn_data=session_data.get("last_turn_data", []),
                 source=source

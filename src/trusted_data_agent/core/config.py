@@ -26,7 +26,8 @@ class AppConfig:
 
     CONTEXT_DISTILLATION_MAX_ROWS = 500
     CONTEXT_DISTILLATION_MAX_CHARS = 10000
-    INITIALLY_DISABLED_PROMPTS = ["base_query","cust_promptExample","qlty_databaseQuality","dba_tableArchive","dba_databaseLineage", "dba_tableDropImpact", "dba_databaseHealthAssessment", "dba_userActivityAnalysis", "dba_systemVoice", "base_databaseBusinessDesc", "sales_prompt", "test_evsTools", "test_secTools", "test_dbaTools", "test_ragTools", "test_qltyTools", "test_fsTools", "test_baseTools", "rag_guidelines" ]
+    #INITIALLY_DISABLED_PROMPTS = ["base_query","cust_promptExample","qlty_databaseQuality","dba_tableArchive","dba_databaseLineage", "dba_tableDropImpact", "dba_databaseHealthAssessment", "dba_userActivityAnalysis", "dba_systemVoice", "base_databaseBusinessDesc", "sales_prompt", "test_evsTools", "test_secTools", "test_dbaTools", "test_ragTools", "test_qltyTools", "test_fsTools", "test_baseTools", "rag_guidelines" ]
+    INITIALLY_DISABLED_PROMPTS = []
     INITIALLY_DISABLED_TOOLS = ["sales_top_customers"]
 
 APP_CONFIG = AppConfig()
