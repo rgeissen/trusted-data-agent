@@ -1,4 +1,4 @@
-2025-09-04 19:01:16,058 - --- FULL CONTEXT (Session: f43953f0-0524-408c-a68e-5834f61d786f) ---
+2025-09-04 19:40:57,597 - --- FULL CONTEXT (Session: 9e9729ca-83ee-44a3-9bcd-8fa5d6638d26) ---
 --- REASON FOR CALL ---
 Generating a strategic meta-plan for the goal: 'You are a Teradata DBA who is an expert in describing the business use of databases. where database '
 
@@ -101,9 +101,10 @@ Here are examples of the correct thinking process:
     - `table_name` (string, required): table name to analyze
     - `column_name` (string, required): column name to analyze
 --- Category: Database Information ---
-- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
+- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
-    - `database_name` (string, required): database name
+    - `database_name` (string, required): Database name
+    - `obj_name` (string, required): table or view name
 - `base_databaseList` (tool): 
 Lists all databases in the Teradata System.
 
@@ -111,10 +112,14 @@ Returns:
   ResponseType: formatted response with query results + metadata
 
 - `dba_databaseVersion` (tool):  Get Teradata database version information.
-- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
 - `cust_td_serverInfo` (tool): Get the Teradata software information: demonstrates how to use parameters for prepared statements.
   - Arguments:
     - `infokey` (string, required): Infokey
+--- Category: Database Space ---
+- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
+  - Arguments:
+    - `database_name` (string, required): database name
+- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
 - `get_cube_cust_cube_db_space_metrics` (tool): 
     Tool to query the cube 'table_skew_pct'.
     Get the Teradata database space metrics for tables and databases
@@ -163,6 +168,10 @@ table_skew_pct > 1000
   - Arguments:
     - `start_date` (string, required): Start Date
     - `end_date` (string, required): End Date
+--- Category: Query Execution ---
+- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
 --- Category: Sales ---
 - `sales_customer_profile` (tool): Get customer profile and metrics.
   - Arguments:
@@ -220,10 +229,6 @@ order_count > 1000
   - Arguments:
     - `database_name` (string, optional): database name to analyze
     - `user_name` (string, optional): user name to analyze
-- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, required): Database name
-    - `obj_name` (string, required): table or view name
 - `base_tableAffinity` (tool): Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, required): Database name
@@ -242,7 +247,11 @@ order_count > 1000
 - `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, optional): Database name
---- Category: User Management ---
+--- Category: Templates ---
+- `tmpl_nameOfTool` (tool): <description of what the tool is for>
+  - Arguments:
+    - `argument` (string, required): Argument
+--- Category: User Activity ---
 - `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
   - Arguments:
     - `user_name` (string, required): user name
@@ -280,12 +289,6 @@ The function uses configuration values from rag_config.yml with fallback default
   - Arguments:
     - `question` (string, required): user question to process
     - `k` (integer, optional): number of top-k results to return (optional, uses config default if not provided
-- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
-- `tmpl_nameOfTool` (tool): <description of what the tool is for>
-  - Arguments:
-    - `argument` (string, required): Argument
 - `viz_createChart` (tool): Generates a data visualization based on provided data. You must specify the chart type and map the data fields to the appropriate visual roles.
   - Arguments:
     - `chart_type` (string, required): The type of chart to generate (e.g., 'bar', 'pie', 'line', 'scatter'). This MUST be one of the types listed in the 'Charting Guidelines'.
@@ -303,22 +306,22 @@ The function uses configuration values from rag_config.yml with fallback default
     - `source_data` (list[string], required): A list of keys (e.g., 'result_of_phase_1') identifying which data from the workflow history is relevant for this task. This is critical for providing the correct context.
     - `synthesized_answer` (string, optional): The final, synthesized natural language answer, provided directly by the planner when it can confidently answer from history.
 --- Available Prompts ---
---- Category: Database Information ---
-- `base_databaseBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of databases.
-  - Arguments:
-    - `database_name` (str, optional): Database to describe.
---- Category: Table Management ---
+--- Category: DBA Prompts ---
 - `base_tableBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of tables in a database.
   - Arguments:
     - `database_name` (str, required): Database for the table to describe.
     - `table_name` (str, required): Table to describe.
---- Category: Utilities ---
-- `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
+- `base_databaseBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of databases.
   - Arguments:
-    - `domain` (str, optional): Domain to test (eg. "all" "data quality", "exploratory"...).
+    - `database_name` (str, optional): Database to describe.
+--- Category: Query Generation ---
 - `base_teradata_query` (prompt): A Teradata SQL expert that solves the hardest problems understanding teradata specific syntax.
   - Arguments:
     - `query` (str, required): The problem or question that needs to be solved using Teradata database tools.
+--- Category: Testing ---
+- `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
+  - Arguments:
+    - `domain` (str, optional): Domain to test (eg. "all" "data quality", "exploratory"...).
 
 
 USER PROMPT:
@@ -328,6 +331,8 @@ You are an expert strategic planning assistant. Your task is to analyze a user's
 ---
 ### Critical Directives
 You MUST follow these directives in order to create a valid and efficient plan.
+
+
 
 1.  **Analyze Goal and Context**: First, carefully read the user's `GOAL` and review the `CONTEXT` section to understand the full intent and what actions have already been taken.
     
@@ -423,7 +428,7 @@ Your response MUST be a single, valid JSON list of phase objects. Do NOT add any
 Your response MUST be a single, valid JSON list of phase objects. Do NOT add any extra text, conversation, or markdown.
 
 
-2025-09-04 19:01:16,998 - --- FULL CONTEXT (Session: f43953f0-0524-408c-a68e-5834f61d786f) ---
+2025-09-04 19:40:58,708 - --- FULL CONTEXT (Session: 9e9729ca-83ee-44a3-9bcd-8fa5d6638d26) ---
 --- REASON FOR CALL ---
 Generating a strategic meta-plan for the goal: 'You are a Teradata DBA who is an expert in describing the business use of a database.
 
@@ -526,9 +531,10 @@ Here are examples of the correct thinking process:
     - `table_name` (string, required): table name to analyze
     - `column_name` (string, required): column name to analyze
 --- Category: Database Information ---
-- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
+- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
-    - `database_name` (string, required): database name
+    - `database_name` (string, required): Database name
+    - `obj_name` (string, required): table or view name
 - `base_databaseList` (tool): 
 Lists all databases in the Teradata System.
 
@@ -536,10 +542,14 @@ Returns:
   ResponseType: formatted response with query results + metadata
 
 - `dba_databaseVersion` (tool):  Get Teradata database version information.
-- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
 - `cust_td_serverInfo` (tool): Get the Teradata software information: demonstrates how to use parameters for prepared statements.
   - Arguments:
     - `infokey` (string, required): Infokey
+--- Category: Database Space ---
+- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
+  - Arguments:
+    - `database_name` (string, required): database name
+- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
 - `get_cube_cust_cube_db_space_metrics` (tool): 
     Tool to query the cube 'table_skew_pct'.
     Get the Teradata database space metrics for tables and databases
@@ -588,6 +598,10 @@ table_skew_pct > 1000
   - Arguments:
     - `start_date` (string, required): Start Date
     - `end_date` (string, required): End Date
+--- Category: Query Execution ---
+- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
 --- Category: Sales ---
 - `sales_customer_profile` (tool): Get customer profile and metrics.
   - Arguments:
@@ -645,10 +659,6 @@ order_count > 1000
   - Arguments:
     - `database_name` (string, optional): database name to analyze
     - `user_name` (string, optional): user name to analyze
-- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, required): Database name
-    - `obj_name` (string, required): table or view name
 - `base_tableAffinity` (tool): Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, required): Database name
@@ -667,7 +677,11 @@ order_count > 1000
 - `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, optional): Database name
---- Category: User Management ---
+--- Category: Templates ---
+- `tmpl_nameOfTool` (tool): <description of what the tool is for>
+  - Arguments:
+    - `argument` (string, required): Argument
+--- Category: User Activity ---
 - `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
   - Arguments:
     - `user_name` (string, required): user name
@@ -705,12 +719,6 @@ The function uses configuration values from rag_config.yml with fallback default
   - Arguments:
     - `question` (string, required): user question to process
     - `k` (integer, optional): number of top-k results to return (optional, uses config default if not provided
-- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
-- `tmpl_nameOfTool` (tool): <description of what the tool is for>
-  - Arguments:
-    - `argument` (string, required): Argument
 - `viz_createChart` (tool): Generates a data visualization based on provided data. You must specify the chart type and map the data fields to the appropriate visual roles.
   - Arguments:
     - `chart_type` (string, required): The type of chart to generate (e.g., 'bar', 'pie', 'line', 'scatter'). This MUST be one of the types listed in the 'Charting Guidelines'.
@@ -728,22 +736,22 @@ The function uses configuration values from rag_config.yml with fallback default
     - `source_data` (list[string], required): A list of keys (e.g., 'result_of_phase_1') identifying which data from the workflow history is relevant for this task. This is critical for providing the correct context.
     - `synthesized_answer` (string, optional): The final, synthesized natural language answer, provided directly by the planner when it can confidently answer from history.
 --- Available Prompts ---
---- Category: Database Information ---
-- `base_databaseBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of databases.
-  - Arguments:
-    - `database_name` (str, optional): Database to describe.
---- Category: Table Management ---
+--- Category: DBA Prompts ---
 - `base_tableBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of tables in a database.
   - Arguments:
     - `database_name` (str, required): Database for the table to describe.
     - `table_name` (str, required): Table to describe.
---- Category: Utilities ---
-- `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
+- `base_databaseBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of databases.
   - Arguments:
-    - `domain` (str, optional): Domain to test (eg. "all" "data quality", "exploratory"...).
+    - `database_name` (str, optional): Database to describe.
+--- Category: Query Generation ---
 - `base_teradata_query` (prompt): A Teradata SQL expert that solves the hardest problems understanding teradata specific syntax.
   - Arguments:
     - `query` (str, required): The problem or question that needs to be solved using Teradata database tools.
+--- Category: Testing ---
+- `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
+  - Arguments:
+    - `domain` (str, optional): Domain to test (eg. "all" "data quality", "exploratory"...).
 
 
 USER PROMPT:
@@ -753,6 +761,8 @@ You are an expert strategic planning assistant. Your task is to analyze a user's
 ---
 ### Critical Directives
 You MUST follow these directives in order to create a valid and efficient plan.
+
+
 
 1.  **Analyze Goal and Context**: First, carefully read the user's `GOAL` and review the `CONTEXT` section to understand the full intent and what actions have already been taken.
     
@@ -955,9 +965,10 @@ Here are examples of the correct thinking process:
     - `table_name` (string, required): table name to analyze
     - `column_name` (string, required): column name to analyze
 --- Category: Database Information ---
-- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
+- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
-    - `database_name` (string, required): database name
+    - `database_name` (string, required): Database name
+    - `obj_name` (string, required): table or view name
 - `base_databaseList` (tool): 
 Lists all databases in the Teradata System.
 
@@ -965,10 +976,14 @@ Returns:
   ResponseType: formatted response with query results + metadata
 
 - `dba_databaseVersion` (tool):  Get Teradata database version information.
-- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
 - `cust_td_serverInfo` (tool): Get the Teradata software information: demonstrates how to use parameters for prepared statements.
   - Arguments:
     - `infokey` (string, required): Infokey
+--- Category: Database Space ---
+- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
+  - Arguments:
+    - `database_name` (string, required): database name
+- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
 - `get_cube_cust_cube_db_space_metrics` (tool): 
     Tool to query the cube 'table_skew_pct'.
     Get the Teradata database space metrics for tables and databases
@@ -1017,6 +1032,10 @@ table_skew_pct > 1000
   - Arguments:
     - `start_date` (string, required): Start Date
     - `end_date` (string, required): End Date
+--- Category: Query Execution ---
+- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
 --- Category: Sales ---
 - `sales_customer_profile` (tool): Get customer profile and metrics.
   - Arguments:
@@ -1074,10 +1093,6 @@ order_count > 1000
   - Arguments:
     - `database_name` (string, optional): database name to analyze
     - `user_name` (string, optional): user name to analyze
-- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, required): Database name
-    - `obj_name` (string, required): table or view name
 - `base_tableAffinity` (tool): Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, required): Database name
@@ -1096,7 +1111,11 @@ order_count > 1000
 - `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, optional): Database name
---- Category: User Management ---
+--- Category: Templates ---
+- `tmpl_nameOfTool` (tool): <description of what the tool is for>
+  - Arguments:
+    - `argument` (string, required): Argument
+--- Category: User Activity ---
 - `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
   - Arguments:
     - `user_name` (string, required): user name
@@ -1134,12 +1153,6 @@ The function uses configuration values from rag_config.yml with fallback default
   - Arguments:
     - `question` (string, required): user question to process
     - `k` (integer, optional): number of top-k results to return (optional, uses config default if not provided
-- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
-- `tmpl_nameOfTool` (tool): <description of what the tool is for>
-  - Arguments:
-    - `argument` (string, required): Argument
 - `viz_createChart` (tool): Generates a data visualization based on provided data. You must specify the chart type and map the data fields to the appropriate visual roles.
   - Arguments:
     - `chart_type` (string, required): The type of chart to generate (e.g., 'bar', 'pie', 'line', 'scatter'). This MUST be one of the types listed in the 'Charting Guidelines'.
@@ -1157,18 +1170,18 @@ The function uses configuration values from rag_config.yml with fallback default
     - `source_data` (list[string], required): A list of keys (e.g., 'result_of_phase_1') identifying which data from the workflow history is relevant for this task. This is critical for providing the correct context.
     - `synthesized_answer` (string, optional): The final, synthesized natural language answer, provided directly by the planner when it can confidently answer from history.
 --- Available Prompts ---
---- Category: Database Information ---
+--- Category: DBA Prompts ---
 - `base_tableBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of tables in a database.
   - Arguments:
     - `database_name` (str, required): Database for the table to describe.
     - `table_name` (str, required): Table to describe.
---- Category: Utilities ---
-- `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
-  - Arguments:
-    - `domain` (str, optional): Domain to test (eg. "all" "data quality", "exploratory"...).
 - `base_teradata_query` (prompt): A Teradata SQL expert that solves the hardest problems understanding teradata specific syntax.
   - Arguments:
     - `query` (str, required): The problem or question that needs to be solved using Teradata database tools.
+--- Category: Testing ---
+- `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
+  - Arguments:
+    - `domain` (str, optional): Domain to test (eg. "all" "data quality", "exploratory"...).
 
 
 USER PROMPT:
@@ -1178,6 +1191,8 @@ You are an expert strategic planning assistant. Your task is to analyze a user's
 ---
 ### Critical Directives
 You MUST follow these directives in order to create a valid and efficient plan.
+
+
 
 1.  **Analyze Goal and Context**: First, carefully read the user's `GOAL` and review the `CONTEXT` section to understand the full intent and what actions have already been taken.
     
@@ -1347,11 +1362,11 @@ The following parameters were explicitly provided for this prompt execution:
 Your response MUST be a single, valid JSON list of phase objects. Do NOT add any extra text, conversation, or markdown.
 
 
-2025-09-04 19:01:21,937 - --- FULL CONTEXT (Session: f43953f0-0524-408c-a68e-5834f61d786f) ---
+2025-09-04 19:41:01,712 - --- FULL CONTEXT (Session: 9e9729ca-83ee-44a3-9bcd-8fa5d6638d26) ---
 --- REASON FOR CALL ---
-Generating a strategic meta-plan for the goal: 'You are a Teradata DBA who is an expert in describing the business use of tables in a database.
+Generating a strategic meta-plan for the goal: 'You are a Teradata DBA who is an expert in describing the business use of a database.
 
-## '
+## your role '
 
 --- History (History Disabled for LLM Call: False) ---
 [user]: You are a helpful assistant.
@@ -1450,9 +1465,10 @@ Here are examples of the correct thinking process:
     - `table_name` (string, required): table name to analyze
     - `column_name` (string, required): column name to analyze
 --- Category: Database Information ---
-- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
+- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
-    - `database_name` (string, required): database name
+    - `database_name` (string, required): Database name
+    - `obj_name` (string, required): table or view name
 - `base_databaseList` (tool): 
 Lists all databases in the Teradata System.
 
@@ -1460,10 +1476,14 @@ Returns:
   ResponseType: formatted response with query results + metadata
 
 - `dba_databaseVersion` (tool):  Get Teradata database version information.
-- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
 - `cust_td_serverInfo` (tool): Get the Teradata software information: demonstrates how to use parameters for prepared statements.
   - Arguments:
     - `infokey` (string, required): Infokey
+--- Category: Database Space ---
+- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
+  - Arguments:
+    - `database_name` (string, required): database name
+- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
 - `get_cube_cust_cube_db_space_metrics` (tool): 
     Tool to query the cube 'table_skew_pct'.
     Get the Teradata database space metrics for tables and databases
@@ -1512,6 +1532,10 @@ table_skew_pct > 1000
   - Arguments:
     - `start_date` (string, required): Start Date
     - `end_date` (string, required): End Date
+--- Category: Query Execution ---
+- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
 --- Category: Sales ---
 - `sales_customer_profile` (tool): Get customer profile and metrics.
   - Arguments:
@@ -1569,10 +1593,6 @@ order_count > 1000
   - Arguments:
     - `database_name` (string, optional): database name to analyze
     - `user_name` (string, optional): user name to analyze
-- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, required): Database name
-    - `obj_name` (string, required): table or view name
 - `base_tableAffinity` (tool): Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, required): Database name
@@ -1591,7 +1611,11 @@ order_count > 1000
 - `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, optional): Database name
---- Category: User Management ---
+--- Category: Templates ---
+- `tmpl_nameOfTool` (tool): <description of what the tool is for>
+  - Arguments:
+    - `argument` (string, required): Argument
+--- Category: User Activity ---
 - `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
   - Arguments:
     - `user_name` (string, required): user name
@@ -1629,12 +1653,6 @@ The function uses configuration values from rag_config.yml with fallback default
   - Arguments:
     - `question` (string, required): user question to process
     - `k` (integer, optional): number of top-k results to return (optional, uses config default if not provided
-- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
-- `tmpl_nameOfTool` (tool): <description of what the tool is for>
-  - Arguments:
-    - `argument` (string, required): Argument
 - `viz_createChart` (tool): Generates a data visualization based on provided data. You must specify the chart type and map the data fields to the appropriate visual roles.
   - Arguments:
     - `chart_type` (string, required): The type of chart to generate (e.g., 'bar', 'pie', 'line', 'scatter'). This MUST be one of the types listed in the 'Charting Guidelines'.
@@ -1652,22 +1670,22 @@ The function uses configuration values from rag_config.yml with fallback default
     - `source_data` (list[string], required): A list of keys (e.g., 'result_of_phase_1') identifying which data from the workflow history is relevant for this task. This is critical for providing the correct context.
     - `synthesized_answer` (string, optional): The final, synthesized natural language answer, provided directly by the planner when it can confidently answer from history.
 --- Available Prompts ---
---- Category: Database Information ---
-- `base_databaseBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of databases.
-  - Arguments:
-    - `database_name` (str, optional): Database to describe.
---- Category: Table Management ---
+--- Category: DBA Prompts ---
 - `base_tableBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of tables in a database.
   - Arguments:
     - `database_name` (str, required): Database for the table to describe.
     - `table_name` (str, required): Table to describe.
---- Category: Utilities ---
-- `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
+- `base_databaseBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of databases.
   - Arguments:
-    - `domain` (str, optional): Domain to test (eg. "all" "data quality", "exploratory"...).
+    - `database_name` (str, optional): Database to describe.
+--- Category: Query Generation ---
 - `base_teradata_query` (prompt): A Teradata SQL expert that solves the hardest problems understanding teradata specific syntax.
   - Arguments:
     - `query` (str, required): The problem or question that needs to be solved using Teradata database tools.
+--- Category: Testing ---
+- `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
+  - Arguments:
+    - `domain` (str, optional): Domain to test (eg. "all" "data quality", "exploratory"...).
 
 
 USER PROMPT:
@@ -1677,6 +1695,8 @@ You are an expert strategic planning assistant. Your task is to analyze a user's
 ---
 ### Critical Directives
 You MUST follow these directives in order to create a valid and efficient plan.
+
+
 
 1.  **Analyze Goal and Context**: First, carefully read the user's `GOAL` and review the `CONTEXT` section to understand the full intent and what actions have already been taken.
     
@@ -1877,9 +1897,10 @@ Here are examples of the correct thinking process:
     - `table_name` (string, required): table name to analyze
     - `column_name` (string, required): column name to analyze
 --- Category: Database Information ---
-- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
+- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
-    - `database_name` (string, required): database name
+    - `database_name` (string, required): Database name
+    - `obj_name` (string, required): table or view name
 - `base_databaseList` (tool): 
 Lists all databases in the Teradata System.
 
@@ -1887,10 +1908,14 @@ Returns:
   ResponseType: formatted response with query results + metadata
 
 - `dba_databaseVersion` (tool):  Get Teradata database version information.
-- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
 - `cust_td_serverInfo` (tool): Get the Teradata software information: demonstrates how to use parameters for prepared statements.
   - Arguments:
     - `infokey` (string, required): Infokey
+--- Category: Database Space ---
+- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
+  - Arguments:
+    - `database_name` (string, required): database name
+- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
 - `get_cube_cust_cube_db_space_metrics` (tool): 
     Tool to query the cube 'table_skew_pct'.
     Get the Teradata database space metrics for tables and databases
@@ -1939,6 +1964,10 @@ table_skew_pct > 1000
   - Arguments:
     - `start_date` (string, required): Start Date
     - `end_date` (string, required): End Date
+--- Category: Query Execution ---
+- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
 --- Category: Sales ---
 - `sales_customer_profile` (tool): Get customer profile and metrics.
   - Arguments:
@@ -1996,10 +2025,6 @@ order_count > 1000
   - Arguments:
     - `database_name` (string, optional): database name to analyze
     - `user_name` (string, optional): user name to analyze
-- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, required): Database name
-    - `obj_name` (string, required): table or view name
 - `base_tableAffinity` (tool): Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, required): Database name
@@ -2018,7 +2043,11 @@ order_count > 1000
 - `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, optional): Database name
---- Category: User Management ---
+--- Category: Templates ---
+- `tmpl_nameOfTool` (tool): <description of what the tool is for>
+  - Arguments:
+    - `argument` (string, required): Argument
+--- Category: User Activity ---
 - `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
   - Arguments:
     - `user_name` (string, required): user name
@@ -2056,12 +2085,6 @@ The function uses configuration values from rag_config.yml with fallback default
   - Arguments:
     - `question` (string, required): user question to process
     - `k` (integer, optional): number of top-k results to return (optional, uses config default if not provided
-- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
-- `tmpl_nameOfTool` (tool): <description of what the tool is for>
-  - Arguments:
-    - `argument` (string, required): Argument
 - `viz_createChart` (tool): Generates a data visualization based on provided data. You must specify the chart type and map the data fields to the appropriate visual roles.
   - Arguments:
     - `chart_type` (string, required): The type of chart to generate (e.g., 'bar', 'pie', 'line', 'scatter'). This MUST be one of the types listed in the 'Charting Guidelines'.
@@ -2079,18 +2102,18 @@ The function uses configuration values from rag_config.yml with fallback default
     - `source_data` (list[string], required): A list of keys (e.g., 'result_of_phase_1') identifying which data from the workflow history is relevant for this task. This is critical for providing the correct context.
     - `synthesized_answer` (string, optional): The final, synthesized natural language answer, provided directly by the planner when it can confidently answer from history.
 --- Available Prompts ---
---- Category: Database Information ---
+--- Category: DBA Prompts ---
 - `base_tableBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of tables in a database.
   - Arguments:
     - `database_name` (str, required): Database for the table to describe.
     - `table_name` (str, required): Table to describe.
---- Category: Utilities ---
-- `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
-  - Arguments:
-    - `domain` (str, optional): Domain to test (eg. "all" "data quality", "exploratory"...).
 - `base_teradata_query` (prompt): A Teradata SQL expert that solves the hardest problems understanding teradata specific syntax.
   - Arguments:
     - `query` (str, required): The problem or question that needs to be solved using Teradata database tools.
+--- Category: Testing ---
+- `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
+  - Arguments:
+    - `domain` (str, optional): Domain to test (eg. "all" "data quality", "exploratory"...).
 
 
 USER PROMPT:
@@ -2100,6 +2123,8 @@ You are an expert strategic planning assistant. Your task is to analyze a user's
 ---
 ### Critical Directives
 You MUST follow these directives in order to create a valid and efficient plan.
+
+
 
 1.  **Analyze Goal and Context**: First, carefully read the user's `GOAL` and review the `CONTEXT` section to understand the full intent and what actions have already been taken.
     
@@ -2290,7 +2315,7 @@ Your response MUST be a single, valid JSON list of phase objects. Do NOT add any
     ],
     "arguments": {
       "database_name": "fitness_db",
-      "table_name": "result_of_phase_1.TableName"
+      "table_name": "result_of_phase_1.table_name"
     }
   },
   {
@@ -2298,22 +2323,20 @@ Your response MUST be a single, valid JSON list of phase objects. Do NOT add any
     "goal": "For each table in the list from Phase 1, describe the table in a business context.",
     "type": "loop",
     "loop_over": "result_of_phase_1",
-    "relevant_tools": [
-      "base_tableBusinessDesc"
-    ],
+    "executable_prompt": "base_tableBusinessDesc",
     "arguments": {
       "database_name": "fitness_db",
-      "table_name": "result_of_phase_1.TableName"
+      "table_name": "result_of_phase_1.table_name"
     }
   },
   {
     "phase": 4,
-    "goal": "Describe the 'fitness_db' database in a business context based on the business descriptions of the tables from Phase 3.",
+    "goal": "Describe the database in a business context based on the business descriptions of the tables.",
     "relevant_tools": [
       "CoreLLMTask"
     ],
     "arguments": {
-      "task_description": "Describe the 'fitness_db' database in a business context based on the business descriptions of the tables.",
+      "task_description": "Describe the database in a business context based on the business descriptions of the tables.",
       "source_data": [
         "result_of_phase_3"
       ]
@@ -2417,9 +2440,10 @@ Here are examples of the correct thinking process:
     - `table_name` (string, required): table name to analyze
     - `column_name` (string, required): column name to analyze
 --- Category: Database Information ---
-- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
+- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
-    - `database_name` (string, required): database name
+    - `database_name` (string, required): Database name
+    - `obj_name` (string, required): table or view name
 - `base_databaseList` (tool): 
 Lists all databases in the Teradata System.
 
@@ -2427,10 +2451,14 @@ Returns:
   ResponseType: formatted response with query results + metadata
 
 - `dba_databaseVersion` (tool):  Get Teradata database version information.
-- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
 - `cust_td_serverInfo` (tool): Get the Teradata software information: demonstrates how to use parameters for prepared statements.
   - Arguments:
     - `infokey` (string, required): Infokey
+--- Category: Database Space ---
+- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
+  - Arguments:
+    - `database_name` (string, required): database name
+- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
 - `get_cube_cust_cube_db_space_metrics` (tool): 
     Tool to query the cube 'table_skew_pct'.
     Get the Teradata database space metrics for tables and databases
@@ -2479,6 +2507,10 @@ table_skew_pct > 1000
   - Arguments:
     - `start_date` (string, required): Start Date
     - `end_date` (string, required): End Date
+--- Category: Query Execution ---
+- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
 --- Category: Sales ---
 - `sales_customer_profile` (tool): Get customer profile and metrics.
   - Arguments:
@@ -2536,10 +2568,6 @@ order_count > 1000
   - Arguments:
     - `database_name` (string, optional): database name to analyze
     - `user_name` (string, optional): user name to analyze
-- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, required): Database name
-    - `obj_name` (string, required): table or view name
 - `base_tableAffinity` (tool): Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, required): Database name
@@ -2558,7 +2586,11 @@ order_count > 1000
 - `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, optional): Database name
---- Category: User Management ---
+--- Category: Templates ---
+- `tmpl_nameOfTool` (tool): <description of what the tool is for>
+  - Arguments:
+    - `argument` (string, required): Argument
+--- Category: User Activity ---
 - `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
   - Arguments:
     - `user_name` (string, required): user name
@@ -2596,12 +2628,6 @@ The function uses configuration values from rag_config.yml with fallback default
   - Arguments:
     - `question` (string, required): user question to process
     - `k` (integer, optional): number of top-k results to return (optional, uses config default if not provided
-- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
-- `tmpl_nameOfTool` (tool): <description of what the tool is for>
-  - Arguments:
-    - `argument` (string, required): Argument
 - `viz_createChart` (tool): Generates a data visualization based on provided data. You must specify the chart type and map the data fields to the appropriate visual roles.
   - Arguments:
     - `chart_type` (string, required): The type of chart to generate (e.g., 'bar', 'pie', 'line', 'scatter'). This MUST be one of the types listed in the 'Charting Guidelines'.
@@ -2619,852 +2645,18 @@ The function uses configuration values from rag_config.yml with fallback default
     - `source_data` (list[string], required): A list of keys (e.g., 'result_of_phase_1') identifying which data from the workflow history is relevant for this task. This is critical for providing the correct context.
     - `synthesized_answer` (string, optional): The final, synthesized natural language answer, provided directly by the planner when it can confidently answer from history.
 --- Available Prompts ---
---- Category: Database Information ---
-- `base_databaseBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of databases.
-  - Arguments:
-    - `database_name` (str, optional): Database to describe.
---- Category: Table Management ---
-- `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
-  - Arguments:
-    - `domain` (str, optional): Domain to test (eg. "all" "data quality", "exploratory"...).
-- `base_teradata_query` (prompt): A Teradata SQL expert that solves the hardest problems understanding teradata specific syntax.
-  - Arguments:
-    - `query` (str, required): The problem or question that needs to be solved using Teradata database tools.
-
-
-USER PROMPT:
-
-You are an expert strategic planning assistant. Your task is to analyze a user's request or a complex workflow goal and decompose it into a high-level, phased meta-plan. This plan will serve as a state machine executor.
-
----
-### Critical Directives
-You MUST follow these directives in order to create a valid and efficient plan.
-
-1.  **Analyze Goal and Context**: First, carefully read the user's `GOAL` and review the `CONTEXT` section to understand the full intent and what actions have already been taken.
-    
-    
-
-2.  **Identify Conversational Turns**: If the user's `GOAL` is purely conversational (e.g., a greeting like "hello") and does not require any data or action, your response **MUST be a single JSON object**: `{"plan_type": "conversational", "response": "I'm doing well, thank you for asking! How can I help you with your Teradata database system today?"}`.
-
-3.  **Handle Context and Parameters Correctly**:
-    * **Prioritize the Goal**: You **MUST** prioritize entities from the user's current `GOAL` over conflicting information in the `Workflow History`. The history is for supplementing missing information, not for overriding the current request.
-    * **Extract Parameters**: You **MUST** meticulously scan the `GOAL` for entities that correspond to tool arguments (e.g., table names) and populate the `"arguments"` block in your plan phase with these key-value pairs.
-
-4.  **Follow the Plan Architecture**:
-    * Your plan **MUST** follow a strict "data-gathering first, synthesis last" architecture.
-    * If the goal requires a final summary, the plan **MUST** conclude with a single phase that uses the `CoreLLMTask` tool. The `task_description` for this phase **MUST** be the complete and verbatim text of the main `GOAL` to ensure all original context is preserved.
-
-5.  **Optimize for Efficiency**:
-    * Your plan **MUST** be as efficient as possible. Combine multiple steps into a single phase if one tool can perform the combined operation.
-    * **CRITICAL STRATEGY (Query Pushdown Efficiency)**: Always prefer a single action that filters data at the source over multiple steps that retrieve unfiltered data and then filter it.
-        * **HIGHLY PREFERRED:** Use a tool that accepts a filter (e.g., a `sql` parameter with a `WHERE` clause) to request *only the specific data you need*.
-        * **AVOID IF POSSIBLE:** Do not use a general-purpose "list" tool and then follow it with a second phase to find a specific item.
-
-6.  **Maintain Simplicity and Focus**:
-    * If the `GOAL` can be answered with a single tool call, your plan **MUST** consist of only that single phase. Do not add unnecessary synthesis phases for simple data retrieval.
-    * Every phase **MUST** correspond to a concrete, executable action. Do **NOT** create phases for simple verification or acknowledgement.
-
-7.  **Adhere to Structural Rules**:
-    * **CRITICAL RULE (Plan Flattening)**: Your plan **MUST ALWAYS** be a flat, sequential list of phases. You **MUST NOT** create nested structures. Decompose tasks with nested logic into multiple, sequential looping phases.
-    * **CRITICAL RULE (Capability Type Enforcement)**: Your selection **MUST** strictly adhere to the capability type. You are **forbidden** from placing a `(prompt)` in the `"relevant_tools"` list or a `(tool)` in the `"executable_prompt"` field.
-
-8.  **Ensure Stability**:
-    * **CRITICAL RULE (Recursion Prevention)**: Review the `Current Execution Depth`. You **MUST NOT** create a plan that calls an `executable_prompt` if the depth is approaching the maximum of 5. If you are already inside an `Active Prompt`, you **MUST NOT** create a plan that calls that same prompt again.
-
----
-### Plan JSON Structure
-Your output **MUST** be a single, valid JSON array of phase objects. Each object must follow this structure:
-
--   `"phase"`: An integer, starting from 1.
--   `"goal"`: A concise string describing what this phase will accomplish. You MUST embed any relevant parameters from the user's goal directly into this string.
--   `"type"`: (Optional) Use `"loop"` if the phase needs to iterate over the results of a previous phase.
--   `"loop_over"`: (Required if `type` is `"loop"`) A string identifying the source of items to loop over (e.g., `"result_of_phase_1"`).
--   `"relevant_tools"`: A JSON array containing the single string name of the `(tool)` to be used in this phase.
--   `"executable_prompt"`: A string name of the `(prompt)` to be used in this phase.
--   `"arguments"`: (Optional) A JSON object of key-value pairs for the selected capability. You can use placeholders like `"result_of_phase_1"` to pass data between phases.
-
----
-### EXAMPLE (Flattening Nested Logic)
--   **User Goal**: "For each database on the system, get the DDL for all of its tables."
--   **Correct Plan**:
-    ```json
-    [
-      {
-        "phase": 1,
-        "goal": "First, get a list of all databases on the system.",
-        "relevant_tools": ["base_listDatabases"]
-      },
-      {
-        "phase": 2,
-        "goal": "Now, loop over the list of databases gathered in Phase 1 and get the list of tables for each one.",
-        "type": "loop",
-        "loop_over": "result_of_phase_1",
-        "relevant_tools": ["base_listTables"]
-      },
-      {
-        "phase": 3,
-        "goal": "Finally, loop over the flattened list of tables gathered in Phase 2 and get the DDL for each one.",
-        "type": "loop",
-        "loop_over": "result_of_phase_2",
-        "relevant_tools": ["base_tableDDL"]
-      }
-    ]
-
----
-### Context for this Plan
--   Overall Goal: `You are a Teradata DBA who is an expert in describing the business use of tables in a database.
-
-## your role will work through the phases
-Perform the phases in order, and do not skip any phase.
-
-## Phase 0 - Get the table name and database name
-- The table name is result_of_phase_1.TableName
-- The database name is fitness_db
-
-## Phase 1 - Get the table DDL
-- Get the table DDL from the user. The DDL should be a single string, and it should not contain any new lines or special characters. Use the base_tableDDL tool to get the DDL.
-
-## Phase 2 - Describe the table
-- Describe the table in a business context. The description should be a single string. 
-- The description should include the following: 
-    - The purpose of the table
-    - The purpose of the columns in the table
-
-## Communication guidelines:
-      - Be concise but informative in your explanations
-      - Clearly indicate which phase the process is currently in
-      - summarize the outcome of the phase before moving to the next phase
-
-## Final output guidelines:
-      - return in markdown
-      - Example:
-      ***Table Name:*** `table_name`
-
-      ***Database Name:*** `database_name`
-
-      ***Description:*** `table_description`
-
-         - ***Column1:*** `column1_descriptions`
-         - ***Column2:*** `column2_descriptions`
-         - ***Column3:*** `column3_descriptions`
-`
--   Explicit Parameters: 
---- EXPLICIT PARAMETERS ---
-The following parameters were explicitly provided for this prompt execution:
-- database_name: "fitness_db"
-- table_name: "result_of_phase_1.TableName"
-
--   User's Original Input: `For each table in the list from Phase 1, describe the table in a business context.`
--   Workflow History: `[
-  {
-    "action": {
-      "tool_name": "base_tableList",
-      "arguments": {
-        "database_name": "fitness_db"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableList",
-        "sql": "select TableName from dbc.TablesV tv where tv.TableKind in ('T','V', 'O', 'Q') and UPPER(tv.DatabaseName) = UPPER('fitness_db')",
-        "columns": [
-          {
-            "name": "TableName",
-            "type": "str"
-          }
-        ],
-        "row_count": 5
-      },
-      "results": [
-        {
-          "TableName": "Sales"
-        },
-        {
-          "TableName": "SaleDetails"
-        },
-        {
-          "TableName": "Products"
-        },
-        {
-          "TableName": "ServiceTickets"
-        },
-        {
-          "TableName": "Customers"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "Sales",
-        "obj_name": "Sales",
-        "object_name": "Sales"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.Sales",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.Sales ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      SaleID INTEGER NOT NULL,\r      CustomerID INTEGER NOT NULL,\r      SaleDate TIMESTAMP(6) NOT NULL,\r      TotalAmount DECIMAL(12,2) NOT NULL,\r      SalesPersonID INTEGER, \rCONSTRAINT pk_sales PRIMARY KEY ( SaleID ), \rFOREIGN KEY ( CustomerID ) REFERENCES fitness_db.Customers ( CustomerID ))\r;"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "SaleDetails",
-        "obj_name": "SaleDetails",
-        "object_name": "SaleDetails"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.SaleDetails",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.SaleDetails ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      SaleDetailID INTEGER NOT NULL,\r      SaleID INTEGER NOT NULL,\r      ProductID INTEGER NOT NULL,\r      Quantity INTEGER NOT NULL,\r      UnitPrice DECIMAL(10,2) NOT NULL, \rFOREIGN KEY ( SaleID ) REFERENCES fitness_db.Sales ( SaleID ),\rFOREIGN KEY ( ProductID ) REFERENCES fitness_db.Products ( ProductID ))\rUNIQUE PRIMARY INDEX ( SaleDetailID );"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "Products",
-        "obj_name": "Products",
-        "object_name": "Products"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.Products",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.Products ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      ProductID INTEGER NOT NULL,\r      ProductName VARCHAR(100) CHARACTER SET LATIN NOT CASESPECIFIC NOT NULL,\r      ProductType VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Brand VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Price DECIMAL(10,2) NOT NULL,\r      StockQuantity INTEGER)\rUNIQUE PRIMARY INDEX ( ProductID );"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "ServiceTickets",
-        "obj_name": "ServiceTickets",
-        "object_name": "ServiceTickets"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.ServiceTickets",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.ServiceTickets ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      TicketID INTEGER NOT NULL,\r      CustomerID INTEGER NOT NULL,\r      ProductID INTEGER NOT NULL,\r      TicketDate DATE FORMAT 'YYYY-MM-DD' NOT NULL,\r      IssueDescription VARCHAR(1000) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Status VARCHAR(20) CHARACTER SET LATIN NOT CASESPECIFIC,\r      ResolutionDate DATE FORMAT 'YYYY-MM-DD', \rFOREIGN KEY ( CustomerID ) REFERENCES fitness_db.Customers ( CustomerID ),\rFOREIGN KEY ( ProductID ) REFERENCES fitness_db.Products ( ProductID ))\rUNIQUE PRIMARY INDEX ( TicketID );"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "Customers",
-        "obj_name": "Customers",
-        "object_name": "Customers"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.Customers",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.Customers ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      CustomerID INTEGER NOT NULL,\r      FirstName VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      LastName VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Email VARCHAR(100) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Phone VARCHAR(20) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Address VARCHAR(255) CHARACTER SET LATIN NOT CASESPECIFIC,\r      City VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      State VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      ZipCode VARCHAR(10) CHARACTER SET LATIN NOT CASESPECIFIC,\r      RegistrationDate DATE FORMAT 'YYYY-MM-DD')\rUNIQUE PRIMARY INDEX ( CustomerID );"
-        }
-      ]
-    }
-  }
-]`
--   Execution Depth: This is recursive call number `2`. Avoid creating identical plans.
-
-- Active Prompt: You are currently executing the 'base_tableBusinessDesc' prompt. Do not call it again.
-
-Your response MUST be a single, valid JSON list of phase objects. Do NOT add any extra text, conversation, or markdown.
-```
-
----
-### Context for this Plan
--   Overall Goal: `You are a Teradata DBA who is an expert in describing the business use of tables in a database.
-
-## your role will work through the phases
-Perform the phases in order, and do not skip any phase.
-
-## Phase 0 - Get the table name and database name
-- The table name is result_of_phase_1.TableName
-- The database name is fitness_db
-
-## Phase 1 - Get the table DDL
-- Get the table DDL from the user. The DDL should be a single string, and it should not contain any new lines or special characters. Use the base_tableDDL tool to get the DDL.
-
-## Phase 2 - Describe the table
-- Describe the table in a business context. The description should be a single string. 
-- The description should include the following: 
-    - The purpose of the table
-    - The purpose of the columns in the table
-
-## Communication guidelines:
-      - Be concise but informative in your explanations
-      - Clearly indicate which phase the process is currently in
-      - summarize the outcome of the phase before moving to the next phase
-
-## Final output guidelines:
-      - return in markdown
-      - Example:
-      ***Table Name:*** `table_name`
-
-      ***Database Name:*** `database_name`
-
-      ***Description:*** `table_description`
-
-         - ***Column1:*** `column1_descriptions`
-         - ***Column2:*** `column2_descriptions`
-         - ***Column3:*** `column3_descriptions`
-`
--   Explicit Parameters: 
---- EXPLICIT PARAMETERS ---
-The following parameters were explicitly provided for this prompt execution:
-- database_name: "fitness_db"
-- table_name: "result_of_phase_1.TableName"
-
--   User's Original Input: `For each table in the list from Phase 1, describe the table in a business context.`
--   Workflow History: `[
-  {
-    "action": {
-      "tool_name": "base_tableList",
-      "arguments": {
-        "database_name": "fitness_db"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableList",
-        "sql": "select TableName from dbc.TablesV tv where tv.TableKind in ('T','V', 'O', 'Q') and UPPER(tv.DatabaseName) = UPPER('fitness_db')",
-        "columns": [
-          {
-            "name": "TableName",
-            "type": "str"
-          }
-        ],
-        "row_count": 5
-      },
-      "results": [
-        {
-          "TableName": "Sales"
-        },
-        {
-          "TableName": "SaleDetails"
-        },
-        {
-          "TableName": "Products"
-        },
-        {
-          "TableName": "ServiceTickets"
-        },
-        {
-          "TableName": "Customers"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "Sales",
-        "obj_name": "Sales",
-        "object_name": "Sales"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.Sales",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.Sales ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      SaleID INTEGER NOT NULL,\r      CustomerID INTEGER NOT NULL,\r      SaleDate TIMESTAMP(6) NOT NULL,\r      TotalAmount DECIMAL(12,2) NOT NULL,\r      SalesPersonID INTEGER, \rCONSTRAINT pk_sales PRIMARY KEY ( SaleID ), \rFOREIGN KEY ( CustomerID ) REFERENCES fitness_db.Customers ( CustomerID ))\r;"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "SaleDetails",
-        "obj_name": "SaleDetails",
-        "object_name": "SaleDetails"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.SaleDetails",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.SaleDetails ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      SaleDetailID INTEGER NOT NULL,\r      SaleID INTEGER NOT NULL,\r      ProductID INTEGER NOT NULL,\r      Quantity INTEGER NOT NULL,\r      UnitPrice DECIMAL(10,2) NOT NULL, \rFOREIGN KEY ( SaleID ) REFERENCES fitness_db.Sales ( SaleID ),\rFOREIGN KEY ( ProductID ) REFERENCES fitness_db.Products ( ProductID ))\rUNIQUE PRIMARY INDEX ( SaleDetailID );"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "Products",
-        "obj_name": "Products",
-        "object_name": "Products"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.Products",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.Products ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      ProductID INTEGER NOT NULL,\r      ProductName VARCHAR(100) CHARACTER SET LATIN NOT CASESPECIFIC NOT NULL,\r      ProductType VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Brand VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Price DECIMAL(10,2) NOT NULL,\r      StockQuantity INTEGER)\rUNIQUE PRIMARY INDEX ( ProductID );"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "ServiceTickets",
-        "obj_name": "ServiceTickets",
-        "object_name": "ServiceTickets"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.ServiceTickets",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.ServiceTickets ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      TicketID INTEGER NOT NULL,\r      CustomerID INTEGER NOT NULL,\r      ProductID INTEGER NOT NULL,\r      TicketDate DATE FORMAT 'YYYY-MM-DD' NOT NULL,\r      IssueDescription VARCHAR(1000) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Status VARCHAR(20) CHARACTER SET LATIN NOT CASESPECIFIC,\r      ResolutionDate DATE FORMAT 'YYYY-MM-DD', \rFOREIGN KEY ( CustomerID ) REFERENCES fitness_db.Customers ( CustomerID ),\rFOREIGN KEY ( ProductID ) REFERENCES fitness_db.Products ( ProductID ))\rUNIQUE PRIMARY INDEX ( TicketID );"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "Customers",
-        "obj_name": "Customers",
-        "object_name": "Customers"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.Customers",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.Customers ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      CustomerID INTEGER NOT NULL,\r      FirstName VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      LastName VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Email VARCHAR(100) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Phone VARCHAR(20) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Address VARCHAR(255) CHARACTER SET LATIN NOT CASESPECIFIC,\r      City VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      State VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      ZipCode VARCHAR(10) CHARACTER SET LATIN NOT CASESPECIFIC,\r      RegistrationDate DATE FORMAT 'YYYY-MM-DD')\rUNIQUE PRIMARY INDEX ( CustomerID );"
-        }
-      ]
-    }
-  }
-]`
--   Execution Depth: This is recursive call number `2`. Avoid creating identical plans.
-
-- Active Prompt: You are currently executing the 'base_tableBusinessDesc' prompt. Do not call it again.
-
-Your response MUST be a single, valid JSON list of phase objects. Do NOT add any extra text, conversation, or markdown.
-
-
-2025-09-04 19:01:24,221 - --- FULL CONTEXT (Session: f43953f0-0524-408c-a68e-5834f61d786f) ---
---- REASON FOR CALL ---
-Generic self-correction for failed tool call: base_tableDDL
-
---- History (History Disabled for LLM Call: False) ---
-[user]: You are a helpful assistant.
-[model]: Understood.
-[user]: SYSTEM PROMPT:
-
-# Core Directives
-You are a specialized assistant for a Teradata database system. Your primary goal is to fulfill user requests by selecting the best capability (a tool or a prompt) from the categorized lists provided and supplying all necessary arguments.
-
-# Response Format
-Your response MUST be a single JSON object for a tool/prompt call OR a single plain text string for a final answer.
-
-1.  **Tool/Prompt Calls (JSON format):**
-    -   If the capability is a prompt, you MUST use the key `"prompt_name"`.
-    -   If the capability is a tool, you MUST use the key `"tool_name"`.
-    -   Provide all required arguments. Infer values from the conversation history if necessary.
-    -   Example (Prompt): `{"prompt_name": "some_prompt", "arguments": {"arg": "value"}}`
-    -   Example (Tool): `{"tool_name": "some_tool", "arguments": {"arg": "value"}}`
-
-2.  **Final Answer (Plain Text format):**
-    -   When you have sufficient information to fully answer the user's request, you MUST stop using tools.
-    -   Your response MUST begin with the exact prefix `FINAL_ANSWER:`, followed by a natural language summary.
-    -   Example: `FINAL_ANSWER: I found 48 databases on the system. The details are displayed below.`
-
-# Decision Process
-To select the correct capability, you MUST follow this two-step process, governed by one critical rule:
-
-**CRITICAL RULE: Follow this strict hierarchy for capability selection:**
-1.  **Prioritize Pre-defined Analysis/Reports (Prompts):** If the user's request is for an **analysis, description, or summary** that is a strong semantic match for an available `prompt`, you **MUST** select that `prompt_name`. Prompts are the preferred method for generating these pre-defined analytical outputs.
-2.  **Default to Direct Actions (Tools):** If no analytical prompt is a direct match, or if the user's request is a direct command (e.g., "list...", "count...", "show me..."), you **MUST** treat the request as a direct action. Select the most specific `tool_name` that fulfills this action.
-
-**CRITICAL RULE (Planner Efficiency):** You **MUST NOT** create a multi-phase plan using tools if the user's goal can be fully achieved by a single, available prompt. If a prompt exists that matches the user's request for an analysis or report, you **MUST** call that prompt directly. Do not create a plan that manually replicates the function of an existing prompt.
-
-# Few-Shot Examples
-Here are examples of the correct thinking process:
-
-**Example 1: Direct Action Request**
-- **User Query:** "what is the quality of table 'online' in database 'DEMO_Customer360_db'?"
-- **Thought Process:**
-    1. The user's request is about "quality," but it's a direct question, not a request for a broad "description" or "summary." No prompt for a pre-defined analysis is a perfect match.
-    2. Therefore, I move to step 2 of my critical rule: treat this as a direct action.
-    3. The user's query is about a **table**. I must choose a table-level tool.
-    4. The `qlty_columnSummary` tool takes a `table_name` and is the most specific, correct choice for this direct action.
-- **Correct Response:** `{"tool_name": "qlty_columnSummary", "arguments": {"database_name": "DEMO_Customer360_db", "table_name": "online"}}`
-
-**Example 2: Pre-defined Analysis Request**
-- **User Query:** "describe the business purpose of the 'DEMO_Customer360_db' database"
-- **Thought Process:**
-    1. The user's request is for a "business purpose" description, which is a pre-defined analysis. I will check for a matching prompt first.
-    2. The `base_databaseBusinessDesc` prompt is described as being for this exact purpose. It is a strong semantic match.
-    3. According to my critical rule, I **MUST** select this prompt. I am forbidden from creating a multi-step plan to get the DDL and then summarize it.
-- **Correct Response:** `{"prompt_name": "base_databaseBusinessDesc", "arguments": {"database_name": "DEMO_Customer360_db"}}`
-
-# Best Practices
-- **Context is Key:** Always use information from previous turns to fill in arguments like `database_name` or `table_name`.
-- **Error Recovery:** If a tool fails, analyze the error message and attempt to call the tool again with corrected parameters. Only ask the user for clarification if you cannot recover.
-- **SQL Generation:** When using the `base_readQuery` tool, you MUST use fully qualified table names in your SQL (e.g., `SELECT ... FROM my_database.my_table`).
-- **Time-Sensitive Queries:** For queries involving relative dates (e.g., 'today', 'this week'), you MUST use the `util_getCurrentDate` tool first to determine the current date before proceeding.
-- **Out of Scope:** If the user's request is unrelated to the available capabilities, respond with a `FINAL_ANSWER:` that politely explains you cannot fulfill the request and restates your purpose.
-- **CRITICAL: Avoid Repetitive Behavior.** You are a highly intelligent agent. Do not get stuck in a loop by repeating the same tool calls or by cycling through the same set of tools. Once a tool has returned a successful result with data that is relevant to the user's request, do not call that same tool again unless there is a new and compelling reason to do so. If you have called a series of tools and believe you have enough information, you must call a FINAL_ANSWER. Do not repeat tool calls just to be "through".
-
-
-# Capabilities
---- Available Tools ---
---- Category: Data Quality ---
-- `qlty_columnSummary` (tool): Get the column summary statistics for a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-- `qlty_distinctCategories` (tool): Get the destinct categories from column in a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-    - `column_name` (string, required): column name to analyze
-- `qlty_missingValues` (tool): Get the column names that having missing values in a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-- `qlty_negativeValues` (tool): Get the column names that having negative values in a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-- `qlty_rowsWithMissingValues` (tool): Get the rows with missing values in a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-    - `column_name` (string, required): column name to analyze
-- `qlty_standardDeviation` (tool): Get the standard deviation from column in a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-    - `column_name` (string, required): column name to analyze
-- `qlty_univariateStatistics` (tool): Get the univariate statistics for a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-    - `column_name` (string, required): column name to analyze
---- Category: Database Information ---
-- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
-  - Arguments:
-    - `database_name` (string, required): database name
-- `base_databaseList` (tool): 
-Lists all databases in the Teradata System.
-
-Returns:
-  ResponseType: formatted response with query results + metadata
-
-- `dba_databaseVersion` (tool):  Get Teradata database version information.
-- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
-- `cust_td_serverInfo` (tool): Get the Teradata software information: demonstrates how to use parameters for prepared statements.
-  - Arguments:
-    - `infokey` (string, required): Infokey
-- `get_cube_cust_cube_db_space_metrics` (tool): 
-    Tool to query the cube 'table_skew_pct'.
-    Get the Teradata database space metrics for tables and databases
-
-    Expected inputs:
-        dimensions (str): Comma-separated dimension names to group by. Allowed values:
-    - DatabaseName: Name of the database
-    - TableName: Name of the table
-
-        measures (str): Comma-separated measure names to aggregate. Allowed values:
-    - current_perm: Object perm space in bytes
-    - peak_perm: Object peak perm space in bytes
-    - table_skew_pct: Object skew percentage
-
-        filters (str): Comma-separated filter expressions to apply to either dimensions or measures selected. The dimension or measure used must be in the dimension list to group by or measure list, use valid SQL expressions, for example:
-DatabaseName = 'value'
-TableName = 'value'
-current_perm > 1000
-peak_perm > 1000
-table_skew_pct > 1000
-
-    Returns:
-        Query result as a formatted response.
-    
-  - Arguments:
-    - `dimensions` (string, required): dimensions
-    - `measures` (string, required): measures
-    - `filters` (string, optional): filters
---- Category: Performance ---
-- `dba_resusageSummary` (tool): Get the Teradata system usage summary metrics by weekday and hour for each workload type and query complexity bucket.
-  - Arguments:
-    - `dimensions` (array, optional): list of dimensions to aggregate the resource usage summary. All dimensions are: ["LogDate", "hourOfDay", "dayOfWeek", "workloadType", "workloadComplexity", "UserName", "AppId", "StatementType"]
-    - `user_name` (string, optional): user name
-    - `date` (string, optional): Date to analyze, formatted as `YYYY-MM-DD`
-    - `dayOfWeek` (string, optional): day of the week to analyze
-    - `hourOfDay` (string, optional): hour of day to analyze
-- `dba_flowControl` (tool): Get the Teradata flow control metrics for a specified date range.
-  - Arguments:
-    - `start_date` (string, required): Start Date
-    - `end_date` (string, required): End Date
-- `dba_featureUsage` (tool): Get the user feature usage metrics for a specified date range.
-  - Arguments:
-    - `start_date` (string, required): Start Date
-    - `end_date` (string, required): End Date
-- `dba_userDelay` (tool): Get the Teradata user delay metrics for a specified date range.
-  - Arguments:
-    - `start_date` (string, required): Start Date
-    - `end_date` (string, required): End Date
---- Category: Sales ---
-- `sales_customer_profile` (tool): Get customer profile and metrics.
-  - Arguments:
-    - `customer_key` (string, required): Customer Key
-- `get_cube_sales_cube` (tool): 
-    Tool to query the cube 'order_count'.
-    Get the key sales metrics: USD amount and number of orders.
-
-    Expected inputs:
-        dimensions (str): Comma-separated dimension names to group by. Allowed values:
-    - customer_key: Key for the customer
-    - sales_year: Year of the sale
-    - sales_month: Month of the sale
-
-        measures (str): Comma-separated measure names to aggregate. Allowed values:
-    - gift_amount_usd: Total gift card amount used for the order in USD
-    - total_amount_usd: Total order amount in USD
-    - order_count: Total number of orders
-
-        filters (str): Comma-separated filter expressions to apply to either dimensions or measures selected. The dimension or measure used must be in the dimension list to group by or measure list, use valid SQL expressions, for example:
-customer_key = 'value'
-sales_year = 'value'
-sales_month = 'value'
-gift_amount_usd > 1000
-total_amount_usd > 1000
-order_count > 1000
-
-    Returns:
-        Query result as a formatted response.
-    
-  - Arguments:
-    - `dimensions` (string, required): dimensions
-    - `measures` (string, required): measures
-    - `filters` (string, optional): filters
---- Category: Security ---
-- `sec_rolePermissions` (tool): Get permissions for a role.
-  - Arguments:
-    - `role_name` (string, required): role name to analyze
-- `sec_userDbPermissions` (tool): Get permissions for a user.
-  - Arguments:
-    - `user_name` (string, required): user name to analyze
-- `sec_userRoles` (tool): Get roles assigned to a user.
-  - Arguments:
-    - `user_name` (string, required): user name to analyze
---- Category: Table Management ---
-- `dba_tableSpace` (tool): Get table space used for a table if table name is provided or get table space for all tables in a database if a database name is provided."
-  - Arguments:
-    - `database_name` (string, required): database name
-    - `table_name` (string, required): table name
-- `dba_tableSqlList` (tool): Get a list of SQL run against a table in the last number of days.
-  - Arguments:
-    - `table_name` (string, required): table name
-    - `no_days` (integer, optional): number of days
-- `dba_tableUsageImpact` (tool): Measure the usage of a table and views by users, this is helpful to understand what user and tables are driving most resource usage at any point in time.
-  - Arguments:
-    - `database_name` (string, optional): database name to analyze
-    - `user_name` (string, optional): user name to analyze
-- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, required): Database name
-    - `obj_name` (string, required): table or view name
-- `base_tableAffinity` (tool): Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, required): Database name
-    - `obj_name` (string, required): Obj Name
-- `base_tableDDL` (tool): Displays the DDL definition of a table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, required): Database name
-    - `table_name` (string, required): table name
-- `base_tableList` (tool): Lists all tables in a database.
-  - Arguments:
-    - `database_name` (string, optional): Database name
-- `base_tablePreview` (tool): This function returns data sample and inferred structure from a database table or view via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `table_name` (string, required): table or view name
-    - `database_name` (string, optional): Database name
-- `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, optional): Database name
---- Category: User Management ---
-- `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
-  - Arguments:
-    - `user_name` (string, required): user name
-    - `no_days` (integer, optional): number of days
-- `dba_sessionInfo` (tool): Get the Teradata session information for user.
-  - Arguments:
-    - `user_name` (string, required): User Name
-- `cust_activeUsers` (tool): Fetch currently active database users
---- Category: Utilities ---
-- `rag_executeWorkflow` (tool): Execute complete RAG workflow to answer user questions based on document context.
-
-
-This function handles the entire RAG pipeline:
-1. Configuration setup (using configurable values from rag_config.yml)
-2. Store user query (with /rag prefix stripping)
-3. Generate query embeddings (tokenization + embedding)
-4. Perform semantic search against chunk embeddings
-5. Return retrieved context chunks for answer generation
-
-The function uses configuration values from rag_config.yml with fallback defaults.
-  - Arguments:
-    - `question` (string, required): user question to process
-    - `k` (integer, optional): number of top-k results to return (optional, uses config default if not provided)
-- `rag_executeWorkflow_ivsm` (tool): Execute complete RAG workflow to answer user questions based on document context.
-
-This function handles the entire RAG pipeline using IVSM functions:
-1. Configuration setup (using configurable values from rag_config.yml)
-2. Store user query (with /rag prefix stripping)
-3. Tokenize query using ivsm.tokenizer_encode
-4. Create embedding view using ivsm.IVSM_score
-5. Convert embeddings to vector columns using ivsm.vector_to_columns
-6. Perform semantic search against chunk embeddings
-
-The function uses configuration values from rag_config.yml with fallback defaults.
-  - Arguments:
-    - `question` (string, required): user question to process
-    - `k` (integer, optional): number of top-k results to return (optional, uses config default if not provided
-- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
-- `tmpl_nameOfTool` (tool): <description of what the tool is for>
-  - Arguments:
-    - `argument` (string, required): Argument
-- `viz_createChart` (tool): Generates a data visualization based on provided data. You must specify the chart type and map the data fields to the appropriate visual roles.
-  - Arguments:
-    - `chart_type` (string, required): The type of chart to generate (e.g., 'bar', 'pie', 'line', 'scatter'). This MUST be one of the types listed in the 'Charting Guidelines'.
-    - `data` (list[dict], required): The data to be visualized, passed directly from the output of another tool.
-    - `title` (string, required): A descriptive title for the chart.
-    - `mapping` (dict, required): A dictionary that maps data keys to chart axes or roles (e.g., {'x_axis': 'product_name', 'y_axis': 'sales_total'}). The required keys for this mapping depend on the selected chart_type.
-- `util_getCurrentDate` (tool): Returns the current system date in YYYY-MM-DD format. Use this as the first step for any user query involving relative dates like 'today', 'yesterday', or 'this week'.
-- `util_calculateDateRange` (tool): Calculates a list of dates based on a start date and a natural language phrase (e.g., 'past 3 days', 'last week'). This is a necessary second step for multi-day queries.
-  - Arguments:
-    - `start_date` (string, required): The anchor date for the calculation, usually today's date from `util_getCurrentDate`. Must be in YYYY-MM-DD format.
-    - `date_phrase` (string, required): The natural language phrase describing the desired range (e.g., 'past 3 days', 'last 2 weeks').
-- `CoreLLMTask` (tool): Performs internal, LLM-driven tasks that are not direct calls to the Teradata database. This tool is used for text synthesis, summarization, and formatting based on a specific 'task_description' provided by the LLM itself.
-  - Arguments:
-    - `task_description` (string, required): A natural language description of the internal task to be executed (e.g., 'describe the table in a business context', 'format final output'). The LLM infers this from the workflow plan.
-    - `source_data` (list[string], required): A list of keys (e.g., 'result_of_phase_1') identifying which data from the workflow history is relevant for this task. This is critical for providing the correct context.
-    - `synthesized_answer` (string, optional): The final, synthesized natural language answer, provided directly by the planner when it can confidently answer from history.
---- Available Prompts ---
---- Category: Database Information ---
-- `base_databaseBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of databases.
-  - Arguments:
-    - `database_name` (str, optional): Database to describe.
---- Category: Table Management ---
+--- Category: DBA Prompts ---
 - `base_tableBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of tables in a database.
   - Arguments:
     - `database_name` (str, required): Database for the table to describe.
     - `table_name` (str, required): Table to describe.
---- Category: Utilities ---
-- `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
-  - Arguments:
-    - `domain` (str, optional): Domain to test (eg. "all" "data quality", "exploratory"...).
 - `base_teradata_query` (prompt): A Teradata SQL expert that solves the hardest problems understanding teradata specific syntax.
   - Arguments:
     - `query` (str, required): The problem or question that needs to be solved using Teradata database tools.
+--- Category: Testing ---
+- `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
+  - Arguments:
+    - `domain` (str, optional): Domain to test (eg. "all" "data quality", "exploratory"...).
 
 
 USER PROMPT:
@@ -3475,428 +2667,12 @@ You are an expert strategic planning assistant. Your task is to analyze a user's
 ### Critical Directives
 You MUST follow these directives in order to create a valid and efficient plan.
 
-1.  **Analyze Goal and Context**: First, carefully read the user's `GOAL` and review the `CONTEXT` section to understand the full intent and what actions have already been taken.
-    
-    
 
-2.  **Identify Conversational Turns**: If the user's `GOAL` is purely conversational (e.g., a greeting like "hello") and does not require any data or action, your response **MUST be a single JSON object**: `{"plan_type": "conversational", "response": "I'm doing well, thank you for asking! How can I help you with your Teradata database system today?"}`.
+--- CONTEXT FOR RE-PLANNING ---
+Your previous plan was inefficient because it used a high-level prompt in a multi-step plan. You MUST create a new, more detailed plan that achieves the same goal using ONLY tools.
+To help you, here is the description of the prompt(s) you previously selected. You must replicate their logic using basic tools:
 
-3.  **Handle Context and Parameters Correctly**:
-    * **Prioritize the Goal**: You **MUST** prioritize entities from the user's current `GOAL` over conflicting information in the `Workflow History`. The history is for supplementing missing information, not for overriding the current request.
-    * **Extract Parameters**: You **MUST** meticulously scan the `GOAL` for entities that correspond to tool arguments (e.g., table names) and populate the `"arguments"` block in your plan phase with these key-value pairs.
-
-4.  **Follow the Plan Architecture**:
-    * Your plan **MUST** follow a strict "data-gathering first, synthesis last" architecture.
-    * If the goal requires a final summary, the plan **MUST** conclude with a single phase that uses the `CoreLLMTask` tool. The `task_description` for this phase **MUST** be the complete and verbatim text of the main `GOAL` to ensure all original context is preserved.
-
-5.  **Optimize for Efficiency**:
-    * Your plan **MUST** be as efficient as possible. Combine multiple steps into a single phase if one tool can perform the combined operation.
-    * **CRITICAL STRATEGY (Query Pushdown Efficiency)**: Always prefer a single action that filters data at the source over multiple steps that retrieve unfiltered data and then filter it.
-        * **HIGHLY PREFERRED:** Use a tool that accepts a filter (e.g., a `sql` parameter with a `WHERE` clause) to request *only the specific data you need*.
-        * **AVOID IF POSSIBLE:** Do not use a general-purpose "list" tool and then follow it with a second phase to find a specific item.
-
-6.  **Maintain Simplicity and Focus**:
-    * If the `GOAL` can be answered with a single tool call, your plan **MUST** consist of only that single phase. Do not add unnecessary synthesis phases for simple data retrieval.
-    * Every phase **MUST** correspond to a concrete, executable action. Do **NOT** create phases for simple verification or acknowledgement.
-
-7.  **Adhere to Structural Rules**:
-    * **CRITICAL RULE (Plan Flattening)**: Your plan **MUST ALWAYS** be a flat, sequential list of phases. You **MUST NOT** create nested structures. Decompose tasks with nested logic into multiple, sequential looping phases.
-    * **CRITICAL RULE (Capability Type Enforcement)**: Your selection **MUST** strictly adhere to the capability type. You are **forbidden** from placing a `(prompt)` in the `"relevant_tools"` list or a `(tool)` in the `"executable_prompt"` field.
-
-8.  **Ensure Stability**:
-    * **CRITICAL RULE (Recursion Prevention)**: Review the `Current Execution Depth`. You **MUST NOT** create a plan that calls an `executable_prompt` if the depth is approaching the maximum of 5. If you are already inside an `Active Prompt`, you **MUST NOT** create a plan that calls that same prompt again.
-
----
-### Plan JSON Structure
-Your output **MUST** be a single, valid JSON array of phase objects. Each object must follow this structure:
-
--   `"phase"`: An integer, starting from 1.
--   `"goal"`: A concise string describing what this phase will accomplish. You MUST embed any relevant parameters from the user's goal directly into this string.
--   `"type"`: (Optional) Use `"loop"` if the phase needs to iterate over the results of a previous phase.
--   `"loop_over"`: (Required if `type` is `"loop"`) A string identifying the source of items to loop over (e.g., `"result_of_phase_1"`).
--   `"relevant_tools"`: A JSON array containing the single string name of the `(tool)` to be used in this phase.
--   `"executable_prompt"`: A string name of the `(prompt)` to be used in this phase.
--   `"arguments"`: (Optional) A JSON object of key-value pairs for the selected capability. You can use placeholders like `"result_of_phase_1"` to pass data between phases.
-
----
-### EXAMPLE (Flattening Nested Logic)
--   **User Goal**: "For each database on the system, get the DDL for all of its tables."
--   **Correct Plan**:
-    ```json
-    [
-      {
-        "phase": 1,
-        "goal": "First, get a list of all databases on the system.",
-        "relevant_tools": ["base_listDatabases"]
-      },
-      {
-        "phase": 2,
-        "goal": "Now, loop over the list of databases gathered in Phase 1 and get the list of tables for each one.",
-        "type": "loop",
-        "loop_over": "result_of_phase_1",
-        "relevant_tools": ["base_listTables"]
-      },
-      {
-        "phase": 3,
-        "goal": "Finally, loop over the flattened list of tables gathered in Phase 2 and get the DDL for each one.",
-        "type": "loop",
-        "loop_over": "result_of_phase_2",
-        "relevant_tools": ["base_tableDDL"]
-      }
-    ]
-
----
-### Context for this Plan
--   Overall Goal: `You are a Teradata DBA who is an expert in describing the business use of databases. where database name is 'fitness_db'.`
--   Explicit Parameters: 
--   User's Original Input: `You are a Teradata DBA who is an expert in describing the business use of databases. where database name is 'fitness_db'.`
--   Workflow History: `[]`
--   Execution Depth: This is recursive call number `0`. Avoid creating identical plans.
-
-
-Your response MUST be a single, valid JSON list of phase objects. Do NOT add any extra text, conversation, or markdown.
-```
-
----
-### Context for this Plan
--   Overall Goal: `You are a Teradata DBA who is an expert in describing the business use of databases. where database name is 'fitness_db'.`
--   Explicit Parameters: 
--   User's Original Input: `You are a Teradata DBA who is an expert in describing the business use of databases. where database name is 'fitness_db'.`
--   Workflow History: `[]`
--   Execution Depth: This is recursive call number `0`. Avoid creating identical plans.
-
-
-Your response MUST be a single, valid JSON list of phase objects. Do NOT add any extra text, conversation, or markdown.
-
-[model]: ```json
-[
-  {
-    "phase": 1,
-    "goal": "Describe the business use of the 'fitness_db' database.",
-    "executable_prompt": "base_databaseBusinessDesc",
-    "arguments": {
-      "database_name": "fitness_db"
-    }
-  }
-]
-```
-[user]: SYSTEM PROMPT:
-
-# Core Directives
-You are a specialized assistant for a Teradata database system. Your primary goal is to fulfill user requests by selecting the best capability (a tool or a prompt) from the categorized lists provided and supplying all necessary arguments.
-
-# Response Format
-Your response MUST be a single JSON object for a tool/prompt call OR a single plain text string for a final answer.
-
-1.  **Tool/Prompt Calls (JSON format):**
-    -   If the capability is a prompt, you MUST use the key `"prompt_name"`.
-    -   If the capability is a tool, you MUST use the key `"tool_name"`.
-    -   Provide all required arguments. Infer values from the conversation history if necessary.
-    -   Example (Prompt): `{"prompt_name": "some_prompt", "arguments": {"arg": "value"}}`
-    -   Example (Tool): `{"tool_name": "some_tool", "arguments": {"arg": "value"}}`
-
-2.  **Final Answer (Plain Text format):**
-    -   When you have sufficient information to fully answer the user's request, you MUST stop using tools.
-    -   Your response MUST begin with the exact prefix `FINAL_ANSWER:`, followed by a natural language summary.
-    -   Example: `FINAL_ANSWER: I found 48 databases on the system. The details are displayed below.`
-
-# Decision Process
-To select the correct capability, you MUST follow this two-step process, governed by one critical rule:
-
-**CRITICAL RULE: Follow this strict hierarchy for capability selection:**
-1.  **Prioritize Pre-defined Analysis/Reports (Prompts):** If the user's request is for an **analysis, description, or summary** that is a strong semantic match for an available `prompt`, you **MUST** select that `prompt_name`. Prompts are the preferred method for generating these pre-defined analytical outputs.
-2.  **Default to Direct Actions (Tools):** If no analytical prompt is a direct match, or if the user's request is a direct command (e.g., "list...", "count...", "show me..."), you **MUST** treat the request as a direct action. Select the most specific `tool_name` that fulfills this action.
-
-**CRITICAL RULE (Planner Efficiency):** You **MUST NOT** create a multi-phase plan using tools if the user's goal can be fully achieved by a single, available prompt. If a prompt exists that matches the user's request for an analysis or report, you **MUST** call that prompt directly. Do not create a plan that manually replicates the function of an existing prompt.
-
-# Few-Shot Examples
-Here are examples of the correct thinking process:
-
-**Example 1: Direct Action Request**
-- **User Query:** "what is the quality of table 'online' in database 'DEMO_Customer360_db'?"
-- **Thought Process:**
-    1. The user's request is about "quality," but it's a direct question, not a request for a broad "description" or "summary." No prompt for a pre-defined analysis is a perfect match.
-    2. Therefore, I move to step 2 of my critical rule: treat this as a direct action.
-    3. The user's query is about a **table**. I must choose a table-level tool.
-    4. The `qlty_columnSummary` tool takes a `table_name` and is the most specific, correct choice for this direct action.
-- **Correct Response:** `{"tool_name": "qlty_columnSummary", "arguments": {"database_name": "DEMO_Customer360_db", "table_name": "online"}}`
-
-**Example 2: Pre-defined Analysis Request**
-- **User Query:** "describe the business purpose of the 'DEMO_Customer360_db' database"
-- **Thought Process:**
-    1. The user's request is for a "business purpose" description, which is a pre-defined analysis. I will check for a matching prompt first.
-    2. The `base_databaseBusinessDesc` prompt is described as being for this exact purpose. It is a strong semantic match.
-    3. According to my critical rule, I **MUST** select this prompt. I am forbidden from creating a multi-step plan to get the DDL and then summarize it.
-- **Correct Response:** `{"prompt_name": "base_databaseBusinessDesc", "arguments": {"database_name": "DEMO_Customer360_db"}}`
-
-# Best Practices
-- **Context is Key:** Always use information from previous turns to fill in arguments like `database_name` or `table_name`.
-- **Error Recovery:** If a tool fails, analyze the error message and attempt to call the tool again with corrected parameters. Only ask the user for clarification if you cannot recover.
-- **SQL Generation:** When using the `base_readQuery` tool, you MUST use fully qualified table names in your SQL (e.g., `SELECT ... FROM my_database.my_table`).
-- **Time-Sensitive Queries:** For queries involving relative dates (e.g., 'today', 'this week'), you MUST use the `util_getCurrentDate` tool first to determine the current date before proceeding.
-- **Out of Scope:** If the user's request is unrelated to the available capabilities, respond with a `FINAL_ANSWER:` that politely explains you cannot fulfill the request and restates your purpose.
-- **CRITICAL: Avoid Repetitive Behavior.** You are a highly intelligent agent. Do not get stuck in a loop by repeating the same tool calls or by cycling through the same set of tools. Once a tool has returned a successful result with data that is relevant to the user's request, do not call that same tool again unless there is a new and compelling reason to do so. If you have called a series of tools and believe you have enough information, you must call a FINAL_ANSWER. Do not repeat tool calls just to be "through".
-
-
-# Capabilities
---- Available Tools ---
---- Category: Data Quality ---
-- `qlty_columnSummary` (tool): Get the column summary statistics for a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-- `qlty_distinctCategories` (tool): Get the destinct categories from column in a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-    - `column_name` (string, required): column name to analyze
-- `qlty_missingValues` (tool): Get the column names that having missing values in a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-- `qlty_negativeValues` (tool): Get the column names that having negative values in a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-- `qlty_rowsWithMissingValues` (tool): Get the rows with missing values in a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-    - `column_name` (string, required): column name to analyze
-- `qlty_standardDeviation` (tool): Get the standard deviation from column in a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-    - `column_name` (string, required): column name to analyze
-- `qlty_univariateStatistics` (tool): Get the univariate statistics for a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-    - `column_name` (string, required): column name to analyze
---- Category: Database Information ---
-- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
-  - Arguments:
-    - `database_name` (string, required): database name
-- `base_databaseList` (tool): 
-Lists all databases in the Teradata System.
-
-Returns:
-  ResponseType: formatted response with query results + metadata
-
-- `dba_databaseVersion` (tool):  Get Teradata database version information.
-- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
-- `cust_td_serverInfo` (tool): Get the Teradata software information: demonstrates how to use parameters for prepared statements.
-  - Arguments:
-    - `infokey` (string, required): Infokey
-- `get_cube_cust_cube_db_space_metrics` (tool): 
-    Tool to query the cube 'table_skew_pct'.
-    Get the Teradata database space metrics for tables and databases
-
-    Expected inputs:
-        dimensions (str): Comma-separated dimension names to group by. Allowed values:
-    - DatabaseName: Name of the database
-    - TableName: Name of the table
-
-        measures (str): Comma-separated measure names to aggregate. Allowed values:
-    - current_perm: Object perm space in bytes
-    - peak_perm: Object peak perm space in bytes
-    - table_skew_pct: Object skew percentage
-
-        filters (str): Comma-separated filter expressions to apply to either dimensions or measures selected. The dimension or measure used must be in the dimension list to group by or measure list, use valid SQL expressions, for example:
-DatabaseName = 'value'
-TableName = 'value'
-current_perm > 1000
-peak_perm > 1000
-table_skew_pct > 1000
-
-    Returns:
-        Query result as a formatted response.
-    
-  - Arguments:
-    - `dimensions` (string, required): dimensions
-    - `measures` (string, required): measures
-    - `filters` (string, optional): filters
---- Category: Performance ---
-- `dba_resusageSummary` (tool): Get the Teradata system usage summary metrics by weekday and hour for each workload type and query complexity bucket.
-  - Arguments:
-    - `dimensions` (array, optional): list of dimensions to aggregate the resource usage summary. All dimensions are: ["LogDate", "hourOfDay", "dayOfWeek", "workloadType", "workloadComplexity", "UserName", "AppId", "StatementType"]
-    - `user_name` (string, optional): user name
-    - `date` (string, optional): Date to analyze, formatted as `YYYY-MM-DD`
-    - `dayOfWeek` (string, optional): day of the week to analyze
-    - `hourOfDay` (string, optional): hour of day to analyze
-- `dba_flowControl` (tool): Get the Teradata flow control metrics for a specified date range.
-  - Arguments:
-    - `start_date` (string, required): Start Date
-    - `end_date` (string, required): End Date
-- `dba_featureUsage` (tool): Get the user feature usage metrics for a specified date range.
-  - Arguments:
-    - `start_date` (string, required): Start Date
-    - `end_date` (string, required): End Date
-- `dba_userDelay` (tool): Get the Teradata user delay metrics for a specified date range.
-  - Arguments:
-    - `start_date` (string, required): Start Date
-    - `end_date` (string, required): End Date
---- Category: Sales ---
-- `sales_customer_profile` (tool): Get customer profile and metrics.
-  - Arguments:
-    - `customer_key` (string, required): Customer Key
-- `get_cube_sales_cube` (tool): 
-    Tool to query the cube 'order_count'.
-    Get the key sales metrics: USD amount and number of orders.
-
-    Expected inputs:
-        dimensions (str): Comma-separated dimension names to group by. Allowed values:
-    - customer_key: Key for the customer
-    - sales_year: Year of the sale
-    - sales_month: Month of the sale
-
-        measures (str): Comma-separated measure names to aggregate. Allowed values:
-    - gift_amount_usd: Total gift card amount used for the order in USD
-    - total_amount_usd: Total order amount in USD
-    - order_count: Total number of orders
-
-        filters (str): Comma-separated filter expressions to apply to either dimensions or measures selected. The dimension or measure used must be in the dimension list to group by or measure list, use valid SQL expressions, for example:
-customer_key = 'value'
-sales_year = 'value'
-sales_month = 'value'
-gift_amount_usd > 1000
-total_amount_usd > 1000
-order_count > 1000
-
-    Returns:
-        Query result as a formatted response.
-    
-  - Arguments:
-    - `dimensions` (string, required): dimensions
-    - `measures` (string, required): measures
-    - `filters` (string, optional): filters
---- Category: Security ---
-- `sec_rolePermissions` (tool): Get permissions for a role.
-  - Arguments:
-    - `role_name` (string, required): role name to analyze
-- `sec_userDbPermissions` (tool): Get permissions for a user.
-  - Arguments:
-    - `user_name` (string, required): user name to analyze
-- `sec_userRoles` (tool): Get roles assigned to a user.
-  - Arguments:
-    - `user_name` (string, required): user name to analyze
---- Category: Table Management ---
-- `dba_tableSpace` (tool): Get table space used for a table if table name is provided or get table space for all tables in a database if a database name is provided."
-  - Arguments:
-    - `database_name` (string, required): database name
-    - `table_name` (string, required): table name
-- `dba_tableSqlList` (tool): Get a list of SQL run against a table in the last number of days.
-  - Arguments:
-    - `table_name` (string, required): table name
-    - `no_days` (integer, optional): number of days
-- `dba_tableUsageImpact` (tool): Measure the usage of a table and views by users, this is helpful to understand what user and tables are driving most resource usage at any point in time.
-  - Arguments:
-    - `database_name` (string, optional): database name to analyze
-    - `user_name` (string, optional): user name to analyze
-- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, required): Database name
-    - `obj_name` (string, required): table or view name
-- `base_tableAffinity` (tool): Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, required): Database name
-    - `obj_name` (string, required): Obj Name
-- `base_tableDDL` (tool): Displays the DDL definition of a table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, required): Database name
-    - `table_name` (string, required): table name
-- `base_tableList` (tool): Lists all tables in a database.
-  - Arguments:
-    - `database_name` (string, optional): Database name
-- `base_tablePreview` (tool): This function returns data sample and inferred structure from a database table or view via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `table_name` (string, required): table or view name
-    - `database_name` (string, optional): Database name
-- `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, optional): Database name
---- Category: User Management ---
-- `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
-  - Arguments:
-    - `user_name` (string, required): user name
-    - `no_days` (integer, optional): number of days
-- `dba_sessionInfo` (tool): Get the Teradata session information for user.
-  - Arguments:
-    - `user_name` (string, required): User Name
-- `cust_activeUsers` (tool): Fetch currently active database users
---- Category: Utilities ---
-- `rag_executeWorkflow` (tool): Execute complete RAG workflow to answer user questions based on document context.
-
-
-This function handles the entire RAG pipeline:
-1. Configuration setup (using configurable values from rag_config.yml)
-2. Store user query (with /rag prefix stripping)
-3. Generate query embeddings (tokenization + embedding)
-4. Perform semantic search against chunk embeddings
-5. Return retrieved context chunks for answer generation
-
-The function uses configuration values from rag_config.yml with fallback defaults.
-  - Arguments:
-    - `question` (string, required): user question to process
-    - `k` (integer, optional): number of top-k results to return (optional, uses config default if not provided)
-- `rag_executeWorkflow_ivsm` (tool): Execute complete RAG workflow to answer user questions based on document context.
-
-This function handles the entire RAG pipeline using IVSM functions:
-1. Configuration setup (using configurable values from rag_config.yml)
-2. Store user query (with /rag prefix stripping)
-3. Tokenize query using ivsm.tokenizer_encode
-4. Create embedding view using ivsm.IVSM_score
-5. Convert embeddings to vector columns using ivsm.vector_to_columns
-6. Perform semantic search against chunk embeddings
-
-The function uses configuration values from rag_config.yml with fallback defaults.
-  - Arguments:
-    - `question` (string, required): user question to process
-    - `k` (integer, optional): number of top-k results to return (optional, uses config default if not provided
-- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
-- `tmpl_nameOfTool` (tool): <description of what the tool is for>
-  - Arguments:
-    - `argument` (string, required): Argument
-- `viz_createChart` (tool): Generates a data visualization based on provided data. You must specify the chart type and map the data fields to the appropriate visual roles.
-  - Arguments:
-    - `chart_type` (string, required): The type of chart to generate (e.g., 'bar', 'pie', 'line', 'scatter'). This MUST be one of the types listed in the 'Charting Guidelines'.
-    - `data` (list[dict], required): The data to be visualized, passed directly from the output of another tool.
-    - `title` (string, required): A descriptive title for the chart.
-    - `mapping` (dict, required): A dictionary that maps data keys to chart axes or roles (e.g., {'x_axis': 'product_name', 'y_axis': 'sales_total'}). The required keys for this mapping depend on the selected chart_type.
-- `util_getCurrentDate` (tool): Returns the current system date in YYYY-MM-DD format. Use this as the first step for any user query involving relative dates like 'today', 'yesterday', or 'this week'.
-- `util_calculateDateRange` (tool): Calculates a list of dates based on a start date and a natural language phrase (e.g., 'past 3 days', 'last week'). This is a necessary second step for multi-day queries.
-  - Arguments:
-    - `start_date` (string, required): The anchor date for the calculation, usually today's date from `util_getCurrentDate`. Must be in YYYY-MM-DD format.
-    - `date_phrase` (string, required): The natural language phrase describing the desired range (e.g., 'past 3 days', 'last 2 weeks').
-- `CoreLLMTask` (tool): Performs internal, LLM-driven tasks that are not direct calls to the Teradata database. This tool is used for text synthesis, summarization, and formatting based on a specific 'task_description' provided by the LLM itself.
-  - Arguments:
-    - `task_description` (string, required): A natural language description of the internal task to be executed (e.g., 'describe the table in a business context', 'format final output'). The LLM infers this from the workflow plan.
-    - `source_data` (list[string], required): A list of keys (e.g., 'result_of_phase_1') identifying which data from the workflow history is relevant for this task. This is critical for providing the correct context.
-    - `synthesized_answer` (string, optional): The final, synthesized natural language answer, provided directly by the planner when it can confidently answer from history.
---- Available Prompts ---
---- Category: Database Information ---
-- `base_tableBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of tables in a database.
-  - Arguments:
-    - `database_name` (str, required): Database for the table to describe.
-    - `table_name` (str, required): Table to describe.
---- Category: Utilities ---
-- `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
-  - Arguments:
-    - `domain` (str, optional): Domain to test (eg. "all" "data quality", "exploratory"...).
-- `base_teradata_query` (prompt): A Teradata SQL expert that solves the hardest problems understanding teradata specific syntax.
-  - Arguments:
-    - `query` (str, required): The problem or question that needs to be solved using Teradata database tools.
-
-
-USER PROMPT:
-
-You are an expert strategic planning assistant. Your task is to analyze a user's request or a complex workflow goal and decompose it into a high-level, phased meta-plan. This plan will serve as a state machine executor.
-
----
-### Critical Directives
-You MUST follow these directives in order to create a valid and efficient plan.
+- Instructions for 'base_tableBusinessDesc': You are a Teradata DBA who is an expert in describing the business use of tables in a database.
 
 1.  **Analyze Goal and Context**: First, carefully read the user's `GOAL` and review the `CONTEXT` section to understand the full intent and what actions have already been taken.
     
@@ -4065,947 +2841,10 @@ The following parameters were explicitly provided for this prompt execution:
 
 Your response MUST be a single, valid JSON list of phase objects. Do NOT add any extra text, conversation, or markdown.
 
-[model]: ```json
-[
-  {
-    "phase": 1,
-    "goal": "Get the list of tables in the 'fitness_db' database.",
-    "relevant_tools": [
-      "base_tableList"
-    ],
-    "arguments": {
-      "database_name": "fitness_db"
-    }
-  },
-  {
-    "phase": 2,
-    "goal": "For each table in the list from Phase 1, get the table DDL.",
-    "type": "loop",
-    "loop_over": "result_of_phase_1",
-    "relevant_tools": [
-      "base_tableDDL"
-    ],
-    "arguments": {
-      "database_name": "fitness_db",
-      "table_name": "result_of_phase_1.TableName"
-    }
-  },
-  {
-    "phase": 3,
-    "goal": "For each table in the list from Phase 1, describe the table in a business context.",
-    "type": "loop",
-    "loop_over": "result_of_phase_1",
-    "relevant_tools": [
-      "base_tableBusinessDesc"
-    ],
-    "arguments": {
-      "database_name": "fitness_db",
-      "table_name": "result_of_phase_1.TableName"
-    }
-  },
-  {
-    "phase": 4,
-    "goal": "Describe the 'fitness_db' database in a business context based on the business descriptions of the tables from Phase 3.",
-    "relevant_tools": [
-      "CoreLLMTask"
-    ],
-    "arguments": {
-      "task_description": "Describe the 'fitness_db' database in a business context based on the business descriptions of the tables.",
-      "source_data": [
-        "result_of_phase_3"
-      ]
-    }
-  }
-]
-```
-[user]: SYSTEM PROMPT:
 
-# Core Directives
-You are a specialized assistant for a Teradata database system. Your primary goal is to fulfill user requests by selecting the best capability (a tool or a prompt) from the categorized lists provided and supplying all necessary arguments.
-
-# Response Format
-Your response MUST be a single JSON object for a tool/prompt call OR a single plain text string for a final answer.
-
-1.  **Tool/Prompt Calls (JSON format):**
-    -   If the capability is a prompt, you MUST use the key `"prompt_name"`.
-    -   If the capability is a tool, you MUST use the key `"tool_name"`.
-    -   Provide all required arguments. Infer values from the conversation history if necessary.
-    -   Example (Prompt): `{"prompt_name": "some_prompt", "arguments": {"arg": "value"}}`
-    -   Example (Tool): `{"tool_name": "some_tool", "arguments": {"arg": "value"}}`
-
-2.  **Final Answer (Plain Text format):**
-    -   When you have sufficient information to fully answer the user's request, you MUST stop using tools.
-    -   Your response MUST begin with the exact prefix `FINAL_ANSWER:`, followed by a natural language summary.
-    -   Example: `FINAL_ANSWER: I found 48 databases on the system. The details are displayed below.`
-
-# Decision Process
-To select the correct capability, you MUST follow this two-step process, governed by one critical rule:
-
-**CRITICAL RULE: Follow this strict hierarchy for capability selection:**
-1.  **Prioritize Pre-defined Analysis/Reports (Prompts):** If the user's request is for an **analysis, description, or summary** that is a strong semantic match for an available `prompt`, you **MUST** select that `prompt_name`. Prompts are the preferred method for generating these pre-defined analytical outputs.
-2.  **Default to Direct Actions (Tools):** If no analytical prompt is a direct match, or if the user's request is a direct command (e.g., "list...", "count...", "show me..."), you **MUST** treat the request as a direct action. Select the most specific `tool_name` that fulfills this action.
-
-**CRITICAL RULE (Planner Efficiency):** You **MUST NOT** create a multi-phase plan using tools if the user's goal can be fully achieved by a single, available prompt. If a prompt exists that matches the user's request for an analysis or report, you **MUST** call that prompt directly. Do not create a plan that manually replicates the function of an existing prompt.
-
-# Few-Shot Examples
-Here are examples of the correct thinking process:
-
-**Example 1: Direct Action Request**
-- **User Query:** "what is the quality of table 'online' in database 'DEMO_Customer360_db'?"
-- **Thought Process:**
-    1. The user's request is about "quality," but it's a direct question, not a request for a broad "description" or "summary." No prompt for a pre-defined analysis is a perfect match.
-    2. Therefore, I move to step 2 of my critical rule: treat this as a direct action.
-    3. The user's query is about a **table**. I must choose a table-level tool.
-    4. The `qlty_columnSummary` tool takes a `table_name` and is the most specific, correct choice for this direct action.
-- **Correct Response:** `{"tool_name": "qlty_columnSummary", "arguments": {"database_name": "DEMO_Customer360_db", "table_name": "online"}}`
-
-**Example 2: Pre-defined Analysis Request**
-- **User Query:** "describe the business purpose of the 'DEMO_Customer360_db' database"
-- **Thought Process:**
-    1. The user's request is for a "business purpose" description, which is a pre-defined analysis. I will check for a matching prompt first.
-    2. The `base_databaseBusinessDesc` prompt is described as being for this exact purpose. It is a strong semantic match.
-    3. According to my critical rule, I **MUST** select this prompt. I am forbidden from creating a multi-step plan to get the DDL and then summarize it.
-- **Correct Response:** `{"prompt_name": "base_databaseBusinessDesc", "arguments": {"database_name": "DEMO_Customer360_db"}}`
-
-# Best Practices
-- **Context is Key:** Always use information from previous turns to fill in arguments like `database_name` or `table_name`.
-- **Error Recovery:** If a tool fails, analyze the error message and attempt to call the tool again with corrected parameters. Only ask the user for clarification if you cannot recover.
-- **SQL Generation:** When using the `base_readQuery` tool, you MUST use fully qualified table names in your SQL (e.g., `SELECT ... FROM my_database.my_table`).
-- **Time-Sensitive Queries:** For queries involving relative dates (e.g., 'today', 'this week'), you MUST use the `util_getCurrentDate` tool first to determine the current date before proceeding.
-- **Out of Scope:** If the user's request is unrelated to the available capabilities, respond with a `FINAL_ANSWER:` that politely explains you cannot fulfill the request and restates your purpose.
-- **CRITICAL: Avoid Repetitive Behavior.** You are a highly intelligent agent. Do not get stuck in a loop by repeating the same tool calls or by cycling through the same set of tools. Once a tool has returned a successful result with data that is relevant to the user's request, do not call that same tool again unless there is a new and compelling reason to do so. If you have called a series of tools and believe you have enough information, you must call a FINAL_ANSWER. Do not repeat tool calls just to be "through".
-
-
-# Capabilities
---- Available Tools ---
---- Category: Data Quality ---
-- `qlty_columnSummary` (tool): Get the column summary statistics for a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-- `qlty_distinctCategories` (tool): Get the destinct categories from column in a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-    - `column_name` (string, required): column name to analyze
-- `qlty_missingValues` (tool): Get the column names that having missing values in a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-- `qlty_negativeValues` (tool): Get the column names that having negative values in a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-- `qlty_rowsWithMissingValues` (tool): Get the rows with missing values in a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-    - `column_name` (string, required): column name to analyze
-- `qlty_standardDeviation` (tool): Get the standard deviation from column in a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-    - `column_name` (string, required): column name to analyze
-- `qlty_univariateStatistics` (tool): Get the univariate statistics for a table.
-  - Arguments:
-    - `database_name` (string, required): name of the database
-    - `table_name` (string, required): table name to analyze
-    - `column_name` (string, required): column name to analyze
---- Category: Database Information ---
-- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
-  - Arguments:
-    - `database_name` (string, required): database name
-- `base_databaseList` (tool): 
-Lists all databases in the Teradata System.
-
-Returns:
-  ResponseType: formatted response with query results + metadata
-
-- `dba_databaseVersion` (tool):  Get Teradata database version information.
-- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
-- `cust_td_serverInfo` (tool): Get the Teradata software information: demonstrates how to use parameters for prepared statements.
-  - Arguments:
-    - `infokey` (string, required): Infokey
-- `get_cube_cust_cube_db_space_metrics` (tool): 
-    Tool to query the cube 'table_skew_pct'.
-    Get the Teradata database space metrics for tables and databases
-
-    Expected inputs:
-        dimensions (str): Comma-separated dimension names to group by. Allowed values:
-    - DatabaseName: Name of the database
-    - TableName: Name of the table
-
-        measures (str): Comma-separated measure names to aggregate. Allowed values:
-    - current_perm: Object perm space in bytes
-    - peak_perm: Object peak perm space in bytes
-    - table_skew_pct: Object skew percentage
-
-        filters (str): Comma-separated filter expressions to apply to either dimensions or measures selected. The dimension or measure used must be in the dimension list to group by or measure list, use valid SQL expressions, for example:
-DatabaseName = 'value'
-TableName = 'value'
-current_perm > 1000
-peak_perm > 1000
-table_skew_pct > 1000
-
-    Returns:
-        Query result as a formatted response.
-    
-  - Arguments:
-    - `dimensions` (string, required): dimensions
-    - `measures` (string, required): measures
-    - `filters` (string, optional): filters
---- Category: Performance ---
-- `dba_resusageSummary` (tool): Get the Teradata system usage summary metrics by weekday and hour for each workload type and query complexity bucket.
-  - Arguments:
-    - `dimensions` (array, optional): list of dimensions to aggregate the resource usage summary. All dimensions are: ["LogDate", "hourOfDay", "dayOfWeek", "workloadType", "workloadComplexity", "UserName", "AppId", "StatementType"]
-    - `user_name` (string, optional): user name
-    - `date` (string, optional): Date to analyze, formatted as `YYYY-MM-DD`
-    - `dayOfWeek` (string, optional): day of the week to analyze
-    - `hourOfDay` (string, optional): hour of day to analyze
-- `dba_flowControl` (tool): Get the Teradata flow control metrics for a specified date range.
-  - Arguments:
-    - `start_date` (string, required): Start Date
-    - `end_date` (string, required): End Date
-- `dba_featureUsage` (tool): Get the user feature usage metrics for a specified date range.
-  - Arguments:
-    - `start_date` (string, required): Start Date
-    - `end_date` (string, required): End Date
-- `dba_userDelay` (tool): Get the Teradata user delay metrics for a specified date range.
-  - Arguments:
-    - `start_date` (string, required): Start Date
-    - `end_date` (string, required): End Date
---- Category: Sales ---
-- `sales_customer_profile` (tool): Get customer profile and metrics.
-  - Arguments:
-    - `customer_key` (string, required): Customer Key
-- `get_cube_sales_cube` (tool): 
-    Tool to query the cube 'order_count'.
-    Get the key sales metrics: USD amount and number of orders.
-
-    Expected inputs:
-        dimensions (str): Comma-separated dimension names to group by. Allowed values:
-    - customer_key: Key for the customer
-    - sales_year: Year of the sale
-    - sales_month: Month of the sale
-
-        measures (str): Comma-separated measure names to aggregate. Allowed values:
-    - gift_amount_usd: Total gift card amount used for the order in USD
-    - total_amount_usd: Total order amount in USD
-    - order_count: Total number of orders
-
-        filters (str): Comma-separated filter expressions to apply to either dimensions or measures selected. The dimension or measure used must be in the dimension list to group by or measure list, use valid SQL expressions, for example:
-customer_key = 'value'
-sales_year = 'value'
-sales_month = 'value'
-gift_amount_usd > 1000
-total_amount_usd > 1000
-order_count > 1000
-
-    Returns:
-        Query result as a formatted response.
-    
-  - Arguments:
-    - `dimensions` (string, required): dimensions
-    - `measures` (string, required): measures
-    - `filters` (string, optional): filters
---- Category: Security ---
-- `sec_rolePermissions` (tool): Get permissions for a role.
-  - Arguments:
-    - `role_name` (string, required): role name to analyze
-- `sec_userDbPermissions` (tool): Get permissions for a user.
-  - Arguments:
-    - `user_name` (string, required): user name to analyze
-- `sec_userRoles` (tool): Get roles assigned to a user.
-  - Arguments:
-    - `user_name` (string, required): user name to analyze
---- Category: Table Management ---
-- `dba_tableSpace` (tool): Get table space used for a table if table name is provided or get table space for all tables in a database if a database name is provided."
-  - Arguments:
-    - `database_name` (string, required): database name
-    - `table_name` (string, required): table name
-- `dba_tableSqlList` (tool): Get a list of SQL run against a table in the last number of days.
-  - Arguments:
-    - `table_name` (string, required): table name
-    - `no_days` (integer, optional): number of days
-- `dba_tableUsageImpact` (tool): Measure the usage of a table and views by users, this is helpful to understand what user and tables are driving most resource usage at any point in time.
-  - Arguments:
-    - `database_name` (string, optional): database name to analyze
-    - `user_name` (string, optional): user name to analyze
-- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, required): Database name
-    - `obj_name` (string, required): table or view name
-- `base_tableAffinity` (tool): Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, required): Database name
-    - `obj_name` (string, required): Obj Name
-- `base_tableDDL` (tool): Displays the DDL definition of a table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, required): Database name
-    - `table_name` (string, required): table name
-- `base_tableList` (tool): Lists all tables in a database.
-  - Arguments:
-    - `database_name` (string, optional): Database name
-- `base_tablePreview` (tool): This function returns data sample and inferred structure from a database table or view via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `table_name` (string, required): table or view name
-    - `database_name` (string, optional): Database name
-- `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, optional): Database name
---- Category: User Management ---
-- `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
-  - Arguments:
-    - `user_name` (string, required): user name
-    - `no_days` (integer, optional): number of days
-- `dba_sessionInfo` (tool): Get the Teradata session information for user.
-  - Arguments:
-    - `user_name` (string, required): User Name
-- `cust_activeUsers` (tool): Fetch currently active database users
---- Category: Utilities ---
-- `rag_executeWorkflow` (tool): Execute complete RAG workflow to answer user questions based on document context.
-
-
-This function handles the entire RAG pipeline:
-1. Configuration setup (using configurable values from rag_config.yml)
-2. Store user query (with /rag prefix stripping)
-3. Generate query embeddings (tokenization + embedding)
-4. Perform semantic search against chunk embeddings
-5. Return retrieved context chunks for answer generation
-
-The function uses configuration values from rag_config.yml with fallback defaults.
-  - Arguments:
-    - `question` (string, required): user question to process
-    - `k` (integer, optional): number of top-k results to return (optional, uses config default if not provided)
-- `rag_executeWorkflow_ivsm` (tool): Execute complete RAG workflow to answer user questions based on document context.
-
-This function handles the entire RAG pipeline using IVSM functions:
-1. Configuration setup (using configurable values from rag_config.yml)
-2. Store user query (with /rag prefix stripping)
-3. Tokenize query using ivsm.tokenizer_encode
-4. Create embedding view using ivsm.IVSM_score
-5. Convert embeddings to vector columns using ivsm.vector_to_columns
-6. Perform semantic search against chunk embeddings
-
-The function uses configuration values from rag_config.yml with fallback defaults.
-  - Arguments:
-    - `question` (string, required): user question to process
-    - `k` (integer, optional): number of top-k results to return (optional, uses config default if not provided
-- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
-- `tmpl_nameOfTool` (tool): <description of what the tool is for>
-  - Arguments:
-    - `argument` (string, required): Argument
-- `viz_createChart` (tool): Generates a data visualization based on provided data. You must specify the chart type and map the data fields to the appropriate visual roles.
-  - Arguments:
-    - `chart_type` (string, required): The type of chart to generate (e.g., 'bar', 'pie', 'line', 'scatter'). This MUST be one of the types listed in the 'Charting Guidelines'.
-    - `data` (list[dict], required): The data to be visualized, passed directly from the output of another tool.
-    - `title` (string, required): A descriptive title for the chart.
-    - `mapping` (dict, required): A dictionary that maps data keys to chart axes or roles (e.g., {'x_axis': 'product_name', 'y_axis': 'sales_total'}). The required keys for this mapping depend on the selected chart_type.
-- `util_getCurrentDate` (tool): Returns the current system date in YYYY-MM-DD format. Use this as the first step for any user query involving relative dates like 'today', 'yesterday', or 'this week'.
-- `util_calculateDateRange` (tool): Calculates a list of dates based on a start date and a natural language phrase (e.g., 'past 3 days', 'last week'). This is a necessary second step for multi-day queries.
-  - Arguments:
-    - `start_date` (string, required): The anchor date for the calculation, usually today's date from `util_getCurrentDate`. Must be in YYYY-MM-DD format.
-    - `date_phrase` (string, required): The natural language phrase describing the desired range (e.g., 'past 3 days', 'last 2 weeks').
-- `CoreLLMTask` (tool): Performs internal, LLM-driven tasks that are not direct calls to the Teradata database. This tool is used for text synthesis, summarization, and formatting based on a specific 'task_description' provided by the LLM itself.
-  - Arguments:
-    - `task_description` (string, required): A natural language description of the internal task to be executed (e.g., 'describe the table in a business context', 'format final output'). The LLM infers this from the workflow plan.
-    - `source_data` (list[string], required): A list of keys (e.g., 'result_of_phase_1') identifying which data from the workflow history is relevant for this task. This is critical for providing the correct context.
-    - `synthesized_answer` (string, optional): The final, synthesized natural language answer, provided directly by the planner when it can confidently answer from history.
---- Available Prompts ---
---- Category: Database Information ---
-- `base_databaseBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of databases.
-  - Arguments:
-    - `database_name` (str, optional): Database to describe.
---- Category: Table Management ---
-- `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
-  - Arguments:
-    - `domain` (str, optional): Domain to test (eg. "all" "data quality", "exploratory"...).
-- `base_teradata_query` (prompt): A Teradata SQL expert that solves the hardest problems understanding teradata specific syntax.
-  - Arguments:
-    - `query` (str, required): The problem or question that needs to be solved using Teradata database tools.
-
-
-USER PROMPT:
-
-You are an expert strategic planning assistant. Your task is to analyze a user's request or a complex workflow goal and decompose it into a high-level, phased meta-plan. This plan will serve as a state machine executor.
-
----
-### Critical Directives
-You MUST follow these directives in order to create a valid and efficient plan.
-
-1.  **Analyze Goal and Context**: First, carefully read the user's `GOAL` and review the `CONTEXT` section to understand the full intent and what actions have already been taken.
-    
-    
-
-2.  **Identify Conversational Turns**: If the user's `GOAL` is purely conversational (e.g., a greeting like "hello") and does not require any data or action, your response **MUST be a single JSON object**: `{"plan_type": "conversational", "response": "I'm doing well, thank you for asking! How can I help you with your Teradata database system today?"}`.
-
-3.  **Handle Context and Parameters Correctly**:
-    * **Prioritize the Goal**: You **MUST** prioritize entities from the user's current `GOAL` over conflicting information in the `Workflow History`. The history is for supplementing missing information, not for overriding the current request.
-    * **Extract Parameters**: You **MUST** meticulously scan the `GOAL` for entities that correspond to tool arguments (e.g., table names) and populate the `"arguments"` block in your plan phase with these key-value pairs.
-
-4.  **Follow the Plan Architecture**:
-    * Your plan **MUST** follow a strict "data-gathering first, synthesis last" architecture.
-    * If the goal requires a final summary, the plan **MUST** conclude with a single phase that uses the `CoreLLMTask` tool. The `task_description` for this phase **MUST** be the complete and verbatim text of the main `GOAL` to ensure all original context is preserved.
-
-5.  **Optimize for Efficiency**:
-    * Your plan **MUST** be as efficient as possible. Combine multiple steps into a single phase if one tool can perform the combined operation.
-    * **CRITICAL STRATEGY (Query Pushdown Efficiency)**: Always prefer a single action that filters data at the source over multiple steps that retrieve unfiltered data and then filter it.
-        * **HIGHLY PREFERRED:** Use a tool that accepts a filter (e.g., a `sql` parameter with a `WHERE` clause) to request *only the specific data you need*.
-        * **AVOID IF POSSIBLE:** Do not use a general-purpose "list" tool and then follow it with a second phase to find a specific item.
-
-6.  **Maintain Simplicity and Focus**:
-    * If the `GOAL` can be answered with a single tool call, your plan **MUST** consist of only that single phase. Do not add unnecessary synthesis phases for simple data retrieval.
-    * Every phase **MUST** correspond to a concrete, executable action. Do **NOT** create phases for simple verification or acknowledgement.
-
-7.  **Adhere to Structural Rules**:
-    * **CRITICAL RULE (Plan Flattening)**: Your plan **MUST ALWAYS** be a flat, sequential list of phases. You **MUST NOT** create nested structures. Decompose tasks with nested logic into multiple, sequential looping phases.
-    * **CRITICAL RULE (Capability Type Enforcement)**: Your selection **MUST** strictly adhere to the capability type. You are **forbidden** from placing a `(prompt)` in the `"relevant_tools"` list or a `(tool)` in the `"executable_prompt"` field.
-
-8.  **Ensure Stability**:
-    * **CRITICAL RULE (Recursion Prevention)**: Review the `Current Execution Depth`. You **MUST NOT** create a plan that calls an `executable_prompt` if the depth is approaching the maximum of 5. If you are already inside an `Active Prompt`, you **MUST NOT** create a plan that calls that same prompt again.
-
----
-### Plan JSON Structure
-Your output **MUST** be a single, valid JSON array of phase objects. Each object must follow this structure:
-
--   `"phase"`: An integer, starting from 1.
--   `"goal"`: A concise string describing what this phase will accomplish. You MUST embed any relevant parameters from the user's goal directly into this string.
--   `"type"`: (Optional) Use `"loop"` if the phase needs to iterate over the results of a previous phase.
--   `"loop_over"`: (Required if `type` is `"loop"`) A string identifying the source of items to loop over (e.g., `"result_of_phase_1"`).
--   `"relevant_tools"`: A JSON array containing the single string name of the `(tool)` to be used in this phase.
--   `"executable_prompt"`: A string name of the `(prompt)` to be used in this phase.
--   `"arguments"`: (Optional) A JSON object of key-value pairs for the selected capability. You can use placeholders like `"result_of_phase_1"` to pass data between phases.
-
----
-### EXAMPLE (Flattening Nested Logic)
--   **User Goal**: "For each database on the system, get the DDL for all of its tables."
--   **Correct Plan**:
-    ```json
-    [
-      {
-        "phase": 1,
-        "goal": "First, get a list of all databases on the system.",
-        "relevant_tools": ["base_listDatabases"]
-      },
-      {
-        "phase": 2,
-        "goal": "Now, loop over the list of databases gathered in Phase 1 and get the list of tables for each one.",
-        "type": "loop",
-        "loop_over": "result_of_phase_1",
-        "relevant_tools": ["base_listTables"]
-      },
-      {
-        "phase": 3,
-        "goal": "Finally, loop over the flattened list of tables gathered in Phase 2 and get the DDL for each one.",
-        "type": "loop",
-        "loop_over": "result_of_phase_2",
-        "relevant_tools": ["base_tableDDL"]
-      }
-    ]
-
----
-### Context for this Plan
--   Overall Goal: `You are a Teradata DBA who is an expert in describing the business use of tables in a database.
-
-## your role will work through the phases
-Perform the phases in order, and do not skip any phase.
-
-## Phase 0 - Get the table name and database name
-- The table name is result_of_phase_1.TableName
-- The database name is fitness_db
-
-## Phase 1 - Get the table DDL
-- Get the table DDL from the user. The DDL should be a single string, and it should not contain any new lines or special characters. Use the base_tableDDL tool to get the DDL.
-
-## Phase 2 - Describe the table
-- Describe the table in a business context. The description should be a single string. 
-- The description should include the following: 
-    - The purpose of the table
-    - The purpose of the columns in the table
-
-## Communication guidelines:
-      - Be concise but informative in your explanations
-      - Clearly indicate which phase the process is currently in
-      - summarize the outcome of the phase before moving to the next phase
-
-## Final output guidelines:
-      - return in markdown
-      - Example:
-      ***Table Name:*** `table_name`
-
-      ***Database Name:*** `database_name`
-
-      ***Description:*** `table_description`
-
-         - ***Column1:*** `column1_descriptions`
-         - ***Column2:*** `column2_descriptions`
-         - ***Column3:*** `column3_descriptions`
-`
--   Explicit Parameters: 
---- EXPLICIT PARAMETERS ---
-The following parameters were explicitly provided for this prompt execution:
-- database_name: "fitness_db"
-- table_name: "result_of_phase_1.TableName"
-
--   User's Original Input: `For each table in the list from Phase 1, describe the table in a business context.`
--   Workflow History: `[
-  {
-    "action": {
-      "tool_name": "base_tableList",
-      "arguments": {
-        "database_name": "fitness_db"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableList",
-        "sql": "select TableName from dbc.TablesV tv where tv.TableKind in ('T','V', 'O', 'Q') and UPPER(tv.DatabaseName) = UPPER('fitness_db')",
-        "columns": [
-          {
-            "name": "TableName",
-            "type": "str"
-          }
-        ],
-        "row_count": 5
-      },
-      "results": [
-        {
-          "TableName": "Sales"
-        },
-        {
-          "TableName": "SaleDetails"
-        },
-        {
-          "TableName": "Products"
-        },
-        {
-          "TableName": "ServiceTickets"
-        },
-        {
-          "TableName": "Customers"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "Sales",
-        "obj_name": "Sales",
-        "object_name": "Sales"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.Sales",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.Sales ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      SaleID INTEGER NOT NULL,\r      CustomerID INTEGER NOT NULL,\r      SaleDate TIMESTAMP(6) NOT NULL,\r      TotalAmount DECIMAL(12,2) NOT NULL,\r      SalesPersonID INTEGER, \rCONSTRAINT pk_sales PRIMARY KEY ( SaleID ), \rFOREIGN KEY ( CustomerID ) REFERENCES fitness_db.Customers ( CustomerID ))\r;"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "SaleDetails",
-        "obj_name": "SaleDetails",
-        "object_name": "SaleDetails"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.SaleDetails",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.SaleDetails ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      SaleDetailID INTEGER NOT NULL,\r      SaleID INTEGER NOT NULL,\r      ProductID INTEGER NOT NULL,\r      Quantity INTEGER NOT NULL,\r      UnitPrice DECIMAL(10,2) NOT NULL, \rFOREIGN KEY ( SaleID ) REFERENCES fitness_db.Sales ( SaleID ),\rFOREIGN KEY ( ProductID ) REFERENCES fitness_db.Products ( ProductID ))\rUNIQUE PRIMARY INDEX ( SaleDetailID );"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "Products",
-        "obj_name": "Products",
-        "object_name": "Products"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.Products",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.Products ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      ProductID INTEGER NOT NULL,\r      ProductName VARCHAR(100) CHARACTER SET LATIN NOT CASESPECIFIC NOT NULL,\r      ProductType VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Brand VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Price DECIMAL(10,2) NOT NULL,\r      StockQuantity INTEGER)\rUNIQUE PRIMARY INDEX ( ProductID );"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "ServiceTickets",
-        "obj_name": "ServiceTickets",
-        "object_name": "ServiceTickets"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.ServiceTickets",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.ServiceTickets ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      TicketID INTEGER NOT NULL,\r      CustomerID INTEGER NOT NULL,\r      ProductID INTEGER NOT NULL,\r      TicketDate DATE FORMAT 'YYYY-MM-DD' NOT NULL,\r      IssueDescription VARCHAR(1000) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Status VARCHAR(20) CHARACTER SET LATIN NOT CASESPECIFIC,\r      ResolutionDate DATE FORMAT 'YYYY-MM-DD', \rFOREIGN KEY ( CustomerID ) REFERENCES fitness_db.Customers ( CustomerID ),\rFOREIGN KEY ( ProductID ) REFERENCES fitness_db.Products ( ProductID ))\rUNIQUE PRIMARY INDEX ( TicketID );"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "Customers",
-        "obj_name": "Customers",
-        "object_name": "Customers"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.Customers",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.Customers ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      CustomerID INTEGER NOT NULL,\r      FirstName VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      LastName VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Email VARCHAR(100) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Phone VARCHAR(20) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Address VARCHAR(255) CHARACTER SET LATIN NOT CASESPECIFIC,\r      City VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      State VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      ZipCode VARCHAR(10) CHARACTER SET LATIN NOT CASESPECIFIC,\r      RegistrationDate DATE FORMAT 'YYYY-MM-DD')\rUNIQUE PRIMARY INDEX ( CustomerID );"
-        }
-      ]
-    }
-  }
-]`
--   Execution Depth: This is recursive call number `2`. Avoid creating identical plans.
-
-- Active Prompt: You are currently executing the 'base_tableBusinessDesc' prompt. Do not call it again.
-
-Your response MUST be a single, valid JSON list of phase objects. Do NOT add any extra text, conversation, or markdown.
-```
-
----
-### Context for this Plan
--   Overall Goal: `You are a Teradata DBA who is an expert in describing the business use of tables in a database.
-
-## your role will work through the phases
-Perform the phases in order, and do not skip any phase.
-
-## Phase 0 - Get the table name and database name
-- The table name is result_of_phase_1.TableName
-- The database name is fitness_db
-
-## Phase 1 - Get the table DDL
-- Get the table DDL from the user. The DDL should be a single string, and it should not contain any new lines or special characters. Use the base_tableDDL tool to get the DDL.
-
-## Phase 2 - Describe the table
-- Describe the table in a business context. The description should be a single string. 
-- The description should include the following: 
-    - The purpose of the table
-    - The purpose of the columns in the table
-
-## Communication guidelines:
-      - Be concise but informative in your explanations
-      - Clearly indicate which phase the process is currently in
-      - summarize the outcome of the phase before moving to the next phase
-
-## Final output guidelines:
-      - return in markdown
-      - Example:
-      ***Table Name:*** `table_name`
-
-      ***Database Name:*** `database_name`
-
-      ***Description:*** `table_description`
-
-         - ***Column1:*** `column1_descriptions`
-         - ***Column2:*** `column2_descriptions`
-         - ***Column3:*** `column3_descriptions`
-`
--   Explicit Parameters: 
---- EXPLICIT PARAMETERS ---
-The following parameters were explicitly provided for this prompt execution:
-- database_name: "fitness_db"
-- table_name: "result_of_phase_1.TableName"
-
--   User's Original Input: `For each table in the list from Phase 1, describe the table in a business context.`
--   Workflow History: `[
-  {
-    "action": {
-      "tool_name": "base_tableList",
-      "arguments": {
-        "database_name": "fitness_db"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableList",
-        "sql": "select TableName from dbc.TablesV tv where tv.TableKind in ('T','V', 'O', 'Q') and UPPER(tv.DatabaseName) = UPPER('fitness_db')",
-        "columns": [
-          {
-            "name": "TableName",
-            "type": "str"
-          }
-        ],
-        "row_count": 5
-      },
-      "results": [
-        {
-          "TableName": "Sales"
-        },
-        {
-          "TableName": "SaleDetails"
-        },
-        {
-          "TableName": "Products"
-        },
-        {
-          "TableName": "ServiceTickets"
-        },
-        {
-          "TableName": "Customers"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "Sales",
-        "obj_name": "Sales",
-        "object_name": "Sales"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.Sales",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.Sales ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      SaleID INTEGER NOT NULL,\r      CustomerID INTEGER NOT NULL,\r      SaleDate TIMESTAMP(6) NOT NULL,\r      TotalAmount DECIMAL(12,2) NOT NULL,\r      SalesPersonID INTEGER, \rCONSTRAINT pk_sales PRIMARY KEY ( SaleID ), \rFOREIGN KEY ( CustomerID ) REFERENCES fitness_db.Customers ( CustomerID ))\r;"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "SaleDetails",
-        "obj_name": "SaleDetails",
-        "object_name": "SaleDetails"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.SaleDetails",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.SaleDetails ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      SaleDetailID INTEGER NOT NULL,\r      SaleID INTEGER NOT NULL,\r      ProductID INTEGER NOT NULL,\r      Quantity INTEGER NOT NULL,\r      UnitPrice DECIMAL(10,2) NOT NULL, \rFOREIGN KEY ( SaleID ) REFERENCES fitness_db.Sales ( SaleID ),\rFOREIGN KEY ( ProductID ) REFERENCES fitness_db.Products ( ProductID ))\rUNIQUE PRIMARY INDEX ( SaleDetailID );"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "Products",
-        "obj_name": "Products",
-        "object_name": "Products"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.Products",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.Products ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      ProductID INTEGER NOT NULL,\r      ProductName VARCHAR(100) CHARACTER SET LATIN NOT CASESPECIFIC NOT NULL,\r      ProductType VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Brand VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Price DECIMAL(10,2) NOT NULL,\r      StockQuantity INTEGER)\rUNIQUE PRIMARY INDEX ( ProductID );"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "ServiceTickets",
-        "obj_name": "ServiceTickets",
-        "object_name": "ServiceTickets"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.ServiceTickets",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.ServiceTickets ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      TicketID INTEGER NOT NULL,\r      CustomerID INTEGER NOT NULL,\r      ProductID INTEGER NOT NULL,\r      TicketDate DATE FORMAT 'YYYY-MM-DD' NOT NULL,\r      IssueDescription VARCHAR(1000) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Status VARCHAR(20) CHARACTER SET LATIN NOT CASESPECIFIC,\r      ResolutionDate DATE FORMAT 'YYYY-MM-DD', \rFOREIGN KEY ( CustomerID ) REFERENCES fitness_db.Customers ( CustomerID ),\rFOREIGN KEY ( ProductID ) REFERENCES fitness_db.Products ( ProductID ))\rUNIQUE PRIMARY INDEX ( TicketID );"
-        }
-      ]
-    }
-  },
-  {
-    "action": {
-      "tool_name": "base_tableDDL",
-      "arguments": {
-        "database_name": "fitness_db",
-        "table_name": "Customers",
-        "obj_name": "Customers",
-        "object_name": "Customers"
-      }
-    },
-    "result": {
-      "status": "success",
-      "metadata": {
-        "tool_name": "base_tableDDL",
-        "database": "fitness_db",
-        "table": "fitness_db.Customers",
-        "rows": 1
-      },
-      "results": [
-        {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.Customers ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      CustomerID INTEGER NOT NULL,\r      FirstName VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      LastName VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Email VARCHAR(100) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Phone VARCHAR(20) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Address VARCHAR(255) CHARACTER SET LATIN NOT CASESPECIFIC,\r      City VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      State VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      ZipCode VARCHAR(10) CHARACTER SET LATIN NOT CASESPECIFIC,\r      RegistrationDate DATE FORMAT 'YYYY-MM-DD')\rUNIQUE PRIMARY INDEX ( CustomerID );"
-        }
-      ]
-    }
-  }
-]`
--   Execution Depth: This is recursive call number `2`. Avoid creating identical plans.
-
-- Active Prompt: You are currently executing the 'base_tableBusinessDesc' prompt. Do not call it again.
-
-Your response MUST be a single, valid JSON list of phase objects. Do NOT add any extra text, conversation, or markdown.
-
-[model]: ```json
-[
-  {
-    "phase": 1,
-    "goal": "Get the table DDL for table result_of_phase_1.TableName in database fitness_db.",
-    "relevant_tools": [
-      "base_tableDDL"
-    ],
-    "arguments": {
-      "database_name": "fitness_db",
-      "table_name": "result_of_phase_1.TableName"
-    }
-  },
-  {
-    "phase": 2,
-    "goal": "Describe the table result_of_phase_1.TableName in a business context including the purpose of the table and its columns.",
-    "relevant_tools": [
-      "CoreLLMTask"
-    ],
-    "arguments": {
-      "task_description": "Describe the table in a business context. The description should include the purpose of the table and the purpose of the columns in the table.",
-      "source_data": [
-        "result_of_phase_1",
-        "result_of_phase_2"
-      ]
-    }
-  }
-]
-```
-
---- Current User Prompt (with System Prompt) ---
-SYSTEM PROMPT:
-You are a JSON-only responding assistant.
-
-USER PROMPT:
-
-You are an expert at fixing failed tool calls.
-Your task is to analyze the provided information about a failed tool call and generate a corrected version.
-
---- CONTEXT ---
-- Tool Definition (this describes the required arguments): {"name": "base_tableDDL", "description": "Displays the DDL definition of a table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.", "args": {"database_name": {"name": "database_name", "type": "string", "required": true, "description": "Database name"}, "table_name": {"name": "table_name", "type": "string", "required": true, "description": "table name"}}}
-- Failed Command (this is what was attempted): {"tool_name": "base_tableDDL", "arguments": {"database_name": "fitness_db", "table_name": "result_of_phase_1.TableName"}}
-- Error Message (this is why it failed): "Error: [Version 20.0.0.33] [Session 1074] [Teradata Database] [Error 3706] Syntax error: expected something between the word 'result_of_phase_1' and '.'.\n at gosqldriver/teradatasql.formatError ErrorUtil.go:83\n at gosqldriver/teradatasql.(*teradataConnection).formatDatabaseError ErrorUtil.go:190\n at gosqldriver/teradatasql.(*teradataConnection).makeChainedDatabaseError ErrorUtil.go:206\n at gosqldriver/teradatasql.(*teradataConnection).processErrorParcel TeradataConnection.go:341\n at gosqldriver/teradatasql.(*TeradataRows).processResponseBundle TeradataRows.go:2553\n at gosqldriver/teradatasql.(*TeradataRows).executeSQLRequest TeradataRows.go:1029\n at gosqldriver/teradatasql.newTeradataRows TeradataRows.go:792\n at gosqldriver/teradatasql.(*teradataStatement).QueryContext TeradataStatement.go:122\n at gosqldriver/teradatasql.(*teradataConnection).QueryContext TeradataConnection.go:824\n at database/sql.ctxDriverQuery ctxutil.go:48\n at database/sql.(*DB).queryDC.func1 sql.go:1786\n at database/sql.withLock sql.go:3574\n at database/sql.(*DB).queryDC sql.go:1781\n at database/sql.(*Conn).QueryContext sql.go:2037\n at main.createRows goside.go:1080\n at main.goCreateRows goside.go:959\n at _cgoexp_ff5e33a08e40_goCreateRows _cgo_gotypes.go:417\n at runtime.cgocallbackg1 cgocall.go:446\n at runtime.cgocallbackg cgocall.go:350\n at runtime.cgocallback asm_amd64.s:1084\n at runtime.goexit asm_amd64.s:1700"
-- Full Conversation History (for more complex cases): [{"role": "user", "content": "You are a Teradata DBA who is an expert in describing the business use of databases. where database name is 'fitness_db'."}]
-
---- INSTRUCTIONS ---
-1.  **Analyze the Error**: Read the "Error Message" to understand why the tool failed. Common reasons include missing arguments (like `database_name`), incorrect values, or formatting issues.
-2.  **Consult the Definition**: Look at the "Tool Definition" to see the correct names and requirements for all arguments.
-3.  **Use History**: Use the "Full Conversation History" to find correct values for any missing arguments.
-4.  **Generate Correction**: Create a new, valid set of arguments for the tool.
-
-Your response MUST be ONLY a single JSON object containing the corrected `arguments`.
-Example format:
-```json
-{
-  "arguments": {
-    "database_name": "some_database",
-    "table_name": "some_table"
-  }
-}
-```
-
-
-2025-09-04 19:01:25,533 - --- FULL CONTEXT (Session: one-off) ---
+2025-09-04 19:41:11,299 - --- FULL CONTEXT (Session: one-off) ---
 --- REASON FOR CALL ---
-Executing CoreLLMTask: Describe the table in a business context. The description should include the purpose of the table and the purpose of the columns in the table.
+Executing CoreLLMTask: Describe the database in a business context based on the DDL and column descriptions of the tables. Be concise but informative in your explanations. Summarize the outcome of the phase before moving to the next phase. Return in markdown.
 
 --- History (History Disabled for LLM Call: False) ---
 No history available.
@@ -5022,11 +2861,11 @@ Your most important task is to directly answer the user's original question: 'No
 You MUST begin your response with the direct answer. Do not repeat the user's question or use conversational intros like 'Here is...'. After providing the direct answer, you may then proceed with a more general summary or analysis of the data.
 
 --- TASK ---
-Describe the table in a business context. The description should include the purpose of the table and the purpose of the columns in the table.
+Describe the database in a business context based on the DDL and column descriptions of the tables. Be concise but informative in your explanations. Summarize the outcome of the phase before moving to the next phase. Return in markdown.
 
 --- RELEVANT DATA (Selected from Previous Phases) ---
 {
-  "result_of_phase_1": [
+  "result_of_phase_2": [
     {
       "status": "success",
       "metadata": {
@@ -5040,76 +2879,282 @@ Describe the table in a business context. The description should include the pur
           "Request Text": "CREATE MULTISET TABLE fitness_db.Sales ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      SaleID INTEGER NOT NULL,\r      CustomerID INTEGER NOT NULL,\r      SaleDate TIMESTAMP(6) NOT NULL,\r      TotalAmount DECIMAL(12,2) NOT NULL,\r      SalesPersonID INTEGER, \rCONSTRAINT pk_sales PRIMARY KEY ( SaleID ), \rFOREIGN KEY ( CustomerID ) REFERENCES fitness_db.Customers ( CustomerID ))\r;"
         }
       ]
-    }
-  ]
-}
-
---- KNOWN CONTEXT ---
-The following key information has already been established in previous steps. You MUST use this information to populate header fields like 'Table Name' or 'Database Name'.
-- database_name: fitness_db
-- table_name: fitness_db.Sales
-
---- SEMANTIC GUIDANCE ---
-When the 'TASK' asks for a 'description', 'analysis', or 'summary', you MUST synthesize new content that reflects the *semantic intent* of the request.
-For example:
-- If the 'TASK' asks for a 'business description of a table', you MUST explain its purpose from an organizational, functional, or analytical viewpoint, and the business significance of its columns. Do NOT simply reiterate technical DDL (Data Definition Language) information, even if it is present in the `RELEVANT DATA`.
-- If the 'TASK' asks for a 'summary of errors', you MUST provide a concise overview of the issues, not just a list of error codes.
-Always prioritize generating content that matches the *meaning* and *purpose* of the 'TASK', interpreting the raw data to produce the desired semantic output.
-
---- CRITICAL RULES ---
-1. **Separate Data from Description:** If the 'TASK' requires you to output header fields (like `***Table Name:***` or `***Database Name:***`) AND a main description, you MUST treat these as separate steps. First, populate the header fields using the 'KNOWN CONTEXT'. Then, write the main description. Do NOT merge context data (like the database name) into a single header field.
-2. **Content and Formatting Precision:** You MUST adhere to any and all formatting instructions contained in the 'TASK' description with absolute precision. Do not deviate, simplify, or change the requested format in any way. You MUST generate content that genuinely fulfills the semantic goal of the 'TASK'.
-3. **Key Name Adherence:** If the 'TASK' description provides an example format, you MUST use the exact key names (e.g., `***Description:***`, `***Table Name:***`) shown in the example. Do not invent new key names or use synonyms like 'Table Description'.
-4. **Column Placeholder Replacement:** If the 'TASK' involves describing table columns and the formatting guidelines include a placeholder like `***ColumnX:***` or `***[Column Name]:***`, you MUST replace that placeholder with the actual name of the column you are describing (e.g., `***CUST_ID:***`, `***FIRSTNAME:***`). Do not use generic, numbered placeholders like 'Column1', 'Column2', etc.
-5. **Layout and Line Breaks:** Each key-value pair or list item specified in the formatting guidelines MUST be on its own separate line. Do not combine multiple items onto a single line.
-
-Your response should be the direct result of the task. Do not add any conversational text or extra formatting unless explicitly requested by the task description.
-
-2025-09-04 19:01:28,303 - --- FULL CONTEXT (Session: one-off) ---
---- REASON FOR CALL ---
-Executing CoreLLMTask: Describe the 'fitness_db' database in a business context based on the business descriptions of the tables.
-
---- History (History Disabled for LLM Call: False) ---
-No history available.
-
---- Current User Prompt (with System Prompt) ---
-SYSTEM PROMPT:
-You are a text processing and synthesis assistant.
-
-USER PROMPT:
-You are a highly capable text processing and synthesis assistant.
-
---- PRIMARY GOAL ---
-Your most important task is to directly answer the user's original question: 'No user question provided.'.
-You MUST begin your response with the direct answer. Do not repeat the user's question or use conversational intros like 'Here is...'. After providing the direct answer, you may then proceed with a more general summary or analysis of the data.
-
---- TASK ---
-Describe the 'fitness_db' database in a business context based on the business descriptions of the tables.
-
---- RELEVANT DATA (Selected from Previous Phases) ---
-{
-  "result_of_phase_1": [
+    },
     {
       "status": "success",
       "metadata": {
         "tool_name": "base_tableDDL",
         "database": "fitness_db",
-        "table": "fitness_db.Sales",
+        "table": "fitness_db.SaleDetails",
         "rows": 1
       },
       "results": [
         {
-          "Request Text": "CREATE MULTISET TABLE fitness_db.Sales ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      SaleID INTEGER NOT NULL,\r      CustomerID INTEGER NOT NULL,\r      SaleDate TIMESTAMP(6) NOT NULL,\r      TotalAmount DECIMAL(12,2) NOT NULL,\r      SalesPersonID INTEGER, \rCONSTRAINT pk_sales PRIMARY KEY ( SaleID ), \rFOREIGN KEY ( CustomerID ) REFERENCES fitness_db.Customers ( CustomerID ))\r;"
+          "Request Text": "CREATE MULTISET TABLE fitness_db.SaleDetails ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      SaleDetailID INTEGER NOT NULL,\r      SaleID INTEGER NOT NULL,\r      ProductID INTEGER NOT NULL,\r      Quantity INTEGER NOT NULL,\r      UnitPrice DECIMAL(10,2) NOT NULL, \rFOREIGN KEY ( SaleID ) REFERENCES fitness_db.Sales ( SaleID ),\rFOREIGN KEY ( ProductID ) REFERENCES fitness_db.Products ( ProductID ))\rUNIQUE PRIMARY INDEX ( SaleDetailID );"
+        }
+      ]
+    },
+    {
+      "status": "success",
+      "metadata": {
+        "tool_name": "base_tableDDL",
+        "database": "fitness_db",
+        "table": "fitness_db.Products",
+        "rows": 1
+      },
+      "results": [
+        {
+          "Request Text": "CREATE MULTISET TABLE fitness_db.Products ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      ProductID INTEGER NOT NULL,\r      ProductName VARCHAR(100) CHARACTER SET LATIN NOT CASESPECIFIC NOT NULL,\r      ProductType VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Brand VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Price DECIMAL(10,2) NOT NULL,\r      StockQuantity INTEGER)\rUNIQUE PRIMARY INDEX ( ProductID );"
+        }
+      ]
+    },
+    {
+      "status": "success",
+      "metadata": {
+        "tool_name": "base_tableDDL",
+        "database": "fitness_db",
+        "table": "fitness_db.ServiceTickets",
+        "rows": 1
+      },
+      "results": [
+        {
+          "Request Text": "CREATE MULTISET TABLE fitness_db.ServiceTickets ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      TicketID INTEGER NOT NULL,\r      CustomerID INTEGER NOT NULL,\r      ProductID INTEGER NOT NULL,\r      TicketDate DATE FORMAT 'YYYY-MM-DD' NOT NULL,\r      IssueDescription VARCHAR(1000) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Status VARCHAR(20) CHARACTER SET LATIN NOT CASESPECIFIC,\r      ResolutionDate DATE FORMAT 'YYYY-MM-DD', \rFOREIGN KEY ( CustomerID ) REFERENCES fitness_db.Customers ( CustomerID ),\rFOREIGN KEY ( ProductID ) REFERENCES fitness_db.Products ( ProductID ))\rUNIQUE PRIMARY INDEX ( TicketID );"
+        }
+      ]
+    },
+    {
+      "status": "success",
+      "metadata": {
+        "tool_name": "base_tableDDL",
+        "database": "fitness_db",
+        "table": "fitness_db.Customers",
+        "rows": 1
+      },
+      "results": [
+        {
+          "Request Text": "CREATE MULTISET TABLE fitness_db.Customers ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      CustomerID INTEGER NOT NULL,\r      FirstName VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      LastName VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Email VARCHAR(100) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Phone VARCHAR(20) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Address VARCHAR(255) CHARACTER SET LATIN NOT CASESPECIFIC,\r      City VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      State VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      ZipCode VARCHAR(10) CHARACTER SET LATIN NOT CASESPECIFIC,\r      RegistrationDate DATE FORMAT 'YYYY-MM-DD')\rUNIQUE PRIMARY INDEX ( CustomerID );"
         }
       ]
     }
   ],
-  "result_of_phase_2": [
+  "result_of_phase_3": [
     {
       "status": "success",
+      "metadata": {
+        "tool_name": "base_columnDescription",
+        "database": "fitness_db",
+        "object": "Sales",
+        "column_count": 5
+      },
       "results": [
         {
-          "response": "The table stores sales transaction data for a fitness business. It allows the company to track individual sales, link them to customers and salespersons, and calculate total revenue.\n\n***Database Name:*** fitness_db\n***Table Name:*** fitness_db.Sales\n***Description:*** This table records all sales transactions within the fitness business. It serves as a central repository for tracking sales performance, customer purchasing behavior, and the effectiveness of individual salespersons. The data within this table is critical for generating sales reports, analyzing trends, and making informed business decisions related to pricing, marketing, and sales strategies.\n***Column SaleID:*** A unique identifier for each sales transaction, serving as the primary key for the table. This ensures that each sale can be uniquely identified and tracked.\n***Column CustomerID:*** Links the sale to a specific customer in the `Customers` table. This enables the business to analyze customer purchasing habits, track customer lifetime value, and personalize marketing efforts.\n***Column SaleDate:*** The date and time when the sale occurred. This allows the business to track sales trends over time, identify peak sales periods, and measure the impact of promotions or marketing campaigns.\n***Column TotalAmount:*** The total revenue generated from the sale. This is a key metric for measuring sales performance and profitability.\n***Column SalesPersonID:*** Links the sale to the salesperson who made the sale. This enables the business to evaluate individual salesperson performance, track commission earnings, and identify top performers."
+          "TableName": "Sales",
+          "ColumnName": "SaleDate",
+          "CType": "TIMESTAMP"
+        },
+        {
+          "TableName": "Sales",
+          "ColumnName": "SalesPersonID",
+          "CType": "INTEGER"
+        },
+        {
+          "TableName": "Sales",
+          "ColumnName": "TotalAmount",
+          "CType": "DECIMAL"
+        },
+        {
+          "TableName": "Sales",
+          "ColumnName": "CustomerID",
+          "CType": "INTEGER"
+        },
+        {
+          "TableName": "Sales",
+          "ColumnName": "SaleID",
+          "CType": "INTEGER"
+        }
+      ]
+    },
+    {
+      "status": "success",
+      "metadata": {
+        "tool_name": "base_columnDescription",
+        "database": "fitness_db",
+        "object": "SaleDetails",
+        "column_count": 5
+      },
+      "results": [
+        {
+          "TableName": "SaleDetails",
+          "ColumnName": "ProductID",
+          "CType": "INTEGER"
+        },
+        {
+          "TableName": "SaleDetails",
+          "ColumnName": "UnitPrice",
+          "CType": "DECIMAL"
+        },
+        {
+          "TableName": "SaleDetails",
+          "ColumnName": "Quantity",
+          "CType": "INTEGER"
+        },
+        {
+          "TableName": "SaleDetails",
+          "ColumnName": "SaleID",
+          "CType": "INTEGER"
+        },
+        {
+          "TableName": "SaleDetails",
+          "ColumnName": "SaleDetailID",
+          "CType": "INTEGER"
+        }
+      ]
+    },
+    {
+      "status": "success",
+      "metadata": {
+        "tool_name": "base_columnDescription",
+        "database": "fitness_db",
+        "object": "Products",
+        "column_count": 6
+      },
+      "results": [
+        {
+          "TableName": "Products",
+          "ColumnName": "ProductType",
+          "CType": "VARCHAR"
+        },
+        {
+          "TableName": "Products",
+          "ColumnName": "Price",
+          "CType": "DECIMAL"
+        },
+        {
+          "TableName": "Products",
+          "ColumnName": "StockQuantity",
+          "CType": "INTEGER"
+        },
+        {
+          "TableName": "Products",
+          "ColumnName": "Brand",
+          "CType": "VARCHAR"
+        },
+        {
+          "TableName": "Products",
+          "ColumnName": "ProductName",
+          "CType": "VARCHAR"
+        },
+        {
+          "TableName": "Products",
+          "ColumnName": "ProductID",
+          "CType": "INTEGER"
+        }
+      ]
+    },
+    {
+      "status": "success",
+      "metadata": {
+        "tool_name": "base_columnDescription",
+        "database": "fitness_db",
+        "object": "ServiceTickets",
+        "column_count": 7
+      },
+      "results": [
+        {
+          "TableName": "ServiceTickets",
+          "ColumnName": "ProductID",
+          "CType": "INTEGER"
+        },
+        {
+          "TableName": "ServiceTickets",
+          "ColumnName": "IssueDescription",
+          "CType": "VARCHAR"
+        },
+        {
+          "TableName": "ServiceTickets",
+          "ColumnName": "Status",
+          "CType": "VARCHAR"
+        },
+        {
+          "TableName": "ServiceTickets",
+          "ColumnName": "ResolutionDate",
+          "CType": "DATE"
+        },
+        {
+          "TableName": "ServiceTickets",
+          "ColumnName": "TicketDate",
+          "CType": "DATE"
+        },
+        {
+          "TableName": "ServiceTickets",
+          "ColumnName": "CustomerID",
+          "CType": "INTEGER"
+        },
+        {
+          "TableName": "ServiceTickets",
+          "ColumnName": "TicketID",
+          "CType": "INTEGER"
+        }
+      ]
+    },
+    {
+      "status": "success",
+      "metadata": {
+        "tool_name": "base_columnDescription",
+        "database": "fitness_db",
+        "object": "Customers",
+        "column_count": 10
+      },
+      "results": [
+        {
+          "TableName": "Customers",
+          "ColumnName": "LastName",
+          "CType": "VARCHAR"
+        },
+        {
+          "TableName": "Customers",
+          "ColumnName": "Phone",
+          "CType": "VARCHAR"
+        },
+        {
+          "TableName": "Customers",
+          "ColumnName": "Address",
+          "CType": "VARCHAR"
+        },
+        {
+          "TableName": "Customers",
+          "ColumnName": "City",
+          "CType": "VARCHAR"
+        },
+        {
+          "TableName": "Customers",
+          "ColumnName": "ZipCode",
+          "CType": "VARCHAR"
+        },
+        {
+          "TableName": "Customers",
+          "ColumnName": "RegistrationDate",
+          "CType": "DATE"
+        },
+        {
+          "TableName": "Customers",
+          "ColumnName": "State",
+          "CType": "VARCHAR"
+        },
+        {
+          "TableName": "Customers",
+          "ColumnName": "Email",
+          "CType": "VARCHAR"
+        },
+        {
+          "TableName": "Customers",
+          "ColumnName": "FirstName",
+          "CType": "VARCHAR"
+        },
+        {
+          "TableName": "Customers",
+          "ColumnName": "CustomerID",
+          "CType": "INTEGER"
         }
       ]
     }

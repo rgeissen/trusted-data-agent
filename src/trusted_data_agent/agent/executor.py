@@ -288,10 +288,68 @@ class PlanExecutor:
                 should_replan = False
                 planning_is_disabled_history = self.disabled_history
 
+                replan_attempt = 0
+                max_replans = 1 # Allow one re-plan
                 while True:
-                    async for event in self._generate_meta_plan(force_disable_history=planning_is_disabled_history):
+                    replan_context = None
+                    # On subsequent attempts, build the context for re-planning.
+                    if replan_attempt > 0:
+                        prompts_in_plan = [
+                            phase['executable_prompt'] 
+                            for phase in (self.meta_plan or []) 
+                            if 'executable_prompt' in phase
+                        ]
+                        
+                        context_parts = [
+                            "\n--- CONTEXT FOR RE-PLANNING ---",
+                            "Your previous plan was inefficient because it used a high-level prompt in a multi-step plan. You MUST create a new, more detailed plan that achieves the same goal using ONLY tools.",
+                            "To help you, here is the description of the prompt(s) you previously selected. You must replicate their logic using basic tools:"
+                        ]
+                        
+                        for prompt_name in prompts_in_plan:
+                            prompt_info = self._get_prompt_info(prompt_name)
+                            if prompt_info:
+                                context_parts.append(f"\n- Instructions for '{prompt_name}': {prompt_info.get('description', 'No description.')}")
+                        
+                        replan_context = "\n".join(context_parts)
+
+                    async for event in self._generate_meta_plan(
+                        force_disable_history=planning_is_disabled_history,
+                        replan_context=replan_context
+                    ):
                         yield event
 
+                    # --- MODIFICATION START: Refined re-planning condition ---
+                    plan_has_prompt = self.meta_plan and any('executable_prompt' in phase for phase in self.meta_plan)
+                    replan_triggered = False
+
+                    if plan_has_prompt:
+                        # Check for other "significant" tools besides CoreLLMTask.
+                        has_other_significant_tool = any(
+                            'executable_prompt' not in phase and phase.get('relevant_tools') != ['CoreLLMTask']
+                            for phase in self.meta_plan
+                        )
+                        # A single-phase prompt is a direct execution, not a complex plan.
+                        is_single_phase_prompt = len(self.meta_plan) == 1
+                        
+                        if has_other_significant_tool and not is_single_phase_prompt:
+                            replan_triggered = True
+                    # --- MODIFICATION END ---
+
+
+                    if replan_triggered and replan_attempt < max_replans:
+                        replan_attempt += 1
+                        yield self._format_sse({
+                            "step": "Re-planning for Efficiency",
+                            "type": "plan_optimization",
+                            "details": "MULTI PHASE PROMPT REPLANNING. Agent optimized the plan for an efficient, tool-only workflow."
+                        })
+                        continue # Go to the next iteration of the while loop to re-plan
+                    
+                    # If no re-plan is needed, or max re-plans reached, break the loop.
+                    break
+
+                while True:
                     for event in self._validate_and_correct_plan():
                         yield event
                     
@@ -475,7 +533,7 @@ class PlanExecutor:
                 
         return json.dumps(history_copy, indent=2)
 
-    async def _generate_meta_plan(self, force_disable_history: bool = False):
+    async def _generate_meta_plan(self, force_disable_history: bool = False, replan_context: str = None):
         """The universal planner. It generates a meta-plan for ANY request."""
         prompt_obj = None
         explicit_parameters_section = ""
@@ -562,7 +620,8 @@ class PlanExecutor:
             active_prompt_context_section=active_prompt_context_section,
             data_gathering_priority_rule=data_gathering_rule_str,
             answer_from_history_rule=answer_from_history_rule_str,
-            mcp_system_name=APP_CONFIG.MCP_SYSTEM_NAME
+            mcp_system_name=APP_CONFIG.MCP_SYSTEM_NAME,
+            replan_instructions=replan_context or ""
         )
         
         yield self._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
@@ -825,10 +884,8 @@ class PlanExecutor:
                 yield self._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.current_loop_items)}", "details": item})
                 
                 try:
-                    # --- MODIFICATION START: Pass loop_item to standard phase executor ---
                     async for event in self._execute_standard_phase(phase, is_loop_iteration=True, loop_item=item):
                         yield event
-                    # --- MODIFICATION END ---
                 except Exception as e:
                     error_message = f"Error processing item {item}: {e}"
                     app_logger.error(error_message, exc_info=True)
@@ -867,9 +924,7 @@ class PlanExecutor:
                 return False
         return False
 
-    # --- MODIFICATION START: Update function signature to accept loop_item ---
     async def _execute_standard_phase(self, phase: dict, is_loop_iteration: bool = False, loop_item: dict = None):
-    # --- MODIFICATION END ---
         """Executes a single, non-looping phase or a single iteration of a complex loop."""
         phase_goal = phase.get("goal", "No goal defined.")
         phase_num = phase.get("phase", self.current_phase_index + 1)
@@ -905,7 +960,6 @@ class PlanExecutor:
                     })
                     fast_path_action = {"tool_name": tool_name, "arguments": strategic_args}
                     
-                    # --- MODIFICATION START: Inject loop context into task_description for CoreLLMTask ---
                     if tool_name == "CoreLLMTask" and is_loop_iteration and loop_item:
                         modified_args = fast_path_action["arguments"].copy()
                         task_desc = modified_args.get("task_description", "")
@@ -918,7 +972,6 @@ class PlanExecutor:
                         
                         fast_path_action["arguments"] = modified_args
                         app_logger.info(f"Injected loop context into CoreLLMTask description for item: {loop_item_str}")
-                    # --- MODIFICATION END ---
 
                     async for event in self._execute_action_with_orchestrators(fast_path_action, phase):
                         yield event
