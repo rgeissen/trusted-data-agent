@@ -825,8 +825,10 @@ class PlanExecutor:
                 yield self._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.current_loop_items)}", "details": item})
                 
                 try:
-                    async for event in self._execute_standard_phase(phase, is_loop_iteration=True):
+                    # --- MODIFICATION START: Pass loop_item to standard phase executor ---
+                    async for event in self._execute_standard_phase(phase, is_loop_iteration=True, loop_item=item):
                         yield event
+                    # --- MODIFICATION END ---
                 except Exception as e:
                     error_message = f"Error processing item {item}: {e}"
                     app_logger.error(error_message, exc_info=True)
@@ -865,7 +867,9 @@ class PlanExecutor:
                 return False
         return False
 
-    async def _execute_standard_phase(self, phase: dict, is_loop_iteration: bool = False):
+    # --- MODIFICATION START: Update function signature to accept loop_item ---
+    async def _execute_standard_phase(self, phase: dict, is_loop_iteration: bool = False, loop_item: dict = None):
+    # --- MODIFICATION END ---
         """Executes a single, non-looping phase or a single iteration of a complex loop."""
         phase_goal = phase.get("goal", "No goal defined.")
         phase_num = phase.get("phase", self.current_phase_index + 1)
@@ -900,6 +904,22 @@ class PlanExecutor:
                         "details": f"FASTPATH initiated for '{tool_name}'."
                     })
                     fast_path_action = {"tool_name": tool_name, "arguments": strategic_args}
+                    
+                    # --- MODIFICATION START: Inject loop context into task_description for CoreLLMTask ---
+                    if tool_name == "CoreLLMTask" and is_loop_iteration and loop_item:
+                        modified_args = fast_path_action["arguments"].copy()
+                        task_desc = modified_args.get("task_description", "")
+                        loop_item_str = json.dumps(loop_item)
+                        
+                        modified_args["task_description"] = (
+                            f"{task_desc}\n\n"
+                            f"CRITICAL CONTEXT: You MUST focus your response on the following item provided from the loop: {loop_item_str}"
+                        )
+                        
+                        fast_path_action["arguments"] = modified_args
+                        app_logger.info(f"Injected loop context into CoreLLMTask description for item: {loop_item_str}")
+                    # --- MODIFICATION END ---
+
                     async for event in self._execute_action_with_orchestrators(fast_path_action, phase):
                         yield event
                     
