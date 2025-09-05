@@ -6,6 +6,7 @@ import asyncio
 import sys
 import copy
 import hashlib
+import httpx
 
 from quart import Blueprint, request, jsonify, render_template, Response
 from google.api_core import exceptions as google_exceptions
@@ -699,15 +700,19 @@ async def configure_services():
         APP_CONFIG.CHART_MCP_CONNECTED = False
         
         root_exception = unwrap_exception(e)
-        error_message = getattr(root_exception, 'message', str(root_exception))
+        error_message = ""
         
-        if isinstance(root_exception, (google_exceptions.PermissionDenied, ClientError)):
+        if isinstance(root_exception, (httpx.ConnectTimeout, httpx.ConnectError)):
+            error_message = "Connection to MCP server failed. Please check the Host and Port and ensure the server is running."
+        elif isinstance(root_exception, (google_exceptions.PermissionDenied, ClientError)):
              if 'AccessDeniedException' in str(e):
                  error_message = "Access denied. Please check your AWS IAM permissions for the selected model."
              else:
                 error_message = "Authentication failed. Please check your API keys or credentials."
         elif isinstance(root_exception, (APIError, OpenAI_APIError)) and "authentication_error" in str(e).lower():
              error_message = f"Authentication failed. Please check your {provider} API key."
+        else:
+            error_message = getattr(root_exception, 'message', str(root_exception))
 
         return jsonify({"status": "error", "message": f"Configuration failed: {error_message}"}), 500
 
