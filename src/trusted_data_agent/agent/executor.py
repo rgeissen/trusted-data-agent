@@ -1244,21 +1244,6 @@ class PlanExecutor:
                     yield event
                 return
 
-        # --- MODIFICATION START: Generic List Iteration Orchestrator Trigger ---
-        tool_spec = self.dependencies['STATE'].get('mcp_tools', {}).get(tool_name)
-        if tool_spec and hasattr(tool_spec, 'args') and isinstance(tool_spec.args, dict):
-            planner_args = action.get("arguments", {})
-            for arg_name, arg_value in planner_args.items():
-                if isinstance(arg_value, list) and arg_name in tool_spec.args:
-                    # Check if the tool expects a single item but got a list
-                    expected_type = tool_spec.args[arg_name].get("type", "any")
-                    if "list" not in expected_type.lower():
-                        # The planner provided a list where a single item was expected. Trigger the orchestrator.
-                        async for event in orchestrators.execute_generic_list_iteration(self, action, arg_name, arg_value):
-                            yield event
-                        return # The orchestrator has handled the execution for this action.
-        # --- MODIFICATION END ---
-
         tool_scope = self.dependencies['STATE'].get('tool_scopes', {}).get(tool_name)
         has_column_arg = "column_name" in action.get("arguments", {})
         if tool_scope == 'column' and not has_column_arg:
@@ -2089,4 +2074,3 @@ class PlanExecutor:
             return None, events
             
         return None, events
-

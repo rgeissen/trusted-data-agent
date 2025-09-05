@@ -424,6 +424,23 @@ async def load_and_categorize_mcp_resources(STATE: dict):
 
 
 def _transform_chart_data(data: any) -> list[dict]:
+    """
+    Cleans and transforms raw data from various tool outputs into a flat list
+    of dictionaries suitable for G2Plot charting. This acts as a deterministic
+    pre-processing step to prevent common data formatting errors.
+    """
+    # --- MODIFICATION START: Handle nested tool result structures ---
+    # This is the primary transformation for data coming from looping phases.
+    if isinstance(data, list) and all(isinstance(item, dict) and 'results' in item for item in data):
+        app_logger.info("Detected nested tool output. Flattening data for charting.")
+        flattened_data = []
+        for item in data:
+            results_list = item.get("results")
+            if isinstance(results_list, list):
+                flattened_data.extend(results_list)
+        return flattened_data
+    # --- MODIFICATION END ---
+
     if isinstance(data, dict) and 'labels' in data and 'values' in data:
         app_logger.warning("Correcting hallucinated chart data format from labels/values to list of dicts.")
         labels = data.get('labels', [])
@@ -861,3 +878,4 @@ async def invoke_mcp_tool(STATE: dict, command: dict) -> tuple[any, int, int]:
                 return result, 0, 0
     
     raise RuntimeError(f"Unexpected tool result format for '{tool_name}': {call_tool_result}")
+
