@@ -979,7 +979,19 @@ function getSystemPromptSummaryHTML() {
                 <p class="text-xs text-gray-400 mt-1">The agent follows a strict hierarchy. It will <strong class="text-white">always prioritize using a pre-defined prompt</strong> if it matches your request for an analysis. Otherwise, it will use the most appropriate tool to perform a direct action.</p>
             </div>
             ${devFlagHtml}
-            <div id="disabled-capabilities-container-splash" class="pt-4 border-t border-white/20">
+            <div class="border-t border-white/10 pt-4 mt-4">
+                <h4 class="text-md font-bold text-yellow-300 mb-2">New features available</h4>
+                <p class="text-xs text-gray-400 mb-3">Latest enhancements and updates to the Trusted Data Agent.</p>
+                <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
+                   <li><strong>05-SEP-2025:</strong> Conversation Mode (Google Cloud Credentials required)</li>
+                </ul>
+            </div>
+            <div class="border-t border-white/10 pt-4 mt-4">
+                 <h4 class="text-md font-bold text-yellow-300 mb-2">Model Price/Performance Leadership Board</h4>
+                 <p class="text-xs text-gray-400 mb-3">External link to the latest LLM benchmarks.</p>
+                 <a href="https://gorilla.cs.berkeley.edu/leaderboard.html" target="_blank" class="text-teradata-orange hover:underline text-sm">https://gorilla.cs.berkeley.edu/leaderboard.html</a>
+            </div>
+            <div id="disabled-capabilities-container-splash">
                 <!-- Disabled capabilities will be injected here -->
             </div>
         </div>
@@ -1338,3 +1350,4 @@ export function initializeEventListeners() {
         }
     });
 }
+
