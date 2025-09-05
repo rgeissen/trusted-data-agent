@@ -419,6 +419,7 @@ class PlanExecutor:
                         context_parts = [
                             "\n--- CONTEXT FOR RE-PLANNING ---",
                             "Your previous plan was inefficient because it used a high-level prompt in a multi-step plan. You MUST create a new, more detailed plan that achieves the same goal using ONLY tools.",
+                            "\n**CRITICAL ARCHITECTURAL RULE:** Your new tool-only plan must still adhere to all primary directives. This includes the rule that all synthesis or summarization tasks must be consolidated into a single, final `CoreLLMTask` phase. Avoid creating redundant, back-to-back summary steps.\n",
                             "To help you, here is the description of the prompt(s) you previously selected. You must replicate their logic using basic tools:"
                         ]
                         
