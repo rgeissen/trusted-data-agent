@@ -336,6 +336,73 @@ class PlanExecutor:
         if made_change:
             app_logger.info(f"PLAN OPTIMIZATION: Final optimized plan: {self.meta_plan}")
 
+    # --- MODIFICATION START: Added deterministic plan rewriting ---
+    def _rewrite_plan_for_date_range_loops(self):
+        """
+        Deterministically rewrites a plan where a `util_calculateDateRange` tool
+        is not followed by a necessary loop, correcting a common planning flaw.
+        This runs after the main plan generation and before execution.
+        """
+        if not self.meta_plan or len(self.meta_plan) < 2:
+            return
+
+        i = 0
+        made_change = False
+        while i < len(self.meta_plan) - 1:
+            current_phase = self.meta_plan[i]
+            next_phase = self.meta_plan[i+1]
+
+            is_date_range_phase = (
+                "util_calculateDateRange" in current_phase.get("relevant_tools", [])
+            )
+            is_missing_loop = (
+                next_phase.get("type") != "loop"
+            )
+            
+            uses_date_range_output = False
+            if isinstance(next_phase.get("arguments"), dict):
+                for arg_value in next_phase["arguments"].values():
+                    if str(arg_value) == f"result_of_phase_{current_phase['phase']}":
+                        uses_date_range_output = True
+                        break
+
+            if is_date_range_phase and is_missing_loop and uses_date_range_output:
+                app_logger.warning(
+                    f"PLAN REWRITE: Detected util_calculateDateRange at phase {current_phase['phase']} "
+                    f"not followed by a loop. Rewriting phase {next_phase['phase']}."
+                )
+                
+                original_next_phase = copy.deepcopy(next_phase)
+
+                next_phase["type"] = "loop"
+                next_phase["loop_over"] = f"result_of_phase_{current_phase['phase']}"
+                
+                # The most common pattern is that the next tool expects a 'date' argument.
+                # We will make an educated guess and set this, as the planner's original
+                # arguments will be incorrect anyway (passing a list to a string param).
+                next_phase["arguments"] = {
+                    "date": f"result_of_phase_{current_phase['phase']}"
+                }
+
+                yield self._format_sse({
+                    "step": "System Correction",
+                    "type": "workaround",
+                    "details": {
+                        "summary": "The agent's plan was inefficiently structured. The system has automatically rewritten it to correctly process each item in the date range.",
+                        "correction": {
+                            "from": original_next_phase,
+                            "to": next_phase
+                        }
+                    }
+                })
+                made_change = True
+            
+            i += 1
+
+        if made_change:
+            app_logger.info(f"PLAN REWRITE: Final rewritten plan: {self.meta_plan}")
+    # --- MODIFICATION END ---
+
     async def run(self):
         """The main, unified execution loop for the agent."""
         final_answer_override = None
@@ -411,6 +478,11 @@ class PlanExecutor:
                 for event in self._optimize_plan():
                     yield event
                 
+                # --- MODIFICATION START: Call the plan rewriting orchestrator ---
+                for event in self._rewrite_plan_for_date_range_loops():
+                    yield event
+                # --- MODIFICATION END ---
+
                 while True:
                     for event in self._validate_and_correct_plan():
                         yield event
@@ -887,7 +959,6 @@ class PlanExecutor:
         if is_fast_path_candidate:
             tool_name = relevant_tools[0]
             
-            # --- MODIFICATION START: Make FASTPATH scope-aware with data expansion and type checking ---
             tool_scope = self.dependencies['STATE'].get('tool_scopes', {}).get(tool_name)
 
             if tool_scope == 'column':
@@ -977,8 +1048,20 @@ class PlanExecutor:
                 async for event in self._execute_tool(command, phase, is_fast_path=True):
                     yield event
                 
-                self.turn_action_history.append({"action": command, "result": self.last_tool_output})
-                all_loop_results.append(self.last_tool_output)
+                enriched_tool_output = copy.deepcopy(self.last_tool_output)
+                if (isinstance(enriched_tool_output, dict) and 
+                    enriched_tool_output.get("status") == "success" and 
+                    isinstance(item, dict)):
+                    
+                    if 'results' in enriched_tool_output and isinstance(enriched_tool_output['results'], list):
+                        for result_row in enriched_tool_output['results']:
+                            if isinstance(result_row, dict):
+                                for key, value in item.items():
+                                    if key not in result_row:
+                                        result_row[key] = value
+                
+                self.turn_action_history.append({"action": command, "result": enriched_tool_output})
+                all_loop_results.append(enriched_tool_output)
 
             yield self._format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
             
@@ -1301,11 +1384,8 @@ class PlanExecutor:
         
         is_final_phase = self.meta_plan and phase.get("phase") == self.meta_plan[-1].get("phase")
         
-        # --- MODIFICATION START: Make final summary injection conditional ---
         if tool_name == "CoreLLMTask" and is_final_phase and self.execution_depth == 0 and not self.is_delegation_only_plan:
             planner_description = arguments.get("task_description", "")
-            # Heuristic: If the planner provides a short/generic description, override it for consistency.
-            # Otherwise, trust the detailed instructions from a workflow prompt.
             if not planner_description or len(planner_description) < APP_CONFIG.DETAILED_DESCRIPTION_THRESHOLD:
                 app_logger.info("FINAL_SUMMARY Prompt Injection: Overriding generic CoreLLMTask with standardized final summary prompt.")
                 yield self._format_sse({
@@ -1317,10 +1397,8 @@ class PlanExecutor:
             else:
                 app_logger.info("FINAL_SUMMARY Prompt Injection: Preserving detailed task_description from planner.")
             
-            # Always inject the user question for top-level context.
             arguments["user_question"] = self.original_user_input
             self.final_summary_was_injected = True
-        # --- MODIFICATION END ---
         
         if tool_name == "CoreLLMTask" and "synthesized_answer" in arguments:
             app_logger.info("Bypassing CoreLLMTask execution. Using synthesized answer from planner.")
@@ -1409,7 +1487,6 @@ class PlanExecutor:
                     
                     if corrected_action:
                         if "prompt_name" in corrected_action:
-                            # Create a sub-executor to handle the prompt-based recovery.
                             sub_executor = PlanExecutor(
                                 session_id=self.session_id,
                                 original_user_input=f"Executing recovery prompt: {corrected_action['prompt_name']}",
@@ -1422,24 +1499,21 @@ class PlanExecutor:
                                 source=self.source,
                                 is_delegated_task=True
                             )
-                            # Run the sub-executor and yield its events.
                             async for event in sub_executor.run():
                                 yield event
                             
-                            # Propagate the results and history from the sub-executor.
                             self.structured_collected_data.update(sub_executor.structured_collected_data)
                             self.workflow_state.update(sub_executor.workflow_state)
                             self.turn_action_history.extend(sub_executor.turn_action_history)
                             
-                            # Check if the recovery prompt itself failed.
                             if sub_executor.state == self.AgentState.ERROR:
                                 app_logger.error(f"Recovery prompt '{corrected_action['prompt_name']}' failed. Continuing retry loop.")
                                 self.last_tool_output = {"status": "error", "data": "The recovery prompt failed to execute."}
-                                continue # Continue to the next retry attempt for the original tool.
+                                continue 
                             else:
                                 app_logger.info(f"Successfully recovered from tool failure by executing prompt '{corrected_action['prompt_name']}'.")
                                 self.last_tool_output = sub_executor.last_tool_output
-                                break # The recovery was successful, so break the retry loop.
+                                break 
 
                         if "FINAL_ANSWER:" in corrected_action:
                             self.last_tool_output = {"status": "success", "results": [{"response": corrected_action}]}
@@ -2074,3 +2148,4 @@ class PlanExecutor:
             return None, events
             
         return None, events
+
