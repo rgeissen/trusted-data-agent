@@ -274,67 +274,61 @@ class PlanExecutor:
                     }
                 })
     
-    def _optimize_plan(self):
+    def _rewrite_plan_for_corellmtask_loops(self):
         """
-        Scans the generated meta-plan for inefficient patterns, such as looping
-        over a dataset with a CoreLLMTask followed by another CoreLLMTask summary,
-        and consolidates them into a single, more efficient step.
+        Surgically corrects plans where the LLM has incorrectly placed a
+        `CoreLLMTask` inside a loop for an aggregation-style task. It transforms
+        the loop into a standard, single-execution phase.
         """
-        if not self.meta_plan or len(self.meta_plan) < 2:
+        if not self.meta_plan:
             return
 
-        i = 0
         made_change = False
-        while i < len(self.meta_plan) - 1:
-            current_phase = self.meta_plan[i]
-            next_phase = self.meta_plan[i+1]
-
+        for phase in self.meta_plan:
             is_inefficient_loop = (
-                current_phase.get("type") == "loop" and
-                current_phase.get("relevant_tools") == ["CoreLLMTask"]
+                phase.get("type") == "loop" and
+                phase.get("relevant_tools") == ["CoreLLMTask"]
             )
 
-            is_followed_by_summary = (
-                next_phase.get("relevant_tools") == ["CoreLLMTask"] and
-                f"result_of_phase_{current_phase.get('phase')}" in next_phase.get("arguments", {}).get("source_data", [])
-            )
+            if is_inefficient_loop:
+                app_logger.warning(
+                    f"PLAN REWRITE: Detected inefficient CoreLLMTask loop in phase {phase.get('phase')}. "
+                    "Transforming to a standard phase."
+                )
+                
+                original_phase = copy.deepcopy(phase)
 
-            if is_inefficient_loop and is_followed_by_summary:
-                app_logger.info(f"PLAN OPTIMIZATION: Detected inefficient LLM loop pattern at phase {current_phase.get('phase')}. Consolidating.")
-
-                loop_source_data = [current_phase.get("loop_over")]
-                new_goal = next_phase.get("goal")
-                new_task_description = next_phase.get("arguments", {}).get("task_description")
-
-                consolidated_phase = {
-                    "phase": current_phase.get("phase"),
-                    "goal": new_goal,
-                    "relevant_tools": ["CoreLLMTask"],
-                    "arguments": {
-                        "task_description": new_task_description,
-                        "source_data": loop_source_data
-                    }
-                }
-
-                self.meta_plan[i] = consolidated_phase
-                del self.meta_plan[i+1]
-
-                for j, phase in enumerate(self.meta_plan):
-                    phase['phase'] = j + 1
+                # Perform the transformation
+                phase.pop("type", None)
+                loop_source = phase.pop("loop_over", None)
+                
+                # Ensure the arguments are correctly set for a standard phase
+                if "arguments" not in phase:
+                    phase["arguments"] = {}
+                
+                # If source_data isn't already set, infer it from the loop_over key
+                if "source_data" not in phase["arguments"] and loop_source:
+                    phase["arguments"]["source_data"] = [loop_source]
+                
+                # Ensure a task description exists
+                if "task_description" not in phase["arguments"]:
+                     phase["arguments"]["task_description"] = phase.get("goal", "Perform the required task.")
 
                 yield self._format_sse({
-                    "step": "Plan Optimization",
-                    "type": "plan_optimization",
-                    "details": f"Consolidated an inefficient LLM loop into a single, efficient step to achieve the goal: '{new_goal}'"
+                    "step": "System Correction",
+                    "type": "workaround",
+                    "details": {
+                        "summary": "The agent's plan was inefficient. The system has automatically rewritten it to perform the analysis in a single, efficient step.",
+                        "correction": {
+                            "from": original_phase,
+                            "to": phase
+                        }
+                    }
                 })
-
                 made_change = True
-                i = 0 
-                continue 
-            i += 1
 
         if made_change:
-            app_logger.info(f"PLAN OPTIMIZATION: Final optimized plan: {self.meta_plan}")
+            app_logger.info(f"PLAN REWRITE (CoreLLMTask): Final rewritten plan: {self.meta_plan}")
 
     def _rewrite_plan_for_date_range_loops(self):
         """
@@ -465,9 +459,11 @@ class PlanExecutor:
                             continue 
                     
                     break
-
-                for event in self._optimize_plan():
+                
+                # --- MODIFICATION START: Call the new optimizer ---
+                for event in self._rewrite_plan_for_corellmtask_loops():
                     yield event
+                # --- MODIFICATION END ---
                 
                 for event in self._rewrite_plan_for_date_range_loops():
                     yield event
@@ -2143,4 +2139,3 @@ class PlanExecutor:
             return None, events
             
         return None, events
-
