@@ -5,50 +5,47 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class AppConfig:
-    ALL_MODELS_UNLOCKED = False
-    CHARTING_ENABLED = True
-    DEFAULT_CHARTING_INTENSITY = "medium" # Options: "none", "medium", "heavy"
-    MCP_SERVER_CONNECTED = False
-    CHART_MCP_CONNECTED = False
-    CURRENT_PROVIDER = None
-    CURRENT_MODEL = None
-    CURRENT_MCP_SERVER_NAME = None
+    """
+    Holds static configuration settings for the application.
+    These values are typically set at startup and rarely change during runtime.
+    """
+    # --- Feature Flags & Behavior ---
+    ALL_MODELS_UNLOCKED = False # If True, bypasses model certification checks, allowing all models from a provider to be used.
+    CHARTING_ENABLED = True # Master switch to enable or disable the agent's ability to generate charts.
+    DEFAULT_CHARTING_INTENSITY = "medium" # Controls how proactively the agent suggests charts. Options: "none", "medium", "heavy".
+    ALLOW_SYNTHESIS_FROM_HISTORY = False # If True, allows the planner to generate an answer directly from conversation history without using tools.
+    VOICE_CONVERSATION_ENABLED = True # Master switch for the Text-to-Speech (TTS) feature.
 
-    MCP_SYSTEM_NAME = "Teradata database system" # Derives System Specifics behaviour for Master Prompts
+    # --- Connection & Model State ---
+    MCP_SERVER_CONNECTED = False # Runtime flag indicating if a connection to the MCP server is active.
+    CHART_MCP_CONNECTED = False # Runtime flag indicating if a connection to the Charting server is active.
+    CURRENT_PROVIDER = None # Stores the name of the currently configured LLM provider (e.g., "Google").
+    CURRENT_MODEL = None # Stores the name of the currently configured LLM model (e.g., "gemini-1.5-flash").
+    CURRENT_MCP_SERVER_NAME = None # Stores the name of the active MCP server configuration.
+    CURRENT_AWS_REGION = None # Stores the AWS region, used specifically for the "Amazon" provider.
+    CURRENT_MODEL_PROVIDER_IN_PROFILE = None # For Amazon Bedrock, stores the model provider if using an inference profile ARN.
 
-    CURRENT_AWS_REGION = None
-    CURRENT_MODEL_PROVIDER_IN_PROFILE = None
-    LLM_API_MAX_RETRIES = 5
-    LLM_API_BASE_DELAY = 2 # The base delay in seconds for exponential backoff
-    ALLOW_SYNTHESIS_FROM_HISTORY = False
+    # --- LLM & Agent Configuration ---
+    MCP_SYSTEM_NAME = "Teradata database system" # Describes the target system to the LLM in master prompts to provide context.
+    LLM_API_MAX_RETRIES = 5 # The maximum number of times to retry a failed LLM API call.
+    LLM_API_BASE_DELAY = 2 # The base delay in seconds for exponential backoff on API retries.
+    CONTEXT_DISTILLATION_MAX_ROWS = 500 # The maximum number of rows from a tool's result to include in the LLM context.
+    CONTEXT_DISTILLATION_MAX_CHARS = 10000 # The maximum number of characters from a tool's result to include in the LLM context.
+    DETAILED_DESCRIPTION_THRESHOLD = 200 # A heuristic character count for the PlanExecutor to distinguish between a generic vs. a detailed task description from the planner.
 
-    VOICE_CONVERSATION_ENABLED = True # Set to True to enable the voice conversation UI
+    # --- Initial State Configuration ---
+    INITIALLY_DISABLED_PROMPTS = [] # A list of prompt names to be disabled by default on application startup.
+    INITIALLY_DISABLED_TOOLS = ["sales_top_customers"] # A list of tool names to be disabled by default on application startup.
 
-    CONTEXT_DISTILLATION_MAX_ROWS = 500
-    CONTEXT_DISTILLATION_MAX_CHARS = 10000
-    
-    # Heuristic for the PlanExecutor to distinguish between a generic vs. detailed task description.
-    # Descriptions shorter than this are considered generic and can be overridden by a standard summary prompt.
-    DETAILED_DESCRIPTION_THRESHOLD = 200
-
-    #INITIALLY_DISABLED_PROMPTS = ["base_query","cust_promptExample","qlty_databaseQuality","dba_tableArchive","dba_databaseLineage", "dba_tableDropImpact", "dba_databaseHealthAssessment", "dba_userActivityAnalysis", "dba_systemVoice", "base_databaseBusinessDesc", "sales_prompt", "test_evsTools", "test_secTools", "test_dbaTools", "test_ragTools", "test_qltyTools", "test_fsTools", "test_baseTools", "rag_guidelines" ]
-    INITIALLY_DISABLED_PROMPTS = []
-    INITIALLY_DISABLED_TOOLS = ["sales_top_customers"]
-
-    # Defines the hierarchy for inferring a tool's operational scope based on its
-    # required arguments. The list is ordered from most specific to least specific,
-    # and it uses canonical names defined in the ARGUMENT_SYNONYM_MAP below.
+    # --- Tool & Argument Parsing Logic ---
+    # Defines the hierarchy for inferring a tool's operational scope (e.g., column-level, table-level) based on its required arguments.
     TOOL_SCOPE_HIERARCHY = [
         ('column', {'database_name', 'object_name', 'column_name'}),
         ('table', {'database_name', 'object_name'}),
         ('database', {'database_name'}),
     ]
-
-    # Defines a central map for all argument synonyms. This allows the application
-    # to correctly map different argument names (e.g., 'obj_name', 'view_name')
-    # to a single canonical concept (e.g., 'object_name').
+    # A central map to normalize different argument names (e.g., 'table_name', 'object_name') to a single canonical concept.
     ARGUMENT_SYNONYM_MAP = {
-        # Canonical Name : { Set of all synonyms }
         'database_name': {
             'database_name', 'db_name', 'DatabaseName'
         },
@@ -65,19 +62,44 @@ class AppConfig:
 APP_CONFIG = AppConfig()
 
 APP_STATE = {
-    "llm": None, "mcp_client": None, "server_configs": {},
-    "mcp_tools": {}, "mcp_prompts": {}, "mcp_charts": {},
-    "structured_tools": {}, "structured_prompts": {}, "structured_resources": {}, "structured_charts": {},
+    # Live client instances and server configurations
+    "llm": None, 
+    "mcp_client": None, 
+    "server_configs": {},
+
+    # Raw tool/prompt definitions loaded from the MCP server
+    "mcp_tools": {}, 
+    "mcp_prompts": {}, 
+    "mcp_charts": {},
+
+    # Processed and categorized structures for UI display
+    "structured_tools": {}, 
+    "structured_prompts": {}, 
+    "structured_resources": {}, 
+    "structured_charts": {},
+
+    # Cache for inferred tool operational scopes (e.g., 'table', 'column')
     "tool_scopes": {},
-    "tools_context": "--- No Tools Available ---", "prompts_context": "--- No Prompts Available ---", "charts_context": "--- No Charts Available ---",
+
+    # Formatted context strings injected into LLM prompts
+    "tools_context": "--- No Tools Available ---", 
+    "prompts_context": "--- No Prompts Available ---", 
+    "charts_context": "--- No Charts Available ---",
+
+    # Runtime lists of currently disabled capabilities
     "disabled_prompts": list(APP_CONFIG.INITIALLY_DISABLED_PROMPTS),
     "disabled_tools": list(APP_CONFIG.INITIALLY_DISABLED_TOOLS),
+
+    # Validated license information
     "license_info": None
 }
 
+# Whitelists for models that are officially supported.
+# The ALL_MODELS_UNLOCKED flag bypasses these checks.
 CERTIFIED_GOOGLE_MODELS = ["*gemini-2.0-flash"]
 CERTIFIED_ANTHROPIC_MODELS = ["*claude-3-7-sonnet*"]
 CERTIFIED_AMAZON_MODELS = ["*amazon.nova-pro-v1*"]
 CERTIFIED_AMAZON_PROFILES = ["*amazon.nova-pro-v1*"]
 CERTIFIED_OLLAMA_MODELS = ["llama2"]
 CERTIFIED_OPENAI_MODELS = ["*gpt-4.1-mini-2025*"]
+

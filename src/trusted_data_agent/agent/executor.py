@@ -1306,7 +1306,7 @@ class PlanExecutor:
             planner_description = arguments.get("task_description", "")
             # Heuristic: If the planner provides a short/generic description, override it for consistency.
             # Otherwise, trust the detailed instructions from a workflow prompt.
-            if not planner_description or len(planner_description) < 200:
+            if not planner_description or len(planner_description) < APP_CONFIG.DETAILED_DESCRIPTION_THRESHOLD:
                 app_logger.info("FINAL_SUMMARY Prompt Injection: Overriding generic CoreLLMTask with standardized final summary prompt.")
                 yield self._format_sse({
                     "step": "Plan Optimization", 
