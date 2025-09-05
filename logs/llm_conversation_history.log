@@ -1,4 +1,4 @@
-2025-09-05 14:59:56,658 - --- FULL CONTEXT (Session: ccd9f5b9-b841-49ff-b222-957ed0799274) ---
+2025-09-05 15:13:23,259 - --- FULL CONTEXT (Session: fb3574d5-dc57-4a78-8931-2e02d7c1bca9) ---
 --- REASON FOR CALL ---
 Generating a strategic meta-plan for the goal: 'give me the business description of the database fitness_db'
 
@@ -156,10 +156,6 @@ table_skew_pct > 1000
     - `date` (string, optional): Date to analyze, formatted as `YYYY-MM-DD`
     - `dayOfWeek` (string, optional): day of the week to analyze
     - `hourOfDay` (string, optional): hour of day to analyze
-- `dba_tableUsageImpact` (tool): Measure the usage of a table and views by users, this is helpful to understand what user and tables are driving most resource usage at any point in time.
-  - Arguments:
-    - `database_name` (string, optional): database name to analyze
-    - `user_name` (string, optional): user name to analyze
 - `dba_flowControl` (tool): Get the Teradata flow control metrics for a specified date range.
   - Arguments:
     - `start_date` (string, required): Start Date
@@ -172,6 +168,9 @@ table_skew_pct > 1000
   - Arguments:
     - `start_date` (string, required): Start Date
     - `end_date` (string, required): End Date
+- `dba_sessionInfo` (tool): Get the Teradata session information for user.
+  - Arguments:
+    - `user_name` (string, required): User Name
 --- Category: Sales ---
 - `sales_customer_profile` (tool): Get customer profile and metrics.
   - Arguments:
@@ -225,6 +224,10 @@ order_count > 1000
   - Arguments:
     - `table_name` (string, required): table name
     - `no_days` (integer, optional): number of days
+- `dba_tableUsageImpact` (tool): Measure the usage of a table and views by users, this is helpful to understand what user and tables are driving most resource usage at any point in time.
+  - Arguments:
+    - `database_name` (string, optional): database name to analyze
+    - `user_name` (string, optional): user name to analyze
 - `base_tableAffinity` (tool): Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, required): Database name
@@ -243,14 +246,11 @@ order_count > 1000
 - `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, optional): Database name
---- Category: User Activity ---
+--- Category: User Management ---
 - `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
   - Arguments:
     - `user_name` (string, required): user name
     - `no_days` (integer, optional): number of days
-- `dba_sessionInfo` (tool): Get the Teradata session information for user.
-  - Arguments:
-    - `user_name` (string, required): User Name
 - `cust_activeUsers` (tool): Fetch currently active database users
 --- Category: Utilities ---
 - `rag_executeWorkflow` (tool): Execute complete RAG workflow to answer user questions based on document context.
@@ -309,13 +309,13 @@ The function uses configuration values from rag_config.yml with fallback default
 - `qlty_databaseQuality` (prompt): Database data quality assessment.
   - Arguments:
     - `database_name` (str, required): Name of the database to assess for data quality.
---- Category: Database Health ---
-- `dba_databaseHealthAssessment` (prompt): You are a Teradata DBA who is an expert in assessing the health of a database.
 --- Category: Database Information ---
 - `dba_databaseLineage` (prompt): You are a Teradata DBA who is an expert in finding the lineage of tables in a database.
   - Arguments:
     - `database_name` (str, required): Name of the database to analyze for table lineage.
     - `number_days` (str, required): Number of days to look back for SQL execution history (e.g., 7, 30, 90).
+- `dba_databaseHealthAssessment` (prompt): You are a Teradata DBA who is an expert in assessing the health of a database.
+- `dba_systemVoice` (prompt): Analyze Teradata user activity patterns for the past 7 days
 - `base_databaseBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of databases.
   - Arguments:
     - `database_name` (str, optional): Database to describe.
@@ -323,8 +323,6 @@ The function uses configuration values from rag_config.yml with fallback default
 - `rag_guidelines` (prompt): Guidelines for Retrieval-Augmented Generation (RAG) mode.
 --- Category: Sales ---
 - `sales_prompt` (prompt): my prompt description
---- Category: System Health ---
-- `dba_systemVoice` (prompt): Analyze Teradata user activity patterns for the past 7 days
 --- Category: Table Management ---
 - `dba_tableArchive` (prompt): The following prompt is used to guide the Teradata DBA in finding opportunities for archiving data.
 - `dba_tableDropImpact` (prompt): You are a Teradata DBA who is an expert in finding the impact of dropping a table.
@@ -336,8 +334,9 @@ The function uses configuration values from rag_config.yml with fallback default
   - Arguments:
     - `database_name` (str, required): Database for the table to describe.
     - `table_name` (str, required): Table to describe.
---- Category: User Activity ---
+--- Category: User Management ---
 - `dba_userActivityAnalysis` (prompt): Analyze Teradata user activity patterns for the past 7 days
+- `cust_promptExample` (prompt): my prompt description
 --- Category: Utilities ---
 - `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
   - Arguments:
@@ -348,7 +347,6 @@ The function uses configuration values from rag_config.yml with fallback default
 - `base_query` (prompt): Help users interact with  Teradata databases effectively.
   - Arguments:
     - `query` (str, required): The problem or question that needs to be solved using Teradata database tools.
-- `cust_promptExample` (prompt): my prompt description
 
 
 USER PROMPT:
@@ -455,7 +453,7 @@ Your response MUST be a single, valid JSON list of phase objects. Do NOT add any
 Your response MUST be a single, valid JSON list of phase objects. Do NOT add any extra text, conversation, or markdown.
 
 
-2025-09-05 14:59:57,457 - --- FULL CONTEXT (Session: ccd9f5b9-b841-49ff-b222-957ed0799274) ---
+2025-09-05 15:13:24,110 - --- FULL CONTEXT (Session: fb3574d5-dc57-4a78-8931-2e02d7c1bca9) ---
 --- REASON FOR CALL ---
 Generating a strategic meta-plan for the goal: 'You are a Teradata DBA who is an expert in describing the business use of a database.
 
@@ -613,10 +611,6 @@ table_skew_pct > 1000
     - `date` (string, optional): Date to analyze, formatted as `YYYY-MM-DD`
     - `dayOfWeek` (string, optional): day of the week to analyze
     - `hourOfDay` (string, optional): hour of day to analyze
-- `dba_tableUsageImpact` (tool): Measure the usage of a table and views by users, this is helpful to understand what user and tables are driving most resource usage at any point in time.
-  - Arguments:
-    - `database_name` (string, optional): database name to analyze
-    - `user_name` (string, optional): user name to analyze
 - `dba_flowControl` (tool): Get the Teradata flow control metrics for a specified date range.
   - Arguments:
     - `start_date` (string, required): Start Date
@@ -629,6 +623,9 @@ table_skew_pct > 1000
   - Arguments:
     - `start_date` (string, required): Start Date
     - `end_date` (string, required): End Date
+- `dba_sessionInfo` (tool): Get the Teradata session information for user.
+  - Arguments:
+    - `user_name` (string, required): User Name
 --- Category: Sales ---
 - `sales_customer_profile` (tool): Get customer profile and metrics.
   - Arguments:
@@ -682,6 +679,10 @@ order_count > 1000
   - Arguments:
     - `table_name` (string, required): table name
     - `no_days` (integer, optional): number of days
+- `dba_tableUsageImpact` (tool): Measure the usage of a table and views by users, this is helpful to understand what user and tables are driving most resource usage at any point in time.
+  - Arguments:
+    - `database_name` (string, optional): database name to analyze
+    - `user_name` (string, optional): user name to analyze
 - `base_tableAffinity` (tool): Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, required): Database name
@@ -700,14 +701,11 @@ order_count > 1000
 - `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, optional): Database name
---- Category: User Activity ---
+--- Category: User Management ---
 - `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
   - Arguments:
     - `user_name` (string, required): user name
     - `no_days` (integer, optional): number of days
-- `dba_sessionInfo` (tool): Get the Teradata session information for user.
-  - Arguments:
-    - `user_name` (string, required): User Name
 - `cust_activeUsers` (tool): Fetch currently active database users
 --- Category: Utilities ---
 - `rag_executeWorkflow` (tool): Execute complete RAG workflow to answer user questions based on document context.
@@ -766,13 +764,13 @@ The function uses configuration values from rag_config.yml with fallback default
 - `qlty_databaseQuality` (prompt): Database data quality assessment.
   - Arguments:
     - `database_name` (str, required): Name of the database to assess for data quality.
---- Category: Database Health ---
-- `dba_databaseHealthAssessment` (prompt): You are a Teradata DBA who is an expert in assessing the health of a database.
 --- Category: Database Information ---
 - `dba_databaseLineage` (prompt): You are a Teradata DBA who is an expert in finding the lineage of tables in a database.
   - Arguments:
     - `database_name` (str, required): Name of the database to analyze for table lineage.
     - `number_days` (str, required): Number of days to look back for SQL execution history (e.g., 7, 30, 90).
+- `dba_databaseHealthAssessment` (prompt): You are a Teradata DBA who is an expert in assessing the health of a database.
+- `dba_systemVoice` (prompt): Analyze Teradata user activity patterns for the past 7 days
 - `base_databaseBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of databases.
   - Arguments:
     - `database_name` (str, optional): Database to describe.
@@ -780,8 +778,6 @@ The function uses configuration values from rag_config.yml with fallback default
 - `rag_guidelines` (prompt): Guidelines for Retrieval-Augmented Generation (RAG) mode.
 --- Category: Sales ---
 - `sales_prompt` (prompt): my prompt description
---- Category: System Health ---
-- `dba_systemVoice` (prompt): Analyze Teradata user activity patterns for the past 7 days
 --- Category: Table Management ---
 - `dba_tableArchive` (prompt): The following prompt is used to guide the Teradata DBA in finding opportunities for archiving data.
 - `dba_tableDropImpact` (prompt): You are a Teradata DBA who is an expert in finding the impact of dropping a table.
@@ -793,8 +789,9 @@ The function uses configuration values from rag_config.yml with fallback default
   - Arguments:
     - `database_name` (str, required): Database for the table to describe.
     - `table_name` (str, required): Table to describe.
---- Category: User Activity ---
+--- Category: User Management ---
 - `dba_userActivityAnalysis` (prompt): Analyze Teradata user activity patterns for the past 7 days
+- `cust_promptExample` (prompt): my prompt description
 --- Category: Utilities ---
 - `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
   - Arguments:
@@ -805,7 +802,6 @@ The function uses configuration values from rag_config.yml with fallback default
 - `base_query` (prompt): Help users interact with  Teradata databases effectively.
   - Arguments:
     - `query` (str, required): The problem or question that needs to be solved using Teradata database tools.
-- `cust_promptExample` (prompt): my prompt description
 
 
 USER PROMPT:
@@ -1074,10 +1070,6 @@ table_skew_pct > 1000
     - `date` (string, optional): Date to analyze, formatted as `YYYY-MM-DD`
     - `dayOfWeek` (string, optional): day of the week to analyze
     - `hourOfDay` (string, optional): hour of day to analyze
-- `dba_tableUsageImpact` (tool): Measure the usage of a table and views by users, this is helpful to understand what user and tables are driving most resource usage at any point in time.
-  - Arguments:
-    - `database_name` (string, optional): database name to analyze
-    - `user_name` (string, optional): user name to analyze
 - `dba_flowControl` (tool): Get the Teradata flow control metrics for a specified date range.
   - Arguments:
     - `start_date` (string, required): Start Date
@@ -1090,6 +1082,9 @@ table_skew_pct > 1000
   - Arguments:
     - `start_date` (string, required): Start Date
     - `end_date` (string, required): End Date
+- `dba_sessionInfo` (tool): Get the Teradata session information for user.
+  - Arguments:
+    - `user_name` (string, required): User Name
 --- Category: Sales ---
 - `sales_customer_profile` (tool): Get customer profile and metrics.
   - Arguments:
@@ -1143,6 +1138,10 @@ order_count > 1000
   - Arguments:
     - `table_name` (string, required): table name
     - `no_days` (integer, optional): number of days
+- `dba_tableUsageImpact` (tool): Measure the usage of a table and views by users, this is helpful to understand what user and tables are driving most resource usage at any point in time.
+  - Arguments:
+    - `database_name` (string, optional): database name to analyze
+    - `user_name` (string, optional): user name to analyze
 - `base_tableAffinity` (tool): Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, required): Database name
@@ -1161,14 +1160,11 @@ order_count > 1000
 - `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, optional): Database name
---- Category: User Activity ---
+--- Category: User Management ---
 - `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
   - Arguments:
     - `user_name` (string, required): user name
     - `no_days` (integer, optional): number of days
-- `dba_sessionInfo` (tool): Get the Teradata session information for user.
-  - Arguments:
-    - `user_name` (string, required): User Name
 - `cust_activeUsers` (tool): Fetch currently active database users
 --- Category: Utilities ---
 - `rag_executeWorkflow` (tool): Execute complete RAG workflow to answer user questions based on document context.
@@ -1227,18 +1223,16 @@ The function uses configuration values from rag_config.yml with fallback default
 - `qlty_databaseQuality` (prompt): Database data quality assessment.
   - Arguments:
     - `database_name` (str, required): Name of the database to assess for data quality.
---- Category: Database Health ---
-- `dba_databaseHealthAssessment` (prompt): You are a Teradata DBA who is an expert in assessing the health of a database.
 --- Category: Database Information ---
 - `dba_databaseLineage` (prompt): You are a Teradata DBA who is an expert in finding the lineage of tables in a database.
   - Arguments:
     - `database_name` (str, required): Name of the database to analyze for table lineage.
     - `number_days` (str, required): Number of days to look back for SQL execution history (e.g., 7, 30, 90).
+- `dba_databaseHealthAssessment` (prompt): You are a Teradata DBA who is an expert in assessing the health of a database.
+- `dba_systemVoice` (prompt): Analyze Teradata user activity patterns for the past 7 days
 - `rag_guidelines` (prompt): Guidelines for Retrieval-Augmented Generation (RAG) mode.
 --- Category: Sales ---
 - `sales_prompt` (prompt): my prompt description
---- Category: System Health ---
-- `dba_systemVoice` (prompt): Analyze Teradata user activity patterns for the past 7 days
 --- Category: Table Management ---
 - `dba_tableArchive` (prompt): The following prompt is used to guide the Teradata DBA in finding opportunities for archiving data.
 - `dba_tableDropImpact` (prompt): You are a Teradata DBA who is an expert in finding the impact of dropping a table.
@@ -1250,8 +1244,9 @@ The function uses configuration values from rag_config.yml with fallback default
   - Arguments:
     - `database_name` (str, required): Database for the table to describe.
     - `table_name` (str, required): Table to describe.
---- Category: User Activity ---
+--- Category: User Management ---
 - `dba_userActivityAnalysis` (prompt): Analyze Teradata user activity patterns for the past 7 days
+- `cust_promptExample` (prompt): my prompt description
 --- Category: Utilities ---
 - `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
   - Arguments:
@@ -1262,7 +1257,6 @@ The function uses configuration values from rag_config.yml with fallback default
 - `base_query` (prompt): Help users interact with  Teradata databases effectively.
   - Arguments:
     - `query` (str, required): The problem or question that needs to be solved using Teradata database tools.
-- `cust_promptExample` (prompt): my prompt description
 
 
 USER PROMPT:
@@ -1443,9 +1437,22 @@ The following parameters were explicitly provided for this prompt execution:
 Your response MUST be a single, valid JSON list of phase objects. Do NOT add any extra text, conversation, or markdown.
 
 
-2025-09-05 15:00:01,388 - --- FULL CONTEXT (Session: one-off) ---
+2025-09-05 15:13:28,002 - --- FULL CONTEXT (Session: one-off) ---
 --- REASON FOR CALL ---
-Executing CoreLLMTask: Describe the database in a business context based on the business descriptions of the tables. The description should be a paragraph.
+Executing CoreLLMTask: 
+You are an expert data analyst. Your task is to create a final report for the user based on the provided data and their original question.
+
+--- INSTRUCTIONS ---
+Your entire response MUST be formatted in standard markdown and MUST be structured as follows:
+
+1.  **(Optional) Key Metric:** If the answer to the user's question can be summarized by a single primary value (either quantitative like a number, or qualitative like a status), you MUST provide it on the very first line in a specific JSON format. The line must start with `Key Metric: ` followed by a JSON object with a `value` (as a string) and a `label` (a short description).
+    - Quantitative Example: `Key Metric: {"value": "21", "label": "Databases on system"}`
+    - Qualitative Example: `Key Metric: {"value": "High", "label": "System Utilization"}`
+    If there is no single primary value, you MUST omit this line entirely.
+2.  **The Direct Answer:** This part MUST immediately follow the Key Metric (or be the first line if no metric is provided). It must be a single, concise sentence that directly and factually answers the user's question.
+3.  **Key Observations:** This section MUST start with a level-2 markdown heading (`## Key Observations`). It should contain a bulleted list of all supporting details and context.
+4.  **CRITICAL RULE (Observations Content):** The 'Key Observations' section is for **textual insights only**. You **MUST NOT** include raw data, code blocks (like SQL), or titles for data that is presented elsewhere (e.g., 'DDL for table_x:'). Your observations should be narrative sentences that describe what the data means.
+
 
 --- History (History Disabled for LLM Call: False) ---
 No history available.
@@ -1458,11 +1465,24 @@ USER PROMPT:
 You are a highly capable text processing and synthesis assistant.
 
 --- PRIMARY GOAL ---
-Your most important task is to directly answer the user's original question: 'No user question provided.'.
+Your most important task is to directly answer the user's original question: 'Get the business description of the database fitness_db.'.
 You MUST begin your response with the direct answer. Do not repeat the user's question or use conversational intros like 'Here is...'. After providing the direct answer, you may then proceed with a more general summary or analysis of the data.
 
 --- TASK ---
-Describe the database in a business context based on the business descriptions of the tables. The description should be a paragraph.
+
+You are an expert data analyst. Your task is to create a final report for the user based on the provided data and their original question.
+
+--- INSTRUCTIONS ---
+Your entire response MUST be formatted in standard markdown and MUST be structured as follows:
+
+1.  **(Optional) Key Metric:** If the answer to the user's question can be summarized by a single primary value (either quantitative like a number, or qualitative like a status), you MUST provide it on the very first line in a specific JSON format. The line must start with `Key Metric: ` followed by a JSON object with a `value` (as a string) and a `label` (a short description).
+    - Quantitative Example: `Key Metric: {"value": "21", "label": "Databases on system"}`
+    - Qualitative Example: `Key Metric: {"value": "High", "label": "System Utilization"}`
+    If there is no single primary value, you MUST omit this line entirely.
+2.  **The Direct Answer:** This part MUST immediately follow the Key Metric (or be the first line if no metric is provided). It must be a single, concise sentence that directly and factually answers the user's question.
+3.  **Key Observations:** This section MUST start with a level-2 markdown heading (`## Key Observations`). It should contain a bulleted list of all supporting details and context.
+4.  **CRITICAL RULE (Observations Content):** The 'Key Observations' section is for **textual insights only**. You **MUST NOT** include raw data, code blocks (like SQL), or titles for data that is presented elsewhere (e.g., 'DDL for table_x:'). Your observations should be narrative sentences that describe what the data means.
+
 
 --- RELEVANT DATA (Selected from Previous Phases) ---
 {

@@ -336,7 +336,6 @@ class PlanExecutor:
         if made_change:
             app_logger.info(f"PLAN OPTIMIZATION: Final optimized plan: {self.meta_plan}")
 
-    # --- MODIFICATION START: Added deterministic plan rewriting ---
     def _rewrite_plan_for_date_range_loops(self):
         """
         Deterministically rewrites a plan where a `util_calculateDateRange` tool
@@ -377,9 +376,6 @@ class PlanExecutor:
                 next_phase["type"] = "loop"
                 next_phase["loop_over"] = f"result_of_phase_{current_phase['phase']}"
                 
-                # The most common pattern is that the next tool expects a 'date' argument.
-                # We will make an educated guess and set this, as the planner's original
-                # arguments will be incorrect anyway (passing a list to a string param).
                 next_phase["arguments"] = {
                     "date": f"result_of_phase_{current_phase['phase']}"
                 }
@@ -401,14 +397,12 @@ class PlanExecutor:
 
         if made_change:
             app_logger.info(f"PLAN REWRITE: Final rewritten plan: {self.meta_plan}")
-    # --- MODIFICATION END ---
 
     async def run(self):
         """The main, unified execution loop for the agent."""
         final_answer_override = None
         try:
             if self.is_delegated_task:
-                # This is a sub-task. Bypass the main planning and execute the prompt directly.
                 async for event in self._run_delegated_prompt():
                     yield event
                 return
@@ -418,10 +412,9 @@ class PlanExecutor:
                 planning_is_disabled_history = self.disabled_history
 
                 replan_attempt = 0
-                max_replans = 1 # Allow one re-plan
+                max_replans = 1
                 while True:
                     replan_context = None
-                    # On subsequent attempts, build the context for re-planning.
                     if replan_attempt > 0:
                         prompts_in_plan = [
                             phase['executable_prompt'] 
@@ -452,20 +445,15 @@ class PlanExecutor:
                     replan_triggered = False
 
                     if plan_has_prompt:
-                        # Check for other "significant" tools besides CoreLLMTask.
                         has_other_significant_tool = any(
                             'executable_prompt' not in phase and phase.get('relevant_tools') != ['CoreLLMTask']
                             for phase in self.meta_plan
                         )
-                        # A single-phase prompt is a direct execution, not a complex plan needing replan.
                         is_single_phase_prompt = len(self.meta_plan) == 1
                         
                         if has_other_significant_tool and not is_single_phase_prompt:
                             replan_triggered = True
 
-                    # --- MODIFICATION START: Scope re-planning to master planner ---
-                    # Only the master planner (depth 0) should re-plan for efficiency.
-                    # Sub-planners must execute their delegated prompts without question.
                     if self.execution_depth == 0:
                         if replan_triggered and replan_attempt < max_replans:
                             replan_attempt += 1
@@ -475,17 +463,14 @@ class PlanExecutor:
                                 "details": "Initial plan uses a sub-prompt alongside other tools. Agent is re-planning to create a more efficient, tool-only workflow."
                             })
                             continue 
-                    # --- MODIFICATION END ---
                     
                     break
 
                 for event in self._optimize_plan():
                     yield event
                 
-                # --- MODIFICATION START: Call the plan rewriting orchestrator ---
                 for event in self._rewrite_plan_for_date_range_loops():
                     yield event
-                # --- MODIFICATION END ---
 
                 while True:
                     for event in self._validate_and_correct_plan():
@@ -553,7 +538,9 @@ class PlanExecutor:
                 self.state = self.AgentState.SUMMARIZING
 
             if self.state == self.AgentState.SUMMARIZING:
+                # --- MODIFICATION START: Allow forced summary from sub-planner ---
                 if self.execution_depth > 0 and not self.force_final_summary:
+                # --- MODIFICATION END ---
                     app_logger.info(f"Sub-planner (depth {self.execution_depth}) completed. Bypassing final summary.")
                     self.state = self.AgentState.DONE
                 elif self.prompt_type == 'context':
@@ -617,7 +604,6 @@ class PlanExecutor:
             self.state = self.AgentState.ERROR
             return
 
-        # The "plan" for a delegated task is simply to execute the prompt.
         self.meta_plan = [{
             "phase": 1,
             "goal": f"Delegated execution of prompt: {self.active_prompt_name}",
@@ -857,6 +843,7 @@ class PlanExecutor:
                     "type": "workaround"
                 })
                 
+                # --- MODIFICATION START: Pass force_final_summary flag to sub-planner ---
                 sub_executor = PlanExecutor(
                     session_id=self.session_id,
                     original_user_input=current_phase.get('goal', f"Executing prompt: {prompt_name}"),
@@ -866,8 +853,10 @@ class PlanExecutor:
                     execution_depth=self.execution_depth + 1,
                     disabled_history=self.disabled_history,
                     previous_turn_data=self.turn_action_history,
-                    source=self.source
+                    source=self.source,
+                    force_final_summary=self.is_delegation_only_plan
                 )
+                # --- MODIFICATION END ---
                 
                 async for event in sub_executor.run():
                     yield event
@@ -1388,7 +1377,11 @@ class PlanExecutor:
         
         is_final_phase = self.meta_plan and phase.get("phase") == self.meta_plan[-1].get("phase")
         
-        if tool_name == "CoreLLMTask" and is_final_phase and self.execution_depth == 0 and not self.is_delegation_only_plan:
+        # --- MODIFICATION START: Allow forced summary injection ---
+        if (tool_name == "CoreLLMTask" and is_final_phase and 
+            (self.execution_depth == 0 or self.force_final_summary) and 
+            not self.is_delegation_only_plan):
+        # --- MODIFICATION END ---
             planner_description = arguments.get("task_description", "")
             if not planner_description or len(planner_description) < APP_CONFIG.DETAILED_DESCRIPTION_THRESHOLD:
                 app_logger.info("FINAL_SUMMARY Prompt Injection: Overriding generic CoreLLMTask with standardized final summary prompt.")
