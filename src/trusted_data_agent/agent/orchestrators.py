@@ -15,6 +15,57 @@ def _format_sse(data: dict, event: str = None) -> str:
         msg += f"event: {event}\n"
     return f"{msg}\n"
 
+async def execute_generic_list_iteration(executor, command: dict, list_argument_name: str, list_argument_value: list):
+    """
+    Executes a tool over a list of items when the planner incorrectly provided
+    a list to an argument that expects a single value. This acts as a generic
+    safety net for a common class of planning failures.
+    """
+    tool_name = command.get("tool_name")
+    yield _format_sse({
+        "step": "System Correction", "type": "workaround",
+        "details": f"Planner provided a list for a single-item argument ('{list_argument_name}'). The system will iterate over the items automatically."
+    })
+
+    all_results = []
+    yield _format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
+    for item in list_argument_value:
+        # The actual value to pass to the tool might be nested inside a dict (e.g., from util_calculateDateRange)
+        actual_value = item
+        if isinstance(item, dict):
+            # Heuristically find the most likely value if the list contains dicts
+            if len(item) == 1:
+                actual_value = next(iter(item.values()))
+            elif 'value' in item: # A common key name
+                actual_value = item['value']
+            elif 'name' in item: # Another common key name
+                actual_value = item['name']
+
+        yield _format_sse({"step": f"Processing item: {actual_value}"})
+        
+        # Create a copy of the original command's arguments and update the specific argument with the current item
+        iter_command_args = command.get("arguments", {}).copy()
+        iter_command_args[list_argument_name] = actual_value
+        iter_command = {"tool_name": tool_name, "arguments": iter_command_args}
+        
+        day_result, _, _ = await mcp_adapter.invoke_mcp_tool(executor.dependencies['STATE'], iter_command)
+        
+        if isinstance(day_result, dict) and day_result.get("status") == "success" and day_result.get("results"):
+            all_results.extend(day_result["results"])
+        elif isinstance(day_result, dict) and day_result.get("status") == "error":
+            app_logger.warning(f"Generic orchestrator: Sub-tool call for item '{actual_value}' failed. Result: {day_result}")
+            # Optionally, you could append the error to a separate list to show the user
+    
+    yield _format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
+    
+    final_tool_output = {
+        "status": "success",
+        "metadata": {"tool_name": tool_name, "comment": f"Consolidated results from iterating over '{list_argument_name}'"},
+        "results": all_results
+    }
+    executor._add_to_structured_data(final_tool_output)
+    executor.last_tool_output = final_tool_output
+
 async def execute_date_range_orchestrator(executor, command: dict, date_param_name: str, date_phrase: str):
     """
     Executes a tool over a calculated date range when the tool itself
