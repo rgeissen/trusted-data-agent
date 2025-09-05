@@ -975,7 +975,7 @@ class PlanExecutor:
                         args_for_col_tool[synonym] = table_name
                     
                     cols_command = {"tool_name": "base_columnDescription", "arguments": args_for_col_tool}
-                    cols_result, _, _ = await mcp_adapter.invoke_mcp_tool(self.dependencies['STATE'], cols_command)
+                    cols_result, _, _ = await mcp_adapter.invoke_mcp_tool(self.dependencies['STATE'], cols_command, session_id=self.session_id)
 
                     if cols_result and isinstance(cols_result, dict) and cols_result.get('status') == 'success' and cols_result.get('results'):
                         columns_metadata = cols_result.get('results', [])
@@ -1425,17 +1425,13 @@ class PlanExecutor:
                 yield self._format_sse({"step": "System Notification", "details": action['notification'], "type": "workaround"})
                 del action['notification']
 
-            # --- MODIFICATION START: Selective context distillation ---
             if tool_name == "CoreLLMTask" and not self.is_synthesis_from_history:
-                # Only distill the context for intermediate LLM tasks.
-                # For the final summary, provide the full, undiluted data.
                 if self.final_summary_was_injected:
                     app_logger.info("Bypassing context distillation for final summary task.")
                     action.setdefault("arguments", {})["data"] = self.workflow_state
                 else:
                     distilled_workflow_state = self._distill_data_for_llm_context(copy.deepcopy(self.workflow_state))
                     action.setdefault("arguments", {})["data"] = distilled_workflow_state
-            # --- MODIFICATION END ---
             
             if not is_fast_path:
                 yield self._format_sse({"step": "Tool Execution Intent", "details": action}, "tool_result")
@@ -1448,7 +1444,7 @@ class PlanExecutor:
             
             yield self._format_sse({"target": status_target, "state": "busy"}, "status_indicator_update")
             
-            tool_result, input_tokens, output_tokens = await mcp_adapter.invoke_mcp_tool(self.dependencies['STATE'], action)
+            tool_result, input_tokens, output_tokens = await mcp_adapter.invoke_mcp_tool(self.dependencies['STATE'], action, session_id=self.session_id)
 
             yield self._format_sse({"target": status_target, "state": "idle"}, "status_indicator_update")
 
@@ -1827,27 +1823,22 @@ class PlanExecutor:
     async def _call_llm_for_final_summary(self):
         """Calls the CoreLLMTask to synthesize a final summary from all collected data."""
         final_summary_text = ""
-        # --- MODIFICATION START: Use full data for final summary ---
-        # Do not distill the context for the final, user-facing summary.
         full_workflow_state = copy.deepcopy(self.workflow_state)
-        # --- MODIFICATION END ---
 
         core_llm_command = {
             "tool_name": "CoreLLMTask",
             "arguments": {
                 "task_description": GENERATE_FINAL_SUMMARY,
                 "user_question": self.original_user_input,
-                # --- MODIFICATION START ---
                 "source_data": list(full_workflow_state.keys()),
                 "data": full_workflow_state
-                # --- MODIFICATION END ---
             }
         }
         
         yield self._format_sse({"step": "Calling LLM to write final report", "details": "Synthesizing markdown-formatted summary."})
         
         yield self._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
-        summary_result, input_tokens, output_tokens = await mcp_adapter.invoke_mcp_tool(self.dependencies['STATE'], core_llm_command)
+        summary_result, input_tokens, output_tokens = await mcp_adapter.invoke_mcp_tool(self.dependencies['STATE'], core_llm_command, session_id=self.session_id)
         yield self._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
 
         updated_session = session_manager.get_session(self.session_id)

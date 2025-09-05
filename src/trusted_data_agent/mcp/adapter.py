@@ -294,7 +294,6 @@ async def load_and_categorize_mcp_resources(STATE: dict):
                             "required": arg_details.get("required", False)
                         })
 
-            # --- MODIFICATION START: Infer tool scope from centralized hierarchy ---
             STATE.setdefault('tool_scopes', {})
             required_args_raw = {arg['name'] for arg in processed_args if arg.get('required')}
             
@@ -313,7 +312,6 @@ async def load_and_categorize_mcp_resources(STATE: dict):
                 if required_set.issubset(canonical_required_args):
                     STATE['tool_scopes'][tool.name] = scope
                     break 
-            # --- MODIFICATION END ---
 
             is_disabled = tool.name in disabled_tools_list
             STATE['structured_tools'][category].append({
@@ -429,8 +427,6 @@ def _transform_chart_data(data: any) -> list[dict]:
     of dictionaries suitable for G2Plot charting. This acts as a deterministic
     pre-processing step to prevent common data formatting errors.
     """
-    # --- MODIFICATION START: Handle nested tool result structures ---
-    # This is the primary transformation for data coming from looping phases.
     if isinstance(data, list) and all(isinstance(item, dict) and 'results' in item for item in data):
         app_logger.info("Detected nested tool output. Flattening data for charting.")
         flattened_data = []
@@ -439,7 +435,6 @@ def _transform_chart_data(data: any) -> list[dict]:
             if isinstance(results_list, list):
                 flattened_data.extend(results_list)
         return flattened_data
-    # --- MODIFICATION END ---
 
     if isinstance(data, dict) and 'labels' in data and 'values' in data:
         app_logger.warning("Correcting hallucinated chart data format from labels/values to list of dicts.")
@@ -528,7 +523,7 @@ def _build_g2plot_spec(args: dict, data: list[dict]) -> dict:
 
     return {"type": g2plot_type, "options": options}
 
-async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: list = None, mode: str = "standard") -> tuple[dict, int, int]:
+async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: list = None, mode: str = "standard", session_id: str = None) -> tuple[dict, int, int]:
     """
     Executes a task handled by the LLM itself and returns the result along with token counts.
     Supports two modes:
@@ -644,7 +639,8 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: lis
         prompt=final_prompt,
         reason=reason,
         system_prompt_override="You are a text processing and synthesis assistant.",
-        raise_on_error=True
+        raise_on_error=True,
+        session_id=session_id
     )
 
     refusal_phrases = [
@@ -664,7 +660,7 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: lis
 
     return result, input_tokens, output_tokens
 
-async def _invoke_util_calculate_date_range(STATE: dict, command: dict) -> dict:
+async def _invoke_util_calculate_date_range(STATE: dict, command: dict, session_id: str = None) -> dict:
     """
     Calculates a list of dates from a start date and a phrase using a multi-layered approach.
     It first tries a robust deterministic method and falls back to an LLM for complex phrases.
@@ -744,7 +740,8 @@ async def _invoke_util_calculate_date_range(STATE: dict, command: dict) -> dict:
             prompt=llm_prompt,
             reason=f"LLM fallback for complex date phrase: {date_phrase}",
             system_prompt_override="You are a helpful assistant that only responds with valid JSON.",
-            raise_on_error=True
+            raise_on_error=True,
+            session_id=session_id
         )
         
         try:
@@ -768,7 +765,7 @@ async def _invoke_util_calculate_date_range(STATE: dict, command: dict) -> dict:
         "results": date_list
     }
 
-async def invoke_mcp_tool(STATE: dict, command: dict) -> tuple[any, int, int]:
+async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None) -> tuple[any, int, int]:
     mcp_client = STATE.get('mcp_client')
     tool_name = command.get("tool_name")
     
@@ -776,7 +773,7 @@ async def invoke_mcp_tool(STATE: dict, command: dict) -> tuple[any, int, int]:
         args = command.get("arguments", {})
         mode = args.pop("mode", "standard")
         session_history = args.pop("session_history", None)
-        return await _invoke_core_llm_task(STATE, command, session_history=session_history, mode=mode)
+        return await _invoke_core_llm_task(STATE, command, session_history=session_history, mode=mode, session_id=session_id)
 
     if tool_name == "util_getCurrentDate":
         app_logger.info("Executing client-side tool: util_getCurrentDate")
@@ -789,7 +786,7 @@ async def invoke_mcp_tool(STATE: dict, command: dict) -> tuple[any, int, int]:
         return result, 0, 0
 
     if tool_name == "util_calculateDateRange":
-        result = await _invoke_util_calculate_date_range(STATE, command)
+        result = await _invoke_util_calculate_date_range(STATE, command, session_id=session_id)
         return result, 0, 0
 
     if tool_name == "viz_createChart":
@@ -878,4 +875,3 @@ async def invoke_mcp_tool(STATE: dict, command: dict) -> tuple[any, int, int]:
                 return result, 0, 0
     
     raise RuntimeError(f"Unexpected tool result format for '{tool_name}': {call_tool_result}")
-
