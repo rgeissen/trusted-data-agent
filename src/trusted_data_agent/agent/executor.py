@@ -463,15 +463,19 @@ class PlanExecutor:
                         if has_other_significant_tool and not is_single_phase_prompt:
                             replan_triggered = True
 
-
-                    if replan_triggered and replan_attempt < max_replans:
-                        replan_attempt += 1
-                        yield self._format_sse({
-                            "step": "Re-planning for Efficiency",
-                            "type": "plan_optimization",
-                            "details": "Initial plan uses a sub-prompt alongside other tools. Agent is re-planning to create a more efficient, tool-only workflow."
-                        })
-                        continue 
+                    # --- MODIFICATION START: Scope re-planning to master planner ---
+                    # Only the master planner (depth 0) should re-plan for efficiency.
+                    # Sub-planners must execute their delegated prompts without question.
+                    if self.execution_depth == 0:
+                        if replan_triggered and replan_attempt < max_replans:
+                            replan_attempt += 1
+                            yield self._format_sse({
+                                "step": "Re-planning for Efficiency",
+                                "type": "plan_optimization",
+                                "details": "Initial plan uses a sub-prompt alongside other tools. Agent is re-planning to create a more efficient, tool-only workflow."
+                            })
+                            continue 
+                    # --- MODIFICATION END ---
                     
                     break
 
@@ -2148,4 +2152,3 @@ class PlanExecutor:
             return None, events
             
         return None, events
-
