@@ -538,9 +538,7 @@ class PlanExecutor:
                 self.state = self.AgentState.SUMMARIZING
 
             if self.state == self.AgentState.SUMMARIZING:
-                # --- MODIFICATION START: Allow forced summary from sub-planner ---
                 if self.execution_depth > 0 and not self.force_final_summary:
-                # --- MODIFICATION END ---
                     app_logger.info(f"Sub-planner (depth {self.execution_depth}) completed. Bypassing final summary.")
                     self.state = self.AgentState.DONE
                 elif self.prompt_type == 'context':
@@ -843,7 +841,6 @@ class PlanExecutor:
                     "type": "workaround"
                 })
                 
-                # --- MODIFICATION START: Pass force_final_summary flag to sub-planner ---
                 sub_executor = PlanExecutor(
                     session_id=self.session_id,
                     original_user_input=current_phase.get('goal', f"Executing prompt: {prompt_name}"),
@@ -856,7 +853,6 @@ class PlanExecutor:
                     source=self.source,
                     force_final_summary=self.is_delegation_only_plan
                 )
-                # --- MODIFICATION END ---
                 
                 async for event in sub_executor.run():
                     yield event
@@ -1377,11 +1373,9 @@ class PlanExecutor:
         
         is_final_phase = self.meta_plan and phase.get("phase") == self.meta_plan[-1].get("phase")
         
-        # --- MODIFICATION START: Allow forced summary injection ---
         if (tool_name == "CoreLLMTask" and is_final_phase and 
             (self.execution_depth == 0 or self.force_final_summary) and 
             not self.is_delegation_only_plan):
-        # --- MODIFICATION END ---
             planner_description = arguments.get("task_description", "")
             if not planner_description or len(planner_description) < APP_CONFIG.DETAILED_DESCRIPTION_THRESHOLD:
                 app_logger.info("FINAL_SUMMARY Prompt Injection: Overriding generic CoreLLMTask with standardized final summary prompt.")
@@ -1431,9 +1425,17 @@ class PlanExecutor:
                 yield self._format_sse({"step": "System Notification", "details": action['notification'], "type": "workaround"})
                 del action['notification']
 
+            # --- MODIFICATION START: Selective context distillation ---
             if tool_name == "CoreLLMTask" and not self.is_synthesis_from_history:
-                distilled_workflow_state = self._distill_data_for_llm_context(copy.deepcopy(self.workflow_state))
-                action.setdefault("arguments", {})["data"] = distilled_workflow_state
+                # Only distill the context for intermediate LLM tasks.
+                # For the final summary, provide the full, undiluted data.
+                if self.final_summary_was_injected:
+                    app_logger.info("Bypassing context distillation for final summary task.")
+                    action.setdefault("arguments", {})["data"] = self.workflow_state
+                else:
+                    distilled_workflow_state = self._distill_data_for_llm_context(copy.deepcopy(self.workflow_state))
+                    action.setdefault("arguments", {})["data"] = distilled_workflow_state
+            # --- MODIFICATION END ---
             
             if not is_fast_path:
                 yield self._format_sse({"step": "Tool Execution Intent", "details": action}, "tool_result")
@@ -1825,15 +1827,20 @@ class PlanExecutor:
     async def _call_llm_for_final_summary(self):
         """Calls the CoreLLMTask to synthesize a final summary from all collected data."""
         final_summary_text = ""
-        distilled_workflow_state = self._distill_data_for_llm_context(copy.deepcopy(self.workflow_state))
+        # --- MODIFICATION START: Use full data for final summary ---
+        # Do not distill the context for the final, user-facing summary.
+        full_workflow_state = copy.deepcopy(self.workflow_state)
+        # --- MODIFICATION END ---
 
         core_llm_command = {
             "tool_name": "CoreLLMTask",
             "arguments": {
                 "task_description": GENERATE_FINAL_SUMMARY,
                 "user_question": self.original_user_input,
-                "source_data": list(distilled_workflow_state.keys()),
-                "data": distilled_workflow_state
+                # --- MODIFICATION START ---
+                "source_data": list(full_workflow_state.keys()),
+                "data": full_workflow_state
+                # --- MODIFICATION END ---
             }
         }
         
@@ -2145,3 +2152,4 @@ class PlanExecutor:
             return None, events
             
         return None, events
+
