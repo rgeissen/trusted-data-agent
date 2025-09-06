@@ -15,6 +15,7 @@ class AppConfig:
     DEFAULT_CHARTING_INTENSITY = "medium" # Controls how proactively the agent suggests charts. Options: "none", "medium", "heavy".
     ALLOW_SYNTHESIS_FROM_HISTORY = False # If True, allows the planner to generate an answer directly from conversation history without using tools.
     VOICE_CONVERSATION_ENABLED = True # Master switch for the Text-to-Speech (TTS) feature.
+    SUB_PROMPT_FORCE_SUMMARY = False # If True, forces sub-executors for prompts to generate their own final summary. Default is False.
 
     # --- Connection & Model State ---
     MCP_SERVER_CONNECTED = False # Runtime flag indicating if a connection to the MCP server is active.

@@ -893,6 +893,20 @@ class PlanExecutor:
         """Executes the generated meta-plan, delegating to loop or standard executors."""
         if not self.meta_plan:
             raise RuntimeError("Cannot execute plan: meta_plan is not generated.")
+        
+        # --- MODIFICATION START: Pre-execution summary skip for sub-processes ---
+        if not APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY and self.execution_depth > 0 and self.meta_plan and len(self.meta_plan) > 1:
+            last_phase = self.meta_plan[-1]
+            is_final_summary_task = last_phase.get('relevant_tools') == ['CoreLLMTask']
+            if is_final_summary_task:
+                app_logger.info(f"Sub-process (depth {self.execution_depth}) is skipping its final summary phase.")
+                yield self._format_sse({
+                    "step": "Plan Optimization",
+                    "type": "plan_optimization",
+                    "details": "Sub-process is skipping its final summary task to prevent redundant work. The main process will generate the final report."
+                })
+                self.meta_plan = self.meta_plan[:-1]
+        # --- MODIFICATION END ---
 
         while self.current_phase_index < len(self.meta_plan):
             current_phase = self.meta_plan[self.current_phase_index]
@@ -905,8 +919,6 @@ class PlanExecutor:
                 self.execution_depth < self.MAX_EXECUTION_DEPTH
             )
             
-            # --- MODIFICATION START: Reordered conditional logic ---
-            # Prioritize checking for a loop before checking for a delegated prompt.
             if current_phase.get("type") == "loop":
                 async for event in self._execute_looping_phase(current_phase):
                     yield event
@@ -931,7 +943,7 @@ class PlanExecutor:
                     disabled_history=self.disabled_history,
                     previous_turn_data=self.turn_action_history,
                     source=self.source,
-                    force_final_summary=True # A delegated prompt always generates a final answer for its scope
+                    force_final_summary=APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY
                 )
                 
                 async for event in sub_executor.run():
@@ -945,14 +957,12 @@ class PlanExecutor:
             else:
                 async for event in self._execute_standard_phase(current_phase):
                     yield event
-            # --- MODIFICATION END ---
             
             self.current_phase_index += 1
 
         app_logger.info("Meta-plan has been fully executed. Transitioning to summarization.")
         self.state = self.AgentState.SUMMARIZING
     
-    # --- MODIFICATION START: Corrected loop item extraction logic ---
     def _extract_loop_items(self, source_phase_key: str) -> list:
         """
         Intelligently extracts the list of items to iterate over from a previous phase's results.
@@ -964,11 +974,9 @@ class PlanExecutor:
 
         source_data = self.workflow_state[source_phase_key]
 
-        # If the source data is a list of tool result objects (typical for a prior loop phase)...
         if isinstance(source_data, list) and all(isinstance(item, dict) and 'results' in item for item in source_data):
             flattened_results = []
             for tool_result in source_data:
-                # Extract the 'results' list from each tool result object
                 if isinstance(tool_result.get('results'), list):
                     flattened_results.extend(tool_result['results'])
             
@@ -976,11 +984,8 @@ class PlanExecutor:
                 app_logger.info(f"Extracted and flattened {len(flattened_results)} items from previous loop phase '{source_phase_key}'.")
                 return flattened_results
 
-        # Fallback to original recursive search for a single, nested results list
         def find_results_list(data):
             if isinstance(data, list):
-                # This part is tricky; we assume if we find a list of dicts with 'results', it's the one.
-                # The new logic above handles the more common case correctly.
                 for item in data:
                     found = find_results_list(item)
                     if found is not None: return found
@@ -999,7 +1004,6 @@ class PlanExecutor:
             return []
             
         return items
-    # --- MODIFICATION END ---
 
 
     async def _execute_looping_phase(self, phase: dict):
@@ -1159,24 +1163,12 @@ class PlanExecutor:
             self.is_in_loop = True
             self.processed_loop_items = []
             
-            # --- MODIFICATION START: Announce multi-tool execution ---
-            if len(relevant_tools) > 1:
-                yield self._format_sse({
-                    "step": "System Correction",
-                    "type": "workaround",
-                    "details": f"Multi-tool phase detected. The agent will execute {len(relevant_tools)} tools sequentially for each item."
-                })
-            # --- MODIFICATION END ---
-            
-            all_loop_results = []
             for i, item in enumerate(self.current_loop_items):
                 yield self._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.current_loop_items)}", "type": "system_message", "details": item})
                 
                 try:
-                    # This now correctly handles single-tool and multi-tool complex loops
                     async for event in self._execute_standard_phase(phase, is_loop_iteration=True, loop_item=item):
                         yield event
-                    all_loop_results.append(self.last_tool_output)
                 except Exception as e:
                     error_message = f"Error processing item {item}: {e}"
                     app_logger.error(error_message, exc_info=True)
@@ -1188,7 +1180,6 @@ class PlanExecutor:
                             "details": str(e)
                         }
                     }
-                    all_loop_results.append(error_result)
                     self._add_to_structured_data(error_result)
                     yield self._format_sse({"step": "Loop Item Failed", "details": error_result, "type": "error"}, "tool_result")
 
@@ -1197,13 +1188,6 @@ class PlanExecutor:
             self.is_in_loop = False
             self.current_loop_items = []
             self.processed_loop_items = []
-
-            # --- MODIFICATION START: Correctly store aggregated loop results ---
-            phase_result_key = f"result_of_phase_{phase_num}"
-            self.workflow_state[phase_result_key] = all_loop_results
-            self._add_to_structured_data(all_loop_results, context_key_override=f"Workflow: {self.active_prompt_name} > Phase {phase_num}: {phase_goal}")
-            self.last_tool_output = all_loop_results
-            # --- MODIFICATION END ---
 
         yield self._format_sse({
             "step": f"Ending Plan Phase {phase_num}/{len(self.meta_plan)}",
@@ -1243,48 +1227,64 @@ class PlanExecutor:
                     "execution_depth": self.execution_depth
                 }
             })
+        
+        # --- MODIFICATION START: Multi-Tool Fast Path ---
+        if len(relevant_tools) > 1 and not is_loop_iteration:
+            yield self._format_sse({
+                "step": "System Correction",
+                "type": "workaround",
+                "details": f"Multi-tool phase detected. The agent will execute {len(relevant_tools)} tools sequentially."
+            })
             
-        # --- MODIFICATION START: Multi-tool "Fast Path" Handler ---
-        # This new branch handles the multi-tool case explicitly and bypasses all subsequent logic in this function.
-        if len(relevant_tools) > 1:
-            # Announce the correction only if it's a non-looping phase. Loop announcements are handled in the calling function.
-            if not is_loop_iteration:
-                yield self._format_sse({
-                    "step": "System Correction",
-                    "type": "workaround",
-                    "details": f"Multi-tool phase detected. The agent will execute {len(relevant_tools)} tools sequentially."
-                })
-
-            phase_action_results = []
+            all_phase_results = []
             for tool_name in relevant_tools:
-                # Combine strategic arguments from the phase with item-specific arguments from the loop
-                current_args = strategic_args.copy()
-                if is_loop_iteration and isinstance(loop_item, dict):
-                    current_args.update(loop_item)
-
-                action_to_execute = {
-                    "tool_name": tool_name,
-                    "arguments": self._resolve_arguments(current_args)
-                }
-                async for event in self._execute_action_with_orchestrators(action_to_execute, phase):
+                fast_path_action = {"tool_name": tool_name, "arguments": strategic_args}
+                async for event in self._execute_action_with_orchestrators(fast_path_action, phase):
                     yield event
-                phase_action_results.append(self.last_tool_output)
+                all_phase_results.append(self.last_tool_output)
             
-            # The aggregated results become the final output for this phase/iteration
-            self.last_tool_output = phase_action_results
-            
-            # If not in a loop, update the workflow state and end the phase
-            if not is_loop_iteration:
-                phase_result_key = f"result_of_phase_{phase_num}"
-                self.workflow_state[phase_result_key] = self.last_tool_output
-                self._add_to_structured_data(self.last_tool_output)
-                yield self._format_sse({
-                    "step": f"Ending Plan Phase {phase_num}/{len(self.meta_plan)}",
-                    "type": "phase_end",
-                    "details": {"phase_num": phase_num, "total_phases": len(self.meta_plan), "status": "completed"}
-                })
-            return # IMPORTANT: Exit the function to bypass the single-tool/tactical logic below.
+            phase_result_key = f"result_of_phase_{phase_num}"
+            self.workflow_state[phase_result_key] = all_phase_results
+            self._add_to_structured_data(all_phase_results)
+            self.last_tool_output = all_phase_results
+
+            yield self._format_sse({
+                "step": f"Ending Plan Phase {phase_num}/{len(self.meta_plan)}",
+                "type": "phase_end",
+                "details": {"phase_num": phase_num, "total_phases": len(self.meta_plan), "status": "completed"}
+            })
+            return
+        elif len(relevant_tools) > 1 and is_loop_iteration:
+             yield self._format_sse({
+                "step": "System Correction",
+                "type": "workaround",
+                "details": f"Multi-tool phase detected. The agent will execute {len(relevant_tools)} tools sequentially for each item."
+            })
+             
+             all_loop_item_results = []
+             for tool_name in relevant_tools:
+                item_args = {}
+                if isinstance(loop_item, dict):
+                    for key, value in loop_item.items():
+                        item_args[key] = value
+
+                merged_args = {**strategic_args, **item_args}
+                fast_path_action = {"tool_name": tool_name, "arguments": merged_args}
+
+                async for event in self._execute_action_with_orchestrators(fast_path_action, phase):
+                    yield event
+                all_loop_item_results.append(self.last_tool_output)
+             
+             phase_result_key = f"result_of_phase_{phase_num}"
+             if phase_result_key not in self.workflow_state:
+                 self.workflow_state[phase_result_key] = []
+
+             self.workflow_state[phase_result_key].extend(all_loop_item_results)
+             self._add_to_structured_data(all_loop_item_results)
+             self.last_tool_output = all_loop_item_results
+             return
         # --- MODIFICATION END ---
+
 
         tool_name = relevant_tools[0] if len(relevant_tools) == 1 else None
         if tool_name and tool_name != "viz_createChart":
@@ -1413,9 +1413,6 @@ class PlanExecutor:
                 app_logger.warning(f"Action failed. Attempt {phase_attempts}/{max_phase_attempts} for phase.")
         
         if not is_loop_iteration:
-            phase_result_key = f"result_of_phase_{phase_num}"
-            self.workflow_state[phase_result_key] = self.last_tool_output
-            self._add_to_structured_data(self.last_tool_output)
             yield self._format_sse({
                 "step": f"Ending Plan Phase {phase_num}/{len(self.meta_plan)}",
                 "type": "phase_end",
@@ -2303,3 +2300,4 @@ class PlanExecutor:
             return None, events
             
         return None, events
+
