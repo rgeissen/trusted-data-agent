@@ -501,7 +501,7 @@ class PlanExecutor:
                     yield self._format_sse({
                         "step": "System Correction",
                         "type": "workaround",
-                        "details": f"Planner chose a single prompt ('{prompt_name}'). Expanding plan in-process to improve efficiency."
+                        "details": f"Single Prompt('{prompt_name}') identified. Expanding plan in-process to improve efficiency."
                     })
 
                     # Argument Enrichment Step
