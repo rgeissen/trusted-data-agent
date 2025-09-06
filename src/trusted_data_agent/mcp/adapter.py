@@ -839,15 +839,25 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None) ->
             if found_args is not None:
                 args = found_args
 
-    synonym_map = {
-        "database": "database_name", "db": "database_name", 
-        "table": "table_name", "tbl": "table_name", "tablename": "table_name",
-        "column": "column_name", "col": "column_name"
-    }
-    normalized_args = {synonym_map.get(k.lower(), k): v for k, v in args.items()}
-    if normalized_args != args:
-        app_logger.info(f"Normalized tool arguments for '{tool_name}'. Original: {args}, Corrected: {normalized_args}")
-        args = normalized_args
+    # --- MODIFICATION START: Argument Expansion using central synonym map ---
+    expanded_args = args.copy()
+    for canonical, synonyms in AppConfig.ARGUMENT_SYNONYM_MAP.items():
+        found_value = None
+        # Find if any synonym has a value in the original arguments
+        for synonym in synonyms:
+            if synonym in args:
+                found_value = args[synonym]
+                break
+        
+        # If a value was found, ensure all synonyms for that canonical key are in the expanded arguments
+        if found_value is not None:
+            for synonym in synonyms:
+                expanded_args[synonym] = found_value
+
+    if expanded_args != args:
+        app_logger.info(f"Expanded tool arguments for '{tool_name}'. Original: {args}, Expanded: {expanded_args}")
+        args = expanded_args
+    # --- MODIFICATION END ---
 
 
     app_logger.debug(f"Invoking tool '{tool_name}' with args: {args}")

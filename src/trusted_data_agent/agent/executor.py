@@ -1159,12 +1159,24 @@ class PlanExecutor:
             self.is_in_loop = True
             self.processed_loop_items = []
             
+            # --- MODIFICATION START: Announce multi-tool execution ---
+            if len(relevant_tools) > 1:
+                yield self._format_sse({
+                    "step": "System Correction",
+                    "type": "workaround",
+                    "details": f"Multi-tool phase detected. The agent will execute {len(relevant_tools)} tools sequentially for each item."
+                })
+            # --- MODIFICATION END ---
+            
+            all_loop_results = []
             for i, item in enumerate(self.current_loop_items):
                 yield self._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.current_loop_items)}", "type": "system_message", "details": item})
                 
                 try:
+                    # This now correctly handles single-tool and multi-tool complex loops
                     async for event in self._execute_standard_phase(phase, is_loop_iteration=True, loop_item=item):
                         yield event
+                    all_loop_results.append(self.last_tool_output)
                 except Exception as e:
                     error_message = f"Error processing item {item}: {e}"
                     app_logger.error(error_message, exc_info=True)
@@ -1176,6 +1188,7 @@ class PlanExecutor:
                             "details": str(e)
                         }
                     }
+                    all_loop_results.append(error_result)
                     self._add_to_structured_data(error_result)
                     yield self._format_sse({"step": "Loop Item Failed", "details": error_result, "type": "error"}, "tool_result")
 
@@ -1184,6 +1197,13 @@ class PlanExecutor:
             self.is_in_loop = False
             self.current_loop_items = []
             self.processed_loop_items = []
+
+            # --- MODIFICATION START: Correctly store aggregated loop results ---
+            phase_result_key = f"result_of_phase_{phase_num}"
+            self.workflow_state[phase_result_key] = all_loop_results
+            self._add_to_structured_data(all_loop_results, context_key_override=f"Workflow: {self.active_prompt_name} > Phase {phase_num}: {phase_goal}")
+            self.last_tool_output = all_loop_results
+            # --- MODIFICATION END ---
 
         yield self._format_sse({
             "step": f"Ending Plan Phase {phase_num}/{len(self.meta_plan)}",
@@ -1223,6 +1243,48 @@ class PlanExecutor:
                     "execution_depth": self.execution_depth
                 }
             })
+            
+        # --- MODIFICATION START: Multi-tool "Fast Path" Handler ---
+        # This new branch handles the multi-tool case explicitly and bypasses all subsequent logic in this function.
+        if len(relevant_tools) > 1:
+            # Announce the correction only if it's a non-looping phase. Loop announcements are handled in the calling function.
+            if not is_loop_iteration:
+                yield self._format_sse({
+                    "step": "System Correction",
+                    "type": "workaround",
+                    "details": f"Multi-tool phase detected. The agent will execute {len(relevant_tools)} tools sequentially."
+                })
+
+            phase_action_results = []
+            for tool_name in relevant_tools:
+                # Combine strategic arguments from the phase with item-specific arguments from the loop
+                current_args = strategic_args.copy()
+                if is_loop_iteration and isinstance(loop_item, dict):
+                    current_args.update(loop_item)
+
+                action_to_execute = {
+                    "tool_name": tool_name,
+                    "arguments": self._resolve_arguments(current_args)
+                }
+                async for event in self._execute_action_with_orchestrators(action_to_execute, phase):
+                    yield event
+                phase_action_results.append(self.last_tool_output)
+            
+            # The aggregated results become the final output for this phase/iteration
+            self.last_tool_output = phase_action_results
+            
+            # If not in a loop, update the workflow state and end the phase
+            if not is_loop_iteration:
+                phase_result_key = f"result_of_phase_{phase_num}"
+                self.workflow_state[phase_result_key] = self.last_tool_output
+                self._add_to_structured_data(self.last_tool_output)
+                yield self._format_sse({
+                    "step": f"Ending Plan Phase {phase_num}/{len(self.meta_plan)}",
+                    "type": "phase_end",
+                    "details": {"phase_num": phase_num, "total_phases": len(self.meta_plan), "status": "completed"}
+                })
+            return # IMPORTANT: Exit the function to bypass the single-tool/tactical logic below.
+        # --- MODIFICATION END ---
 
         tool_name = relevant_tools[0] if len(relevant_tools) == 1 else None
         if tool_name and tool_name != "viz_createChart":
@@ -1351,6 +1413,9 @@ class PlanExecutor:
                 app_logger.warning(f"Action failed. Attempt {phase_attempts}/{max_phase_attempts} for phase.")
         
         if not is_loop_iteration:
+            phase_result_key = f"result_of_phase_{phase_num}"
+            self.workflow_state[phase_result_key] = self.last_tool_output
+            self._add_to_structured_data(self.last_tool_output)
             yield self._format_sse({
                 "step": f"Ending Plan Phase {phase_num}/{len(self.meta_plan)}",
                 "type": "phase_end",

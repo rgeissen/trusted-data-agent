@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from trusted_data_agent.mcp import adapter as mcp_adapter
 from trusted_data_agent.llm import handler as llm_handler
+from trusted_data_agent.core.config import AppConfig
 
 app_logger = logging.getLogger("quart.app")
 
@@ -87,12 +88,25 @@ async def execute_column_iteration(executor, command: dict):
     """
     tool_name = command.get("tool_name")
     base_args = command.get("arguments", {})
-    db_name, table_name = base_args.get("database_name"), base_args.get("table_name")
+    
+    # --- MODIFICATION START: Robustly find database and table name using synonyms ---
+    db_name = None
+    for key in AppConfig.ARGUMENT_SYNONYM_MAP.get('database_name', []):
+        if key in base_args:
+            db_name = base_args[key]
+            break
+            
+    table_name = None
+    for key in AppConfig.ARGUMENT_SYNONYM_MAP.get('object_name', []):
+        if key in base_args:
+            table_name = base_args[key]
+            break
+    # --- MODIFICATION END ---
 
     # First, get the list of all columns for the target table
-    cols_command = {"tool_name": "base_columnDescription", "arguments": {"database_name": db_name, "table_name": table_name}}
+    cols_command = {"tool_name": "base_columnDescription", "arguments": {"database_name": db_name, "object_name": table_name}}
     yield _format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
-    cols_result, _, _ = await mcp_adapter.invoke_mcp_tool(executor.dependencies['STATE'], cols_command)
+    cols_result, _, _ = await mcp_adapter.invoke_mcp_tool(executor.dependencies['STATE'], cols_command, session_id=executor.session_id)
     yield _format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
     
     if not (cols_result and isinstance(cols_result, dict) and cols_result.get('status') == 'success' and cols_result.get('results')):
@@ -101,11 +115,9 @@ async def execute_column_iteration(executor, command: dict):
     all_columns_metadata = cols_result.get('results', [])
     all_column_results = [cols_result]
     
-    # --- MODIFICATION START: Add LLM indicator events ---
     yield _format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
     tool_constraints = await executor._get_tool_constraints(tool_name)
     yield _format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
-    # --- MODIFICATION END ---
     required_type = tool_constraints.get("dataType") if tool_constraints else None
     
     # Loop through each column and execute the tool
@@ -126,7 +138,7 @@ async def execute_column_iteration(executor, command: dict):
                 continue
 
         iter_command = {"tool_name": tool_name, "arguments": {**base_args, 'column_name': column_name}}
-        col_result, _, _ = await mcp_adapter.invoke_mcp_tool(executor.dependencies['STATE'], iter_command)
+        col_result, _, _ = await mcp_adapter.invoke_mcp_tool(executor.dependencies['STATE'], iter_command, session_id=executor.session_id)
         all_column_results.append(col_result)
     yield _format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
 
@@ -194,4 +206,3 @@ async def execute_hallucinated_loop(executor, phase: dict):
 
     executor._add_to_structured_data(all_results)
     executor.last_tool_output = {"metadata": {"tool_name": tool_name}, "results": all_results, "status": "success"}
-
