@@ -21,7 +21,8 @@ from trusted_data_agent.agent.prompts import (
     TACTICAL_SELF_CORRECTION_PROMPT,
     TACTICAL_SELF_CORRECTION_PROMPT_COLUMN_ERROR,
     TACTICAL_SELF_CORRECTION_PROMPT_TABLE_ERROR,
-    GENERATE_FINAL_SUMMARY
+    GENERATE_FINAL_SUMMARY,
+    TASK_CLASSIFICATION_PROMPT
 )
 from trusted_data_agent.agent import orchestrators
 
@@ -273,12 +274,13 @@ class PlanExecutor:
                         }
                     }
                 })
-    
-    def _rewrite_plan_for_corellmtask_loops(self):
+
+    async def _rewrite_plan_for_corellmtask_loops(self):
         """
         Surgically corrects plans where the LLM has incorrectly placed a
         `CoreLLMTask` inside a loop for an aggregation-style task. It transforms
-        the loop into a standard, single-execution phase.
+        the loop into a standard, single-execution phase. This now uses a
+        classifier LLM call to determine if the task is appropriate for this optimization.
         """
         if not self.meta_plan:
             return
@@ -291,44 +293,67 @@ class PlanExecutor:
             )
 
             if is_inefficient_loop:
-                app_logger.warning(
-                    f"PLAN REWRITE: Detected inefficient CoreLLMTask loop in phase {phase.get('phase')}. "
-                    "Transforming to a standard phase."
-                )
+                task_description = phase.get("arguments", {}).get("task_description", "")
                 
-                original_phase = copy.deepcopy(phase)
+                if not task_description:
+                    task_type = "aggregation"
+                    app_logger.warning("CoreLLMTask loop has no task_description. Defaulting to 'aggregation' for rewrite.")
+                else:
+                    classification_prompt = TASK_CLASSIFICATION_PROMPT.format(task_description=task_description)
+                    reason = "Classifying CoreLLMTask loop intent for optimization."
+                    
+                    yield self._format_sse({"step": "Analyzing Plan Efficiency", "type": "plan_optimization", "details": "Checking if an iterative task can be optimized into a single batch operation."})
+                    yield self._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
+                    
+                    response_text, _, _ = await self._call_llm_and_update_tokens(
+                        prompt=classification_prompt, 
+                        reason=reason,
+                        system_prompt_override="You are a JSON-only responding assistant.", 
+                        raise_on_error=False,
+                        disabled_history=True
+                    )
+                    
+                    yield self._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
 
-                # Perform the transformation
-                phase.pop("type", None)
-                loop_source = phase.pop("loop_over", None)
-                
-                # Ensure the arguments are correctly set for a standard phase
-                if "arguments" not in phase:
-                    phase["arguments"] = {}
-                
-                # If source_data isn't already set, infer it from the loop_over key
-                if "source_data" not in phase["arguments"] and loop_source:
-                    phase["arguments"]["source_data"] = [loop_source]
-                
-                # Ensure a task description exists
-                if "task_description" not in phase["arguments"]:
-                     phase["arguments"]["task_description"] = phase.get("goal", "Perform the required task.")
+                    try:
+                        classification_data = json.loads(response_text)
+                        task_type = classification_data.get("classification", "synthesis")
+                    except (json.JSONDecodeError, AttributeError):
+                        app_logger.error(f"Failed to parse task classification. Defaulting to 'synthesis' to be safe. Response: {response_text}")
+                        task_type = "synthesis"
 
-                yield self._format_sse({
-                    "step": "System Correction",
-                    "type": "workaround",
-                    "details": {
-                        "summary": "The agent's plan was inefficient. The system has automatically rewritten it to perform the analysis in a single, efficient step.",
-                        "correction": {
-                            "from": original_phase,
-                            "to": phase
+                if task_type == "aggregation":
+                    app_logger.warning(
+                        f"PLAN REWRITE: Detected inefficient AGGREGATION CoreLLMTask loop in phase {phase.get('phase')}. "
+                        "Transforming to a standard phase."
+                    )
+                    
+                    original_phase = copy.deepcopy(phase)
+
+                    phase.pop("type", None)
+                    loop_source = phase.pop("loop_over", None)
+                    
+                    if "arguments" not in phase: phase["arguments"] = {}
+                    if "source_data" not in phase["arguments"] and loop_source:
+                        phase["arguments"]["source_data"] = [loop_source]
+                    if "task_description" not in phase["arguments"]:
+                         phase["arguments"]["task_description"] = phase.get("goal", "Perform the required task.")
+
+                    yield self._format_sse({
+                        "step": "System Correction",
+                        "type": "workaround",
+                        "details": {
+                            "summary": "The agent's plan was inefficient. The system has automatically rewritten it to perform the analysis in a single, efficient step.",
+                            "correction": {"from": original_phase, "to": phase}
                         }
-                    }
-                })
-                made_change = True
+                    })
+                    made_change = True
+                else:
+                    app_logger.info(f"PLAN REWRITE SKIPPED: Task classified as 'synthesis'. Preserving loop for phase {phase.get('phase')}.")
 
         if made_change:
             app_logger.info(f"PLAN REWRITE (CoreLLMTask): Final rewritten plan: {self.meta_plan}")
+
 
     def _rewrite_plan_for_date_range_loops(self):
         """
@@ -461,10 +486,8 @@ class PlanExecutor:
                     
                     break
                 
-                # --- MODIFICATION START: Call the new optimizer ---
-                for event in self._rewrite_plan_for_corellmtask_loops():
+                async for event in self._rewrite_plan_for_corellmtask_loops():
                     yield event
-                # --- MODIFICATION END ---
                 
                 for event in self._rewrite_plan_for_date_range_loops():
                     yield event
@@ -872,18 +895,35 @@ class PlanExecutor:
         app_logger.info("Meta-plan has been fully executed. Transitioning to summarization.")
         self.state = self.AgentState.SUMMARIZING
     
+    # --- MODIFICATION START: Corrected loop item extraction logic ---
     def _extract_loop_items(self, source_phase_key: str) -> list:
         """
         Intelligently extracts the list of items to iterate over from a previous phase's results.
+        It now correctly handles and flattens results from a previous looping phase.
         """
         if source_phase_key not in self.workflow_state:
             app_logger.warning(f"Loop source '{source_phase_key}' not found in workflow state.")
             return []
 
         source_data = self.workflow_state[source_phase_key]
-        
+
+        # If the source data is a list of tool result objects (typical for a prior loop phase)...
+        if isinstance(source_data, list) and all(isinstance(item, dict) and 'results' in item for item in source_data):
+            flattened_results = []
+            for tool_result in source_data:
+                # Extract the 'results' list from each tool result object
+                if isinstance(tool_result.get('results'), list):
+                    flattened_results.extend(tool_result['results'])
+            
+            if flattened_results:
+                app_logger.info(f"Extracted and flattened {len(flattened_results)} items from previous loop phase '{source_phase_key}'.")
+                return flattened_results
+
+        # Fallback to original recursive search for a single, nested results list
         def find_results_list(data):
             if isinstance(data, list):
+                # This part is tricky; we assume if we find a list of dicts with 'results', it's the one.
+                # The new logic above handles the more common case correctly.
                 for item in data:
                     found = find_results_list(item)
                     if found is not None: return found
@@ -898,10 +938,12 @@ class PlanExecutor:
         items = find_results_list(source_data)
         
         if items is None:
-            app_logger.warning(f"Could not find a 'results' list in '{source_phase_key}'. Returning empty list.")
+            app_logger.warning(f"Could not find a 'results' list in '{source_phase_key}' using fallback. Returning empty list.")
             return []
             
         return items
+    # --- MODIFICATION END ---
+
 
     async def _execute_looping_phase(self, phase: dict):
         """
@@ -2140,3 +2182,4 @@ class PlanExecutor:
             return None, events
             
         return None, events
+
