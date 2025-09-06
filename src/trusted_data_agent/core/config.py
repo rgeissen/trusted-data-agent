@@ -34,7 +34,7 @@ class AppConfig:
     DETAILED_DESCRIPTION_THRESHOLD = 200 # A heuristic character count for the PlanExecutor to distinguish between a generic vs. a detailed task description from the planner.
 
     # --- Initial State Configuration ---
-    INITIALLY_DISABLED_PROMPTS = [] # A list of prompt names to be disabled by default on application startup.
+    INITIALLY_DISABLED_PROMPTS = ["base_query","cust_promptExample","qlty_databaseQuality","dba_tableArchive","dba_databaseLineage", "dba_tableDropImpact", "dba_databaseHealthAssessment", "dba_userActivityAnalysis", "dba_systemVoice", "base_databaseBusinessDesc", "sales_prompt", "test_evsTools", "test_secTools", "test_dbaTools", "test_ragTools", "test_qltyTools", "test_fsTools", "test_baseTools", "rag_guidelines" ] # A list of prompt names to be disabled by default on application startup.
     INITIALLY_DISABLED_TOOLS = ["sales_top_customers"] # A list of tool names to be disabled by default on application startup.
 
     # --- Tool & Argument Parsing Logic ---
