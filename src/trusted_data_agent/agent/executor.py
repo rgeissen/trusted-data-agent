@@ -795,6 +795,10 @@ class PlanExecutor:
             answer_from_history_rule_str = (
                 "2.  **CRITICAL RULE (Answer from History):** If the `Workflow History` contains enough information to fully answer the user's `GOAL`, your response **MUST be a single JSON object** for a one-phase plan. This plan **MUST** call the `CoreLLMTask` tool. You **MUST** write the complete, final answer text inside the `synthesized_answer` argument within that tool call. **You are acting as a planner; DO NOT use the `FINAL_ANSWER:` format.**"
             )
+        
+        # --- MODIFICATION START: Read pre-built constraints context from centralized state ---
+        constraints_section = self.dependencies['STATE'].get("constraints_context", "")
+        # --- MODIFICATION END ---
 
         planning_prompt = WORKFLOW_META_PLANNING_PROMPT.format(
             workflow_goal=self.workflow_goal_prompt,
@@ -806,7 +810,8 @@ class PlanExecutor:
             data_gathering_priority_rule=data_gathering_rule_str,
             answer_from_history_rule=answer_from_history_rule_str,
             mcp_system_name=APP_CONFIG.MCP_SYSTEM_NAME,
-            replan_instructions=replan_context or ""
+            replan_instructions=replan_context or "",
+            constraints_section=constraints_section
         )
         
         yield self._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")

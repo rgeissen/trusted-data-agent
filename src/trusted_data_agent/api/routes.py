@@ -145,10 +145,12 @@ def _regenerate_contexts():
     """
     print("\n--- Regenerating Agent Capability Contexts ---")
     
+    disabled_tools_list = STATE.get("disabled_tools", [])
+    disabled_prompts_list = STATE.get("disabled_prompts", [])
+    
     # Regenerate Tool Contexts
     if STATE.get('mcp_tools') and STATE.get('structured_tools'):
         all_tools = STATE['mcp_tools']
-        disabled_tools_list = STATE.get("disabled_tools", [])
         
         for category, tool_list in STATE['structured_tools'].items():
             for tool_info in tool_list:
@@ -191,8 +193,6 @@ def _regenerate_contexts():
 
     # Regenerate Prompt Contexts
     if STATE.get('mcp_prompts') and STATE.get('structured_prompts'):
-        disabled_prompts_list = STATE.get("disabled_prompts", [])
-
         for category, prompt_list in STATE['structured_prompts'].items():
             for prompt_info in prompt_list:
                 prompt_info['disabled'] = prompt_info['name'] in disabled_prompts_list
@@ -232,6 +232,27 @@ def _regenerate_contexts():
             STATE['prompts_context'] = "--- No Prompts Available ---"
         
         app_logger.info(f"Regenerated LLM prompt context. {enabled_count} prompts are active.")
+
+    # --- MODIFICATION START: Centralized generation of constraints context ---
+    # This new section runs every time contexts are regenerated, ensuring the
+    # constraints are always in sync with the available tools/prompts lists.
+    if disabled_tools_list or disabled_prompts_list:
+        constraints_list = []
+        if disabled_tools_list:
+            constraints_list.extend([f"- `{name}` (tool)" for name in disabled_tools_list])
+        if disabled_prompts_list:
+            constraints_list.extend([f"- `{name}` (prompt)" for name in disabled_prompts_list])
+        
+        STATE['constraints_context'] = (
+            "\n--- CONSTRAINTS ---\n"
+            "You are explicitly forbidden from using the following capabilities in your plan under any circumstances:\n"
+            + "\n".join(constraints_list) + "\n"
+        )
+        app_logger.info(f"Regenerated LLM constraints context. {len(constraints_list)} capabilities are forbidden.")
+    else:
+        STATE['constraints_context'] = "" # Ensure it's an empty string if nothing is disabled
+        app_logger.info("Regenerated LLM constraints context. No capabilities are currently forbidden.")
+    # --- MODIFICATION END ---
     
     print("\n" + "-"*44)
 

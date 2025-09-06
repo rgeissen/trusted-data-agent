@@ -86,6 +86,7 @@ APP_STATE = {
     "tools_context": "--- No Tools Available ---", 
     "prompts_context": "--- No Prompts Available ---", 
     "charts_context": "--- No Charts Available ---",
+    "constraints_context": "", # MODIFICATION: Added new state for the planner's constraint text.
 
     # Runtime lists of currently disabled capabilities
     "disabled_prompts": list(APP_CONFIG.INITIALLY_DISABLED_PROMPTS),
@@ -103,4 +104,3 @@ CERTIFIED_AMAZON_MODELS = ["*amazon.nova-pro-v1*"]
 CERTIFIED_AMAZON_PROFILES = ["*amazon.nova-pro-v1*"]
 CERTIFIED_OLLAMA_MODELS = ["llama2"]
 CERTIFIED_OPENAI_MODELS = ["*gpt-4.1-mini-2025*"]
-
