@@ -134,7 +134,6 @@ class PlanExecutor:
         
         self.disabled_history = disabled_history or force_history_disable
         self.previous_turn_data = previous_turn_data or []
-        self.is_delegation_only_plan = False
         self.is_synthesis_from_history = False
         self.is_conversational_plan = False
         self.final_summary_was_injected = False
@@ -486,6 +485,36 @@ class PlanExecutor:
                     
                     break
                 
+                # --- MODIFICATION START: IN-PROCESS PLAN EXPANSION FOR SINGLE-PROMPT PLANS ---
+                is_single_prompt_plan = (
+                    self.meta_plan and
+                    len(self.meta_plan) == 1 and
+                    'executable_prompt' in self.meta_plan[0] and
+                    not self.is_delegated_task
+                )
+
+                if is_single_prompt_plan:
+                    single_phase = self.meta_plan[0]
+                    prompt_name = single_phase.get('executable_prompt')
+                    prompt_args = single_phase.get('arguments', {})
+
+                    yield self._format_sse({
+                        "step": "System Correction",
+                        "type": "workaround",
+                        "details": f"Planner chose a single prompt ('{prompt_name}'). Expanding plan in-process to improve efficiency."
+                    })
+
+                    # Set the executor's state to match the prompt, as if it were called from the UI
+                    self.active_prompt_name = prompt_name
+                    self.prompt_arguments = self._resolve_arguments(prompt_args)
+                    prompt_info = self._get_prompt_info(prompt_name)
+                    self.prompt_type = prompt_info.get("prompt_type", "reporting") if prompt_info else "reporting"
+                    
+                    # Overwrite the simple plan with a new, detailed, tool-based plan
+                    async for event in self._generate_meta_plan():
+                        yield event
+                # --- MODIFICATION END ---
+                
                 async for event in self._rewrite_plan_for_corellmtask_loops():
                     yield event
                 
@@ -542,11 +571,6 @@ class PlanExecutor:
                 
                 if not self.is_conversational_plan:
                     self.state = self.AgentState.EXECUTING
-                    self.is_delegation_only_plan = (
-                        self.meta_plan and
-                        len(self.meta_plan) == 1 and
-                        'executable_prompt' in self.meta_plan[0]
-                    )
             
             try:
                 if self.state == self.AgentState.EXECUTING:
@@ -566,21 +590,6 @@ class PlanExecutor:
                     self.state = self.AgentState.DONE
                 elif final_answer_override:
                     async for event in self._format_and_yield_final_answer(final_answer_override):
-                        yield event
-                    self.state = self.AgentState.DONE
-                elif self.is_delegation_only_plan and not self.final_summary_was_injected:
-                    app_logger.info("Delegation-only plan complete. Formatting result from sub-process.")
-                    final_summary_text = ""
-                    if (self.last_tool_output and self.last_tool_output.get("status") == "success" and
-                        isinstance(self.last_tool_output.get("results"), list) and
-                        len(self.last_tool_output.get("results")) > 0 and
-                        "response" in (self.last_tool_output.get("results")[0] or {})):
-                        final_summary_text = self.last_tool_output["results"][0]["response"]
-                    else:
-                        app_logger.error(f"Delegation-only plan failed to produce a valid final text. Fallback response will be used. Result: {self.last_tool_output}")
-                        final_summary_text = "The agent has completed its work, but an issue occurred while retrieving the final result."
-                    
-                    async for event in self._format_and_yield_final_answer(final_summary_text):
                         yield event
                     self.state = self.AgentState.DONE
                 elif self.final_summary_was_injected:
@@ -871,7 +880,7 @@ class PlanExecutor:
                     disabled_history=self.disabled_history,
                     previous_turn_data=self.turn_action_history,
                     source=self.source,
-                    force_final_summary=self.is_delegation_only_plan
+                    force_final_summary=True # A delegated prompt always generates a final answer for its scope
                 )
                 
                 async for event in sub_executor.run():
@@ -1413,8 +1422,7 @@ class PlanExecutor:
         is_final_phase = self.meta_plan and phase.get("phase") == self.meta_plan[-1].get("phase")
         
         if (tool_name == "CoreLLMTask" and is_final_phase and 
-            (self.execution_depth == 0 or self.force_final_summary) and 
-            not self.is_delegation_only_plan):
+            (self.execution_depth == 0 or self.force_final_summary)):
             planner_description = arguments.get("task_description", "")
             if not planner_description or len(planner_description) < APP_CONFIG.DETAILED_DESCRIPTION_THRESHOLD:
                 app_logger.info("FINAL_SUMMARY Prompt Injection: Overriding generic CoreLLMTask with standardized final summary prompt.")
@@ -2182,4 +2190,3 @@ class PlanExecutor:
             return None, events
             
         return None, events
-
