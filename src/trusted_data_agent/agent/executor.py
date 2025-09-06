@@ -476,11 +476,17 @@ class PlanExecutor:
                     if self.execution_depth == 0:
                         if replan_triggered and replan_attempt < max_replans:
                             replan_attempt += 1
+                            # --- MODIFICATION START ---
+                            # Enriched the SSE event to include the original, un-optimized plan.
                             yield self._format_sse({
                                 "step": "Re-planning for Efficiency",
                                 "type": "plan_optimization",
-                                "details": "Initial plan uses a sub-prompt alongside other tools. Agent is re-planning to create a more efficient, tool-only workflow."
+                                "details": {
+                                    "summary": "Initial plan uses a sub-prompt alongside other tools. Agent is re-planning to create a more efficient, tool-only workflow.",
+                                    "original_plan": copy.deepcopy(self.meta_plan)
+                                }
                             })
+                            # --- MODIFICATION END ---
                             continue 
                     
                     break
@@ -2229,4 +2235,3 @@ class PlanExecutor:
             return None, events
             
         return None, events
-
