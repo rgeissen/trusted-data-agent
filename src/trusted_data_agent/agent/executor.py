@@ -485,7 +485,7 @@ class PlanExecutor:
                     
                     break
                 
-                # --- MODIFICATION START: IN-PROCESS PLAN EXPANSION FOR SINGLE-PROMPT PLANS ---
+                # --- MODIFICATION START: IN-PROCESS PLAN EXPANSION & ARGUMENT ENRICHMENT ---
                 is_single_prompt_plan = (
                     self.meta_plan and
                     len(self.meta_plan) == 1 and
@@ -504,10 +504,44 @@ class PlanExecutor:
                         "details": f"Planner chose a single prompt ('{prompt_name}'). Expanding plan in-process to improve efficiency."
                     })
 
+                    # Argument Enrichment Step
+                    prompt_info = self._get_prompt_info(prompt_name)
+                    if prompt_info:
+                        required_args = {arg['name'] for arg in prompt_info.get('arguments', []) if arg.get('required')}
+                        missing_args = required_args - set(prompt_args.keys())
+                        
+                        if missing_args:
+                            yield self._format_sse({
+                                "step": "System Correction",
+                                "type": "workaround",
+                                "details": f"Prompt '{prompt_name}' is missing required arguments: {missing_args}. Attempting to extract from user query."
+                            })
+
+                            enrichment_prompt = (
+                                f"You are an expert argument extractor. From the user's query, extract the values for the following missing arguments: {list(missing_args)}. "
+                                f"User Query: \"{self.original_user_input}\"\n"
+                                "Respond with only a single, valid JSON object mapping the argument names to their extracted values."
+                            )
+                            reason = f"Extracting missing arguments for prompt '{prompt_name}'"
+                            
+                            yield self._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
+                            response_text, _, _ = await self._call_llm_and_update_tokens(
+                                prompt=enrichment_prompt, reason=reason,
+                                system_prompt_override="You are a JSON-only responding assistant.",
+                                raise_on_error=True
+                            )
+                            yield self._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
+
+                            try:
+                                extracted_args = json.loads(response_text)
+                                prompt_args.update(extracted_args)
+                                app_logger.info(f"Successfully enriched arguments: {extracted_args}")
+                            except (json.JSONDecodeError, AttributeError) as e:
+                                app_logger.error(f"Failed to parse extracted arguments: {e}. The prompt may fail.")
+
                     # Set the executor's state to match the prompt, as if it were called from the UI
                     self.active_prompt_name = prompt_name
                     self.prompt_arguments = self._resolve_arguments(prompt_args)
-                    prompt_info = self._get_prompt_info(prompt_name)
                     self.prompt_type = prompt_info.get("prompt_type", "reporting") if prompt_info else "reporting"
                     
                     # Overwrite the simple plan with a new, detailed, tool-based plan
@@ -2190,3 +2224,4 @@ class PlanExecutor:
             return None, events
             
         return None, events
+

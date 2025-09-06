@@ -77,8 +77,28 @@ class OutputFormatter:
                     list_level_stack.append(current_indent)
                 
                 content = list_item_match.group(2).strip()
-                if content:
+                
+                # --- MODIFICATION START: Additive parsing for nested key-value pairs in lists ---
+                nested_kv_match = re.match(r'^\s*\*\*\*(.*?):\*\*\*\s*(.*)$', content)
+                
+                if nested_kv_match:
+                    key = nested_kv_match.group(1).strip()
+                    value = nested_kv_match.group(2).strip()
+                    processed_value = process_inline_markdown(value)
+                    
+                    # Render as a key-value grid inside the list item, remove the bullet point, and adjust margin for alignment.
+                    html_output.append(f"""
+<li class="list-none -ml-5"> 
+    <div class="grid grid-cols-1 md:grid-cols-[1fr,3fr] gap-x-4 gap-y-1 py-1">
+        <dt class="text-sm font-medium text-gray-400">{key}:</dt>
+        <dd class="text-sm text-gray-200 mt-0">{processed_value}</dd>
+    </div>
+</li>
+""")
+                elif content:
+                    # Fallback to original behavior for standard list items.
                     html_output.append(f'<li>{process_inline_markdown(content)}</li>')
+                # --- MODIFICATION END ---
             else:
                 heading_match = re.match(r'^(#{1,6})\s+(.*)$', stripped_line)
                 hr_match = re.match(r'^-{3,}$', stripped_line)
@@ -295,7 +315,7 @@ class OutputFormatter:
                 for header in headers:
                     cell_data = str(row.get(header, ''))
                     sanitized_cell = cell_data.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                    table_html += f"<td>{sanitized_cell}</td>"
+                    html += f"<td>{sanitized_cell}</td>"
                 table_html += "</tr>"
             table_html += "</tbody></table></div>"
 
