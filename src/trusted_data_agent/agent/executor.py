@@ -904,8 +904,14 @@ class PlanExecutor:
                 'executable_prompt' in current_phase and
                 self.execution_depth < self.MAX_EXECUTION_DEPTH
             )
-
-            if is_delegated_prompt_phase:
+            
+            # --- MODIFICATION START: Reordered conditional logic ---
+            # Prioritize checking for a loop before checking for a delegated prompt.
+            if current_phase.get("type") == "loop":
+                async for event in self._execute_looping_phase(current_phase):
+                    yield event
+            
+            elif is_delegated_prompt_phase:
                 prompt_name = current_phase.get('executable_prompt')
                 prompt_args = current_phase.get('arguments', {})
                 
@@ -936,13 +942,10 @@ class PlanExecutor:
                 self.turn_action_history.extend(sub_executor.turn_action_history)
                 self.last_tool_output = sub_executor.last_tool_output
             
-            elif current_phase.get("type") == "loop":
-                async for event in self._execute_looping_phase(current_phase):
-                    yield event
-            
             else:
                 async for event in self._execute_standard_phase(current_phase):
                     yield event
+            # --- MODIFICATION END ---
             
             self.current_phase_index += 1
 
