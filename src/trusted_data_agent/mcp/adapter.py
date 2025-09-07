@@ -7,6 +7,9 @@ from datetime import datetime, timedelta
 from langchain_mcp_adapters.tools import load_mcp_tools
 from trusted_data_agent.llm import handler as llm_handler
 from trusted_data_agent.core.config import APP_CONFIG, AppConfig
+# --- MODIFICATION START: Import the CanonicalResponse model ---
+from trusted_data_agent.agent.response_models import CanonicalResponse
+# --- MODIFICATION END ---
 
 app_logger = logging.getLogger("quart.app")
 
@@ -83,6 +86,31 @@ CORE_LLM_TASK_DEFINITION = {
     }
 }
 
+# --- MODIFICATION START: Define the new built-in tool for final summaries ---
+# This uses the Pydantic model's schema to ensure consistency.
+final_report_schema = CanonicalResponse.model_json_schema()
+
+GENERATE_FINAL_REPORT_TOOL_DEFINITION = {
+    "name": "GenerateFinalReport",
+    "description": "A special internal tool used to format and deliver the final, structured report to the user. This tool MUST be called when you have gathered all necessary information to answer the user's request.",
+    "args": {
+        "direct_answer": {
+            "type": "string",
+            "description": final_report_schema["properties"]["direct_answer"]["description"],
+            "required": "direct_answer" in final_report_schema.get("required", [])
+        },
+        "key_metric": {
+            "type": "dict",
+            "description": final_report_schema["properties"]["key_metric"]["description"],
+            "required": "key_metric" in final_report_schema.get("required", [])
+        },
+        "key_observations": {
+            "type": "list[dict]",
+            "description": final_report_schema["properties"]["key_observations"]["description"],
+            "required": "key_observations" in final_report_schema.get("required", [])
+        }
+    }
+}
 
 def _extract_and_clean_description(description: str | None) -> tuple[str, str]:
     """
