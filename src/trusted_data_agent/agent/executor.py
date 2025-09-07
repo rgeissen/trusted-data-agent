@@ -25,6 +25,8 @@ from trusted_data_agent.agent.prompts import (
     TASK_CLASSIFICATION_PROMPT
 )
 from trusted_data_agent.agent import orchestrators
+from trusted_data_agent.agent.response_models import CanonicalResponse
+
 
 app_logger = logging.getLogger("quart.app")
 
@@ -1978,8 +1980,10 @@ class PlanExecutor:
             self.temp_data_holder = {'type': 'single', 'phrase': self.original_user_input}
 
     async def _call_llm_for_final_summary(self):
-        """Calls the CoreLLMTask to synthesize a final summary from all collected data."""
-        final_summary_text = ""
+        """
+        Calls the LLM to synthesize a final summary and returns a structured
+        CanonicalResponse object.
+        """
         full_workflow_state = copy.deepcopy(self.workflow_state)
 
         core_llm_command = {
@@ -1992,7 +1996,7 @@ class PlanExecutor:
             }
         }
         
-        yield self._format_sse({"step": "Calling LLM to write final report", "details": "Synthesizing markdown-formatted summary."})
+        yield self._format_sse({"step": "Calling LLM to write final report", "details": "Synthesizing structured summary."})
         
         yield self._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
         summary_result, input_tokens, output_tokens = await mcp_adapter.invoke_mcp_tool(self.dependencies['STATE'], core_llm_command, session_id=self.session_id)
@@ -2002,30 +2006,81 @@ class PlanExecutor:
         if updated_session:
             yield self._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0) }, "token_update")
 
-        if (summary_result and summary_result.get("status") == "success" and
-            "response" in (summary_result.get("results", [{}])[0] or {})):
-            final_summary_text = summary_result["results"][0]["response"]
-        else:
-            app_logger.error(f"CoreLLMTask failed to generate a standard summary. Fallback response will be used. Result: {summary_result}")
-            final_summary_text = "The agent has completed its work, but an issue occurred while generating the final summary."
+        # --- MODIFICATION START: Adaptable parsing for both flat and nested LLM responses ---
+        if (summary_result and summary_result.get("status") == "success"):
+            try:
+                # 1. Extract the inner string payload from the CoreLLMTask's response
+                response_str = summary_result.get("results", [{}])[0].get("response", "{}")
+                
+                # 2. Clean up markdown fences if they exist
+                if response_str.strip().startswith("```json"):
+                    match = re.search(r"```json\s*\n(.*?)\n\s*```", response_str, re.DOTALL)
+                    if match:
+                        response_str = match.group(1).strip()
+
+                # 3. Parse the inner string to a JSON object
+                inner_json = json.loads(response_str)
+                
+                # 4. **Flexible Extraction Logic**
+                #    Check if the response is the efficient, flat format first.
+                if "direct_answer" in inner_json:
+                    report_arguments = inner_json
+                #    If not, fall back to parsing the older, nested tool-call format.
+                else:
+                    report_arguments = inner_json.get("arguments", {})
+                
+                # 5. Validate the extracted arguments against our Pydantic model
+                structured_response = CanonicalResponse.model_validate(report_arguments)
+                yield structured_response
+                return
+
+            except (json.JSONDecodeError, AttributeError, IndexError, KeyError) as e:
+                app_logger.error(f"Failed to parse or validate LLM summary: {e}", exc_info=True)
+                app_logger.error(f"Problematic summary_result from CoreLLMTask: {summary_result}")
+                yield CanonicalResponse(direct_answer="The agent has completed its work, but an issue occurred while structuring the final summary.")
+                return
+        # --- MODIFICATION END ---
         
-        yield final_summary_text
+        app_logger.error(f"CoreLLMTask for summary failed or returned unexpected data. Result: {summary_result}")
+        yield CanonicalResponse(direct_answer="The agent has completed its work, but an issue occurred while generating the final summary.")
 
-    async def _format_and_yield_final_answer(self, final_summary_text: str):
-        """Formats a raw summary string and yields the final SSE event to the UI."""
-        clean_summary = final_summary_text.replace("FINAL_ANSWER:", "").strip() or "The agent has completed its work."
-        yield self._format_sse({"step": "LLM has generated the final answer", "details": clean_summary}, "llm_thought")
 
-        formatter = OutputFormatter(
-            llm_response_text=clean_summary,
-            collected_data=self.structured_collected_data,
-            original_user_input=self.original_user_input,
-            active_prompt_name=self.active_prompt_name
-        )
+    async def _format_and_yield_final_answer(self, final_content: str | CanonicalResponse):
+        """
+        Formats a raw summary string OR a CanonicalResponse object and yields
+        the final SSE event to the UI.
+        """
+        # --- MODIFICATION START: Handle both string and CanonicalResponse inputs ---
+        if isinstance(final_content, CanonicalResponse):
+            # If we already have a structured object, we pass it directly to the formatter
+            formatter = OutputFormatter(
+                canonical_response=final_content,
+                collected_data=self.structured_collected_data,
+                original_user_input=self.original_user_input,
+                active_prompt_name=self.active_prompt_name
+            )
+        else:
+            # For fallback cases (like errors), we pass the raw string
+            formatter = OutputFormatter(
+                llm_response_text=str(final_content),
+                collected_data=self.structured_collected_data,
+                original_user_input=self.original_user_input,
+                active_prompt_name=self.active_prompt_name
+            )
+        # --- MODIFICATION END ---
+        
         final_html, tts_payload = formatter.render()
         
         session_manager.add_to_history(self.session_id, 'assistant', final_html)
         
+        clean_summary_for_thought = "The agent has completed its work."
+        if isinstance(final_content, CanonicalResponse):
+            clean_summary_for_thought = final_content.direct_answer
+        elif isinstance(final_content, str):
+            clean_summary_for_thought = final_content.replace("FINAL_ANSWER:", "").strip()
+
+        yield self._format_sse({"step": "LLM has generated the final answer", "details": clean_summary_for_thought}, "llm_thought")
+
         yield self._format_sse({
             "final_answer": final_html,
             "tts_payload": tts_payload,
@@ -2034,22 +2089,21 @@ class PlanExecutor:
 
     async def _generate_final_summary(self):
         """
-        Orchestrates the generation of the final summary. It now handles the dual output from the
-        formatter (HTML and a structured TTS payload) and includes the TTS payload in the final event.
+        Orchestrates the generation of the final summary.
         """
-        final_summary_text = ""
+        final_summary_content = None
         
         if self.is_conversational_plan:
-            final_summary_text = self.temp_data_holder or "I'm sorry, I don't have a response for that."
+            final_summary_content = self.temp_data_holder or "I'm sorry, I don't have a response for that."
         
-        if not final_summary_text:
+        if not final_summary_content:
             async for event in self._call_llm_for_final_summary():
-                if isinstance(event, str): # The final text result
-                    final_summary_text = event
+                if isinstance(event, CanonicalResponse): # The final structured result
+                    final_summary_content = event
                 else: # The SSE events
                     yield event
 
-        async for event in self._format_and_yield_final_answer(final_summary_text):
+        async for event in self._format_and_yield_final_answer(final_summary_content):
             yield event
         
         self.state = self.AgentState.DONE

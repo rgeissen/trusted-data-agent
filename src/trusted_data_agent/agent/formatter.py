@@ -2,18 +2,30 @@
 import re
 import uuid
 import json
+from trusted_data_agent.agent.response_models import CanonicalResponse, KeyMetric, Observation
 
 class OutputFormatter:
     """
-    Parses raw LLM output and structured tool data to generate professional,
+    Parses structured response data to generate professional,
     failure-safe HTML for the UI.
     """
-    def __init__(self, llm_response_text: str, collected_data: list | dict, original_user_input: str = None, active_prompt_name: str = None):
-        self.raw_summary = llm_response_text
+    def __init__(self, collected_data: list | dict, canonical_response: CanonicalResponse = None, llm_response_text: str = None, original_user_input: str = None, active_prompt_name: str = None):
         self.collected_data = collected_data
         self.original_user_input = original_user_input
         self.active_prompt_name = active_prompt_name
         self.processed_data_indices = set()
+
+        # --- MODIFICATION START: Prioritize structured data, with a safe fallback ---
+        if canonical_response:
+            self.response = canonical_response
+        elif llm_response_text:
+            # If we only get a string (e.g., from an error), wrap it in a default
+            # response object so the rest of the class still works.
+            self.response = CanonicalResponse(direct_answer=llm_response_text)
+        else:
+            # Default empty response to prevent errors
+            self.response = CanonicalResponse(direct_answer="The agent has completed its work.")
+        # --- MODIFICATION END ---
 
     def _has_renderable_tables(self) -> bool:
         """Checks if there is any data that will be rendered as a table."""
@@ -31,6 +43,54 @@ class OutputFormatter:
                     return True
         return False
 
+    # --- MODIFICATION START: New, simple rendering methods for each component ---
+    def _render_key_metric(self, metric: KeyMetric) -> str:
+        """Renders the KeyMetric object into an HTML card."""
+        if not metric:
+            return ""
+        
+        metric_value = str(metric.value)
+        metric_label = metric.label
+        is_numeric = re.fullmatch(r'[\d,.]+', metric_value) is not None
+        value_class = "text-4xl" if is_numeric else "text-2xl"
+        label_class = "text-base"
+        return f"""
+<div class="key-metric-card bg-gray-900/50 p-4 rounded-lg mb-4 text-center">
+    <div class="{value_class} font-bold text-white">{metric_value}</div>
+    <div class="{label_class} text-gray-400 mt-1">{metric_label}</div>
+</div>
+"""
+
+    def _render_direct_answer(self, answer: str) -> str:
+        """Renders the direct answer text as a paragraph."""
+        if not answer:
+            return ""
+        return f'<p class="text-gray-300 mb-4">{self._process_inline_markdown(answer)}</p>'
+
+    def _render_observations(self, observations: list[Observation]) -> str:
+        """Renders a list of Observation objects into an HTML list."""
+        if not observations:
+            return ""
+        
+        html_parts = [
+            '<h3 class="text-lg font-bold text-white mb-3 border-b border-gray-700 pb-2">Key Observations</h3>',
+            '<ul class="list-disc list-outside space-y-2 text-gray-300 mb-4 pl-5">'
+        ]
+        for obs in observations:
+            html_parts.append(f'<li>{self._process_inline_markdown(obs.text)}</li>')
+        
+        html_parts.append('</ul>')
+        return "".join(html_parts)
+
+    def _process_inline_markdown(self, text_content: str) -> str:
+        """Handles basic inline markdown like code backticks and bolding."""
+        text_content = text_content.replace(r'\_', '_')
+        text_content = re.sub(r'`(.*?)`', r'<code class="bg-gray-900/70 text-teradata-orange rounded-md px-1.5 py-0.5 font-mono text-sm">\1</code>', text_content)
+        text_content = re.sub(r'(?<!\*)\*\*(?!\*)(.*?)(?<!\*)\*\*(?!\*)', r'<strong>\1</strong>', text_content)
+        return text_content
+    # --- MODIFICATION END ---
+
+
     def _render_standard_markdown(self, text: str) -> str:
         """
         Renders a block of text by processing standard markdown elements,
@@ -42,13 +102,6 @@ class OutputFormatter:
 
         def get_indent_level(line_text):
             return len(line_text) - len(line_text.lstrip(' '))
-
-        def process_inline_markdown(text_content):
-            text_content = text_content.replace(r'\_', '_')
-            text_content = re.sub(r'`(.*?)`', r'<code class="bg-gray-900/70 text-teradata-orange rounded-md px-1.5 py-0.5 font-mono text-sm">\1</code>', text_content)
-            # Handle bolding but avoid interfering with the ***key:*** syntax
-            text_content = re.sub(r'(?<!\*)\*\*(?!\*)(.*?)(?<!\*)\*\*(?!\*)', r'<strong>\1</strong>', text_content)
-            return text_content
 
         for line in lines:
             stripped_line = line.lstrip(' ')
@@ -64,7 +117,7 @@ class OutputFormatter:
             if key_value_match:
                 key = key_value_match.group(1).strip()
                 value = key_value_match.group(2).strip()
-                processed_value = process_inline_markdown(value)
+                processed_value = self._process_inline_markdown(value)
                 html_output.append(f"""
 <div class="grid grid-cols-1 md:grid-cols-[1fr,3fr] gap-x-4 gap-y-1 py-2 border-b border-gray-800">
     <dt class="text-sm font-medium text-gray-400">{key}:</dt>
@@ -78,15 +131,13 @@ class OutputFormatter:
                 
                 content = list_item_match.group(2).strip()
                 
-                # --- MODIFICATION START: Additive parsing for nested key-value pairs in lists ---
                 nested_kv_match = re.match(r'^\s*\*\*\*(.*?):\*\*\*\s*(.*)$', content)
                 
                 if nested_kv_match:
                     key = nested_kv_match.group(1).strip()
                     value = nested_kv_match.group(2).strip()
-                    processed_value = process_inline_markdown(value)
+                    processed_value = self._process_inline_markdown(value)
                     
-                    # Render as a key-value grid inside the list item, remove the bullet point, and adjust margin for alignment.
                     html_output.append(f"""
 <li class="list-none -ml-5"> 
     <div class="grid grid-cols-1 md:grid-cols-[1fr,3fr] gap-x-4 gap-y-1 py-1">
@@ -96,16 +147,14 @@ class OutputFormatter:
 </li>
 """)
                 elif content:
-                    # Fallback to original behavior for standard list items.
-                    html_output.append(f'<li>{process_inline_markdown(content)}</li>')
-                # --- MODIFICATION END ---
+                    html_output.append(f'<li>{self._process_inline_markdown(content)}</li>')
             else:
                 heading_match = re.match(r'^(#{1,6})\s+(.*)$', stripped_line)
                 hr_match = re.match(r'^-{3,}$', stripped_line)
 
                 if heading_match:
                     level = len(heading_match.group(1))
-                    content = process_inline_markdown(heading_match.group(2).strip())
+                    content = self._process_inline_markdown(heading_match.group(2).strip())
                     if level == 1:
                         html_output.append(f'<h2 class="text-xl font-bold text-white mb-3 border-b border-gray-700 pb-2">{content}</h2>')
                     elif level == 2:
@@ -115,7 +164,7 @@ class OutputFormatter:
                 elif hr_match:
                     html_output.append('<hr class="border-gray-600 my-4">')
                 elif stripped_line:
-                    html_output.append(f'<p class="text-gray-300 mb-4">{process_inline_markdown(stripped_line)}</p>')
+                    html_output.append(f'<p class="text-gray-300 mb-4">{self._process_inline_markdown(stripped_line)}</p>')
 
         while list_level_stack:
             html_output.append('</ul>')
@@ -123,102 +172,6 @@ class OutputFormatter:
 
         return "".join(html_output)
     
-    def _sanitize_summary(self, summary_text: str = None) -> tuple[str, str, str, str]:
-        """
-        Parses the LLM's summary text, separating its constituent parts.
-        
-        Returns:
-            A tuple containing:
-            - key_metric_html (str): The rendered HTML for the Key Metric card, or an empty string.
-            - body_text (str): The main text content of the summary, ready for markdown rendering.
-            - direct_answer_plain (str): The plain text of the direct answer for TTS.
-            - observations_plain (str): The plain text of the observations for TTS.
-        """
-        # --- 1. Initial Cleanup & Setup ---
-        summary_to_parse = summary_text if summary_text is not None else self.raw_summary
-        
-        fence_match = re.match(r"^\s*```(?:json|markdown)?\s*\n(.*?)\n\s*```\s*$", summary_to_parse, re.DOTALL)
-        if fence_match:
-            summary_to_parse = fence_match.group(1)
-            
-        if self.original_user_input and summary_text is None:
-            question_for_regex = re.escape(self.original_user_input.strip())
-            pattern = re.compile(f"^{question_for_regex}\\s*", re.IGNORECASE)
-            match = pattern.match(summary_to_parse)
-            if match:
-                summary_to_parse = summary_to_parse[match.end():]
-        summary_to_parse = summary_to_parse.lstrip(': ').strip()
-
-        # --- 2. Data Extraction via "Extract and Subtract" ---
-        
-        # Part A: Extract and remove Key Metric
-        key_metric_data = None
-        # --- MODIFICATION START: Made regex more robust to markdown variations ---
-        metric_pattern = re.compile(r"^\s*\**Key Metric:\**\s*`?(\{.*\})`?", re.IGNORECASE | re.MULTILINE)
-        # --- MODIFICATION END ---
-        metric_match = metric_pattern.search(summary_to_parse)
-        if metric_match:
-            json_str = metric_match.group(1).strip()
-            try:
-                metric_data = json.loads(json_str.replace("'", '"'))
-                if 'value' in metric_data and 'label' in metric_data:
-                    key_metric_data = metric_data
-            except json.JSONDecodeError:
-                pass
-            summary_to_parse = metric_pattern.sub("", summary_to_parse, count=1)
-
-        # Part B: Extract and remove Observations
-        observations_content = ""
-        obs_pattern = re.compile(r"^\s*## Key Observations.*", re.DOTALL | re.MULTILINE)
-        obs_match = obs_pattern.search(summary_to_parse)
-        if obs_match:
-            observations_content = obs_match.group(0).strip()
-            summary_to_parse = obs_pattern.sub("", summary_to_parse, count=1)
-
-        # Part C: What remains is the direct answer, after cleaning up any leftover artifacts
-        summary_to_parse = re.sub(r"```(json)?\s*```", "", summary_to_parse)
-        direct_answer_text = summary_to_parse.strip()
-
-        cleaned_direct_answer_text = re.sub(r'^\s*\*\*(The )?Direct Answer:\*\*\s*', '', direct_answer_text, flags=re.IGNORECASE).strip()
-        
-        # --- 3. TTS Payload Generation (Always uses full, original data) ---
-        direct_answer_plain = re.sub(r'[\*`]', '', cleaned_direct_answer_text).strip()
-        observations_plain = ""
-        if observations_content:
-            temp_obs_plain = re.sub(r'##\s*Key Observations\s*', '', observations_content)
-            observations_plain = re.sub(r'[\*`-]', '', temp_obs_plain).strip()
-            
-        # --- 4. HTML and Text Body Generation ---
-        key_metric_html = ""
-        if key_metric_data:
-            metric_value = str(key_metric_data.get('value', ''))
-            metric_label = key_metric_data.get('label', '')
-            is_numeric = re.fullmatch(r'[\d,.]+', metric_value) is not None
-            value_class = "text-4xl" if is_numeric else "text-2xl"
-            label_class = "text-base"
-            key_metric_html = f"""
-<div class="key-metric-card bg-gray-900/50 p-4 rounded-lg mb-4 text-center">
-    <div class="{value_class} font-bold text-white">{metric_value}</div>
-    <div class="{label_class} text-gray-400 mt-1">{metric_label}</div>
-</div>
-"""
-        
-        body_text_parts = []
-        # The direct answer is only part of the body if it's NOT just a duplicate of the metric
-        if cleaned_direct_answer_text and key_metric_data is None:
-             body_text_parts.append(cleaned_direct_answer_text)
-
-        if observations_content:
-            body_text_parts.append(observations_content)
-
-        # In the special case of the business description, the whole text is the body
-        if not key_metric_data and not observations_content:
-             body_text = cleaned_direct_answer_text
-        else:
-             body_text = "\n\n".join(body_text_parts).strip()
-        
-        return key_metric_html, body_text, direct_answer_plain, observations_plain
-
     def _render_ddl(self, tool_result: dict, index: int) -> str:
         if not isinstance(tool_result, dict) or "results" not in tool_result: return ""
         results = tool_result.get("results")
@@ -315,7 +268,7 @@ class OutputFormatter:
                 for header in headers:
                     cell_data = str(row.get(header, ''))
                     sanitized_cell = cell_data.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                    html += f"<td>{sanitized_cell}</td>"
+                    table_html += f"<td>{sanitized_cell}</td>" # Corrected variable name
                 table_html += "</tr>"
             table_html += "</tbody></table></div>"
 
@@ -332,20 +285,25 @@ class OutputFormatter:
         </div>
         """
 
+    # --- MODIFICATION START: Updated report formatters to use new rendering methods ---
     def _format_workflow_report(self) -> tuple[str, dict]:
         """
-        A specialized formatter for multi-step workflows.
+        A specialized formatter for multi-step workflows that uses the CanonicalResponse model.
         """
-        key_metric_html, body_text, direct_answer, observations = self._sanitize_summary(self.raw_summary)
-        
-        tts_payload = {"direct_answer": direct_answer, "key_observations": observations}
+        # Generate the structured TTS payload directly from the validated model
+        tts_payload = {
+            "direct_answer": self.response.direct_answer,
+            "key_observations": " ".join([obs.text for obs in self.response.key_observations])
+        }
         
         summary_html_parts = []
-        if key_metric_html:
-            summary_html_parts.append(key_metric_html)
+        if self.response.key_metric:
+            summary_html_parts.append(self._render_key_metric(self.response.key_metric))
         
-        if body_text:
-            summary_html_parts.append(self._render_standard_markdown(body_text))
+        summary_html_parts.append(self._render_direct_answer(self.response.direct_answer))
+        
+        if self.response.key_observations:
+            summary_html_parts.append(self._render_observations(self.response.key_observations))
 
         html = ""
         if summary_html_parts:
@@ -359,21 +317,18 @@ class OutputFormatter:
         for item_list in data_to_process.values():
             all_data_items.extend(item_list)
         
-        # In a workflow, the main summary comes from the LLM. Individual tool outputs are supplementary.
-        # However, if the only result is a single CoreLLMTask, its content is the summary.
         is_simple_report = False
         successful_results = [item for item in all_data_items if isinstance(item, dict) and item.get("status") == "success"]
         if len(successful_results) == 1 and successful_results[0].get("metadata", {}).get("tool_name") == "CoreLLMTask":
              is_simple_report = True
              # If the main summary was empty, use the CoreLLMTask content instead.
-             if not body_text.strip():
-                 core_llm_response = successful_results[0].get("results", [{}])[0].get("response", "")
-                 _, body_text, _, _ = self._sanitize_summary(core_llm_response)
-                 html = f"<div class='response-card summary-card'>{self._render_standard_markdown(body_text)}</div>"
+             if not self.response.direct_answer.strip() and not self.response.key_observations:
+                 core_llm_response_text = successful_results[0].get("results", [{}])[0].get("response", "")
+                 # Fallback to old markdown rendering only for this specific case
+                 html = f"<div class='response-card summary-card'>{self._render_standard_markdown(core_llm_response_text)}</div>"
 
 
         for context_key, data_items in data_to_process.items():
-            # Don't show the details report if it's just the single CoreLLMTask we already displayed
             if is_simple_report:
                  continue
 
@@ -416,28 +371,25 @@ class OutputFormatter:
 
     def _format_standard_query_report(self) -> tuple[str, dict]:
         """
-        Formats a standard query report and generates a structured TTS payload.
+        Formats a standard query report using the CanonicalResponse model.
         """
         final_html = ""
         
-        key_metric_html, body_text, direct_answer_plain, observations_plain = self._sanitize_summary(self.raw_summary)
-        
         summary_html_parts = []
-        if key_metric_html:
-            summary_html_parts.append(key_metric_html)
+        if self.response.key_metric:
+            summary_html_parts.append(self._render_key_metric(self.response.key_metric))
         
-        if body_text:
-            if body_text.strip().startswith("<div"): # Handles special pre-wrapped cases
-                 summary_html_parts.append(body_text)
-            else:
-                 summary_html_parts.append(self._render_standard_markdown(body_text))
+        summary_html_parts.append(self._render_direct_answer(self.response.direct_answer))
+        
+        if self.response.key_observations:
+            summary_html_parts.append(self._render_observations(self.response.key_observations))
 
         if summary_html_parts:
             final_html += f'<div class="response-card summary-card">{"".join(summary_html_parts)}</div>'
 
         tts_payload = {
-            "direct_answer": direct_answer_plain.strip(),
-            "key_observations": observations_plain.strip()
+            "direct_answer": self.response.direct_answer,
+            "key_observations": " ".join([obs.text for obs in self.response.key_observations])
         }
 
         data_source = []
@@ -505,3 +457,4 @@ class OutputFormatter:
             return self._format_workflow_report()
         else:
             return self._format_standard_query_report()
+
