@@ -15,17 +15,12 @@ class OutputFormatter:
         self.active_prompt_name = active_prompt_name
         self.processed_data_indices = set()
 
-        # --- MODIFICATION START: Prioritize structured data, with a safe fallback ---
         if canonical_response:
             self.response = canonical_response
         elif llm_response_text:
-            # If we only get a string (e.g., from an error), wrap it in a default
-            # response object so the rest of the class still works.
             self.response = CanonicalResponse(direct_answer=llm_response_text)
         else:
-            # Default empty response to prevent errors
             self.response = CanonicalResponse(direct_answer="The agent has completed its work.")
-        # --- MODIFICATION END ---
 
     def _has_renderable_tables(self) -> bool:
         """Checks if there is any data that will be rendered as a table."""
@@ -43,7 +38,6 @@ class OutputFormatter:
                     return True
         return False
 
-    # --- MODIFICATION START: New, simple rendering methods for each component ---
     def _render_key_metric(self, metric: KeyMetric) -> str:
         """Renders the KeyMetric object into an HTML card."""
         if not metric:
@@ -62,7 +56,14 @@ class OutputFormatter:
 """
 
     def _render_direct_answer(self, answer: str) -> str:
-        """Renders the direct answer text as a paragraph."""
+        """
+        Renders the direct answer text as a paragraph, but only if no key
+        metric is present, to avoid redundancy in the UI.
+        """
+        # --- MODIFICATION START: Suppress direct answer if a key metric is displayed ---
+        if self.response and self.response.key_metric:
+            return ""
+        # --- MODIFICATION END ---
         if not answer:
             return ""
         return f'<p class="text-gray-300 mb-4">{self._process_inline_markdown(answer)}</p>'
@@ -88,7 +89,6 @@ class OutputFormatter:
         text_content = re.sub(r'`(.*?)`', r'<code class="bg-gray-900/70 text-teradata-orange rounded-md px-1.5 py-0.5 font-mono text-sm">\1</code>', text_content)
         text_content = re.sub(r'(?<!\*)\*\*(?!\*)(.*?)(?<!\*)\*\*(?!\*)', r'<strong>\1</strong>', text_content)
         return text_content
-    # --- MODIFICATION END ---
 
 
     def _render_standard_markdown(self, text: str) -> str:
@@ -187,7 +187,7 @@ class OutputFormatter:
                 <div class="sql-header">
                     <span>SQL DDL: {table_name}</span>
                     <button class="copy-button" onclick="copyToClipboard(this)">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg>
                         Copy
                     </button>
                 </div>
@@ -220,7 +220,7 @@ class OutputFormatter:
             <div class="flex justify-between items-center mb-2">
                 <h4 class="text-lg font-semibold text-white">Data: Result for <code>{title}</code></h4>
                 <button class="copy-button" onclick="copyTableToClipboard(this)" data-table='{table_data_json}'>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg>
                         Copy Table
                     </button>
                 </div>
@@ -254,7 +254,7 @@ class OutputFormatter:
             <div class="flex justify-between items-center mt-4 mb-2">
                 <h5 class="text-md font-semibold text-white">Chart Data</h5>
                 <button class="copy-button" onclick="copyTableToClipboard(this)" data-table='{table_data_json}'>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg>
                     Copy Table
                 </button>
             </div>
@@ -285,12 +285,10 @@ class OutputFormatter:
         </div>
         """
 
-    # --- MODIFICATION START: Updated report formatters to use new rendering methods ---
     def _format_workflow_report(self) -> tuple[str, dict]:
         """
         A specialized formatter for multi-step workflows that uses the CanonicalResponse model.
         """
-        # Generate the structured TTS payload directly from the validated model
         tts_payload = {
             "direct_answer": self.response.direct_answer,
             "key_observations": " ".join([obs.text for obs in self.response.key_observations])
@@ -321,10 +319,8 @@ class OutputFormatter:
         successful_results = [item for item in all_data_items if isinstance(item, dict) and item.get("status") == "success"]
         if len(successful_results) == 1 and successful_results[0].get("metadata", {}).get("tool_name") == "CoreLLMTask":
              is_simple_report = True
-             # If the main summary was empty, use the CoreLLMTask content instead.
              if not self.response.direct_answer.strip() and not self.response.key_observations:
                  core_llm_response_text = successful_results[0].get("results", [{}])[0].get("response", "")
-                 # Fallback to old markdown rendering only for this specific case
                  html = f"<div class='response-card summary-card'>{self._render_standard_markdown(core_llm_response_text)}</div>"
 
 
@@ -333,7 +329,7 @@ class OutputFormatter:
                  continue
 
             display_key = context_key.replace("Workflow: ", "").replace(">", "&gt;").replace("Plan Results: ", "")
-            html += f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Report for: <code>{display_key}</code></summary><div class='px-4'>"
+            html += f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Report for: code>{display_key}</code></summary><div class='px-4'>"
             
             for i, item in enumerate(data_items):
                 tool_name = item.get("metadata", {}).get("tool_name") if isinstance(item, dict) else None
@@ -457,4 +453,3 @@ class OutputFormatter:
             return self._format_workflow_report()
         else:
             return self._format_standard_query_report()
-

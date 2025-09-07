@@ -276,6 +276,93 @@ class PlanExecutor:
                     }
                 })
 
+    async def _rewrite_plan_for_multi_loop_synthesis(self):
+        """
+        Surgically corrects plans where multiple, parallel loops feed into a
+        final summary. It inserts a new, intermediate distillation phase to
+        transform the raw data into high-level insights before the final
+        summary is generated.
+        """
+        if not self.meta_plan or len(self.meta_plan) < 3:
+            return
+
+        made_change = False
+        i = 0
+        while i < len(self.meta_plan) - 1:
+            if (self.meta_plan[i].get("type") == "loop" and 
+                self.meta_plan[i+1].get("type") == "loop"):
+                
+                loop_block_start_index = i
+                loop_block = [self.meta_plan[i]]
+                base_loop_source = self.meta_plan[i].get("loop_over")
+                
+                if not base_loop_source:
+                    i += 1
+                    continue
+
+                j = i + 1
+                while j < len(self.meta_plan) and self.meta_plan[j].get("type") == "loop" and self.meta_plan[j].get("loop_over") == base_loop_source:
+                    loop_block.append(self.meta_plan[j])
+                    j += 1
+                
+                if len(loop_block) >= 2 and j < len(self.meta_plan):
+                    final_phase = self.meta_plan[j]
+                    is_final_summary = final_phase.get("relevant_tools") == ["CoreLLMTask"]
+                    
+                    if is_final_summary:
+                        app_logger.warning(
+                            "PLAN REWRITE: Detected inefficient multi-loop plan. "
+                            "Injecting an intermediate distillation phase."
+                        )
+                        original_plan_snippet = copy.deepcopy(self.meta_plan[loop_block_start_index : j+1])
+                        
+                        synthesis_phase_num = j + 1
+                        source_data_keys = [f"result_of_phase_{p['phase']}" for p in loop_block]
+                        
+                        synthesis_task = {
+                            "phase": synthesis_phase_num,
+                            "goal": f"Distill the raw data from phases {loop_block[0]['phase']}-{loop_block[-1]['phase']} into a concise, per-item summary.",
+                            "relevant_tools": ["CoreLLMTask"],
+                            "arguments": {
+                                "task_description": (
+                                    "Analyze the voluminous raw data from the previous loops. Your task is to distill this information. "
+                                    "For each item (e.g., table) processed, produce a concise, one-paragraph summary of the most critical findings. "
+                                    "Your output MUST be a clean list of these summary objects, each containing the item's name and the summary text."
+                                ),
+                                "source_data": source_data_keys
+                            }
+                        }
+                        
+                        self.meta_plan.insert(j, synthesis_task)
+                        
+                        for phase_index in range(j + 1, len(self.meta_plan)):
+                            self.meta_plan[phase_index]["phase"] += 1
+                        
+                        final_summary_phase = self.meta_plan[j+1]
+                        new_source_key = f"result_of_phase_{synthesis_phase_num}"
+                        final_summary_phase["arguments"]["source_data"] = [new_source_key]
+                        
+                        made_change = True
+                        
+                        yield self._format_sse({
+                            "step": "System Correction",
+                            "type": "workaround",
+                            "details": {
+                                "summary": "The agent's plan was inefficient. The system has automatically rewritten it to include a data distillation step, improving the quality and reliability of the final report.",
+                                "correction": {
+                                    "from": original_plan_snippet,
+                                    "to": copy.deepcopy(self.meta_plan[loop_block_start_index : j+2])
+                                }
+                            }
+                        })
+                        
+                        i = j + 1 
+                        continue
+            i += 1
+        
+        if made_change:
+            app_logger.info(f"PLAN REWRITE (Multi-Loop): Final rewritten plan: {self.meta_plan}")
+
     async def _rewrite_plan_for_corellmtask_loops(self):
         """
         Surgically corrects plans where the LLM has incorrectly placed a
@@ -478,8 +565,6 @@ class PlanExecutor:
                     if self.execution_depth == 0:
                         if replan_triggered and replan_attempt < max_replans:
                             replan_attempt += 1
-                            # --- MODIFICATION START ---
-                            # Enriched the SSE event to include the original, un-optimized plan.
                             yield self._format_sse({
                                 "step": "Re-planning for Efficiency",
                                 "type": "plan_optimization",
@@ -488,12 +573,10 @@ class PlanExecutor:
                                     "original_plan": copy.deepcopy(self.meta_plan)
                                 }
                             })
-                            # --- MODIFICATION END ---
                             continue 
                     
                     break
                 
-                # --- MODIFICATION START: IN-PROCESS PLAN EXPANSION & ARGUMENT ENRICHMENT ---
                 is_single_prompt_plan = (
                     self.meta_plan and
                     len(self.meta_plan) == 1 and
@@ -512,7 +595,6 @@ class PlanExecutor:
                         "details": f"Single Prompt('{prompt_name}') identified. Expanding plan in-process to improve efficiency."
                     })
 
-                    # Argument Enrichment Step
                     prompt_info = self._get_prompt_info(prompt_name)
                     if prompt_info:
                         required_args = {arg['name'] for arg in prompt_info.get('arguments', []) if arg.get('required')}
@@ -547,19 +629,17 @@ class PlanExecutor:
                             except (json.JSONDecodeError, AttributeError) as e:
                                 app_logger.error(f"Failed to parse extracted arguments: {e}. The prompt may fail.")
 
-                    # Set the executor's state to match the prompt, as if it were called from the UI
                     self.active_prompt_name = prompt_name
                     self.prompt_arguments = self._resolve_arguments(prompt_args)
                     self.prompt_type = prompt_info.get("prompt_type", "reporting") if prompt_info else "reporting"
                     
-                    # Overwrite the simple plan with a new, detailed, tool-based plan
                     async for event in self._generate_meta_plan():
                         yield event
-                # --- MODIFICATION END ---
-                
+
+                async for event in self._rewrite_plan_for_multi_loop_synthesis():
+                    yield event
                 async for event in self._rewrite_plan_for_corellmtask_loops():
                     yield event
-                
                 for event in self._rewrite_plan_for_date_range_loops():
                     yield event
 
@@ -624,6 +704,8 @@ class PlanExecutor:
                 self.state = self.AgentState.SUMMARIZING
 
             if self.state == self.AgentState.SUMMARIZING:
+                final_summary_content = None
+
                 if self.execution_depth > 0 and not self.force_final_summary:
                     app_logger.info(f"Sub-planner (depth {self.execution_depth}) completed. Bypassing final summary.")
                     self.state = self.AgentState.DONE
@@ -631,27 +713,50 @@ class PlanExecutor:
                     app_logger.info(f"'{self.active_prompt_name}' is a 'context' prompt. Skipping final summary.")
                     self.state = self.AgentState.DONE
                 elif final_answer_override:
-                    async for event in self._format_and_yield_final_answer(final_answer_override):
-                        yield event
-                    self.state = self.AgentState.DONE
+                    final_summary_content = final_answer_override
                 elif self.final_summary_was_injected:
-                    app_logger.info("Bypassing LLM summary call; using injected summary result.")
+                    app_logger.info("Bypassing LLM summary call; parsing injected summary result.")
                     
-                    final_summary_text = ""
+                    raw_summary_str = ""
                     if (self.last_tool_output and self.last_tool_output.get("status") == "success" and
                         isinstance(self.last_tool_output.get("results"), list) and
                         len(self.last_tool_output.get("results")) > 0 and
                         "response" in (self.last_tool_output.get("results")[0] or {})):
-                        final_summary_text = self.last_tool_output["results"][0]["response"]
+                        raw_summary_str = self.last_tool_output["results"][0]["response"]
+
+                    if raw_summary_str:
+                        try:
+                            json_match = re.search(r'\{.*\}', raw_summary_str, re.DOTALL)
+                            if not json_match:
+                                raise json.JSONDecodeError("No valid JSON object found in the LLM response string.", raw_summary_str, 0)
+                            
+                            clean_json_str = json_match.group(0)
+                            summary_dict = json.loads(clean_json_str)
+                            
+                            if "arguments" in summary_dict and isinstance(summary_dict["arguments"], dict):
+                                data_to_validate = summary_dict["arguments"]
+                            else:
+                                data_to_validate = summary_dict
+                            
+                            final_summary_content = CanonicalResponse.model_validate(data_to_validate)
+                        except (json.JSONDecodeError, AttributeError, IndexError, KeyError) as e:
+                            app_logger.error(f"Failed to parse or validate injected LLM summary: {e}", exc_info=True)
+                            app_logger.error(f"Problematic raw string from CoreLLMTask: {raw_summary_str}")
+                            final_summary_content = CanonicalResponse(direct_answer="The agent has completed its work, but an issue occurred while structuring the final summary.")
                     else:
                         app_logger.error(f"Injected summary failed. Fallback response will be used. Result: {self.last_tool_output}")
-                        final_summary_text = "The agent has completed its work, but an issue occurred while generating the final summary."
-
-                    async for event in self._format_and_yield_final_answer(final_summary_text):
+                        final_summary_content = CanonicalResponse(direct_answer="The agent has completed its work, but an issue occurred while generating the final summary.")
+                else:
+                    async for event in self._generate_final_summary():
+                        if isinstance(event, CanonicalResponse):
+                            final_summary_content = event
+                        else:
+                            yield event
+                
+                if final_summary_content:
+                    async for event in self._format_and_yield_final_answer(final_summary_content):
                         yield event
                     self.state = self.AgentState.DONE
-                else:
-                    async for event in self._generate_final_summary(): yield event
 
         except Exception as e:
             root_exception = unwrap_exception(e)
@@ -804,9 +909,7 @@ class PlanExecutor:
                 "2.  **CRITICAL RULE (Answer from History):** If the `Workflow History` contains enough information to fully answer the user's `GOAL`, your response **MUST be a single JSON object** for a one-phase plan. This plan **MUST** call the `CoreLLMTask` tool. You **MUST** write the complete, final answer text inside the `synthesized_answer` argument within that tool call. **You are acting as a planner; DO NOT use the `FINAL_ANSWER:` format.**"
             )
         
-        # --- MODIFICATION START: Read pre-built constraints context from centralized state ---
         constraints_section = self.dependencies['STATE'].get("constraints_context", "")
-        # --- MODIFICATION END ---
 
         planning_prompt = WORKFLOW_META_PLANNING_PROMPT.format(
             workflow_goal=self.workflow_goal_prompt,
@@ -896,7 +999,6 @@ class PlanExecutor:
         if not self.meta_plan:
             raise RuntimeError("Cannot execute plan: meta_plan is not generated.")
         
-        # --- MODIFICATION START: Pre-execution summary skip for sub-processes ---
         if not APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY and self.execution_depth > 0 and self.meta_plan and len(self.meta_plan) > 1:
             last_phase = self.meta_plan[-1]
             is_final_summary_task = last_phase.get('relevant_tools') == ['CoreLLMTask']
@@ -908,7 +1010,6 @@ class PlanExecutor:
                     "details": "Sub-process is skipping its final summary task to prevent redundant work. The main process will generate the final report."
                 })
                 self.meta_plan = self.meta_plan[:-1]
-        # --- MODIFICATION END ---
 
         while self.current_phase_index < len(self.meta_plan):
             current_phase = self.meta_plan[self.current_phase_index]
@@ -1230,7 +1331,6 @@ class PlanExecutor:
                 }
             })
         
-        # --- MODIFICATION START: Multi-Tool Fast Path ---
         if len(relevant_tools) > 1 and not is_loop_iteration:
             yield self._format_sse({
                 "step": "System Correction",
@@ -1285,7 +1385,6 @@ class PlanExecutor:
              self._add_to_structured_data(all_loop_item_results)
              self.last_tool_output = all_loop_item_results
              return
-        # --- MODIFICATION END ---
 
 
         tool_name = relevant_tools[0] if len(relevant_tools) == 1 else None
@@ -2006,30 +2105,22 @@ class PlanExecutor:
         if updated_session:
             yield self._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0) }, "token_update")
 
-        # --- MODIFICATION START: Adaptable parsing for both flat and nested LLM responses ---
         if (summary_result and summary_result.get("status") == "success"):
             try:
-                # 1. Extract the inner string payload from the CoreLLMTask's response
                 response_str = summary_result.get("results", [{}])[0].get("response", "{}")
                 
-                # 2. Clean up markdown fences if they exist
-                if response_str.strip().startswith("```json"):
-                    match = re.search(r"```json\s*\n(.*?)\n\s*```", response_str, re.DOTALL)
-                    if match:
-                        response_str = match.group(1).strip()
-
-                # 3. Parse the inner string to a JSON object
-                inner_json = json.loads(response_str)
+                json_match = re.search(r'\{.*\}', response_str, re.DOTALL)
+                if not json_match:
+                    raise json.JSONDecodeError("No valid JSON object found in the LLM response string.", response_str, 0)
                 
-                # 4. **Flexible Extraction Logic**
-                #    Check if the response is the efficient, flat format first.
+                clean_json_str = json_match.group(0)
+                inner_json = json.loads(clean_json_str)
+                
                 if "direct_answer" in inner_json:
                     report_arguments = inner_json
-                #    If not, fall back to parsing the older, nested tool-call format.
                 else:
                     report_arguments = inner_json.get("arguments", {})
                 
-                # 5. Validate the extracted arguments against our Pydantic model
                 structured_response = CanonicalResponse.model_validate(report_arguments)
                 yield structured_response
                 return
@@ -2039,7 +2130,6 @@ class PlanExecutor:
                 app_logger.error(f"Problematic summary_result from CoreLLMTask: {summary_result}")
                 yield CanonicalResponse(direct_answer="The agent has completed its work, but an issue occurred while structuring the final summary.")
                 return
-        # --- MODIFICATION END ---
         
         app_logger.error(f"CoreLLMTask for summary failed or returned unexpected data. Result: {summary_result}")
         yield CanonicalResponse(direct_answer="The agent has completed its work, but an issue occurred while generating the final summary.")
@@ -2050,9 +2140,7 @@ class PlanExecutor:
         Formats a raw summary string OR a CanonicalResponse object and yields
         the final SSE event to the UI.
         """
-        # --- MODIFICATION START: Handle both string and CanonicalResponse inputs ---
         if isinstance(final_content, CanonicalResponse):
-            # If we already have a structured object, we pass it directly to the formatter
             formatter = OutputFormatter(
                 canonical_response=final_content,
                 collected_data=self.structured_collected_data,
@@ -2060,14 +2148,12 @@ class PlanExecutor:
                 active_prompt_name=self.active_prompt_name
             )
         else:
-            # For fallback cases (like errors), we pass the raw string
             formatter = OutputFormatter(
                 llm_response_text=str(final_content),
                 collected_data=self.structured_collected_data,
                 original_user_input=self.original_user_input,
                 active_prompt_name=self.active_prompt_name
             )
-        # --- MODIFICATION END ---
         
         final_html, tts_payload = formatter.render()
         
@@ -2089,24 +2175,17 @@ class PlanExecutor:
 
     async def _generate_final_summary(self):
         """
-        Orchestrates the generation of the final summary.
+        Orchestrates the generation of the final summary. This function now yields
+        the structured CanonicalResponse object it receives from the LLM call,
+        which is then handled by the main run loop.
         """
-        final_summary_content = None
-        
         if self.is_conversational_plan:
-            final_summary_content = self.temp_data_holder or "I'm sorry, I don't have a response for that."
-        
-        if not final_summary_content:
-            async for event in self._call_llm_for_final_summary():
-                if isinstance(event, CanonicalResponse): # The final structured result
-                    final_summary_content = event
-                else: # The SSE events
-                    yield event
+            response_text = self.temp_data_holder or "I'm sorry, I don't have a response for that."
+            yield CanonicalResponse(direct_answer=response_text)
+            return
 
-        async for event in self._format_and_yield_final_answer(final_summary_content):
+        async for event in self._call_llm_for_final_summary():
             yield event
-        
-        self.state = self.AgentState.DONE
 
     async def _get_tool_constraints(self, tool_name: str) -> dict:
         """Uses an LLM to determine if a tool requires numeric or character columns."""

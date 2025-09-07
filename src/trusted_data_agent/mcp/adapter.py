@@ -902,14 +902,28 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None) ->
         return result, 0, 0
     
     if hasattr(call_tool_result, 'content') and isinstance(call_tool_result.content, list) and len(call_tool_result.content) > 0:
-        text_content = call_tool_result.content[0]
-        if hasattr(text_content, 'text') and isinstance(text_content.text, str):
+        text_content_obj = call_tool_result.content[0]
+        if hasattr(text_content_obj, 'text') and isinstance(text_content_obj.text, str):
+            raw_text = text_content_obj.text
+            # --- MODIFICATION START: Resilient JSON parsing ---
+            # This logic robustly extracts a JSON object or array from the raw text response,
+            # handling cases where it's embedded in markdown, prefixed with words like 'json',
+            # or surrounded by other conversational text from the LLM.
             try:
-                result = json.loads(text_content.text)
-                return result, 0, 0
+                # Use regex to find the first string that looks like a JSON object or array.
+                json_match = re.search(r'\{.*\}|\[.*\]', raw_text, re.DOTALL)
+                if json_match:
+                    json_str = json_match.group(0)
+                    result = json.loads(json_str)
+                    return result, 0, 0
+                else:
+                    # If no JSON-like structure is found at all, raise an error.
+                    raise json.JSONDecodeError("No JSON object or array found in the response.", raw_text, 0)
             except json.JSONDecodeError:
-                app_logger.warning(f"Tool '{tool_name}' returned a non-JSON string: '{text_content.text}'")
-                result = {"status": "error", "error": "Tool returned non-JSON string", "data": text_content.text}
+                # This block catches failures from json.loads() or the explicit raise above.
+                app_logger.warning(f"Tool '{tool_name}' returned a non-JSON or malformed string: '{raw_text}'")
+                result = {"status": "error", "error": "Tool returned non-JSON or malformed string", "data": raw_text}
                 return result, 0, 0
+            # --- MODIFICATION END ---
     
     raise RuntimeError(f"Unexpected tool result format for '{tool_name}': {call_tool_result}")
