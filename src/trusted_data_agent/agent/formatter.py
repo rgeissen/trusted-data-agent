@@ -22,22 +22,6 @@ class OutputFormatter:
         else:
             self.response = CanonicalResponse(direct_answer="The agent has completed its work.")
 
-    def _has_renderable_tables(self) -> bool:
-        """Checks if there is any data that will be rendered as a table."""
-        data_source = []
-        if isinstance(self.collected_data, dict):
-            for item_list in self.collected_data.values():
-                data_source.extend(item_list)
-        else:
-            data_source = self.collected_data
-
-        for item in data_source:
-            if isinstance(item, dict) and "results" in item:
-                results = item.get("results")
-                if isinstance(results, list) and results and all(isinstance(row, dict) for row in results):
-                    return True
-        return False
-
     def _render_key_metric(self, metric: KeyMetric) -> str:
         """Renders the KeyMetric object into an HTML card."""
         if not metric:

@@ -225,8 +225,6 @@ async def load_and_categorize_mcp_resources(STATE: dict):
                         "required": arg_name in required_args,
                         "description": arg_desc_map.get(arg_name, arg_schema.get('title', 'No description.'))
                     })
-            else:
-                 cleaned_description, processed_args = _parse_arguments_from_mcp_tool_parameter_description(tool_desc)
             
             processed_tools.append(SimpleTool(
                 name=tool_name,

@@ -60,11 +60,6 @@ def update_session_name(session_id: str, new_name: str):
     if session_id in _SESSIONS:
         _SESSIONS[session_id]['name'] = new_name
 
-def get_session_history(session_id: str) -> list | None:
-    if session_id in _SESSIONS:
-        return _SESSIONS[session_id]['session_history']
-    return None
-
 def update_token_count(session_id: str, input_tokens: int, output_tokens: int):
     """Updates the token counts for a given session."""
     if session_id in _SESSIONS:

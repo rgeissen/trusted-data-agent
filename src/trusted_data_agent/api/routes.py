@@ -109,19 +109,6 @@ def synthesize_speech(client, text: str) -> bytes | None:
         app_logger.error(f"AUDIO DEBUG: Google Cloud TTS API call failed: {e}", exc_info=True)
         return None
 
-
-class _DummyContent:
-    """A duck-typed object to stand in for the MCP Content class."""
-    def __init__(self, text=""):
-        self.text = text
-
-class _DummyMessage:
-    """A duck-typed object to stand in for the MCP Message class."""
-    def __init__(self, role="user", content=None):
-        self.role = role
-        self.content = content if content is not None else _DummyContent()
-
-
 def unwrap_exception(e: BaseException) -> BaseException:
     """Recursively unwraps ExceptionGroups to find the root cause."""
     if isinstance(e, ExceptionGroup) and e.exceptions:
@@ -260,21 +247,6 @@ def _regenerate_contexts():
 async def index():
     """Serves the main HTML page."""
     return await render_template("index.html")
-
-@api_bp.after_request
-async def add_security_headers(response):
-    csp_policy = [
-        "default-src 'self'",
-        "script-src 'self' https://cdn.tailwindcss.com https://unpkg.com",
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-        "font-src 'self' https://fonts.gstatic.com",
-        "connect-src 'self' *.googleapis.com https://*.withgoogle.com",
-        "worker-src 'self' blob:",
-        "img-src 'self' data:",
-        "media-src 'self' blob:"
-    ]
-    response.headers['Content-Security-Policy'] = "; ".join(csp_policy)
-    return response
 
 @api_bp.route("/simple_chat", methods=["POST"])
 async def simple_chat():
@@ -525,18 +497,6 @@ async def get_prompt_content(prompt_name):
         root_exception = unwrap_exception(e)
         app_logger.error(f"Error fetching prompt content for '{prompt_name}': {root_exception}", exc_info=True)
         return jsonify({"error": "An unexpected error occurred while fetching the prompt."}), 500
-
-
-@api_bp.route("/resources")
-async def get_resources_route():
-    """Returns the categorized list of MCP resources."""
-    if not STATE.get("mcp_client"): return jsonify({"error": "Not configured"}), 400
-    return jsonify(STATE.get("structured_resources", {}))
-
-@api_bp.route("/charts")
-async def get_charts():
-    """Returns the categorized list of chart tools."""
-    return jsonify({})
 
 @api_bp.route("/sessions", methods=["GET"])
 async def get_sessions():
