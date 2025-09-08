@@ -12,7 +12,7 @@ from trusted_data_agent.agent.response_models import CanonicalResponse
 app_logger = logging.getLogger("quart.app")
 
 VIZ_TOOL_DEFINITION = {
-    "name": "viz_createChart",
+    "name": "TDA_Charting",
     "description": "Generates a data visualization based on provided data. You must specify the chart type and map the data fields to the appropriate visual roles.",
     "args": {
         "chart_type": {
@@ -40,17 +40,17 @@ VIZ_TOOL_DEFINITION = {
 
 UTIL_TOOL_DEFINITIONS = [
     {
-        "name": "util_getCurrentDate",
+        "name": "TDA_CurrentDate",
         "description": "Returns the current system date in YYYY-MM-DD format. Use this as the first step for any user query involving relative dates like 'today', 'yesterday', or 'this week'.",
         "args": {}
     },
     {
-        "name": "util_calculateDateRange",
+        "name": "TDA_DateRange",
         "description": "Calculates a list of dates based on a start date and a natural language phrase (e.g., 'past 3 days', 'last week'). This is a necessary second step for multi-day queries.",
         "args": {
             "start_date": {
                 "type": "string",
-                "description": "The anchor date for the calculation, usually today's date from `util_getCurrentDate`. Must be in YYYY-MM-DD format.",
+                "description": "The anchor date for the calculation, usually today's date from `TDA_CurrentDate`. Must be in YYYY-MM-DD format.",
                 "required": True
             },
             "date_phrase": {
@@ -63,7 +63,7 @@ UTIL_TOOL_DEFINITIONS = [
 ]
 
 CORE_LLM_TASK_DEFINITION = {
-    "name": "CoreLLMTask",
+    "name": "TDA_LLMTask",
     "description": "Performs internal, LLM-driven tasks that are not direct calls to the Teradata database. This tool is used for text synthesis, summarization, and formatting based on a specific 'task_description' provided by the LLM itself.",
     "args": {
         "task_description": {
@@ -87,7 +87,7 @@ CORE_LLM_TASK_DEFINITION = {
 final_report_schema = CanonicalResponse.model_json_schema()
 
 GENERATE_FINAL_REPORT_TOOL_DEFINITION = {
-    "name": "GenerateFinalReport",
+    "name": "TDA_FinalReport",
     "description": "A special internal tool used to format and deliver the final, structured report to the user. This tool MUST be called when you have gathered all necessary information to answer the user's request.",
     "args": {
         "direct_answer": {
@@ -598,7 +598,7 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: lis
         full_workflow_state = args.get("data", {})
         
         app_logger.info(f"Executing client-side LLM task in 'standard' mode: {task_description}")
-        reason = f"Executing CoreLLMTask: {task_description}"
+        reason = f"Executing TDA_LLMTask: {task_description}"
 
         focused_data_for_task = {}
         if isinstance(full_workflow_state, dict):
@@ -607,7 +607,7 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: lis
                     focused_data_for_task[key] = full_workflow_state[key]
         
         if not focused_data_for_task and source_data_keys:
-            app_logger.warning(f"CoreLLMTask was called for '{task_description}' but no source data was found for keys: {source_data_keys}. Passing all data as a fallback.")
+            app_logger.warning(f"TDA_LLMTask was called for '{task_description}' but no source data was found for keys: {source_data_keys}. Passing all data as a fallback.")
             focused_data_for_task = full_workflow_state
 
         known_context = {}
@@ -676,7 +676,7 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: lis
     ]
     
     if any(phrase in response_text.lower() for phrase in refusal_phrases):
-        app_logger.error(f"CoreLLMTask failed due to detected LLM refusal. Response: '{response_text}'")
+        app_logger.error(f"TDA_LLMTask failed due to detected LLM refusal. Response: '{response_text}'")
         result = {
             "status": "error", 
             "error_message": "LLM refused to perform the synthesis task.",
@@ -696,7 +696,7 @@ async def _invoke_util_calculate_date_range(STATE: dict, command: dict, session_
     start_date_str = args.get("start_date")
     date_phrase = args.get("date_phrase", "").lower().strip()
     
-    app_logger.info(f"Executing client-side tool: util_calculateDateRange with start: '{start_date_str}', phrase: '{date_phrase}'")
+    app_logger.info(f"Executing client-side tool: TDA_DateRange with start: '{start_date_str}', phrase: '{date_phrase}'")
 
     if not start_date_str or not date_phrase:
         return {"status": "error", "error_message": "Missing start_date or date_phrase."}
@@ -788,7 +788,7 @@ async def _invoke_util_calculate_date_range(STATE: dict, command: dict, session_
 
     return {
         "status": "success",
-        "metadata": {"tool_name": "util_calculateDateRange"},
+        "metadata": {"tool_name": "TDA_DateRange"},
         "results": date_list
     }
 
@@ -796,27 +796,27 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None) ->
     mcp_client = STATE.get('mcp_client')
     tool_name = command.get("tool_name")
     
-    if tool_name == "CoreLLMTask":
+    if tool_name == "TDA_LLMTask":
         args = command.get("arguments", {})
         mode = args.pop("mode", "standard")
         session_history = args.pop("session_history", None)
         return await _invoke_core_llm_task(STATE, command, session_history=session_history, mode=mode, session_id=session_id)
 
-    if tool_name == "util_getCurrentDate":
-        app_logger.info("Executing client-side tool: util_getCurrentDate")
+    if tool_name == "TDA_CurrentDate":
+        app_logger.info("Executing client-side tool: TDA_CurrentDate")
         current_date = datetime.now().strftime('%Y-%m-%d')
         result = {
             "status": "success",
-            "metadata": {"tool_name": "util_getCurrentDate"},
+            "metadata": {"tool_name": "TDA_CurrentDate"},
             "results": [{"current_date": current_date}]
         }
         return result, 0, 0
 
-    if tool_name == "util_calculateDateRange":
+    if tool_name == "TDA_DateRange":
         result = await _invoke_util_calculate_date_range(STATE, command, session_id=session_id)
         return result, 0, 0
 
-    if tool_name == "viz_createChart":
+    if tool_name == "TDA_Charting":
         app_logger.info(f"Handling abstract chart generation for: {command}")
         
         try:
@@ -830,7 +830,7 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None) ->
             
             chart_spec = _build_g2plot_spec(args, data)
             
-            result = {"type": "chart", "spec": chart_spec, "metadata": {"tool_name": "viz_createChart"}}
+            result = {"type": "chart", "spec": chart_spec, "metadata": {"tool_name": "TDA_Charting"}}
             return result, 0, 0
         except Exception as e:
             app_logger.error(f"Error building G2Plot spec: {e}", exc_info=True)

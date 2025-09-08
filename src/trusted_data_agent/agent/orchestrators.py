@@ -28,7 +28,7 @@ async def execute_date_range_orchestrator(executor, command: dict, date_param_na
     })
 
     # Get the current date to resolve relative phrases like "yesterday"
-    date_command = {"tool_name": "util_getCurrentDate"}
+    date_command = {"tool_name": "TDA_CurrentDate"}
     date_result, _, _ = await mcp_adapter.invoke_mcp_tool(executor.dependencies['STATE'], date_command)
     if not (date_result and date_result.get("status") == "success" and date_result.get("results")):
         raise RuntimeError("Date Range Orchestrator failed to fetch current date.")

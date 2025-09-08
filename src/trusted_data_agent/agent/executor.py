@@ -309,7 +309,7 @@ class PlanExecutor:
                 
                 if len(loop_block) >= 2 and j < len(self.meta_plan):
                     final_phase = self.meta_plan[j]
-                    is_final_summary = final_phase.get("relevant_tools") == ["CoreLLMTask"]
+                    is_final_summary = final_phase.get("relevant_tools") == ["TDA_LLMTask"]
                     
                     if is_final_summary:
                         app_logger.warning(
@@ -324,7 +324,7 @@ class PlanExecutor:
                         synthesis_task = {
                             "phase": synthesis_phase_num,
                             "goal": f"Distill the raw data from phases {loop_block[0]['phase']}-{loop_block[-1]['phase']} into a concise, per-item summary.",
-                            "relevant_tools": ["CoreLLMTask"],
+                            "relevant_tools": ["TDA_LLMTask"],
                             "arguments": {
                                 "task_description": (
                                     "Analyze the voluminous raw data from the previous loops. Your task is to distill this information. "
@@ -368,7 +368,7 @@ class PlanExecutor:
     async def _rewrite_plan_for_corellmtask_loops(self):
         """
         Surgically corrects plans where the LLM has incorrectly placed a
-        `CoreLLMTask` inside a loop for an aggregation-style task. It transforms
+        `TDA_LLMTask` inside a loop for an aggregation-style task. It transforms
         the loop into a standard, single-execution phase. This now uses a
         classifier LLM call to determine if the task is appropriate for this optimization.
         """
@@ -379,7 +379,7 @@ class PlanExecutor:
         for phase in self.meta_plan:
             is_inefficient_loop = (
                 phase.get("type") == "loop" and
-                phase.get("relevant_tools") == ["CoreLLMTask"]
+                phase.get("relevant_tools") == ["TDA_LLMTask"]
             )
 
             if is_inefficient_loop:
@@ -387,10 +387,10 @@ class PlanExecutor:
                 
                 if not task_description:
                     task_type = "aggregation"
-                    app_logger.warning("CoreLLMTask loop has no task_description. Defaulting to 'aggregation' for rewrite.")
+                    app_logger.warning("TDA_LLMTask loop has no task_description. Defaulting to 'aggregation' for rewrite.")
                 else:
                     classification_prompt = TASK_CLASSIFICATION_PROMPT.format(task_description=task_description)
-                    reason = "Classifying CoreLLMTask loop intent for optimization."
+                    reason = "Classifying TDA_LLMTask loop intent for optimization."
                     
                     yield self._format_sse({"step": "Analyzing Plan Efficiency", "type": "plan_optimization", "details": "Checking if an iterative task can be optimized into a single batch operation."})
                     yield self._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
@@ -414,7 +414,7 @@ class PlanExecutor:
 
                 if task_type == "aggregation":
                     app_logger.warning(
-                        f"PLAN REWRITE: Detected inefficient AGGREGATION CoreLLMTask loop in phase {phase.get('phase')}. "
+                        f"PLAN REWRITE: Detected inefficient AGGREGATION TDA_LLMTask loop in phase {phase.get('phase')}. "
                         "Transforming to a standard phase."
                     )
                     
@@ -442,12 +442,12 @@ class PlanExecutor:
                     app_logger.info(f"PLAN REWRITE SKIPPED: Task classified as 'synthesis'. Preserving loop for phase {phase.get('phase')}.")
 
         if made_change:
-            app_logger.info(f"PLAN REWRITE (CoreLLMTask): Final rewritten plan: {self.meta_plan}")
+            app_logger.info(f"PLAN REWRITE (TDA_LLMTask): Final rewritten plan: {self.meta_plan}")
 
 
     def _rewrite_plan_for_date_range_loops(self):
         """
-        Deterministically rewrites a plan where a `util_calculateDateRange` tool
+        Deterministically rewrites a plan where a `TDA_DateRange` tool
         is not followed by a necessary loop, correcting a common planning flaw.
         This runs after the main plan generation and before execution.
         """
@@ -461,7 +461,7 @@ class PlanExecutor:
             next_phase = self.meta_plan[i+1]
 
             is_date_range_phase = (
-                "util_calculateDateRange" in current_phase.get("relevant_tools", [])
+                "TDA_DateRange" in current_phase.get("relevant_tools", [])
             )
             is_missing_loop = (
                 next_phase.get("type") != "loop"
@@ -476,7 +476,7 @@ class PlanExecutor:
 
             if is_date_range_phase and is_missing_loop and uses_date_range_output:
                 app_logger.warning(
-                    f"PLAN REWRITE: Detected util_calculateDateRange at phase {current_phase['phase']} "
+                    f"PLAN REWRITE: Detected TDA_DateRange at phase {current_phase['phase']} "
                     f"not followed by a loop. Rewriting phase {next_phase['phase']}."
                 )
                 
@@ -534,7 +534,7 @@ class PlanExecutor:
                         context_parts = [
                             "\n--- CONTEXT FOR RE-PLANNING ---",
                             "Your previous plan was inefficient because it used a high-level prompt in a multi-step plan. You MUST create a new, more detailed plan that achieves the same goal using ONLY tools.",
-                            "\n**CRITICAL ARCHITECTURAL RULE:** Your new tool-only plan must still adhere to all primary directives. This includes the rule that all synthesis or summarization tasks must be consolidated into a single, final `CoreLLMTask` phase. Avoid creating redundant, back-to-back summary steps.\n",
+                            "\n**CRITICAL ARCHITECTURAL RULE:** Your new tool-only plan must still adhere to all primary directives. This includes the rule that all synthesis or summarization tasks must be consolidated into a single, final `TDA_LLMTask` phase. Avoid creating redundant, back-to-back summary steps.\n",
                             "To help you, here is the description of the prompt(s) you previously selected. You must replicate their logic using basic tools:"
                         ]
                         
@@ -556,7 +556,7 @@ class PlanExecutor:
 
                     if plan_has_prompt:
                         has_other_significant_tool = any(
-                            'executable_prompt' not in phase and phase.get('relevant_tools') != ['CoreLLMTask']
+                            'executable_prompt' not in phase and phase.get('relevant_tools') != ['TDA_LLMTask']
                             for phase in self.meta_plan
                         )
                         is_single_phase_prompt = len(self.meta_plan) == 1
@@ -663,13 +663,13 @@ class PlanExecutor:
                     is_synthesis_plan = (
                         self.meta_plan and
                         len(self.meta_plan) == 1 and
-                        self.meta_plan[0].get('relevant_tools') == ["CoreLLMTask"]
+                        self.meta_plan[0].get('relevant_tools') == ["TDA_LLMTask"]
                     )
 
                     if is_synthesis_plan:
                         if APP_CONFIG.ALLOW_SYNTHESIS_FROM_HISTORY:
                             self.is_synthesis_from_history = True
-                            app_logger.info("Detected a 'synthesis from history' plan. CoreLLMTask will run in full_context mode.")
+                            app_logger.info("Detected a 'synthesis from history' plan. TDA_LLMTask will run in full_context mode.")
                             yield self._format_sse({
                                 "step": "Plan Optimization",
                                 "type": "plan_optimization",
@@ -720,7 +720,7 @@ class PlanExecutor:
                     response_text = self.temp_data_holder or "I'm sorry, I don't have a response for that."
                     final_summary_content = CanonicalResponse(direct_answer=response_text)
                 
-                # Path 1: A structured report was captured from a GenerateFinalReport tool call
+                # Path 1: A structured report was captured from a TDA_FinalReport tool call
                 elif self.final_canonical_response:
                     final_summary_content = self.final_canonical_response
                     
@@ -909,7 +909,7 @@ class PlanExecutor:
                 "**CRITICAL RULE (Grounding):** Your primary objective is to answer the user's `GOAL` using data from the available tools. You **MUST** prioritize using a data-gathering tool if the `Workflow History` does not contain a direct and complete answer to the user's `GOAL`."
             )
             answer_from_history_rule_str = (
-                "2.  **CRITICAL RULE (Answer from History):** If the `Workflow History` contains enough information to fully answer the user's `GOAL`, your response **MUST be a single JSON object** for a one-phase plan. This plan **MUST** call the `CoreLLMTask` tool. You **MUST** write the complete, final answer text inside the `synthesized_answer` argument within that tool call. **You are acting as a planner; DO NOT use the `FINAL_ANSWER:` format.**"
+                "2.  **CRITICAL RULE (Answer from History):** If the `Workflow History` contains enough information to fully answer the user's `GOAL`, your response **MUST be a single JSON object** for a one-phase plan. This plan **MUST** call the `TDA_LLMTask` tool. You **MUST** write the complete, final answer text inside the `synthesized_answer` argument within that tool call. **You are acting as a planner; DO NOT use the `FINAL_ANSWER:` format.**"
             )
         
         constraints_section = self.dependencies['STATE'].get("constraints_context", "")
@@ -1010,7 +1010,7 @@ class PlanExecutor:
         
         if not APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY and self.execution_depth > 0 and self.meta_plan and len(self.meta_plan) > 1:
             last_phase = self.meta_plan[-1]
-            is_final_summary_task = last_phase.get('relevant_tools') == ['CoreLLMTask']
+            is_final_summary_task = last_phase.get('relevant_tools') == ['TDA_LLMTask']
             if is_final_summary_task:
                 app_logger.info(f"Sub-process (depth {self.execution_depth}) is skipping its final summary phase.")
                 yield self._format_sse({
@@ -1154,7 +1154,7 @@ class PlanExecutor:
 
         is_fast_path_candidate = (
             len(relevant_tools) == 1 and 
-            relevant_tools[0] not in ["CoreLLMTask", "viz_createChart", "GenerateFinalReport"]
+            relevant_tools[0] not in ["TDA_LLMTask", "TDA_Charting", "TDA_FinalReport"]
         )
 
         if is_fast_path_candidate:
@@ -1397,7 +1397,7 @@ class PlanExecutor:
 
 
         tool_name = relevant_tools[0] if len(relevant_tools) == 1 else None
-        if tool_name and tool_name not in ["viz_createChart", "GenerateFinalReport"]:
+        if tool_name and tool_name not in ["TDA_Charting", "TDA_FinalReport"]:
             all_tools = self.dependencies['STATE'].get('mcp_tools', {})
             tool_def = all_tools.get(tool_name)
             if tool_def:
@@ -1411,7 +1411,7 @@ class PlanExecutor:
                     })
                     fast_path_action = {"tool_name": tool_name, "arguments": strategic_args}
                     
-                    if tool_name == "CoreLLMTask" and is_loop_iteration and loop_item:
+                    if tool_name == "TDA_LLMTask" and is_loop_iteration and loop_item:
                         modified_args = fast_path_action["arguments"].copy()
                         task_desc = modified_args.get("task_description", "")
                         loop_item_str = json.dumps(loop_item)
@@ -1422,7 +1422,7 @@ class PlanExecutor:
                         )
                         
                         fast_path_action["arguments"] = modified_args
-                        app_logger.info(f"Injected loop context into CoreLLMTask description for item: {loop_item_str}")
+                        app_logger.info(f"Injected loop context into TDA_LLMTask description for item: {loop_item_str}")
 
                     async for event in self._execute_action_with_orchestrators(fast_path_action, phase):
                         yield event
@@ -1491,7 +1491,7 @@ class PlanExecutor:
             is_chart_success = (isinstance(self.last_tool_output, dict) and self.last_tool_output.get("type") == "chart")
 
             if self.last_tool_output and (is_standard_success or is_chart_success):
-                if next_action.get("tool_name") == "viz_createChart":
+                if next_action.get("tool_name") == "TDA_Charting":
                     is_valid_chart = True
                     spec = self.last_tool_output.get("spec", {})
                     options = spec.get("options", {})
@@ -1671,8 +1671,8 @@ class PlanExecutor:
         tool_name = action.get("tool_name")
         arguments = action.get("arguments", {})
         
-        if tool_name == "GenerateFinalReport":
-            app_logger.info("Detected GenerateFinalReport signal. Agent will now perform final summarization.")
+        if tool_name == "TDA_FinalReport":
+            app_logger.info("Detected TDA_FinalReport signal. Agent will now perform final summarization.")
             
             async for event in self._generate_final_summary():
                 if isinstance(event, CanonicalResponse):
@@ -1693,8 +1693,8 @@ class PlanExecutor:
                 self._add_to_structured_data(self.last_tool_output)
             return
         
-        if tool_name == "CoreLLMTask" and "synthesized_answer" in arguments:
-            app_logger.info("Bypassing CoreLLMTask execution. Using synthesized answer from planner.")
+        if tool_name == "TDA_LLMTask" and "synthesized_answer" in arguments:
+            app_logger.info("Bypassing TDA_LLMTask execution. Using synthesized answer from planner.")
             self.last_tool_output = {
                 "status": "success",
                 "results": [{"response": arguments["synthesized_answer"]}]
@@ -1713,8 +1713,8 @@ class PlanExecutor:
         if 'arguments' in action:
             action['arguments'] = self._resolve_arguments(arguments)
 
-        if tool_name == "CoreLLMTask" and self.is_synthesis_from_history:
-            app_logger.info("Preparing CoreLLMTask for 'full_context' execution.")
+        if tool_name == "TDA_LLMTask" and self.is_synthesis_from_history:
+            app_logger.info("Preparing TDA_LLMTask for 'full_context' execution.")
             session_data = session_manager.get_session(self.session_id)
             session_history = session_data.get("session_history", []) if session_data else []
             
@@ -1727,7 +1727,7 @@ class PlanExecutor:
                 yield self._format_sse({"step": "System Notification", "details": action['notification'], "type": "workaround"})
                 del action['notification']
 
-            if tool_name == "CoreLLMTask" and not self.is_synthesis_from_history:
+            if tool_name == "TDA_LLMTask" and not self.is_synthesis_from_history:
                 distilled_workflow_state = self._distill_data_for_llm_context(copy.deepcopy(self.workflow_state))
                 action.setdefault("arguments", {})["data"] = distilled_workflow_state
             
@@ -1735,9 +1735,9 @@ class PlanExecutor:
                 yield self._format_sse({"step": "Tool Execution Intent", "details": action}, "tool_result")
             
             status_target = "db"
-            if tool_name == "CoreLLMTask":
+            if tool_name == "TDA_LLMTask":
                 status_target = "llm"
-            elif tool_name.startswith("util_"):
+            elif tool_name in ["TDA_CurrentDate", "TDA_DateRange"]:
                 status_target = "llm"
             
             yield self._format_sse({"target": status_target, "state": "busy"}, "status_indicator_update")
@@ -2131,7 +2131,7 @@ class PlanExecutor:
         )
 
         core_llm_command = {
-            "tool_name": "CoreLLMTask",
+            "tool_name": "TDA_LLMTask",
             "arguments": {
                 "task_description": final_summary_prompt_text,
                 "user_question": self.original_user_input
@@ -2168,11 +2168,11 @@ class PlanExecutor:
 
             except (json.JSONDecodeError, AttributeError, IndexError, KeyError) as e:
                 app_logger.error(f"Failed to parse or validate LLM summary: {e}", exc_info=True)
-                app_logger.error(f"Problematic summary_result from CoreLLMTask: {summary_result}")
+                app_logger.error(f"Problematic summary_result from TDA_LLMTask: {summary_result}")
                 yield CanonicalResponse(direct_answer="The agent has completed its work, but an issue occurred while structuring the final summary.")
                 return
         
-        app_logger.error(f"CoreLLMTask for summary failed or returned unexpected data. Result: {summary_result}")
+        app_logger.error(f"TDA_LLMTask for summary failed or returned unexpected data. Result: {summary_result}")
         yield CanonicalResponse(direct_answer="The agent has completed its work, but an issue occurred while generating the final summary.")
 
 
@@ -2474,4 +2474,3 @@ class PlanExecutor:
             return None, events
             
         return None, events
-
