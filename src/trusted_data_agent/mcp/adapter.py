@@ -7,9 +7,7 @@ from datetime import datetime, timedelta
 from langchain_mcp_adapters.tools import load_mcp_tools
 from trusted_data_agent.llm import handler as llm_handler
 from trusted_data_agent.core.config import APP_CONFIG, AppConfig
-# --- MODIFICATION START: Import the CanonicalResponse model ---
 from trusted_data_agent.agent.response_models import CanonicalResponse
-# --- MODIFICATION END ---
 
 app_logger = logging.getLogger("quart.app")
 
@@ -86,8 +84,6 @@ CORE_LLM_TASK_DEFINITION = {
     }
 }
 
-# --- MODIFICATION START: Define the new built-in tool for final summaries ---
-# This uses the Pydantic model's schema to ensure consistency.
 final_report_schema = CanonicalResponse.model_json_schema()
 
 GENERATE_FINAL_REPORT_TOOL_DEFINITION = {
@@ -253,6 +249,9 @@ async def load_and_categorize_mcp_resources(STATE: dict):
         for util_tool_def in UTIL_TOOL_DEFINITIONS:
             loaded_tools.append(SimpleTool(**util_tool_def))
         loaded_tools.append(SimpleTool(**CORE_LLM_TASK_DEFINITION))
+        # --- MODIFICATION START: Load the GenerateFinalReport tool ---
+        loaded_tools.append(SimpleTool(**GENERATE_FINAL_REPORT_TOOL_DEFINITION))
+        # --- MODIFICATION END ---
 
 
         STATE['mcp_tools'] = {tool.name: tool for tool in loaded_tools}
@@ -867,17 +866,14 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None) ->
             if found_args is not None:
                 args = found_args
 
-    # --- MODIFICATION START: Argument Expansion using central synonym map ---
     expanded_args = args.copy()
     for canonical, synonyms in AppConfig.ARGUMENT_SYNONYM_MAP.items():
         found_value = None
-        # Find if any synonym has a value in the original arguments
         for synonym in synonyms:
             if synonym in args:
                 found_value = args[synonym]
                 break
         
-        # If a value was found, ensure all synonyms for that canonical key are in the expanded arguments
         if found_value is not None:
             for synonym in synonyms:
                 expanded_args[synonym] = found_value
@@ -885,7 +881,6 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None) ->
     if expanded_args != args:
         app_logger.info(f"Expanded tool arguments for '{tool_name}'. Original: {args}, Expanded: {expanded_args}")
         args = expanded_args
-    # --- MODIFICATION END ---
 
 
     app_logger.debug(f"Invoking tool '{tool_name}' with args: {args}")
@@ -905,25 +900,17 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None) ->
         text_content_obj = call_tool_result.content[0]
         if hasattr(text_content_obj, 'text') and isinstance(text_content_obj.text, str):
             raw_text = text_content_obj.text
-            # --- MODIFICATION START: Resilient JSON parsing ---
-            # This logic robustly extracts a JSON object or array from the raw text response,
-            # handling cases where it's embedded in markdown, prefixed with words like 'json',
-            # or surrounded by other conversational text from the LLM.
             try:
-                # Use regex to find the first string that looks like a JSON object or array.
                 json_match = re.search(r'\{.*\}|\[.*\]', raw_text, re.DOTALL)
                 if json_match:
                     json_str = json_match.group(0)
                     result = json.loads(json_str)
                     return result, 0, 0
                 else:
-                    # If no JSON-like structure is found at all, raise an error.
                     raise json.JSONDecodeError("No JSON object or array found in the response.", raw_text, 0)
             except json.JSONDecodeError:
-                # This block catches failures from json.loads() or the explicit raise above.
                 app_logger.warning(f"Tool '{tool_name}' returned a non-JSON or malformed string: '{raw_text}'")
                 result = {"status": "error", "error": "Tool returned non-JSON or malformed string", "data": raw_text}
                 return result, 0, 0
-            # --- MODIFICATION END ---
     
     raise RuntimeError(f"Unexpected tool result format for '{tool_name}': {call_tool_result}")

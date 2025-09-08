@@ -25,7 +25,7 @@ from trusted_data_agent.agent.prompts import (
     TASK_CLASSIFICATION_PROMPT
 )
 from trusted_data_agent.agent import orchestrators
-from trusted_data_agent.agent.response_models import CanonicalResponse
+from trusted_data_agent.agent.response_models import CanonicalResponse, KeyMetric
 
 
 app_logger = logging.getLogger("quart.app")
@@ -138,10 +138,12 @@ class PlanExecutor:
         self.previous_turn_data = previous_turn_data or []
         self.is_synthesis_from_history = False
         self.is_conversational_plan = False
-        self.final_summary_was_injected = False
         self.source = source
         self.is_delegated_task = is_delegated_task
         self.force_final_summary = force_final_summary
+        
+        self.is_complex_prompt_workflow = False
+        self.final_canonical_response = None
 
 
     @staticmethod
@@ -702,7 +704,7 @@ class PlanExecutor:
                 yield self._format_sse({"step": "Unrecoverable Error", "details": e.friendly_message, "type": "error"}, "tool_result")
                 final_answer_override = f"I could not complete the request. Reason: {e.friendly_message}"
                 self.state = self.AgentState.SUMMARIZING
-
+            
             if self.state == self.AgentState.SUMMARIZING:
                 final_summary_content = None
 
@@ -713,46 +715,47 @@ class PlanExecutor:
                     app_logger.info(f"'{self.active_prompt_name}' is a 'context' prompt. Skipping final summary.")
                     self.state = self.AgentState.DONE
                 elif final_answer_override:
-                    final_summary_content = final_answer_override
-                elif self.final_summary_was_injected:
-                    app_logger.info("Bypassing LLM summary call; parsing injected summary result.")
+                    final_summary_content = CanonicalResponse(direct_answer=final_answer_override)
+                elif self.is_conversational_plan:
+                    response_text = self.temp_data_holder or "I'm sorry, I don't have a response for that."
+                    final_summary_content = CanonicalResponse(direct_answer=response_text)
+                
+                # Path 1: A structured report was captured from a GenerateFinalReport tool call
+                elif self.final_canonical_response:
+                    final_summary_content = self.final_canonical_response
                     
-                    raw_summary_str = ""
-                    if (self.last_tool_output and self.last_tool_output.get("status") == "success" and
-                        isinstance(self.last_tool_output.get("results"), list) and
-                        len(self.last_tool_output.get("results")) > 0 and
-                        "response" in (self.last_tool_output.get("results")[0] or {})):
-                        raw_summary_str = self.last_tool_output["results"][0]["response"]
-
-                    if raw_summary_str:
-                        try:
-                            json_match = re.search(r'\{.*\}', raw_summary_str, re.DOTALL)
-                            if not json_match:
-                                raise json.JSONDecodeError("No valid JSON object found in the LLM response string.", raw_summary_str, 0)
-                            
-                            clean_json_str = json_match.group(0)
-                            summary_dict = json.loads(clean_json_str)
-                            
-                            if "arguments" in summary_dict and isinstance(summary_dict["arguments"], dict):
-                                data_to_validate = summary_dict["arguments"]
-                            else:
-                                data_to_validate = summary_dict
-                            
-                            final_summary_content = CanonicalResponse.model_validate(data_to_validate)
-                        except (json.JSONDecodeError, AttributeError, IndexError, KeyError) as e:
-                            app_logger.error(f"Failed to parse or validate injected LLM summary: {e}", exc_info=True)
-                            app_logger.error(f"Problematic raw string from CoreLLMTask: {raw_summary_str}")
-                            final_summary_content = CanonicalResponse(direct_answer="The agent has completed its work, but an issue occurred while structuring the final summary.")
-                    else:
-                        app_logger.error(f"Injected summary failed. Fallback response will be used. Result: {self.last_tool_output}")
-                        final_summary_content = CanonicalResponse(direct_answer="The agent has completed its work, but an issue occurred while generating the final summary.")
+                    # Check if this was a complex prompt that requires a second, presentation-focused LLM call
+                    if self.is_complex_prompt_workflow:
+                        app_logger.info("Complex prompt workflow detected. Initiating Stage 2: Presentation Formatting.")
+                        
+                        presentation_prompt = (
+                            "You are a formatting expert. Your task is to take a structured JSON data payload and present it as a final, user-facing report "
+                            "based on the original prompt's formatting instructions.\n\n"
+                            "--- STRUCTURED DATA PAYLOAD ---\n"
+                            f"{final_summary_content.model_dump_json(indent=2)}\n\n"
+                            "--- ORIGINAL FORMATTING INSTRUCTIONS ---\n"
+                            f"{self.workflow_goal_prompt}\n\n"
+                            "--- FINAL INSTRUCTIONS ---\n"
+                            "Your output MUST be only the final, formatted markdown text that directly fulfills the original instructions. "
+                            "Do not include the JSON payload or any conversational text in your response."
+                        )
+                        
+                        yield self._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
+                        formatted_text, _, _ = await self._call_llm_and_update_tokens(
+                            prompt=presentation_prompt,
+                            reason="Stage 2: Formatting final report based on complex prompt instructions."
+                        )
+                        yield self._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
+                        final_summary_content = formatted_text
+                
+                # Path 2: Fallback for any workflow that needs a final summary but hasn't generated one yet
                 else:
                     async for event in self._generate_final_summary():
                         if isinstance(event, CanonicalResponse):
                             final_summary_content = event
                         else:
                             yield event
-                
+
                 if final_summary_content:
                     async for event in self._format_and_yield_final_answer(final_summary_content):
                         yield event
@@ -994,6 +997,12 @@ class PlanExecutor:
         except (json.JSONDecodeError, ValueError) as e:
             raise RuntimeError(f"Failed to generate a valid meta-plan from the LLM. Response: {response_text}. Error: {e}")
 
+        if self.active_prompt_name and self.meta_plan:
+            if len(self.meta_plan) > 1 or any(phase.get("type") == "loop" for phase in self.meta_plan):
+                self.is_complex_prompt_workflow = True
+                app_logger.info(f"'{self.active_prompt_name}' has been qualified as a complex prompt workflow based on the generated plan.")
+
+
     async def _run_plan(self):
         """Executes the generated meta-plan, delegating to loop or standard executors."""
         if not self.meta_plan:
@@ -1145,7 +1154,7 @@ class PlanExecutor:
 
         is_fast_path_candidate = (
             len(relevant_tools) == 1 and 
-            relevant_tools[0] not in ["CoreLLMTask", "viz_createChart"]
+            relevant_tools[0] not in ["CoreLLMTask", "viz_createChart", "GenerateFinalReport"]
         )
 
         if is_fast_path_candidate:
@@ -1231,7 +1240,7 @@ class PlanExecutor:
                                 break
                         
                         if found_canonical:
-                            for synonym in AppConfig.ARGUMENT_SYNONYM_MAP[found_canonical]:
+                            for synonym in AppConfig.ARGUMENT_SYNONYM_MAP[canonical]:
                                 merged_args[synonym] = value
                         else:
                             merged_args[key] = value
@@ -1367,7 +1376,7 @@ class PlanExecutor:
              for tool_name in relevant_tools:
                 item_args = {}
                 if isinstance(loop_item, dict):
-                    for key, value in loop_item.items():
+                    for key, value in item.items():
                         item_args[key] = value
 
                 merged_args = {**strategic_args, **item_args}
@@ -1388,7 +1397,7 @@ class PlanExecutor:
 
 
         tool_name = relevant_tools[0] if len(relevant_tools) == 1 else None
-        if tool_name and tool_name != "viz_createChart":
+        if tool_name and tool_name not in ["viz_createChart", "GenerateFinalReport"]:
             all_tools = self.dependencies['STATE'].get('mcp_tools', {})
             tool_def = all_tools.get(tool_name)
             if tool_def:
@@ -1589,6 +1598,7 @@ class PlanExecutor:
         """
         Scans tool arguments for placeholders (e.g., 'result_of_phase_1') and
         replaces them with the actual data from the workflow state.
+        This version now supports a basic 'length' filter.
         """
         if not isinstance(arguments, dict):
             return arguments
@@ -1596,30 +1606,61 @@ class PlanExecutor:
         resolved_args = {}
         for key, value in arguments.items():
             if isinstance(value, str):
-                match = re.fullmatch(r"result_of_phase_(\d+)", value)
-                if match:
-                    phase_num = int(match.group(1))
+                # Check for placeholders like 'result_of_phase_1' or '{{...}}'
+                placeholder_match = re.fullmatch(r"result_of_phase_(\d+)", value)
+                jinja_match = re.search(r"\{\{\s*result_of_phase_(\d+)\s*\|\s*length\s*\}\}", value)
+
+                if jinja_match:
+                    phase_num = int(jinja_match.group(1))
+                    source_key = f"result_of_phase_{phase_num}"
+                    if source_key in self.workflow_state:
+                        data = self.workflow_state[source_key]
+                        data_length = 0
+                        # This logic needs to be robust to find the list to measure
+                        if isinstance(data, list) and data and isinstance(data[0], dict) and 'results' in data[0]:
+                             data_length = len(data[0].get('results', []))
+                        elif isinstance(data, list):
+                             data_length = len(data)
+                        
+                        # Replace the Jinja expression with the calculated length
+                        resolved_value = value.replace(jinja_match.group(0), str(data_length))
+                        resolved_args[key] = resolved_value
+                        app_logger.info(f"Resolved Jinja expression '{value}' to '{resolved_value}'")
+                    else:
+                        resolved_args[key] = value
+
+                elif placeholder_match:
+                    phase_num = int(placeholder_match.group(1))
                     source_key = f"result_of_phase_{phase_num}"
                     
                     if source_key in self.workflow_state:
                         data = self.workflow_state[source_key]
                         
+                        # Heuristic to extract a single scalar value if appropriate
                         if (isinstance(data, list) and len(data) == 1 and 
                             isinstance(data[0], dict) and "results" in data[0] and
                             isinstance(data[0]["results"], list) and len(data[0]["results"]) == 1 and
                             isinstance(data[0]["results"][0], dict) and len(data[0]["results"][0]) == 1):
                             
                             extracted_value = next(iter(data[0]["results"][0].values()))
-                            app_logger.info(f"Resolved placeholder '{value}' to single extracted value: '{extracted_value}'")
                             resolved_args[key] = extracted_value
                         else:
-                            app_logger.info(f"Resolved placeholder '{value}' to full data structure.")
                             resolved_args[key] = data
                     else:
                         app_logger.warning(f"Could not resolve placeholder '{value}': key '{source_key}' not in workflow state.")
                         resolved_args[key] = value 
                 else:
                     resolved_args[key] = value
+            elif isinstance(value, list):
+                resolved_list = []
+                for item in value:
+                    if isinstance(item, dict):
+                        resolved_list.append(self._resolve_arguments(item))
+                    else:
+                        resolved_list.append(item)
+                resolved_args[key] = resolved_list
+            elif isinstance(value, dict):
+                 resolved_args[key] = self._resolve_arguments(value)
             else:
                 resolved_args[key] = value
         
@@ -1630,24 +1671,27 @@ class PlanExecutor:
         tool_name = action.get("tool_name")
         arguments = action.get("arguments", {})
         
-        is_final_phase = self.meta_plan and phase.get("phase") == self.meta_plan[-1].get("phase")
-        
-        if (tool_name == "CoreLLMTask" and is_final_phase and 
-            (self.execution_depth == 0 or self.force_final_summary)):
-            planner_description = arguments.get("task_description", "")
-            if not planner_description or len(planner_description) < APP_CONFIG.DETAILED_DESCRIPTION_THRESHOLD:
-                app_logger.info("FINAL_SUMMARY Prompt Injection: Overriding generic CoreLLMTask with standardized final summary prompt.")
-                yield self._format_sse({
-                    "step": "Plan Optimization", 
-                    "type": "plan_optimization",
-                    "details": "Using standardized final summary prompt for consistency."
-                })
-                arguments["task_description"] = GENERATE_FINAL_SUMMARY
-            else:
-                app_logger.info("FINAL_SUMMARY Prompt Injection: Preserving detailed task_description from planner.")
+        if tool_name == "GenerateFinalReport":
+            app_logger.info("Detected GenerateFinalReport signal. Agent will now perform final summarization.")
             
-            arguments["user_question"] = self.original_user_input
-            self.final_summary_was_injected = True
+            async for event in self._generate_final_summary():
+                if isinstance(event, CanonicalResponse):
+                    self.final_canonical_response = event
+                else:
+                    yield event
+            
+            if self.final_canonical_response:
+                self.last_tool_output = {"status": "success", "results": [self.final_canonical_response.model_dump()]}
+            else:
+                self.last_tool_output = {"status": "error", "data": "Final summarization failed to produce a valid canonical response."}
+
+            if not is_fast_path:
+                self.turn_action_history.append({"action": action, "result": self.last_tool_output})
+                phase_num = phase.get("phase", self.current_phase_index + 1)
+                phase_result_key = f"result_of_phase_{phase_num}"
+                self.workflow_state.setdefault(phase_result_key, []).append(self.last_tool_output)
+                self._add_to_structured_data(self.last_tool_output)
+            return
         
         if tool_name == "CoreLLMTask" and "synthesized_answer" in arguments:
             app_logger.info("Bypassing CoreLLMTask execution. Using synthesized answer from planner.")
@@ -1684,12 +1728,8 @@ class PlanExecutor:
                 del action['notification']
 
             if tool_name == "CoreLLMTask" and not self.is_synthesis_from_history:
-                if self.final_summary_was_injected:
-                    app_logger.info("Bypassing context distillation for final summary task.")
-                    action.setdefault("arguments", {})["data"] = self.workflow_state
-                else:
-                    distilled_workflow_state = self._distill_data_for_llm_context(copy.deepcopy(self.workflow_state))
-                    action.setdefault("arguments", {})["data"] = distilled_workflow_state
+                distilled_workflow_state = self._distill_data_for_llm_context(copy.deepcopy(self.workflow_state))
+                action.setdefault("arguments", {})["data"] = distilled_workflow_state
             
             if not is_fast_path:
                 yield self._format_sse({"step": "Tool Execution Intent", "details": action}, "tool_result")
@@ -2083,17 +2123,21 @@ class PlanExecutor:
         Calls the LLM to synthesize a final summary and returns a structured
         CanonicalResponse object.
         """
-        full_workflow_state = copy.deepcopy(self.workflow_state)
+        distilled_workflow_state = self._distill_data_for_llm_context(copy.deepcopy(self.workflow_state))
+
+        # --- MODIFICATION START: Correctly format the prompt with the collected data ---
+        final_summary_prompt_text = GENERATE_FINAL_SUMMARY.format(
+            all_collected_data=json.dumps(distilled_workflow_state, indent=2)
+        )
 
         core_llm_command = {
             "tool_name": "CoreLLMTask",
             "arguments": {
-                "task_description": GENERATE_FINAL_SUMMARY,
-                "user_question": self.original_user_input,
-                "source_data": list(full_workflow_state.keys()),
-                "data": full_workflow_state
+                "task_description": final_summary_prompt_text,
+                "user_question": self.original_user_input
             }
         }
+        # --- MODIFICATION END ---
         
         yield self._format_sse({"step": "Calling LLM to write final report", "details": "Synthesizing structured summary."})
         
@@ -2116,10 +2160,7 @@ class PlanExecutor:
                 clean_json_str = json_match.group(0)
                 inner_json = json.loads(clean_json_str)
                 
-                if "direct_answer" in inner_json:
-                    report_arguments = inner_json
-                else:
-                    report_arguments = inner_json.get("arguments", {})
+                report_arguments = inner_json.get("arguments", inner_json)
                 
                 structured_response = CanonicalResponse.model_validate(report_arguments)
                 yield structured_response
