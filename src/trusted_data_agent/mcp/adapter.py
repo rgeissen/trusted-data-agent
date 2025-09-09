@@ -2,6 +2,7 @@
 import json
 import logging
 import re
+import uuid
 from datetime import datetime, timedelta
 
 from langchain_mcp_adapters.tools import load_mcp_tools
@@ -560,6 +561,9 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: lis
     llm_instance = STATE.get('llm')
     final_prompt = ""
     reason = ""
+    # --- MODIFICATION START: Add call_id for token tracking ---
+    call_id = str(uuid.uuid4())
+    # --- MODIFICATION END ---
 
     if mode == 'full_context':
         app_logger.info(f"Executing client-side LLM task in 'full_context' mode.")
@@ -681,7 +685,13 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: lis
             "data": response_text
         }
     else:
-        result = {"status": "success", "results": [{"response": response_text}]}
+        # --- MODIFICATION START: Add call_id to result metadata ---
+        result = {
+            "status": "success", 
+            "metadata": {"call_id": call_id},
+            "results": [{"response": response_text}]
+        }
+        # --- MODIFICATION END ---
 
     return result, input_tokens, output_tokens
 

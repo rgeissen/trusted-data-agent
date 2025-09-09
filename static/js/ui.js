@@ -248,6 +248,13 @@ export function updateStatusWindow(eventData, isFinal = false) {
 
     const metricsEl = document.createElement('div');
     metricsEl.className = 'per-call-metrics text-xs text-gray-400 mb-2 hidden';
+    
+    // --- MODIFICATION START: Embed call_id if available ---
+    if (typeof details === 'object' && details !== null && details.call_id) {
+        metricsEl.dataset.callId = details.call_id;
+    }
+    // --- MODIFICATION END ---
+    
     stepEl.appendChild(metricsEl);
 
     if (details) {
@@ -255,7 +262,7 @@ export function updateStatusWindow(eventData, isFinal = false) {
         let detailsString = '';
 
         if (typeof details === 'object' && details !== null) {
-            if (step === "Calling LLM for Planning") {
+            if (step.startsWith("Calling LLM for")) { // More generic check for any LLM call
                 customRenderedHtml = _renderPlanningDetails(details);
             } else if (step === "Strategic Meta-Plan Generated") {
                 customRenderedHtml = _renderMetaPlanDetails(details);
@@ -715,4 +722,3 @@ export function closeChatModal() {
     DOM.chatModalContent.classList.add('scale-95', 'opacity-0');
     setTimeout(() => DOM.chatModalOverlay.classList.add('hidden'), 300);
 }
-

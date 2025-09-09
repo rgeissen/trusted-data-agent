@@ -3,6 +3,7 @@ import re
 import json
 import logging
 import copy
+import uuid
 from typing import TYPE_CHECKING
 
 from langchain_mcp_adapters.prompts import load_mcp_prompt
@@ -280,16 +281,23 @@ class Planner:
                     classification_prompt = TASK_CLASSIFICATION_PROMPT.format(task_description=task_description)
                     reason = "Classifying TDA_LLMTask loop intent for optimization."
                     
-                    yield self.executor._format_sse({"step": "Analyzing Plan Efficiency", "type": "plan_optimization", "details": "Checking if an iterative task can be optimized into a single batch operation."})
+                    # --- MODIFICATION START: Add call_id for token tracking ---
+                    call_id = str(uuid.uuid4())
+                    yield self.executor._format_sse({"step": "Analyzing Plan Efficiency", "type": "plan_optimization", "details": {"summary": "Checking if an iterative task can be optimized into a single batch operation.", "call_id": call_id}})
                     yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
                     
-                    response_text, _, _ = await self.executor._call_llm_and_update_tokens(
+                    response_text, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
                         prompt=classification_prompt, 
                         reason=reason,
                         system_prompt_override="You are a JSON-only responding assistant.", 
                         raise_on_error=False,
                         disabled_history=True
                     )
+                    
+                    updated_session = session_manager.get_session(self.executor.session_id)
+                    if updated_session:
+                        yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
+                    # --- MODIFICATION END ---
                     
                     yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
 
@@ -481,12 +489,16 @@ class Planner:
         else:
             self.executor.workflow_goal_prompt = self.executor.original_user_input
 
+        # --- MODIFICATION START: Add call_id for token tracking ---
+        call_id = str(uuid.uuid4())
         summary = f"Generating a strategic meta-plan for the goal"
         details_payload = {
             "summary": summary,
-            "full_text": self.executor.workflow_goal_prompt
+            "full_text": self.executor.workflow_goal_prompt,
+            "call_id": call_id
         }
         yield self.executor._format_sse({"step": "Calling LLM for Planning", "type": "system_message", "details": details_payload})
+        # --- MODIFICATION END ---
 
         previous_turn_summary_str = self._create_summary_from_history(self.executor.previous_turn_data)
         
@@ -541,7 +553,9 @@ class Planner:
 
         updated_session = session_manager.get_session(self.executor.session_id)
         if updated_session:
-            yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0) }, "token_update")
+            # --- MODIFICATION START: Add call_id to token_update event ---
+            yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
+            # --- MODIFICATION END ---
         
         try:
             json_str = response_text

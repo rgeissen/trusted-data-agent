@@ -3,7 +3,8 @@ import re
 import json
 import logging
 import copy
-from typing import TYPE_CHECKING
+import uuid
+from typing import TYPE_CHECKING, Tuple
 
 from trusted_data_agent.core import session_manager
 from trusted_data_agent.mcp import adapter as mcp_adapter
@@ -152,8 +153,13 @@ class PhaseExecutor:
                 yield self.executor._format_sse({"step": "Plan Optimization", "type": "plan_optimization", "details": f"FASTPATH Data Expansion: Preparing column-level iteration for '{tool_name}'."})
                 
                 yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
-                tool_constraints = await self._get_tool_constraints(tool_name)
+                # --- MODIFICATION START: Correctly handle return value from _get_tool_constraints ---
+                tool_constraints, constraint_events = await self._get_tool_constraints(tool_name)
+                for event in constraint_events:
+                    yield event
+                # --- MODIFICATION END ---
                 yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
+
                 required_type = tool_constraints.get("dataType")
 
                 expanded_loop_items = []
@@ -440,10 +446,14 @@ class PhaseExecutor:
             for event in enrich_events:
                 self.executor.events_to_yield.append(event)
 
+            call_id = str(uuid.uuid4())
+            yield self.executor._format_sse({"step": "Calling LLM for Tactical Action", "type": "system_message", "details": {"summary": f"Deciding next action for phase goal: '{phase_goal}'", "call_id": call_id}})
             yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
+            
             next_action, input_tokens, output_tokens = await self._get_next_tactical_action(
                 phase_goal, relevant_tools, enriched_args, strategic_args, executable_prompt
             )
+            
             yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
             
             current_action_str = json.dumps(next_action, sort_keys=True)
@@ -461,7 +471,7 @@ class PhaseExecutor:
 
             updated_session = session_manager.get_session(self.executor.session_id)
             if updated_session:
-                yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0) }, "token_update")
+                yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
 
             if isinstance(next_action, str) and next_action == "SYSTEM_ACTION_COMPLETE":
                 self.executor.state = self.executor.AgentState.SUMMARIZING
@@ -642,11 +652,13 @@ class PhaseExecutor:
             if input_tokens > 0 or output_tokens > 0:
                 updated_session = session_manager.get_session(self.executor.session_id)
                 if updated_session:
+                    call_id = tool_result.get("metadata", {}).get("call_id") if isinstance(tool_result, dict) else None
                     yield self.executor._format_sse({
                         "statement_input": input_tokens,
                         "statement_output": output_tokens,
                         "total_input": updated_session.get("input_tokens", 0),
-                        "total_output": updated_session.get("output_tokens", 0)
+                        "total_output": updated_session.get("output_tokens", 0),
+                        "call_id": call_id
                     }, "token_update")
 
             self.executor.last_tool_output = tool_result 
@@ -988,24 +1000,30 @@ class PhaseExecutor:
             "Your response MUST be ONLY a JSON object with two keys: 'type' and 'phrase'."
         )
         reason="Classifying date query."
-        yield self.executor._format_sse({"step": "Calling LLM", "details": reason})
+        call_id = str(uuid.uuid4())
+        yield self.executor._format_sse({"step": "Calling LLM", "details": {"summary": reason, "call_id": call_id}})
         response_str, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
             prompt=classification_prompt, reason=reason,
             system_prompt_override="You are a JSON-only responding assistant.", raise_on_error=True
         )
         updated_session = session_manager.get_session(self.executor.session_id)
         if updated_session:
-            yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0) }, "token_update")
+            yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
         try:
             self.executor.temp_data_holder = json.loads(response_str)
         except (json.JSONDecodeError, KeyError):
             self.executor.temp_data_holder = {'type': 'single', 'phrase': self.executor.original_user_input}
 
-    async def _get_tool_constraints(self, tool_name: str) -> dict:
-        """Uses an LLM to determine if a tool requires numeric or character columns."""
+    # --- MODIFICATION START: Refactor to be a standard async function ---
+    async def _get_tool_constraints(self, tool_name: str) -> Tuple[dict, list]:
+        """
+        Uses an LLM to determine if a tool requires numeric or character columns.
+        Returns the constraints and a list of events to be yielded by the caller.
+        """
         if tool_name in self.executor.tool_constraints_cache:
-            return self.executor.tool_constraints_cache[tool_name]
+            return self.executor.tool_constraints_cache[tool_name], []
 
+        events = []
         tool_definition = self.executor.dependencies['STATE'].get('mcp_tools', {}).get(tool_name)
         constraints = {}
         
@@ -1023,11 +1041,24 @@ class PhaseExecutor:
             )
             
             reason="Determining tool constraints for column iteration."
-            response_text, _, _ = await self.executor._call_llm_and_update_tokens(
+            call_id = str(uuid.uuid4())
+            events.append(self.executor._format_sse({"step": "Calling LLM", "type": "system_message", "details": {"summary": reason, "call_id": call_id}}))
+            
+            response_text, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
                 prompt=prompt, reason=reason,
                 system_prompt_override="You are a JSON-only responding assistant.",
                 raise_on_error=True
             )
+
+            updated_session = session_manager.get_session(self.executor.session_id)
+            if updated_session:
+                events.append(self.executor._format_sse({
+                    "statement_input": input_tokens,
+                    "statement_output": output_tokens,
+                    "total_input": updated_session.get("input_tokens", 0),
+                    "total_output": updated_session.get("output_tokens", 0),
+                    "call_id": call_id
+                }, "token_update"))
 
             try:
                 constraints = json.loads(re.search(r'\{.*\}', response_text, re.DOTALL).group(0))
@@ -1035,14 +1066,16 @@ class PhaseExecutor:
                 constraints = {}
         
         self.executor.tool_constraints_cache[tool_name] = constraints
-        return constraints
+        return constraints, events
+    # --- MODIFICATION END ---
 
     async def _recover_from_phase_failure(self, failed_phase_goal: str):
         """
         Attempts to recover from a persistently failing phase by generating a new plan.
         This version is robust to conversational text mixed with the JSON output.
         """
-        yield self.executor._format_sse({"step": "Attempting LLM-based Recovery", "type": "system_message", "details": "The current plan is stuck. Asking LLM to generate a new plan."})
+        call_id = str(uuid.uuid4())
+        yield self.executor._format_sse({"step": "Attempting LLM-based Recovery", "type": "system_message", "details": {"summary": "The current plan is stuck. Asking LLM to generate a new plan.", "call_id": call_id}})
 
         last_error = "No specific error message found."
         failed_tool_name = "N/A (Phase Failed)"
@@ -1075,7 +1108,7 @@ class PhaseExecutor:
         
         updated_session = session_manager.get_session(self.executor.session_id)
         if updated_session:
-            yield self.executor._format_sse({"statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0)}, "token_update")
+            yield self.executor._format_sse({"statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id}, "token_update")
 
         try:
             json_match = re.search(r'(\[.*\]|\{.*\})', response_text, re.DOTALL)
@@ -1178,6 +1211,8 @@ class PhaseExecutor:
             reason = f"Generic self-correction for failed tool call: {tool_name}"
             system_prompt_override = "You are a JSON-only responding assistant."
 
+        call_id = str(uuid.uuid4())
+        events.append(self.executor._format_sse({"step": "Calling LLM for Self-Correction", "type": "system_message", "details": {"summary": reason, "call_id": call_id}}))
         events.append(self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update"))
         response_str, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
             prompt=correction_prompt,
@@ -1193,7 +1228,8 @@ class PhaseExecutor:
                 "statement_input": input_tokens, 
                 "statement_output": output_tokens, 
                 "total_input": updated_session.get("input_tokens", 0), 
-                "total_output": updated_session.get("output_tokens", 0)
+                "total_output": updated_session.get("output_tokens", 0),
+                "call_id": call_id
             }, "token_update"))
         
         if "FINAL_ANSWER:" in response_str:

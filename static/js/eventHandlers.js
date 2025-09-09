@@ -79,14 +79,15 @@ async function processStream(responseBody) {
                     }
                 } else if (eventName === 'token_update') {
                     UI.updateTokenDisplay(eventData);
-                    const lastStep = document.getElementById(`status-step-${state.currentStatusId}`);
-                    if (lastStep && state.currentProvider !== 'Amazon') {
-                        const metricsEl = lastStep.querySelector('.per-call-metrics');
+                    // --- MODIFICATION START: Use call_id to find the correct element ---
+                    if (eventData.call_id && state.currentProvider !== 'Amazon') {
+                        const metricsEl = document.querySelector(`.per-call-metrics[data-call-id="${eventData.call_id}"]`);
                         if (metricsEl) {
                             metricsEl.innerHTML = `(LLM Call: ${eventData.statement_input.toLocaleString()} in / ${eventData.statement_output.toLocaleString()} out)`;
                             metricsEl.classList.remove('hidden');
                         }
-                     }
+                    }
+                    // --- MODIFICATION END ---
                 } else if (eventName === 'request_user_input') {
                     UI.updateStatusWindow({ step: "Action Required", details: "Waiting for user to correct parameters.", type: 'workaround' });
                     UI.toggleLoading(false);
@@ -1350,4 +1351,3 @@ export function initializeEventListeners() {
         }
     });
 }
-

@@ -1,4 +1,4 @@
-2025-09-09 18:08:22,595 - --- FULL CONTEXT (Session: 6e9d8b9a-5d04-4bc1-afa6-2263e7b497cb) ---
+2025-09-09 19:43:47,451 - --- FULL CONTEXT (Session: fc8a296d-9fe3-4687-960b-6f815aac8fd6) ---
 --- REASON FOR CALL ---
 Generating a strategic meta-plan for the goal: 'how many databases are on the system?'
 
@@ -61,30 +61,11 @@ Here are examples of the correct thinking process:
 
 # Capabilities
 --- Available Tools ---
---- Category: Auditing ---
-- `dba_tableSqlList` (tool): Get a list of SQL run against a table in the last number of days.
+--- Category: Capacity Management ---
+- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
   - Arguments:
-    - `table_name` (string, required): table name
-    - `no_days` (integer, optional): number of days
-- `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
-  - Arguments:
-    - `user_name` (string, required): user name
-    - `no_days` (integer, optional): number of days
-- `dba_featureUsage` (tool): Get the user feature usage metrics for a specified date range.
-  - Arguments:
-    - `start_date` (string, required): Start Date
-    - `end_date` (string, required): End Date
-- `dba_sessionInfo` (tool): Get the Teradata session information for user.
-  - Arguments:
-    - `user_name` (string, required): User Name
---- Category: Data Access ---
-- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
-- `base_tablePreview` (tool): This function returns data sample and inferred structure from a database table or view via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `table_name` (string, required): table or view name
-    - `database_name` (string, optional): Database name
+    - `database_name` (string, required): database name
+- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
 --- Category: Data Quality ---
 - `qlty_columnSummary` (tool): Get the column summary statistics for a table.
   - Arguments:
@@ -133,9 +114,6 @@ Returns:
   - Arguments:
     - `database_name` (string, required): Database name
     - `obj_name` (string, required): Obj Name
-- `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, optional): Database name
 - `dba_databaseVersion` (tool):  Get Teradata database version information.
 --- Category: Performance ---
 - `dba_resusageSummary` (tool): Get the Teradata system usage summary metrics by weekday and hour for each workload type and query complexity bucket.
@@ -339,15 +317,6 @@ Use thresholds set in config file for, CPU - high, very_high, Skew moderate, hig
 - `sec_userRoles` (tool): Get roles assigned to a user.
   - Arguments:
     - `user_name` (string, required): user name to analyze
---- Category: Space Management ---
-- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
-  - Arguments:
-    - `database_name` (string, required): database name
-- `dba_tableSpace` (tool): Get table space used for a table if table name is provided or get table space for all tables in a database if a database name is provided."
-  - Arguments:
-    - `database_name` (string, required): database name
-    - `table_name` (string, required): table name
-- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
 --- Category: Table Management ---
 - `base_tableDDL` (tool): Displays the DDL definition of a table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
@@ -356,7 +325,29 @@ Use thresholds set in config file for, CPU - high, very_high, Skew moderate, hig
 - `base_tableList` (tool): Lists all tables in a database.
   - Arguments:
     - `database_name` (string, optional): Database name
+- `base_tablePreview` (tool): This function returns data sample and inferred structure from a database table or view via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `table_name` (string, required): table or view name
+    - `database_name` (string, optional): Database name
+- `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `database_name` (string, optional): Database name
+- `dba_tableSpace` (tool): Get table space used for a table if table name is provided or get table space for all tables in a database if a database name is provided."
+  - Arguments:
+    - `database_name` (string, required): database name
+    - `table_name` (string, required): table name
 --- Category: Utilities ---
+- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
+- `dba_tableSqlList` (tool): Get a list of SQL run against a table in the last number of days.
+  - Arguments:
+    - `table_name` (string, required): table name
+    - `no_days` (integer, optional): number of days
+- `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
+  - Arguments:
+    - `user_name` (string, required): user name
+    - `no_days` (integer, optional): number of days
 - `tmpl_nameOfTool` (tool): <description of what the tool is for>
   - Arguments:
     - `argument` (string, required): Argument
@@ -418,6 +409,13 @@ EXECUTION: Run completely silently - user only sees their question and the final
   - Arguments:
     - `question` (string, required): Question
     - `k` (integer, optional): K
+- `dba_featureUsage` (tool): Get the user feature usage metrics for a specified date range.
+  - Arguments:
+    - `start_date` (string, required): Start Date
+    - `end_date` (string, required): End Date
+- `dba_sessionInfo` (tool): Get the Teradata session information for user.
+  - Arguments:
+    - `user_name` (string, required): User Name
 - `TDA_CurrentDate` (tool): Returns the current system date in YYYY-MM-DD format. Use this as the first step for any user query involving relative dates like 'today', 'yesterday', or 'this week'.
 - `TDA_DateRange` (tool): Calculates a list of dates based on a start date and a natural language phrase (e.g., 'past 3 days', 'last week'). This is a necessary second step for multi-day queries.
   - Arguments:
@@ -429,13 +427,6 @@ EXECUTION: Run completely silently - user only sees their question and the final
     - `source_data` (list[string], required): A list of keys (e.g., 'result_of_phase_1') identifying which data from the workflow history is relevant for this task. This is critical for providing the correct context.
     - `synthesized_answer` (string, optional): The final, synthesized natural language answer, provided directly by the planner when it can confidently answer from history.
 --- Available Prompts ---
---- Category: Auditing ---
-- `dba_userActivityAnalysis` (prompt): Analyze Teradata user activity patterns for the past 7 days
-- `dba_systemVoice` (prompt): Analyze Teradata user activity patterns for the past 7 days
---- Category: Data Access ---
-- `base_teradata_query` (prompt): A Teradata SQL expert that executes SQL requests effectively, understanding teradata specific syntax.
-  - Arguments:
-    - `query` (str, required): The problem or question that needs to be solved using Teradata database tools.
 --- Category: Data Quality ---
 - `qlty_databaseQuality` (prompt): Database data quality assessment.
   - Arguments:
@@ -446,13 +437,11 @@ EXECUTION: Run completely silently - user only sees their question and the final
     - `database_name` (str, required): Name of the database to analyze for table lineage.
     - `number_days` (str, required): Number of days to look back for SQL execution history (e.g., 7, 30, 90).
 - `dba_databaseHealthAssessment` (prompt): You are a Teradata DBA who is an expert in assessing the health of a database.
-- `base_tableBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of tables in a database.
-  - Arguments:
-    - `database_name` (str, required): Database for the table to describe.
-    - `table_name` (str, required): Table to describe.
 - `base_databaseBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of databases.
   - Arguments:
     - `database_name` (str, optional): Database to describe.
+--- Category: Performance ---
+- `dba_systemVoice` (prompt): Analyze Teradata user activity patterns for the past 7 days
 --- Category: Table Management ---
 - `dba_tableArchive` (prompt): The following prompt is used to guide the Teradata DBA in finding opportunities for archiving data.
 - `dba_tableDropImpact` (prompt): You are a Teradata DBA who is an expert in finding the impact of dropping a table.
@@ -460,10 +449,18 @@ EXECUTION: Run completely silently - user only sees their question and the final
     - `table_name` (str, required): Name of the table to analyze for drop impact.
     - `database_name` (str, required): Name of the database containing the table.
     - `number_days` (str, required): Number of days to look back for SQL execution history (e.g., 7, 30, 90).
+- `base_tableBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of tables in a database.
+  - Arguments:
+    - `database_name` (str, required): Database for the table to describe.
+    - `table_name` (str, required): Table to describe.
 --- Category: Utilities ---
+- `dba_userActivityAnalysis` (prompt): Analyze Teradata user activity patterns for the past 7 days
 - `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
   - Arguments:
     - `domain` (str, optional): Domain to test (eg. "all" "data quality", "exploratory"...).
+- `base_teradata_query` (prompt): A Teradata SQL expert that executes SQL requests effectively, understanding teradata specific syntax.
+  - Arguments:
+    - `query` (str, required): The problem or question that needs to be solved using Teradata database tools.
 
 
 USER PROMPT:
@@ -567,9 +564,9 @@ Your output **MUST** be a single, valid JSON array of phase objects. Each object
 Your response MUST be a single, valid JSON list of phase objects. Do NOT add any extra text, conversation, or markdown.
 
 
-2025-09-09 18:08:23,932 - --- FULL CONTEXT (Session: 6e9d8b9a-5d04-4bc1-afa6-2263e7b497cb) ---
+2025-09-09 19:43:48,702 - --- FULL CONTEXT (Session: fc8a296d-9fe3-4687-960b-6f815aac8fd6) ---
 --- REASON FOR CALL ---
-Deciding next tactical action for phase: Generate the final report based on the number of databases found.
+Deciding next tactical action for phase: Count the number of databases.
 
 --- History (History Disabled for LLM Call: True) ---
 [user]: You are a helpful assistant.
@@ -628,30 +625,11 @@ Here are examples of the correct thinking process:
 
 # Capabilities
 --- Available Tools ---
---- Category: Auditing ---
-- `dba_tableSqlList` (tool): Get a list of SQL run against a table in the last number of days.
+--- Category: Capacity Management ---
+- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
   - Arguments:
-    - `table_name` (string, required): table name
-    - `no_days` (integer, optional): number of days
-- `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
-  - Arguments:
-    - `user_name` (string, required): user name
-    - `no_days` (integer, optional): number of days
-- `dba_featureUsage` (tool): Get the user feature usage metrics for a specified date range.
-  - Arguments:
-    - `start_date` (string, required): Start Date
-    - `end_date` (string, required): End Date
-- `dba_sessionInfo` (tool): Get the Teradata session information for user.
-  - Arguments:
-    - `user_name` (string, required): User Name
---- Category: Data Access ---
-- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
-- `base_tablePreview` (tool): This function returns data sample and inferred structure from a database table or view via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `table_name` (string, required): table or view name
-    - `database_name` (string, optional): Database name
+    - `database_name` (string, required): database name
+- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
 --- Category: Data Quality ---
 - `qlty_columnSummary` (tool): Get the column summary statistics for a table.
   - Arguments:
@@ -700,9 +678,6 @@ Returns:
   - Arguments:
     - `database_name` (string, required): Database name
     - `obj_name` (string, required): Obj Name
-- `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, optional): Database name
 - `dba_databaseVersion` (tool):  Get Teradata database version information.
 --- Category: Performance ---
 - `dba_resusageSummary` (tool): Get the Teradata system usage summary metrics by weekday and hour for each workload type and query complexity bucket.
@@ -906,15 +881,6 @@ Use thresholds set in config file for, CPU - high, very_high, Skew moderate, hig
 - `sec_userRoles` (tool): Get roles assigned to a user.
   - Arguments:
     - `user_name` (string, required): user name to analyze
---- Category: Space Management ---
-- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
-  - Arguments:
-    - `database_name` (string, required): database name
-- `dba_tableSpace` (tool): Get table space used for a table if table name is provided or get table space for all tables in a database if a database name is provided."
-  - Arguments:
-    - `database_name` (string, required): database name
-    - `table_name` (string, required): table name
-- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
 --- Category: Table Management ---
 - `base_tableDDL` (tool): Displays the DDL definition of a table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
@@ -923,7 +889,29 @@ Use thresholds set in config file for, CPU - high, very_high, Skew moderate, hig
 - `base_tableList` (tool): Lists all tables in a database.
   - Arguments:
     - `database_name` (string, optional): Database name
+- `base_tablePreview` (tool): This function returns data sample and inferred structure from a database table or view via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `table_name` (string, required): table or view name
+    - `database_name` (string, optional): Database name
+- `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `database_name` (string, optional): Database name
+- `dba_tableSpace` (tool): Get table space used for a table if table name is provided or get table space for all tables in a database if a database name is provided."
+  - Arguments:
+    - `database_name` (string, required): database name
+    - `table_name` (string, required): table name
 --- Category: Utilities ---
+- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
+- `dba_tableSqlList` (tool): Get a list of SQL run against a table in the last number of days.
+  - Arguments:
+    - `table_name` (string, required): table name
+    - `no_days` (integer, optional): number of days
+- `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
+  - Arguments:
+    - `user_name` (string, required): user name
+    - `no_days` (integer, optional): number of days
 - `tmpl_nameOfTool` (tool): <description of what the tool is for>
   - Arguments:
     - `argument` (string, required): Argument
@@ -985,6 +973,13 @@ EXECUTION: Run completely silently - user only sees their question and the final
   - Arguments:
     - `question` (string, required): Question
     - `k` (integer, optional): K
+- `dba_featureUsage` (tool): Get the user feature usage metrics for a specified date range.
+  - Arguments:
+    - `start_date` (string, required): Start Date
+    - `end_date` (string, required): End Date
+- `dba_sessionInfo` (tool): Get the Teradata session information for user.
+  - Arguments:
+    - `user_name` (string, required): User Name
 - `TDA_CurrentDate` (tool): Returns the current system date in YYYY-MM-DD format. Use this as the first step for any user query involving relative dates like 'today', 'yesterday', or 'this week'.
 - `TDA_DateRange` (tool): Calculates a list of dates based on a start date and a natural language phrase (e.g., 'past 3 days', 'last week'). This is a necessary second step for multi-day queries.
   - Arguments:
@@ -996,13 +991,6 @@ EXECUTION: Run completely silently - user only sees their question and the final
     - `source_data` (list[string], required): A list of keys (e.g., 'result_of_phase_1') identifying which data from the workflow history is relevant for this task. This is critical for providing the correct context.
     - `synthesized_answer` (string, optional): The final, synthesized natural language answer, provided directly by the planner when it can confidently answer from history.
 --- Available Prompts ---
---- Category: Auditing ---
-- `dba_userActivityAnalysis` (prompt): Analyze Teradata user activity patterns for the past 7 days
-- `dba_systemVoice` (prompt): Analyze Teradata user activity patterns for the past 7 days
---- Category: Data Access ---
-- `base_teradata_query` (prompt): A Teradata SQL expert that executes SQL requests effectively, understanding teradata specific syntax.
-  - Arguments:
-    - `query` (str, required): The problem or question that needs to be solved using Teradata database tools.
 --- Category: Data Quality ---
 - `qlty_databaseQuality` (prompt): Database data quality assessment.
   - Arguments:
@@ -1013,13 +1001,11 @@ EXECUTION: Run completely silently - user only sees their question and the final
     - `database_name` (str, required): Name of the database to analyze for table lineage.
     - `number_days` (str, required): Number of days to look back for SQL execution history (e.g., 7, 30, 90).
 - `dba_databaseHealthAssessment` (prompt): You are a Teradata DBA who is an expert in assessing the health of a database.
-- `base_tableBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of tables in a database.
-  - Arguments:
-    - `database_name` (str, required): Database for the table to describe.
-    - `table_name` (str, required): Table to describe.
 - `base_databaseBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of databases.
   - Arguments:
     - `database_name` (str, optional): Database to describe.
+--- Category: Performance ---
+- `dba_systemVoice` (prompt): Analyze Teradata user activity patterns for the past 7 days
 --- Category: Table Management ---
 - `dba_tableArchive` (prompt): The following prompt is used to guide the Teradata DBA in finding opportunities for archiving data.
 - `dba_tableDropImpact` (prompt): You are a Teradata DBA who is an expert in finding the impact of dropping a table.
@@ -1027,10 +1013,18 @@ EXECUTION: Run completely silently - user only sees their question and the final
     - `table_name` (str, required): Name of the table to analyze for drop impact.
     - `database_name` (str, required): Name of the database containing the table.
     - `number_days` (str, required): Number of days to look back for SQL execution history (e.g., 7, 30, 90).
+- `base_tableBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of tables in a database.
+  - Arguments:
+    - `database_name` (str, required): Database for the table to describe.
+    - `table_name` (str, required): Table to describe.
 --- Category: Utilities ---
+- `dba_userActivityAnalysis` (prompt): Analyze Teradata user activity patterns for the past 7 days
 - `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
   - Arguments:
     - `domain` (str, optional): Domain to test (eg. "all" "data quality", "exploratory"...).
+- `base_teradata_query` (prompt): A Teradata SQL expert that executes SQL requests effectively, understanding teradata specific syntax.
+  - Arguments:
+    - `query` (str, required): The problem or question that needs to be solved using Teradata database tools.
 
 
 USER PROMPT:
@@ -1137,7 +1131,7 @@ Your response MUST be a single, valid JSON list of phase objects. Do NOT add any
 [
   {
     "phase": 1,
-    "goal": "List all databases in the Teradata system to count them.",
+    "goal": "List all databases in the Teradata System.",
     "relevant_tools": [
       "base_databaseList"
     ],
@@ -1145,7 +1139,7 @@ Your response MUST be a single, valid JSON list of phase objects. Do NOT add any
   },
   {
     "phase": 2,
-    "goal": "Generate the final report based on the number of databases found.",
+    "goal": "Count the number of databases.",
     "relevant_tools": [
       "TDA_FinalReport"
     ],
@@ -1163,7 +1157,7 @@ You are a tactical assistant executing a single phase of a larger plan. Your tas
 how many databases are on the system?
 
 --- CURRENT PHASE GOAL ---
-Generate the final report based on the number of databases found.
+Count the number of databases.
 
 --- PRE-FILLED ARGUMENTS FROM STRATEGIC PLANNER ---
 None provided.
@@ -2003,7 +1997,7 @@ Your response MUST be a single, valid JSON object for a tool or prompt call. Do 
 USER PROMPT:
 Determine the next action based on the instructions and state provided in the system prompt.
 
-2025-09-09 18:08:25,350 - --- FULL CONTEXT (Session: 6e9d8b9a-5d04-4bc1-afa6-2263e7b497cb) ---
+2025-09-09 19:43:50,070 - --- FULL CONTEXT (Session: fc8a296d-9fe3-4687-960b-6f815aac8fd6) ---
 --- REASON FOR CALL ---
 Executing TDA_LLMTask: 
 You are an expert data analyst. Your task is to create a final report for the user by analyzing the provided data and their original question.
@@ -2485,30 +2479,11 @@ Here are examples of the correct thinking process:
 
 # Capabilities
 --- Available Tools ---
---- Category: Auditing ---
-- `dba_tableSqlList` (tool): Get a list of SQL run against a table in the last number of days.
+--- Category: Capacity Management ---
+- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
   - Arguments:
-    - `table_name` (string, required): table name
-    - `no_days` (integer, optional): number of days
-- `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
-  - Arguments:
-    - `user_name` (string, required): user name
-    - `no_days` (integer, optional): number of days
-- `dba_featureUsage` (tool): Get the user feature usage metrics for a specified date range.
-  - Arguments:
-    - `start_date` (string, required): Start Date
-    - `end_date` (string, required): End Date
-- `dba_sessionInfo` (tool): Get the Teradata session information for user.
-  - Arguments:
-    - `user_name` (string, required): User Name
---- Category: Data Access ---
-- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
-- `base_tablePreview` (tool): This function returns data sample and inferred structure from a database table or view via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `table_name` (string, required): table or view name
-    - `database_name` (string, optional): Database name
+    - `database_name` (string, required): database name
+- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
 --- Category: Data Quality ---
 - `qlty_columnSummary` (tool): Get the column summary statistics for a table.
   - Arguments:
@@ -2557,9 +2532,6 @@ Returns:
   - Arguments:
     - `database_name` (string, required): Database name
     - `obj_name` (string, required): Obj Name
-- `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, optional): Database name
 - `dba_databaseVersion` (tool):  Get Teradata database version information.
 --- Category: Performance ---
 - `dba_resusageSummary` (tool): Get the Teradata system usage summary metrics by weekday and hour for each workload type and query complexity bucket.
@@ -2763,15 +2735,6 @@ Use thresholds set in config file for, CPU - high, very_high, Skew moderate, hig
 - `sec_userRoles` (tool): Get roles assigned to a user.
   - Arguments:
     - `user_name` (string, required): user name to analyze
---- Category: Space Management ---
-- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
-  - Arguments:
-    - `database_name` (string, required): database name
-- `dba_tableSpace` (tool): Get table space used for a table if table name is provided or get table space for all tables in a database if a database name is provided."
-  - Arguments:
-    - `database_name` (string, required): database name
-    - `table_name` (string, required): table name
-- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
 --- Category: Table Management ---
 - `base_tableDDL` (tool): Displays the DDL definition of a table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
@@ -2780,7 +2743,29 @@ Use thresholds set in config file for, CPU - high, very_high, Skew moderate, hig
 - `base_tableList` (tool): Lists all tables in a database.
   - Arguments:
     - `database_name` (string, optional): Database name
+- `base_tablePreview` (tool): This function returns data sample and inferred structure from a database table or view via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `table_name` (string, required): table or view name
+    - `database_name` (string, optional): Database name
+- `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `database_name` (string, optional): Database name
+- `dba_tableSpace` (tool): Get table space used for a table if table name is provided or get table space for all tables in a database if a database name is provided."
+  - Arguments:
+    - `database_name` (string, required): database name
+    - `table_name` (string, required): table name
 --- Category: Utilities ---
+- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
+- `dba_tableSqlList` (tool): Get a list of SQL run against a table in the last number of days.
+  - Arguments:
+    - `table_name` (string, required): table name
+    - `no_days` (integer, optional): number of days
+- `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
+  - Arguments:
+    - `user_name` (string, required): user name
+    - `no_days` (integer, optional): number of days
 - `tmpl_nameOfTool` (tool): <description of what the tool is for>
   - Arguments:
     - `argument` (string, required): Argument
@@ -2842,6 +2827,13 @@ EXECUTION: Run completely silently - user only sees their question and the final
   - Arguments:
     - `question` (string, required): Question
     - `k` (integer, optional): K
+- `dba_featureUsage` (tool): Get the user feature usage metrics for a specified date range.
+  - Arguments:
+    - `start_date` (string, required): Start Date
+    - `end_date` (string, required): End Date
+- `dba_sessionInfo` (tool): Get the Teradata session information for user.
+  - Arguments:
+    - `user_name` (string, required): User Name
 - `TDA_CurrentDate` (tool): Returns the current system date in YYYY-MM-DD format. Use this as the first step for any user query involving relative dates like 'today', 'yesterday', or 'this week'.
 - `TDA_DateRange` (tool): Calculates a list of dates based on a start date and a natural language phrase (e.g., 'past 3 days', 'last week'). This is a necessary second step for multi-day queries.
   - Arguments:
@@ -2853,13 +2845,6 @@ EXECUTION: Run completely silently - user only sees their question and the final
     - `source_data` (list[string], required): A list of keys (e.g., 'result_of_phase_1') identifying which data from the workflow history is relevant for this task. This is critical for providing the correct context.
     - `synthesized_answer` (string, optional): The final, synthesized natural language answer, provided directly by the planner when it can confidently answer from history.
 --- Available Prompts ---
---- Category: Auditing ---
-- `dba_userActivityAnalysis` (prompt): Analyze Teradata user activity patterns for the past 7 days
-- `dba_systemVoice` (prompt): Analyze Teradata user activity patterns for the past 7 days
---- Category: Data Access ---
-- `base_teradata_query` (prompt): A Teradata SQL expert that executes SQL requests effectively, understanding teradata specific syntax.
-  - Arguments:
-    - `query` (str, required): The problem or question that needs to be solved using Teradata database tools.
 --- Category: Data Quality ---
 - `qlty_databaseQuality` (prompt): Database data quality assessment.
   - Arguments:
@@ -2870,13 +2855,11 @@ EXECUTION: Run completely silently - user only sees their question and the final
     - `database_name` (str, required): Name of the database to analyze for table lineage.
     - `number_days` (str, required): Number of days to look back for SQL execution history (e.g., 7, 30, 90).
 - `dba_databaseHealthAssessment` (prompt): You are a Teradata DBA who is an expert in assessing the health of a database.
-- `base_tableBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of tables in a database.
-  - Arguments:
-    - `database_name` (str, required): Database for the table to describe.
-    - `table_name` (str, required): Table to describe.
 - `base_databaseBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of databases.
   - Arguments:
     - `database_name` (str, optional): Database to describe.
+--- Category: Performance ---
+- `dba_systemVoice` (prompt): Analyze Teradata user activity patterns for the past 7 days
 --- Category: Table Management ---
 - `dba_tableArchive` (prompt): The following prompt is used to guide the Teradata DBA in finding opportunities for archiving data.
 - `dba_tableDropImpact` (prompt): You are a Teradata DBA who is an expert in finding the impact of dropping a table.
@@ -2884,10 +2867,18 @@ EXECUTION: Run completely silently - user only sees their question and the final
     - `table_name` (str, required): Name of the table to analyze for drop impact.
     - `database_name` (str, required): Name of the database containing the table.
     - `number_days` (str, required): Number of days to look back for SQL execution history (e.g., 7, 30, 90).
+- `base_tableBusinessDesc` (prompt): You are a Teradata DBA who is an expert in describing the business use of tables in a database.
+  - Arguments:
+    - `database_name` (str, required): Database for the table to describe.
+    - `table_name` (str, required): Table to describe.
 --- Category: Utilities ---
+- `dba_userActivityAnalysis` (prompt): Analyze Teradata user activity patterns for the past 7 days
 - `_testMyServer` (prompt): Test all the MCP tools, prompts and resources.
   - Arguments:
     - `domain` (str, optional): Domain to test (eg. "all" "data quality", "exploratory"...).
+- `base_teradata_query` (prompt): A Teradata SQL expert that executes SQL requests effectively, understanding teradata specific syntax.
+  - Arguments:
+    - `query` (str, required): The problem or question that needs to be solved using Teradata database tools.
 
 
 USER PROMPT:
@@ -2994,7 +2985,7 @@ Your response MUST be a single, valid JSON list of phase objects. Do NOT add any
 [
   {
     "phase": 1,
-    "goal": "List all databases in the Teradata system to count them.",
+    "goal": "List all databases in the Teradata System.",
     "relevant_tools": [
       "base_databaseList"
     ],
@@ -3002,7 +2993,7 @@ Your response MUST be a single, valid JSON list of phase objects. Do NOT add any
   },
   {
     "phase": 2,
-    "goal": "Generate the final report based on the number of databases found.",
+    "goal": "Count the number of databases.",
     "relevant_tools": [
       "TDA_FinalReport"
     ],
