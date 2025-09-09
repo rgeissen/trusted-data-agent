@@ -153,11 +153,9 @@ class PhaseExecutor:
                 yield self.executor._format_sse({"step": "Plan Optimization", "type": "plan_optimization", "details": f"FASTPATH Data Expansion: Preparing column-level iteration for '{tool_name}'."})
                 
                 yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
-                # --- MODIFICATION START: Correctly handle return value from _get_tool_constraints ---
                 tool_constraints, constraint_events = await self._get_tool_constraints(tool_name)
                 for event in constraint_events:
                     yield event
-                # --- MODIFICATION END ---
                 yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
 
                 required_type = tool_constraints.get("dataType")
@@ -331,6 +329,29 @@ class PhaseExecutor:
                     "execution_depth": self.executor.execution_depth
                 }
             })
+
+        # --- MODIFICATION START: Bypass tactical LLM for TDA_FinalReport ---
+        if relevant_tools == ["TDA_FinalReport"] and not is_loop_iteration:
+            app_logger.info("PhaseExecutor: TDA_FinalReport signal detected. Bypassing tactical LLM and proceeding directly to summarization.")
+            yield self.executor._format_sse({
+                "step": "Plan Optimization",
+                "type": "plan_optimization",
+                "details": "Bypassing redundant tactical step for final report generation."
+            })
+            async for event in self.executor._generate_final_summary():
+                if isinstance(event, CanonicalResponse):
+                    self.executor.final_canonical_response = event
+                else:
+                    yield event
+            
+            # End the phase after summarization is triggered
+            yield self.executor._format_sse({
+                "step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}",
+                "type": "phase_end",
+                "details": {"phase_num": phase_num, "total_phases": len(self.executor.meta_plan), "status": "completed"}
+            })
+            return
+        # --- MODIFICATION END ---
         
         if len(relevant_tools) > 1 and not is_loop_iteration:
             yield self.executor._format_sse({
@@ -1014,7 +1035,6 @@ class PhaseExecutor:
         except (json.JSONDecodeError, KeyError):
             self.executor.temp_data_holder = {'type': 'single', 'phrase': self.executor.original_user_input}
 
-    # --- MODIFICATION START: Refactor to be a standard async function ---
     async def _get_tool_constraints(self, tool_name: str) -> Tuple[dict, list]:
         """
         Uses an LLM to determine if a tool requires numeric or character columns.
@@ -1067,7 +1087,6 @@ class PhaseExecutor:
         
         self.executor.tool_constraints_cache[tool_name] = constraints
         return constraints, events
-    # --- MODIFICATION END ---
 
     async def _recover_from_phase_failure(self, failed_phase_goal: str):
         """
@@ -1283,3 +1302,4 @@ class PhaseExecutor:
             return None, events
             
         return None, events
+
