@@ -418,6 +418,14 @@ class Planner:
         for event in self._hydrate_plan_from_previous_turn():
             yield event
 
+        # --- MODIFICATION START: Yield the finalized plan to the UI ---
+        yield self.executor._format_sse({
+            "step": "Strategic Meta-Plan Generated",
+            "type": "plan_generated",
+            "details": self.executor.meta_plan
+        })
+        # --- MODIFICATION END ---
+
     async def _generate_meta_plan(self, force_disable_history: bool = False, replan_context: str = None):
         """The universal planner. It generates a meta-plan for ANY request."""
         prompt_obj = None
