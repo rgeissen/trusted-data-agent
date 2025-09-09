@@ -308,7 +308,8 @@ class PlanExecutor:
 
                 if is_single_prompt_plan:
                     # Handle the special case of a plan that is just a single prompt call
-                    await self._handle_single_prompt_plan(planner)
+                    async for event in self._handle_single_prompt_plan(planner):
+                        yield event
 
                 if self.is_conversational_plan:
                     app_logger.info("Detected a conversational plan. Bypassing execution.")
