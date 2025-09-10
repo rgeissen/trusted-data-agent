@@ -543,7 +543,7 @@ def _build_g2plot_spec(args: dict, data: list[dict]) -> dict:
     return {"type": g2plot_type, "options": options}
 
 # --- MODIFICATION START: Create the new, specialized filter task function ---
-async def _invoke_llm_filter_task(STATE: dict, command: dict, session_id: str = None) -> tuple[dict, int, int]:
+async def _invoke_llm_filter_task(STATE: dict, command: dict, session_id: str = None, call_id: str | None = None) -> tuple[dict, int, int]:
     """
     Executes a specialized LLM-based filtering task. It takes a list of data
     and a natural language goal, and is strictly prompted to return only a
@@ -553,7 +553,9 @@ async def _invoke_llm_filter_task(STATE: dict, command: dict, session_id: str = 
     goal = args.get("goal")
     data_to_filter = args.get("data_to_filter")
     llm_instance = STATE.get('llm')
-    call_id = str(uuid.uuid4())
+    
+    # If a call_id isn't passed in from the orchestrator, generate one.
+    final_call_id = call_id or str(uuid.uuid4())
 
     if not goal or not data_to_filter:
         return {"status": "error", "error_message": "TDA_LLMFilter requires 'goal' and 'data_to_filter' arguments."}, 0, 0
@@ -587,20 +589,22 @@ async def _invoke_llm_filter_task(STATE: dict, command: dict, session_id: str = 
 
     result = {
         "status": "success",
-        "metadata": {"call_id": call_id},
+        "metadata": {"call_id": final_call_id},
         "results": [{"response": cleaned_response_text}]
     }
     
     return result, input_tokens, output_tokens
 # --- MODIFICATION END ---
 
-async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: list = None, mode: str = "standard", session_id: str = None) -> tuple[dict, int, int]:
+async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: list = None, mode: str = "standard", session_id: str = None, call_id: str | None = None) -> tuple[dict, int, int]:
     args = command.get("arguments", {})
     user_question = args.get("user_question", "No user question provided.")
     llm_instance = STATE.get('llm')
     final_prompt = ""
     reason = ""
-    call_id = str(uuid.uuid4())
+    
+    # If a call_id isn't passed in from the orchestrator, generate one.
+    final_call_id = call_id or str(uuid.uuid4())
 
     if mode == 'full_context':
         app_logger.info(f"Executing client-side LLM task in 'full_context' mode.")
@@ -724,7 +728,7 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: lis
     else:
         result = {
             "status": "success", 
-            "metadata": {"call_id": call_id},
+            "metadata": {"call_id": final_call_id},
             "results": [{"response": response_text}]
         }
 
@@ -831,20 +835,20 @@ async def _invoke_util_calculate_date_range(STATE: dict, command: dict, session_
         "results": date_list
     }
 
-async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None) -> tuple[any, int, int]:
+async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, call_id: str | None = None) -> tuple[any, int, int]:
     mcp_client = STATE.get('mcp_client')
     tool_name = command.get("tool_name")
     
     # --- MODIFICATION START: Route calls for the new tool to its handler ---
     if tool_name == "TDA_LLMFilter":
-        return await _invoke_llm_filter_task(STATE, command, session_id=session_id)
+        return await _invoke_llm_filter_task(STATE, command, session_id=session_id, call_id=call_id)
     # --- MODIFICATION END ---
 
     if tool_name == "TDA_LLMTask":
         args = command.get("arguments", {})
         mode = args.pop("mode", "standard")
         session_history = args.pop("session_history", None)
-        return await _invoke_core_llm_task(STATE, command, session_history=session_history, mode=mode, session_id=session_id)
+        return await _invoke_core_llm_task(STATE, command, session_history=session_history, mode=mode, session_id=session_id, call_id=call_id)
 
     if tool_name == "TDA_CurrentDate":
         app_logger.info("Executing client-side tool: TDA_CurrentDate")
@@ -958,4 +962,3 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None) ->
                 return result, 0, 0
     
     raise RuntimeError(f"Unexpected tool result format for '{tool_name}': {call_tool_result}")
-

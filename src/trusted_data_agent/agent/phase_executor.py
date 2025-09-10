@@ -53,9 +53,6 @@ class PhaseExecutor:
         The main public entry point to execute a single phase. It determines the
         phase type and delegates to the appropriate specialized execution method.
         """
-        # The orchestrator is responsible for handling delegated prompts, as it
-        # requires creating a new PlanExecutor instance. This executor only handles
-        # standard and looping phases.
         if phase.get("type") == "loop":
             async for event in self._execute_looping_phase(phase):
                 yield event
@@ -405,49 +402,55 @@ class PhaseExecutor:
              self.executor.last_tool_output = all_loop_item_results
              return
 
-
         tool_name = relevant_tools[0] if len(relevant_tools) == 1 else None
-        if tool_name and tool_name not in ["TDA_Charting", "TDA_FinalReport"]:
+        
+        is_fast_path_candidate = False
+        if tool_name:
             all_tools = self.executor.dependencies['STATE'].get('mcp_tools', {})
             tool_def = all_tools.get(tool_name)
             if tool_def:
                 required_args = {name for name, details in (tool_def.args.items() if hasattr(tool_def, 'args') and isinstance(tool_def.args, dict) else {}) if details.get('required')}
-                
                 if required_args.issubset(strategic_args.keys()):
-                    yield self.executor._format_sse({
-                        "step": "Plan Optimization", 
-                        "type": "plan_optimization",
-                        "details": f"FASTPATH initiated for '{tool_name}'."
-                    })
-                    fast_path_action = {"tool_name": tool_name, "arguments": strategic_args}
-                    
-                    if tool_name == "TDA_LLMTask" and is_loop_iteration and loop_item:
-                        modified_args = fast_path_action["arguments"].copy()
-                        task_desc = modified_args.get("task_description", "")
-                        loop_item_str = json.dumps(loop_item)
-                        
-                        modified_args["task_description"] = (
-                            f"{task_desc}\n\n"
-                            f"CRITICAL CONTEXT: You MUST focus your response on the following item provided from the loop: {loop_item_str}"
-                        )
-                        
-                        fast_path_action["arguments"] = modified_args
-                        app_logger.info(f"Injected loop context into TDA_LLMTask description for item: {loop_item_str}")
+                    is_fast_path_candidate = True
+        
+        if is_fast_path_candidate:
+            # We only show the "FASTPATH" message for non-LLM tools to avoid confusion.
+            if tool_name not in ["TDA_LLMTask", "TDA_LLMFilter"]:
+                yield self.executor._format_sse({
+                    "step": "Plan Optimization", 
+                    "type": "plan_optimization",
+                    "details": f"FASTPATH initiated for '{tool_name}'."
+                })
 
-                    async for event in self._execute_action_with_orchestrators(fast_path_action, phase):
-                        yield event
-                    
-                    yield self.executor._format_sse(
-                        {"target": "context", "state": "processing_complete"}, 
-                        "context_state_update"
-                    )
-                    if not is_loop_iteration:
-                        yield self.executor._format_sse({
-                            "step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}",
-                            "type": "phase_end",
-                            "details": {"phase_num": phase_num, "total_phases": len(self.executor.meta_plan), "status": "completed"}
-                        })
-                    return
+            fast_path_action = {"tool_name": tool_name, "arguments": strategic_args}
+            
+            if tool_name == "TDA_LLMTask" and is_loop_iteration and loop_item:
+                modified_args = fast_path_action["arguments"].copy()
+                task_desc = modified_args.get("task_description", "")
+                loop_item_str = json.dumps(loop_item)
+                
+                modified_args["task_description"] = (
+                    f"{task_desc}\n\n"
+                    f"CRITICAL CONTEXT: You MUST focus your response on the following item provided from the loop: {loop_item_str}"
+                )
+                
+                fast_path_action["arguments"] = modified_args
+                app_logger.info(f"Injected loop context into TDA_LLMTask description for item: {loop_item_str}")
+
+            async for event in self._execute_action_with_orchestrators(fast_path_action, phase):
+                yield event
+            
+            yield self.executor._format_sse(
+                {"target": "context", "state": "processing_complete"}, 
+                "context_state_update"
+            )
+            if not is_loop_iteration:
+                yield self.executor._format_sse({
+                    "step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}",
+                    "type": "phase_end",
+                    "details": {"phase_num": phase_num, "total_phases": len(self.executor.meta_plan), "status": "completed"}
+                })
+            return
 
         phase_attempts = 0
         max_phase_attempts = 5
@@ -463,7 +466,7 @@ class PhaseExecutor:
             
             for event in enrich_events:
                 self.executor.events_to_yield.append(event)
-
+            
             call_id = str(uuid.uuid4())
             yield self.executor._format_sse({"step": "Calling LLM for Tactical Action", "type": "system_message", "details": {"summary": f"Deciding next action for phase goal: '{phase_goal}'", "call_id": call_id}})
             yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
@@ -738,29 +741,47 @@ class PhaseExecutor:
                 yield self.executor._format_sse({"step": "Tool Execution Intent", "details": action}, "tool_result")
             
             status_target = "db"
-            if tool_name == "TDA_LLMTask":
+            call_id_for_tool = None
+            
+            # --- MODIFICATION START: Implement Announce-Then-Execute for client-side LLM tools ---
+            if tool_name in ["TDA_LLMTask", "TDA_LLMFilter", "TDA_CurrentDate", "TDA_DateRange"]:
                 status_target = "llm"
-            elif tool_name in ["TDA_CurrentDate", "TDA_DateRange"]:
-                status_target = "llm"
+                call_id_for_tool = str(uuid.uuid4())
+                
+                reason_map = {
+                    "TDA_LLMTask": action.get("arguments", {}).get("task_description", "Executing LLM-based task."),
+                    "TDA_LLMFilter": action.get("arguments", {}).get("goal", "Filtering data with LLM.")
+                }
+                reason = reason_map.get(tool_name, f"Executing client-side tool: {tool_name}")
+
+                yield self.executor._format_sse({
+                    "step": f"Calling LLM for {tool_name}",
+                    "type": "system_message",
+                    "details": {"summary": reason, "call_id": call_id_for_tool}
+                })
+            # --- MODIFICATION END ---
             
             yield self.executor._format_sse({"target": status_target, "state": "busy"}, "status_indicator_update")
             
-            tool_result, input_tokens, output_tokens = await mcp_adapter.invoke_mcp_tool(self.executor.dependencies['STATE'], action, session_id=self.executor.session_id)
+            tool_result, input_tokens, output_tokens = await mcp_adapter.invoke_mcp_tool(
+                self.executor.dependencies['STATE'], action, session_id=self.executor.session_id, call_id=call_id_for_tool
+            )
 
             yield self.executor._format_sse({"target": status_target, "state": "idle"}, "status_indicator_update")
 
             if input_tokens > 0 or output_tokens > 0:
                 updated_session = session_manager.get_session(self.executor.session_id)
                 if updated_session:
-                    call_id = tool_result.get("metadata", {}).get("call_id") if isinstance(tool_result, dict) else None
+                    # The call_id from the tool result is now the one we generated and announced
+                    final_call_id = tool_result.get("metadata", {}).get("call_id") if isinstance(tool_result, dict) else None
                     yield self.executor._format_sse({
                         "statement_input": input_tokens,
                         "statement_output": output_tokens,
                         "total_input": updated_session.get("input_tokens", 0),
                         "total_output": updated_session.get("output_tokens", 0),
-                        "call_id": call_id
+                        "call_id": final_call_id
                     }, "token_update")
-
+            
             self.executor.last_tool_output = tool_result 
             
             if isinstance(tool_result, dict) and tool_result.get("status") == "error":
@@ -1376,4 +1397,3 @@ class PhaseExecutor:
             return None, events
             
         return None, events
-

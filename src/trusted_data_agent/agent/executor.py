@@ -3,6 +3,7 @@ import re
 import json
 import logging
 import copy
+import uuid
 from enum import Enum, auto
 
 from trusted_data_agent.agent.formatter import OutputFormatter
@@ -388,12 +389,31 @@ class PlanExecutor:
                 )
                 reason = f"Extracting missing arguments for prompt '{prompt_name}'"
                 
+                # --- MODIFICATION START: Implement Announce-Then-Execute for argument enrichment ---
+                call_id = str(uuid.uuid4())
+                yield self._format_sse({
+                    "step": "Calling LLM for Argument Enrichment",
+                    "type": "system_message",
+                    "details": {"summary": reason, "call_id": call_id}
+                })
                 yield self._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
-                response_text, _, _ = await self._call_llm_and_update_tokens(
+                
+                response_text, input_tokens, output_tokens = await self._call_llm_and_update_tokens(
                     prompt=enrichment_prompt, reason=reason,
                     system_prompt_override="You are a JSON-only responding assistant.",
                     raise_on_error=True
                 )
+                
+                updated_session = session_manager.get_session(self.session_id)
+                if updated_session:
+                    yield self._format_sse({
+                        "statement_input": input_tokens, "statement_output": output_tokens,
+                        "total_input": updated_session.get("input_tokens", 0),
+                        "total_output": updated_session.get("output_tokens", 0),
+                        "call_id": call_id
+                    }, "token_update")
+                # --- MODIFICATION END ---
+                
                 yield self._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
 
                 try:
@@ -516,9 +536,32 @@ class PlanExecutor:
         elif self.final_canonical_response:
             final_summary_content = self.final_canonical_response
             if self.is_complex_prompt_workflow:
+                # --- MODIFICATION START: Implement Announce-Then-Execute for presentation formatting ---
+                call_id = str(uuid.uuid4())
+                yield self._format_sse({
+                    "step": "Calling LLM for Presentation Formatting",
+                    "type": "system_message",
+                    "details": {
+                        "summary": "Formatting final report based on complex prompt instructions.",
+                        "call_id": call_id
+                    }
+                })
                 yield self._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
-                final_summary_content = await self._format_complex_prompt_report(final_summary_content)
+
+                formatted_text, input_tokens, output_tokens = await self._format_complex_prompt_report(final_summary_content)
+                final_summary_content = formatted_text
+                
+                updated_session = session_manager.get_session(self.session_id)
+                if updated_session:
+                    yield self._format_sse({
+                        "statement_input": input_tokens, "statement_output": output_tokens,
+                        "total_input": updated_session.get("input_tokens", 0),
+                        "total_output": updated_session.get("output_tokens", 0),
+                        "call_id": call_id
+                    }, "token_update")
+                
                 yield self._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
+                # --- MODIFICATION END ---
         else:
             async for event in self._generate_final_summary():
                 if isinstance(event, CanonicalResponse):
@@ -531,8 +574,11 @@ class PlanExecutor:
                 yield event
             self.state = self.AgentState.DONE
 
-    async def _format_complex_prompt_report(self, summary_content: CanonicalResponse) -> str:
-        """Handles the second-stage LLM call for presentation formatting."""
+    async def _format_complex_prompt_report(self, summary_content: CanonicalResponse) -> tuple[str, int, int]:
+        """
+        Handles the second-stage LLM call for presentation formatting.
+        MODIFIED: Now returns tokens along with the formatted text.
+        """
         app_logger.info("Complex prompt workflow detected. Initiating Stage 2: Presentation Formatting.")
         presentation_prompt = (
             "You are a formatting expert. Your task is to take a structured JSON data payload and present it as a final, user-facing report "
@@ -545,11 +591,11 @@ class PlanExecutor:
             "Your output MUST be only the final, formatted markdown text that directly fulfills the original instructions. "
             "Do not include the JSON payload or any conversational text in your response."
         )
-        formatted_text, _, _ = await self._call_llm_and_update_tokens(
+        formatted_text, input_tokens, output_tokens = await self._call_llm_and_update_tokens(
             prompt=presentation_prompt,
             reason="Stage 2: Formatting final report based on complex prompt instructions."
         )
-        return formatted_text
+        return formatted_text, input_tokens, output_tokens
 
     async def _generate_final_summary(self):
         """
@@ -574,14 +620,28 @@ class PlanExecutor:
             }
         }
         
-        yield self._format_sse({"step": "Calling LLM to write final report", "details": "Synthesizing structured summary."})
+        # --- MODIFICATION START: Implement Announce-Then-Execute for final summary ---
+        call_id = str(uuid.uuid4())
+        yield self._format_sse({
+            "step": "Calling LLM to write final report",
+            "details": {
+                "summary": "Synthesizing structured summary.",
+                "call_id": call_id
+            }
+        })
         yield self._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
-        summary_result, input_tokens, output_tokens = await mcp_adapter.invoke_mcp_tool(self.dependencies['STATE'], core_llm_command, session_id=self.session_id)
+        
+        # Pass the call_id down to the adapter
+        summary_result, input_tokens, output_tokens = await mcp_adapter.invoke_mcp_tool(
+            self.dependencies['STATE'], core_llm_command, session_id=self.session_id, call_id=call_id
+        )
+        # --- MODIFICATION END ---
+        
         yield self._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
 
         updated_session = session_manager.get_session(self.session_id)
         if updated_session:
-            yield self._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0) }, "token_update")
+            yield self._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
 
         if (summary_result and summary_result.get("status") == "success"):
             try:
@@ -642,4 +702,3 @@ class PlanExecutor:
             "tts_payload": tts_payload,
             "source": self.source
         }, "final_answer")
-
