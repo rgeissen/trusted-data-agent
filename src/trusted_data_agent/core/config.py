@@ -16,6 +16,7 @@ class AppConfig:
     ALLOW_SYNTHESIS_FROM_HISTORY = False # If True, allows the planner to generate an answer directly from conversation history without using tools.
     VOICE_CONVERSATION_ENABLED = True # Master switch for the Text-to-Speech (TTS) feature.
     SUB_PROMPT_FORCE_SUMMARY = False # If True, forces sub-executors for prompts to generate their own final summary. Default is False.
+    GRANTED_PROMPTS_FOR_EFFICIENCY_REPLANNING = ["base_teradata_query"] # A list of complex prompts that are exempt from the "Re-planning for Efficiency" optimization.
 
     # --- Connection & Model State ---
     MCP_SERVER_CONNECTED = False # Runtime flag indicating if a connection to the MCP server is active.
@@ -33,7 +34,8 @@ class AppConfig:
     CONTEXT_DISTILLATION_MAX_ROWS = 500 # The maximum number of rows from a tool's result to include in the LLM context.
     CONTEXT_DISTILLATION_MAX_CHARS = 10000 # The maximum number of characters from a tool's result to include in the LLM context.
     DETAILED_DESCRIPTION_THRESHOLD = 200 # A heuristic character count for the PlanExecutor to distinguish between a generic vs. a detailed task description from the planner.
-    GRANTED_PROMPTS_FOR_EFFICIENCY_REPLANNING = ["base_teradata_query"] # A list of complex prompts that are exempt from being broken down by the "Re-planning for Efficiency" optimizer.
+    SQL_OPTIMIZATION_PROMPTS = ["base_teradata_query"] # A list of prompts that should be favored for SQL consolidation, if the rule is active.
+    SQL_OPTIMIZATION_TOOLS = ["base_readQuery"] # A list of tools that should be favored for SQL consolidation, if the rule is active.
 
     # --- Initial State Configuration ---
     #INITIALLY_DISABLED_PROMPTS = ["base_query","cust_promptExample","qlty_databaseQuality","dba_tableArchive","dba_databaseLineage", "dba_tableDropImpact", "dba_databaseHealthAssessment", "dba_userActivityAnalysis", "dba_systemVoice", "base_databaseBusinessDesc", "sales_prompt", "test_evsTools", "test_secTools", "test_dbaTools", "test_ragTools", "test_qltyTools", "test_fsTools", "test_baseTools", "rag_guidelines" ] # A list of prompt names to be disabled by default on application startup.
@@ -88,7 +90,7 @@ APP_STATE = {
     "tools_context": "--- No Tools Available ---", 
     "prompts_context": "--- No Prompts Available ---", 
     "charts_context": "--- No Charts Available ---",
-    "constraints_context": "", # MODIFICATION: Added new state for the planner's constraint text.
+    "constraints_context": "",
 
     # Runtime lists of currently disabled capabilities
     "disabled_prompts": list(APP_CONFIG.INITIALLY_DISABLED_PROMPTS),
@@ -106,3 +108,4 @@ CERTIFIED_AMAZON_MODELS = ["*amazon.nova-pro-v1*"]
 CERTIFIED_AMAZON_PROFILES = ["*amazon.nova-pro-v1*"]
 CERTIFIED_OLLAMA_MODELS = ["llama2"]
 CERTIFIED_OPENAI_MODELS = ["*gpt-4.1-mini-2025*"]
+

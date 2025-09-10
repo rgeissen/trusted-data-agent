@@ -63,6 +63,26 @@ UTIL_TOOL_DEFINITIONS = [
     }
 ]
 
+# --- MODIFICATION START: Define the new TDA_LLMFilter tool ---
+LLM_FILTER_TOOL_DEFINITION = {
+    "name": "TDA_LLMFilter",
+    "description": "A specialized internal tool that filters a list of items based on a natural language goal and extracts a single, clean value. This is used as an intermediate step to pass a specific, machine-readable value from one tool to another.",
+    "args": {
+        "goal": {
+            "type": "string",
+            "description": "A clear, natural language description of the item to find and extract (e.g., 'Find the database related to fitness', 'Extract the name of the sales summary table').",
+            "required": True
+        },
+        "data_to_filter": {
+            "type": "list[dict]",
+            "description": "The list of data objects to be filtered, passed from the result of a previous phase.",
+            "required": True
+        }
+    }
+}
+# --- MODIFICATION END ---
+
+
 CORE_LLM_TASK_DEFINITION = {
     "name": "TDA_LLMTask",
     "description": "Performs internal, LLM-driven tasks that are not direct calls to the Teradata database. This tool is used for text synthesis, summarization, and formatting based on a specific 'task_description' provided by the LLM itself.",
@@ -110,72 +130,47 @@ GENERATE_FINAL_REPORT_TOOL_DEFINITION = {
 }
 
 def _extract_and_clean_description(description: str | None) -> tuple[str, str]:
-    """
-    Parses a description string to find a datatype hint (e.g., "(type: str)")
-    and cleans the description, returning both the cleaned description and the type.
-    """
     if not isinstance(description, str):
         return "", "unknown"
-
     datatype = "unknown"
     match = re.search(r'\s*\((type:\s*(str|int|float|bool))\)', description, re.IGNORECASE)
-    
     if match:
         datatype = match.group(2).lower()
         cleaned_description = description.replace(match.group(0), "").strip()
     else:
         cleaned_description = description
-        
     return cleaned_description, datatype
 
 def _extract_prompt_type_from_description(description: str | None) -> tuple[str, str]:
-    """
-    Parses a prompt's description to find a prompt_type hint, returning the
-    cleaned description and the type ('reporting' or 'context'). Defaults to
-    'reporting' if no tag is found.
-    """
     if not isinstance(description, str):
         return "", "reporting"
-
     prompt_type = "reporting"
     match = re.search(r'\s*\((prompt_type:\s*(reporting|context))\)', description, re.IGNORECASE)
-    
     if match:
         prompt_type = match.group(2).lower()
         cleaned_description = description.replace(match.group(0), "").strip()
     else:
         cleaned_description = description
-        
     return cleaned_description, prompt_type
 
 def _get_arg_descriptions_from_string(description: str) -> tuple[str, dict]:
-    """
-    Parses the "Arguments" or "Args" section of a description string to extract
-    a simple map of {arg_name: arg_description}.
-    """
     if not description:
         return "", {}
-
     args_section_match = re.search(r'\n\s*(Arguments|Args):\s*\n', description, re.IGNORECASE)
     if not args_section_match:
         return description, {}
-
     cleaned_description = description[:args_section_match.start()].strip()
     args_section_text = description[args_section_match.end():]
-    
     pattern = re.compile(r'^\s*(?P<name>\w+)\s*[-:]\s*(?P<desc>.+)')
     descriptions = {}
-    
     for line in args_section_text.split('\n'):
         match = pattern.match(line.strip())
         if match:
             data = match.groupdict()
             descriptions[data['name']] = data['desc'].strip()
-            
     return cleaned_description, descriptions
 
 def _get_type_from_schema(schema: dict) -> str:
-    """Extracts a simple type name from a JSON schema property."""
     if not isinstance(schema, dict):
         return "any"
     if "type" in schema:
@@ -247,10 +242,13 @@ async def load_and_categorize_mcp_resources(STATE: dict):
         loaded_tools.append(viz_tool_obj)
         for util_tool_def in UTIL_TOOL_DEFINITIONS:
             loaded_tools.append(SimpleTool(**util_tool_def))
-        loaded_tools.append(SimpleTool(**CORE_LLM_TASK_DEFINITION))
-        # --- MODIFICATION START: Load the GenerateFinalReport tool ---
-        loaded_tools.append(SimpleTool(**GENERATE_FINAL_REPORT_TOOL_DEFINITION))
+        
+        # --- MODIFICATION START: Add the new TDA_LLMFilter tool to the loaded tools ---
+        loaded_tools.append(SimpleTool(**LLM_FILTER_TOOL_DEFINITION))
         # --- MODIFICATION END ---
+        
+        loaded_tools.append(SimpleTool(**CORE_LLM_TASK_DEFINITION))
+        loaded_tools.append(SimpleTool(**GENERATE_FINAL_REPORT_TOOL_DEFINITION))
 
 
         STATE['mcp_tools'] = {tool.name: tool for tool in loaded_tools}
@@ -273,7 +271,7 @@ async def load_and_categorize_mcp_resources(STATE: dict):
         capabilities_list_str = "\n".join(all_capabilities)
 
         classification_prompt = (
-            "You are a helpful assistant that analyzes a list of technical capabilities (tools and prompts) for a Teradata database system and classifies them. "
+            "You are a helpful assistant that analyzes a list of technical capabilities (tools and prompts) and classifies them. "
             "For each capability, you must determine a single user-friendly 'category' for a UI. "
             "Example categories might be 'Data Quality', 'Table Management', 'Performance', 'Utilities', 'Database Information', etc. Be concise and consistent.\n\n"
             "Your response MUST be a single, valid JSON object. The keys of this object must be the capability names, "
@@ -448,11 +446,6 @@ async def load_and_categorize_mcp_resources(STATE: dict):
 
 
 def _transform_chart_data(data: any) -> list[dict]:
-    """
-    Cleans and transforms raw data from various tool outputs into a flat list
-    of dictionaries suitable for G2Plot charting. This acts as a deterministic
-    pre-processing step to prevent common data formatting errors.
-    """
     if isinstance(data, list) and all(isinstance(item, dict) and 'results' in item for item in data):
         app_logger.info("Detected nested tool output. Flattening data for charting.")
         flattened_data = []
@@ -549,21 +542,65 @@ def _build_g2plot_spec(args: dict, data: list[dict]) -> dict:
 
     return {"type": g2plot_type, "options": options}
 
+# --- MODIFICATION START: Create the new, specialized filter task function ---
+async def _invoke_llm_filter_task(STATE: dict, command: dict, session_id: str = None) -> tuple[dict, int, int]:
+    """
+    Executes a specialized LLM-based filtering task. It takes a list of data
+    and a natural language goal, and is strictly prompted to return only a
+    single, clean, machine-readable string value.
+    """
+    args = command.get("arguments", {})
+    goal = args.get("goal")
+    data_to_filter = args.get("data_to_filter")
+    llm_instance = STATE.get('llm')
+    call_id = str(uuid.uuid4())
+
+    if not goal or not data_to_filter:
+        return {"status": "error", "error_message": "TDA_LLMFilter requires 'goal' and 'data_to_filter' arguments."}, 0, 0
+
+    filtering_prompt = (
+        "You are an expert data extraction assistant. Your task is to find a single, specific item within a list of JSON objects that matches a given goal.\n\n"
+        f"--- GOAL ---\n{goal}\n\n"
+        f"--- DATA LIST ---\n{json.dumps(data_to_filter, indent=2)}\n\n"
+        "--- INSTRUCTIONS ---\n"
+        "1. Analyze the GOAL to understand what specific entity is being sought (e.g., a specific database name, a table name).\n"
+        "2. Scan the DATA LIST to find the single JSON object that best matches this entity.\n"
+        "3. From that single object, identify the key that holds the entity's primary identifier or name.\n"
+        "4. Extract the value associated with that key.\n\n"
+        "**CRITICAL OUTPUT FORMATTING:** Your response MUST be only the single, extracted value. It MUST NOT contain any punctuation, conversational text, explanations, markdown, or any other characters. Your output will be used directly as a parameter for another tool and must be perfectly clean.\n\n"
+        "Example: If you extract the database name 'fitness_db', your response must be exactly `fitness_db` and nothing else."
+    )
+
+    reason = f"Executing TDA_LLMFilter: {goal}"
+    
+    response_text, input_tokens, output_tokens = await llm_handler.call_llm_api(
+        llm_instance=llm_instance,
+        prompt=filtering_prompt,
+        reason=reason,
+        system_prompt_override="You are a data extraction assistant that only responds with clean, single values.",
+        raise_on_error=True,
+        session_id=session_id
+    )
+
+    # A final deterministic cleanup for safety, although the prompt is now very strict.
+    cleaned_response_text = response_text.strip().strip('.,:;')
+
+    result = {
+        "status": "success",
+        "metadata": {"call_id": call_id},
+        "results": [{"response": cleaned_response_text}]
+    }
+    
+    return result, input_tokens, output_tokens
+# --- MODIFICATION END ---
+
 async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: list = None, mode: str = "standard", session_id: str = None) -> tuple[dict, int, int]:
-    """
-    Executes a task handled by the LLM itself and returns the result along with token counts.
-    Supports two modes:
-    - 'standard': Synthesizes an answer from structured data provided in the 'source_data' argument.
-    - 'full_context': Synthesizes an answer by analyzing the full conversational history.
-    """
     args = command.get("arguments", {})
     user_question = args.get("user_question", "No user question provided.")
     llm_instance = STATE.get('llm')
     final_prompt = ""
     reason = ""
-    # --- MODIFICATION START: Add call_id for token tracking ---
     call_id = str(uuid.uuid4())
-    # --- MODIFICATION END ---
 
     if mode == 'full_context':
         app_logger.info(f"Executing client-side LLM task in 'full_context' mode.")
@@ -685,21 +722,15 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: lis
             "data": response_text
         }
     else:
-        # --- MODIFICATION START: Add call_id to result metadata ---
         result = {
             "status": "success", 
             "metadata": {"call_id": call_id},
             "results": [{"response": response_text}]
         }
-        # --- MODIFICATION END ---
 
     return result, input_tokens, output_tokens
 
 async def _invoke_util_calculate_date_range(STATE: dict, command: dict, session_id: str = None) -> dict:
-    """
-    Calculates a list of dates from a start date and a phrase using a multi-layered approach.
-    It first tries a robust deterministic method and falls back to an LLM for complex phrases.
-    """
     args = command.get("arguments", {})
     start_date_str = args.get("start_date")
     date_phrase = args.get("date_phrase", "").lower().strip()
@@ -804,6 +835,11 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None) ->
     mcp_client = STATE.get('mcp_client')
     tool_name = command.get("tool_name")
     
+    # --- MODIFICATION START: Route calls for the new tool to its handler ---
+    if tool_name == "TDA_LLMFilter":
+        return await _invoke_llm_filter_task(STATE, command, session_id=session_id)
+    # --- MODIFICATION END ---
+
     if tool_name == "TDA_LLMTask":
         args = command.get("arguments", {})
         mode = args.pop("mode", "standard")
@@ -922,3 +958,4 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None) ->
                 return result, 0, 0
     
     raise RuntimeError(f"Unexpected tool result format for '{tool_name}': {call_tool_result}")
+

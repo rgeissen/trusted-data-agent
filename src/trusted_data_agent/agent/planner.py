@@ -136,7 +136,6 @@ class Planner:
             original_phase = copy.deepcopy(phase)
             correction_made = False
 
-            # Check if a prompt was incorrectly placed in 'relevant_tools'
             if 'relevant_tools' in phase and isinstance(phase['relevant_tools'], list) and phase['relevant_tools']:
                 capability_name = phase['relevant_tools'][0]
                 if capability_name in all_prompts:
@@ -145,7 +144,6 @@ class Planner:
                     del phase['relevant_tools']
                     correction_made = True
 
-            # Check if a tool was incorrectly placed in 'executable_prompt'
             elif 'executable_prompt' in phase and isinstance(phase['executable_prompt'], str):
                 capability_name = phase['executable_prompt']
                 if capability_name in all_tools:
@@ -281,7 +279,6 @@ class Planner:
                     classification_prompt = TASK_CLASSIFICATION_PROMPT.format(task_description=task_description)
                     reason = "Classifying TDA_LLMTask loop intent for optimization."
                     
-                    # --- MODIFICATION START: Add call_id for token tracking ---
                     call_id = str(uuid.uuid4())
                     yield self.executor._format_sse({"step": "Analyzing Plan Efficiency", "type": "plan_optimization", "details": {"summary": "Checking if an iterative task can be optimized into a single batch operation.", "call_id": call_id}})
                     yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
@@ -297,7 +294,6 @@ class Planner:
                     updated_session = session_manager.get_session(self.executor.session_id)
                     if updated_session:
                         yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
-                    # --- MODIFICATION END ---
                     
                     yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
 
@@ -414,7 +410,6 @@ class Planner:
         ):
             yield event
         
-        # Run all refinement and correction steps after initial generation
         async for event in self._rewrite_plan_for_multi_loop_synthesis():
             yield event
         async for event in self._rewrite_plan_for_corellmtask_loops():
@@ -426,13 +421,11 @@ class Planner:
         for event in self._hydrate_plan_from_previous_turn():
             yield event
 
-        # --- MODIFICATION START: Yield the finalized plan to the UI ---
         yield self.executor._format_sse({
             "step": "Strategic Meta-Plan Generated",
             "type": "plan_generated",
             "details": self.executor.meta_plan
         })
-        # --- MODIFICATION END ---
 
     async def _generate_meta_plan(self, force_disable_history: bool = False, replan_context: str = None):
         """The universal planner. It generates a meta-plan for ANY request."""
@@ -489,7 +482,6 @@ class Planner:
         else:
             self.executor.workflow_goal_prompt = self.executor.original_user_input
 
-        # --- MODIFICATION START: Add call_id for token tracking ---
         call_id = str(uuid.uuid4())
         summary = f"Generating a strategic meta-plan for the goal"
         details_payload = {
@@ -498,7 +490,6 @@ class Planner:
             "call_id": call_id
         }
         yield self.executor._format_sse({"step": "Calling LLM for Planning", "type": "system_message", "details": details_payload})
-        # --- MODIFICATION END ---
 
         previous_turn_summary_str = self._create_summary_from_history(self.executor.previous_turn_data)
         
@@ -518,6 +509,24 @@ class Planner:
         
         constraints_section = self.executor.dependencies['STATE'].get("constraints_context", "")
 
+        sql_consolidation_rule_str = ""
+        opt_prompts = APP_CONFIG.SQL_OPTIMIZATION_PROMPTS
+        opt_tools = APP_CONFIG.SQL_OPTIMIZATION_TOOLS
+        
+        if opt_prompts or opt_tools:
+            favored_capabilities = []
+            if opt_prompts:
+                favored_capabilities.extend([f"`{p}` (prompt)" for p in opt_prompts])
+            if opt_tools:
+                favored_capabilities.extend([f"`{t}` (tool)" for t in opt_tools])
+
+            sql_consolidation_rule_str = (
+                "**CRITICAL STRATEGY (SQL Consolidation):** Before creating a multi-step plan, first consider if the user's entire request can be fulfilled with a single, consolidated SQL query. "
+                "If the goal involves a sequence of filtering, joining, or looking up data (e.g., \"find all tables in a database that contains X\"), you **MUST** favor using one of the following capabilities "
+                f"to write a single statement that performs the entire operation: {', '.join(favored_capabilities)}. "
+                "Avoid creating multiple `base_...List` steps if a single query would be more efficient."
+            )
+
         planning_prompt = WORKFLOW_META_PLANNING_PROMPT.format(
             workflow_goal=self.executor.workflow_goal_prompt,
             explicit_parameters_section=explicit_parameters_section,
@@ -529,7 +538,8 @@ class Planner:
             answer_from_history_rule=answer_from_history_rule_str,
             mcp_system_name=APP_CONFIG.MCP_SYSTEM_NAME,
             replan_instructions=replan_context or "",
-            constraints_section=constraints_section
+            constraints_section=constraints_section,
+            sql_consolidation_rule=sql_consolidation_rule_str
         )
         
         yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
@@ -553,9 +563,7 @@ class Planner:
 
         updated_session = session_manager.get_session(self.executor.session_id)
         if updated_session:
-            # --- MODIFICATION START: Add call_id to token_update event ---
             yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
-            # --- MODIFICATION END ---
         
         try:
             json_str = response_text
