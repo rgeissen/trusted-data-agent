@@ -33,6 +33,7 @@ class AppConfig:
     CONTEXT_DISTILLATION_MAX_ROWS = 500 # The maximum number of rows from a tool's result to include in the LLM context.
     CONTEXT_DISTILLATION_MAX_CHARS = 10000 # The maximum number of characters from a tool's result to include in the LLM context.
     DETAILED_DESCRIPTION_THRESHOLD = 200 # A heuristic character count for the PlanExecutor to distinguish between a generic vs. a detailed task description from the planner.
+    GRANTED_PROMPTS_FOR_EFFICIENCY_REPLANNING = ["base_teradata_query"] # A list of complex prompts that are exempt from being broken down by the "Re-planning for Efficiency" optimizer.
 
     # --- Initial State Configuration ---
     #INITIALLY_DISABLED_PROMPTS = ["base_query","cust_promptExample","qlty_databaseQuality","dba_tableArchive","dba_databaseLineage", "dba_tableDropImpact", "dba_databaseHealthAssessment", "dba_userActivityAnalysis", "dba_systemVoice", "base_databaseBusinessDesc", "sales_prompt", "test_evsTools", "test_secTools", "test_dbaTools", "test_ragTools", "test_qltyTools", "test_fsTools", "test_baseTools", "rag_guidelines" ] # A list of prompt names to be disabled by default on application startup.

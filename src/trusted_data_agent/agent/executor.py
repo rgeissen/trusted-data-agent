@@ -263,16 +263,32 @@ class PlanExecutor:
                     replan_context = None
                     if replan_attempt > 0:
                         prompts_in_plan = [p['executable_prompt'] for p in (self.meta_plan or []) if 'executable_prompt' in p]
+                        
+                        granted_prompts_in_plan = [
+                            p_name for p_name in prompts_in_plan 
+                            if p_name in APP_CONFIG.GRANTED_PROMPTS_FOR_EFFICIENCY_REPLANNING
+                        ]
+
                         context_parts = [
                             "\n--- CONTEXT FOR RE-PLANNING ---",
                             "Your previous plan was inefficient because it used a high-level prompt in a multi-step plan. You MUST create a new, more detailed plan that achieves the same goal using ONLY tools.",
-                            "\n**CRITICAL ARCHITECTURAL RULE:** Your new tool-only plan must still adhere to all primary directives. This includes the rule that all synthesis or summarization tasks must be consolidated into a single, final `TDA_LLMTask` phase. Avoid creating redundant, back-to-back summary steps.\n",
-                            "To help you, here is the description of the prompt(s) you previously selected. You must replicate their logic using basic tools:"
+                            "\n**CRITICAL ARCHITECTURAL RULE:** Your new tool-only plan must still adhere to all primary directives. This includes the rule that all synthesis or summarization tasks must be consolidated into a single, final `TDA_LLMTask` phase. Avoid creating redundant, back-to-back summary steps.\n"
                         ]
+
+                        if granted_prompts_in_plan:
+                            preservation_rule = (
+                                f"\n**CRITICAL PRESERVATION RULE:** The following prompts are explicitly granted for this workflow and you **MUST** "
+                                f"include them as phases in the new plan you generate: `{granted_prompts_in_plan}`. "
+                                "Rebuild the *other* non-granted parts of the plan around these required steps using only basic tools to achieve the overall goal.\n"
+                            )
+                            context_parts.append(preservation_rule)
+                        
+                        context_parts.append("To help you, here is the description of the prompt(s) you previously selected. You must replicate their logic using basic tools (unless they are preserved by the rule above):")
                         for prompt_name in prompts_in_plan:
                             prompt_info = self._get_prompt_info(prompt_name)
                             if prompt_info:
                                 context_parts.append(f"\n- Instructions for '{prompt_name}': {prompt_info.get('description', 'No description.')}")
+                        
                         replan_context = "\n".join(context_parts)
 
                     # Generate and refine the plan using the Planner component
@@ -286,9 +302,13 @@ class PlanExecutor:
                     plan_has_prompt = self.meta_plan and any('executable_prompt' in phase for phase in self.meta_plan)
                     replan_triggered = False
                     if plan_has_prompt:
+                        prompts_in_plan = {phase['executable_prompt'] for phase in self.meta_plan if 'executable_prompt' in phase}
+                        non_granted_prompts = [p for p in prompts_in_plan if p not in APP_CONFIG.GRANTED_PROMPTS_FOR_EFFICIENCY_REPLANNING]
+                        
                         has_other_significant_tool = any('executable_prompt' not in phase and phase.get('relevant_tools') != ['TDA_LLMTask'] for phase in self.meta_plan)
                         is_single_phase_prompt = len(self.meta_plan) == 1
-                        if has_other_significant_tool and not is_single_phase_prompt:
+                        
+                        if has_other_significant_tool and not is_single_phase_prompt and non_granted_prompts:
                             replan_triggered = True
 
                     if self.execution_depth == 0 and replan_triggered and replan_attempt < max_replans:
@@ -630,3 +650,4 @@ class PlanExecutor:
             "tts_payload": tts_payload,
             "source": self.source
         }, "final_answer")
+
