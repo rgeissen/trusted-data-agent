@@ -181,6 +181,25 @@ def _get_full_system_prompt(session_data: dict, dependencies: dict, system_promp
         prompts_context = "\n".join(filtered_prompts_context_parts)
     # --- MODIFICATION END ---
 
+    # --- MODIFICATION START: Condense tool/prompt context for history ---
+    if APP_CONFIG.CONDENSE_SYSTEMPROMPT_HISTORY:
+        condensed_tools_parts = ["--- Available Tools (Names Only) ---"]
+        structured_tools = STATE.get('structured_tools', {})
+        for category, tools in sorted(structured_tools.items()):
+            enabled_tools = [f"`{t['name']}`" for t in tools if not t.get('disabled')]
+            if enabled_tools:
+                condensed_tools_parts.append(f"- **{category}**: {', '.join(enabled_tools)}")
+        tools_context = "\n".join(condensed_tools_parts) if len(condensed_tools_parts) > 1 else "--- No Tools Available ---"
+
+        condensed_prompts_parts = ["--- Available Prompts (Names Only) ---"]
+        structured_prompts = STATE.get('structured_prompts', {})
+        for category, prompts in sorted(structured_prompts.items()):
+            # Filter out the active prompt name here as well for the condensed view
+            enabled_prompts = [f"`{p['name']}`" for p in prompts if not p.get('disabled') and p['name'] != active_prompt_name_for_filter]
+            if enabled_prompts:
+                condensed_prompts_parts.append(f"- **{category}**: {', '.join(enabled_prompts)}")
+        prompts_context = "\n".join(condensed_prompts_parts) if len(condensed_prompts_parts) > 1 else "--- No Prompts Available ---"
+    # --- MODIFICATION END ---
 
     final_system_prompt = base_prompt_text.replace(
         '{charting_instructions_section}', charting_instructions_section

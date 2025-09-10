@@ -17,6 +17,8 @@ class AppConfig:
     VOICE_CONVERSATION_ENABLED = True # Master switch for the Text-to-Speech (TTS) feature.
     SUB_PROMPT_FORCE_SUMMARY = False # If True, forces sub-executors for prompts to generate their own final summary. Default is False.
     GRANTED_PROMPTS_FOR_EFFICIENCY_REPLANNING = ["base_teradata_query"] # A list of complex prompts that are exempt from the "Re-planning for Efficiency" optimization.
+    CONDENSE_SYSTEMPROMPT_HISTORY = True # If True, sends a condensed list of tools/prompts in the system prompt for subsequent turns in a conversation to save tokens.
+
 
     # --- Connection & Model State ---
     MCP_SERVER_CONNECTED = False # Runtime flag indicating if a connection to the MCP server is active.
