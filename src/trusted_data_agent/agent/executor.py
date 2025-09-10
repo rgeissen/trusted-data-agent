@@ -106,6 +106,9 @@ class PlanExecutor:
         
         self.is_complex_prompt_workflow = False
         self.final_canonical_response = None
+        # --- MODIFICATION START: Add is_single_prompt_plan as an instance attribute ---
+        self.is_single_prompt_plan = False
+        # --- MODIFICATION END ---
 
 
     @staticmethod
@@ -325,9 +328,11 @@ class PlanExecutor:
                     
                     break
 
-                is_single_prompt_plan = (self.meta_plan and len(self.meta_plan) == 1 and 'executable_prompt' in self.meta_plan[0] and not self.is_delegated_task)
+                # --- MODIFICATION START: Change to instance attribute ---
+                self.is_single_prompt_plan = (self.meta_plan and len(self.meta_plan) == 1 and 'executable_prompt' in self.meta_plan[0] and not self.is_delegated_task)
 
-                if is_single_prompt_plan:
+                if self.is_single_prompt_plan:
+                # --- MODIFICATION END ---
                     async for event in self._handle_single_prompt_plan(planner):
                         yield event
 
@@ -521,10 +526,29 @@ class PlanExecutor:
     async def _handle_summarization(self, final_answer_override: str | None):
         """Orchestrates the final summarization and answer formatting."""
         final_summary_content = None
+        
+        # --- MODIFICATION START: Implement the new hardened bypass logic ---
+        is_self_contained_report = False
+        if self.is_single_prompt_plan and self.meta_plan:
+            last_phase = self.meta_plan[-1]
+            final_tools = last_phase.get('relevant_tools', [])
+            if any(tool in final_tools for tool in ['TDA_LLMTask', 'TDA_FinalReport']):
+                is_self_contained_report = True
+        # --- MODIFICATION END ---
 
         if self.execution_depth > 0 and not self.force_final_summary:
             app_logger.info(f"Sub-planner (depth {self.execution_depth}) completed. Bypassing final summary.")
             self.state = self.AgentState.DONE
+        # --- MODIFICATION START: Add the new bypass condition ---
+        elif is_self_contained_report:
+            app_logger.info("Single-prompt, self-contained report detected. Bypassing redundant final summary.")
+            if isinstance(self.last_tool_output, dict) and self.last_tool_output.get("status") == "success":
+                # Extract the pre-formatted markdown from the last tool call
+                raw_response = self.last_tool_output.get("results", [{}])[0].get("response", "")
+                final_summary_content = CanonicalResponse(direct_answer=raw_response)
+            else:
+                final_summary_content = CanonicalResponse(direct_answer="The agent completed the prompt, but the final output was not in the expected format.")
+        # --- MODIFICATION END ---
         elif self.prompt_type == 'context':
             app_logger.info(f"'{self.active_prompt_name}' is a 'context' prompt. Skipping final summary.")
             self.state = self.AgentState.DONE
