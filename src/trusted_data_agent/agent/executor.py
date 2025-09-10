@@ -182,7 +182,6 @@ class PlanExecutor:
         resolved_args = {}
         for key, value in arguments.items():
             if isinstance(value, str):
-                # Check for placeholders like 'result_of_phase_1' or '{{...}}'
                 placeholder_match = re.fullmatch(r"result_of_phase_(\d+)", value)
                 jinja_match = re.search(r"\{\{\s*result_of_phase_(\d+)\s*\|\s*length\s*\}\}", value)
 
@@ -192,13 +191,11 @@ class PlanExecutor:
                     if source_key in self.workflow_state:
                         data = self.workflow_state[source_key]
                         data_length = 0
-                        # This logic needs to be robust to find the list to measure
                         if isinstance(data, list) and data and isinstance(data[0], dict) and 'results' in data[0]:
                              data_length = len(data[0].get('results', []))
                         elif isinstance(data, list):
                              data_length = len(data)
                         
-                        # Replace the Jinja expression with the calculated length
                         resolved_value = value.replace(jinja_match.group(0), str(data_length))
                         resolved_args[key] = resolved_value
                         app_logger.info(f"Resolved Jinja expression '{value}' to '{resolved_value}'")
@@ -212,7 +209,6 @@ class PlanExecutor:
                     if source_key in self.workflow_state:
                         data = self.workflow_state[source_key]
                         
-                        # Heuristic to extract a single scalar value if appropriate
                         if (isinstance(data, list) and len(data) == 1 and 
                             isinstance(data[0], dict) and "results" in data[0] and
                             isinstance(data[0]["results"], list) and len(data[0]["results"]) == 1 and
@@ -251,7 +247,6 @@ class PlanExecutor:
                     yield event
                 return
             
-            # --- PLANNING STATE ---
             if self.state == self.AgentState.PLANNING:
                 planner = Planner(self)
                 should_replan = False
@@ -259,46 +254,51 @@ class PlanExecutor:
 
                 replan_attempt = 0
                 max_replans = 1
-                while True: # Loop for planning and potential re-planning
+                while True:
                     replan_context = None
-                    if replan_attempt > 0:
-                        prompts_in_plan = [p['executable_prompt'] for p in (self.meta_plan or []) if 'executable_prompt' in p]
-                        
-                        granted_prompts_in_plan = [
-                            p_name for p_name in prompts_in_plan 
-                            if p_name in APP_CONFIG.GRANTED_PROMPTS_FOR_EFFICIENCY_REPLANNING
-                        ]
+                    is_replan = replan_attempt > 0
 
-                        context_parts = [
-                            "\n--- CONTEXT FOR RE-PLANNING ---",
-                            "Your previous plan was inefficient because it used a high-level prompt in a multi-step plan. You MUST create a new, more detailed plan that achieves the same goal using ONLY tools.",
-                            "\n**CRITICAL ARCHITECTURAL RULE:** Your new tool-only plan must still adhere to all primary directives. This includes the rule that all synthesis or summarization tasks must be consolidated into a single, final `TDA_LLMTask` phase. Avoid creating redundant, back-to-back summary steps.\n"
-                        ]
+                    if is_replan:
+                        prompts_in_plan = {p['executable_prompt'] for p in (self.meta_plan or []) if 'executable_prompt' in p}
+                        
+                        granted_prompts_in_plan = {p for p in prompts_in_plan if p in APP_CONFIG.GRANTED_PROMPTS_FOR_EFFICIENCY_REPLANNING}
+                        non_granted_prompts_to_deconstruct = {p for p in prompts_in_plan if p not in granted_prompts_in_plan}
+
+                        context_parts = ["\n--- CONTEXT FOR RE-PLANNING ---"]
+                        
+                        deconstruction_instruction = (
+                            "Your previous plan was inefficient because it contained high-level prompts that must be broken down. "
+                            "You MUST create a new, more detailed plan that achieves the same overall goal."
+                        )
+                        context_parts.append(deconstruction_instruction)
 
                         if granted_prompts_in_plan:
                             preservation_rule = (
-                                f"\n**CRITICAL PRESERVATION RULE:** The following prompts are explicitly granted for this workflow and you **MUST** "
-                                f"include them as phases in the new plan you generate: `{granted_prompts_in_plan}`. "
-                                "Rebuild the *other* non-granted parts of the plan around these required steps using only basic tools to achieve the overall goal.\n"
+                                f"\n**CRITICAL PRESERVATION RULE:** The following prompts are explicitly granted and you **MUST** "
+                                f"include them as phases in the new plan: `{list(granted_prompts_in_plan)}`. "
+                                "You should rebuild the other parts of the plan around these required steps.\n"
                             )
                             context_parts.append(preservation_rule)
-                        
-                        context_parts.append("To help you, here is the description of the prompt(s) you previously selected. You must replicate their logic using basic tools (unless they are preserved by the rule above):")
-                        for prompt_name in prompts_in_plan:
-                            prompt_info = self._get_prompt_info(prompt_name)
-                            if prompt_info:
-                                context_parts.append(f"\n- Instructions for '{prompt_name}': {prompt_info.get('description', 'No description.')}")
+
+                        if non_granted_prompts_to_deconstruct:
+                            deconstruction_directive = (
+                                "\n**CRITICAL REPLANNING DIRECTIVE:** You **MUST** replicate the logical goal of the following discarded prompt(s) "
+                                "using **only basic tools**. To help you, here are their original goals:"
+                            )
+                            context_parts.append(deconstruction_directive)
+                            for prompt_name in non_granted_prompts_to_deconstruct:
+                                prompt_info = self._get_prompt_info(prompt_name)
+                                if prompt_info:
+                                    context_parts.append(f"- The goal of the discarded prompt `{prompt_name}` was: \"{prompt_info.get('description', 'No description.')}\"")
                         
                         replan_context = "\n".join(context_parts)
 
-                    # Generate and refine the plan using the Planner component
                     async for event in planner.generate_and_refine_plan(
                         force_disable_history=planning_is_disabled_history,
                         replan_context=replan_context
                     ):
                         yield event
 
-                    # Check for conditions that might trigger a re-plan
                     plan_has_prompt = self.meta_plan and any('executable_prompt' in phase for phase in self.meta_plan)
                     replan_triggered = False
                     if plan_has_prompt:
@@ -322,12 +322,11 @@ class PlanExecutor:
                         })
                         continue
                     
-                    break # Exit planning loop if no re-plan is needed
+                    break
 
                 is_single_prompt_plan = (self.meta_plan and len(self.meta_plan) == 1 and 'executable_prompt' in self.meta_plan[0] and not self.is_delegated_task)
 
                 if is_single_prompt_plan:
-                    # Handle the special case of a plan that is just a single prompt call
                     async for event in self._handle_single_prompt_plan(planner):
                         yield event
 
@@ -337,7 +336,6 @@ class PlanExecutor:
                 else:
                     self.state = self.AgentState.EXECUTING
 
-            # --- EXECUTION STATE ---
             try:
                 if self.state == self.AgentState.EXECUTING:
                     async for event in self._run_plan(): yield event
@@ -347,7 +345,6 @@ class PlanExecutor:
                 final_answer_override = f"I could not complete the request. Reason: {e.friendly_message}"
                 self.state = self.AgentState.SUMMARIZING
             
-            # --- SUMMARIZING STATE ---
             if self.state == self.AgentState.SUMMARIZING:
                 async for event in self._handle_summarization(final_answer_override):
                     yield event
@@ -379,7 +376,6 @@ class PlanExecutor:
             missing_args = required_args - set(prompt_args.keys())
             
             if missing_args:
-                # Enrich missing arguments if possible
                 yield self._format_sse({
                     "step": "System Correction", "type": "workaround",
                     "details": f"Prompt '{prompt_name}' is missing required arguments: {missing_args}. Attempting to extract from user query."
@@ -411,7 +407,6 @@ class PlanExecutor:
         self.prompt_arguments = self._resolve_arguments(prompt_args)
         self.prompt_type = prompt_info.get("prompt_type", "reporting") if prompt_info else "reporting"
         
-        # Regenerate the plan with the expanded context
         async for event in planner.generate_and_refine_plan():
             yield event
 
@@ -477,7 +472,6 @@ class PlanExecutor:
         async for event in sub_executor.run():
             yield event
         
-        # Absorb state from the sub-run
         self.structured_collected_data.update(sub_executor.structured_collected_data)
         self.workflow_state.update(sub_executor.workflow_state)
         self.turn_action_history.extend(sub_executor.turn_action_history)
@@ -522,7 +516,6 @@ class PlanExecutor:
         elif self.final_canonical_response:
             final_summary_content = self.final_canonical_response
             if self.is_complex_prompt_workflow:
-                # Yield status updates around the await call
                 yield self._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
                 final_summary_content = await self._format_complex_prompt_report(final_summary_content)
                 yield self._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
@@ -570,7 +563,6 @@ class PlanExecutor:
         Calls the LLM to synthesize a final summary and returns a structured
         CanonicalResponse object.
         """
-        # This logic is now simpler as it relies on the Planner's distillation.
         final_summary_prompt_text = GENERATE_FINAL_SUMMARY.format(
             all_collected_data=json.dumps(self.workflow_state, indent=2)
         )

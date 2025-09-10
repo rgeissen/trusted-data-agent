@@ -330,7 +330,6 @@ class PhaseExecutor:
                 }
             })
 
-        # --- MODIFICATION START: Bypass tactical LLM for TDA_FinalReport ---
         if relevant_tools == ["TDA_FinalReport"] and not is_loop_iteration:
             app_logger.info("PhaseExecutor: TDA_FinalReport signal detected. Bypassing tactical LLM and proceeding directly to summarization.")
             yield self.executor._format_sse({
@@ -344,14 +343,12 @@ class PhaseExecutor:
                 else:
                     yield event
             
-            # End the phase after summarization is triggered
             yield self.executor._format_sse({
                 "step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}",
                 "type": "phase_end",
                 "details": {"phase_num": phase_num, "total_phases": len(self.executor.meta_plan), "status": "completed"}
             })
             return
-        # --- MODIFICATION END ---
         
         if len(relevant_tools) > 1 and not is_loop_iteration:
             yield self.executor._format_sse({
@@ -563,7 +560,6 @@ class PhaseExecutor:
                 "details": f"Executing prompt '{prompt_name}' as a sub-task.",
                 "type": "workaround"
             })
-            # This requires PlanExecutor, so we call back to a method on the executor instance
             async for event in self.executor._run_sub_prompt(prompt_name, action.get("arguments", {})):
                 yield event
             return
@@ -588,16 +584,99 @@ class PhaseExecutor:
         async for event in self._execute_tool(action, phase):
             yield event
 
+    async def _proactively_refine_arguments(self, action: dict, phase: dict):
+        """
+        Performs a pre-flight check on tool arguments, looking for type mismatches
+        (e.g., passing a list to an arg that expects a string). If found, it uses
+        an LLM to intelligently extract the correct value from the list.
+        """
+        tool_name = action.get("tool_name")
+        if not tool_name:
+            return
+
+        tool_def = self.executor.dependencies['STATE'].get('mcp_tools', {}).get(tool_name)
+        if not tool_def or not hasattr(tool_def, 'args') or not isinstance(tool_def.args, dict):
+            return
+
+        original_args = action.get("arguments", {})
+        refined_args = original_args.copy()
+        
+        for arg_name, arg_value in original_args.items():
+            arg_spec = tool_def.args.get(arg_name)
+            if not arg_spec: continue
+
+            expected_type = arg_spec.get("type", "any").lower()
+
+            if expected_type == 'string' and isinstance(arg_value, list):
+                if not arg_value or not isinstance(arg_value[0], dict): continue
+                
+                phase_goal = phase.get("goal", self.executor.original_user_input)
+                list_of_items_json = json.dumps(arg_value, indent=2)
+
+                yield self.executor._format_sse({
+                    "step": "System Correction",
+                    "type": "workaround",
+                    "details": {
+                        "summary": f"Detected a data type mismatch for argument '{arg_name}'. Agent is proactively extracting the correct value.",
+                        "correction_type": "argument_refinement"
+                    }
+                })
+
+                extraction_prompt = (
+                    "You are an expert data extractor. Your task is to find a single, specific item within a list of JSON objects that matches a given goal.\n\n"
+                    f"--- GOAL ---\n{phase_goal}\n\n"
+                    f"--- DATA LIST ---\n{list_of_items_json}\n\n"
+                    "--- INSTRUCTIONS ---\n"
+                    "1. Analyze the GOAL to understand what specific entity is being sought (e.g., a specific database name, a table name).\n"
+                    "2. Scan the DATA LIST to find the JSON object that contains this entity.\n"
+                    "3. From that single object, determine the key that holds the entity's name (e.g., 'DatabaseName').\n"
+                    "4. Extract the value associated with that key.\n"
+                    "5. Your response MUST be a single JSON object with one key: 'extracted_value'.\n\n"
+                    "Example:\n"
+                    "`{\"extracted_value\": \"fitness_db\"}`"
+                )
+                
+                reason = f"Proactively refining argument '{arg_name}' to prevent tool failure."
+                call_id = str(uuid.uuid4())
+                yield self.executor._format_sse({"step": "Calling LLM for Argument Refinement", "type": "system_message", "details": {"summary": reason, "call_id": call_id}})
+                yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
+
+                response_text, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
+                    prompt=extraction_prompt, reason=reason,
+                    system_prompt_override="You are a JSON-only responding assistant.",
+                    raise_on_error=True
+                )
+                
+                yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
+                updated_session = session_manager.get_session(self.executor.session_id)
+                if updated_session:
+                    yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
+                
+                try:
+                    extraction_data = json.loads(response_text)
+                    extracted_value = extraction_data.get("extracted_value")
+                    if extracted_value:
+                        refined_args[arg_name] = extracted_value
+                        app_logger.info(f"Argument refinement successful. Replaced list with extracted value '{extracted_value}' for argument '{arg_name}'.")
+                    else:
+                        app_logger.warning("Argument refinement failed: LLM did not return an 'extracted_value'.")
+                except (json.JSONDecodeError, AttributeError) as e:
+                    app_logger.error(f"Failed to parse argument refinement response: {e}. Original argument will be used.")
+
+        action['arguments'] = refined_args
+
     async def _execute_tool(self, action: dict, phase: dict, is_fast_path: bool = False):
         """Executes a single tool call with a built-in retry and recovery mechanism."""
+        
+        async for event in self._proactively_refine_arguments(action, phase):
+            yield event
+        
         tool_name = action.get("tool_name")
         arguments = action.get("arguments", {})
         
         if tool_name == "TDA_FinalReport":
             app_logger.info("Detected TDA_FinalReport signal. Agent will now perform final summarization.")
             
-            # This logic must stay in the main executor, so we call back to it.
-            # We yield the result to the caller of this method.
             async for event in self.executor._generate_final_summary():
                 if isinstance(event, CanonicalResponse):
                     self.executor.final_canonical_response = event
@@ -691,7 +770,6 @@ class PhaseExecutor:
                 
                 for error_pattern, friendly_message in DEFINITIVE_TOOL_ERRORS.items():
                     if re.search(error_pattern, error_data_str, re.IGNORECASE):
-                        # Import the exception dynamically to avoid circular import at the top level
                         from trusted_data_agent.agent.executor import DefinitiveToolError
                         raise DefinitiveToolError(error_data_str, friendly_message)
                 
@@ -721,7 +799,6 @@ class PhaseExecutor:
                                 continue 
                             else:
                                 app_logger.info(f"Successfully recovered from tool failure by executing prompt '{corrected_action['prompt_name']}'.")
-                                # last_tool_output is already set by the sub-executor
                                 break 
 
                         if "FINAL_ANSWER:" in corrected_action:
@@ -1172,7 +1249,6 @@ class PhaseExecutor:
         system_prompt_override = None
         reason = ""
 
-        # Tier 1: Check for "Table Not Found" error.
         table_error_match = re.search(RECOVERABLE_TOOL_ERRORS["table_not_found"], error_data_str, re.IGNORECASE)
         if table_error_match:
             invalid_table = table_error_match.group(1)
@@ -1194,7 +1270,6 @@ class PhaseExecutor:
             reason = f"Fact-based recovery for non-existent table '{invalid_table_name_only}'"
             system_prompt_override = "You are an expert troubleshooter. Follow the recovery directives precisely."
 
-        # Tier 2: Check for "Column Not Found" error if no table error was found.
         if not correction_prompt:
             column_error_match = re.search(RECOVERABLE_TOOL_ERRORS["column_not_found"], error_data_str, re.IGNORECASE)
             if column_error_match:
@@ -1212,7 +1287,6 @@ class PhaseExecutor:
                 reason = f"Fact-based recovery for non-existent column '{invalid_column}'"
                 system_prompt_override = "You are an expert troubleshooter. Follow the recovery directives precisely."
         
-        # Tier 3 (Fallback): Generic self-correction for all other unknown errors.
         if not correction_prompt:
             tool_def = self.executor.dependencies['STATE'].get('mcp_tools', {}).get(tool_name)
             if not tool_def: return None, events
