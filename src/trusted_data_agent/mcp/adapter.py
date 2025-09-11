@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from langchain_mcp_adapters.tools import load_mcp_tools
 from trusted_data_agent.llm import handler as llm_handler
 from trusted_data_agent.core.config import APP_CONFIG, AppConfig
-from trusted_data_agent.agent.response_models import CanonicalResponse
+from trusted_data_agent.agent.response_models import CanonicalResponse, PromptReportResponse
 
 app_logger = logging.getLogger("quart.app")
 
@@ -63,7 +63,6 @@ UTIL_TOOL_DEFINITIONS = [
     }
 ]
 
-# --- MODIFICATION START: Define the new TDA_LLMFilter tool ---
 LLM_FILTER_TOOL_DEFINITION = {
     "name": "TDA_LLMFilter",
     "description": "A specialized internal tool that filters a list of items based on a natural language goal and extracts a single, clean value. This is used as an intermediate step to pass a specific, machine-readable value from one tool to another.",
@@ -80,7 +79,6 @@ LLM_FILTER_TOOL_DEFINITION = {
         }
     }
 }
-# --- MODIFICATION END ---
 
 
 CORE_LLM_TASK_DEFINITION = {
@@ -105,29 +103,21 @@ CORE_LLM_TASK_DEFINITION = {
     }
 }
 
-final_report_schema = CanonicalResponse.model_json_schema()
-
-GENERATE_FINAL_REPORT_TOOL_DEFINITION = {
+user_query_report_schema = CanonicalResponse.model_json_schema()
+USER_QUERY_REPORT_TOOL_DEFINITION = {
     "name": "TDA_FinalReport",
-    "description": "A special internal tool used to format and deliver the final, structured report to the user. This tool MUST be called when you have gathered all necessary information to answer the user's request.",
-    "args": {
-        "direct_answer": {
-            "type": "string",
-            "description": final_report_schema["properties"]["direct_answer"]["description"],
-            "required": "direct_answer" in final_report_schema.get("required", [])
-        },
-        "key_metric": {
-            "type": "dict",
-            "description": final_report_schema["properties"]["key_metric"]["description"],
-            "required": "key_metric" in final_report_schema.get("required", [])
-        },
-        "key_observations": {
-            "type": "list[dict]",
-            "description": final_report_schema["properties"]["key_observations"]["description"],
-            "required": "key_observations" in final_report_schema.get("required", [])
-        }
-    }
+    "description": "A special internal tool used to format and deliver the final, structured report for a user's ad-hoc query. This tool MUST be called when you have gathered all necessary information to answer the user's request.",
+    "args": {}
 }
+
+
+complex_prompt_report_schema = PromptReportResponse.model_json_schema()
+COMPLEX_PROMPT_REPORT_TOOL_DEFINITION = {
+    "name": "TDA_ComplexPromptReport",
+    "description": "A special internal tool used to format and deliver the final, structured report for a pre-defined UI prompt. This tool MUST be called when all data gathering phases for the prompt are complete.",
+    "args": {}
+}
+
 
 def _extract_and_clean_description(description: str | None) -> tuple[str, str]:
     if not isinstance(description, str):
@@ -243,12 +233,10 @@ async def load_and_categorize_mcp_resources(STATE: dict):
         for util_tool_def in UTIL_TOOL_DEFINITIONS:
             loaded_tools.append(SimpleTool(**util_tool_def))
         
-        # --- MODIFICATION START: Add the new TDA_LLMFilter tool to the loaded tools ---
         loaded_tools.append(SimpleTool(**LLM_FILTER_TOOL_DEFINITION))
-        # --- MODIFICATION END ---
-        
         loaded_tools.append(SimpleTool(**CORE_LLM_TASK_DEFINITION))
-        loaded_tools.append(SimpleTool(**GENERATE_FINAL_REPORT_TOOL_DEFINITION))
+        loaded_tools.append(SimpleTool(**USER_QUERY_REPORT_TOOL_DEFINITION))
+        loaded_tools.append(SimpleTool(**COMPLEX_PROMPT_REPORT_TOOL_DEFINITION))
 
 
         STATE['mcp_tools'] = {tool.name: tool for tool in loaded_tools}
@@ -542,7 +530,6 @@ def _build_g2plot_spec(args: dict, data: list[dict]) -> dict:
 
     return {"type": g2plot_type, "options": options}
 
-# --- MODIFICATION START: Create the new, specialized filter task function ---
 async def _invoke_llm_filter_task(STATE: dict, command: dict, session_id: str = None, call_id: str | None = None) -> tuple[dict, int, int]:
     """
     Executes a specialized LLM-based filtering task. It takes a list of data
@@ -554,7 +541,6 @@ async def _invoke_llm_filter_task(STATE: dict, command: dict, session_id: str = 
     data_to_filter = args.get("data_to_filter")
     llm_instance = STATE.get('llm')
     
-    # If a call_id isn't passed in from the orchestrator, generate one.
     final_call_id = call_id or str(uuid.uuid4())
 
     if not goal or not data_to_filter:
@@ -584,7 +570,6 @@ async def _invoke_llm_filter_task(STATE: dict, command: dict, session_id: str = 
         session_id=session_id
     )
 
-    # A final deterministic cleanup for safety, although the prompt is now very strict.
     cleaned_response_text = response_text.strip().strip('.,:;')
 
     result = {
@@ -594,7 +579,6 @@ async def _invoke_llm_filter_task(STATE: dict, command: dict, session_id: str = 
     }
     
     return result, input_tokens, output_tokens
-# --- MODIFICATION END ---
 
 async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: list = None, mode: str = "standard", session_id: str = None, call_id: str | None = None) -> tuple[dict, int, int]:
     args = command.get("arguments", {})
@@ -603,7 +587,6 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: lis
     final_prompt = ""
     reason = ""
     
-    # If a call_id isn't passed in from the orchestrator, generate one.
     final_call_id = call_id or str(uuid.uuid4())
 
     if mode == 'full_context':
@@ -734,6 +717,100 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: lis
 
     return result, input_tokens, output_tokens
 
+async def _invoke_final_report_task(STATE: dict, command: dict, workflow_state: dict, session_id: str = None, call_id: str | None = None) -> tuple[dict, int, int]:
+    llm_instance = STATE.get('llm')
+    user_question = command.get("arguments", {}).get("user_question", "No user question provided.")
+    final_call_id = call_id or str(uuid.uuid4())
+
+    final_summary_prompt_text = (
+        "You are an expert data analyst. Your task is to create a final report for the user by analyzing the provided data and their original question.\n\n"
+        f"--- USER'S ORIGINAL QUESTION ---\n{user_question}\n\n"
+        f"--- DATA FOR ANALYSIS ---\n{json.dumps(workflow_state, indent=2)}\n\n"
+        "--- INSTRUCTIONS ---\n"
+        "Your response MUST be a single JSON object that strictly follows the schema for a `CanonicalResponse`.\n"
+        "You are required to populate its fields based on your analysis of the data provided above.\n\n"
+        "--- FIELD GUIDELINES ---\n"
+        "1.  `direct_answer`: REQUIRED. A single, concise sentence that directly and factually answers the user's primary question.\n"
+        "2.  `key_metric`: OPTIONAL. Use ONLY if the answer can be summarized by a single, primary value (e.g., a total count, a status). Requires `value` (string) and `label` (string). Omit the entire field if not applicable.\n"
+        "3.  `key_observations`: OPTIONAL. A list of objects, each with a `text` field containing a single, narrative bullet point of supporting detail or context. Do NOT include raw data or code."
+    )
+    
+    response_text, input_tokens, output_tokens = await llm_handler.call_llm_api(
+        llm_instance=llm_instance,
+        prompt=final_summary_prompt_text,
+        reason=f"Synthesizing TDA_FinalReport for: {user_question}",
+        system_prompt_override="You are a JSON-only reporting assistant.",
+        raise_on_error=True,
+        session_id=session_id
+    )
+
+    try:
+        json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+        if not json_match:
+            raise json.JSONDecodeError("No JSON object found in response.", response_text, 0)
+        
+        clean_json_str = json_match.group(0)
+        report_data = json.loads(clean_json_str)
+        CanonicalResponse.model_validate(report_data)
+
+        result = {
+            "status": "success",
+            "metadata": {"call_id": final_call_id, "tool_name": "TDA_FinalReport"},
+            "results": [report_data]
+        }
+        return result, input_tokens, output_tokens
+    except (json.JSONDecodeError, Exception) as e:
+        app_logger.error(f"Failed to parse/validate TDA_FinalReport: {e}. Response: {response_text}")
+        return {"status": "error", "error_message": "Failed to generate valid report JSON.", "data": str(e)}, input_tokens, output_tokens
+
+async def _invoke_complex_prompt_report_task(STATE: dict, command: dict, workflow_state: dict, session_id: str = None, call_id: str | None = None) -> tuple[dict, int, int]:
+    llm_instance = STATE.get('llm')
+    prompt_goal = command.get("arguments", {}).get("prompt_goal", "No prompt goal provided.")
+    final_call_id = call_id or str(uuid.uuid4())
+    
+    final_summary_prompt_text = (
+        "You are an expert technical writer and data analyst. Your task is to synthesize all the collected data from a completed workflow into a formal, structured report that fulfills the original prompt's goal.\n\n"
+        f"--- ORIGINAL PROMPT GOAL ---\n{prompt_goal}\n\n"
+        f"--- ALL COLLECTED DATA ---\n{json.dumps(workflow_state, indent=2)}\n\n"
+        "--- INSTRUCTIONS ---\n"
+        "Your response MUST be a single JSON object that strictly follows the schema for a `PromptReportResponse`.\n\n"
+        "--- FIELD GUIDELINES ---\n"
+        "1.  `title`: REQUIRED. A clear, professional title for the report, derived from the ORIGINAL PROMPT GOAL.\n"
+        "2.  `executive_summary`: REQUIRED. A concise, high-level summary paragraph explaining the key findings of the analysis.\n"
+        "3.  `report_sections`: REQUIRED. A list of objects, where each object represents a logical section of the report. Each section object MUST have:\n"
+        "    - `title`: The title for that specific section (e.g., 'Data Quality Analysis', 'Table DDL').\n"
+        "    - `content`: The detailed findings for that section, formatted in markdown. You can use lists, bolding, and code blocks for clarity."
+    )
+    
+    response_text, input_tokens, output_tokens = await llm_handler.call_llm_api(
+        llm_instance=llm_instance,
+        prompt=final_summary_prompt_text,
+        reason=f"Synthesizing TDA_ComplexPromptReport for: {prompt_goal}",
+        system_prompt_override="You are a JSON-only reporting assistant.",
+        raise_on_error=True,
+        session_id=session_id
+    )
+
+    try:
+        json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+        if not json_match:
+            raise json.JSONDecodeError("No JSON object found in response.", response_text, 0)
+        
+        clean_json_str = json_match.group(0)
+        report_data = json.loads(clean_json_str)
+        PromptReportResponse.model_validate(report_data)
+
+        result = {
+            "status": "success",
+            "metadata": {"call_id": final_call_id, "tool_name": "TDA_ComplexPromptReport"},
+            "results": [report_data]
+        }
+        return result, input_tokens, output_tokens
+    except (json.JSONDecodeError, Exception) as e:
+        app_logger.error(f"Failed to parse/validate TDA_ComplexPromptReport: {e}. Response: {response_text}")
+        return {"status": "error", "error_message": "Failed to generate valid report JSON.", "data": str(e)}, input_tokens, output_tokens
+
+
 async def _invoke_util_calculate_date_range(STATE: dict, command: dict, session_id: str = None) -> dict:
     args = command.get("arguments", {})
     start_date_str = args.get("start_date")
@@ -835,14 +912,20 @@ async def _invoke_util_calculate_date_range(STATE: dict, command: dict, session_
         "results": date_list
     }
 
-async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, call_id: str | None = None) -> tuple[any, int, int]:
+async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, call_id: str | None = None, workflow_state: dict = None) -> tuple[any, int, int]:
     mcp_client = STATE.get('mcp_client')
     tool_name = command.get("tool_name")
     
-    # --- MODIFICATION START: Route calls for the new tool to its handler ---
     if tool_name == "TDA_LLMFilter":
         return await _invoke_llm_filter_task(STATE, command, session_id=session_id, call_id=call_id)
-    # --- MODIFICATION END ---
+    
+    if tool_name == "TDA_FinalReport":
+        command.setdefault("arguments", {})["user_question"] = workflow_state.get("original_user_input", "N/A")
+        return await _invoke_final_report_task(STATE, command, workflow_state, session_id=session_id, call_id=call_id)
+
+    if tool_name == "TDA_ComplexPromptReport":
+        command.setdefault("arguments", {})["prompt_goal"] = workflow_state.get("workflow_goal_prompt", "N/A")
+        return await _invoke_complex_prompt_report_task(STATE, command, workflow_state, session_id=session_id, call_id=call_id)
 
     if tool_name == "TDA_LLMTask":
         args = command.get("arguments", {})
@@ -962,3 +1045,4 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
                 return result, 0, 0
     
     raise RuntimeError(f"Unexpected tool result format for '{tool_name}': {call_tool_result}")
+

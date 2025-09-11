@@ -110,7 +110,7 @@ def _extract_final_answer_from_json(text: str) -> str:
     
     return text
 
-def _get_full_system_prompt(session_data: dict, dependencies: dict, system_prompt_override: str = None, active_prompt_name_for_filter: str = None) -> str:
+def _get_full_system_prompt(session_data: dict, dependencies: dict, system_prompt_override: str = None, active_prompt_name_for_filter: str = None, source: str = "text") -> str:
     """
     Constructs the final system prompt based on the user's license tier.
     """
@@ -146,6 +146,24 @@ def _get_full_system_prompt(session_data: dict, dependencies: dict, system_promp
             charting_instructions_section = f"- **Charting Guidelines:** {chart_instructions_detail}"
     
     tools_context = STATE.get('tools_context', '')
+    
+    # --- MODIFICATION START: Dynamically filter reporting tools from context based on source ---
+    tools_to_remove = []
+    # Execution Mode 3: UI Prompt Execution
+    if source == 'prompt_library':
+        tools_to_remove.append('TDA_FinalReport')
+    # Execution Modes 1 & 2: User Query (Simple or leading to a prompt)
+    else:
+        tools_to_remove.append('TDA_ComplexPromptReport')
+    
+    if tools_to_remove:
+        # This regex is designed to remove a full, multi-line tool definition block
+        # starting with `- \`tool_name\`` and ending before the next one starts.
+        for tool_name in tools_to_remove:
+            pattern = re.compile(rf"- `{re.escape(tool_name)}` \(tool\):.*?(\n(?!- `|\Z))", re.DOTALL | re.MULTILINE)
+            tools_context = pattern.sub("", tools_context)
+            app_logger.info(f"Context Filtering: Removed tool '{tool_name}' from planner's context for source '{source}'.")
+    # --- MODIFICATION END ---
     
     # --- MODIFICATION START: Dynamically filter active prompt from context ---
     prompts_context = STATE.get('prompts_context', '')
@@ -186,7 +204,7 @@ def _get_full_system_prompt(session_data: dict, dependencies: dict, system_promp
         condensed_tools_parts = ["--- Available Tools (Names Only) ---"]
         structured_tools = STATE.get('structured_tools', {})
         for category, tools in sorted(structured_tools.items()):
-            enabled_tools = [f"`{t['name']}`" for t in tools if not t.get('disabled')]
+            enabled_tools = [f"`{t['name']}`" for t in tools if not t.get('disabled') and t['name'] not in tools_to_remove]
             if enabled_tools:
                 condensed_tools_parts.append(f"- **{category}**: {', '.join(enabled_tools)}")
         tools_context = "\n".join(condensed_tools_parts) if len(condensed_tools_parts) > 1 else "--- No Tools Available ---"
@@ -213,7 +231,7 @@ def _get_full_system_prompt(session_data: dict, dependencies: dict, system_promp
     
     return final_system_prompt
 
-async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, chat_history=None, raise_on_error: bool = False, system_prompt_override: str = None, dependencies: dict = None, reason: str = "No reason provided.", disabled_history: bool = False, active_prompt_name_for_filter: str = None) -> tuple[str, int, int]:
+async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, chat_history=None, raise_on_error: bool = False, system_prompt_override: str = None, dependencies: dict = None, reason: str = "No reason provided.", disabled_history: bool = False, active_prompt_name_for_filter: str = None, source: str = "text") -> tuple[str, int, int]:
     if not llm_instance:
         raise RuntimeError("LLM is not initialized.")
     
@@ -224,7 +242,7 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
     base_delay = APP_CONFIG.LLM_API_BASE_DELAY
     
     session_data = get_session(session_id) if session_id else None
-    system_prompt = _get_full_system_prompt(session_data, dependencies, system_prompt_override, active_prompt_name_for_filter)
+    system_prompt = _get_full_system_prompt(session_data, dependencies, system_prompt_override, active_prompt_name_for_filter, source)
 
     history_for_log_str = "No history available."
     if session_data: 
@@ -447,4 +465,3 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
         }
         for name in model_names
     ]
-

@@ -138,7 +138,7 @@ class PhaseExecutor:
 
         is_fast_path_candidate = (
             len(relevant_tools) == 1 and 
-            relevant_tools[0] not in ["TDA_LLMTask", "TDA_Charting", "TDA_FinalReport"]
+            relevant_tools[0] not in ["TDA_LLMTask", "TDA_Charting", "TDA_FinalReport", "TDA_ComplexPromptReport"]
         )
 
         if is_fast_path_candidate:
@@ -326,26 +326,6 @@ class PhaseExecutor:
                     "execution_depth": self.executor.execution_depth
                 }
             })
-
-        if relevant_tools == ["TDA_FinalReport"] and not is_loop_iteration:
-            app_logger.info("PhaseExecutor: TDA_FinalReport signal detected. Bypassing tactical LLM and proceeding directly to summarization.")
-            yield self.executor._format_sse({
-                "step": "Plan Optimization",
-                "type": "plan_optimization",
-                "details": "Bypassing redundant tactical step for final report generation."
-            })
-            async for event in self.executor._generate_final_summary():
-                if isinstance(event, CanonicalResponse):
-                    self.executor.final_canonical_response = event
-                else:
-                    yield event
-            
-            yield self.executor._format_sse({
-                "step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}",
-                "type": "phase_end",
-                "details": {"phase_num": phase_num, "total_phases": len(self.executor.meta_plan), "status": "completed"}
-            })
-            return
         
         if len(relevant_tools) > 1 and not is_loop_iteration:
             yield self.executor._format_sse({
@@ -647,7 +627,8 @@ class PhaseExecutor:
                 response_text, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
                     prompt=extraction_prompt, reason=reason,
                     system_prompt_override="You are a JSON-only responding assistant.",
-                    raise_on_error=True
+                    raise_on_error=True,
+                    source=self.executor.source
                 )
                 
                 yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
@@ -676,28 +657,6 @@ class PhaseExecutor:
         
         tool_name = action.get("tool_name")
         arguments = action.get("arguments", {})
-        
-        if tool_name == "TDA_FinalReport":
-            app_logger.info("Detected TDA_FinalReport signal. Agent will now perform final summarization.")
-            
-            async for event in self.executor._generate_final_summary():
-                if isinstance(event, CanonicalResponse):
-                    self.executor.final_canonical_response = event
-                else:
-                    yield event
-            
-            if self.executor.final_canonical_response:
-                self.executor.last_tool_output = {"status": "success", "results": [self.executor.final_canonical_response.model_dump()]}
-            else:
-                self.executor.last_tool_output = {"status": "error", "data": "Final summarization failed to produce a valid canonical response."}
-
-            if not is_fast_path:
-                self.executor.turn_action_history.append({"action": action, "result": self.executor.last_tool_output})
-                phase_num = phase.get("phase", self.executor.current_phase_index + 1)
-                phase_result_key = f"result_of_phase_{phase_num}"
-                self.executor.workflow_state.setdefault(phase_result_key, []).append(self.executor.last_tool_output)
-                self.executor._add_to_structured_data(self.executor.last_tool_output)
-            return
         
         if tool_name == "TDA_LLMTask" and "synthesized_answer" in arguments:
             app_logger.info("Bypassing TDA_LLMTask execution. Using synthesized answer from planner.")
@@ -743,14 +702,15 @@ class PhaseExecutor:
             status_target = "db"
             call_id_for_tool = None
             
-            # --- MODIFICATION START: Implement Announce-Then-Execute for client-side LLM tools ---
-            if tool_name in ["TDA_LLMTask", "TDA_LLMFilter", "TDA_CurrentDate", "TDA_DateRange"]:
+            if tool_name in ["TDA_LLMTask", "TDA_LLMFilter", "TDA_CurrentDate", "TDA_DateRange", "TDA_FinalReport", "TDA_ComplexPromptReport"]:
                 status_target = "llm"
                 call_id_for_tool = str(uuid.uuid4())
                 
                 reason_map = {
                     "TDA_LLMTask": action.get("arguments", {}).get("task_description", "Executing LLM-based task."),
-                    "TDA_LLMFilter": action.get("arguments", {}).get("goal", "Filtering data with LLM.")
+                    "TDA_LLMFilter": action.get("arguments", {}).get("goal", "Filtering data with LLM."),
+                    "TDA_FinalReport": "Synthesizing final user-facing report.",
+                    "TDA_ComplexPromptReport": "Synthesizing final prompt-based report."
                 }
                 reason = reason_map.get(tool_name, f"Executing client-side tool: {tool_name}")
 
@@ -759,20 +719,32 @@ class PhaseExecutor:
                     "type": "system_message",
                     "details": {"summary": reason, "call_id": call_id_for_tool}
                 })
-            # --- MODIFICATION END ---
             
             yield self.executor._format_sse({"target": status_target, "state": "busy"}, "status_indicator_update")
             
+            # --- MODIFICATION START: Pass the full execution context to the adapter ---
+            # This ensures that client-side tools like TDA_FinalReport have access to the
+            # user's original input and other critical context from the main executor.
+            full_context_for_tool = {
+                "original_user_input": self.executor.original_user_input,
+                "workflow_goal_prompt": self.executor.workflow_goal_prompt,
+                **self.executor.workflow_state
+            }
+
             tool_result, input_tokens, output_tokens = await mcp_adapter.invoke_mcp_tool(
-                self.executor.dependencies['STATE'], action, session_id=self.executor.session_id, call_id=call_id_for_tool
+                self.executor.dependencies['STATE'], 
+                action, 
+                session_id=self.executor.session_id, 
+                call_id=call_id_for_tool,
+                workflow_state=full_context_for_tool
             )
+            # --- MODIFICATION END ---
 
             yield self.executor._format_sse({"target": status_target, "state": "idle"}, "status_indicator_update")
 
             if input_tokens > 0 or output_tokens > 0:
                 updated_session = session_manager.get_session(self.executor.session_id)
                 if updated_session:
-                    # The call_id from the tool result is now the one we generated and announced
                     final_call_id = tool_result.get("metadata", {}).get("call_id") if isinstance(tool_result, dict) else None
                     yield self.executor._format_sse({
                         "statement_input": input_tokens,
@@ -1015,7 +987,8 @@ class PhaseExecutor:
             prompt="Determine the next action based on the instructions and state provided in the system prompt.",
             reason=f"Deciding next tactical action for phase: {current_phase_goal}",
             system_prompt_override=tactical_system_prompt,
-            disabled_history=True
+            disabled_history=True,
+            source=self.executor.source
         )
         
         self.executor.last_failed_action_info = "None"
@@ -1123,7 +1096,8 @@ class PhaseExecutor:
         yield self.executor._format_sse({"step": "Calling LLM", "details": {"summary": reason, "call_id": call_id}})
         response_str, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
             prompt=classification_prompt, reason=reason,
-            system_prompt_override="You are a JSON-only responding assistant.", raise_on_error=True
+            system_prompt_override="You are a JSON-only responding assistant.", raise_on_error=True,
+            source=self.executor.source
         )
         updated_session = session_manager.get_session(self.executor.session_id)
         if updated_session:
@@ -1165,7 +1139,8 @@ class PhaseExecutor:
             response_text, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
                 prompt=prompt, reason=reason,
                 system_prompt_override="You are a JSON-only responding assistant.",
-                raise_on_error=True
+                raise_on_error=True,
+                source=self.executor.source
             )
 
             updated_session = session_manager.get_session(self.executor.session_id)
@@ -1219,11 +1194,12 @@ class PhaseExecutor:
         response_text, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
             prompt=recovery_prompt, 
             reason=reason,
-            raise_on_error=True
+            raise_on_error=True,
+            source=self.executor.source
         )
         yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
         
-        updated_session = session_manager.get_session(self.executor.session_id)
+        updated_session = session_manager.get_session(self.session_id)
         if updated_session:
             yield self.executor._format_sse({"statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id}, "token_update")
 
@@ -1332,7 +1308,8 @@ class PhaseExecutor:
             prompt=correction_prompt,
             reason=reason,
             system_prompt_override=system_prompt_override,
-            raise_on_error=False
+            raise_on_error=False,
+            source=self.executor.source
         )
         events.append(self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update"))
         

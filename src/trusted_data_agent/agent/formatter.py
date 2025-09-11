@@ -2,25 +2,22 @@
 import re
 import uuid
 import json
-from trusted_data_agent.agent.response_models import CanonicalResponse, KeyMetric, Observation
+from trusted_data_agent.agent.response_models import CanonicalResponse, KeyMetric, Observation, PromptReportResponse
 
 class OutputFormatter:
     """
     Parses structured response data to generate professional,
     failure-safe HTML for the UI.
     """
-    def __init__(self, collected_data: list | dict, canonical_response: CanonicalResponse = None, llm_response_text: str = None, original_user_input: str = None, active_prompt_name: str = None):
+    def __init__(self, collected_data: list | dict, canonical_response: CanonicalResponse = None, prompt_report_response: PromptReportResponse = None, llm_response_text: str = None, original_user_input: str = None, active_prompt_name: str = None):
         self.collected_data = collected_data
         self.original_user_input = original_user_input
         self.active_prompt_name = active_prompt_name
         self.processed_data_indices = set()
 
-        if canonical_response:
-            self.response = canonical_response
-        elif llm_response_text:
-            self.response = CanonicalResponse(direct_answer=llm_response_text)
-        else:
-            self.response = CanonicalResponse(direct_answer="The agent has completed its work.")
+        self.canonical_report = canonical_response
+        self.prompt_report = prompt_report_response
+        self.llm_response_text = llm_response_text
 
     def _render_key_metric(self, metric: KeyMetric) -> str:
         """Renders the KeyMetric object into an HTML card."""
@@ -44,10 +41,8 @@ class OutputFormatter:
         Renders the direct answer text as a paragraph, but only if no key
         metric is present, to avoid redundancy in the UI.
         """
-        # --- MODIFICATION START: Suppress direct answer if a key metric is displayed ---
-        if self.response and self.response.key_metric:
+        if self.canonical_report and self.canonical_report.key_metric:
             return ""
-        # --- MODIFICATION END ---
         if not answer:
             return ""
         return f'<p class="text-gray-300 mb-4">{self._process_inline_markdown(answer)}</p>'
@@ -69,6 +64,8 @@ class OutputFormatter:
 
     def _process_inline_markdown(self, text_content: str) -> str:
         """Handles basic inline markdown like code backticks and bolding."""
+        if not isinstance(text_content, str):
+            return ""
         text_content = text_content.replace(r'\_', '_')
         text_content = re.sub(r'`(.*?)`', r'<code class="bg-gray-900/70 text-teradata-orange rounded-md px-1.5 py-0.5 font-mono text-sm">\1</code>', text_content)
         text_content = re.sub(r'(?<!\*)\*\*(?!\*)(.*?)(?<!\*)\*\*(?!\*)', r'<strong>\1</strong>', text_content)
@@ -80,6 +77,8 @@ class OutputFormatter:
         Renders a block of text by processing standard markdown elements,
         including special key-value formats.
         """
+        if not isinstance(text, str):
+            return ""
         lines = text.strip().split('\n')
         html_output = []
         list_level_stack = []
@@ -273,19 +272,22 @@ class OutputFormatter:
         """
         A specialized formatter for multi-step workflows that uses the CanonicalResponse model.
         """
-        tts_payload = {
-            "direct_answer": self.response.direct_answer,
-            "key_observations": " ".join([obs.text for obs in self.response.key_observations])
-        }
+        tts_payload = { "direct_answer": "", "key_observations": "" }
+        if self.canonical_report:
+            tts_payload = {
+                "direct_answer": self.canonical_report.direct_answer,
+                "key_observations": " ".join([obs.text for obs in self.canonical_report.key_observations])
+            }
         
         summary_html_parts = []
-        if self.response.key_metric:
-            summary_html_parts.append(self._render_key_metric(self.response.key_metric))
-        
-        summary_html_parts.append(self._render_direct_answer(self.response.direct_answer))
-        
-        if self.response.key_observations:
-            summary_html_parts.append(self._render_observations(self.response.key_observations))
+        if self.canonical_report:
+            if self.canonical_report.key_metric:
+                summary_html_parts.append(self._render_key_metric(self.canonical_report.key_metric))
+            
+            summary_html_parts.append(self._render_direct_answer(self.canonical_report.direct_answer))
+            
+            if self.canonical_report.key_observations:
+                summary_html_parts.append(self._render_observations(self.canonical_report.key_observations))
 
         html = ""
         if summary_html_parts:
@@ -303,7 +305,7 @@ class OutputFormatter:
         successful_results = [item for item in all_data_items if isinstance(item, dict) and item.get("status") == "success"]
         if len(successful_results) == 1 and successful_results[0].get("metadata", {}).get("tool_name") == "CoreLLMTask":
              is_simple_report = True
-             if not self.response.direct_answer.strip() and not self.response.key_observations:
+             if self.canonical_report and not self.canonical_report.direct_answer.strip() and not self.canonical_report.key_observations:
                  core_llm_response_text = successful_results[0].get("results", [{}])[0].get("response", "")
                  html = f"<div class='response-card summary-card'>{self._render_standard_markdown(core_llm_response_text)}</div>"
 
@@ -313,7 +315,7 @@ class OutputFormatter:
                  continue
 
             display_key = context_key.replace("Workflow: ", "").replace(">", "&gt;").replace("Plan Results: ", "")
-            html += f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Report for: code>{display_key}</code></summary><div class='px-4'>"
+            html += f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Report for: <code>{display_key}</code></summary><div class='px-4'>"
             
             for i, item in enumerate(data_items):
                 tool_name = item.get("metadata", {}).get("tool_name") if isinstance(item, dict) else None
@@ -354,23 +356,29 @@ class OutputFormatter:
         Formats a standard query report using the CanonicalResponse model.
         """
         final_html = ""
+        tts_payload = { "direct_answer": "", "key_observations": "" }
         
-        summary_html_parts = []
-        if self.response.key_metric:
-            summary_html_parts.append(self._render_key_metric(self.response.key_metric))
-        
-        summary_html_parts.append(self._render_direct_answer(self.response.direct_answer))
-        
-        if self.response.key_observations:
-            summary_html_parts.append(self._render_observations(self.response.key_observations))
+        if self.canonical_report:
+            summary_html_parts = []
+            if self.canonical_report.key_metric:
+                summary_html_parts.append(self._render_key_metric(self.canonical_report.key_metric))
+            
+            summary_html_parts.append(self._render_direct_answer(self.canonical_report.direct_answer))
+            
+            if self.canonical_report.key_observations:
+                summary_html_parts.append(self._render_observations(self.canonical_report.key_observations))
 
-        if summary_html_parts:
-            final_html += f'<div class="response-card summary-card">{"".join(summary_html_parts)}</div>'
+            if summary_html_parts:
+                final_html += f'<div class="response-card summary-card">{"".join(summary_html_parts)}</div>'
 
-        tts_payload = {
-            "direct_answer": self.response.direct_answer,
-            "key_observations": " ".join([obs.text for obs in self.response.key_observations])
-        }
+            tts_payload = {
+                "direct_answer": self.canonical_report.direct_answer,
+                "key_observations": " ".join([obs.text for obs in self.canonical_report.key_observations])
+            }
+        elif self.llm_response_text:
+             final_html = f"<div class='response-card summary-card'>{self._render_standard_markdown(self.llm_response_text)}</div>"
+             tts_payload["direct_answer"] = self.llm_response_text
+
 
         data_source = []
         if isinstance(self.collected_data, dict):
@@ -424,6 +432,65 @@ class OutputFormatter:
             
         return final_html, tts_payload
 
+    def _format_complex_prompt_report(self) -> tuple[str, dict]:
+        """
+        A specialized formatter for the structured PromptReportResponse model.
+        """
+        report = self.prompt_report
+        if not report:
+            return "<p>Error: Report data is missing.</p>", {}
+
+        tts_payload = {
+            "direct_answer": f"Report: {report.title}. Summary: {report.executive_summary}",
+            "key_observations": "" 
+        }
+
+        html_parts = [f"<div class='response-card summary-card'>"]
+        html_parts.append(f'<h2 class="text-xl font-bold text-white mb-3 border-b border-gray-700 pb-2">{self._process_inline_markdown(report.title)}</h2>')
+        html_parts.append('<h3 class="text-lg font-semibold text-white mb-2">Executive Summary</h3>')
+        html_parts.append(f'<p class="text-gray-300 mb-4">{self._process_inline_markdown(report.executive_summary)}</p>')
+
+        if report.report_sections:
+            for section in report.report_sections:
+                html_parts.append(f'<h3 class="text-lg font-semibold text-white mt-4 mb-2 border-t border-gray-700 pt-3">{self._process_inline_markdown(section.title)}</h3>')
+                html_parts.append(self._render_standard_markdown(section.content))
+        
+        html_parts.append("</div>")
+
+        details_html = ""
+        data_source = []
+        if isinstance(self.collected_data, dict):
+            for item_list in self.collected_data.values():
+                data_source.extend(item_list)
+        elif isinstance(self.collected_data, list):
+            data_source = self.collected_data
+
+        for i, tool_result in enumerate(data_source):
+             if i in self.processed_data_indices or not isinstance(tool_result, dict):
+                 continue
+            
+             metadata = tool_result.get("metadata", {})
+             tool_name = metadata.get("tool_name")
+
+             if tool_name in ["TDA_ComplexPromptReport", "TDA_FinalReport"]:
+                 continue
+
+             if tool_name == 'base_tableDDL':
+                 details_html += self._render_ddl(tool_result, i)
+             elif "results" in tool_result:
+                  details_html += self._render_table(tool_result, i, tool_name or "Result")
+
+        if details_html:
+             html_parts.append(
+                 f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'>"
+                 f"<summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Execution Report Data</summary>"
+                 f"<div class='px-4'>{details_html}</div>"
+                 f"</details>"
+             )
+
+        final_html = "".join(html_parts)
+        return final_html, tts_payload
+
     def render(self) -> tuple[str, dict]:
         """
         Main rendering method. Routes to the appropriate formatting strategy.
@@ -433,7 +500,17 @@ class OutputFormatter:
             - final_html (str): The complete HTML string for the UI.
             - tts_payload (dict): The structured payload for the TTS engine.
         """
-        if self.active_prompt_name:
-            return self._format_workflow_report()
-        else:
+        if self.prompt_report:
+            return self._format_complex_prompt_report()
+        elif self.canonical_report or self.active_prompt_name:
+            if self.active_prompt_name:
+                 return self._format_workflow_report()
+            else:
+                 return self._format_standard_query_report()
+        elif self.llm_response_text:
             return self._format_standard_query_report()
+        
+        # Fallback for empty responses
+        final_html = "<div class='response-card summary-card'><p>The agent has completed its work.</p></div>"
+        tts_payload = {"direct_answer": "The agent has completed its work.", "key_observations": ""}
+        return final_html, tts_payload

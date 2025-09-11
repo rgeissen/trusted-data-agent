@@ -36,3 +36,20 @@ class CanonicalResponse(BaseModel):
         default_factory=list,
         description="A list of supporting details, findings, and contextual insights."
     )
+
+class ReportSection(BaseModel):
+    """Represents a single named section within a complex report."""
+    title: str = Field(..., description="The title of this report section.")
+    content: str = Field(..., description="The markdown-formatted content of this section.")
+
+class PromptReportResponse(BaseModel):
+    """
+    The standardized, structured data model for a final report generated
+    from a complex, prompt-driven workflow.
+    """
+    title: str = Field(..., description="The main title of the report, often reflecting the name of the executed prompt.")
+    executive_summary: str = Field(..., description="A high-level summary of the findings.")
+    report_sections: List[ReportSection] = Field(
+        default_factory=list,
+        description="A list of detailed sections that make up the body of the report."
+    )

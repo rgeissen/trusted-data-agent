@@ -288,7 +288,8 @@ class Planner:
                         reason=reason,
                         system_prompt_override="You are a JSON-only responding assistant.", 
                         raise_on_error=False,
-                        disabled_history=True
+                        disabled_history=True,
+                        source=self.executor.source
                     )
                     
                     updated_session = session_manager.get_session(self.executor.session_id)
@@ -527,6 +528,16 @@ class Planner:
                 "Avoid creating multiple `base_...List` steps if a single query would be more efficient."
             )
 
+        # --- MODIFICATION START: Dynamically inject the correct reporting tool name ---
+        reporting_tool_name_injection = ""
+        # UI Prompt Execution Mode (Mode 3)
+        if self.executor.source == 'prompt_library':
+            reporting_tool_name_injection = "TDA_ComplexPromptReport"
+        # User Query Modes (Modes 1 & 2)
+        else:
+            reporting_tool_name_injection = "TDA_FinalReport"
+        # --- MODIFICATION END ---
+        
         planning_prompt = WORKFLOW_META_PLANNING_PROMPT.format(
             workflow_goal=self.executor.workflow_goal_prompt,
             explicit_parameters_section=explicit_parameters_section,
@@ -539,7 +550,8 @@ class Planner:
             mcp_system_name=APP_CONFIG.MCP_SYSTEM_NAME,
             replan_instructions=replan_context or "",
             constraints_section=constraints_section,
-            sql_consolidation_rule=sql_consolidation_rule_str
+            sql_consolidation_rule=sql_consolidation_rule_str,
+            reporting_tool_name=reporting_tool_name_injection
         )
         
         yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
@@ -547,7 +559,8 @@ class Planner:
             prompt=planning_prompt, 
             reason=f"Generating a strategic meta-plan for the goal: '{self.executor.workflow_goal_prompt[:100]}'",
             disabled_history=force_disable_history,
-            active_prompt_name_for_filter=self.executor.active_prompt_name
+            active_prompt_name_for_filter=self.executor.active_prompt_name,
+            source=self.executor.source
         )
         yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
 
@@ -615,3 +628,4 @@ class Planner:
             if len(self.executor.meta_plan) > 1 or any(phase.get("type") == "loop" for phase in self.executor.meta_plan):
                 self.executor.is_complex_prompt_workflow = True
                 app_logger.info(f"'{self.executor.active_prompt_name}' has been qualified as a complex prompt workflow based on the generated plan.")
+

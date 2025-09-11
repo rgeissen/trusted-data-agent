@@ -775,7 +775,9 @@ async def invoke_prompt_stream():
     prompt_name = data.get("prompt_name")
     arguments = data.get("arguments", {})
     disabled_history = data.get("disabled_history", False)
-    source = data.get("source", "text")
+    # --- MODIFICATION START: Update the default source to correctly identify UI-driven prompts ---
+    source = data.get("source", "prompt_library")
+    # --- MODIFICATION END ---
     
     async def stream_generator():
         prompt_info = _get_prompt_info(prompt_name)

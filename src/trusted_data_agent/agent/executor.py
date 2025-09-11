@@ -10,8 +10,7 @@ from trusted_data_agent.agent.formatter import OutputFormatter
 from trusted_data_agent.core import session_manager
 from trusted_data_agent.llm import handler as llm_handler
 from trusted_data_agent.core.config import APP_CONFIG
-from trusted_data_agent.agent.prompts import GENERATE_FINAL_SUMMARY
-from trusted_data_agent.agent.response_models import CanonicalResponse
+from trusted_data_agent.agent.response_models import CanonicalResponse, PromptReportResponse
 from trusted_data_agent.mcp import adapter as mcp_adapter
 
 
@@ -106,9 +105,7 @@ class PlanExecutor:
         
         self.is_complex_prompt_workflow = False
         self.final_canonical_response = None
-        # --- MODIFICATION START: Add is_single_prompt_plan as an instance attribute ---
         self.is_single_prompt_plan = False
-        # --- MODIFICATION END ---
 
 
     @staticmethod
@@ -118,7 +115,7 @@ class PlanExecutor:
             msg += f"event: {event}\n"
         return f"{msg}\n"
         
-    async def _call_llm_and_update_tokens(self, prompt: str, reason: str, system_prompt_override: str = None, raise_on_error: bool = False, disabled_history: bool = False, active_prompt_name_for_filter: str = None) -> tuple[str, int, int]:
+    async def _call_llm_and_update_tokens(self, prompt: str, reason: str, system_prompt_override: str = None, raise_on_error: bool = False, disabled_history: bool = False, active_prompt_name_for_filter: str = None, source: str = "text") -> tuple[str, int, int]:
         """A centralized wrapper for calling the LLM that handles token updates."""
         final_disabled_history = disabled_history or self.disabled_history
         
@@ -127,7 +124,8 @@ class PlanExecutor:
             dependencies=self.dependencies, reason=reason,
             system_prompt_override=system_prompt_override, raise_on_error=raise_on_error,
             disabled_history=final_disabled_history,
-            active_prompt_name_for_filter=active_prompt_name_for_filter
+            active_prompt_name_for_filter=active_prompt_name_for_filter,
+            source=source
         )
         self.llm_debug_history.append({"reason": reason, "response": response_text})
         app_logger.debug(f"LLM RESPONSE (DEBUG): Reason='{reason}', Response='{response_text}'")
@@ -328,11 +326,9 @@ class PlanExecutor:
                     
                     break
 
-                # --- MODIFICATION START: Change to instance attribute ---
                 self.is_single_prompt_plan = (self.meta_plan and len(self.meta_plan) == 1 and 'executable_prompt' in self.meta_plan[0] and not self.is_delegated_task)
 
                 if self.is_single_prompt_plan:
-                # --- MODIFICATION END ---
                     async for event in self._handle_single_prompt_plan(planner):
                         yield event
 
@@ -394,7 +390,6 @@ class PlanExecutor:
                 )
                 reason = f"Extracting missing arguments for prompt '{prompt_name}'"
                 
-                # --- MODIFICATION START: Implement Announce-Then-Execute for argument enrichment ---
                 call_id = str(uuid.uuid4())
                 yield self._format_sse({
                     "step": "Calling LLM for Argument Enrichment",
@@ -406,7 +401,8 @@ class PlanExecutor:
                 response_text, input_tokens, output_tokens = await self._call_llm_and_update_tokens(
                     prompt=enrichment_prompt, reason=reason,
                     system_prompt_override="You are a JSON-only responding assistant.",
-                    raise_on_error=True
+                    raise_on_error=True,
+                    source=self.source
                 )
                 
                 updated_session = session_manager.get_session(self.session_id)
@@ -417,7 +413,6 @@ class PlanExecutor:
                         "total_output": updated_session.get("output_tokens", 0),
                         "call_id": call_id
                     }, "token_update")
-                # --- MODIFICATION END ---
                 
                 yield self._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
 
@@ -525,199 +520,59 @@ class PlanExecutor:
 
     async def _handle_summarization(self, final_answer_override: str | None):
         """Orchestrates the final summarization and answer formatting."""
-        final_summary_content = None
-        
-        # --- MODIFICATION START: Implement the new hardened bypass logic ---
-        is_self_contained_report = False
-        if self.is_single_prompt_plan and self.meta_plan:
-            last_phase = self.meta_plan[-1]
-            final_tools = last_phase.get('relevant_tools', [])
-            if any(tool in final_tools for tool in ['TDA_LLMTask', 'TDA_FinalReport']):
-                is_self_contained_report = True
-        # --- MODIFICATION END ---
+        final_content = None
 
         if self.execution_depth > 0 and not self.force_final_summary:
             app_logger.info(f"Sub-planner (depth {self.execution_depth}) completed. Bypassing final summary.")
             self.state = self.AgentState.DONE
-        # --- MODIFICATION START: Add the new bypass condition ---
-        elif is_self_contained_report:
-            app_logger.info("Single-prompt, self-contained report detected. Bypassing redundant final summary.")
-            if isinstance(self.last_tool_output, dict) and self.last_tool_output.get("status") == "success":
-                # Extract the pre-formatted markdown from the last tool call
-                raw_response = self.last_tool_output.get("results", [{}])[0].get("response", "")
-                final_summary_content = CanonicalResponse(direct_answer=raw_response)
-            else:
-                final_summary_content = CanonicalResponse(direct_answer="The agent completed the prompt, but the final output was not in the expected format.")
-        # --- MODIFICATION END ---
-        elif self.prompt_type == 'context':
-            app_logger.info(f"'{self.active_prompt_name}' is a 'context' prompt. Skipping final summary.")
-            self.state = self.AgentState.DONE
         elif final_answer_override:
-            final_summary_content = CanonicalResponse(direct_answer=final_answer_override)
+            final_content = CanonicalResponse(direct_answer=final_answer_override)
         elif self.is_conversational_plan:
             response_text = self.temp_data_holder or "I'm sorry, I don't have a response for that."
-            final_summary_content = CanonicalResponse(direct_answer=response_text)
-        elif self.final_canonical_response:
-            final_summary_content = self.final_canonical_response
-            if self.is_complex_prompt_workflow:
-                # --- MODIFICATION START: Implement Announce-Then-Execute for presentation formatting ---
-                call_id = str(uuid.uuid4())
-                yield self._format_sse({
-                    "step": "Calling LLM for Presentation Formatting",
-                    "type": "system_message",
-                    "details": {
-                        "summary": "Formatting final report based on complex prompt instructions.",
-                        "call_id": call_id
-                    }
-                })
-                yield self._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
-
-                formatted_text, input_tokens, output_tokens = await self._format_complex_prompt_report(final_summary_content)
-                final_summary_content = formatted_text
+            final_content = CanonicalResponse(direct_answer=response_text)
+        elif self.last_tool_output and self.last_tool_output.get("status") == "success":
+            results = self.last_tool_output.get("results", [{}])
+            if not results:
+                final_content = CanonicalResponse(direct_answer="The agent has completed its work, but the final step produced no data.")
+            else:
+                last_result = results[0]
+                tool_name = self.last_tool_output.get("metadata", {}).get("tool_name")
                 
-                updated_session = session_manager.get_session(self.session_id)
-                if updated_session:
-                    yield self._format_sse({
-                        "statement_input": input_tokens, "statement_output": output_tokens,
-                        "total_input": updated_session.get("input_tokens", 0),
-                        "total_output": updated_session.get("output_tokens", 0),
-                        "call_id": call_id
-                    }, "token_update")
-                
-                yield self._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
-                # --- MODIFICATION END ---
-        else:
-            async for event in self._generate_final_summary():
-                if isinstance(event, CanonicalResponse):
-                    final_summary_content = event
+                if tool_name == "TDA_FinalReport":
+                    final_content = CanonicalResponse.model_validate(last_result)
+                elif tool_name == "TDA_ComplexPromptReport":
+                    final_content = PromptReportResponse.model_validate(last_result)
                 else:
-                    yield event
+                    final_content = CanonicalResponse(direct_answer="The agent has completed its work, but a final report was not generated.")
+        else:
+            final_content = CanonicalResponse(direct_answer="The agent has completed its work, but an issue occurred in the final step.")
 
-        if final_summary_content:
-            async for event in self._format_and_yield_final_answer(final_summary_content):
+        if final_content:
+            async for event in self._format_and_yield_final_answer(final_content):
                 yield event
             self.state = self.AgentState.DONE
 
-    async def _format_complex_prompt_report(self, summary_content: CanonicalResponse) -> tuple[str, int, int]:
-        """
-        Handles the second-stage LLM call for presentation formatting.
-        MODIFIED: Now returns tokens along with the formatted text.
-        """
-        app_logger.info("Complex prompt workflow detected. Initiating Stage 2: Presentation Formatting.")
-        presentation_prompt = (
-            "You are a formatting expert. Your task is to take a structured JSON data payload and present it as a final, user-facing report "
-            "based on the original prompt's formatting instructions.\n\n"
-            "--- STRUCTURED DATA PAYLOAD ---\n"
-            f"{summary_content.model_dump_json(indent=2)}\n\n"
-            "--- ORIGINAL FORMATTING INSTRUCTIONS ---\n"
-            f"{self.workflow_goal_prompt}\n\n"
-            "--- FINAL INSTRUCTIONS ---\n"
-            "Your output MUST be only the final, formatted markdown text that directly fulfills the original instructions. "
-            "Do not include the JSON payload or any conversational text in your response."
-        )
-        formatted_text, input_tokens, output_tokens = await self._call_llm_and_update_tokens(
-            prompt=presentation_prompt,
-            reason="Stage 2: Formatting final report based on complex prompt instructions."
-        )
-        return formatted_text, input_tokens, output_tokens
-
-    async def _generate_final_summary(self):
-        """
-        Orchestrates the generation of the final summary, yielding the structured CanonicalResponse.
-        """
-        async for event in self._call_llm_for_final_summary():
-            yield event
-
-    async def _call_llm_for_final_summary(self):
-        """
-        Calls the LLM to synthesize a final summary and returns a structured
-        CanonicalResponse object.
-        """
-        final_summary_prompt_text = GENERATE_FINAL_SUMMARY.format(
-            all_collected_data=json.dumps(self.workflow_state, indent=2)
-        )
-        core_llm_command = {
-            "tool_name": "TDA_LLMTask",
-            "arguments": {
-                "task_description": final_summary_prompt_text,
-                "user_question": self.original_user_input
-            }
-        }
-        
-        # --- MODIFICATION START: Implement Announce-Then-Execute for final summary ---
-        call_id = str(uuid.uuid4())
-        yield self._format_sse({
-            "step": "Calling LLM to write final report",
-            "details": {
-                "summary": "Synthesizing structured summary.",
-                "call_id": call_id
-            }
-        })
-        yield self._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
-        
-        # Pass the call_id down to the adapter
-        summary_result, input_tokens, output_tokens = await mcp_adapter.invoke_mcp_tool(
-            self.dependencies['STATE'], core_llm_command, session_id=self.session_id, call_id=call_id
-        )
-        # --- MODIFICATION END ---
-        
-        yield self._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
-
-        updated_session = session_manager.get_session(self.session_id)
-        if updated_session:
-            yield self._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
-
-        if (summary_result and summary_result.get("status") == "success"):
-            try:
-                response_str = summary_result.get("results", [{}])[0].get("response", "{}")
-                json_match = re.search(r'\{.*\}', response_str, re.DOTALL)
-                if not json_match: raise json.JSONDecodeError("No valid JSON object found in the LLM response string.", response_str, 0)
-                
-                clean_json_str = json_match.group(0)
-                inner_json = json.loads(clean_json_str)
-                report_arguments = inner_json.get("arguments", inner_json)
-                
-                structured_response = CanonicalResponse.model_validate(report_arguments)
-                yield structured_response
-                return
-            except (json.JSONDecodeError, AttributeError, IndexError, KeyError) as e:
-                app_logger.error(f"Failed to parse or validate LLM summary: {e}", exc_info=True)
-                app_logger.error(f"Problematic summary_result from TDA_LLMTask: {summary_result}")
-                yield CanonicalResponse(direct_answer="The agent has completed its work, but an issue occurred while structuring the final summary.")
-                return
-        
-        app_logger.error(f"TDA_LLMTask for summary failed or returned unexpected data. Result: {summary_result}")
-        yield CanonicalResponse(direct_answer="The agent has completed its work, but an issue occurred while generating the final summary.")
-
-    async def _format_and_yield_final_answer(self, final_content: str | CanonicalResponse):
+    async def _format_and_yield_final_answer(self, final_content: CanonicalResponse | PromptReportResponse):
         """
         Formats a raw summary string OR a CanonicalResponse object and yields
         the final SSE event to the UI.
         """
-        if isinstance(final_content, CanonicalResponse):
-            formatter = OutputFormatter(
-                canonical_response=final_content,
-                collected_data=self.structured_collected_data,
-                original_user_input=self.original_user_input,
-                active_prompt_name=self.active_prompt_name
-            )
-        else:
-            formatter = OutputFormatter(
-                llm_response_text=str(final_content),
-                collected_data=self.structured_collected_data,
-                original_user_input=self.original_user_input,
-                active_prompt_name=self.active_prompt_name
-            )
+        formatter = OutputFormatter(
+            canonical_response=final_content,
+            collected_data=self.structured_collected_data,
+            original_user_input=self.original_user_input,
+            active_prompt_name=self.active_prompt_name
+        )
         
         final_html, tts_payload = formatter.render()
         
         session_manager.add_to_history(self.session_id, 'assistant', final_html)
         
         clean_summary_for_thought = "The agent has completed its work."
-        if isinstance(final_content, CanonicalResponse):
+        if hasattr(final_content, 'direct_answer'):
             clean_summary_for_thought = final_content.direct_answer
-        elif isinstance(final_content, str):
-            clean_summary_for_thought = final_content.replace("FINAL_ANSWER:", "").strip()
+        elif hasattr(final_content, 'executive_summary'):
+            clean_summary_for_thought = final_content.executive_summary
 
         yield self._format_sse({"step": "LLM has generated the final answer", "details": clean_summary_for_thought}, "llm_thought")
 
@@ -726,3 +581,4 @@ class PlanExecutor:
             "tts_payload": tts_payload,
             "source": self.source
         }, "final_answer")
+
