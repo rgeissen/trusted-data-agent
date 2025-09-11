@@ -124,6 +124,20 @@ def _get_prompt_info(prompt_name: str) -> dict | None:
                 return prompt
     return None
 
+def _indent_multiline_description(description: str, indent_level: int = 2) -> str:
+    """Indents all but the first line of a multi-line string."""
+    if not description or '\n' not in description:
+        return description
+    
+    lines = description.split('\n')
+    first_line = lines[0]
+    rest_lines = lines[1:]
+    
+    indentation = ' ' * indent_level
+    indented_rest = [f"{indentation}{line}" for line in rest_lines]
+    
+    return '\n'.join([first_line] + indented_rest)
+
 def _regenerate_contexts():
     """
     Updates all capability contexts ('tools_context', 'prompts_context', etc.)
@@ -137,7 +151,6 @@ def _regenerate_contexts():
     
     # Regenerate Tool Contexts
     if STATE.get('mcp_tools') and STATE.get('structured_tools'):
-        all_tools = STATE['mcp_tools']
         
         for category, tool_list in STATE['structured_tools'].items():
             for tool_info in tool_list:
@@ -157,13 +170,15 @@ def _regenerate_contexts():
                 
             tool_context_parts.append(f"--- Category: {category} ---")
             for tool_info in enabled_tools_in_category:
-                tool = all_tools[tool_info['name']]
-                tool_str = f"- `{tool.name}` (tool): {tool.description}"
-                args_dict = tool.args if isinstance(tool.args, dict) else {}
+                tool_description = tool_info.get("description", "No description available.")
+                indented_description = _indent_multiline_description(tool_description, indent_level=2)
+                tool_str = f"- `{tool_info['name']}` (tool): {indented_description}"
                 
-                if args_dict and "Arguments:" not in tool.description:
+                processed_args = tool_info.get('arguments', [])
+                if processed_args:
                     tool_str += "\n  - Arguments:"
-                    for arg_name, arg_details in args_dict.items():
+                    for arg_details in processed_args:
+                        arg_name = arg_details.get('name', 'unknown')
                         arg_type = arg_details.get('type', 'any')
                         is_required = arg_details.get('required', False)
                         req_str = "required" if is_required else "optional"
@@ -199,7 +214,8 @@ def _regenerate_contexts():
             prompt_context_parts.append(f"--- Category: {category} ---")
             for prompt_info in enabled_prompts_in_category:
                 prompt_description = prompt_info.get("description", "No description available.")
-                prompt_str = f"- `{prompt_info['name']}` (prompt): {prompt_description}"
+                indented_description = _indent_multiline_description(prompt_description, indent_level=2)
+                prompt_str = f"- `{prompt_info['name']}` (prompt): {indented_description}"
                 
                 processed_args = prompt_info.get('arguments', [])
                 if processed_args:
@@ -220,9 +236,6 @@ def _regenerate_contexts():
         
         app_logger.info(f"Regenerated LLM prompt context. {enabled_count} prompts are active.")
 
-    # --- MODIFICATION START: Centralized generation of constraints context ---
-    # This new section runs every time contexts are regenerated, ensuring the
-    # constraints are always in sync with the available tools/prompts lists.
     if disabled_tools_list or disabled_prompts_list:
         constraints_list = []
         if disabled_tools_list:
@@ -237,9 +250,8 @@ def _regenerate_contexts():
         )
         app_logger.info(f"Regenerated LLM constraints context. {len(constraints_list)} capabilities are forbidden.")
     else:
-        STATE['constraints_context'] = "" # Ensure it's an empty string if nothing is disabled
+        STATE['constraints_context'] = "" 
         app_logger.info("Regenerated LLM constraints context. No capabilities are currently forbidden.")
-    # --- MODIFICATION END ---
     
     print("\n" + "-"*44)
 
@@ -828,3 +840,4 @@ async def invoke_prompt_stream():
             yield PlanExecutor._format_sse({"error": "An unexpected server error occurred during prompt invocation.", "details": str(e)}, "error")
 
     return Response(stream_generator(), mimetype="text/event-stream")
+

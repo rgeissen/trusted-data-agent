@@ -559,7 +559,7 @@ async def _invoke_llm_filter_task(STATE: dict, command: dict, session_id: str = 
         "Example: If you extract the database name 'fitness_db', your response must be exactly `fitness_db` and nothing else."
     )
 
-    reason = f"Executing TDA_LLMFilter: {goal}"
+    reason = f"Client-Side Tool Call: TDA_LLMFilter\nGoal: {goal}"
     
     response_text, input_tokens, output_tokens = await llm_handler.call_llm_api(
         llm_instance=llm_instance,
@@ -591,7 +591,7 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: lis
 
     if mode == 'full_context':
         app_logger.info(f"Executing client-side LLM task in 'full_context' mode.")
-        reason = f"Synthesizing answer for '{user_question}' from conversation history."
+        reason = f"Client-Side Tool Call: TDA_LLMTask (Full Context)\nSynthesizing answer for: '{user_question}'"
 
         history_str_parts = []
         if session_history:
@@ -624,7 +624,7 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: lis
         full_workflow_state = args.get("data", {})
         
         app_logger.info(f"Executing client-side LLM task in 'standard' mode: {task_description}")
-        reason = f"Executing TDA_LLMTask: {task_description}"
+        reason = f"Client-Side Tool Call: TDA_LLMTask\nTask: {task_description}"
 
         focused_data_for_task = {}
         if isinstance(full_workflow_state, dict):
@@ -735,10 +735,12 @@ async def _invoke_final_report_task(STATE: dict, command: dict, workflow_state: 
         "3.  `key_observations`: OPTIONAL. A list of objects, each with a `text` field containing a single, narrative bullet point of supporting detail or context. Do NOT include raw data or code."
     )
     
+    reason = f"Client-Side Tool Call: TDA_FinalReport\nGoal: {user_question}"
+    
     response_text, input_tokens, output_tokens = await llm_handler.call_llm_api(
         llm_instance=llm_instance,
         prompt=final_summary_prompt_text,
-        reason=f"Synthesizing TDA_FinalReport for: {user_question}",
+        reason=reason,
         system_prompt_override="You are a JSON-only reporting assistant.",
         raise_on_error=True,
         session_id=session_id
@@ -782,10 +784,12 @@ async def _invoke_complex_prompt_report_task(STATE: dict, command: dict, workflo
         "    - `content`: The detailed findings for that section, formatted in markdown. You can use lists, bolding, and code blocks for clarity."
     )
     
+    reason = f"Client-Side Tool Call: TDA_ComplexPromptReport\nGoal: {prompt_goal}"
+
     response_text, input_tokens, output_tokens = await llm_handler.call_llm_api(
         llm_instance=llm_instance,
         prompt=final_summary_prompt_text,
-        reason=f"Synthesizing TDA_ComplexPromptReport for: {prompt_goal}",
+        reason=reason,
         system_prompt_override="You are a JSON-only reporting assistant.",
         raise_on_error=True,
         session_id=session_id

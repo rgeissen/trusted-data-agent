@@ -36,6 +36,7 @@ def create_session(provider: str, llm_instance: any, charting_intensity: str, sy
         "input_tokens": 0,
         "output_tokens": 0,
         "last_turn_data": [],
+        "full_context_sent": False, # Add this new flag to track context state
         # MODIFICATION: Store the user's license info in the session.
         "license_info": APP_STATE.get("license_info")
     }

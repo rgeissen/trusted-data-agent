@@ -538,10 +538,10 @@ class PlanExecutor:
                 last_result = results[0]
                 tool_name = self.last_tool_output.get("metadata", {}).get("tool_name")
                 
-                if tool_name == "TDA_FinalReport":
-                    final_content = CanonicalResponse.model_validate(last_result)
-                elif tool_name == "TDA_ComplexPromptReport":
+                if self.active_prompt_name and tool_name == "TDA_ComplexPromptReport":
                     final_content = PromptReportResponse.model_validate(last_result)
+                elif tool_name == "TDA_FinalReport":
+                    final_content = CanonicalResponse.model_validate(last_result)
                 else:
                     final_content = CanonicalResponse(direct_answer="The agent has completed its work, but a final report was not generated.")
         else:
@@ -557,12 +557,19 @@ class PlanExecutor:
         Formats a raw summary string OR a CanonicalResponse object and yields
         the final SSE event to the UI.
         """
-        formatter = OutputFormatter(
-            canonical_response=final_content,
-            collected_data=self.structured_collected_data,
-            original_user_input=self.original_user_input,
-            active_prompt_name=self.active_prompt_name
-        )
+        # --- MODIFICATION START: Intelligently pass the correct model to the formatter ---
+        formatter_kwargs = {
+            "collected_data": self.structured_collected_data,
+            "original_user_input": self.original_user_input,
+            "active_prompt_name": self.active_prompt_name
+        }
+        if isinstance(final_content, PromptReportResponse):
+            formatter_kwargs["prompt_report_response"] = final_content
+        else:
+            formatter_kwargs["canonical_response"] = final_content
+
+        formatter = OutputFormatter(**formatter_kwargs)
+        # --- MODIFICATION END ---
         
         final_html, tts_payload = formatter.render()
         

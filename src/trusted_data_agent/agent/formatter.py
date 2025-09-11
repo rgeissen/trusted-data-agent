@@ -2,7 +2,8 @@
 import re
 import uuid
 import json
-from trusted_data_agent.agent.response_models import CanonicalResponse, KeyMetric, Observation, PromptReportResponse
+from trusted_data_agent.agent.response_models import CanonicalResponse, KeyMetric, Observation, PromptReportResponse, Synthesis
+# The erroneous line "from trusted_data_agent.agent.formatter import OutputFormatter" has been removed from here.
 
 class OutputFormatter:
     """
@@ -58,6 +59,21 @@ class OutputFormatter:
         ]
         for obs in observations:
             html_parts.append(f'<li>{self._process_inline_markdown(obs.text)}</li>')
+        
+        html_parts.append('</ul>')
+        return "".join(html_parts)
+
+    def _render_synthesis(self, synthesis_items: list[Synthesis]) -> str:
+        """Renders a list of Synthesis objects into an HTML list."""
+        if not synthesis_items:
+            return ""
+        
+        html_parts = [
+            '<h3 class="text-lg font-bold text-white mb-3 border-b border-gray-700 pb-2">Agent\'s Analysis</h3>',
+            '<ul class="list-disc list-outside space-y-2 text-gray-300 mb-4 pl-5">'
+        ]
+        for item in synthesis_items:
+            html_parts.append(f'<li>{self._process_inline_markdown(item.text)}</li>')
         
         html_parts.append('</ul>')
         return "".join(html_parts)
@@ -272,11 +288,12 @@ class OutputFormatter:
         """
         A specialized formatter for multi-step workflows that uses the CanonicalResponse model.
         """
-        tts_payload = { "direct_answer": "", "key_observations": "" }
+        tts_payload = { "direct_answer": "", "key_observations": "", "synthesis": "" }
         if self.canonical_report:
             tts_payload = {
                 "direct_answer": self.canonical_report.direct_answer,
-                "key_observations": " ".join([obs.text for obs in self.canonical_report.key_observations])
+                "key_observations": " ".join([obs.text for obs in self.canonical_report.key_observations]),
+                "synthesis": " ".join([synth.text for synth in self.canonical_report.synthesis])
             }
         
         summary_html_parts = []
@@ -285,6 +302,9 @@ class OutputFormatter:
                 summary_html_parts.append(self._render_key_metric(self.canonical_report.key_metric))
             
             summary_html_parts.append(self._render_direct_answer(self.canonical_report.direct_answer))
+
+            if self.canonical_report.synthesis:
+                summary_html_parts.append(self._render_synthesis(self.canonical_report.synthesis))
             
             if self.canonical_report.key_observations:
                 summary_html_parts.append(self._render_observations(self.canonical_report.key_observations))
@@ -356,7 +376,7 @@ class OutputFormatter:
         Formats a standard query report using the CanonicalResponse model.
         """
         final_html = ""
-        tts_payload = { "direct_answer": "", "key_observations": "" }
+        tts_payload = { "direct_answer": "", "key_observations": "", "synthesis": "" }
         
         if self.canonical_report:
             summary_html_parts = []
@@ -364,6 +384,9 @@ class OutputFormatter:
                 summary_html_parts.append(self._render_key_metric(self.canonical_report.key_metric))
             
             summary_html_parts.append(self._render_direct_answer(self.canonical_report.direct_answer))
+
+            if self.canonical_report.synthesis:
+                summary_html_parts.append(self._render_synthesis(self.canonical_report.synthesis))
             
             if self.canonical_report.key_observations:
                 summary_html_parts.append(self._render_observations(self.canonical_report.key_observations))
@@ -373,7 +396,8 @@ class OutputFormatter:
 
             tts_payload = {
                 "direct_answer": self.canonical_report.direct_answer,
-                "key_observations": " ".join([obs.text for obs in self.canonical_report.key_observations])
+                "key_observations": " ".join([obs.text for obs in self.canonical_report.key_observations]),
+                "synthesis": " ".join([synth.text for synth in self.canonical_report.synthesis])
             }
         elif self.llm_response_text:
              final_html = f"<div class='response-card summary-card'>{self._render_standard_markdown(self.llm_response_text)}</div>"
@@ -500,17 +524,25 @@ class OutputFormatter:
             - final_html (str): The complete HTML string for the UI.
             - tts_payload (dict): The structured payload for the TTS engine.
         """
-        if self.prompt_report:
+        # --- MODIFICATION START: Corrected routing logic ---
+        # This now correctly prioritizes the specific PromptReportResponse type,
+        # ensuring it is always handled by its dedicated formatter.
+        if isinstance(self.prompt_report, PromptReportResponse):
             return self._format_complex_prompt_report()
-        elif self.canonical_report or self.active_prompt_name:
+        
+        if self.canonical_report or self.active_prompt_name:
             if self.active_prompt_name:
                  return self._format_workflow_report()
             else:
                  return self._format_standard_query_report()
+        # --- MODIFICATION END ---
+                 
         elif self.llm_response_text:
             return self._format_standard_query_report()
         
         # Fallback for empty responses
         final_html = "<div class='response-card summary-card'><p>The agent has completed its work.</p></div>"
-        tts_payload = {"direct_answer": "The agent has completed its work.", "key_observations": ""}
+        tts_payload = {"direct_answer": "The agent has completed its work.", "key_observations": "", "synthesis": ""}
         return final_html, tts_payload
+
+

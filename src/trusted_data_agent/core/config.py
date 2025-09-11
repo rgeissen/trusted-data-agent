@@ -13,7 +13,7 @@ class AppConfig:
     ALL_MODELS_UNLOCKED = False # If True, bypasses model certification checks, allowing all models from a provider to be used.
     CHARTING_ENABLED = True # Master switch to enable or disable the agent's ability to generate charts.
     DEFAULT_CHARTING_INTENSITY = "medium" # Controls how proactively the agent suggests charts. Options: "none", "medium", "heavy".
-    ALLOW_SYNTHESIS_FROM_HISTORY = False # If True, allows the planner to generate an answer directly from conversation history without using tools.
+    ALLOW_SYNTHESIS_FROM_HISTORY = True # If True, allows the planner to generate an answer directly from conversation history without using tools.
     VOICE_CONVERSATION_ENABLED = True # Master switch for the Text-to-Speech (TTS) feature.
     SUB_PROMPT_FORCE_SUMMARY = False # If True, forces sub-executors for prompts to generate their own final summary. Default is False.
     GRANTED_PROMPTS_FOR_EFFICIENCY_REPLANNING = ["base_teradata_query"] # A list of complex prompts that are exempt from the "Re-planning for Efficiency" optimization.
@@ -40,8 +40,20 @@ class AppConfig:
     SQL_OPTIMIZATION_TOOLS = ["base_readQuery"] # A list of tools that should be favored for SQL consolidation, if the rule is active.
 
     # --- Initial State Configuration ---
-    #INITIALLY_DISABLED_PROMPTS = ["base_query","cust_promptExample","qlty_databaseQuality","dba_tableArchive","dba_databaseLineage", "dba_tableDropImpact", "dba_databaseHealthAssessment", "dba_userActivityAnalysis", "dba_systemVoice", "base_databaseBusinessDesc", "sales_prompt", "test_evsTools", "test_secTools", "test_dbaTools", "test_ragTools", "test_qltyTools", "test_fsTools", "test_baseTools", "rag_guidelines" ] # A list of prompt names to be disabled by default on application startup.
-    INITIALLY_DISABLED_PROMPTS = ["base_query"]
+    #INITIALLY_DISABLED_PROMPTS = ["base_query","cust_promptExample","qlty_databaseQuality","dba_databaseArchive","dba_databaseLineage", "dba_tableDropImpact", "dba_databaseHealthAssessment", "dba_userActivityAnalysis", "dba_systemVoice", "base_databaseBusinessDesc", "sales_prompt", "test_evsTools", "test_secTools", "test_dbaTools", "test_ragTools", "test_qltyTools", "test_fsTools", "test_baseTools", "rag_guidelines" ] # A list of prompt names to be disabled by default on application startup.
+    INITIALLY_DISABLED_PROMPTS = [
+        "base_query",
+        "qlty_databaseQuality",
+        "dba_databaseLineage",
+        "base_tableBusinessDesc",
+        "base_databaseBusinessDesc",
+        "dba_databaseHealthAssessment",
+        "dba_userActivityAnalysis",
+        "dba_systemVoice",
+        "dba_tableArchive",
+        "dba_tableDropImpact",
+        "_testMyServer"
+    ]
     INITIALLY_DISABLED_TOOLS = ["sales_top_customers"] # A list of tool names to be disabled by default on application startup.
 
     # --- Tool & Argument Parsing Logic ---
@@ -110,4 +122,3 @@ CERTIFIED_AMAZON_MODELS = ["*amazon.nova-pro-v1*"]
 CERTIFIED_AMAZON_PROFILES = ["*amazon.nova-pro-v1*"]
 CERTIFIED_OLLAMA_MODELS = ["llama2"]
 CERTIFIED_OPENAI_MODELS = ["*gpt-4.1-mini-2025*"]
-

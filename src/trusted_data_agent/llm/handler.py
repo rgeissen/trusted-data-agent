@@ -199,8 +199,18 @@ def _get_full_system_prompt(session_data: dict, dependencies: dict, system_promp
         prompts_context = "\n".join(filtered_prompts_context_parts)
     # --- MODIFICATION END ---
 
-    # --- MODIFICATION START: Condense tool/prompt context for history ---
-    if APP_CONFIG.CONDENSE_SYSTEMPROMPT_HISTORY:
+    # --- MODIFICATION START: Session-aware context condensation ---
+    use_condensed_context = False
+    if APP_CONFIG.CONDENSE_SYSTEMPROMPT_HISTORY and session_data:
+        if session_data.get("full_context_sent"):
+            use_condensed_context = True
+            app_logger.info("Session context: Using condensed (names-only) capability list for subsequent turn.")
+        else:
+            # This is the first call in the session. Send full context and update the flag.
+            session_data["full_context_sent"] = True
+            app_logger.info("Session context: Sending full, detailed capability list for the first turn.")
+
+    if use_condensed_context:
         condensed_tools_parts = ["--- Available Tools (Names Only) ---"]
         structured_tools = STATE.get('structured_tools', {})
         for category, tools in sorted(structured_tools.items()):
