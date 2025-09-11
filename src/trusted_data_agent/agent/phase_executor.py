@@ -660,6 +660,9 @@ class PhaseExecutor:
         
         if tool_name == "TDA_LLMTask" and "synthesized_answer" in arguments:
             app_logger.info("Bypassing TDA_LLMTask execution. Using synthesized answer from planner.")
+            # --- MODIFICATION START: Set the is_synthesis_from_history flag ---
+            self.executor.is_synthesis_from_history = True
+            # --- MODIFICATION END ---
             self.executor.last_tool_output = {
                 "status": "success",
                 "results": [{"response": arguments["synthesized_answer"]}]

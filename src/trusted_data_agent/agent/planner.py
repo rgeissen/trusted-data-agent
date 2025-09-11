@@ -504,9 +504,11 @@ class Planner:
             data_gathering_rule_str = (
                 "**CRITICAL RULE (Grounding):** Your primary objective is to answer the user's `GOAL` using data from the available tools. You **MUST** prioritize using a data-gathering tool if the `Workflow History` does not contain a direct and complete answer to the user's `GOAL`."
             )
+            # --- MODIFICATION START: Remove the hardcoded "2." prefix ---
             answer_from_history_rule_str = (
-                "2.  **CRITICAL RULE (Answer from History):** If the `Workflow History` contains enough information to fully answer the user's `GOAL`, your response **MUST be a single JSON object** for a one-phase plan. This plan **MUST** call the `TDA_LLMTask` tool. You **MUST** write the complete, final answer text inside the `synthesized_answer` argument within that tool call. **You are acting as a planner; DO NOT use the `FINAL_ANSWER:` format.**"
+                "**CRITICAL RULE (Answer from History):** If the `Workflow History` contains enough information to fully answer the user's `GOAL`, your response **MUST be a single JSON object** for a one-phase plan. This plan **MUST** call the `TDA_LLMTask` tool. You **MUST** write the complete, final answer text inside the `synthesized_answer` argument within that tool call. **You are acting as a planner; DO NOT use the `FINAL_ANSWER:` format.**"
             )
+            # --- MODIFICATION END ---
         
         constraints_section = self.executor.dependencies['STATE'].get("constraints_context", "")
 
@@ -628,4 +630,3 @@ class Planner:
             if len(self.executor.meta_plan) > 1 or any(phase.get("type") == "loop" for phase in self.executor.meta_plan):
                 self.executor.is_complex_prompt_workflow = True
                 app_logger.info(f"'{self.executor.active_prompt_name}' has been qualified as a complex prompt workflow based on the generated plan.")
-
