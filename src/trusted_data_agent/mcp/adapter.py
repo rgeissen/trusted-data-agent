@@ -101,7 +101,7 @@ CLIENT_SIDE_TOOLS = [
     },
     {
         "name": "TDA_ContextReport",
-        "description": "A special tool for the planner to use when it can answer the user's question directly from the conversation history. This tool bypasses data gathering and provides the answer immediately.",
+        "description": "The History First Shortcut. This tool MUST be used for a single-phase plan if, and only if, the user's question can be answered entirely from the existing Workflow History. It bypasses all data gathering. Do NOT use this tool if you need to gather new data.",
         "args": {
             "answer_from_context": {
                 "type": "string",
@@ -112,7 +112,7 @@ CLIENT_SIDE_TOOLS = [
     },
     {
         "name": "TDA_FinalReport",
-        "description": "A special internal tool used to format and deliver the final, structured report for a user's ad-hoc query. This tool MUST be called when you have gathered all necessary information to answer the user's request.",
+        "description": "The Data Summarization Tool. This tool MUST be the final phase of a multi-step plan to synthesize the results from all previous data-gathering phases into a final report. Do NOT use this tool in a single-phase plan or as a first step.",
         "args": {}
     },
     {

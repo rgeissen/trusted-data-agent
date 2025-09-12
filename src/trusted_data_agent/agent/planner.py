@@ -637,4 +637,3 @@ class Planner:
             if len(self.executor.meta_plan) > 1 or any(phase.get("type") == "loop" for phase in self.executor.meta_plan):
                 self.executor.is_complex_prompt_workflow = True
                 app_logger.info(f"'{self.executor.active_prompt_name}' has been qualified as a complex prompt workflow based on the generated plan.")
-
