@@ -419,8 +419,8 @@ export function createResourceItem(resource, type) {
     
     let contentHTML = '';
     if (type === 'prompts') {
-        const runButtonDisabledAttr = resource.disabled ? 'disabled' : '';
-        const runButtonTitle = resource.disabled ? 'This prompt is disabled.' : 'Run this prompt.';
+        const runButtonDisabledAttr = ''; // Always enabled
+        const runButtonTitle = 'Run this prompt.'; // Always use this title
 
         contentHTML = `
             <div class="p-3 pt-2 text-sm text-gray-300 space-y-3">
