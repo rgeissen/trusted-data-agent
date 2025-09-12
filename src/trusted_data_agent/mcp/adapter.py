@@ -103,6 +103,20 @@ CORE_LLM_TASK_DEFINITION = {
     }
 }
 
+# --- MODIFICATION START: Define the new TDA_ContextReport tool ---
+CONTEXT_REPORT_TOOL_DEFINITION = {
+    "name": "TDA_ContextReport",
+    "description": "A special tool for the planner to use when it can answer the user's question directly from the conversation history. This tool bypasses data gathering and provides the answer immediately.",
+    "args": {
+        "answer_from_context": {
+            "type": "string",
+            "description": "The final, synthesized natural language answer, provided directly by the planner when it has confidently answered the user's question from the conversation history.",
+            "required": True
+        }
+    }
+}
+# --- MODIFICATION END ---
+
 user_query_report_schema = CanonicalResponse.model_json_schema()
 USER_QUERY_REPORT_TOOL_DEFINITION = {
     "name": "TDA_FinalReport",
@@ -237,6 +251,9 @@ async def load_and_categorize_mcp_resources(STATE: dict):
         loaded_tools.append(SimpleTool(**CORE_LLM_TASK_DEFINITION))
         loaded_tools.append(SimpleTool(**USER_QUERY_REPORT_TOOL_DEFINITION))
         loaded_tools.append(SimpleTool(**COMPLEX_PROMPT_REPORT_TOOL_DEFINITION))
+        # --- MODIFICATION START: Add the new tool to the list of loaded tools ---
+        loaded_tools.append(SimpleTool(**CONTEXT_REPORT_TOOL_DEFINITION))
+        # --- MODIFICATION END ---
 
 
         STATE['mcp_tools'] = {tool.name: tool for tool in loaded_tools}
@@ -920,6 +937,18 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
     mcp_client = STATE.get('mcp_client')
     tool_name = command.get("tool_name")
     
+    # --- MODIFICATION START: Add handler for the new TDA_ContextReport tool ---
+    if tool_name == "TDA_ContextReport":
+        app_logger.info("Executing client-side tool: TDA_ContextReport")
+        answer = command.get("arguments", {}).get("answer_from_context", "The agent has completed its work.")
+        result = {
+            "status": "success",
+            "metadata": {"tool_name": "TDA_ContextReport"},
+            "results": [{"response": answer}]
+        }
+        return result, 0, 0
+    # --- MODIFICATION END ---
+
     if tool_name == "TDA_LLMFilter":
         return await _invoke_llm_filter_task(STATE, command, session_id=session_id, call_id=call_id)
     
@@ -1049,4 +1078,3 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
                 return result, 0, 0
     
     raise RuntimeError(f"Unexpected tool result format for '{tool_name}': {call_tool_result}")
-

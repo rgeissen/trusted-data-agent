@@ -751,7 +751,7 @@ async def ask_stream():
                 session_manager.add_to_history(session_id, 'assistant', greeting_response)
                 return
             
-            previous_turn_data = session_data.get("last_turn_data", [])
+            previous_turn_data = session_data.get("last_turn_data", {})
 
             executor = PlanExecutor(
                 session_id=session_id, 
@@ -828,7 +828,7 @@ async def invoke_prompt_stream():
                 active_prompt_name=prompt_name,
                 prompt_arguments=arguments,
                 disabled_history=disabled_history,
-                previous_turn_data=session_data.get("last_turn_data", []),
+                previous_turn_data=session_data.get("last_turn_data", {}),
                 source=source
             )
 
@@ -840,4 +840,3 @@ async def invoke_prompt_stream():
             yield PlanExecutor._format_sse({"error": "An unexpected server error occurred during prompt invocation.", "details": str(e)}, "error")
 
     return Response(stream_generator(), mimetype="text/event-stream")
-

@@ -60,13 +60,9 @@ class Planner:
         Creates a token-efficient, high-signal summary of a history dictionary
         by formatting it into a canonical JSON structure for the planner.
         """
-        if not history or not isinstance(history, dict):
+        if not history or not isinstance(history, dict) or "workflow_history" not in history:
             return json.dumps({"workflow_history": []}, indent=2)
-            
-        history_list = [history]
-
-        history_object = {"workflow_history": history_list}
-        return json.dumps(history_object, indent=2)
+        return json.dumps(history, indent=2)
 
     def _hydrate_plan_from_previous_turn(self):
         """
@@ -96,20 +92,31 @@ class Planner:
 
         if source_phase_num >= looping_phase_num:
             data_to_inject = None
-            execution_trace = self.executor.previous_turn_data.get("execution_trace", [])
-            for entry in reversed(execution_trace):
-                result_summary = entry.get("tool_output_summary", {})
-                if (isinstance(result_summary, dict) and
-                    result_summary.get("status") == "success"):
-                    
-                    data_to_inject = {
-                        "status": "success",
-                        "metadata": result_summary.get("metadata", {}),
-                        "comment": "Data injected from previous turn's summary."
-                    }
-                    if "results" in result_summary:
-                        data_to_inject["results"] = result_summary["results"]
-                    
+            
+            # --- MODIFICATION START: Correctly access the nested workflow history ---
+            workflow_history = self.executor.previous_turn_data.get("workflow_history", [])
+            if not isinstance(workflow_history, list):
+                 return
+
+            for turn in reversed(workflow_history):
+                if not isinstance(turn, dict): continue
+                execution_trace = turn.get("execution_trace", [])
+                # --- MODIFICATION END ---
+                for entry in reversed(execution_trace):
+                    result_summary = entry.get("tool_output_summary", {})
+                    if (isinstance(result_summary, dict) and
+                        result_summary.get("status") == "success"):
+                        
+                        data_to_inject = {
+                            "status": "success",
+                            "metadata": result_summary.get("metadata", {}),
+                            "comment": "Data injected from previous turn's summary."
+                        }
+                        if "results" in result_summary:
+                            data_to_inject["results"] = result_summary["results"]
+                        
+                        break
+                if data_to_inject:
                     break
             
             if data_to_inject:
@@ -507,7 +514,7 @@ class Planner:
         decision_making_process_str = ""
         if APP_CONFIG.ALLOW_SYNTHESIS_FROM_HISTORY:
             decision_making_process_str = (
-                "2.  **Check History First**: If the `Workflow History` contains enough information to fully answer the user's `GOAL`, your response **MUST be a single JSON object** for a one-phase plan. This plan **MUST** call the `TDA_LLMTask` tool. You **MUST** write the complete, final answer text inside the `synthesized_answer` argument within that tool call. **You are acting as a planner; DO NOT use the `FINAL_ANSWER:` format.**\n\n"
+                "2.  **Check History First**: If the `Workflow History` contains enough information to fully answer the user's `GOAL`, your response **MUST be a single JSON object** for a one-phase plan. This plan **MUST** call the `TDA_ContextReport` tool. You **MUST** write the complete, final answer text inside the `answer_from_context` argument within that tool call. **You are acting as a planner; DO NOT use the `FINAL_ANSWER:` format.**\n\n"
                 "3.  **Default to Data Gathering**: If the history is insufficient, you **MUST** create a new plan to gather the necessary data using the available tools. Your primary objective is to answer the user's `GOAL` using data from these tools."
             )
         else:

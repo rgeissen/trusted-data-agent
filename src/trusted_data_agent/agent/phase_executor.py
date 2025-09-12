@@ -658,14 +658,21 @@ class PhaseExecutor:
         tool_name = action.get("tool_name")
         arguments = action.get("arguments", {})
         
-        if tool_name == "TDA_LLMTask" and "synthesized_answer" in arguments:
-            app_logger.info("Bypassing TDA_LLMTask execution. Using synthesized answer from planner.")
-            # --- MODIFICATION START: Set the is_synthesis_from_history flag ---
+        # --- MODIFICATION START: Add handler for TDA_ContextReport and the legacy synthesized_answer ---
+        if tool_name == "TDA_ContextReport" or (tool_name == "TDA_LLMTask" and "synthesized_answer" in arguments):
+            if tool_name == "TDA_ContextReport":
+                answer_key = "answer_from_context"
+                log_message = f"Bypassing execution. Using context-based answer from planner via {tool_name}."
+            else: # Legacy support
+                answer_key = "synthesized_answer"
+                log_message = "Bypassing TDA_LLMTask execution. Using synthesized answer from planner."
+
+            app_logger.info(log_message)
             self.executor.is_synthesis_from_history = True
-            # --- MODIFICATION END ---
             self.executor.last_tool_output = {
                 "status": "success",
-                "results": [{"response": arguments["synthesized_answer"]}]
+                "metadata": {"tool_name": tool_name},
+                "results": [{"response": arguments.get(answer_key)}]
             }
             if not is_fast_path:
                 yield self.executor._format_sse({"step": "Tool Execution Result", "details": self.executor.last_tool_output, "tool_name": tool_name}, "tool_result")
@@ -675,6 +682,7 @@ class PhaseExecutor:
                 self.executor.workflow_state.setdefault(phase_result_key, []).append(self.executor.last_tool_output)
                 self.executor._add_to_structured_data(self.executor.last_tool_output)
             return
+        # --- MODIFICATION END ---
         
         max_retries = 3
         

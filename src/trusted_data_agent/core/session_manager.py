@@ -70,5 +70,9 @@ def update_token_count(session_id: str, input_tokens: int, output_tokens: int):
 def update_last_turn_data(session_id: str, turn_data: dict):
     """Saves the most recent turn's action history to the session."""
     if session_id in _SESSIONS:
-        _SESSIONS[session_id]['last_turn_data'] = turn_data
+        # --- MODIFICATION START: Correctly append to a cumulative history list ---
+        if "workflow_history" not in _SESSIONS[session_id]["last_turn_data"]:
+            _SESSIONS[session_id]["last_turn_data"]["workflow_history"] = []
+        _SESSIONS[session_id]["last_turn_data"]["workflow_history"].append(turn_data)
+        # --- MODIFICATION END ---
 
