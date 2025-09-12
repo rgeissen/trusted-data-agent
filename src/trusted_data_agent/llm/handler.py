@@ -568,4 +568,3 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
         }
         for name in model_names
     ]
-

@@ -89,18 +89,13 @@ async def execute_column_iteration(executor, command: dict):
     tool_name = command.get("tool_name")
     base_args = command.get("arguments", {})
     
-    # --- MODIFICATION START: Robustly find database and table name using synonyms ---
-    db_name = None
-    for key in AppConfig.ARGUMENT_SYNONYM_MAP.get('database_name', []):
-        if key in base_args:
-            db_name = base_args[key]
-            break
-            
-    table_name = None
-    for key in AppConfig.ARGUMENT_SYNONYM_MAP.get('object_name', []):
-        if key in base_args:
-            table_name = base_args[key]
-            break
+    # --- MODIFICATION START: Remove redundant synonym logic ---
+    # Argument normalization is now handled centrally in the mcp/adapter.py,
+    # so this manual, repetitive check is no longer needed. The adapter will
+    # ensure that `database_name` and `object_name` are present if any of their
+    # synonyms were provided.
+    db_name = base_args.get('database_name')
+    table_name = base_args.get('object_name')
     # --- MODIFICATION END ---
 
     # First, get the list of all columns for the target table

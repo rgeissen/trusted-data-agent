@@ -123,6 +123,31 @@ CLIENT_SIDE_TOOLS = [
 ]
 # --- MODIFICATION END ---
 
+def _normalize_tool_arguments(args: dict) -> dict:
+    """
+    Expands tool arguments to include all known synonyms for canonical keys.
+    For example, if 'db_name' is provided, this will add 'database_name'
+    and 'DatabaseName' to the arguments dictionary with the same value.
+    This ensures compatibility with tools that may use different synonyms.
+    """
+    if not isinstance(args, dict):
+        return {}
+
+    normalized_args = args.copy()
+    for canonical, synonyms in AppConfig.ARGUMENT_SYNONYM_MAP.items():
+        found_value = None
+        # First pass: find if any synonym has a value
+        for synonym in synonyms:
+            if synonym in args:
+                found_value = args[synonym]
+                break
+        
+        # Second pass: if a value was found, apply it to all synonyms
+        if found_value is not None:
+            for synonym in synonyms:
+                normalized_args[synonym] = found_value
+    
+    return normalized_args
 
 def _extract_and_clean_description(description: str | None) -> tuple[str, str]:
     if not isinstance(description, str):
@@ -995,22 +1020,16 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
             
             if found_args is not None:
                 args = found_args
-
-    expanded_args = args.copy()
-    for canonical, synonyms in AppConfig.ARGUMENT_SYNONYM_MAP.items():
-        found_value = None
-        for synonym in synonyms:
-            if synonym in args:
-                found_value = args[synonym]
-                break
-        
-        if found_value is not None:
-            for synonym in synonyms:
-                expanded_args[synonym] = found_value
-
-    if expanded_args != args:
-        app_logger.info(f"Expanded tool arguments for '{tool_name}'. Original: {args}, Expanded: {expanded_args}")
-        args = expanded_args
+    
+    # --- MODIFICATION START: Centralize argument normalization ---
+    # The old, manual expansion logic has been removed and replaced with a call
+    # to the new, centralized normalization function.
+    normalized_args = _normalize_tool_arguments(args)
+    if normalized_args != args:
+        app_logger.info(f"Normalized tool arguments for '{tool_name}'. Original: {args}, Normalized: {normalized_args}")
+    
+    args = normalized_args
+    # --- MODIFICATION END ---
 
 
     app_logger.debug(f"Invoking tool '{tool_name}' with args: {args}")
@@ -1044,4 +1063,3 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
                 return result, 0, 0
     
     raise RuntimeError(f"Unexpected tool result format for '{tool_name}': {call_tool_result}")
-
