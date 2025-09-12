@@ -405,7 +405,7 @@ This project is licensed under the GNU Affero General Public License v3.0. The f
 
 Under the AGPLv3, you are free to use, modify, and distribute this software. However, if you run a modified version of this software on a network server and allow other users to interact with it, you must also make the source code of your modified version available to those users. There are 4 License Modes available.
 
-### Description of the 5 License Modes
+### Description of the 4 License Modes
 
 #### Community and Development Tiers (AGPLv3)
 
