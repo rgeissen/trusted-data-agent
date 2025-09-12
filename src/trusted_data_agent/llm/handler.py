@@ -6,6 +6,7 @@ import httpx
 import re
 import random
 import time
+import copy
 
 import google.generativeai as genai
 from anthropic import APIError, AsyncAnthropic, InternalServerError, RateLimitError
@@ -110,6 +111,87 @@ def _extract_final_answer_from_json(text: str) -> str:
     
     return text
 
+def _condense_and_clean_history(history: list) -> list:
+    """
+    Sanitizes conversation history to save tokens by being abstract and provider-agnostic.
+    1. Normalizes history from different provider formats by checking for object attributes.
+    2. Aggressively removes ALL old capability definitions from the history.
+    3. Replaces duplicate tool outputs with a placeholder.
+    4. Denormalizes the history back to the original provider's format.
+    """
+    if not history:
+        return []
+
+    def _normalize_history(provider_history: list) -> list:
+        """Converts provider-specific history to a generic internal format using type-aware checks."""
+        normalized = []
+        for msg in provider_history:
+            role, content = "", ""
+            # --- MODIFICATION START: Use hasattr for robust, type-agnostic checking ---
+            if hasattr(msg, 'parts') and hasattr(msg, 'role'):
+                # Handles Google's proto.Message objects
+                role = msg.role
+                if msg.parts and hasattr(msg.parts[0], 'text'):
+                    content = msg.parts[0].text
+            elif isinstance(msg, dict):
+                # Handles dictionary-based history (Anthropic, OpenAI, etc.)
+                role = msg.get('role', '')
+                content = msg.get('content', '')
+            # --- MODIFICATION END ---
+            normalized.append({'role': role, 'content': content})
+        return normalized
+
+    def _denormalize_history(generic_history: list, provider: str) -> list:
+        """Converts the generic internal history back to a provider-specific format."""
+        if provider == "Google":
+            denormalized = []
+            for msg in generic_history:
+                # For Google, the role 'model' is used for the assistant
+                role = 'model' if msg['role'] == 'assistant' else msg['role']
+                denormalized.append({
+                    'role': role,
+                    'parts': [{'text': msg['content']}]
+                })
+            return denormalized
+        # Other providers use the generic format already
+        return generic_history
+
+    # --- Main Sanitization Pipeline ---
+    normalized_history = _normalize_history(history)
+    
+    cleaned_history = []
+    seen_tool_outputs = set()
+    capabilities_pattern = re.compile(r'# Capabilities\n--- Available Tools ---.*', re.DOTALL)
+    
+    for msg in normalized_history:
+        msg_copy = copy.deepcopy(msg)
+        content = msg_copy.get('content', '')
+
+        # 1. Aggressively cleanse ALL obsolete capability definitions.
+        if capabilities_pattern.search(content):
+            app_logger.debug("History Condensation: Removing obsolete capability definitions.")
+            content = capabilities_pattern.sub("# Capabilities\n[... Omitted for Brevity ...]", content)
+
+        # 2. Deduplicate tool outputs.
+        if msg_copy.get('role') in ['assistant', 'model']:
+            try:
+                json_content = json.loads(content)
+                normalized_content = json.dumps(json_content, sort_keys=True)
+                
+                if normalized_content in seen_tool_outputs:
+                    app_logger.debug("History Condensation: Replacing duplicate tool output.")
+                    content = json.dumps({"status": "success", "comment": "Duplicate output omitted for brevity."})
+                else:
+                    seen_tool_outputs.add(normalized_content)
+            except (json.JSONDecodeError, TypeError):
+                pass  # Not a JSON tool output
+        
+        msg_copy['content'] = content
+        cleaned_history.append(msg_copy)
+
+    return _denormalize_history(cleaned_history, APP_CONFIG.CURRENT_PROVIDER)
+
+
 def _get_full_system_prompt(session_data: dict, dependencies: dict, system_prompt_override: str = None, active_prompt_name_for_filter: str = None, source: str = "text") -> str:
     """
     Constructs the final system prompt based on the user's license tier.
@@ -120,21 +202,17 @@ def _get_full_system_prompt(session_data: dict, dependencies: dict, system_promp
     if not session_data or not dependencies or 'STATE' not in dependencies:
         return "You are a helpful assistant."
 
-    # --- MODIFICATION START: Tier-based prompt selection ---
     base_prompt_text = ""
     license_info = session_data.get("license_info", {})
     user_tier = license_info.get("tier")
     privileged_tiers = ["Prompt Engineer", "Enterprise"]
 
-    # Privileged users can use their custom prompt sent from the client.
     if user_tier in privileged_tiers and session_data.get("system_prompt_template"):
         app_logger.info(f"Using custom system prompt for privileged user (Tier: {user_tier}).")
         base_prompt_text = session_data["system_prompt_template"]
     else:
-        # Standard users (or privileged users who haven't set a custom prompt) get the server's default.
         app_logger.info(f"Using server-side default system prompt for user (Tier: {user_tier or 'Standard'}).")
         base_prompt_text = PROVIDER_SYSTEM_PROMPTS.get(APP_CONFIG.CURRENT_PROVIDER, PROVIDER_SYSTEM_PROMPTS["Google"])
-    # --- MODIFICATION END ---
 
     STATE = dependencies['STATE']
 
@@ -147,66 +225,49 @@ def _get_full_system_prompt(session_data: dict, dependencies: dict, system_promp
     
     tools_context = STATE.get('tools_context', '')
     
-    # --- MODIFICATION START: Dynamically filter reporting tools from context based on source ---
     tools_to_remove = []
-    # Execution Mode 3: UI Prompt Execution
     if source == 'prompt_library':
         tools_to_remove.append('TDA_FinalReport')
-    # Execution Modes 1 & 2: User Query (Simple or leading to a prompt)
     else:
         tools_to_remove.append('TDA_ComplexPromptReport')
     
     if tools_to_remove:
-        # This regex is designed to remove a full, multi-line tool definition block
-        # starting with `- \`tool_name\`` and ending before the next one starts.
         for tool_name in tools_to_remove:
             pattern = re.compile(rf"- `{re.escape(tool_name)}` \(tool\):.*?(\n(?!- `|\Z))", re.DOTALL | re.MULTILINE)
             tools_context = pattern.sub("", tools_context)
             app_logger.info(f"Context Filtering: Removed tool '{tool_name}' from planner's context for source '{source}'.")
-    # --- MODIFICATION END ---
     
-    # --- MODIFICATION START: Dynamically filter active prompt from context ---
     prompts_context = STATE.get('prompts_context', '')
     if active_prompt_name_for_filter:
         app_logger.info(f"Recursion prevention: Filtering active prompt '{active_prompt_name_for_filter}' from planner context.")
         
-        # Rebuild the prompts_context string, excluding the active prompt.
-        # This is a robust way to handle the multi-line format of the context string.
         filtered_prompts_context_parts = []
         current_prompt_block = []
         is_in_target_prompt = False
 
         for line in prompts_context.split('\n'):
-            # Check if a line marks the start of a new prompt definition
             is_new_prompt_start = line.strip().startswith('- `') and ' (prompt):' in line
 
             if is_new_prompt_start:
-                # If we have a stored block, process it before starting a new one
                 if current_prompt_block and not is_in_target_prompt:
                     filtered_prompts_context_parts.extend(current_prompt_block)
                 
-                # Reset for the new prompt
                 current_prompt_block = [line]
                 is_in_target_prompt = f"`{active_prompt_name_for_filter}`" in line
             else:
-                # Append line to the current block (header, category, or prompt body)
                 current_prompt_block.append(line)
         
-        # Process the very last block in the string
         if current_prompt_block and not is_in_target_prompt:
             filtered_prompts_context_parts.extend(current_prompt_block)
 
         prompts_context = "\n".join(filtered_prompts_context_parts)
-    # --- MODIFICATION END ---
 
-    # --- MODIFICATION START: Session-aware context condensation ---
     use_condensed_context = False
     if APP_CONFIG.CONDENSE_SYSTEMPROMPT_HISTORY and session_data:
         if session_data.get("full_context_sent"):
             use_condensed_context = True
             app_logger.info("Session context: Using condensed (names-only) capability list for subsequent turn.")
         else:
-            # This is the first call in the session. Send full context and update the flag.
             session_data["full_context_sent"] = True
             app_logger.info("Session context: Sending full, detailed capability list for the first turn.")
 
@@ -222,12 +283,10 @@ def _get_full_system_prompt(session_data: dict, dependencies: dict, system_promp
         condensed_prompts_parts = ["--- Available Prompts (Names Only) ---"]
         structured_prompts = STATE.get('structured_prompts', {})
         for category, prompts in sorted(structured_prompts.items()):
-            # Filter out the active prompt name here as well for the condensed view
             enabled_prompts = [f"`{p['name']}`" for p in prompts if not p.get('disabled') and p['name'] != active_prompt_name_for_filter]
             if enabled_prompts:
                 condensed_prompts_parts.append(f"- **{category}**: {', '.join(enabled_prompts)}")
         prompts_context = "\n".join(condensed_prompts_parts) if len(condensed_prompts_parts) > 1 else "--- No Prompts Available ---"
-    # --- MODIFICATION END ---
 
     final_system_prompt = base_prompt_text.replace(
         '{charting_instructions_section}', charting_instructions_section
@@ -285,6 +344,10 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                 if is_session_call:
                     chat_session = session_data['chat_object']
                     full_prompt_for_api = f"SYSTEM PROMPT:\n{system_prompt}\n\nUSER PROMPT:\n{prompt}"
+                    
+                    if APP_CONFIG.CONDENSE_SYSTEMPROMPT_HISTORY:
+                        chat_session.history = _condense_and_clean_history(chat_session.history)
+                    
                     response = await chat_session.send_message_async(full_prompt_for_api)
                 else:
                     full_prompt_for_api = f"{system_prompt}\n\n{prompt}"
@@ -305,6 +368,9 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                 history_source = []
                 if not disabled_history:
                     history_source = chat_history if chat_history is not None else (session_data.get('chat_object', []) if session_id else [])
+
+                if APP_CONFIG.CONDENSE_SYSTEMPROMPT_HISTORY:
+                    history_source = _condense_and_clean_history(history_source)
 
                 messages_for_api = [{'role': 'assistant' if msg.get('role') == 'model' else msg.get('role'), 'content': msg.get('content')} for msg in history_source]
                 messages_for_api.append({'role': 'user', 'content': prompt})
@@ -339,6 +405,9 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                 history = []
                 if not disabled_history:
                     history = (session_data.get('chat_object', []) if session_id else []) or (chat_history or [])
+
+                if APP_CONFIG.CONDENSE_SYSTEMPROMPT_HISTORY:
+                    history = _condense_and_clean_history(history)
 
                 model_id_to_invoke = APP_CONFIG.CURRENT_MODEL
                 body = ""
@@ -475,3 +544,4 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
         }
         for name in model_names
     ]
+
