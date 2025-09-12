@@ -223,20 +223,50 @@ def _get_full_system_prompt(session_data: dict, dependencies: dict, system_promp
         chart_instructions_detail = CHARTING_INSTRUCTIONS.get(charting_intensity, "")
         if chart_instructions_detail:
             charting_instructions_section = f"- **Charting Guidelines:** {chart_instructions_detail}"
-    
-    tools_context = STATE.get('tools_context', '')
-    
-    tools_to_remove = []
-    if source == 'prompt_library':
-        tools_to_remove.append('TDA_FinalReport')
+
+    # --- MODIFICATION START: Dynamically build tools_context with upfront filtering ---
+    tools_context = ""
+    use_condensed_context = False
+    if APP_CONFIG.CONDENSE_SYSTEMPROMPT_HISTORY and session_data and session_data.get("full_context_sent"):
+        use_condensed_context = True
+
+    tool_to_exclude = 'TDA_FinalReport' if source == 'prompt_library' else 'TDA_ComplexPromptReport'
+    structured_tools = STATE.get('structured_tools', {})
+    mcp_tools = STATE.get('mcp_tools', {})
+
+    if use_condensed_context:
+        app_logger.info("Session context: Using condensed (names-only) capability list for subsequent turn.")
+        condensed_tools_parts = ["--- Available Tools (Names Only) ---"]
+        for category, tools in sorted(structured_tools.items()):
+            enabled_tools = [f"`{t['name']}`" for t in tools if not t.get('disabled') and t['name'] != tool_to_exclude]
+            if enabled_tools:
+                condensed_tools_parts.append(f"- **{category}**: {', '.join(enabled_tools)}")
+        tools_context = "\n".join(condensed_tools_parts) if len(condensed_tools_parts) > 1 else "--- No Tools Available ---"
     else:
-        tools_to_remove.append('TDA_ComplexPromptReport')
-    
-    if tools_to_remove:
-        for tool_name in tools_to_remove:
-            pattern = re.compile(rf"- `{re.escape(tool_name)}` \(tool\):.*?(\n(?!- `|\Z))", re.DOTALL | re.MULTILINE)
-            tools_context = pattern.sub("", tools_context)
-            app_logger.info(f"Context Filtering: Removed tool '{tool_name}' from planner's context for source '{source}'.")
+        app_logger.info("Session context: Sending full, detailed capability list for the first turn.")
+        tool_context_parts = ["--- Available Tools ---"]
+        for category, tools in sorted(structured_tools.items()):
+            enabled_tools_in_category = [t for t in tools if not t['disabled'] and t['name'] != tool_to_exclude]
+            if enabled_tools_in_category:
+                tool_context_parts.append(f"--- Category: {category} ---")
+                for tool_info in enabled_tools_in_category:
+                    tool_obj = mcp_tools.get(tool_info['name'])
+                    if not tool_obj: continue
+                    
+                    tool_str = f"- `{tool_obj.name}` (tool): {tool_obj.description}"
+                    args_dict = tool_obj.args if isinstance(tool_obj.args, dict) else {}
+
+                    if args_dict:
+                        tool_str += "\n  - Arguments:"
+                        for arg_name, arg_details in args_dict.items():
+                            arg_type = arg_details.get('type', 'any')
+                            is_required = arg_details.get('required', False)
+                            req_str = "required" if is_required else "optional"
+                            arg_desc = arg_details.get('description', 'No description.')
+                            tool_str += f"\n    - `{arg_name}` ({arg_type}, {req_str}): {arg_desc}"
+                    tool_context_parts.append(tool_str)
+        tools_context = "\n".join(tool_context_parts) if len(tool_context_parts) > 1 else "--- No Tools Available ---"
+    # --- MODIFICATION END ---
     
     prompts_context = STATE.get('prompts_context', '')
     if active_prompt_name_for_filter:
@@ -263,24 +293,7 @@ def _get_full_system_prompt(session_data: dict, dependencies: dict, system_promp
 
         prompts_context = "\n".join(filtered_prompts_context_parts)
 
-    use_condensed_context = False
-    if APP_CONFIG.CONDENSE_SYSTEMPROMPT_HISTORY and session_data:
-        if session_data.get("full_context_sent"):
-            use_condensed_context = True
-            app_logger.info("Session context: Using condensed (names-only) capability list for subsequent turn.")
-        else:
-            session_data["full_context_sent"] = True
-            app_logger.info("Session context: Sending full, detailed capability list for the first turn.")
-
     if use_condensed_context:
-        condensed_tools_parts = ["--- Available Tools (Names Only) ---"]
-        structured_tools = STATE.get('structured_tools', {})
-        for category, tools in sorted(structured_tools.items()):
-            enabled_tools = [f"`{t['name']}`" for t in tools if not t.get('disabled') and t['name'] not in tools_to_remove]
-            if enabled_tools:
-                condensed_tools_parts.append(f"- **{category}**: {', '.join(enabled_tools)}")
-        tools_context = "\n".join(condensed_tools_parts) if len(condensed_tools_parts) > 1 else "--- No Tools Available ---"
-
         condensed_prompts_parts = ["--- Available Prompts (Names Only) ---"]
         structured_prompts = STATE.get('structured_prompts', {})
         for category, prompts in sorted(structured_prompts.items()):
@@ -288,6 +301,9 @@ def _get_full_system_prompt(session_data: dict, dependencies: dict, system_promp
             if enabled_prompts:
                 condensed_prompts_parts.append(f"- **{category}**: {', '.join(enabled_prompts)}")
         prompts_context = "\n".join(condensed_prompts_parts) if len(condensed_prompts_parts) > 1 else "--- No Prompts Available ---"
+    
+    if not use_condensed_context and session_data:
+        session_data["full_context_sent"] = True
 
     final_system_prompt = base_prompt_text.replace(
         '{charting_instructions_section}', charting_instructions_section
@@ -507,9 +523,9 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
     if provider == "Google":
         certified_list = CERTIFIED_GOOGLE_MODELS
         genai.configure(api_key=credentials.get("apiKey"))
-        models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        model_names = [name.split('/')[-1] for name in models]
-    
+        models = [m for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        model_names = [model.name.split('/')[-1] for model in models]
+
     elif provider == "Anthropic":
         certified_list = CERTIFIED_ANTHROPIC_MODELS
         client = AsyncAnthropic(api_key=credentials.get("apiKey"))
@@ -552,3 +568,4 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
         }
         for name in model_names
     ]
+

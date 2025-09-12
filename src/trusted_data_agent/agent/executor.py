@@ -510,7 +510,7 @@ class PlanExecutor:
             execution_depth=self.execution_depth + 1,
             disabled_history=self.disabled_history,
             previous_turn_data=self.previous_turn_data, # Pass parent's history, not current turn's actions.
-            source=self.source,
+            source="prompt_library",
             is_delegated_task=is_delegated_task,
             force_final_summary=APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY
         )

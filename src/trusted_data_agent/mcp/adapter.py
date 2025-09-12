@@ -333,27 +333,10 @@ async def load_and_categorize_mcp_resources(STATE: dict):
                 "disabled": is_disabled
             })
 
-        tool_context_parts = ["--- Available Tools ---"]
-        for category, tools in sorted(STATE['structured_tools'].items()):
-            enabled_tools_in_category = [t for t in tools if not t['disabled']]
-            if enabled_tools_in_category:
-                tool_context_parts.append(f"--- Category: {category} ---")
-                for tool_info in enabled_tools_in_category:
-                    tool_obj = STATE['mcp_tools'][tool_info['name']]
-                    tool_str = f"- `{tool_obj.name}` (tool): {tool_obj.description}"
-                    args_dict = tool_obj.args if isinstance(tool_obj.args, dict) else {}
-
-                    if args_dict:
-                        tool_str += "\n  - Arguments:"
-                        for arg_name, arg_details in args_dict.items():
-                            arg_type = arg_details.get('type', 'any')
-                            is_required = arg_details.get('required', False)
-                            req_str = "required" if is_required else "optional"
-                            arg_desc = arg_details.get('description', 'No description.')
-                            tool_str += f"\n    - `{arg_name}` ({arg_type}, {req_str}): {arg_desc}"
-                    tool_context_parts.append(tool_str)
-        
-        STATE['tools_context'] = "\n".join(tool_context_parts)
+        # --- MODIFICATION START: Remove the generation of the static tools_context ---
+        # STATE['tools_context'] will now be built dynamically in the handler.
+        STATE['tools_context'] = "--- No Tools Available ---"
+        # --- MODIFICATION END ---
 
         STATE['structured_prompts'] = {}
         disabled_prompts_list = STATE.get("disabled_prompts", [])
