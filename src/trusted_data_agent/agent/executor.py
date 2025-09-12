@@ -244,7 +244,9 @@ class PlanExecutor:
     async def run(self):
         """The main, unified execution loop for the agent."""
         final_answer_override = None
-        turn_number = len(self.previous_turn_data.get("workflow_history", [])) + 1
+        turn_number = 1
+        if isinstance(self.previous_turn_data, dict):
+            turn_number = len(self.previous_turn_data.get("workflow_history", [])) + 1
 
         try:
             if self.is_delegated_task:
@@ -498,6 +500,7 @@ class PlanExecutor:
             "type": "workaround"
         })
         
+        # --- MODIFICATION START: Correctly pass history and inherit current turn's state ---
         sub_executor = PlanExecutor(
             session_id=self.session_id,
             original_user_input=f"Executing prompt: {prompt_name}",
@@ -506,25 +509,41 @@ class PlanExecutor:
             prompt_arguments=prompt_args,
             execution_depth=self.execution_depth + 1,
             disabled_history=self.disabled_history,
-            previous_turn_data=self.turn_action_history,
+            previous_turn_data=self.previous_turn_data, # Pass parent's history, not current turn's actions.
             source=self.source,
             is_delegated_task=is_delegated_task,
             force_final_summary=APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY
         )
         
+        # Inherit the parent's current state so the sub-planner has the correct context from previous phases.
+        sub_executor.workflow_state = self.workflow_state
+        sub_executor.turn_action_history = self.turn_action_history
+        # --- MODIFICATION END ---
+
         async for event in sub_executor.run():
             yield event
         
-        self.structured_collected_data.update(sub_executor.structured_collected_data)
-        self.workflow_state.update(sub_executor.workflow_state)
-        self.turn_action_history.extend(sub_executor.turn_action_history)
+        # --- MODIFICATION START: Adopt the final state from the sub-executor ---
+        # The sub-executor now contains the complete, updated state. The parent must adopt it.
+        self.structured_collected_data = sub_executor.structured_collected_data
+        self.workflow_state = sub_executor.workflow_state
+        self.turn_action_history = sub_executor.turn_action_history
         self.last_tool_output = sub_executor.last_tool_output
+        # --- MODIFICATION END ---
 
         if sub_executor.state == self.AgentState.ERROR:
             app_logger.error(f"Sub-executor for prompt '{prompt_name}' failed.")
-            self.last_tool_output = {"status": "error", "error_message": f"Sub-prompt '{prompt_name}' failed."}
+            # The last_tool_output is now correctly inherited, so this explicit error set is redundant
+            # unless the sub-executor failed in a way that didn't set last_tool_output.
+            # This is a safe fallback.
+            if not self.last_tool_output or self.last_tool_output.get("status") != "error":
+                self.last_tool_output = {"status": "error", "error_message": f"Sub-prompt '{prompt_name}' failed."}
         else:
-            self.last_tool_output = {"status": "success"}
+            # last_tool_output is already inherited. Setting a generic success message
+            # here would overwrite potentially valuable data from the sub-executor's final step.
+            # This is only safe if last_tool_output is None after a successful run.
+            if self.last_tool_output is None:
+                self.last_tool_output = {"status": "success"}
 
     async def _run_delegated_prompt(self):
         """
@@ -619,4 +638,3 @@ class PlanExecutor:
             "tts_payload": tts_payload,
             "source": self.source
         }, "final_answer")
-

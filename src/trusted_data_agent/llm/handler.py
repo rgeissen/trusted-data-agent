@@ -156,10 +156,20 @@ def _condense_and_clean_history(history: list) -> list:
     seen_tool_outputs = set()
     capabilities_pattern = re.compile(r'# Capabilities\n--- Available Tools ---.*', re.DOTALL)
     
+    # --- MODIFICATION START: Add regex to strip system prompt wrapper ---
+    system_prompt_wrapper_pattern = re.compile(r"SYSTEM PROMPT:.*USER PROMPT:\n", re.DOTALL)
+    # --- MODIFICATION END ---
+
     for msg in normalized_history:
         msg_copy = copy.deepcopy(msg)
         content = msg_copy.get('content', '')
 
+        # --- MODIFICATION START: Apply the new regex pattern ---
+        if msg_copy.get('role') == 'user' and system_prompt_wrapper_pattern.match(content):
+            app_logger.debug("History Condensation: Removing system prompt wrapper from user message.")
+            content = system_prompt_wrapper_pattern.sub("", content)
+        # --- MODIFICATION END ---
+        
         if capabilities_pattern.search(content):
             app_logger.debug("History Condensation: Removing obsolete capability definitions.")
             content = capabilities_pattern.sub("# Capabilities\n[... Omitted for Brevity ...]", content)
@@ -542,4 +552,3 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
         }
         for name in model_names
     ]
-

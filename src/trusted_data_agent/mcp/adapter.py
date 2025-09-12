@@ -12,34 +12,35 @@ from trusted_data_agent.agent.response_models import CanonicalResponse, PromptRe
 
 app_logger = logging.getLogger("quart.app")
 
-VIZ_TOOL_DEFINITION = {
-    "name": "TDA_Charting",
-    "description": "Generates a data visualization based on provided data. You must specify the chart type and map the data fields to the appropriate visual roles.",
-    "args": {
-        "chart_type": {
-            "type": "string",
-            "description": "The type of chart to generate (e.g., 'bar', 'pie', 'line', 'scatter'). This MUST be one of the types listed in the 'Charting Guidelines'.",
-            "required": True
-        },
-        "data": {
-            "type": "list[dict]",
-            "description": "The data to be visualized, passed directly from the output of another tool.",
-            "required": True
-        },
-        "title": {
-            "type": "string",
-            "description": "A descriptive title for the chart.",
-            "required": True
-        },
-        "mapping": {
-            "type": "dict",
-            "description": "A dictionary that maps data keys to chart axes or roles (e.g., {'x_axis': 'product_name', 'y_axis': 'sales_total'}). The required keys for this mapping depend on the selected chart_type.",
-            "required": True
-        }
-    }
-}
 
-UTIL_TOOL_DEFINITIONS = [
+# --- MODIFICATION START: Consolidate all client-side tools into a single list ---
+CLIENT_SIDE_TOOLS = [
+    {
+        "name": "TDA_Charting",
+        "description": "Generates a data visualization based on provided data. You must specify the chart type and map the data fields to the appropriate visual roles.",
+        "args": {
+            "chart_type": {
+                "type": "string",
+                "description": "The type of chart to generate (e.g., 'bar', 'pie', 'line', 'scatter'). This MUST be one of the types listed in the 'Charting Guidelines'.",
+                "required": True
+            },
+            "data": {
+                "type": "list[dict]",
+                "description": "The data to be visualized, passed directly from the output of another tool.",
+                "required": True
+            },
+            "title": {
+                "type": "string",
+                "description": "A descriptive title for the chart.",
+                "required": True
+            },
+            "mapping": {
+                "type": "dict",
+                "description": "A dictionary that maps data keys to chart axes or roles (e.g., {'x_axis': 'product_name', 'y_axis': 'sales_total'}). The required keys for this mapping depend on the selected chart_type.",
+                "required": True
+            }
+        }
+    },
     {
         "name": "TDA_CurrentDate",
         "description": "Returns the current system date in YYYY-MM-DD format. Use this as the first step for any user query involving relative dates like 'today', 'yesterday', or 'this week'.",
@@ -60,77 +61,67 @@ UTIL_TOOL_DEFINITIONS = [
                 "required": True
             }
         }
+    },
+    {
+        "name": "TDA_LLMFilter",
+        "description": "A specialized internal tool that filters a list of items based on a natural language goal and extracts a single, clean value. This is used as an intermediate step to pass a specific, machine-readable value from one tool to another.",
+        "args": {
+            "goal": {
+                "type": "string",
+                "description": "A clear, natural language description of the item to find and extract (e.g., 'Find the database related to fitness', 'Extract the name of the sales summary table').",
+                "required": True
+            },
+            "data_to_filter": {
+                "type": "list[dict]",
+                "description": "The list of data objects to be filtered, passed from the result of a previous phase.",
+                "required": True
+            }
+        }
+    },
+    {
+        "name": "TDA_LLMTask",
+        "description": "Performs internal, LLM-driven tasks that are not direct calls to the Teradata database. This tool is used for text synthesis, summarization, and formatting based on a specific 'task_description' provided by the LLM itself.",
+        "args": {
+            "task_description": {
+                "type": "string",
+                "description": "A natural language description of the internal task to be executed (e.g., 'describe the table in a business context', 'format final output'). The LLM infers this from the workflow plan.",
+                "required": True
+            },
+            "source_data": {
+                "type": "list[string]",
+                "description": "A list of keys (e.g., 'result_of_phase_1') identifying which data from the workflow history is relevant for this task. This is critical for providing the correct context.",
+                "required": True
+            },
+            "synthesized_answer": {
+                "type": "string",
+                "description": "The final, synthesized natural language answer, provided directly by the planner when it can confidently answer from history.",
+                "required": False
+            }
+        }
+    },
+    {
+        "name": "TDA_ContextReport",
+        "description": "A special tool for the planner to use when it can answer the user's question directly from the conversation history. This tool bypasses data gathering and provides the answer immediately.",
+        "args": {
+            "answer_from_context": {
+                "type": "string",
+                "description": "The final, synthesized natural language answer, provided directly by the planner when it has confidently answered the user's question from the conversation history.",
+                "required": True
+            }
+        }
+    },
+    {
+        "name": "TDA_FinalReport",
+        "description": "A special internal tool used to format and deliver the final, structured report for a user's ad-hoc query. This tool MUST be called when you have gathered all necessary information to answer the user's request.",
+        "args": {}
+    },
+    {
+        "name": "TDA_ComplexPromptReport",
+        "description": "A special internal tool used to format and deliver the final, structured report for a pre-defined UI prompt. This tool MUST be called when all data gathering phases for the prompt are complete.",
+        "args": {}
     }
 ]
-
-LLM_FILTER_TOOL_DEFINITION = {
-    "name": "TDA_LLMFilter",
-    "description": "A specialized internal tool that filters a list of items based on a natural language goal and extracts a single, clean value. This is used as an intermediate step to pass a specific, machine-readable value from one tool to another.",
-    "args": {
-        "goal": {
-            "type": "string",
-            "description": "A clear, natural language description of the item to find and extract (e.g., 'Find the database related to fitness', 'Extract the name of the sales summary table').",
-            "required": True
-        },
-        "data_to_filter": {
-            "type": "list[dict]",
-            "description": "The list of data objects to be filtered, passed from the result of a previous phase.",
-            "required": True
-        }
-    }
-}
-
-
-CORE_LLM_TASK_DEFINITION = {
-    "name": "TDA_LLMTask",
-    "description": "Performs internal, LLM-driven tasks that are not direct calls to the Teradata database. This tool is used for text synthesis, summarization, and formatting based on a specific 'task_description' provided by the LLM itself.",
-    "args": {
-        "task_description": {
-            "type": "string",
-            "description": "A natural language description of the internal task to be executed (e.g., 'describe the table in a business context', 'format final output'). The LLM infers this from the workflow plan.",
-            "required": True
-        },
-        "source_data": {
-            "type": "list[string]",
-            "description": "A list of keys (e.g., 'result_of_phase_1') identifying which data from the workflow history is relevant for this task. This is critical for providing the correct context.",
-            "required": True
-        },
-        "synthesized_answer": {
-            "type": "string",
-            "description": "The final, synthesized natural language answer, provided directly by the planner when it can confidently answer from history.",
-            "required": False
-        }
-    }
-}
-
-# --- MODIFICATION START: Define the new TDA_ContextReport tool ---
-CONTEXT_REPORT_TOOL_DEFINITION = {
-    "name": "TDA_ContextReport",
-    "description": "A special tool for the planner to use when it can answer the user's question directly from the conversation history. This tool bypasses data gathering and provides the answer immediately.",
-    "args": {
-        "answer_from_context": {
-            "type": "string",
-            "description": "The final, synthesized natural language answer, provided directly by the planner when it has confidently answered the user's question from the conversation history.",
-            "required": True
-        }
-    }
-}
 # --- MODIFICATION END ---
-
-user_query_report_schema = CanonicalResponse.model_json_schema()
-USER_QUERY_REPORT_TOOL_DEFINITION = {
-    "name": "TDA_FinalReport",
-    "description": "A special internal tool used to format and deliver the final, structured report for a user's ad-hoc query. This tool MUST be called when you have gathered all necessary information to answer the user's request.",
-    "args": {}
-}
-
-
-complex_prompt_report_schema = PromptReportResponse.model_json_schema()
-COMPLEX_PROMPT_REPORT_TOOL_DEFINITION = {
-    "name": "TDA_ComplexPromptReport",
-    "description": "A special internal tool used to format and deliver the final, structured report for a pre-defined UI prompt. This tool MUST be called when all data gathering phases for the prompt are complete.",
-    "args": {}
-}
 
 
 def _extract_and_clean_description(description: str | None) -> tuple[str, str]:
@@ -242,17 +233,9 @@ async def load_and_categorize_mcp_resources(STATE: dict):
         except Exception as e:
             app_logger.error(f"CRITICAL ERROR while loading prompts: {e}", exc_info=True)
         
-        viz_tool_obj = SimpleTool(**VIZ_TOOL_DEFINITION)
-        loaded_tools.append(viz_tool_obj)
-        for util_tool_def in UTIL_TOOL_DEFINITIONS:
-            loaded_tools.append(SimpleTool(**util_tool_def))
-        
-        loaded_tools.append(SimpleTool(**LLM_FILTER_TOOL_DEFINITION))
-        loaded_tools.append(SimpleTool(**CORE_LLM_TASK_DEFINITION))
-        loaded_tools.append(SimpleTool(**USER_QUERY_REPORT_TOOL_DEFINITION))
-        loaded_tools.append(SimpleTool(**COMPLEX_PROMPT_REPORT_TOOL_DEFINITION))
-        # --- MODIFICATION START: Add the new tool to the list of loaded tools ---
-        loaded_tools.append(SimpleTool(**CONTEXT_REPORT_TOOL_DEFINITION))
+        # --- MODIFICATION START: Iterate over the consolidated list ---
+        for tool_def in CLIENT_SIDE_TOOLS:
+            loaded_tools.append(SimpleTool(**tool_def))
         # --- MODIFICATION END ---
 
 
@@ -1078,3 +1061,4 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
                 return result, 0, 0
     
     raise RuntimeError(f"Unexpected tool result format for '{tool_name}': {call_tool_result}")
+
