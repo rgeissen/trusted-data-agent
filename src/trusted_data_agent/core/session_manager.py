@@ -35,7 +35,7 @@ def create_session(provider: str, llm_instance: any, charting_intensity: str, sy
         "created_at": datetime.now().isoformat(),
         "input_tokens": 0,
         "output_tokens": 0,
-        "last_turn_data": [],
+        "last_turn_data": {},
         "full_context_sent": False, # Add this new flag to track context state
         # MODIFICATION: Store the user's license info in the session.
         "license_info": APP_STATE.get("license_info")
@@ -67,7 +67,8 @@ def update_token_count(session_id: str, input_tokens: int, output_tokens: int):
         _SESSIONS[session_id]['input_tokens'] += input_tokens
         _SESSIONS[session_id]['output_tokens'] += output_tokens
 
-def update_last_turn_data(session_id: str, turn_data: list):
+def update_last_turn_data(session_id: str, turn_data: dict):
     """Saves the most recent turn's action history to the session."""
     if session_id in _SESSIONS:
         _SESSIONS[session_id]['last_turn_data'] = turn_data
+

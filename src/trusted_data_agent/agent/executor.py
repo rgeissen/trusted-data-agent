@@ -58,7 +58,7 @@ class PlanExecutor:
                     return prompt
         return None
 
-    def __init__(self, session_id: str, original_user_input: str, dependencies: dict, active_prompt_name: str = None, prompt_arguments: dict = None, execution_depth: int = 0, disabled_history: bool = False, previous_turn_data: list = None, force_history_disable: bool = False, source: str = "text", is_delegated_task: bool = False, force_final_summary: bool = False):
+    def __init__(self, session_id: str, original_user_input: str, dependencies: dict, active_prompt_name: str = None, prompt_arguments: dict = None, execution_depth: int = 0, disabled_history: bool = False, previous_turn_data: dict = None, force_history_disable: bool = False, source: str = "text", is_delegated_task: bool = False, force_final_summary: bool = False):
         self.session_id = session_id
         self.original_user_input = original_user_input
         self.dependencies = dependencies
@@ -96,10 +96,8 @@ class PlanExecutor:
         self.MAX_EXECUTION_DEPTH = 5
         
         self.disabled_history = disabled_history or force_history_disable
-        self.previous_turn_data = previous_turn_data or []
-        # --- MODIFICATION START: Add the is_synthesis_from_history flag ---
+        self.previous_turn_data = previous_turn_data or {}
         self.is_synthesis_from_history = False
-        # --- MODIFICATION END ---
         self.is_conversational_plan = False
         self.source = source
         self.is_delegated_task = is_delegated_task
@@ -108,6 +106,7 @@ class PlanExecutor:
         self.is_complex_prompt_workflow = False
         self.final_canonical_response = None
         self.is_single_prompt_plan = False
+        self.final_summary_text = ""
 
 
     @staticmethod
@@ -245,6 +244,8 @@ class PlanExecutor:
     async def run(self):
         """The main, unified execution loop for the agent."""
         final_answer_override = None
+        turn_number = len(self.previous_turn_data.get("workflow_history", [])) + 1
+
         try:
             if self.is_delegated_task:
                 async for event in self._run_delegated_prompt():
@@ -360,7 +361,27 @@ class PlanExecutor:
             yield self._format_sse({"error": "Execution stopped due to an unrecoverable error.", "details": str(root_exception)}, "error")
         finally:
             if not self.disabled_history:
-                session_manager.update_last_turn_data(self.session_id, self.turn_action_history)
+                # --- MODIFICATION START: Build the structured turn summary ---
+                execution_trace = []
+                for entry in self.turn_action_history:
+                    tool_call = entry.get("action", {})
+                    tool_output = entry.get("result", {})
+                    execution_trace.append({
+                        "phase": "N/A", 
+                        "thought": "No goal recorded.",
+                        "tool_call": tool_call,
+                        "tool_output_summary": self._distill_data_for_llm_context(tool_output)
+                    })
+
+                turn_summary = {
+                    "turn": turn_number,
+                    "user_query": self.original_user_input,
+                    "agent_plan": [{"phase": p.get("phase"), "goal": p.get("goal")} for p in self.meta_plan] if self.meta_plan else [],
+                    "execution_trace": execution_trace,
+                    "final_summary": self.final_summary_text
+                }
+                session_manager.update_last_turn_data(self.session_id, turn_summary)
+                # --- MODIFICATION END ---
                 app_logger.debug(f"Saved last turn data to session {self.session_id}")
     
     async def _handle_single_prompt_plan(self, planner: Planner):
@@ -524,14 +545,12 @@ class PlanExecutor:
         """Orchestrates the final summarization and answer formatting."""
         final_content = None
 
-        # --- MODIFICATION START: Add fast path for synthesis from history ---
         if self.is_synthesis_from_history:
             app_logger.info("Bypassing summarization. Using direct synthesized answer from planner.")
             synthesized_answer = "Could not extract synthesized answer."
             if self.last_tool_output and isinstance(self.last_tool_output.get("results"), list) and self.last_tool_output["results"]:
                 synthesized_answer = self.last_tool_output["results"][0].get("response", synthesized_answer)
             final_content = CanonicalResponse(direct_answer=synthesized_answer)
-        # --- MODIFICATION END ---
         elif self.execution_depth > 0 and not self.force_final_summary:
             app_logger.info(f"Sub-planner (depth {self.execution_depth}) completed. Bypassing final summary.")
             self.state = self.AgentState.DONE
@@ -567,7 +586,6 @@ class PlanExecutor:
         Formats a raw summary string OR a CanonicalResponse object and yields
         the final SSE event to the UI.
         """
-        # --- MODIFICATION START: Intelligently pass the correct model to the formatter ---
         formatter_kwargs = {
             "collected_data": self.structured_collected_data,
             "original_user_input": self.original_user_input,
@@ -579,7 +597,6 @@ class PlanExecutor:
             formatter_kwargs["canonical_response"] = final_content
 
         formatter = OutputFormatter(**formatter_kwargs)
-        # --- MODIFICATION END ---
         
         final_html, tts_payload = formatter.render()
         
@@ -590,6 +607,10 @@ class PlanExecutor:
             clean_summary_for_thought = final_content.direct_answer
         elif hasattr(final_content, 'executive_summary'):
             clean_summary_for_thought = final_content.executive_summary
+        
+        # --- MODIFICATION START: Store the final summary text ---
+        self.final_summary_text = clean_summary_for_thought
+        # --- MODIFICATION END ---
 
         yield self._format_sse({"step": "LLM has generated the final answer", "details": clean_summary_for_thought}, "llm_thought")
 
@@ -598,3 +619,4 @@ class PlanExecutor:
             "tts_payload": tts_payload,
             "source": self.source
         }, "final_answer")
+

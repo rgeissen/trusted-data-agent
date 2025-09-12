@@ -55,18 +55,18 @@ class Planner:
     def __init__(self, executor: 'PlanExecutor'):
         self.executor = executor
 
-    def _create_summary_from_history(self, history: list) -> str:
+    def _create_summary_from_history(self, history: dict) -> str:
         """
-        Creates a token-efficient, high-signal summary of a history list for the planner.
-        This now uses the data distillation method to keep the context lean.
+        Creates a token-efficient, high-signal summary of a history dictionary
+        by formatting it into a canonical JSON structure for the planner.
         """
-        history_copy = copy.deepcopy(history)
-        
-        for entry in history_copy:
-            if 'result' in entry:
-                entry['result'] = self.executor._distill_data_for_llm_context(entry['result'])
-                
-        return json.dumps(history_copy, indent=2)
+        if not history or not isinstance(history, dict):
+            return json.dumps({"workflow_history": []}, indent=2)
+            
+        history_list = [history]
+
+        history_object = {"workflow_history": history_list}
+        return json.dumps(history_object, indent=2)
 
     def _hydrate_plan_from_previous_turn(self):
         """
@@ -96,14 +96,20 @@ class Planner:
 
         if source_phase_num >= looping_phase_num:
             data_to_inject = None
-            for entry in reversed(self.executor.previous_turn_data):
-                result = entry.get("result", {})
-                if (isinstance(result, dict) and
-                    result.get("status") == "success" and
-                    isinstance(result.get("results"), list) and
-                    result.get("results")):
+            execution_trace = self.executor.previous_turn_data.get("execution_trace", [])
+            for entry in reversed(execution_trace):
+                result_summary = entry.get("tool_output_summary", {})
+                if (isinstance(result_summary, dict) and
+                    result_summary.get("status") == "success"):
                     
-                    data_to_inject = result
+                    data_to_inject = {
+                        "status": "success",
+                        "metadata": result_summary.get("metadata", {}),
+                        "comment": "Data injected from previous turn's summary."
+                    }
+                    if "results" in result_summary:
+                        data_to_inject["results"] = result_summary["results"]
+                    
                     break
             
             if data_to_inject:
@@ -498,10 +504,8 @@ class Planner:
         if self.executor.active_prompt_name:
             active_prompt_context_section = f"\n- Active Prompt: You are currently executing the '{self.executor.active_prompt_name}' prompt. Do not call it again."
 
-        # --- MODIFICATION START: Create a unified, hierarchical decision-making process ---
         decision_making_process_str = ""
         if APP_CONFIG.ALLOW_SYNTHESIS_FROM_HISTORY:
-            # The numbering (e.g., "2.", "3.") is intentionally part of the string to match the structure in the master prompt.
             decision_making_process_str = (
                 "2.  **Check History First**: If the `Workflow History` contains enough information to fully answer the user's `GOAL`, your response **MUST be a single JSON object** for a one-phase plan. This plan **MUST** call the `TDA_LLMTask` tool. You **MUST** write the complete, final answer text inside the `synthesized_answer` argument within that tool call. **You are acting as a planner; DO NOT use the `FINAL_ANSWER:` format.**\n\n"
                 "3.  **Default to Data Gathering**: If the history is insufficient, you **MUST** create a new plan to gather the necessary data using the available tools. Your primary objective is to answer the user's `GOAL` using data from these tools."
@@ -510,7 +514,6 @@ class Planner:
             decision_making_process_str = (
                 "2.  **Data Gathering**: Your primary objective is to answer the user's `GOAL` by creating a plan to gather the necessary data using the available tools."
             )
-        # --- MODIFICATION END ---
         
         constraints_section = self.executor.dependencies['STATE'].get("constraints_context", "")
 
@@ -532,15 +535,11 @@ class Planner:
                 "Avoid creating multiple `base_...List` steps if a single query would be more efficient."
             )
 
-        # --- MODIFICATION START: Dynamically inject the correct reporting tool name ---
         reporting_tool_name_injection = ""
-        # UI Prompt Execution Mode (Mode 3)
         if self.executor.source == 'prompt_library':
             reporting_tool_name_injection = "TDA_ComplexPromptReport"
-        # User Query Modes (Modes 1 & 2)
         else:
             reporting_tool_name_injection = "TDA_FinalReport"
-        # --- MODIFICATION END ---
         
         planning_prompt = WORKFLOW_META_PLANNING_PROMPT.format(
             workflow_goal=self.executor.workflow_goal_prompt,
@@ -631,3 +630,4 @@ class Planner:
             if len(self.executor.meta_plan) > 1 or any(phase.get("type") == "loop" for phase in self.executor.meta_plan):
                 self.executor.is_complex_prompt_workflow = True
                 app_logger.info(f"'{self.executor.active_prompt_name}' has been qualified as a complex prompt workflow based on the generated plan.")
+

@@ -127,17 +127,13 @@ def _condense_and_clean_history(history: list) -> list:
         normalized = []
         for msg in provider_history:
             role, content = "", ""
-            # --- MODIFICATION START: Use hasattr for robust, type-agnostic checking ---
             if hasattr(msg, 'parts') and hasattr(msg, 'role'):
-                # Handles Google's proto.Message objects
                 role = msg.role
                 if msg.parts and hasattr(msg.parts[0], 'text'):
                     content = msg.parts[0].text
             elif isinstance(msg, dict):
-                # Handles dictionary-based history (Anthropic, OpenAI, etc.)
                 role = msg.get('role', '')
                 content = msg.get('content', '')
-            # --- MODIFICATION END ---
             normalized.append({'role': role, 'content': content})
         return normalized
 
@@ -146,17 +142,14 @@ def _condense_and_clean_history(history: list) -> list:
         if provider == "Google":
             denormalized = []
             for msg in generic_history:
-                # For Google, the role 'model' is used for the assistant
                 role = 'model' if msg['role'] == 'assistant' else msg['role']
                 denormalized.append({
                     'role': role,
                     'parts': [{'text': msg['content']}]
                 })
             return denormalized
-        # Other providers use the generic format already
         return generic_history
 
-    # --- Main Sanitization Pipeline ---
     normalized_history = _normalize_history(history)
     
     cleaned_history = []
@@ -167,12 +160,10 @@ def _condense_and_clean_history(history: list) -> list:
         msg_copy = copy.deepcopy(msg)
         content = msg_copy.get('content', '')
 
-        # 1. Aggressively cleanse ALL obsolete capability definitions.
         if capabilities_pattern.search(content):
             app_logger.debug("History Condensation: Removing obsolete capability definitions.")
             content = capabilities_pattern.sub("# Capabilities\n[... Omitted for Brevity ...]", content)
 
-        # 2. Deduplicate tool outputs.
         if msg_copy.get('role') in ['assistant', 'model']:
             try:
                 json_content = json.loads(content)
@@ -184,7 +175,7 @@ def _condense_and_clean_history(history: list) -> list:
                 else:
                     seen_tool_outputs.add(normalized_content)
             except (json.JSONDecodeError, TypeError):
-                pass  # Not a JSON tool output
+                pass
         
         msg_copy['content'] = content
         cleaned_history.append(msg_copy)
@@ -313,17 +304,23 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
     session_data = get_session(session_id) if session_id else None
     system_prompt = _get_full_system_prompt(session_data, dependencies, system_prompt_override, active_prompt_name_for_filter, source)
 
+    # --- MODIFICATION START: Convert linear history to a structured JSON object for logging ---
     history_for_log_str = "No history available."
     if session_data: 
-        current_history_list = []
-        if APP_CONFIG.CURRENT_PROVIDER == "Google" and hasattr(session_data.get('chat_object'), 'history'):
-             current_history_list = [f"[{msg.role}]: {msg.parts[0].text}" for msg in session_data['chat_object'].history]
-        elif 'chat_object' in session_data:
+        history_source = []
+        if not disabled_history:
              history_source = chat_history if chat_history is not None else session_data.get('chat_object', [])
-             current_history_list = [f"[{msg.get('role')}]: {msg.get('content')}" for msg in history_source]
+
+        if APP_CONFIG.CURRENT_PROVIDER == "Google" and hasattr(session_data.get('chat_object'), 'history'):
+             # Normalize Google's specific history object first
+             normalized_history = [
+                 {'role': msg.role, 'content': msg.parts[0].text} for msg in session_data['chat_object'].history
+             ]
+             history_json_obj = {"chat_history": normalized_history}
+        else:
+             history_json_obj = {"chat_history": history_source}
         
-        if current_history_list:
-            history_for_log_str = '\n'.join(current_history_list)
+        history_for_log_str = json.dumps(history_json_obj, indent=2)
 
     full_log_message = (
         f"--- FULL CONTEXT (Session: {session_id or 'one-off'}) ---\n"
@@ -333,6 +330,7 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
         f"SYSTEM PROMPT:\n{system_prompt}\n\n"
         f"USER PROMPT:\n{prompt}\n"
     )
+    # --- MODIFICATION END ---
     llm_history_logger.info(full_log_message)
 
 
