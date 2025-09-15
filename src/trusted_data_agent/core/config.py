@@ -36,7 +36,7 @@ class AppConfig:
     CONTEXT_DISTILLATION_MAX_ROWS = 500 # The maximum number of rows from a tool's result to include in the LLM context.
     CONTEXT_DISTILLATION_MAX_CHARS = 10000 # The maximum number of characters from a tool's result to include in the LLM context.
     DETAILED_DESCRIPTION_THRESHOLD = 200 # A heuristic character count for the PlanExecutor to distinguish between a generic vs. a detailed task description from the planner.
-    SQL_OPTIMIZATION_PROMPTS = ["base_teradata_query"] # A list of prompts that should be favored for SQL consolidation, if the rule is active.
+    SQL_OPTIMIZATION_PROMPTS = ["base_teradataQuery"] # A list of prompts that should be favored for SQL consolidation, if the rule is active.
     SQL_OPTIMIZATION_TOOLS = ["base_readQuery"] # A list of tools that should be favored for SQL consolidation, if the rule is active.
 
     # --- Initial State Configuration ---
