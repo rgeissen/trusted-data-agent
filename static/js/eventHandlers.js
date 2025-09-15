@@ -259,6 +259,7 @@ export async function handleChatSubmit(e, source = 'text') {
     });
 }
 
+// --- MODIFICATION START: Correctly handle empty resource categories ---
 async function handleLoadResources(type) {
     const tabButton = document.querySelector(`.resource-tab[data-type="${type}"]`);
     const categoriesContainer = document.getElementById(`${type}-categories`);
@@ -267,9 +268,13 @@ async function handleLoadResources(type) {
 
     try {
         const data = await API.loadResources(type);
-
-        if (Object.keys(data).length === 0) {
-            if(tabButton) tabButton.style.display = 'none';
+        
+        // This check is now correctly scoped to the specific type being loaded.
+        if (!data || Object.keys(data).length === 0) {
+            if(tabButton) {
+                // Hide the tab completely if no resources of this type are found.
+                tabButton.style.display = 'none';
+            }
             return;
         }
 
@@ -333,6 +338,8 @@ async function handleLoadResources(type) {
         panelsContainer.innerHTML = `<div class="p-4 text-center text-red-400">Failed to load ${type}.</div>`;
     }
 }
+// --- MODIFICATION END ---
+
 
 async function handleStartNewSession() {
     DOM.chatLog.innerHTML = '';
@@ -1351,3 +1358,4 @@ export function initializeEventListeners() {
         }
     });
 }
+

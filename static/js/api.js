@@ -125,6 +125,16 @@ export async function toggleToolApi(toolName, isDisabled) {
 
 export async function loadResources(type) {
     const res = await fetch(`/${type}`);
+    
+    // --- MODIFICATION START: Handle empty resource categories gracefully ---
+    // If the server responds with a 404, it means the resource category
+    // might be empty or not exist. We treat this as a valid, empty state
+    // instead of throwing an error.
+    if (res.status === 404) {
+        return {};
+    }
+    // --- MODIFICATION END ---
+
     const data = await res.json();
     if (!res.ok) {
         throw new Error(data.error || `Failed to load ${type}`);

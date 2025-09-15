@@ -258,6 +258,22 @@ async def load_and_categorize_mcp_resources(STATE: dict):
         except Exception as e:
             app_logger.error(f"CRITICAL ERROR while loading prompts: {e}", exc_info=True)
         
+        # --- MODIFICATION START: Gracefully handle resource loading ---
+        loaded_resources = []
+        try:
+            # Attempt to list resources, which might not be supported by all MCP servers.
+            list_resources_result = await temp_session.list_resources()
+            if hasattr(list_resources_result, 'resources'):
+                loaded_resources = list_resources_result.resources
+                app_logger.info(f"Successfully loaded {len(loaded_resources)} resources from MCP server.")
+        except Exception as e:
+            # If the call fails (e.g., method not found), log a warning and continue.
+            app_logger.warning(f"Could not load resources from MCP server (this may be expected for older servers): {e}")
+            # Ensure loaded_resources remains an empty list.
+            loaded_resources = []
+        # --- MODIFICATION END ---
+
+
         # --- MODIFICATION START: Iterate over the consolidated list ---
         for tool_def in CLIENT_SIDE_TOOLS:
             loaded_tools.append(SimpleTool(**tool_def))
@@ -280,6 +296,12 @@ async def load_and_categorize_mcp_resources(STATE: dict):
                     arg_name = arg_dict.get('name', 'unknown_arg')
                     prompt_str += f"\n    - `{arg_name}`"
             all_capabilities.append(prompt_str)
+        
+        # --- MODIFICATION START: Include loaded resources in the capabilities list for classification ---
+        if loaded_resources:
+             all_capabilities.extend([f"- {res.name} (resource): {res.description or 'No description.'}" for res in loaded_resources])
+        # --- MODIFICATION END ---
+
 
         capabilities_list_str = "\n".join(all_capabilities)
 
@@ -394,6 +416,22 @@ async def load_and_categorize_mcp_resources(STATE: dict):
                     "disabled": is_disabled,
                     "prompt_type": prompt_type
                 })
+
+        # --- MODIFICATION START: Process and categorize loaded resources ---
+        if loaded_resources:
+            for resource_obj in loaded_resources:
+                classification = classified_data.get(resource_obj.name, {})
+                category = classification.get("category", "Uncategorized")
+
+                if category not in STATE['structured_resources']:
+                    STATE['structured_resources'][category] = []
+                
+                STATE['structured_resources'][category].append({
+                    "name": resource_obj.name,
+                    "description": resource_obj.description or "No description."
+                })
+        # --- MODIFICATION END ---
+
 
         prompt_context_parts = ["--- Available Prompts ---"]
         for category, prompts in sorted(STATE['structured_prompts'].items()):
