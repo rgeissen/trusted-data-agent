@@ -462,15 +462,21 @@ class PlanExecutor:
         
         phase_executor = PhaseExecutor(self)
 
+        # --- MODIFICATION START: Update sub-prompt summary skipping logic ---
         if not APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY and self.execution_depth > 0 and len(self.meta_plan) > 1:
             last_phase = self.meta_plan[-1]
-            if last_phase.get('relevant_tools') == ['TDA_LLMTask']:
+            last_phase_tools = last_phase.get('relevant_tools', [])
+            is_final_report_phase = any(tool in ["TDA_FinalReport", "TDA_ComplexPromptReport"] for tool in last_phase_tools)
+            
+            if is_final_report_phase:
                 app_logger.info(f"Sub-process (depth {self.execution_depth}) is skipping its final summary phase.")
                 yield self._format_sse({
                     "step": "Plan Optimization", "type": "plan_optimization",
                     "details": "Sub-process is skipping its final summary task to prevent redundant work. The main process will generate the final report."
                 })
                 self.meta_plan = self.meta_plan[:-1]
+        # --- MODIFICATION END ---
+
 
         while self.current_phase_index < len(self.meta_plan):
             current_phase = self.meta_plan[self.current_phase_index]
@@ -492,15 +498,18 @@ class PlanExecutor:
         app_logger.info("Meta-plan has been fully executed. Transitioning to summarization.")
         self.state = self.AgentState.SUMMARIZING
 
+    # --- MODIFICATION START: Implement full state adoption from sub-executor ---
     async def _run_sub_prompt(self, prompt_name: str, prompt_args: dict, is_delegated_task: bool = False):
-        """Creates and runs a sub-executor for a delegated prompt."""
+        """
+        Creates and runs a sub-executor for a delegated prompt, adopting its
+        final state upon completion to ensure a continuous and complete workflow.
+        """
         yield self._format_sse({
             "step": "Prompt Execution Granted",
             "details": f"Executing prompt '{prompt_name}' as part of the plan.",
             "type": "workaround"
         })
         
-        # --- MODIFICATION START: Correctly pass history and inherit current turn's state ---
         sub_executor = PlanExecutor(
             session_id=self.session_id,
             original_user_input=f"Executing prompt: {prompt_name}",
@@ -509,41 +518,34 @@ class PlanExecutor:
             prompt_arguments=prompt_args,
             execution_depth=self.execution_depth + 1,
             disabled_history=self.disabled_history,
-            previous_turn_data=self.previous_turn_data, # Pass parent's history, not current turn's actions.
+            previous_turn_data=self.previous_turn_data,
             source="prompt_library",
             is_delegated_task=is_delegated_task,
             force_final_summary=APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY
         )
         
-        # Inherit the parent's current state so the sub-planner has the correct context from previous phases.
+        # State Inheritance: The sub-process inherits the parent's current state.
         sub_executor.workflow_state = self.workflow_state
         sub_executor.turn_action_history = self.turn_action_history
-        # --- MODIFICATION END ---
+        sub_executor.structured_collected_data = self.structured_collected_data
 
         async for event in sub_executor.run():
             yield event
         
-        # --- MODIFICATION START: Adopt the final state from the sub-executor ---
-        # The sub-executor now contains the complete, updated state. The parent must adopt it.
+        # State Adoption: The parent adopts the complete, final state from the sub-process.
         self.structured_collected_data = sub_executor.structured_collected_data
         self.workflow_state = sub_executor.workflow_state
         self.turn_action_history = sub_executor.turn_action_history
         self.last_tool_output = sub_executor.last_tool_output
-        # --- MODIFICATION END ---
 
         if sub_executor.state == self.AgentState.ERROR:
             app_logger.error(f"Sub-executor for prompt '{prompt_name}' failed.")
-            # The last_tool_output is now correctly inherited, so this explicit error set is redundant
-            # unless the sub-executor failed in a way that didn't set last_tool_output.
-            # This is a safe fallback.
             if not self.last_tool_output or self.last_tool_output.get("status") != "error":
                 self.last_tool_output = {"status": "error", "error_message": f"Sub-prompt '{prompt_name}' failed."}
         else:
-            # last_tool_output is already inherited. Setting a generic success message
-            # here would overwrite potentially valuable data from the sub-executor's final step.
-            # This is only safe if last_tool_output is None after a successful run.
-            if self.last_tool_output is None:
+             if self.last_tool_output is None:
                 self.last_tool_output = {"status": "success"}
+    # --- MODIFICATION END ---
 
     async def _run_delegated_prompt(self):
         """

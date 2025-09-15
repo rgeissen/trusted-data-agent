@@ -177,6 +177,56 @@ class Planner:
                         }
                     }
                 })
+    # --- MODIFICATION START: Add context-aware final report check ---
+    def _ensure_final_report_phase(self):
+        """
+        Deterministically checks and adds a final reporting phase. It is context-aware
+        and will not add a report phase to sub-processes where it is not required,
+        preventing redundant plan modifications.
+        """
+        if not self.executor.meta_plan or self.executor.is_conversational_plan:
+            return
+            
+        is_sub_process_without_summary = (
+            self.executor.execution_depth > 0 and 
+            not self.executor.force_final_summary and
+            not APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY
+        )
+        if is_sub_process_without_summary:
+            app_logger.info("Skipping final report check for non-summarizing sub-process.")
+            return
+
+        last_phase = self.executor.meta_plan[-1]
+        last_phase_tools = last_phase.get("relevant_tools", [])
+        is_already_finalized = any(tool in ["TDA_FinalReport", "TDA_ComplexPromptReport"] for tool in last_phase_tools)
+        is_synthesis_plan = any("TDA_ContextReport" in p.get("relevant_tools", []) for p in self.executor.meta_plan)
+
+        if is_already_finalized or is_synthesis_plan:
+            return
+
+        app_logger.warning("PLAN CORRECTION: The generated plan is missing a final reporting step. System is adding it now.")
+        
+        reporting_tool_name = "TDA_ComplexPromptReport" if self.executor.source == 'prompt_library' else "TDA_FinalReport"
+        
+        new_phase_number = len(self.executor.meta_plan) + 1
+        final_phase = {
+            "phase": new_phase_number,
+            "goal": "Generate the final report based on the data gathered.",
+            "relevant_tools": [reporting_tool_name],
+            "arguments": {}
+        }
+        self.executor.meta_plan.append(final_phase)
+        
+        yield self.executor._format_sse({
+            "step": "System Correction",
+            "type": "workaround",
+            "details": {
+                "summary": "The agent's plan was missing a final reporting step. The system has automatically added it to ensure a complete response.",
+                "correction": { "added_phase": final_phase }
+            }
+        })
+    # --- MODIFICATION END ---
+
 
     async def _rewrite_plan_for_multi_loop_synthesis(self):
         """
@@ -434,6 +484,11 @@ class Planner:
             yield event
         for event in self._hydrate_plan_from_previous_turn():
             yield event
+        # --- MODIFICATION START: Call the new final report check ---
+        for event in self._ensure_final_report_phase():
+            yield event
+        # --- MODIFICATION END ---
+
 
         yield self.executor._format_sse({
             "step": "Strategic Meta-Plan Generated",
@@ -637,3 +692,4 @@ class Planner:
             if len(self.executor.meta_plan) > 1 or any(phase.get("type") == "loop" for phase in self.executor.meta_plan):
                 self.executor.is_complex_prompt_workflow = True
                 app_logger.info(f"'{self.executor.active_prompt_name}' has been qualified as a complex prompt workflow based on the generated plan.")
+
