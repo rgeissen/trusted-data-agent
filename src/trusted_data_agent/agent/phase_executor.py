@@ -434,6 +434,9 @@ class PhaseExecutor:
 
         phase_attempts = 0
         max_phase_attempts = 5
+        # --- MODIFICATION START ---
+        tactical_call_id = None
+        # --- MODIFICATION END ---
         while True:
             phase_attempts += 1
             if phase_attempts > max_phase_attempts:
@@ -447,8 +450,10 @@ class PhaseExecutor:
             for event in enrich_events:
                 self.executor.events_to_yield.append(event)
             
-            call_id = str(uuid.uuid4())
-            yield self.executor._format_sse({"step": "Calling LLM for Tactical Action", "type": "system_message", "details": {"summary": f"Deciding next action for phase goal: '{phase_goal}'", "call_id": call_id}})
+            # --- MODIFICATION START ---
+            tactical_call_id = str(uuid.uuid4())
+            # --- MODIFICATION END ---
+            yield self.executor._format_sse({"step": "Calling LLM for Tactical Action", "type": "system_message", "details": {"summary": f"Deciding next action for phase goal: '{phase_goal}'", "call_id": tactical_call_id}})
             yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
             
             next_action, input_tokens, output_tokens = await self._get_next_tactical_action(
@@ -472,7 +477,7 @@ class PhaseExecutor:
 
             updated_session = session_manager.get_session(self.executor.session_id)
             if updated_session:
-                yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
+                yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": tactical_call_id }, "token_update")
 
             if isinstance(next_action, str) and next_action == "SYSTEM_ACTION_COMPLETE":
                 self.executor.state = self.executor.AgentState.SUMMARIZING
@@ -519,6 +524,12 @@ class PhaseExecutor:
             else:
                 app_logger.warning(f"Action failed. Attempt {phase_attempts}/{max_phase_attempts} for phase.")
         
+        # --- MODIFICATION START ---
+        yield self.executor._format_sse(
+            {"target": "context", "state": "processing_complete", "call_id": tactical_call_id}, 
+            "context_state_update"
+        )
+        # --- MODIFICATION END ---
         if not is_loop_iteration:
             yield self.executor._format_sse({
                 "step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}",

@@ -620,7 +620,9 @@ async def _invoke_llm_filter_task(STATE: dict, command: dict, session_id: str = 
 
     result = {
         "status": "success",
-        "metadata": {"call_id": final_call_id},
+        # --- MODIFICATION START ---
+        "metadata": {"call_id": final_call_id, "tool_name": "TDA_LLMFilter"},
+        # --- MODIFICATION END ---
         "results": [{"response": cleaned_response_text}]
     }
     
@@ -757,7 +759,9 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: lis
     else:
         result = {
             "status": "success", 
-            "metadata": {"call_id": final_call_id},
+            # --- MODIFICATION START ---
+            "metadata": {"call_id": final_call_id, "tool_name": "TDA_LLMTask"},
+            # --- MODIFICATION END ---
             "results": [{"response": response_text}]
         }
 

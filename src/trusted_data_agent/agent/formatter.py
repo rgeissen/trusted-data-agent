@@ -317,58 +317,63 @@ class OutputFormatter:
         if not data_to_process:
             return html, tts_payload
         
-        all_data_items = []
-        for item_list in data_to_process.values():
-            all_data_items.extend(item_list)
-        
-        is_simple_report = False
-        successful_results = [item for item in all_data_items if isinstance(item, dict) and item.get("status") == "success"]
-        if len(successful_results) == 1 and successful_results[0].get("metadata", {}).get("tool_name") == "CoreLLMTask":
-             is_simple_report = True
-             if self.canonical_report and not self.canonical_report.direct_answer.strip() and not self.canonical_report.key_observations:
-                 core_llm_response_text = successful_results[0].get("results", [{}])[0].get("response", "")
-                 html = f"<div class='response-card summary-card'>{self._render_standard_markdown(core_llm_response_text)}</div>"
+        for context_key, all_items_for_context in data_to_process.items():
+            synthesis_items = []
+            collateral_items = []
 
-
-        for context_key, data_items in data_to_process.items():
-            if is_simple_report:
-                 continue
+            for item in all_items_for_context:
+                tool_name = item.get("metadata", {}).get("tool_name") if isinstance(item, dict) else None
+                if tool_name == 'TDA_LLMTask':
+                    synthesis_items.append(item)
+                else:
+                    collateral_items.append(item)
 
             display_key = context_key.replace("Workflow: ", "").replace(">", "&gt;").replace("Plan Results: ", "")
-            html += f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Report for: <code>{display_key}</code></summary><div class='px-4'>"
-            
-            for i, item in enumerate(data_items):
-                tool_name = item.get("metadata", {}).get("tool_name") if isinstance(item, dict) else None
-                if tool_name == 'CoreLLMTask':
-                    continue
-                
-                if isinstance(item, list) and item and isinstance(item[0], dict):
-                    combined_results = []
-                    metadata = {}
-                    for sub_item in item:
-                        if isinstance(sub_item, dict) and sub_item.get('status') == 'success':
-                            if not metadata: metadata = sub_item.get("metadata", {})
-                            combined_results.extend(sub_item.get("results", []))
-                    
-                    if combined_results:
-                        table_to_render = {"results": combined_results, "metadata": metadata}
-                        html += self._render_table(table_to_render, i, "Column Iteration Result")
-                    elif any(isinstance(sub_item, dict) and (sub_item.get('status') == 'skipped' or sub_item.get('status') == 'error') for sub_item in item):
-                        html += f"<div class='response-card'><p class='text-sm text-gray-400 italic'>No data results for '{display_key}' due to skipped or errored sub-steps.</p></div>"
-                    continue
-                elif isinstance(item, dict):
-                    if item.get("type") == "business_description":
-                        html += f"<div class='response-card'><h4 class='text-lg font-semibold text-white mb-2'>Business Description</h4><p class='text-gray-300'>{item.get('description')}</p></div>"
-                    elif tool_name == 'base_tableDDL':
-                        html += self._render_ddl(item, i)
-                    elif "results" in item:
-                        html += self._render_table(item, i, f"Result for {tool_name}")
-                    elif item.get("status") == "skipped":
-                        html += f"<div class='response-card'><p class='text-sm text-gray-400 italic'>Skipped Step: <strong>{tool_name or 'N/A'}</strong>. Reason: {item.get('reason')}</p></div>"
-                    elif item.get("status") == "error":
-                        html += f"<div class='response-card'><p class='text-sm text-red-400 italic'>Error in Step: <strong>{tool_name or 'N/A'}</strong>. Details: {item.get('error_message', item.get('data', ''))}</p></div>"
-            html += "</div></details>"
 
+            if synthesis_items:
+                synthesis_html = ""
+                for item in synthesis_items:
+                    if isinstance(item, dict) and "results" in item and isinstance(item["results"], list) and item["results"]:
+                        response_text = item["results"][0].get("response", "")
+                        if response_text:
+                            synthesis_html += f"<div class='response-card'>{self._render_standard_markdown(response_text)}</div>"
+                
+                if synthesis_html:
+                    html += f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Synthesis Report for: <code>{display_key}</code></summary><div class='px-4'>{synthesis_html}</div></details>"
+
+            if collateral_items:
+                collateral_html = ""
+                for i, item in enumerate(collateral_items):
+                    tool_name = item.get("metadata", {}).get("tool_name") if isinstance(item, dict) else None
+                    
+                    if isinstance(item, list) and item and isinstance(item[0], dict):
+                        combined_results = []
+                        metadata = {}
+                        for sub_item in item:
+                            if isinstance(sub_item, dict) and sub_item.get('status') == 'success':
+                                if not metadata: metadata = sub_item.get("metadata", {})
+                                combined_results.extend(sub_item.get("results", []))
+                        
+                        if combined_results:
+                            table_to_render = {"results": combined_results, "metadata": metadata}
+                            collateral_html += self._render_table(table_to_render, i, "Column Iteration Result")
+                        elif any(isinstance(sub_item, dict) and (sub_item.get('status') == 'skipped' or sub_item.get('status') == 'error') for sub_item in item):
+                            collateral_html += f"<div class='response-card'><p class='text-sm text-gray-400 italic'>No data results for '{display_key}' due to skipped or errored sub-steps.</p></div>"
+                        continue
+                    elif isinstance(item, dict):
+                        if item.get("type") == "business_description":
+                            collateral_html += f"<div class='response-card'><h4 class='text-lg font-semibold text-white mb-2'>Business Description</h4><p class='text-gray-300'>{item.get('description')}</p></div>"
+                        elif tool_name == 'base_tableDDL':
+                            collateral_html += self._render_ddl(item, i)
+                        elif "results" in item:
+                            collateral_html += self._render_table(item, i, f"Result for {tool_name}")
+                        elif item.get("status") == "skipped":
+                            collateral_html += f"<div class='response-card'><p class='text-sm text-gray-400 italic'>Skipped Step: <strong>{tool_name or 'N/A'}</strong>. Reason: {item.get('reason')}</p></div>"
+                        elif item.get("status") == "error":
+                            collateral_html += f"<div class='response-card'><p class='text-sm text-red-400 italic'>Error in Step: <strong>{tool_name or 'N/A'}</strong>. Details: {item.get('error_message', item.get('data', ''))}</p></div>"
+                
+                if collateral_html:
+                    html += f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>{display_key}</code></summary><div class='px-4'>{collateral_html}</div></details>"
         return html, tts_payload
 
     def _format_standard_query_report(self) -> tuple[str, dict]:
@@ -414,45 +419,77 @@ class OutputFormatter:
         if not data_source:
             return final_html, tts_payload
 
-        charts = []
-        for i, tool_result in enumerate(data_source):
-            if isinstance(tool_result, dict) and tool_result.get("type") == "chart":
-                charts.append((i, tool_result))
-        
-        for i, chart_result in charts:
-            table_data_result = data_source[i-1] if i > 0 else None
-            if table_data_result and isinstance(table_data_result, dict) and "results" in table_data_result:
-                final_html += self._render_chart_with_details(chart_result, table_data_result, i, i-1)
+        # --- MODIFICATION START ---
+        synthesis_items = []
+        collateral_items = []
+        for item in data_source:
+            tool_name = item.get("metadata", {}).get("tool_name") if isinstance(item, dict) else None
+            if tool_name == 'TDA_LLMTask':
+                synthesis_items.append(item)
             else:
-                chart_id = f"chart-render-target-{uuid.uuid4()}"
-                chart_spec_json = json.dumps(chart_result.get("spec", {}))
-                final_html += f"""
-                <div class="response-card">
-                    <div id="{chart_id}" class="chart-render-target" data-spec='{chart_spec_json}'></div>
-                </div>
-                """
-                self.processed_data_indices.add(i)
+                collateral_items.append(item)
 
-        details_html = ""
-        for i, tool_result in enumerate(data_source):
-            if i in self.processed_data_indices or not isinstance(tool_result, dict):
-                continue
+        display_key = self.active_prompt_name or "Ad-hoc Query"
+
+        if synthesis_items:
+            synthesis_html_content = ""
+            for item in synthesis_items:
+                if isinstance(item, dict) and "results" in item and isinstance(item["results"], list) and item["results"]:
+                    response_text = item["results"][0].get("response", "")
+                    if response_text:
+                        synthesis_html_content += f"<div class='response-card'>{self._render_standard_markdown(response_text)}</div>"
             
-            metadata = tool_result.get("metadata", {})
-            tool_name = metadata.get("tool_name")
+            if synthesis_html_content:
+                final_html += f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Synthesis Report for: <code>{display_key}</code></summary><div class='px-4'>{synthesis_html_content}</div></details>"
 
-            if tool_name == 'base_tableDDL':
-                details_html += self._render_ddl(tool_result, i)
-            elif "results" in tool_result:
-                 details_html += self._render_table(tool_result, i, tool_name or "Result")
+        if collateral_items:
+            collateral_html_content = ""
+            
+            charts = []
+            for i, tool_result in enumerate(collateral_items):
+                if isinstance(tool_result, dict) and tool_result.get("type") == "chart":
+                    charts.append((i, tool_result))
+            
+            chart_indices_to_skip = set()
+            for i, chart_result in charts:
+                table_data_result = collateral_items[i-1] if i > 0 else None
+                if table_data_result and isinstance(table_data_result, dict) and "results" in table_data_result:
+                    collateral_html_content += self._render_chart_with_details(chart_result, table_data_result, i, i-1)
+                    chart_indices_to_skip.add(i)
+                    chart_indices_to_skip.add(i-1)
+                else:
+                    chart_id = f"chart-render-target-{uuid.uuid4()}"
+                    chart_spec_json = json.dumps(chart_result.get("spec", {}))
+                    collateral_html_content += f"""
+                    <div class="response-card">
+                        <div id="{chart_id}" class="chart-render-target" data-spec='{chart_spec_json}'></div>
+                    </div>
+                    """
+                    chart_indices_to_skip.add(i)
 
-        if details_html:
-            final_html += (
-                f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'>"
-                f"<summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Execution Report</summary>"
-                f"<div class='px-4'>{details_html}</div>"
-                f"</details>"
-            )
+            details_html = ""
+            for i, tool_result in enumerate(collateral_items):
+                if i in chart_indices_to_skip or not isinstance(tool_result, dict):
+                    continue
+                
+                metadata = tool_result.get("metadata", {})
+                tool_name = metadata.get("tool_name")
+
+                if tool_name == 'base_tableDDL':
+                    details_html += self._render_ddl(tool_result, i)
+                elif "results" in tool_result:
+                    details_html += self._render_table(tool_result, i, tool_name or "Result")
+
+            collateral_html_content += details_html
+
+            if collateral_html_content:
+                final_html += (
+                    f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'>"
+                    f"<summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>{display_key}</code></summary>"
+                    f"<div class='px-4'>{collateral_html_content}</div>"
+                    f"</details>"
+                )
+        # --- MODIFICATION END ---
             
         return final_html, tts_payload
 
@@ -469,6 +506,7 @@ class OutputFormatter:
             "key_observations": "" 
         }
 
+        # --- MODIFICATION START ---
         html_parts = [f"<div class='response-card summary-card'>"]
         html_parts.append(f'<h2 class="text-xl font-bold text-white mb-3 border-b border-gray-700 pb-2">{self._process_inline_markdown(report.title)}</h2>')
         html_parts.append('<h3 class="text-lg font-semibold text-white mb-2">Executive Summary</h3>')
@@ -481,37 +519,54 @@ class OutputFormatter:
         
         html_parts.append("</div>")
 
-        details_html = ""
         data_source = []
         if isinstance(self.collected_data, dict):
             for item_list in self.collected_data.values():
                 data_source.extend(item_list)
         elif isinstance(self.collected_data, list):
             data_source = self.collected_data
+        
+        synthesis_items = []
+        collateral_items = []
+        for item in data_source:
+            tool_name = item.get("metadata", {}).get("tool_name") if isinstance(item, dict) else None
+            if tool_name == 'TDA_LLMTask':
+                synthesis_items.append(item)
+            elif tool_name not in ["TDA_ComplexPromptReport", "TDA_FinalReport"]:
+                 collateral_items.append(item)
 
-        for i, tool_result in enumerate(data_source):
-             if i in self.processed_data_indices or not isinstance(tool_result, dict):
-                 continue
+        display_key = self.active_prompt_name or "Ad-hoc Query"
+
+        if synthesis_items:
+            synthesis_html_content = ""
+            for item in synthesis_items:
+                if isinstance(item, dict) and "results" in item and isinstance(item["results"], list) and item["results"]:
+                    response_text = item["results"][0].get("response", "")
+                    if response_text:
+                        synthesis_html_content += f"<div class='response-card'>{self._render_standard_markdown(response_text)}</div>"
             
-             metadata = tool_result.get("metadata", {})
-             tool_name = metadata.get("tool_name")
+            if synthesis_html_content:
+                html_parts.append(f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Synthesis Report for: <code>{display_key}</code></summary><div class='px-4'>{synthesis_html_content}</div></details>")
 
-             if tool_name in ["TDA_ComplexPromptReport", "TDA_FinalReport"]:
-                 continue
+        if collateral_items:
+            collateral_html_content = ""
+            for i, tool_result in enumerate(collateral_items):
+                metadata = tool_result.get("metadata", {})
+                tool_name = metadata.get("tool_name")
+                if tool_name == 'base_tableDDL':
+                    collateral_html_content += self._render_ddl(tool_result, i)
+                elif "results" in tool_result:
+                    collateral_html_content += self._render_table(tool_result, i, tool_name or "Result")
 
-             if tool_name == 'base_tableDDL':
-                 details_html += self._render_ddl(tool_result, i)
-             elif "results" in tool_result:
-                  details_html += self._render_table(tool_result, i, tool_name or "Result")
-
-        if details_html:
-             html_parts.append(
-                 f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'>"
-                 f"<summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Execution Report Data</summary>"
-                 f"<div class='px-4'>{details_html}</div>"
-                 f"</details>"
-             )
-
+            if collateral_html_content:
+                html_parts.append(
+                    f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'>"
+                    f"<summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>{display_key}</code></summary>"
+                    f"<div class='px-4'>{collateral_html_content}</div>"
+                    f"</details>"
+                )
+        # --- MODIFICATION END ---
+        
         final_html = "".join(html_parts)
         return final_html, tts_payload
 
@@ -544,5 +599,4 @@ class OutputFormatter:
         final_html = "<div class='response-card summary-card'><p>The agent has completed its work.</p></div>"
         tts_payload = {"direct_answer": "The agent has completed its work.", "key_observations": "", "synthesis": ""}
         return final_html, tts_payload
-
 
