@@ -1210,7 +1210,7 @@ class PhaseExecutor:
         )
         yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
         
-        updated_session = session_manager.get_session(self.session_id)
+        updated_session = session_manager.get_session(self.executor.session_id)
         if updated_session:
             yield self.executor._format_sse({"statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id}, "token_update")
 
@@ -1299,18 +1299,16 @@ class PhaseExecutor:
             tool_def = self.executor.dependencies['STATE'].get('mcp_tools', {}).get(tool_name)
             if not tool_def: return None, events
 
-            session_data = session_manager.get_session(self.executor.session_id)
-            session_history = session_data.get("session_history", []) if session_data else []
-
             correction_prompt = TACTICAL_SELF_CORRECTION_PROMPT.format(
                 tool_definition=json.dumps(vars(tool_def), default=str),
                 failed_command=json.dumps(failed_action),
                 error_message=json.dumps(error_result.get('data', 'No error data.')),
-                session_history=json.dumps(session_history),
-                user_question=self.executor.original_user_input
+                user_question=self.executor.original_user_input,
+                tools_context=self.executor.dependencies['STATE'].get('tools_context', ''),
+                prompts_context=self.executor.dependencies['STATE'].get('prompts_context', '')
             )
             reason = f"Generic self-correction for failed tool call: {tool_name}"
-            system_prompt_override = "You are a JSON-only responding assistant."
+            system_prompt_override = "You are an expert troubleshooter. Follow the recovery directives precisely."
 
         call_id = str(uuid.uuid4())
         events.append(self.executor._format_sse({"step": "Calling LLM for Self-Correction", "type": "system_message", "details": {"summary": reason, "call_id": call_id}}))
@@ -1385,3 +1383,4 @@ class PhaseExecutor:
             return None, events
             
         return None, events
+
