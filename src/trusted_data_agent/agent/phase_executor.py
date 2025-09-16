@@ -394,13 +394,15 @@ class PhaseExecutor:
                     is_fast_path_candidate = True
         
         if is_fast_path_candidate:
-            # We only show the "FASTPATH" message for non-LLM tools to avoid confusion.
-            if tool_name not in ["TDA_LLMTask", "TDA_LLMFilter"]:
-                yield self.executor._format_sse({
-                    "step": "Plan Optimization", 
-                    "type": "plan_optimization",
-                    "details": f"FASTPATH initiated for '{tool_name}'."
-                })
+            # --- MODIFICATION START: Remove exclusion for LLM tools ---
+            # This allows the "FASTPATH" message to be shown for any tool that
+            # runs on the fast path, providing a more consistent UI experience.
+            yield self.executor._format_sse({
+                "step": "Plan Optimization", 
+                "type": "plan_optimization",
+                "details": f"FASTPATH initiated for '{tool_name}'."
+            })
+            # --- MODIFICATION END ---
 
             fast_path_action = {"tool_name": tool_name, "arguments": strategic_args}
             
@@ -420,10 +422,16 @@ class PhaseExecutor:
             async for event in self._execute_action_with_orchestrators(fast_path_action, phase):
                 yield event
             
-            yield self.executor._format_sse(
-                {"target": "context", "state": "processing_complete"}, 
-                "context_state_update"
-            )
+            call_id_for_completion = None
+            if isinstance(self.executor.last_tool_output, dict):
+                call_id_for_completion = self.executor.last_tool_output.get("metadata", {}).get("call_id")
+
+            completion_event_payload = {"target": "context", "state": "processing_complete"}
+            if call_id_for_completion:
+                completion_event_payload["call_id"] = call_id_for_completion
+
+            yield self.executor._format_sse(completion_event_payload, "context_state_update")
+
             if not is_loop_iteration:
                 yield self.executor._format_sse({
                     "step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}",
@@ -434,9 +442,7 @@ class PhaseExecutor:
 
         phase_attempts = 0
         max_phase_attempts = 5
-        # --- MODIFICATION START ---
         tactical_call_id = None
-        # --- MODIFICATION END ---
         while True:
             phase_attempts += 1
             if phase_attempts > max_phase_attempts:
@@ -450,9 +456,7 @@ class PhaseExecutor:
             for event in enrich_events:
                 self.executor.events_to_yield.append(event)
             
-            # --- MODIFICATION START ---
             tactical_call_id = str(uuid.uuid4())
-            # --- MODIFICATION END ---
             yield self.executor._format_sse({"step": "Calling LLM for Tactical Action", "type": "system_message", "details": {"summary": f"Deciding next action for phase goal: '{phase_goal}'", "call_id": tactical_call_id}})
             yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
             
@@ -524,12 +528,10 @@ class PhaseExecutor:
             else:
                 app_logger.warning(f"Action failed. Attempt {phase_attempts}/{max_phase_attempts} for phase.")
         
-        # --- MODIFICATION START ---
         yield self.executor._format_sse(
             {"target": "context", "state": "processing_complete", "call_id": tactical_call_id}, 
             "context_state_update"
         )
-        # --- MODIFICATION END ---
         if not is_loop_iteration:
             yield self.executor._format_sse({
                 "step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}",
@@ -669,7 +671,6 @@ class PhaseExecutor:
         tool_name = action.get("tool_name")
         arguments = action.get("arguments", {})
         
-        # --- MODIFICATION START: Add handler for TDA_ContextReport and the legacy synthesized_answer ---
         if tool_name == "TDA_ContextReport" or (tool_name == "TDA_LLMTask" and "synthesized_answer" in arguments):
             if tool_name == "TDA_ContextReport":
                 answer_key = "answer_from_context"
@@ -693,7 +694,6 @@ class PhaseExecutor:
                 self.executor.workflow_state.setdefault(phase_result_key, []).append(self.executor.last_tool_output)
                 self.executor._add_to_structured_data(self.executor.last_tool_output)
             return
-        # --- MODIFICATION END ---
         
         max_retries = 3
         
@@ -744,9 +744,6 @@ class PhaseExecutor:
             
             yield self.executor._format_sse({"target": status_target, "state": "busy"}, "status_indicator_update")
             
-            # --- MODIFICATION START: Pass the full execution context to the adapter ---
-            # This ensures that client-side tools like TDA_FinalReport have access to the
-            # user's original input and other critical context from the main executor.
             full_context_for_tool = {
                 "original_user_input": self.executor.original_user_input,
                 "workflow_goal_prompt": self.executor.workflow_goal_prompt,
@@ -760,7 +757,6 @@ class PhaseExecutor:
                 call_id=call_id_for_tool,
                 workflow_state=full_context_for_tool
             )
-            # --- MODIFICATION END ---
 
             yield self.executor._format_sse({"target": status_target, "state": "idle"}, "status_indicator_update")
 
