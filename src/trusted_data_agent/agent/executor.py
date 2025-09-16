@@ -549,18 +549,31 @@ class PlanExecutor:
 
     async def _run_delegated_prompt(self):
         """
-        Executes a single, delegated prompt without generating a new meta-plan.
-        This is used for sub-executors created during self-correction.
+        Executes a single, delegated prompt by immediately expanding it into a
+        concrete plan. This is used for sub-executors created during
+        self-correction to avoid redundant planning and recursion.
         """
         if not self.active_prompt_name:
             app_logger.error("Delegated task started without an active_prompt_name.")
             self.state = self.AgentState.ERROR
             return
 
-        self.meta_plan = [{"phase": 1, "goal": f"Delegated execution of prompt: {self.active_prompt_name}", "executable_prompt": self.active_prompt_name, "arguments": self.prompt_arguments}]
+        # --- MODIFICATION START: Direct Plan Expansion ---
+        # Instead of creating a shallow plan, we immediately expand the delegated
+        # prompt into its full, tool-based plan. This prevents the recursive
+        # sub-process creation that caused the duplicate UI messages.
+        planner = Planner(self)
+        app_logger.info(f"Delegated task: Directly expanding prompt '{self.active_prompt_name}' into a concrete plan.")
+        
+        # This call generates the real plan for the prompt.
+        async for event in planner.generate_and_refine_plan():
+            yield event
+        
+        # With the concrete plan now in self.meta_plan, we can proceed to execution.
         self.state = self.AgentState.EXECUTING
         async for event in self._run_plan():
             yield event
+        # --- MODIFICATION END ---
 
     async def _handle_summarization(self, final_answer_override: str | None):
         """Orchestrates the final summarization and answer formatting."""
