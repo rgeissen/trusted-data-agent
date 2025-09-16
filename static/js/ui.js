@@ -173,8 +173,8 @@ export function updateStatusWindow(eventData, isFinal = false) {
         phaseHeader.className = 'status-phase-header phase-start';
 
         let depthIndicator = '';
-        if (execution_depth && execution_depth > 1) {
-            depthIndicator = '↳ '.repeat(execution_depth - 1);
+        if (execution_depth && execution_depth > 0) {
+            depthIndicator = '↳ '.repeat(execution_depth);
         }
 
         phaseHeader.innerHTML = `
