@@ -171,6 +171,57 @@ class OutputFormatter:
 
         return "".join(html_output)
     
+    # --- MODIFICATION START: Add content-aware synthesis renderer ---
+    def _render_json_synthesis(self, data: list) -> str:
+        """
+        Renders a list of JSON objects into a structured HTML format,
+        intelligently detecting title and summary keys.
+        """
+        html_parts = ['<div class="space-y-4">']
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+
+            # Intelligently find title and summary keys, preferring more semantic names
+            title_keys = ['table_name', 'name', 'title', 'header']
+            summary_keys = ['summary', 'description', 'text', 'content']
+            
+            title = next((item[key] for key in title_keys if key in item), None)
+            summary = next((item[key] for key in summary_keys if key in item), None)
+
+            html_parts.append('<div class="bg-gray-900/50 p-4 rounded-lg">')
+            if title:
+                html_parts.append(f'<h4 class="text-md font-semibold text-teradata-orange mb-2"><code>{title}</code></h4>')
+            if summary:
+                html_parts.append(f'<p class="text-gray-300 text-sm">{self._process_inline_markdown(summary)}</p>')
+            html_parts.append('</div>')
+            
+        html_parts.append('</div>')
+        return "".join(html_parts)
+
+    def _render_synthesis_content(self, text_content: str) -> str:
+        """
+        Intelligently renders synthesis content. If the content is valid JSON,
+        it's formatted as a structured list. Otherwise, it's treated as markdown.
+        """
+        if not isinstance(text_content, str):
+            return ""
+        
+        try:
+            # Attempt to parse the content as JSON
+            match = re.search(r'\[.*\]|\{.*\}', text_content, re.DOTALL)
+            if match:
+                data = json.loads(match.group(0))
+                if isinstance(data, list):
+                    return self._render_json_synthesis(data)
+        except json.JSONDecodeError:
+            # If parsing fails, it's not JSON. Fallback to markdown.
+            pass
+        
+        # Fallback for non-JSON or single-object JSON content
+        return self._render_standard_markdown(text_content)
+    # --- MODIFICATION END ---
+
     def _render_ddl(self, tool_result: dict, index: int) -> str:
         if not isinstance(tool_result, dict) or "results" not in tool_result: return ""
         results = tool_result.get("results")
@@ -336,7 +387,9 @@ class OutputFormatter:
                     if isinstance(item, dict) and "results" in item and isinstance(item["results"], list) and item["results"]:
                         response_text = item["results"][0].get("response", "")
                         if response_text:
-                            synthesis_html += f"<div class='response-card'>{self._render_standard_markdown(response_text)}</div>"
+                            # --- MODIFICATION START: Use content-aware renderer ---
+                            synthesis_html += f"<div class='response-card'>{self._render_synthesis_content(response_text)}</div>"
+                            # --- MODIFICATION END ---
                 
                 if synthesis_html:
                     html += f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Synthesis Report for: <code>{display_key}</code></summary><div class='px-4'>{synthesis_html}</div></details>"
@@ -437,7 +490,9 @@ class OutputFormatter:
                 if isinstance(item, dict) and "results" in item and isinstance(item["results"], list) and item["results"]:
                     response_text = item["results"][0].get("response", "")
                     if response_text:
-                        synthesis_html_content += f"<div class='response-card'>{self._render_standard_markdown(response_text)}</div>"
+                        # --- MODIFICATION START: Use content-aware renderer ---
+                        synthesis_html_content += f"<div class='response-card'>{self._render_synthesis_content(response_text)}</div>"
+                        # --- MODIFICATION END ---
             
             if synthesis_html_content:
                 final_html += f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Synthesis Report for: <code>{display_key}</code></summary><div class='px-4'>{synthesis_html_content}</div></details>"
@@ -543,7 +598,9 @@ class OutputFormatter:
                 if isinstance(item, dict) and "results" in item and isinstance(item["results"], list) and item["results"]:
                     response_text = item["results"][0].get("response", "")
                     if response_text:
-                        synthesis_html_content += f"<div class='response-card'>{self._render_standard_markdown(response_text)}</div>"
+                        # --- MODIFICATION START: Use content-aware renderer ---
+                        synthesis_html_content += f"<div class='response-card'>{self._render_synthesis_content(response_text)}</div>"
+                        # --- MODIFICATION END ---
             
             if synthesis_html_content:
                 html_parts.append(f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Synthesis Report for: <code>{display_key}</code></summary><div class='px-4'>{synthesis_html_content}</div></details>")
@@ -599,4 +656,3 @@ class OutputFormatter:
         final_html = "<div class='response-card summary-card'><p>The agent has completed its work.</p></div>"
         tts_payload = {"direct_answer": "The agent has completed its work.", "key_observations": "", "synthesis": ""}
         return final_html, tts_payload
-
