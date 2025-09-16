@@ -363,7 +363,6 @@ class PlanExecutor:
             yield self._format_sse({"error": "Execution stopped due to an unrecoverable error.", "details": str(root_exception)}, "error")
         finally:
             if not self.disabled_history:
-                # --- MODIFICATION START: Build the structured turn summary ---
                 execution_trace = []
                 for entry in self.turn_action_history:
                     tool_call = entry.get("action", {})
@@ -383,7 +382,6 @@ class PlanExecutor:
                     "final_summary": self.final_summary_text
                 }
                 session_manager.update_last_turn_data(self.session_id, turn_summary)
-                # --- MODIFICATION END ---
                 app_logger.debug(f"Saved last turn data to session {self.session_id}")
     
     async def _handle_single_prompt_plan(self, planner: Planner):
@@ -462,7 +460,6 @@ class PlanExecutor:
         
         phase_executor = PhaseExecutor(self)
 
-        # --- MODIFICATION START: Update sub-prompt summary skipping logic ---
         if not APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY and self.execution_depth > 0 and len(self.meta_plan) > 1:
             last_phase = self.meta_plan[-1]
             last_phase_tools = last_phase.get('relevant_tools', [])
@@ -475,7 +472,6 @@ class PlanExecutor:
                     "details": "Sub-process is skipping its final summary task to prevent redundant work. The main process will generate the final report."
                 })
                 self.meta_plan = self.meta_plan[:-1]
-        # --- MODIFICATION END ---
 
 
         while self.current_phase_index < len(self.meta_plan):
@@ -498,7 +494,6 @@ class PlanExecutor:
         app_logger.info("Meta-plan has been fully executed. Transitioning to summarization.")
         self.state = self.AgentState.SUMMARIZING
 
-    # --- MODIFICATION START: Implement full state adoption from sub-executor ---
     async def _run_sub_prompt(self, prompt_name: str, prompt_args: dict, is_delegated_task: bool = False):
         """
         Creates and runs a sub-executor for a delegated prompt, adopting its
@@ -510,6 +505,15 @@ class PlanExecutor:
             "type": "workaround"
         })
         
+        # --- MODIFICATION START: Prevent history inheritance for delegated tasks ---
+        # For delegated recovery tasks, we explicitly disable history to prevent the
+        # sub-agent from receiving the bloated, failed action history from the parent.
+        # This keeps the recovery planning call lightweight and token-efficient.
+        force_disable_sub_history = is_delegated_task
+        if force_disable_sub_history:
+            app_logger.info(f"Token Optimization: Disabling history for delegated recovery task '{prompt_name}'.")
+        # --- MODIFICATION END ---
+        
         sub_executor = PlanExecutor(
             session_id=self.session_id,
             original_user_input=f"Executing prompt: {prompt_name}",
@@ -517,17 +521,25 @@ class PlanExecutor:
             active_prompt_name=prompt_name,
             prompt_arguments=prompt_args,
             execution_depth=self.execution_depth + 1,
-            disabled_history=self.disabled_history,
+            # --- MODIFICATION START: Apply the history disabling override ---
+            disabled_history=self.disabled_history or force_disable_sub_history,
+            # --- MODIFICATION END ---
             previous_turn_data=self.previous_turn_data,
             source="prompt_library",
             is_delegated_task=is_delegated_task,
             force_final_summary=APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY
         )
         
-        # State Inheritance: The sub-process inherits the parent's current state.
+        # State Inheritance: The sub-process inherits the parent's current data state.
         sub_executor.workflow_state = self.workflow_state
-        sub_executor.turn_action_history = self.turn_action_history
         sub_executor.structured_collected_data = self.structured_collected_data
+        
+        # --- MODIFICATION START: Conditionally inherit action history ---
+        # Only non-delegated sub-processes should inherit the action history. This
+        # prevents the recovery sub-agent from being polluted with irrelevant context.
+        if not is_delegated_task:
+            sub_executor.turn_action_history = self.turn_action_history
+        # --- MODIFICATION END ---
 
         async for event in sub_executor.run():
             yield event
@@ -545,7 +557,6 @@ class PlanExecutor:
         else:
              if self.last_tool_output is None:
                 self.last_tool_output = {"status": "success"}
-    # --- MODIFICATION END ---
 
     async def _run_delegated_prompt(self):
         """
@@ -558,10 +569,6 @@ class PlanExecutor:
             self.state = self.AgentState.ERROR
             return
 
-        # --- MODIFICATION START: Direct Plan Expansion ---
-        # Instead of creating a shallow plan, we immediately expand the delegated
-        # prompt into its full, tool-based plan. This prevents the recursive
-        # sub-process creation that caused the duplicate UI messages.
         planner = Planner(self)
         app_logger.info(f"Delegated task: Directly expanding prompt '{self.active_prompt_name}' into a concrete plan.")
         
@@ -573,7 +580,6 @@ class PlanExecutor:
         self.state = self.AgentState.EXECUTING
         async for event in self._run_plan():
             yield event
-        # --- MODIFICATION END ---
 
     async def _handle_summarization(self, final_answer_override: str | None):
         """Orchestrates the final summarization and answer formatting."""
@@ -642,9 +648,7 @@ class PlanExecutor:
         elif hasattr(final_content, 'executive_summary'):
             clean_summary_for_thought = final_content.executive_summary
         
-        # --- MODIFICATION START: Store the final summary text ---
         self.final_summary_text = clean_summary_for_thought
-        # --- MODIFICATION END ---
 
         yield self._format_sse({"step": "LLM has generated the final answer", "details": clean_summary_for_thought}, "llm_thought")
 
