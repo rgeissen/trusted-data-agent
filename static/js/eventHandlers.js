@@ -965,14 +965,14 @@ async function handleIntensityChange() {
 
 function getSystemPromptSummaryHTML() {
     let devFlagHtml = '';
-    if (state.appConfig.allow_synthesis_from_history) {
-        devFlagHtml = `
-            <div class="p-3 bg-yellow-900/50 rounded-lg mt-4">
-                <p class="font-semibold text-yellow-300">Developer Mode Enabled</p>
-                <p class="text-xs text-yellow-400 mt-1">The 'Answer from History' feature is active. The agent may answer questions by synthesizing from previous turns without re-running tools.</p>
-            </div>
-        `;
-    }
+//    if (state.appConfig.allow_synthesis_from_history) {
+//        devFlagHtml = `
+//             <div class="p-3 bg-yellow-900/50 rounded-lg mt-4">
+//                <p class="font-semibold text-yellow-300">Developer Mode Enabled</p>
+//                <p class="text-xs text-yellow-400 mt-1">The 'Answer from History' feature is active. The agent may answer questions by synthesizing from previous turns without re-running tools.</p>
+//           </div>
+//        `;
+//    }
 
     return `
         <div class="space-y-4 text-gray-300 text-sm p-2">
@@ -992,6 +992,9 @@ function getSystemPromptSummaryHTML() {
                 <p class="text-xs text-gray-400 mb-3">Latest enhancements and updates to the Trusted Data Agent.</p>
                 <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
                    <li><strong>05-SEP-2025:</strong> Conversation Mode (Google Cloud Credentials required)</li>
+                </ul>
+                <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
+                   <li><strong>12-SEP-2025:</strong> Significant Formatting Upgrade (Canonical Baseline Model for LLM Provider Rendering)</li>
                 </ul>
             </div>
             <div class="border-t border-white/10 pt-4 mt-4">
@@ -1027,8 +1030,8 @@ function buildDisabledCapabilitiesListHTML() {
 
     let html = `
         <div class="border-t border-white/10 pt-4 mt-4">
-            <h4 class="text-md font-bold text-yellow-300 mb-2">Capabilities under consideration</h4>
-            <p class="text-xs text-gray-400 mb-3">The following are currently disabled. You can re-enable them in the 'Capabilities' panel.</p>
+            <h4 class="text-md font-bold text-yellow-300 mb-2">Reactive Capabilities</h4>
+            <p class="text-xs text-gray-400 mb-3">The following capabilities are not actively participating in user queries. You can enable and/or actively execute them in the 'Capabilities' panel.</p>
             <div class="flex gap-x-8">
     `;
 
