@@ -1,8 +1,8 @@
 # The Trusted Data Agent
 
-**An Advanced, Dynamic AI Conversational Interface for Enterprise Data Platforms.**
+**An Advanced, Dynamic AI Conversational Engine & Interface for Enterprise Data Platforms.**
 
-The Trusted Data Agent represents a paradigm shift in how Business Leaders, Business Analysts, Developers, and Architects interact with complex data ecosystems. It is a sophisticated web application designed not only to showcase AI-powered interaction with a Relational Information system, but to serve as a powerful, fully transparent "study buddy" for mastering the integration of Large Language Models (LLMs) with enterprise data.
+The Trusted Data Agent represents a paradigm shift in how Business Leaders, Business Analysts, Developers, and Architects interact with complex data ecosystems. It is a sophisticated engine backend & web front-end application designed not only to showcase AI-powered interaction with a Relational Information system, but to serve as a powerful, fully transparent "study buddy" for mastering the integration of Large Language Models (LLMs) with enterprise data.
 
 This solution provides unparalleled, real-time insight into the complete conversational flow between the user, the AI agent, the **Model Context Protocol (MCP)** server, and the underlying relational information system, establishing a new standard for clarity and control in AI-driven data analytics.
 
@@ -80,9 +80,9 @@ Its core superiority lies in its revolutionary architecture, which delivers:
 
 ---
 
-## The Heart of the Application - The Optimizer
+## The Heart of the Application - The Engine & its Fusion Optimizer
 
-The Trusted Data Agent is engineered to be far more than a simple LLM wrapper. Its revolutionary core is the **Optimizer**, a multi-layered engine designed for resilient, intelligent, and efficient task execution in complex enterprise environments. It transforms the agent from a mere tool into a reliable analytical partner.
+The Trusted Data Agent is engineered to be far more than a simple LLM wrapper. Its revolutionary core is the **Fusion Optimizer**, a multi-layered engine designed for resilient, intelligent, and efficient task execution in complex enterprise environments. It transforms the agent from a mere tool into a reliable analytical partner.
 
 ### The Multi-Layered Planning Process
 
