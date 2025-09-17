@@ -87,22 +87,57 @@ class OutputFormatter:
         text_content = re.sub(r'(?<!\*)\*\*(?!\*)(.*?)(?<!\*)\*\*(?!\*)', r'<strong>\1</strong>', text_content)
         return text_content
 
-
+    # --- MODIFICATION START: Enhanced Markdown Renderer ---
     def _render_standard_markdown(self, text: str) -> str:
         """
         Renders a block of text by processing standard markdown elements,
-        including special key-value formats.
+        including special key-value formats and fenced code blocks.
         """
         if not isinstance(text, str):
             return ""
+            
         lines = text.strip().split('\n')
         html_output = []
         list_level_stack = []
+        in_code_block = False
+        code_lang = ""
+        code_content = []
 
         def get_indent_level(line_text):
             return len(line_text) - len(line_text.lstrip(' '))
 
         for line in lines:
+            # Handle code blocks first
+            if line.strip().startswith('```'):
+                if in_code_block:
+                    # End of code block
+                    sanitized_code = "".join(code_content).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                    html_output.append(f"""
+<div class="sql-code-block mb-4">
+    <div class="sql-header">
+        <span>{code_lang.upper() if code_lang else 'Code'}</span>
+        <button class="copy-button" onclick="copyToClipboard(this)">
+            <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg>
+            Copy
+        </button>
+    </div>
+    <pre><code class="language-{code_lang}">{sanitized_code}</code></pre>
+</div>
+""")
+                    in_code_block = False
+                    code_content = []
+                    code_lang = ""
+                else:
+                    # Start of code block
+                    in_code_block = True
+                    code_lang = line.strip()[3:].strip()
+                continue
+            
+            if in_code_block:
+                code_content.append(line + '\n')
+                continue
+
+            # Standard markdown processing
             stripped_line = line.lstrip(' ')
             current_indent = get_indent_level(line)
             
@@ -170,6 +205,7 @@ class OutputFormatter:
             list_level_stack.pop()
 
         return "".join(html_output)
+    # --- MODIFICATION END ---
     
     # --- MODIFICATION START: Add content-aware synthesis renderer ---
     def _render_json_synthesis(self, data: list) -> str:
@@ -237,7 +273,7 @@ class OutputFormatter:
                 <div class="sql-header">
                     <span>SQL DDL: {table_name}</span>
                     <button class="copy-button" onclick="copyToClipboard(this)">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg>
+                        <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg>
                         Copy
                     </button>
                 </div>
@@ -270,7 +306,7 @@ class OutputFormatter:
             <div class="flex justify-between items-center mb-2">
                 <h4 class="text-lg font-semibold text-white">Data: Result for <code>{title}</code></h4>
                 <button class="copy-button" onclick="copyTableToClipboard(this)" data-table='{table_data_json}'>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg>
+                    <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg>
                         Copy Table
                     </button>
                 </div>
@@ -304,7 +340,7 @@ class OutputFormatter:
             <div class="flex justify-between items-center mt-4 mb-2">
                 <h5 class="text-md font-semibold text-white">Chart Data</h5>
                 <button class="copy-button" onclick="copyTableToClipboard(this)" data-table='{table_data_json}'>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg>
+                    <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg>
                     Copy Table
                 </button>
             </div>
