@@ -9,244 +9,27 @@ import hashlib
 import httpx
 
 from quart import Blueprint, request, jsonify, render_template, Response
-from google.api_core import exceptions as google_exceptions
-from anthropic import APIError, AsyncAnthropic
-from openai import AsyncOpenAI, APIError as OpenAI_APIError
-from botocore.exceptions import ClientError
-import google.generativeai as genai
-import boto3
-from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_mcp_adapters.prompts import load_mcp_prompt
-from mcp.shared.exceptions import McpError
-
-try:
-    from google.cloud import texttospeech
-    from google.oauth2 import service_account
-except ImportError:
-    texttospeech = None
-    service_account = None
 
 from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
 from trusted_data_agent.core import session_manager
-from trusted_data_agent.agent.prompts import PROVIDER_SYSTEM_PROMPTS, CHARTING_INSTRUCTIONS
+from trusted_data_agent.agent.prompts import PROVIDER_SYSTEM_PROMPTS
 from trusted_data_agent.agent.executor import PlanExecutor
 from trusted_data_agent.llm import handler as llm_handler
-from trusted_data_agent.mcp import adapter as mcp_adapter
-from trusted_data_agent.agent.formatter import OutputFormatter
 from trusted_data_agent.agent import execution_service
+from trusted_data_agent.core import configuration_service
+from trusted_data_agent.core.utils import (
+    get_tts_client,
+    synthesize_speech,
+    unwrap_exception,
+    _get_prompt_info,
+    _regenerate_contexts
+)
 
 
 api_bp = Blueprint('api', __name__)
 app_logger = logging.getLogger("quart.app")
 
-def get_tts_client():
-    """
-    Initializes and returns a Google Cloud TextToSpeechClient.
-    It prioritizes credentials provided via the UI, falling back to environment variables.
-    """
-    app_logger.info("AUDIO DEBUG: Attempting to get TTS client.")
-    if texttospeech is None:
-        app_logger.error("AUDIO DEBUG: The 'google-cloud-texttospeech' library is not installed.")
-        app_logger.error("AUDIO DEBUG: Please install it to use the voice feature: pip install google-cloud-texttospeech")
-        return None
-
-    tts_creds_json_str = APP_STATE.get("tts_credentials_json")
-
-    if tts_creds_json_str:
-        app_logger.info("AUDIO DEBUG: Attempting to initialize TTS client from UI-provided JSON credentials.")
-        try:
-            credentials_info = json.loads(tts_creds_json_str)
-            credentials = service_account.Credentials.from_service_account_info(credentials_info)
-            client = texttospeech.TextToSpeechClient(credentials=credentials)
-            app_logger.info("AUDIO DEBUG: Successfully initialized Google Cloud TTS client using UI credentials.")
-            return client
-        except json.JSONDecodeError:
-            app_logger.error("AUDIO DEBUG: Failed to parse TTS credentials JSON provided from the UI. It appears to be invalid JSON.")
-            return None
-        except Exception as e:
-            app_logger.error(f"AUDIO DEBUG: Failed to initialize TTS client with UI credentials: {e}", exc_info=True)
-            return None
-    
-    app_logger.info("AUDIO DEBUG: No UI credentials found. Falling back to environment variable for TTS client.")
-    try:
-        client = texttospeech.TextToSpeechClient()
-        app_logger.info("AUDIO DEBUG: Successfully initialized Google Cloud TTS client using environment variables.")
-        return client
-    except Exception as e:
-        app_logger.error(f"AUDIO DEBUG: Failed to initialize Google Cloud TTS client with environment variables: {e}", exc_info=True)
-        app_logger.error("AUDIO DEBUG: Please ensure the 'GOOGLE_APPLICATION_CREDENTIALS' environment variable is set correctly or provide credentials in the UI.")
-        return None
-
-def synthesize_speech(client, text: str) -> bytes | None:
-    """
-    Synthesizes speech from the provided text using the given TTS client.
-    """
-    if not client:
-        app_logger.error("AUDIO DEBUG: TTS client is not available. Cannot synthesize speech.")
-        return None
-
-    synthesis_input = texttospeech.SynthesisInput(text=text)
-    voice = texttospeech.VoiceSelectionParams(
-        language_code="en-US",
-        name="en-US-Studio-O",
-        ssml_gender=texttospeech.SsmlVoiceGender.FEMALE,
-    )
-    audio_config = texttospeech.AudioConfig(
-        audio_encoding=texttospeech.AudioEncoding.MP3,
-        speaking_rate=1.1
-    )
-
-    try:
-        app_logger.info(f"AUDIO DEBUG: Requesting speech synthesis for text: '{text[:80]}...'")
-        response = client.synthesize_speech(
-            input=synthesis_input, voice=voice, audio_config=audio_config
-        )
-        app_logger.info("AUDIO DEBUG: Speech synthesis successful.")
-        return response.audio_content
-    except Exception as e:
-        app_logger.error(f"AUDIO DEBUG: Google Cloud TTS API call failed: {e}", exc_info=True)
-        return None
-
-def unwrap_exception(e: BaseException) -> BaseException:
-    """Recursively unwraps ExceptionGroups to find the root cause."""
-    if isinstance(e, ExceptionGroup) and e.exceptions:
-        return unwrap_exception(e.exceptions[0])
-    return e
-
-def _get_prompt_info(prompt_name: str) -> dict | None:
-    """Helper to find prompt details from the structured prompts in the global state."""
-    structured_prompts = APP_STATE.get('structured_prompts', {})
-    for category_prompts in structured_prompts.values():
-        for prompt in category_prompts:
-            if prompt.get("name") == prompt_name:
-                return prompt
-    return None
-
-def _indent_multiline_description(description: str, indent_level: int = 2) -> str:
-    """Indents all but the first line of a multi-line string."""
-    if not description or '\n' not in description:
-        return description
-    
-    lines = description.split('\n')
-    first_line = lines[0]
-    rest_lines = lines[1:]
-    
-    indentation = ' ' * indent_level
-    indented_rest = [f"{indentation}{line}" for line in rest_lines]
-    
-    return '\n'.join([first_line] + indented_rest)
-
-def _regenerate_contexts():
-    """
-    Updates all capability contexts ('tools_context', 'prompts_context', etc.)
-    in the global STATE based on the current disabled lists and prints the
-    current status to the console for debugging.
-    """
-    print("\n--- Regenerating Agent Capability Contexts ---")
-    
-    disabled_tools_list = APP_STATE.get("disabled_tools", [])
-    disabled_prompts_list = APP_STATE.get("disabled_prompts", [])
-    
-    if APP_STATE.get('mcp_tools') and APP_STATE.get('structured_tools'):
-        for category, tool_list in APP_STATE['structured_tools'].items():
-            for tool_info in tool_list:
-                tool_info['disabled'] = tool_info['name'] in disabled_tools_list
-        
-        enabled_count = sum(1 for category in APP_STATE['structured_tools'].values() for t in category if not t['disabled'])
-        
-        print(f"\n[ Tools Status ]")
-        print(f"  - Active: {enabled_count}")
-        print(f"  - Inactive: {len(disabled_tools_list)}")
-
-        tool_context_parts = ["--- Available Tools ---"]
-        for category, tools in sorted(APP_STATE['structured_tools'].items()):
-            enabled_tools_in_category = [t for t in tools if not t['disabled']]
-            if not enabled_tools_in_category:
-                continue
-                
-            tool_context_parts.append(f"--- Category: {category} ---")
-            for tool_info in enabled_tools_in_category:
-                tool_description = tool_info.get("description", "No description available.")
-                indented_description = _indent_multiline_description(tool_description, indent_level=2)
-                tool_str = f"- `{tool_info['name']}` (tool): {indented_description}"
-                
-                processed_args = tool_info.get('arguments', [])
-                if processed_args:
-                    tool_str += "\n  - Arguments:"
-                    for arg_details in processed_args:
-                        arg_name = arg_details.get('name', 'unknown')
-                        arg_type = arg_details.get('type', 'any')
-                        is_required = arg_details.get('required', False)
-                        req_str = "required" if is_required else "optional"
-                        arg_desc = arg_details.get('description', 'No description.')
-                        tool_str += f"\n    - `{arg_name}` ({arg_type}, {req_str}): {arg_desc}"
-                tool_context_parts.append(tool_str)
-        
-        if len(tool_context_parts) > 1:
-            APP_STATE['tools_context'] = "\n".join(tool_context_parts)
-        else:
-            APP_STATE['tools_context'] = "--- No Tools Available ---"
-        app_logger.info(f"Regenerated LLM tool context. {enabled_count} tools are active.")
-
-    if APP_STATE.get('mcp_prompts') and APP_STATE.get('structured_prompts'):
-        for category, prompt_list in APP_STATE['structured_prompts'].items():
-            for prompt_info in prompt_list:
-                prompt_info['disabled'] = prompt_info['name'] in disabled_prompts_list
-
-        enabled_count = sum(1 for category in APP_STATE['structured_prompts'].values() for p in category if not p['disabled'])
-        
-        print(f"\n[ Prompts Status ]")
-        print(f"  - Active: {enabled_count}")
-        print(f"  - Inactive: {len(disabled_prompts_list)}")
-        
-        prompt_context_parts = ["--- Available Prompts ---"]
-        for category, prompts in sorted(APP_STATE['structured_prompts'].items()):
-            enabled_prompts_in_category = [p for p in prompts if not p['disabled']]
-            if not enabled_prompts_in_category:
-                continue
-
-            prompt_context_parts.append(f"--- Category: {category} ---")
-            for prompt_info in enabled_prompts_in_category:
-                prompt_description = prompt_info.get("description", "No description available.")
-                indented_description = _indent_multiline_description(prompt_description, indent_level=2)
-                prompt_str = f"- `{prompt_info['name']}` (prompt): {indented_description}"
-                
-                processed_args = prompt_info.get('arguments', [])
-                if processed_args:
-                    prompt_str += "\n  - Arguments:"
-                    for arg_details in processed_args:
-                        arg_name = arg_details.get('name', 'unknown')
-                        arg_type = arg_details.get('type', 'any')
-                        is_required = arg_details.get('required', False)
-                        req_str = "required" if is_required else "optional"
-                        arg_desc = arg_details.get('description', 'No description.')
-                        prompt_str += f"\n    - `{arg_name}` ({arg_type}, {req_str}): {arg_desc}"
-                prompt_context_parts.append(prompt_str)
-
-        if len(prompt_context_parts) > 1:
-            APP_STATE['prompts_context'] = "\n".join(prompt_context_parts)
-        else:
-            APP_STATE['prompts_context'] = "--- No Prompts Available ---"
-        app_logger.info(f"Regenerated LLM prompt context. {enabled_count} prompts are active.")
-
-    if disabled_tools_list or disabled_prompts_list:
-        constraints_list = []
-        if disabled_tools_list:
-            constraints_list.extend([f"- `{name}` (tool)" for name in disabled_tools_list])
-        if disabled_prompts_list:
-            constraints_list.extend([f"- `{name}` (prompt)" for name in disabled_prompts_list])
-        
-        APP_STATE['constraints_context'] = (
-            "\n--- CONSTRAINTS ---\n"
-            "You are explicitly forbidden from using the following capabilities in your plan under any circumstances:\n"
-            + "\n".join(constraints_list) + "\n"
-        )
-        app_logger.info(f"Regenerated LLM constraints context. {len(constraints_list)} capabilities are forbidden.")
-    else:
-        APP_STATE['constraints_context'] = "" 
-        app_logger.info("Regenerated LLM constraints context. No capabilities are currently forbidden.")
-    
-    print("\n" + "-"*44)
 
 @api_bp.route("/")
 async def index():
@@ -596,111 +379,47 @@ async def get_default_system_prompt(provider, model_name):
 @api_bp.route("/configure", methods=["POST"])
 async def configure_services():
     """
-    Configures and validates the core LLM and MCP services.
+    Configures and validates the core LLM and MCP services from the UI.
+    This is now a thin, protected wrapper around the centralized configuration service.
     """
-    data = await request.get_json()
-    provider = data.get("provider")
-    model = data.get("model")
-    server_name = data.get("server_name")
-    tts_credentials_json = data.get("tts_credentials_json")
+    data_from_ui = await request.get_json()
+    if not data_from_ui:
+        return jsonify({"status": "error", "message": "Request body must be a valid JSON."}), 400
 
-    if not server_name:
-        return jsonify({"status": "error", "message": "Configuration failed: 'MCP Server Name' is a required field."}), 400
+    # --- MODIFICATION START: Adapter to reshape UI data for the service ---
+    # This reshapes the flat structure from the UI into the nested structure
+    # expected by the new, centralized configuration service.
+    service_config_data = {
+        "provider": data_from_ui.get("provider"),
+        "model": data_from_ui.get("model"),
+        "tts_credentials_json": data_from_ui.get("tts_credentials_json"),
+        "credentials": {
+            "apiKey": data_from_ui.get("apiKey"),
+            "aws_access_key_id": data_from_ui.get("aws_access_key_id"),
+            "aws_secret_access_key": data_from_ui.get("aws_secret_access_key"),
+            "aws_region": data_from_ui.get("aws_region"),
+            "ollama_host": data_from_ui.get("ollama_host"),
+            "listing_method": data_from_ui.get("listing_method", "foundation_models")
+        },
+        "mcp_server": {
+            "name": data_from_ui.get("server_name"),
+            "host": data_from_ui.get("host"),
+            "port": data_from_ui.get("port"),
+            "path": data_from_ui.get("path")
+        }
+    }
+    # Clean up None values to avoid sending empty keys
+    service_config_data["credentials"] = {k: v for k, v in service_config_data["credentials"].items() if v is not None}
+    # --- MODIFICATION END ---
+
+    # Call the centralized, lock-protected service function
+    result = await configuration_service.setup_and_categorize_services(service_config_data)
     
-    temp_llm_instance = None
-    temp_mcp_client = None
-    
-    try:
-        app_logger.info(f"Validating credentials for provider: {provider}")
-        if provider == "Google":
-            genai.configure(api_key=data.get("apiKey"))
-            temp_llm_instance = genai.GenerativeModel(model)
-            await temp_llm_instance.generate_content_async("test", generation_config={"max_output_tokens": 1})
-        elif provider == "Anthropic":
-            temp_llm_instance = AsyncAnthropic(api_key=data.get("apiKey"))
-            await temp_llm_instance.models.list()
-        elif provider == "OpenAI":
-            temp_llm_instance = AsyncOpenAI(api_key=data.get("apiKey"))
-            await temp_llm_instance.models.list()
-        elif provider == "Amazon":
-            aws_region = data.get("aws_region")
-            temp_llm_instance = boto3.client(
-                service_name='bedrock-runtime',
-                aws_access_key_id=data.get("aws_access_key_id"),
-                aws_secret_access_key=data.get("aws_secret_access_key"),
-                region_name=aws_region
-            )
-            app_logger.info("Boto3 client for Bedrock created. Skipping pre-flight model invocation.")
-        elif provider == "Ollama":
-            host = data.get("ollama_host")
-            if not host:
-                raise ValueError("Ollama host is required.")
-            temp_llm_instance = llm_handler.OllamaClient(host=host)
-            await temp_llm_instance.list_models()
-        else:
-            raise NotImplementedError(f"Provider '{provider}' is not yet supported.")
-        app_logger.info("LLM credentials/connection validated successfully.")
-
-        mcp_server_url = f"http://{data.get('host')}:{data.get('port')}{data.get('path')}"
-        temp_server_configs = {server_name: {"url": mcp_server_url, "transport": "streamable_http"}}
-        temp_mcp_client = MultiServerMCPClient(temp_server_configs)
-        async with temp_mcp_client.session(server_name) as temp_session:
-            await temp_session.list_tools()
-        app_logger.info("MCP server connection validated successfully.")
-
-        app_logger.info("All validations passed. Committing configuration to application state.")
-        
-        APP_CONFIG.CURRENT_PROVIDER = provider
-        APP_CONFIG.CURRENT_MODEL = model
-        APP_CONFIG.CURRENT_AWS_REGION = data.get("aws_region") if provider == "Amazon" else None
-        APP_CONFIG.CURRENT_MODEL_PROVIDER_IN_PROFILE = None
-        APP_CONFIG.CURRENT_MCP_SERVER_NAME = server_name
-        
-        APP_STATE['llm'] = temp_llm_instance
-        APP_STATE['mcp_client'] = temp_mcp_client
-        APP_STATE['server_configs'] = temp_server_configs
-
-        if provider == "Amazon" and model.startswith("arn:aws:bedrock:"):
-            profile_part = model.split('/')[-1]
-            APP_CONFIG.CURRENT_MODEL_PROVIDER_IN_PROFILE = profile_part.split('.')[1]
-        
-        await mcp_adapter.load_and_categorize_mcp_resources(APP_STATE)
-        APP_CONFIG.MCP_SERVER_CONNECTED = True
-        
-        APP_CONFIG.CHART_MCP_CONNECTED = True
-
-        APP_STATE['tts_credentials_json'] = tts_credentials_json
-        if APP_CONFIG.VOICE_CONVERSATION_ENABLED:
-            app_logger.info("AUDIO DEBUG: Configuration updated. Re-initializing TTS client.")
-            APP_STATE['tts_client'] = get_tts_client()
-
-        _regenerate_contexts()
-
-        return jsonify({"status": "success", "message": f"MCP Server '{server_name}' and LLM configured successfully."})
-
-    except (APIError, OpenAI_APIError, google_exceptions.PermissionDenied, ClientError, RuntimeError, Exception) as e:
-        app_logger.error(f"Configuration failed during validation: {e}", exc_info=True)
-        APP_STATE['llm'] = None
-        APP_STATE['mcp_client'] = None
-        APP_CONFIG.MCP_SERVER_CONNECTED = False
-        APP_CONFIG.CHART_MCP_CONNECTED = False
-        
-        root_exception = unwrap_exception(e)
-        error_message = ""
-        
-        if isinstance(root_exception, (httpx.ConnectTimeout, httpx.ConnectError)):
-            error_message = "Connection to MCP server failed. Please check the Host and Port and ensure the server is running."
-        elif isinstance(root_exception, (google_exceptions.PermissionDenied, ClientError)):
-             if 'AccessDeniedException' in str(e):
-                 error_message = "Access denied. Please check your AWS IAM permissions for the selected model."
-             else:
-                error_message = "Authentication failed. Please check your API keys or credentials."
-        elif isinstance(root_exception, (APIError, OpenAI_APIError)) and "authentication_error" in str(e).lower():
-             error_message = f"Authentication failed. Please check your {provider} API key."
-        else:
-            error_message = getattr(root_exception, 'message', str(root_exception))
-
-        return jsonify({"status": "error", "message": f"Configuration failed: {error_message}"}), 500
+    # Return the result from the service directly to the UI
+    if result.get("status") == "success":
+        return jsonify(result), 200
+    else:
+        return jsonify(result), 500
 
 @api_bp.route("/ask_stream", methods=["POST"])
 async def ask_stream():

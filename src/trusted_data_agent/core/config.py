@@ -1,5 +1,6 @@
 # src/trusted_data_agent/core/config.py
 import os
+import asyncio
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -113,7 +114,10 @@ APP_STATE = {
     "license_info": None,
 
     # Asynchronous task tracking for the REST API
-    "background_tasks": {}
+    "background_tasks": {},
+    
+    # Concurrency lock for the configuration process
+    "configuration_lock": asyncio.Lock(),
 }
 
 # Whitelists for models that are officially supported.

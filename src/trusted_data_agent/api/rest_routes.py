@@ -13,6 +13,9 @@ from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
 from trusted_data_agent.core import session_manager
 # --- MODIFICATION END ---
 from trusted_data_agent.agent import execution_service
+# --- MODIFICATION START: Import the new configuration service ---
+from trusted_data_agent.core import configuration_service
+# --- MODIFICATION END ---
 
 rest_api_bp = Blueprint('rest_api', __name__)
 app_logger = logging.getLogger("main")
@@ -32,6 +35,28 @@ def _sanitize_for_json(obj):
         return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', obj)
     else:
         return obj
+
+# --- MODIFICATION START: Add the new /configure endpoint ---
+@rest_api_bp.route("/v1/configure", methods=["POST"])
+async def configure_services_rest():
+    """
+    Configures and validates the core LLM and MCP services via the REST API.
+    This is a protected, atomic operation that uses the centralized
+    configuration service.
+    """
+    config_data = await request.get_json()
+    if not config_data:
+        return jsonify({"status": "error", "message": "Request body must be a valid JSON."}), 400
+
+    result = await configuration_service.setup_and_categorize_services(config_data)
+
+    if result.get("status") == "success":
+        return jsonify(result), 200
+    else:
+        # Configuration errors are client-side problems (bad keys, wrong host, etc.)
+        # so a 400-level error is more appropriate than a 500.
+        return jsonify(result), 400
+# --- MODIFICATION END ---
 
 @rest_api_bp.route("/v1/sessions", methods=["POST"])
 async def create_session():

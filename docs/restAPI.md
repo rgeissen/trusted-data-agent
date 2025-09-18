@@ -16,7 +16,78 @@ The current version of the REST API (v1) does not require authentication. Access
 
 The base URL for all endpoints is `/api`.
 
-### 3.1. Create a New Session
+### 3.1. Configure Application
+
+Initializes and validates the agent's core services, including the LLM provider and the MCP server connection. This is the first step required before creating sessions or submitting queries.
+
+* **Endpoint**: `POST /v1/configure`
+* **Method**: `POST`
+* **Body**:
+    A JSON object containing the full configuration. The structure varies slightly by provider.
+    
+    **For Google, Anthropic, OpenAI:**
+    ```json
+    {
+      "provider": "Google",
+      "model": "gemini-1.5-flash-latest",
+      "credentials": {
+        "apiKey": "YOUR_API_KEY"
+      },
+      "mcp_server": {
+        "name": "my_mcp_server",
+        "host": "localhost",
+        "port": 8001,
+        "path": "/mcp"
+      }
+    }
+    ```
+
+    **For Amazon Bedrock:**
+    ```json
+    {
+      "provider": "Amazon",
+      "model": "amazon.titan-text-express-v1",
+      "credentials": {
+        "aws_access_key_id": "YOUR_AWS_ACCESS_KEY",
+        "aws_secret_access_key": "YOUR_AWS_SECRET_KEY",
+        "aws_region": "us-east-1"
+      },
+      "mcp_server": { ... }
+    }
+    ```
+
+    **For Ollama:**
+    ```json
+    {
+      "provider": "Ollama",
+      "model": "llama2",
+      "credentials": {
+        "ollama_host": "http://localhost:11434"
+      },
+      "mcp_server": { ... }
+    }
+    ```
+
+* **Success Response**:
+    * **Code**: `200 OK`
+    * **Content**:
+        ```json
+        {
+          "status": "success",
+          "message": "MCP Server 'my_mcp_server' and LLM configured successfully."
+        }
+        ```
+* **Error Response**:
+    * **Code**: `500 Internal Server Error`
+    * **Content**:
+        ```json
+        {
+          "status": "error",
+          "message": "Configuration failed: Authentication failed. Please check your API keys or credentials."
+        }
+        ```
+
+### 3.2. Create a New Session
 
 Creates a new, isolated conversation session for the agent. A session stores context and history for subsequent queries.
 
@@ -32,7 +103,7 @@ Creates a new, isolated conversation session for the agent. A session stores con
         }
         ```
 * **Error Response**:
-    * **Code**: `503 Service Unavailable` (if LLM/MCP services are not configured)
+    * **Code**: `503 Service Unavailable` (if services are not configured via `/v1/configure`)
     * **Content**:
         ```json
         {
@@ -40,7 +111,7 @@ Creates a new, isolated conversation session for the agent. A session stores con
         }
         ```
 
-### 3.2. Submit a Query
+### 3.3. Submit a Query
 
 Submits a natural language query to a specific session. This initiates a background task for the agent to process the query.
 
@@ -67,7 +138,7 @@ Submits a natural language query to a specific session. This initiates a backgro
     * **Code**: `404 Not Found` (if `session_id` is invalid)
     * **Code**: `400 Bad Request` (if the `prompt` field is missing from the request body)
 
-### 3.3. Get Task Status and Result
+### 3.4. Get Task Status and Result
 
 Polls for the status of a background task. This endpoint provides real-time progress updates through an event log and delivers the final result when the task is complete.
 
@@ -155,9 +226,15 @@ When a task is `complete`, the `result` field will be populated with the final s
     }
     ```
 
-## 5. Prerequisites
+## 5. Configuration
 
-**IMPORTANT**: Before using the REST API, you must first configure the application through its web interface.
+**IMPORTANT**: Before creating a session or submitting a query, you must first configure the application. This can be done programmatically via the REST API or manually through the web interface.
+
+### Method 1: REST API (Recommended for Automation)
+
+Send a `POST` request to the `/api/v1/configure` endpoint with the appropriate credentials and server details. See section **3.1 Configure Application** for the full request structure. Once you receive a successful response, the API is ready for use.
+
+### Method 2: Web UI (for Manual Setup)
 
 1.  Start the application server.
 2.  Open a web browser and navigate to the application's URL (e.g., `http://127.0.0.1:5000`).
@@ -167,14 +244,32 @@ When a task is `complete`, the `result` field will be populated with the final s
 
 ## 6. Full Workflow Example (cURL)
 
-**1. Create a Session**
+**1. Configure the Application (Run this first!)**
+
+```bash
+curl -X POST [http://127.0.0.1:5000/api/v1/configure](http://127.0.0.1:5000/api/v1/configure) \
+     -H "Content-Type: application/json" \
+     -d '{
+           "provider": "YOUR_PROVIDER",
+           "model": "YOUR_MODEL",
+           "credentials": { "apiKey": "YOUR_API_KEY" },
+           "mcp_server": {
+             "name": "dev_server",
+             "host": "localhost",
+             "port": 8001,
+             "path": "/mcp"
+           }
+         }'
+```
+
+**2. Create a Session**
 
 ```bash
 SESSION_ID=$(curl -s -X POST [http://127.0.0.1:5000/api/v1/sessions](http://127.0.0.1:5000/api/v1/sessions) | jq -r .session_id)
 echo "Created Session: $SESSION_ID"
 ```
 
-**2. Submit a Query**
+**3. Submit a Query**
 
 ```bash
 TASK_URL=$(curl -s -X POST "[http://127.0.0.1:5000/api/v1/sessions/$SESSION_ID/query](http://127.0.0.1:5000/api/v1/sessions/$SESSION_ID/query)" \
@@ -183,7 +278,7 @@ TASK_URL=$(curl -s -X POST "[http://127.0.0.1:5000/api/v1/sessions/$SESSION_ID/q
 echo "Task URL: $TASK_URL"
 ```
 
-**3. Poll for the Result with Intermediate Events**
+**4. Poll for the Result with Intermediate Events**
 
 **Note:** Save the script below as `check_status.sh`. It is designed to be a reusable utility.
 
@@ -259,13 +354,13 @@ while true; do
 done
 ```
 
-**4. Make the Script Executable and Run It**
+**5. Make the Script Executable and Run It**
 
 ```bash
 # Make the script executable
 chmod +x check_status.sh
 
-# Run the script, passing the TASK_URL from Step 2 as the argument
+# Run the script, passing the TASK_URL from Step 3 as the argument
 ./check_status.sh "$TASK_URL"
 ```
 
@@ -275,8 +370,4 @@ chmod +x check_status.sh
 
 * **Symptom**: When running the "Create a Session" cURL command, the output is `Created Session: null`.
 * **Cause**: This occurs because the application has not yet been configured with valid LLM and MCP credentials. The API returns an error message, and the `jq` command cannot find a `session_id` field in the error, so it outputs `null`.
-* **Solution**: Follow the steps in the **Prerequisites** section to configure the application through the web UI. Once the configuration is successful, the command will work as expected.
-
-</pre>
-</body>
-</html>
+* **Solution**: Follow the steps in the **Configuration** section. Use either the REST API (`POST /api/v1/configure`) or the web UI to configure the application. Once the configuration is successful, the command will work as expected.
