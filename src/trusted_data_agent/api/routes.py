@@ -36,6 +36,32 @@ async def index():
     """Serves the main HTML page."""
     return await render_template("index.html")
 
+# --- MODIFICATION START: Add the new /api/status endpoint with logging ---
+@api_bp.route("/api/status")
+async def get_application_status():
+    """
+    Returns the current configuration status of the application.
+    This is used by the front end on startup to synchronize its state.
+    """
+    is_configured = APP_CONFIG.SERVICES_CONFIGURED
+    
+    app_logger.info(f"DEBUG: API endpoint /api/status checked. Current configured status: {is_configured}")
+
+    if is_configured:
+        status_payload = {
+            "isConfigured": True,
+            "provider": APP_CONFIG.ACTIVE_PROVIDER,
+            "model": APP_CONFIG.ACTIVE_MODEL,
+            "mcp_server": { "name": APP_CONFIG.ACTIVE_MCP_SERVER_NAME }
+        }
+        app_logger.info(f"DEBUG: /api/status responding with configured state: {status_payload}")
+        return jsonify(status_payload)
+    else:
+        status_payload = {"isConfigured": False}
+        app_logger.info(f"DEBUG: /api/status responding with unconfigured state.")
+        return jsonify(status_payload)
+# --- MODIFICATION END ---
+
 @api_bp.route("/simple_chat", methods=["POST"])
 async def simple_chat():
     """

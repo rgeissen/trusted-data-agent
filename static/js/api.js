@@ -12,6 +12,17 @@ import { state } from './state.js';
 import { getSystemPromptForModel, isPrivilegedUser } from './utils.js';
 
 
+// --- MODIFICATION START: Add the new status check function ---
+export async function checkServerStatus() {
+    const response = await fetch('/api/status');
+    if (!response.ok) {
+        throw new Error('Could not connect to the server to check status.');
+    }
+    return await response.json();
+}
+// --- MODIFICATION END ---
+
+
 // --- MODIFICATION START: Refactor API calls to throw errors instead of calling UI functions ---
 export async function startStream(endpoint, body) {
     // This function now throws an error on failure, which will be caught by the event handler.

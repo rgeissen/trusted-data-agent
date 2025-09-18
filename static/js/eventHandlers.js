@@ -79,7 +79,6 @@ async function processStream(responseBody) {
                     }
                 } else if (eventName === 'token_update') {
                     UI.updateTokenDisplay(eventData);
-                    // --- MODIFICATION START: Use call_id to find the correct element ---
                     if (eventData.call_id && state.currentProvider !== 'Amazon') {
                         const metricsEl = document.querySelector(`.per-call-metrics[data-call-id="${eventData.call_id}"]`);
                         if (metricsEl) {
@@ -87,7 +86,6 @@ async function processStream(responseBody) {
                             metricsEl.classList.remove('hidden');
                         }
                     }
-                    // --- MODIFICATION END ---
                 } else if (eventName === 'request_user_input') {
                     UI.updateStatusWindow({ step: "Action Required", details: "Waiting for user to correct parameters.", type: 'workaround' });
                     UI.toggleLoading(false);
@@ -119,7 +117,6 @@ async function processStream(responseBody) {
                     if (eventData.source === 'voice' && eventData.tts_payload) {
                         const { direct_answer, key_observations } = eventData.tts_payload;
 
-                        // Always play the direct answer if available
                         if (direct_answer) {
                             const directAnswerAudio = await API.synthesizeText(direct_answer);
                             if (directAnswerAudio) {
@@ -132,10 +129,9 @@ async function processStream(responseBody) {
                             }
                         }
                         
-                        // Handle key observations based on the current mode
                         if (key_observations) {
                             switch (state.keyObservationsMode) {
-                                case 'autoplay-off': // Ask the user
+                                case 'autoplay-off':
                                     state.ttsState = 'AWAITING_OBSERVATION_CONFIRMATION';
                                     state.ttsObservationBuffer = key_observations;
                                     UI.updateVoiceModeUI();
@@ -157,7 +153,7 @@ async function processStream(responseBody) {
                                     }
                                     break;
 
-                                case 'autoplay-on': // Play automatically
+                                case 'autoplay-on':
                                     const observationAudio = await API.synthesizeText(key_observations);
                                     if (observationAudio) {
                                         const audioUrl = URL.createObjectURL(observationAudio);
@@ -167,17 +163,14 @@ async function processStream(responseBody) {
                                             audio.play();
                                         });
                                     }
-                                    // Fall through to check for voice lock
                                 
-                                case 'off': // Do nothing
-                                    // If mode is 'off' or 'autoplay-on' we check voice lock here
+                                case 'off':
                                     if (state.isVoiceModeLocked) {
                                         setTimeout(() => startRecognition(), 100);
                                     }
                                     break;
                             }
                         } else if (state.isVoiceModeLocked) {
-                            // If no observations, restart listening immediately if locked
                             setTimeout(() => startRecognition(), 100);
                         }
                     }
@@ -259,8 +252,7 @@ export async function handleChatSubmit(e, source = 'text') {
     });
 }
 
-// --- MODIFICATION START: Correctly handle empty resource categories ---
-async function handleLoadResources(type) {
+export async function handleLoadResources(type) {
     const tabButton = document.querySelector(`.resource-tab[data-type="${type}"]`);
     const categoriesContainer = document.getElementById(`${type}-categories`);
     const panelsContainer = document.getElementById(`${type}-panels-container`);
@@ -269,10 +261,8 @@ async function handleLoadResources(type) {
     try {
         const data = await API.loadResources(type);
         
-        // This check is now correctly scoped to the specific type being loaded.
         if (!data || Object.keys(data).length === 0) {
             if(tabButton) {
-                // Hide the tab completely if no resources of this type are found.
                 tabButton.style.display = 'none';
             }
             return;
@@ -338,10 +328,9 @@ async function handleLoadResources(type) {
         panelsContainer.innerHTML = `<div class="p-4 text-center text-red-400">Failed to load ${type}.</div>`;
     }
 }
-// --- MODIFICATION END ---
 
 
-async function handleStartNewSession() {
+export async function handleStartNewSession() {
     DOM.chatLog.innerHTML = '';
     DOM.statusWindowContent.innerHTML = '<p class="text-gray-400">Waiting for a new request...</p>';
     UI.updateTokenDisplay({ statement_input: 0, statement_output: 0, total_input: 0, total_output: 0 });
@@ -361,7 +350,7 @@ async function handleStartNewSession() {
     }
 }
 
-async function handleLoadSession(sessionId) {
+export async function handleLoadSession(sessionId) {
     if (state.currentSessionId === sessionId) return;
 
     UI.toggleLoading(true);
@@ -539,6 +528,56 @@ function handleConfigActionButtonClick(e) {
     }
 }
 
+export async function finalizeConfiguration(config) {
+    DOM.configStatus.textContent = 'Success! MCP & LLM services connected.';
+    DOM.configStatus.className = 'text-sm text-green-400 text-center';
+    DOM.mcpStatusDot.classList.remove('disconnected');
+    DOM.mcpStatusDot.classList.add('connected');
+    DOM.llmStatusDot.classList.remove('disconnected', 'busy');
+    DOM.llmStatusDot.classList.add('connected');
+    DOM.contextStatusDot.classList.remove('disconnected');
+    DOM.contextStatusDot.classList.add('idle');
+
+    localStorage.setItem('lastSelectedProvider', config.provider);
+
+    state.currentProvider = config.provider;
+    state.currentModel = config.model;
+
+    if (Utils.isPrivilegedUser()) {
+        const activePrompt = Utils.getSystemPromptForModel(state.currentProvider, state.currentModel);
+        if (!activePrompt) {
+            await resetSystemPrompt(true);
+        }
+    }
+    
+    const promptEditorMenuItem = DOM.promptEditorButton.parentElement;
+    if (Utils.isPrivilegedUser()) {
+        promptEditorMenuItem.style.display = 'block';
+        DOM.promptEditorButton.disabled = false;
+    } else {
+        promptEditorMenuItem.style.display = 'none';
+        DOM.promptEditorButton.disabled = true;
+    }
+    
+    DOM.chatModalButton.disabled = false;
+    DOM.userInput.placeholder = "Ask about databases, tables, users...";
+    
+    await Promise.all([
+        handleLoadResources('tools'),
+        handleLoadResources('prompts'),
+        handleLoadResources('resources')
+    ]);
+
+    await handleStartNewSession();
+
+    state.pristineConfig = getCurrentCoreConfig();
+    UI.updateConfigButtonState();
+    openSystemPromptPopup();
+    
+    setTimeout(UI.closeConfigModal, 1000);
+}
+
+
 async function handleConfigFormSubmit(e) {
     e.preventDefault();
     await API.checkAndUpdateDefaultPrompts();
@@ -570,11 +609,9 @@ async function handleConfigFormSubmit(e) {
         localStorage.setItem(`${config.provider.toLowerCase()}ApiKey`, config.apiKey);
     }
     
-    // --- MODIFICATION START: Save TTS credentials to local storage ---
     if (config.tts_credentials_json) {
         localStorage.setItem('ttsCredentialsJson', config.tts_credentials_json);
     }
-    // --- MODIFICATION END ---
 
     try {
         const res = await fetch('/configure', {
@@ -586,55 +623,7 @@ async function handleConfigFormSubmit(e) {
         const result = await res.json();
 
         if (res.ok) {
-            DOM.configStatus.textContent = 'Success! MCP & LLM services connected.';
-            DOM.configStatus.className = 'text-sm text-green-400 text-center';
-            DOM.mcpStatusDot.classList.remove('disconnected');
-            DOM.mcpStatusDot.classList.add('connected');
-            DOM.llmStatusDot.classList.remove('disconnected', 'busy');
-            DOM.llmStatusDot.classList.add('connected');
-            DOM.contextStatusDot.classList.remove('disconnected');
-            DOM.contextStatusDot.classList.add('idle');
-
-            localStorage.setItem('lastSelectedProvider', config.provider);
-
-            state.currentProvider = config.provider;
-            state.currentModel = config.model;
-
-            if (Utils.isPrivilegedUser()) {
-                const activePrompt = Utils.getSystemPromptForModel(state.currentProvider, state.currentModel);
-                if (!activePrompt) {
-                    await resetSystemPrompt(true);
-                }
-            }
-            
-            const promptEditorMenuItem = DOM.promptEditorButton.parentElement;
-            if (Utils.isPrivilegedUser()) {
-                promptEditorMenuItem.style.display = 'block';
-                DOM.promptEditorButton.disabled = false;
-            } else {
-                promptEditorMenuItem.style.display = 'none';
-                DOM.promptEditorButton.disabled = true;
-            }
-            
-            DOM.chatModalButton.disabled = false;
-
-            DOM.userInput.placeholder = "Ask about databases, tables, users...";
-            
-            await Promise.all([
-                handleLoadResources('tools'),
-                handleLoadResources('prompts'),
-                handleLoadResources('resources')
-            ]);
-
-            await handleStartNewSession();
-
-            state.pristineConfig = getCurrentCoreConfig();
-
-            setTimeout(UI.closeConfigModal, 1000);
-
-            UI.updateConfigButtonState();
-            openSystemPromptPopup();
-
+            await finalizeConfiguration(config);
         } else {
             throw new Error(result.message || 'An unknown configuration error occurred.');
         }
@@ -656,7 +645,12 @@ async function handleConfigFormSubmit(e) {
     }
 }
 
-async function handleProviderChange() {
+// --- MODIFICATION START: Create a new, sequential function to load credentials and models ---
+/**
+ * A robust, sequential function to load provider credentials and then fetch the model list.
+ * This function is now the single source of truth for this process, preventing race conditions.
+ */
+export async function loadCredentialsAndModels() {
     const newProvider = DOM.llmProviderSelect.value;
 
     DOM.apiKeyContainer.classList.add('hidden');
@@ -664,31 +658,41 @@ async function handleProviderChange() {
     DOM.awsListingMethodContainer.classList.add('hidden');
     DOM.ollamaHostContainer.classList.add('hidden');
 
+    // This logic is now robust and uses direct fetch calls, mirroring the original handleProviderChange.
     if (newProvider === 'Amazon') {
         DOM.awsCredentialsContainer.classList.remove('hidden');
         DOM.awsListingMethodContainer.classList.remove('hidden');
-
-        const res = await fetch('/api_key/amazon');
+        const res = await fetch('/api_key/amazon'); // Correct direct fetch
         const envCreds = await res.json();
         const savedCreds = JSON.parse(localStorage.getItem('amazonApiKey')) || {};
-
         DOM.awsAccessKeyIdInput.value = envCreds.aws_access_key_id || savedCreds.aws_access_key_id || '';
         DOM.awsSecretAccessKeyInput.value = envCreds.aws_secret_access_key || savedCreds.aws_secret_access_key || '';
         DOM.awsRegionInput.value = envCreds.aws_region || savedCreds.aws_region || '';
-
     } else if (newProvider === 'Ollama') {
         DOM.ollamaHostContainer.classList.remove('hidden');
-        const res = await fetch('/api_key/ollama');
+        const res = await fetch('/api_key/ollama'); // Correct direct fetch
         const data = await res.json();
         DOM.ollamaHostInput.value = data.host || localStorage.getItem('ollamaHost') || 'http://localhost:11434';
     } else {
         DOM.apiKeyContainer.classList.remove('hidden');
-        const res = await fetch(`/api_key/${newProvider.toLowerCase()}`);
+        const res = await fetch(`/api_key/${newProvider.toLowerCase()}`); // Correct direct fetch
         const data = await res.json();
         DOM.llmApiKeyInput.value = data.apiKey || localStorage.getItem(`${newProvider.toLowerCase()}ApiKey`) || '';
     }
+    
+    // Now that credentials are confirmed to be loaded, fetch the models.
+    await handleRefreshModelsClick();
+}
+// --- MODIFICATION END ---
+
+
+async function handleProviderChange() {
     DOM.llmModelSelect.innerHTML = '<option value="">-- Select Provider & Enter Credentials --</option>';
     DOM.configStatus.textContent = '';
+    
+    // --- MODIFICATION START: Call the new, centralized function ---
+    await loadCredentialsAndModels();
+    // --- MODIFICATION END ---
 }
 
 async function handleModelChange() {

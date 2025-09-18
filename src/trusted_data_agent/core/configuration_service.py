@@ -37,6 +37,19 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
         if not server_name:
             return {"status": "error", "message": "Configuration failed: 'mcp_server.name' is a required field."}
 
+        # --- MODIFICATION START: Implement state-aware bypass logic ---
+        is_already_configured = (
+            APP_CONFIG.SERVICES_CONFIGURED and
+            provider == APP_CONFIG.ACTIVE_PROVIDER and
+            model == APP_CONFIG.ACTIVE_MODEL and
+            server_name == APP_CONFIG.ACTIVE_MCP_SERVER_NAME
+        )
+
+        if is_already_configured:
+            app_logger.info("Bypassing configuration: The requested configuration is already active.")
+            return {"status": "success", "message": f"Services are already configured with the requested settings."}
+        # --- MODIFICATION END ---
+
         temp_llm_instance = None
         temp_mcp_client = None
         
@@ -120,6 +133,13 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             # --- 5. Finalize Contexts ---
             _regenerate_contexts()
 
+            # --- MODIFICATION START: Set active configuration details on success ---
+            APP_CONFIG.SERVICES_CONFIGURED = True
+            APP_CONFIG.ACTIVE_PROVIDER = provider
+            APP_CONFIG.ACTIVE_MODEL = model
+            APP_CONFIG.ACTIVE_MCP_SERVER_NAME = server_name
+            # --- MODIFICATION END ---
+
             return {"status": "success", "message": f"MCP Server '{server_name}' and LLM configured successfully."}
 
         except (APIError, OpenAI_APIError, google_exceptions.PermissionDenied, ClientError, RuntimeError, Exception) as e:
@@ -129,6 +149,13 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             APP_STATE['mcp_client'] = None
             APP_CONFIG.MCP_SERVER_CONNECTED = False
             APP_CONFIG.CHART_MCP_CONNECTED = False
+            
+            # --- MODIFICATION START: Reset active configuration details on failure ---
+            APP_CONFIG.SERVICES_CONFIGURED = False
+            APP_CONFIG.ACTIVE_PROVIDER = None
+            APP_CONFIG.ACTIVE_MODEL = None
+            APP_CONFIG.ACTIVE_MCP_SERVER_NAME = None
+            # --- MODIFICATION END ---
             
             root_exception = unwrap_exception(e)
             error_message = ""
@@ -148,4 +175,3 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             return {"status": "error", "message": f"Configuration failed: {error_message}"}
         finally:
             app_logger.info("Configuration lock released.")
-
