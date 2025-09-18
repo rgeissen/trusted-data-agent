@@ -6,6 +6,8 @@ The Trusted Data Agent represents a paradigm shift in how Business Leaders, Busi
 
 This solution provides unparalleled, real-time insight into the complete conversational flow between the user, the AI agent, the **Model Context Protocol (MCP)** server, and the underlying relational information system, establishing a new standard for clarity and control in AI-driven data analytics.
 
+![Demo](./images/AppOverview.gif)
+
 ### Table Of Contents
 
 1. [Overview: A Superior Approach](#overview-a-superior-approach)
