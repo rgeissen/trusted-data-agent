@@ -129,9 +129,9 @@ APP_STATE = {
 
 # Whitelists for models that are officially supported.
 # The ALL_MODELS_UNLOCKED flag bypasses these checks.
-CERTIFIED_GOOGLE_MODELS = ["*gemini-1.5-flash*"]
-CERTIFIED_ANTHROPIC_MODELS = ["*claude-3-sonnet*"]
-CERTIFIED_AMAZON_MODELS = ["*amazon.titan-text-express-v1*"]
-CERTIFIED_AMAZON_PROFILES = ["*amazon.titan-text-express-v1*"]
+CERTIFIED_GOOGLE_MODELS = ["*gemini-2.0-flash"]
+CERTIFIED_ANTHROPIC_MODELS = ["*claude-3-7-sonnet*"]
+CERTIFIED_AMAZON_MODELS = ["*amazon.nova-pro-v1*"]
+CERTIFIED_AMAZON_PROFILES = ["*amazon.nova-pro-v1*"]
 CERTIFIED_OLLAMA_MODELS = ["llama2"]
-CERTIFIED_OPENAI_MODELS = ["*gpt-4-turbo*"]
+CERTIFIED_OPENAI_MODELS = ["*gpt-4.1-mini-2025*"]

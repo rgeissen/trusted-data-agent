@@ -156,19 +156,15 @@ def _condense_and_clean_history(history: list) -> list:
     seen_tool_outputs = set()
     capabilities_pattern = re.compile(r'# Capabilities\n--- Available Tools ---.*', re.DOTALL)
     
-    # --- MODIFICATION START: Add regex to strip system prompt wrapper ---
     system_prompt_wrapper_pattern = re.compile(r"SYSTEM PROMPT:.*USER PROMPT:\n", re.DOTALL)
-    # --- MODIFICATION END ---
 
     for msg in normalized_history:
         msg_copy = copy.deepcopy(msg)
         content = msg_copy.get('content', '')
 
-        # --- MODIFICATION START: Apply the new regex pattern ---
         if msg_copy.get('role') == 'user' and system_prompt_wrapper_pattern.match(content):
             app_logger.debug("History Condensation: Removing system prompt wrapper from user message.")
             content = system_prompt_wrapper_pattern.sub("", content)
-        # --- MODIFICATION END ---
         
         if capabilities_pattern.search(content):
             app_logger.debug("History Condensation: Removing obsolete capability definitions.")
@@ -224,7 +220,6 @@ def _get_full_system_prompt(session_data: dict, dependencies: dict, system_promp
         if chart_instructions_detail:
             charting_instructions_section = f"- **Charting Guidelines:** {chart_instructions_detail}"
 
-    # --- MODIFICATION START: Dynamically build tools_context with upfront filtering ---
     tools_context = ""
     use_condensed_context = False
     if APP_CONFIG.CONDENSE_SYSTEMPROMPT_HISTORY and session_data and session_data.get("full_context_sent"):
@@ -266,7 +261,6 @@ def _get_full_system_prompt(session_data: dict, dependencies: dict, system_promp
                             tool_str += f"\n    - `{arg_name}` ({arg_type}, {req_str}): {arg_desc}"
                     tool_context_parts.append(tool_str)
         tools_context = "\n".join(tool_context_parts) if len(tool_context_parts) > 1 else "--- No Tools Available ---"
-    # --- MODIFICATION END ---
     
     prompts_context = STATE.get('prompts_context', '')
     if active_prompt_name_for_filter:
@@ -330,7 +324,6 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
     session_data = get_session(session_id) if session_id else None
     system_prompt = _get_full_system_prompt(session_data, dependencies, system_prompt_override, active_prompt_name_for_filter, source)
 
-    # --- MODIFICATION START: Convert linear history to a structured JSON object for logging ---
     history_for_log_str = "No history available."
     if session_data: 
         history_source = []
@@ -338,7 +331,6 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
              history_source = chat_history if chat_history is not None else session_data.get('chat_object', [])
 
         if APP_CONFIG.CURRENT_PROVIDER == "Google" and hasattr(session_data.get('chat_object'), 'history'):
-             # Normalize Google's specific history object first
              normalized_history = [
                  {'role': msg.role, 'content': msg.parts[0].text} for msg in session_data['chat_object'].history
              ]
@@ -356,7 +348,6 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
         f"SYSTEM PROMPT:\n{system_prompt}\n\n"
         f"USER PROMPT:\n{prompt}\n"
     )
-    # --- MODIFICATION END ---
     llm_history_logger.info(full_log_message)
 
 
@@ -507,6 +498,10 @@ def _is_model_certified(model_name: str, certified_list: list[str]) -> bool:
     """
     Checks if a model is certified, a supporting wildcards.
     """
+    # --- MODIFICATION START: Correctly use the global config flag ---
+    if APP_CONFIG.ALL_MODELS_UNLOCKED:
+        return True
+    # --- MODIFICATION END ---
     for pattern in certified_list:
         regex_pattern = re.escape(pattern).replace('\\*', '.*')
         if re.fullmatch(regex_pattern, model_name):
@@ -564,7 +559,8 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
     return [
         {
             "name": name,
-            "certified": APP_CONFIG.ALL_MODELS_UNLOCKED or _is_model_certified(name, certified_list)
+            "certified": _is_model_certified(name, certified_list)
         }
         for name in model_names
     ]
+

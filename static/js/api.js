@@ -6,26 +6,35 @@
 
 import * as DOM from './domElements.js';
 import { state } from './state.js';
-// --- MODIFICATION START: Remove all UI imports to break the circular dependency ---
-// import { addMessage, toggleLoading, updateStatusWindow, updateTokenDisplay, setThinkingIndicator, highlightResource, addSessionToList, updatePromptsTabCounter, updateToolsTabCounter, createResourceItem } from './ui.js';
-// --- MODIFICATION END ---
 import { getSystemPromptForModel, isPrivilegedUser } from './utils.js';
 
 
-// --- MODIFICATION START: Add the new status check function ---
 export async function checkServerStatus() {
-    const response = await fetch('/api/status');
-    if (!response.ok) {
-        throw new Error('Could not connect to the server to check status.');
+    const res = await fetch('/api/status');
+    if (!res.ok) {
+        // If the endpoint fails, it's safer to assume not configured.
+        return { isConfigured: false };
     }
-    return await response.json();
+    return await res.json();
+}
+
+// --- MODIFICATION START: Add the missing getApiKey helper function to centralize this logic ---
+/**
+ * Fetches API keys from the backend /api_key/ endpoint.
+ * @param {string} provider The name of the LLM provider.
+ * @returns {Promise<object>} A promise that resolves to the credentials object.
+ */
+export async function getApiKey(provider) {
+    const res = await fetch(`/api_key/${provider.toLowerCase()}`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch API key for ${provider}`);
+    }
+    return await res.json();
 }
 // --- MODIFICATION END ---
 
 
-// --- MODIFICATION START: Refactor API calls to throw errors instead of calling UI functions ---
 export async function startStream(endpoint, body) {
-    // This function now throws an error on failure, which will be caught by the event handler.
     const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -39,7 +48,6 @@ export async function startStream(endpoint, body) {
 }
 
 export async function synthesizeText(text) {
-    // --- MODIFICATION START: Add detailed debugging for API call ---
     console.log("AUDIO DEBUG: synthesizeText called with text:", `"${text.substring(0,100)}..."`);
     if (!state.appConfig.voice_conversation_enabled) {
         console.log("AUDIO DEBUG: Voice feature is disabled in app config. Skipping synthesis.");
@@ -57,12 +65,9 @@ export async function synthesizeText(text) {
     } else {
         const errorData = await response.json();
         console.error('AUDIO DEBUG: Speech synthesis API call failed:', errorData.error);
-        // Return null to allow graceful failure of the audio playback.
         return null;
     }
-    // --- MODIFICATION END ---
 }
-// --- MODIFICATION END ---
 
 
 export async function checkAndUpdateDefaultPrompts() {
@@ -137,14 +142,9 @@ export async function toggleToolApi(toolName, isDisabled) {
 export async function loadResources(type) {
     const res = await fetch(`/${type}`);
     
-    // --- MODIFICATION START: Handle empty resource categories gracefully ---
-    // If the server responds with a 404, it means the resource category
-    // might be empty or not exist. We treat this as a valid, empty state
-    // instead of throwing an error.
     if (res.status === 404) {
         return {};
     }
-    // --- MODIFICATION END ---
 
     const data = await res.json();
     if (!res.ok) {
@@ -231,3 +231,4 @@ export async function fetchModels() {
     }
     return result;
 }
+
