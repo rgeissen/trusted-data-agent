@@ -110,7 +110,10 @@ APP_STATE = {
     "disabled_tools": list(APP_CONFIG.INITIALLY_DISABLED_TOOLS),
 
     # Validated license information
-    "license_info": None
+    "license_info": None,
+
+    # Asynchronous task tracking for the REST API
+    "background_tasks": {}
 }
 
 # Whitelists for models that are officially supported.

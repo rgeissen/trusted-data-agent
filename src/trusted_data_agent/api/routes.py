@@ -26,13 +26,14 @@ except ImportError:
     texttospeech = None
     service_account = None
 
-from trusted_data_agent.core.config import APP_CONFIG, APP_STATE as STATE
+from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
 from trusted_data_agent.core import session_manager
 from trusted_data_agent.agent.prompts import PROVIDER_SYSTEM_PROMPTS, CHARTING_INSTRUCTIONS
 from trusted_data_agent.agent.executor import PlanExecutor
 from trusted_data_agent.llm import handler as llm_handler
 from trusted_data_agent.mcp import adapter as mcp_adapter
 from trusted_data_agent.agent.formatter import OutputFormatter
+from trusted_data_agent.agent import execution_service
 
 
 api_bp = Blueprint('api', __name__)
@@ -49,8 +50,7 @@ def get_tts_client():
         app_logger.error("AUDIO DEBUG: Please install it to use the voice feature: pip install google-cloud-texttospeech")
         return None
 
-    # --- MODIFICATION START: Prioritize UI-provided credentials ---
-    tts_creds_json_str = STATE.get("tts_credentials_json")
+    tts_creds_json_str = APP_STATE.get("tts_credentials_json")
 
     if tts_creds_json_str:
         app_logger.info("AUDIO DEBUG: Attempting to initialize TTS client from UI-provided JSON credentials.")
@@ -66,9 +66,7 @@ def get_tts_client():
         except Exception as e:
             app_logger.error(f"AUDIO DEBUG: Failed to initialize TTS client with UI credentials: {e}", exc_info=True)
             return None
-    # --- MODIFICATION END ---
     
-    # Fallback to environment variables if no UI credentials are provided
     app_logger.info("AUDIO DEBUG: No UI credentials found. Falling back to environment variable for TTS client.")
     try:
         client = texttospeech.TextToSpeechClient()
@@ -117,7 +115,7 @@ def unwrap_exception(e: BaseException) -> BaseException:
 
 def _get_prompt_info(prompt_name: str) -> dict | None:
     """Helper to find prompt details from the structured prompts in the global state."""
-    structured_prompts = STATE.get('structured_prompts', {})
+    structured_prompts = APP_STATE.get('structured_prompts', {})
     for category_prompts in structured_prompts.values():
         for prompt in category_prompts:
             if prompt.get("name") == prompt_name:
@@ -146,24 +144,22 @@ def _regenerate_contexts():
     """
     print("\n--- Regenerating Agent Capability Contexts ---")
     
-    disabled_tools_list = STATE.get("disabled_tools", [])
-    disabled_prompts_list = STATE.get("disabled_prompts", [])
+    disabled_tools_list = APP_STATE.get("disabled_tools", [])
+    disabled_prompts_list = APP_STATE.get("disabled_prompts", [])
     
-    # Regenerate Tool Contexts
-    if STATE.get('mcp_tools') and STATE.get('structured_tools'):
-        
-        for category, tool_list in STATE['structured_tools'].items():
+    if APP_STATE.get('mcp_tools') and APP_STATE.get('structured_tools'):
+        for category, tool_list in APP_STATE['structured_tools'].items():
             for tool_info in tool_list:
                 tool_info['disabled'] = tool_info['name'] in disabled_tools_list
         
-        enabled_count = sum(1 for category in STATE['structured_tools'].values() for t in category if not t['disabled'])
+        enabled_count = sum(1 for category in APP_STATE['structured_tools'].values() for t in category if not t['disabled'])
         
         print(f"\n[ Tools Status ]")
         print(f"  - Active: {enabled_count}")
         print(f"  - Inactive: {len(disabled_tools_list)}")
 
         tool_context_parts = ["--- Available Tools ---"]
-        for category, tools in sorted(STATE['structured_tools'].items()):
+        for category, tools in sorted(APP_STATE['structured_tools'].items()):
             enabled_tools_in_category = [t for t in tools if not t['disabled']]
             if not enabled_tools_in_category:
                 continue
@@ -187,26 +183,24 @@ def _regenerate_contexts():
                 tool_context_parts.append(tool_str)
         
         if len(tool_context_parts) > 1:
-            STATE['tools_context'] = "\n".join(tool_context_parts)
+            APP_STATE['tools_context'] = "\n".join(tool_context_parts)
         else:
-            STATE['tools_context'] = "--- No Tools Available ---"
+            APP_STATE['tools_context'] = "--- No Tools Available ---"
         app_logger.info(f"Regenerated LLM tool context. {enabled_count} tools are active.")
 
-
-    # Regenerate Prompt Contexts
-    if STATE.get('mcp_prompts') and STATE.get('structured_prompts'):
-        for category, prompt_list in STATE['structured_prompts'].items():
+    if APP_STATE.get('mcp_prompts') and APP_STATE.get('structured_prompts'):
+        for category, prompt_list in APP_STATE['structured_prompts'].items():
             for prompt_info in prompt_list:
                 prompt_info['disabled'] = prompt_info['name'] in disabled_prompts_list
 
-        enabled_count = sum(1 for category in STATE['structured_prompts'].values() for p in category if not p['disabled'])
+        enabled_count = sum(1 for category in APP_STATE['structured_prompts'].values() for p in category if not p['disabled'])
         
         print(f"\n[ Prompts Status ]")
         print(f"  - Active: {enabled_count}")
         print(f"  - Inactive: {len(disabled_prompts_list)}")
         
         prompt_context_parts = ["--- Available Prompts ---"]
-        for category, prompts in sorted(STATE['structured_prompts'].items()):
+        for category, prompts in sorted(APP_STATE['structured_prompts'].items()):
             enabled_prompts_in_category = [p for p in prompts if not p['disabled']]
             if not enabled_prompts_in_category:
                 continue
@@ -230,10 +224,9 @@ def _regenerate_contexts():
                 prompt_context_parts.append(prompt_str)
 
         if len(prompt_context_parts) > 1:
-            STATE['prompts_context'] = "\n".join(prompt_context_parts)
+            APP_STATE['prompts_context'] = "\n".join(prompt_context_parts)
         else:
-            STATE['prompts_context'] = "--- No Prompts Available ---"
-        
+            APP_STATE['prompts_context'] = "--- No Prompts Available ---"
         app_logger.info(f"Regenerated LLM prompt context. {enabled_count} prompts are active.")
 
     if disabled_tools_list or disabled_prompts_list:
@@ -243,14 +236,14 @@ def _regenerate_contexts():
         if disabled_prompts_list:
             constraints_list.extend([f"- `{name}` (prompt)" for name in disabled_prompts_list])
         
-        STATE['constraints_context'] = (
+        APP_STATE['constraints_context'] = (
             "\n--- CONSTRAINTS ---\n"
             "You are explicitly forbidden from using the following capabilities in your plan under any circumstances:\n"
             + "\n".join(constraints_list) + "\n"
         )
         app_logger.info(f"Regenerated LLM constraints context. {len(constraints_list)} capabilities are forbidden.")
     else:
-        STATE['constraints_context'] = "" 
+        APP_STATE['constraints_context'] = "" 
         app_logger.info("Regenerated LLM constraints context. No capabilities are currently forbidden.")
     
     print("\n" + "-"*44)
@@ -266,7 +259,7 @@ async def simple_chat():
     Handles direct, tool-less chat with the configured LLM.
     This is used by the 'Chat' modal in the UI.
     """
-    if not STATE.get('llm'):
+    if not APP_STATE.get('llm'):
         return jsonify({"error": "LLM not configured."}), 400
 
     data = await request.get_json()
@@ -278,11 +271,11 @@ async def simple_chat():
 
     try:
         response_text, _, _ = await llm_handler.call_llm_api(
-            llm_instance=STATE.get('llm'),
+            llm_instance=APP_STATE.get('llm'),
             prompt=message,
             chat_history=history,
             system_prompt_override="You are a helpful assistant.",
-            dependencies={'STATE': STATE},
+            dependencies={'STATE': APP_STATE},
             reason="Simple, tool-less chat."
         )
         
@@ -303,7 +296,7 @@ async def get_app_config():
         "allow_synthesis_from_history": APP_CONFIG.ALLOW_SYNTHESIS_FROM_HISTORY,
         "default_charting_intensity": APP_CONFIG.DEFAULT_CHARTING_INTENSITY,
         "voice_conversation_enabled": APP_CONFIG.VOICE_CONVERSATION_ENABLED,
-        "license_info": STATE.get("license_info")
+        "license_info": APP_STATE.get("license_info")
     })
 
 @api_bp.route("/api/prompts-version")
@@ -363,11 +356,11 @@ async def text_to_speech():
         app_logger.warning("AUDIO DEBUG: No text provided in request body.")
         return jsonify({"error": "No text provided for synthesis."}), 400
 
-    if "tts_client" not in STATE or STATE["tts_client"] is None:
+    if "tts_client" not in APP_STATE or APP_STATE["tts_client"] is None:
         app_logger.info("AUDIO DEBUG: TTS client not in STATE, attempting to initialize.")
-        STATE["tts_client"] = get_tts_client()
+        APP_STATE["tts_client"] = get_tts_client()
 
-    tts_client = STATE.get("tts_client")
+    tts_client = APP_STATE.get("tts_client")
     if not tts_client:
         app_logger.error("AUDIO DEBUG: TTS client is still not available after initialization attempt.")
         return jsonify({"error": "TTS client could not be initialized. Check server logs."}), 500
@@ -384,17 +377,17 @@ async def text_to_speech():
 @api_bp.route("/tools")
 async def get_tools():
     """Returns the categorized list of MCP tools."""
-    if not STATE.get("mcp_client"): return jsonify({"error": "Not configured"}), 400
-    return jsonify(STATE.get("structured_tools", {}))
+    if not APP_STATE.get("mcp_client"): return jsonify({"error": "Not configured"}), 400
+    return jsonify(APP_STATE.get("structured_tools", {}))
 
 @api_bp.route("/prompts")
 async def get_prompts():
     """
     Returns the categorized list of MCP prompts with metadata only.
     """
-    if not STATE.get("mcp_client"):
+    if not APP_STATE.get("mcp_client"):
         return jsonify({"error": "Not configured"}), 400
-    return jsonify(STATE.get("structured_prompts", {}))
+    return jsonify(APP_STATE.get("structured_prompts", {}))
 
 @api_bp.route("/tool/toggle_status", methods=["POST"])
 async def toggle_tool_status():
@@ -408,7 +401,7 @@ async def toggle_tool_status():
     if not tool_name or is_disabled is None:
         return jsonify({"status": "error", "message": "Missing 'name' or 'disabled' field."}), 400
 
-    disabled_tools_set = set(STATE.get("disabled_tools", []))
+    disabled_tools_set = set(APP_STATE.get("disabled_tools", []))
 
     if is_disabled:
         disabled_tools_set.add(tool_name)
@@ -417,7 +410,7 @@ async def toggle_tool_status():
         disabled_tools_set.discard(tool_name)
         app_logger.info(f"Enabling tool '{tool_name}' for agent use.")
     
-    STATE["disabled_tools"] = list(disabled_tools_set)
+    APP_STATE["disabled_tools"] = list(disabled_tools_set)
     
     _regenerate_contexts()
 
@@ -435,7 +428,7 @@ async def toggle_prompt_status():
     if not prompt_name or is_disabled is None:
         return jsonify({"status": "error", "message": "Missing 'name' or 'disabled' field."}), 400
 
-    disabled_prompts_set = set(STATE.get("disabled_prompts", []))
+    disabled_prompts_set = set(APP_STATE.get("disabled_prompts", []))
 
     if is_disabled:
         disabled_prompts_set.add(prompt_name)
@@ -444,7 +437,7 @@ async def toggle_prompt_status():
         disabled_prompts_set.discard(prompt_name)
         app_logger.info(f"Enabling prompt '{prompt_name}' for agent use.")
     
-    STATE["disabled_prompts"] = list(disabled_prompts_set)
+    APP_STATE["disabled_prompts"] = list(disabled_prompts_set)
     
     _regenerate_contexts()
 
@@ -456,7 +449,7 @@ async def get_prompt_content(prompt_name):
     Retrieves the content of a specific MCP prompt. For dynamic prompts
     with arguments, it renders them with placeholder values for preview.
     """
-    mcp_client = STATE.get("mcp_client")
+    mcp_client = APP_STATE.get("mcp_client")
     if not mcp_client:
         return jsonify({"error": "MCP client not configured."}), 400
     
@@ -531,7 +524,7 @@ async def get_session_history(session_id):
 @api_bp.route("/session", methods=["POST"])
 async def new_session():
     """Creates a new chat session."""
-    if not STATE.get('llm') or not APP_CONFIG.MCP_SERVER_CONNECTED:
+    if not APP_STATE.get('llm') or not APP_CONFIG.MCP_SERVER_CONNECTED:
         return jsonify({"error": "Application not configured. Please set MCP and LLM details in Config."}), 400
     
     try:
@@ -561,7 +554,7 @@ async def new_session():
     try:
         session_id = session_manager.create_session(
             provider=APP_CONFIG.CURRENT_PROVIDER,
-            llm_instance=STATE.get('llm'),
+            llm_instance=APP_STATE.get('llm'),
             charting_intensity=charting_intensity,
             system_prompt_template=system_prompt_template
         )
@@ -663,23 +656,23 @@ async def configure_services():
         APP_CONFIG.CURRENT_MODEL_PROVIDER_IN_PROFILE = None
         APP_CONFIG.CURRENT_MCP_SERVER_NAME = server_name
         
-        STATE['llm'] = temp_llm_instance
-        STATE['mcp_client'] = temp_mcp_client
-        STATE['server_configs'] = temp_server_configs
+        APP_STATE['llm'] = temp_llm_instance
+        APP_STATE['mcp_client'] = temp_mcp_client
+        APP_STATE['server_configs'] = temp_server_configs
 
         if provider == "Amazon" and model.startswith("arn:aws:bedrock:"):
             profile_part = model.split('/')[-1]
             APP_CONFIG.CURRENT_MODEL_PROVIDER_IN_PROFILE = profile_part.split('.')[1]
         
-        await mcp_adapter.load_and_categorize_mcp_resources(STATE)
+        await mcp_adapter.load_and_categorize_mcp_resources(APP_STATE)
         APP_CONFIG.MCP_SERVER_CONNECTED = True
         
         APP_CONFIG.CHART_MCP_CONNECTED = True
 
-        STATE['tts_credentials_json'] = tts_credentials_json
+        APP_STATE['tts_credentials_json'] = tts_credentials_json
         if APP_CONFIG.VOICE_CONVERSATION_ENABLED:
             app_logger.info("AUDIO DEBUG: Configuration updated. Re-initializing TTS client.")
-            STATE['tts_client'] = get_tts_client()
+            APP_STATE['tts_client'] = get_tts_client()
 
         _regenerate_contexts()
 
@@ -687,8 +680,8 @@ async def configure_services():
 
     except (APIError, OpenAI_APIError, google_exceptions.PermissionDenied, ClientError, RuntimeError, Exception) as e:
         app_logger.error(f"Configuration failed during validation: {e}", exc_info=True)
-        STATE['llm'] = None
-        STATE['mcp_client'] = None
+        APP_STATE['llm'] = None
+        APP_STATE['mcp_client'] = None
         APP_CONFIG.MCP_SERVER_CONNECTED = False
         APP_CONFIG.CHART_MCP_CONNECTED = False
         
@@ -712,7 +705,7 @@ async def configure_services():
 @api_bp.route("/ask_stream", methods=["POST"])
 async def ask_stream():
     """Handles the main chat conversation stream for ad-hoc user queries."""
-    if not STATE.get('mcp_tools'):
+    if not APP_STATE.get('mcp_tools'):
         async def error_gen():
             yield PlanExecutor._format_sse({
                 "error": "The agent is not fully configured. Please ensure the LLM and MCP server details are set correctly in the 'Config' tab before starting a chat."
@@ -726,47 +719,29 @@ async def ask_stream():
     source = data.get("source", "text")
     
     async def stream_generator():
-        session_data = session_manager.get_session(session_id)
-        if not all([user_input, session_id]) or not session_data:
-            yield PlanExecutor._format_sse({"error": "Missing 'message' or invalid 'session_id'"}, "error")
-            return
-        
-        if disabled_history:
-            yield PlanExecutor._format_sse(
-                {"target": "context", "state": "history_disabled_processing"}, 
-                "context_state_update"
-            )
+        queue = asyncio.Queue()
 
-        try:
-            session_manager.add_to_history(session_id, 'user', user_input)
-            
-            if session_data['name'] == 'New Chat':
-                new_name = user_input[:40] + '...' if len(user_input) > 40 else user_input
-                session_manager.update_session_name(session_id, new_name)
-                yield PlanExecutor._format_sse({"session_name_update": {"id": session_id, "name": new_name}}, "session_update")
+        async def event_handler(event_data, event_type):
+            sse_event = PlanExecutor._format_sse(event_data, event_type)
+            await queue.put(sse_event)
 
-            if user_input.lower().strip() in ["hello", "hi", "hey", "good morning", "good afternoon", "good evening"]:
-                greeting_response = "Hello! How can I assist you with your database queries or analysis today?"
-                yield PlanExecutor._format_sse({"final_answer": greeting_response, "source": source}, "final_answer")
-                session_manager.add_to_history(session_id, 'assistant', greeting_response)
-                return
-            
-            previous_turn_data = session_data.get("last_turn_data", {})
-
-            executor = PlanExecutor(
-                session_id=session_id, 
-                original_user_input=user_input, 
-                dependencies={'STATE': STATE},
+        async def run_and_signal_completion():
+            await execution_service.run_agent_execution(
+                session_id=session_id,
+                user_input=user_input,
+                event_handler=event_handler,
                 disabled_history=disabled_history,
-                previous_turn_data=previous_turn_data,
                 source=source
             )
-            async for event in executor.run():
-                yield event
+            await queue.put(None)
 
-        except Exception as e:
-            app_logger.error(f"An unhandled error occurred in /ask_stream: {e}", exc_info=True)
-            yield PlanExecutor._format_sse({"error": "An unexpected server error occurred.", "details": str(e)}, "error")
+        asyncio.create_task(run_and_signal_completion())
+        
+        while True:
+            item = await queue.get()
+            if item is None:
+                break
+            yield item
         
     return Response(stream_generator(), mimetype="text/event-stream")
 
@@ -775,7 +750,7 @@ async def invoke_prompt_stream():
     """
     Handles the direct invocation of a prompt from the UI.
     """
-    if not STATE.get('mcp_tools'):
+    if not APP_STATE.get('mcp_tools'):
         async def error_gen():
             yield PlanExecutor._format_sse({
                 "error": "The agent is not fully configured. Please ensure the LLM and MCP server details are set correctly in the 'Config' tab before invoking a prompt."
@@ -787,56 +762,34 @@ async def invoke_prompt_stream():
     prompt_name = data.get("prompt_name")
     arguments = data.get("arguments", {})
     disabled_history = data.get("disabled_history", False)
-    # --- MODIFICATION START: Update the default source to correctly identify UI-driven prompts ---
     source = data.get("source", "prompt_library")
-    # --- MODIFICATION END ---
     
     async def stream_generator():
-        prompt_info = _get_prompt_info(prompt_name)
-        prompt_description = "Execute the requested prompt."
-        if prompt_info and prompt_info.get("description"):
-            prompt_description = prompt_info["description"]
+        queue = asyncio.Queue()
 
-        arg_parts = []
-        if arguments:
-            for key, value in arguments.items():
-                arg_parts.append(f"{key.replace('_', ' ')} is '{value}'")
-        
-        synthetic_user_input = f"{prompt_description}"
-        if arg_parts:
-            synthetic_user_input += f" where {', and '.join(arg_parts)}."
-        
-        session_manager.add_to_history(session_id, 'user', synthetic_user_input)
-        
-        if disabled_history:
-            yield PlanExecutor._format_sse(
-                {"target": "context", "state": "history_disabled_processing"}, 
-                "context_state_update"
-            )
-        
-        session_data = session_manager.get_session(session_id)
-        if session_data['name'] == 'New Chat':
-            new_name = synthetic_user_input[:40] + '...' if len(synthetic_user_input) > 40 else synthetic_user_input
-            session_manager.update_session_name(session_id, new_name)
-            yield PlanExecutor._format_sse({"session_name_update": {"id": session_id, "name": new_name}}, "session_update")
+        async def event_handler(event_data, event_type):
+            sse_event = PlanExecutor._format_sse(event_data, event_type)
+            await queue.put(sse_event)
 
-        try:
-            executor = PlanExecutor(
-                session_id=session_id, 
-                original_user_input=synthetic_user_input, 
-                dependencies={'STATE': STATE},
+        async def run_and_signal_completion():
+            await execution_service.run_agent_execution(
+                session_id=session_id,
+                user_input="Executing prompt...",
+                event_handler=event_handler,
                 active_prompt_name=prompt_name,
                 prompt_arguments=arguments,
                 disabled_history=disabled_history,
-                previous_turn_data=session_data.get("last_turn_data", {}),
                 source=source
             )
+            await queue.put(None)
 
-            async for event in executor.run():
-                yield event
-
-        except Exception as e:
-            app_logger.error(f"An unhandled error occurred in /invoke_prompt_stream: {e}", exc_info=True)
-            yield PlanExecutor._format_sse({"error": "An unexpected server error occurred during prompt invocation.", "details": str(e)}, "error")
+        asyncio.create_task(run_and_signal_completion())
+        
+        while True:
+            item = await queue.get()
+            if item is None:
+                break
+            yield item
 
     return Response(stream_generator(), mimetype="text/event-stream")
+

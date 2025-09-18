@@ -93,7 +93,12 @@ def create_app():
     app = cors(app, allow_origin="*")
 
     from trusted_data_agent.api.routes import api_bp
+    # --- MODIFICATION START: Import and register the new REST API blueprint ---
+    from trusted_data_agent.api.rest_routes import rest_api_bp
+    
     app.register_blueprint(api_bp)
+    app.register_blueprint(rest_api_bp, url_prefix="/api")
+    # --- MODIFICATION END ---
 
     @app.after_request
     async def add_security_headers(response):
