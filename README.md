@@ -8,27 +8,18 @@ This solution provides unparalleled, real-time insight into the complete convers
 
 ### Table Of Contents
 
- 1. [Overview: A Superior Approach](https://www.google.com/search?q=%23overview-a-superior-approach)
+1. [Overview: A Superior Approach](#overview-a-superior-approach)
+2. [Key Features](#key-features)
+3. [The Heart of the Application - The Optimizer](#the-heart-of-the-application---the-optimizer)
+4. [How It Works: Architecture](#how-it-works-architecture)
+5. [Installation and Setup Guide](#installation-and-setup-guide)
+6. [Developer Mode: Unlocking Models](#developer-mode-unlocking-models)
+7. [User Guide](#user-guide)
+8. [Application REST API](#application-rest-api)
+9. [Troubleshooting](#troubleshooting)
+10. [License](#license)
+11. [Author & Contributions](#author--contributions)
 
- 2. [Key Features](https://www.google.com/search?q=%23key-features)
-
- 3. [The Heart of the Application - The Optimizer](https://www.google.com/search?q=%23the-heart-of-the-application---the-optimizer)
-
- 4. [How It Works: Architecture](https://www.google.com/search?q=%23how-it-works-architecture)
-
- 5. [Installation and Setup Guide](https://www.google.com/search?q=%23installation-and-setup-guide)
-
- 6. [Developer Mode: Unlocking Models](https://www.google.com/search?q=%23developer-mode-unlocking-models)
-
- 7. [User Guide](https://www.google.com/search?q=%23user-guide)
-
- 8. [Application REST API](https://www.google.com/search?q=%23application-rest-api)
-
- 9. [Troubleshooting](https://www.google.com/search?q=%23troubleshooting)
-
-10. [License](https://www.google.com/search?q=%23license)
-
-11. [Author & Contributions](https://www.google.com/search?q=%23author--contributions)
 
 ## Overview: A Superior Approach
 
@@ -417,7 +408,7 @@ This API exposes the core functionalities of the agent, allowing developers to b
 * **Full Agent Functionality**: Create sessions and submit natural language queries or execute pre-defined prompts programmatically, receiving the same rich, structured JSON output as the web UI.
 
 For complete technical details, endpoint definitions, and cURL examples, please see the full documentation:
-[**REST API Documentation (docs/RestAPI/restAPI.md)**](docs/RestAPI/restAPI.md/restAPI.md)
+[**REST API Documentation (docs/RestAPI/restAPI.md)**](docs/RestAPI/restAPI.md)
 
 ## Troubleshooting
 
