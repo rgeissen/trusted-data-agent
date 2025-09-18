@@ -247,7 +247,7 @@ Send a `POST` request to the `/api/v1/configure` endpoint with the appropriate c
 **1. Configure the Application (Run this first!)**
 
 ```bash
-curl -X POST [http://127.0.0.1:5000/api/v1/configure](http://127.0.0.1:5000/api/v1/configure) \
+curl -X POST http://127.0.0.1:5000/api/v1/configure \
      -H "Content-Type: application/json" \
      -d '{
            "provider": "YOUR_PROVIDER",
@@ -265,14 +265,14 @@ curl -X POST [http://127.0.0.1:5000/api/v1/configure](http://127.0.0.1:5000/api/
 **2. Create a Session**
 
 ```bash
-SESSION_ID=$(curl -s -X POST [http://127.0.0.1:5000/api/v1/sessions](http://127.0.0.1:5000/api/v1/sessions) | jq -r .session_id)
+SESSION_ID=$(curl -s -X POST http://127.0.0.1:5000/api/v1/sessions | jq -r .session_id)
 echo "Created Session: $SESSION_ID"
 ```
 
 **3. Submit a Query**
 
 ```bash
-TASK_URL=$(curl -s -X POST "[http://127.0.0.1:5000/api/v1/sessions/$SESSION_ID/query](http://127.0.0.1:5000/api/v1/sessions/$SESSION_ID/query)" \
+TASK_URL=$(curl -s -X POST http://127.0.0.1:5000/api/v1/sessions/$SESSION_ID/query \
      -H "Content-Type: application/json" \
      -d '{"prompt": "What is the business description for the DEMO_DB database?"}' | jq -r .status_url)
 echo "Task URL: $TASK_URL"
@@ -299,7 +299,7 @@ fi
 
 # --- 2. Initialization ---
 TASK_URL_PATH=$1
-BASE_URL="[http://127.0.0.1:5000](http://127.0.0.1:5000)"
+BASE_URL="http://127.0.0.1:5000"
 FULL_URL="$BASE_URL$TASK_URL_PATH"
 EVENTS_SEEN=0
 
