@@ -1,6 +1,7 @@
 # src/trusted_data_agent/core/utils.py
 import json
 import logging
+import os
 
 try:
     from google.cloud import texttospeech
@@ -16,39 +17,47 @@ app_logger = logging.getLogger("quart.app")
 def get_tts_client():
     """
     Initializes and returns a Google Cloud TextToSpeechClient.
-    It prioritizes credentials provided via the UI, falling back to environment variables.
+    It proactively checks for credentials before attempting initialization to
+    prevent unnecessary errors in the log. It prioritizes credentials
+    provided via the UI, falling back to environment variables.
     """
-    app_logger.info("AUDIO DEBUG: Attempting to get TTS client.")
+    app_logger.debug("Attempting to get TTS client.")
     if texttospeech is None:
-        app_logger.error("AUDIO DEBUG: The 'google-cloud-texttospeech' library is not installed.")
-        app_logger.error("AUDIO DEBUG: Please install it to use the voice feature: pip install google-cloud-texttospeech")
+        app_logger.warning("The 'google-cloud-texttospeech' library is not installed. Voice features will be disabled.")
         return None
 
     tts_creds_json_str = APP_STATE.get("tts_credentials_json")
 
+    # --- 1. Prioritize UI-provided credentials ---
     if tts_creds_json_str:
-        app_logger.info("AUDIO DEBUG: Attempting to initialize TTS client from UI-provided JSON credentials.")
+        app_logger.debug("Attempting to initialize TTS client from UI-provided JSON credentials.")
         try:
             credentials_info = json.loads(tts_creds_json_str)
             credentials = service_account.Credentials.from_service_account_info(credentials_info)
             client = texttospeech.TextToSpeechClient(credentials=credentials)
-            app_logger.info("AUDIO DEBUG: Successfully initialized Google Cloud TTS client using UI credentials.")
+            app_logger.info("Successfully initialized Google Cloud TTS client using UI credentials.")
             return client
         except json.JSONDecodeError:
-            app_logger.error("AUDIO DEBUG: Failed to parse TTS credentials JSON provided from the UI. It appears to be invalid JSON.")
+            app_logger.error("Failed to parse TTS credentials JSON provided from the UI. It appears to be invalid JSON.")
             return None
         except Exception as e:
-            app_logger.error(f"AUDIO DEBUG: Failed to initialize TTS client with UI credentials: {e}", exc_info=True)
+            app_logger.error(f"Failed to initialize TTS client with UI credentials: {e}", exc_info=True)
             return None
     
-    app_logger.info("AUDIO DEBUG: No UI credentials found. Falling back to environment variable for TTS client.")
-    try:
-        client = texttospeech.TextToSpeechClient()
-        app_logger.info("AUDIO DEBUG: Successfully initialized Google Cloud TTS client using environment variables.")
-        return client
-    except Exception as e:
-        app_logger.error(f"AUDIO DEBUG: Failed to initialize Google Cloud TTS client with environment variables: {e}", exc_info=True)
-        app_logger.error("AUDIO DEBUG: Please ensure the 'GOOGLE_APPLICATION_CREDENTIALS' environment variable is set correctly or provide credentials in the UI.")
+    # --- 2. Fallback to environment variables, but check first ---
+    elif os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        app_logger.debug("No UI credentials found. Attempting to initialize TTS client using environment variables.")
+        try:
+            client = texttospeech.TextToSpeechClient()
+            app_logger.info("Successfully initialized Google Cloud TTS client using environment variables.")
+            return client
+        except Exception as e:
+            app_logger.error(f"Failed to initialize Google Cloud TTS client with environment variables: {e}", exc_info=True)
+            return None
+
+    # --- 3. If no credentials are found, do not attempt initialization ---
+    else:
+        app_logger.info("No TTS credentials found in the UI or environment variables. TTS client will not be initialized.")
         return None
 
 def synthesize_speech(client, text: str) -> bytes | None:
@@ -56,7 +65,7 @@ def synthesize_speech(client, text: str) -> bytes | None:
     Synthesizes speech from the provided text using the given TTS client.
     """
     if not client:
-        app_logger.error("AUDIO DEBUG: TTS client is not available. Cannot synthesize speech.")
+        app_logger.error("TTS client is not available. Cannot synthesize speech.")
         return None
 
     synthesis_input = texttospeech.SynthesisInput(text=text)
@@ -71,14 +80,14 @@ def synthesize_speech(client, text: str) -> bytes | None:
     )
 
     try:
-        app_logger.info(f"AUDIO DEBUG: Requesting speech synthesis for text: '{text[:80]}...'")
+        app_logger.debug(f"Requesting speech synthesis for text: '{text[:80]}...'")
         response = client.synthesize_speech(
             input=synthesis_input, voice=voice, audio_config=audio_config
         )
-        app_logger.info("AUDIO DEBUG: Speech synthesis successful.")
+        app_logger.debug("Speech synthesis successful.")
         return response.audio_content
     except Exception as e:
-        app_logger.error(f"AUDIO DEBUG: Google Cloud TTS API call failed: {e}", exc_info=True)
+        app_logger.error(f"Google Cloud TTS API call failed: {e}", exc_info=True)
         return None
 
 def unwrap_exception(e: BaseException) -> BaseException:

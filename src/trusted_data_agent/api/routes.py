@@ -45,7 +45,7 @@ async def get_application_status():
     """
     is_configured = APP_CONFIG.SERVICES_CONFIGURED
     
-    app_logger.info(f"DEBUG: API endpoint /api/status checked. Current configured status: {is_configured}")
+    app_logger.debug(f"API endpoint /api/status checked. Current configured status: {is_configured}")
 
     if is_configured:
         status_payload = {
@@ -54,11 +54,11 @@ async def get_application_status():
             "model": APP_CONFIG.ACTIVE_MODEL,
             "mcp_server": { "name": APP_CONFIG.ACTIVE_MCP_SERVER_NAME }
         }
-        app_logger.info(f"DEBUG: /api/status responding with configured state: {status_payload}")
+        app_logger.debug(f"/api/status responding with configured state: {status_payload}")
         return jsonify(status_payload)
     else:
         status_payload = {"isConfigured": False}
-        app_logger.info(f"DEBUG: /api/status responding with unconfigured state.")
+        app_logger.debug(f"/api/status responding with unconfigured state.")
         return jsonify(status_payload)
 # --- MODIFICATION END ---
 
@@ -154,33 +154,33 @@ async def text_to_speech():
     """
     Converts text to speech using Google Cloud TTS.
     """
-    app_logger.info("AUDIO DEBUG: /api/synthesize-speech endpoint hit.")
+    app_logger.debug("/api/synthesize-speech endpoint hit.")
     if not APP_CONFIG.VOICE_CONVERSATION_ENABLED:
-        app_logger.warning("AUDIO DEBUG: Voice conversation feature is disabled by config. Aborting.")
+        app_logger.warning("Voice conversation feature is disabled by config. Aborting text-to-speech request.")
         return jsonify({"error": "Voice conversation feature is disabled."}), 403
 
     data = await request.get_json()
     text = data.get("text")
     if not text:
-        app_logger.warning("AUDIO DEBUG: No text provided in request body.")
+        app_logger.warning("No text provided in request body for speech synthesis.")
         return jsonify({"error": "No text provided for synthesis."}), 400
 
     if "tts_client" not in APP_STATE or APP_STATE["tts_client"] is None:
-        app_logger.info("AUDIO DEBUG: TTS client not in STATE, attempting to initialize.")
+        app_logger.info("TTS client not in STATE, attempting to initialize.")
         APP_STATE["tts_client"] = get_tts_client()
 
     tts_client = APP_STATE.get("tts_client")
     if not tts_client:
-        app_logger.error("AUDIO DEBUG: TTS client is still not available after initialization attempt.")
+        app_logger.error("TTS client is still not available after initialization attempt.")
         return jsonify({"error": "TTS client could not be initialized. Check server logs."}), 500
 
     audio_content = synthesize_speech(tts_client, text)
 
     if audio_content:
-        app_logger.info(f"AUDIO DEBUG: Returning synthesized audio content ({len(audio_content)} bytes).")
+        app_logger.debug(f"Returning synthesized audio content ({len(audio_content)} bytes).")
         return Response(audio_content, mimetype="audio/mpeg")
     else:
-        app_logger.error("AUDIO DEBUG: synthesize_speech returned None. Sending error response.")
+        app_logger.error("synthesize_speech returned None. Sending error response.")
         return jsonify({"error": "Failed to synthesize speech."}), 500
 
 @api_bp.route("/tools")
@@ -537,4 +537,3 @@ async def invoke_prompt_stream():
             yield item
 
     return Response(stream_generator(), mimetype="text/event-stream")
-

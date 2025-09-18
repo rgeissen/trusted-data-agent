@@ -107,7 +107,7 @@ def create_app():
             "script-src 'self' https://cdn.tailwindcss.com https://unpkg.com",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
-            "connect-src 'self' *.googleapis.com https://*.withgoogle.com",
+            "connect-src 'self' *.googleapis.com https://*.withgoogle.com https://unpkg.com",
             "worker-src 'self' blob:",
             "img-src 'self' data:",
             "media-src 'self' blob:" # Allow media from blobs for TTS audio
