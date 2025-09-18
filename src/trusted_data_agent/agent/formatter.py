@@ -465,28 +465,24 @@ class OutputFormatter:
                     html += f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>{display_key}</code></summary><div class='px-4'>{collateral_html}</div></details>"
         return html, tts_payload
 
+    # --- MODIFICATION START: New Content-Aware Rendering Logic for Standard Queries ---
     def _format_standard_query_report(self) -> tuple[str, dict]:
         """
-        Formats a standard query report using the CanonicalResponse model.
+        Formats a standard query report with content-aware rendering. If a chart
+        is present, it is promoted as the primary visual element.
         """
-        final_html = ""
-        tts_payload = { "direct_answer": "", "key_observations": "", "synthesis": "" }
-        
+        # 1. Initialize summary content and TTS payload
+        summary_html_parts = []
+        tts_payload = {"direct_answer": "", "key_observations": "", "synthesis": ""}
+
         if self.canonical_report:
-            summary_html_parts = []
             if self.canonical_report.key_metric:
                 summary_html_parts.append(self._render_key_metric(self.canonical_report.key_metric))
-            
             summary_html_parts.append(self._render_direct_answer(self.canonical_report.direct_answer))
-
             if self.canonical_report.synthesis:
                 summary_html_parts.append(self._render_synthesis(self.canonical_report.synthesis))
-            
             if self.canonical_report.key_observations:
                 summary_html_parts.append(self._render_observations(self.canonical_report.key_observations))
-
-            if summary_html_parts:
-                final_html += f'<div class="response-card summary-card">{"".join(summary_html_parts)}</div>'
 
             tts_payload = {
                 "direct_answer": self.canonical_report.direct_answer,
@@ -494,95 +490,73 @@ class OutputFormatter:
                 "synthesis": " ".join([synth.text for synth in self.canonical_report.synthesis])
             }
         elif self.llm_response_text:
-             final_html = f"<div class='response-card summary-card'>{self._render_standard_markdown(self.llm_response_text)}</div>"
-             tts_payload["direct_answer"] = self.llm_response_text
+            summary_html_parts.append(self._render_standard_markdown(self.llm_response_text))
+            tts_payload["direct_answer"] = self.llm_response_text
+        
+        summary_html = f'<div class="response-card summary-card">{"".join(summary_html_parts)}</div>' if summary_html_parts else ""
 
-
+        # 2. Scan for primary visual (chart) and separate data sources
         data_source = []
         if isinstance(self.collected_data, dict):
             for item_list in self.collected_data.values():
                 data_source.extend(item_list)
         elif isinstance(self.collected_data, list):
             data_source = self.collected_data
-            
+        
         if not data_source:
-            return final_html, tts_payload
-
-        # --- MODIFICATION START ---
-        synthesis_items = []
-        collateral_items = []
-        for item in data_source:
-            tool_name = item.get("metadata", {}).get("tool_name") if isinstance(item, dict) else None
-            if tool_name == 'TDA_LLMTask':
-                synthesis_items.append(item)
-            else:
-                collateral_items.append(item)
-
-        display_key = self.active_prompt_name or "Ad-hoc Query"
-
-        if synthesis_items:
-            synthesis_html_content = ""
-            for item in synthesis_items:
-                if isinstance(item, dict) and "results" in item and isinstance(item["results"], list) and item["results"]:
-                    response_text = item["results"][0].get("response", "")
-                    if response_text:
-                        # --- MODIFICATION START: Use content-aware renderer ---
-                        synthesis_html_content += f"<div class='response-card'>{self._render_synthesis_content(response_text)}</div>"
-                        # --- MODIFICATION END ---
-            
-            if synthesis_html_content:
-                final_html += f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Synthesis Report for: <code>{display_key}</code></summary><div class='px-4'>{synthesis_html_content}</div></details>"
-
-        if collateral_items:
-            collateral_html_content = ""
-            
-            charts = []
-            for i, tool_result in enumerate(collateral_items):
-                if isinstance(tool_result, dict) and tool_result.get("type") == "chart":
-                    charts.append((i, tool_result))
-            
-            chart_indices_to_skip = set()
-            for i, chart_result in charts:
-                table_data_result = collateral_items[i-1] if i > 0 else None
+            return summary_html, tts_payload
+        
+        primary_chart_html = ""
+        collateral_html_content = ""
+        chart_indices_to_skip = set()
+        
+        # First pass to find and render the primary chart
+        for i, tool_result in enumerate(data_source):
+            if isinstance(tool_result, dict) and tool_result.get("type") == "chart":
+                # Find the associated table data, which is usually the preceding result
+                table_data_result = data_source[i-1] if i > 0 else None
                 if table_data_result and isinstance(table_data_result, dict) and "results" in table_data_result:
-                    collateral_html_content += self._render_chart_with_details(chart_result, table_data_result, i, i-1)
+                    primary_chart_html = self._render_chart_with_details(tool_result, table_data_result, i, i-1)
                     chart_indices_to_skip.add(i)
                     chart_indices_to_skip.add(i-1)
-                else:
+                else: # Render chart without details if table data is not found
                     chart_id = f"chart-render-target-{uuid.uuid4()}"
-                    chart_spec_json = json.dumps(chart_result.get("spec", {}))
-                    collateral_html_content += f"""
-                    <div class="response-card">
-                        <div id="{chart_id}" class="chart-render-target" data-spec='{chart_spec_json}'></div>
-                    </div>
-                    """
+                    chart_spec_json = json.dumps(tool_result.get("spec", {}))
+                    primary_chart_html = f'<div class="response-card"><div id="{chart_id}" class="chart-render-target" data-spec=\'{chart_spec_json}\'></div></div>'
                     chart_indices_to_skip.add(i)
+                break # Only promote the first chart found
 
-            details_html = ""
-            for i, tool_result in enumerate(collateral_items):
-                if i in chart_indices_to_skip or not isinstance(tool_result, dict):
-                    continue
-                
-                metadata = tool_result.get("metadata", {})
-                tool_name = metadata.get("tool_name")
-
-                if tool_name == 'base_tableDDL':
-                    details_html += self._render_ddl(tool_result, i)
-                elif "results" in tool_result:
-                    details_html += self._render_table(tool_result, i, tool_name or "Result")
-
-            collateral_html_content += details_html
-
-            if collateral_html_content:
-                final_html += (
-                    f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'>"
-                    f"<summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>{display_key}</code></summary>"
-                    f"<div class='px-4'>{collateral_html_content}</div>"
-                    f"</details>"
-                )
-        # --- MODIFICATION END ---
+        # Second pass to render all other "collateral" data
+        for i, tool_result in enumerate(data_source):
+            if i in chart_indices_to_skip or not isinstance(tool_result, dict):
+                continue
             
-        return final_html, tts_payload
+            metadata = tool_result.get("metadata", {})
+            tool_name = metadata.get("tool_name")
+
+            if tool_name == 'base_tableDDL':
+                collateral_html_content += self._render_ddl(tool_result, i)
+            elif "results" in tool_result:
+                collateral_html_content += self._render_table(tool_result, i, tool_name or "Result")
+
+        # 3. Assemble the final HTML with the correct layout
+        final_html_parts = []
+        final_html_parts.append(summary_html) # Summary text always comes first
+        final_html_parts.append(primary_chart_html) # Followed by the main chart (if any)
+        
+        if collateral_html_content:
+            display_key = self.active_prompt_name or "Ad-hoc Query"
+            collateral_wrapper = (
+                f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'>"
+                f"<summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>{display_key}</code></summary>"
+                f"<div class='px-4'>{collateral_html_content}</div>"
+                f"</details>"
+            )
+            final_html_parts.append(collateral_wrapper)
+            
+        return "".join(final_html_parts), tts_payload
+    # --- MODIFICATION END ---
+
 
     def _format_complex_prompt_report(self) -> tuple[str, dict]:
         """
