@@ -1,29 +1,31 @@
 # The Trusted Data Agent
 
-**An Advanced, Dynamic AI Conversational Engine & Interface for Enterprise Data Platforms.**
-
-The Trusted Data Agent represents a paradigm shift in how Business Leaders, Business Analysts, Developers, and Architects interact with complex data ecosystems. It is a sophisticated engine backend & web front-end application designed not only to showcase AI-powered interaction with a Relational Information system, but to serve as a powerful, fully transparent "study buddy" for mastering the integration of Large Language Models (LLMs) with enterprise data.
+The **Trusted Data Agent** represents a paradigm shift in how Business Leaders, Business Analysts, Developers, and Architects interact with complex data ecosystems. It is a sophisticated engine backend & web front-end application designed not only to showcase AI-powered interaction with a Relational Information system, but to serve as a powerful, fully transparent "study buddy" for mastering the integration of Large Language Models (LLMs) with enterprise data.
 
 This solution provides unparalleled, real-time insight into the complete conversational flow between the user, the AI agent, the **Model Context Protocol (MCP)** server, and the underlying relational information system, establishing a new standard for clarity and control in AI-driven data analytics.
 
 ![Demo](./images/AppOverview.gif)
 
-### Table Of Contents
+---
 
-1. [Overview: A Superior Approach](#overview-a-superior-approach)
-2. [Key Features](#key-features)
-3. [The Heart of the Application - The Optimizer](#the-heart-of-the-application---the-optimizer)
-4. [How It Works: Architecture](#how-it-works-architecture)
-5. [Installation and Setup Guide](#installation-and-setup-guide)
-6. [Developer Mode: Unlocking Models](#developer-mode-unlocking-models)
-7. [User Guide](#user-guide)
-8. [Application REST API](#application-rest-api)
-9. [Troubleshooting](#troubleshooting)
-10. [License](#license)
-11. [Author & Contributions](#author--contributions)
+### 📋 Table Of Contents
+
+1. [Overview: A Superior Approach](#💡-overview-a-superior-approach)
+2. [Key Features](#✨-key-features)
+3. [The Heart of the Application - The Optimizer](#🧠-the-heart-of-the-application---the-engine--its-fusion-optimizer)
+4. [How It Works: Architecture](#⚙️-how-it-works-architecture)
+5. [Installation and Setup Guide](#🚀-installation-and-setup-guide)
+6. [Developer Mode: Unlocking Models](#👨‍💻-developer-mode-unlocking-models)
+7. [User Guide](#📚-user-guide)
+8. [Application REST API](#🔌-application-rest-api)
+9. [Troubleshooting](#🛠️-troubleshooting)
+10. [License](#📜-license)
+11. [Author & Contributions](#✍️-author--contributions)
 
 
-## Overview: A Superior Approach
+---
+
+## 💡 Overview: A Superior Approach
 
 The Trusted Data Agent transcends typical data chat applications by placing ultimate control and understanding in the hands of the user. It provides a seamless natural language interface to your Relational Information system, empowering you to ask complex questions and receive synthesized, accurate answers without writing a single line of SQL.
 
@@ -39,7 +41,9 @@ Its core superiority lies in its revolutionary architecture, which delivers:
 
 * **Voice-to-Text Interaction:** Engage with your data naturally through a high-quality, voice-driven interface. Featuring flexible interaction modes, the agent allows for a fluid, hands-free conversational experience.
 
-## Key Features
+---
+
+## ✨ Key Features
 
 ### Deep Insights
 
@@ -91,7 +95,9 @@ Its core superiority lies in its revolutionary architecture, which delivers:
 
 * **Flexible Voice Modes**: Control the conversational flow with configurable modes for handling "Key Observations"—play them automatically, ask for confirmation before playing, or disable them entirely.
 
-## The Heart of the Application - The Engine & its Fusion Optimizer
+---
+
+## 🧠 The Heart of the Application - The Engine & its Fusion Optimizer
 
 The Trusted Data Agent is engineered to be far more than a simple LLM wrapper. Its revolutionary core is the **Fusion Optimizer**, a multi-layered engine designed for resilient, intelligent, and efficient task execution in complex enterprise environments. It transforms the agent from a mere tool into a reliable analytical partner.
 
@@ -137,18 +143,20 @@ The Optimizer is built with enterprise-grade reliability in mind.
 
 * **Definitive Error Handling**: The agent recognizes unrecoverable errors (e.g., database permission denied) and halts execution immediately, providing a clear explanation to the user instead of wasting resources on futile retry attempts.
 
-## How It Works: Architecture
+---
+
+## ⚙️ How It Works: Architecture
 
 The application operates on a sophisticated client-server model, ensuring a clean separation of concerns and robust performance.
 
-`
-+-----------+      +-------------------------+      +------------------+      +----------------------+      +------------------+
-|           |      |                         |      |                  |      |                      |      |                  |
-| End User  | <--> |  Frontend (index.html)  | <--> | Backend (Python) | <--> | Large Language Model | <--> |       MCP        |
-|           |      |     (HTML, JS, CSS)     |      |   (Quart Server) |      |  (Reasoning Engine)  |      | Server (Tools)   |
-|           |      |                         |      |                  |      |                      |      |                  |
-+-----------+      +-------------------------+      +------------------+      +----------------------+      +------------------+
-`
+```text
++----------+      +-------------------------+      +------------------+      +----------------------+      +------------------+
+|          |      |                         |      |                  |      |                      |      |                  |
+| End User | <--> |  Frontend (index.html)  | <--> | Backend (Python) | <--> | Large Language Model | <--> |       MCP        |
+|          |      |    (HTML, JS, CSS)      |      |  (Quart Server)  |      |  (Reasoning Engine)  |      |  Server (Tools)  |
+|          |      |                         |      |                  |      |                      |      |                  |
++----------+      +-------------------------+      +------------------+      +----------------------+      +------------------+
+```
 
 1. **Frontend (`templates/index.html`):** A sleek, single-page application built with HTML, Tailwind CSS, and vanilla JavaScript. It captures user input and uses Server-Sent Events (SSE) to render real-time updates from the backend.
 
@@ -156,35 +164,37 @@ The application operates on a sophisticated client-server model, ensuring a clea
 
 3. **Large Language Model (LLM):** The reasoning engine. The backend dynamically initializes the connection to the selected LLM provider (e.g., Google, Anthropic, AWS Bedrock) based on user-provided credentials and sends structured prompts to the model's API.
 
-4. ** MCP Server:** The **Model Context Protocol (MCP)** server acts as the secure, powerful bridge to the database, exposing functionalities as a well-defined API of "tools" for the AI agent.
+4. **MCP Server:** The **Model Context Protocol (MCP)** server acts as the secure, powerful bridge to the database, exposing functionalities as a well-defined API of "tools" for the AI agent.
 
 ### Code Structure
 
 The Python source code is organized in a standard `src` layout for better maintainability and scalability.
 
-`
+```text
 /trusted-data-agent/
 |
 ├── src/
-|   └── trusted_data_agent/   # Main Python package
-|       ├── api/              # Quart web routes
-|       ├── agent/            # Core agent logic (Executor, Formatter)
-|       ├── llm/              # LLM provider interaction
-|       ├── mcp/              # MCP server interaction
-|       ├── core/             # Config, session management, utils
-|       └── main.py           # Application entry point
+|   └── trusted_data_agent/    # Main Python package
+|       ├── api/               # Quart web routes
+|       ├── agent/             # Core agent logic (Executor, Formatter)
+|       ├── llm/               # LLM provider interaction
+|       ├── mcp/               # MCP server interaction
+|       ├── core/              # Config, session management, utils
+|       └── main.py            # Application entry point
 |
 ├── templates/
-|   └── index.html            # Frontend UI
+|   └── index.html             # Frontend UI
 |
-├── pyproject.toml              # Project definition
+├── pyproject.toml             # Project definition
 ├── requirements.txt
 └── ...
-`
+```
 
 This structure separates concerns, making it easier to navigate and extend the application's functionality.
 
-## Installation and Setup Guide
+---
+
+## 🚀 Installation and Setup Guide
 
 ### Prerequisites
 
@@ -204,10 +214,10 @@ This structure separates concerns, making it easier to navigate and extend the a
 
 ### Step 1: Clone the Repository
 
-`
+```bash
 git clone [https://github.com/rgeissen/trusted-data-agent.git](https://github.com/rgeissen/trusted-data-agent.git)
 cd trusted-data-agent
-`
+```
 
 ### Step 2: Set Up the Python Environment
 
@@ -215,7 +225,7 @@ It is highly recommended to use a Python virtual environment.
 
 1. **Create and activate a virtual environment:**
 
-   `
+   ```bash
    # For macOS/Linux
    python3 -m venv venv
    source venv/bin/activate
@@ -223,13 +233,13 @@ It is highly recommended to use a Python virtual environment.
    # For Windows
    python -m venv venv
    .\venv\Scripts\activate
-   `
+   ```
 
 2. **Install the required packages:**
 
-   `
+   ```bash
    pip install -r requirements.txt
-   `
+   ```
 
 ### Step 3: Create the Project Configuration File
 
@@ -237,7 +247,7 @@ In the project's root directory, create a new file named `pyproject.toml`. This 
 
 Copy and paste the following content into `pyproject.toml`:
 
-`
+```toml
 [project]
 name = "trusted-data-agent"
 version = "0.1.0"
@@ -249,15 +259,15 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-`
+```
 
 ### Step 4: Install the Application in Editable Mode
 
 This crucial step links your source code to your Python environment, resolving all import paths. **Run this command from the project's root directory.**
 
-`
+```bash
 pip install -e .
-`
+```
 
 The `-e` flag stands for "editable," meaning any changes you make to the source code will be immediately effective without needing to reinstall.
 
@@ -265,7 +275,7 @@ The `-e` flag stands for "editable," meaning any changes you make to the source 
 
 You can either enter your API keys in the UI at runtime or, for convenience during development, create a `.env` file in the project root. The application will automatically load these keys.
 
-`
+```dotenv
 # For Google Models
 GEMINI_API_KEY="YOUR_GEMINI_API_KEY_HERE"
 
@@ -279,31 +289,35 @@ AWS_REGION="your-bedrock-region"
 
 # For Ollama (Local)
 OLLAMA_HOST="http://localhost:11434"
-`
+```
 
-## Running the Application
+### Running the Application
 
 **Important:** All commands must be run from the project's **root directory**.
 
-### Standard Mode
+#### Standard Mode
 
 For standard operation with the certified models:
 
-`
+```bash
 python -m trusted_data_agent.main
-`
+```
 
-## Developer Mode: Unlocking Models
+---
+
+## 👨‍💻 Developer Mode: Unlocking Models
 
 To enable all discovered models for testing and development purposes, start the server with the `--all-models` flag.
 
-`
+```bash
 python -m trusted_data_agent.main --all-models
-`
+```
 
 **Note:** **No Ollama models are currently certified.** For testing purposes, Ollama models can be evaluated by starting the server with the `--all-models` developer flag.
 
-## User Guide
+---
+
+## 📚 User Guide
 
 This guide provides a walkthrough of the main features of the Trusted Data Agent UI.
 
@@ -311,7 +325,7 @@ This guide provides a walkthrough of the main features of the Trusted Data Agent
 
 Before you can interact with the agent, you must configure the connection to your services.
 
-1. **Open the App:** After running the application, navigate to `http://127.0.0.1:5000` in your browser. The **Configuration** modal will appear automatically.
+1. **Open the App:** After running the application, navigate to `http://12.0.0.1:5000` in your browser. The **Configuration** modal will appear automatically.
 
 2. **MCP Server:** Enter the **Host**, **Port**, and **Path** for your running MCP Server.
 
@@ -395,7 +409,9 @@ To test the raw intelligence of a model without the agent's tool-using logic, yo
 
 2. A modal will appear, allowing you to have a direct, tool-less conversation with the currently configured LLM. This is useful for evaluating a model's baseline knowledge or creative capabilities.
 
-## Application REST API
+---
+
+## 🔌 Application REST API
 
 The Trusted Data Agent includes a powerful, asynchronous REST API to enable programmatic control, automation, and integration into larger enterprise workflows.
 
@@ -412,7 +428,9 @@ This API exposes the core functionalities of the agent, allowing developers to b
 For complete technical details, endpoint definitions, and cURL examples, please see the full documentation:
 [**REST API Documentation (docs/RestAPI/restAPI.md)**](docs/RestAPI/restAPI.md)
 
-## Troubleshooting
+---
+
+## 🛠️ Troubleshooting
 
 * **`ModuleNotFoundError`:** This error almost always means you are either (1) not in the project's root directory, or (2) you have not run `pip install -e .` successfully in your active virtual environment.
 
@@ -426,7 +444,9 @@ For complete technical details, endpoint definitions, and cURL examples, please 
 
   * Verify that the selected model is enabled for access in the AWS Bedrock console for your specified region.
 
-## License
+---
+
+## 📜 License
 
 This project is licensed under the GNU Affero General Public License v3.0. The full license text is available in the `LICENSE` file in the root of this repository.
 
@@ -472,7 +492,9 @@ Under the AGPLv3, you are free to use, modify, and distribute this software. How
 
 * **Description:** This is the premium commercial tier and the only one that **uplifts the software license to the permissive MIT License**. This allows organizations to modify the code, integrate it into proprietary applications, and deploy it without any obligation to share their source code. Crucially, this is also is the **only tier that enables full prompt editing capabilities (including the licensing system for prompts)**, giving businesses complete control to customize and protect their unique analytical workflows and intellectual property. This license is designed for commercial entities that need to maintain a competitive advantage.
 
-## Author & Contributions
+---
+
+## ✍️ Author & Contributions
 
 * **Author/Initiator:** Rainer Geissendoerfer, rainer.geissendoerfer@teradata.com , teradata.com.
 
