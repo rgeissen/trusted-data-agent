@@ -35,6 +35,9 @@ class AppConfig:
     CURRENT_MODEL = None # Stores the name of the currently configured LLM model (e.g., "gemini-1.5-flash").
     CURRENT_MCP_SERVER_NAME = None # Stores the name of the active MCP server configuration.
     CURRENT_AWS_REGION = None # Stores the AWS region, used specifically for the "Amazon" provider.
+    # --- MODIFICATION START: Add Azure-specific configuration field ---
+    CURRENT_AZURE_DEPLOYMENT_DETAILS = None # Stores Azure-specific details {endpoint, deployment_name, api_version}.
+    # --- MODIFICATION END ---
     CURRENT_MODEL_PROVIDER_IN_PROFILE = None # For Amazon Bedrock, stores the model provider if using an inference profile ARN.
 
     # --- LLM & Agent Configuration ---
@@ -129,9 +132,12 @@ APP_STATE = {
 
 # Whitelists for models that are officially supported.
 # The ALL_MODELS_UNLOCKED flag bypasses these checks.
-CERTIFIED_GOOGLE_MODELS = ["*gemini-2.0-flash"]
-CERTIFIED_ANTHROPIC_MODELS = ["*claude-3-7-sonnet*"]
-CERTIFIED_AMAZON_MODELS = ["*amazon.nova-pro-v1*"]
-CERTIFIED_AMAZON_PROFILES = ["*amazon.nova-pro-v1*"]
+CERTIFIED_GOOGLE_MODELS = ["*gemini-1.5-flash*"]
+CERTIFIED_ANTHROPIC_MODELS = ["*claude-3-sonnet*"]
+CERTIFIED_AMAZON_MODELS = ["*amazon.titan-text-express-v1*"]
+CERTIFIED_AMAZON_PROFILES = ["*amazon.titan-text-express-v1*"]
 CERTIFIED_OLLAMA_MODELS = ["llama2"]
-CERTIFIED_OPENAI_MODELS = ["*gpt-4.1-mini-2025*"]
+CERTIFIED_OPENAI_MODELS = ["*gpt-4o-mini*"]
+# --- MODIFICATION START: Add Azure certified models list ---
+CERTIFIED_AZURE_MODELS = ["*gpt-4o*"]
+# --- MODIFICATION END ---

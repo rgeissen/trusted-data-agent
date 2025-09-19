@@ -92,10 +92,15 @@ export const awsRegionInput = document.getElementById('aws-region');
 export const awsListingMethodContainer = document.getElementById('aws-listing-method-container');
 export const ollamaHostContainer = document.getElementById('ollama-host-container');
 export const ollamaHostInput = document.getElementById('ollama-host');
-export const chartingIntensitySelect = document.getElementById('charting-intensity');
-// --- MODIFICATION START: Add TTS credentials textarea ---
-export const ttsCredentialsJsonTextarea = document.getElementById('tts-credentials-json');
+// --- MODIFICATION START: Add selectors for new Azure credential fields ---
+export const azureCredentialsContainer = document.getElementById('azure-credentials-container');
+export const azureApiKeyInput = document.getElementById('azure-api-key');
+export const azureEndpointInput = document.getElementById('azure-endpoint');
+export const azureDeploymentNameInput = document.getElementById('azure-deployment-name');
+export const azureApiVersionInput = document.getElementById('azure-api-version');
 // --- MODIFICATION END ---
+export const chartingIntensitySelect = document.getElementById('charting-intensity');
+export const ttsCredentialsJsonTextarea = document.getElementById('tts-credentials-json');
 
 
 // Status indicators

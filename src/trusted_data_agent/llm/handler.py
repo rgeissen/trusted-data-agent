@@ -10,7 +10,9 @@ import copy
 
 import google.generativeai as genai
 from anthropic import APIError, AsyncAnthropic, InternalServerError, RateLimitError
-from openai import AsyncOpenAI, APIError as OpenAI_APIError
+# --- MODIFICATION START: Import AzureOpenAI client ---
+from openai import AsyncOpenAI, APIError as OpenAI_APIError, AsyncAzureOpenAI
+# --- MODIFICATION END ---
 import boto3
 
 from trusted_data_agent.core.config import APP_CONFIG
@@ -19,7 +21,10 @@ from trusted_data_agent.agent.prompts import CHARTING_INSTRUCTIONS, PROVIDER_SYS
 from trusted_data_agent.core.config import (
     CERTIFIED_GOOGLE_MODELS, CERTIFIED_ANTHROPIC_MODELS,
     CERTIFIED_AMAZON_MODELS, CERTIFIED_AMAZON_PROFILES,
-    CERTIFIED_OLLAMA_MODELS, CERTIFIED_OPENAI_MODELS
+    CERTIFIED_OLLAMA_MODELS, CERTIFIED_OPENAI_MODELS,
+    # --- MODIFICATION START: Import Azure certified models list ---
+    CERTIFIED_AZURE_MODELS
+    # --- MODIFICATION END ---
 )
 
 llm_logger = logging.getLogger("llm_conversation")
@@ -379,7 +384,9 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                 
                 break
 
-            elif APP_CONFIG.CURRENT_PROVIDER in ["Anthropic", "OpenAI", "Ollama"]:
+            # --- MODIFICATION START: Combine Azure and OpenAI logic ---
+            elif APP_CONFIG.CURRENT_PROVIDER in ["Anthropic", "OpenAI", "Azure", "Ollama"]:
+            # --- MODIFICATION END ---
                 history_source = []
                 if not disabled_history:
                     history_source = chat_history if chat_history is not None else (session_data.get('chat_object', []) if session_id else [])
@@ -398,14 +405,18 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                     if hasattr(response, 'usage'):
                         input_tokens, output_tokens = response.usage.input_tokens, response.usage.output_tokens
                 
-                elif APP_CONFIG.CURRENT_PROVIDER == "OpenAI":
+                # --- MODIFICATION START: Handle both OpenAI and Azure providers ---
+                elif APP_CONFIG.CURRENT_PROVIDER in ["OpenAI", "Azure"]:
                     messages_for_api.insert(0, {'role': 'system', 'content': system_prompt})
+                    
+                    # The 'llm_instance' is either AsyncOpenAI or AsyncAzureOpenAI, both have the same interface.
                     response = await llm_instance.chat.completions.create(
                         model=APP_CONFIG.CURRENT_MODEL, messages=messages_for_api, max_tokens=4096, timeout=120.0
                     )
                     response_text = _sanitize_llm_output(response.choices[0].message.content)
                     if hasattr(response, 'usage'):
                         input_tokens, output_tokens = response.usage.prompt_tokens, response.usage.completion_tokens
+                # --- MODIFICATION END ---
                 
                 elif APP_CONFIG.CURRENT_PROVIDER == "Ollama":
                     response = await llm_instance.chat(
@@ -436,7 +447,7 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                         "system": system_prompt, 
                         "messages": messages
                     })
-                elif "amazon.nova" in model_id_to_invoke:
+                elif "amazon.titan" in model_id_to_invoke:
                     messages = [{'role': 'assistant' if msg.get('role') == 'model' else 'user', 'content': [{'text': msg.get('content')}]} for msg in history]
                     messages.append({"role": "user", "content": [{"text": prompt}]})
                     body_dict = {
@@ -459,7 +470,7 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                 
                 if "anthropic" in model_id_to_invoke:
                     response_text = response_body.get('content')[0].get('text')
-                elif "amazon.nova" in model_id_to_invoke:
+                elif "amazon.titan" in model_id_to_invoke:
                     response_text = response_body.get('output', {}).get('message', {}).get('content', [{}])[0].get('text', '')
                 else:
                     response_text = response_body.get('results')[0].get('outputText')
@@ -550,6 +561,17 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
             response = await loop.run_in_executor(None, lambda: bedrock_client.list_foundation_models(byOutputModality='TEXT'))
             model_names = [m['modelId'] for m in response['modelSummaries']]
     
+    # --- MODIFICATION START: Add Azure model listing logic ---
+    elif provider == "Azure":
+        certified_list = CERTIFIED_AZURE_MODELS
+        # For Azure, we don't list models from an API. We just return the
+        # deployment name that the user provides in the configuration,
+        # as this is the "model" they will be interacting with.
+        deployment_name = credentials.get("azure_deployment_name")
+        if deployment_name:
+            model_names = [deployment_name]
+    # --- MODIFICATION END ---
+    
     elif provider == "Ollama":
         certified_list = CERTIFIED_OLLAMA_MODELS
         client = OllamaClient(host=credentials.get("host"))
@@ -563,4 +585,3 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
         }
         for name in model_names
     ]
-

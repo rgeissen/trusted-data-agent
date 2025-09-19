@@ -605,6 +605,16 @@ async function handleConfigFormSubmit(e) {
         localStorage.setItem('amazonApiKey', JSON.stringify(awsCreds));
     } else if (config.provider === 'Ollama') {
         localStorage.setItem('ollamaHost', config.ollama_host);
+    // --- MODIFICATION START: Save Azure credentials to local storage ---
+    } else if (config.provider === 'Azure') {
+        const azureCreds = {
+            azure_api_key: config.azure_api_key,
+            azure_endpoint: config.azure_endpoint,
+            azure_deployment_name: config.azure_deployment_name,
+            azure_api_version: config.azure_api_version
+        };
+        localStorage.setItem('azureApiKey', JSON.stringify(azureCreds));
+    // --- MODIFICATION END ---
     } else {
         localStorage.setItem(`${config.provider.toLowerCase()}ApiKey`, config.apiKey);
     }
@@ -657,26 +667,31 @@ export async function loadCredentialsAndModels() {
     DOM.awsCredentialsContainer.classList.add('hidden');
     DOM.awsListingMethodContainer.classList.add('hidden');
     DOM.ollamaHostContainer.classList.add('hidden');
+    DOM.azureCredentialsContainer.classList.add('hidden'); // Hide Azure by default
 
-    // This logic is now robust and uses direct fetch calls, mirroring the original handleProviderChange.
     if (newProvider === 'Amazon') {
         DOM.awsCredentialsContainer.classList.remove('hidden');
         DOM.awsListingMethodContainer.classList.remove('hidden');
-        const res = await fetch('/api_key/amazon'); // Correct direct fetch
-        const envCreds = await res.json();
+        const envCreds = await API.getApiKey('amazon');
         const savedCreds = JSON.parse(localStorage.getItem('amazonApiKey')) || {};
         DOM.awsAccessKeyIdInput.value = envCreds.aws_access_key_id || savedCreds.aws_access_key_id || '';
         DOM.awsSecretAccessKeyInput.value = envCreds.aws_secret_access_key || savedCreds.aws_secret_access_key || '';
         DOM.awsRegionInput.value = envCreds.aws_region || savedCreds.aws_region || '';
     } else if (newProvider === 'Ollama') {
         DOM.ollamaHostContainer.classList.remove('hidden');
-        const res = await fetch('/api_key/ollama'); // Correct direct fetch
-        const data = await res.json();
+        const data = await API.getApiKey('ollama');
         DOM.ollamaHostInput.value = data.host || localStorage.getItem('ollamaHost') || 'http://localhost:11434';
+    } else if (newProvider === 'Azure') {
+        DOM.azureCredentialsContainer.classList.remove('hidden');
+        const envCreds = await API.getApiKey('azure');
+        const savedCreds = JSON.parse(localStorage.getItem('azureApiKey')) || {};
+        DOM.azureApiKeyInput.value = envCreds.azure_api_key || savedCreds.azure_api_key || '';
+        DOM.azureEndpointInput.value = envCreds.azure_endpoint || savedCreds.azure_endpoint || '';
+        DOM.azureDeploymentNameInput.value = envCreds.azure_deployment_name || savedCreds.azure_deployment_name || '';
+        DOM.azureApiVersionInput.value = envCreds.azure_api_version || savedCreds.azure_api_version || '2024-02-01';
     } else {
         DOM.apiKeyContainer.classList.remove('hidden');
-        const res = await fetch(`/api_key/${newProvider.toLowerCase()}`); // Correct direct fetch
-        const data = await res.json();
+        const data = await API.getApiKey(newProvider);
         DOM.llmApiKeyInput.value = data.apiKey || localStorage.getItem(`${newProvider.toLowerCase()}ApiKey`) || '';
     }
     
@@ -1368,4 +1383,3 @@ export function initializeEventListeners() {
         }
     });
 }
-

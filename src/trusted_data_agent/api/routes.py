@@ -136,6 +136,16 @@ async def get_api_key(provider):
     elif provider_lower == 'openai':
         key = os.environ.get("OPENAI_API_KEY")
         return jsonify({"apiKey": key or ""})
+    # --- MODIFICATION START: Add logic to fetch Azure credentials from environment ---
+    elif provider_lower == 'azure':
+        keys = {
+            "azure_api_key": os.environ.get("AZURE_OPENAI_API_KEY"),
+            "azure_endpoint": os.environ.get("AZURE_OPENAI_ENDPOINT"),
+            "azure_deployment_name": os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME"),
+            "azure_api_version": os.environ.get("AZURE_OPENAI_API_VERSION")
+        }
+        return jsonify(keys)
+    # --- MODIFICATION END ---
     elif provider_lower == 'amazon':
         keys = {
             "aws_access_key_id": os.environ.get("AWS_ACCESS_KEY_ID"),
@@ -380,7 +390,11 @@ async def get_models():
         data = await request.get_json()
         provider = data.get("provider")
         credentials = { "listing_method": data.get("listing_method", "foundation_models") }
-        if provider == 'Amazon':
+        # --- MODIFICATION START: Pass Azure credentials to the handler ---
+        if provider == 'Azure':
+            credentials["azure_deployment_name"] = data.get("azure_deployment_name")
+        # --- MODIFICATION END ---
+        elif provider == 'Amazon':
             credentials.update({
                 "aws_access_key_id": data.get("aws_access_key_id"),
                 "aws_secret_access_key": data.get("aws_secret_access_key"),
@@ -425,6 +439,12 @@ async def configure_services():
             "aws_secret_access_key": data_from_ui.get("aws_secret_access_key"),
             "aws_region": data_from_ui.get("aws_region"),
             "ollama_host": data_from_ui.get("ollama_host"),
+            # --- MODIFICATION START: Extract Azure fields from the UI request ---
+            "azure_api_key": data_from_ui.get("azure_api_key"),
+            "azure_endpoint": data_from_ui.get("azure_endpoint"),
+            "azure_deployment_name": data_from_ui.get("azure_deployment_name"),
+            "azure_api_version": data_from_ui.get("azure_api_version"),
+            # --- MODIFICATION END ---
             "listing_method": data_from_ui.get("listing_method", "foundation_models")
         },
         "mcp_server": {
@@ -434,6 +454,7 @@ async def configure_services():
             "path": data_from_ui.get("path")
         }
     }
+    # --- MODIFICATION END ---
     # Clean up None values to avoid sending empty keys
     service_config_data["credentials"] = {k: v for k, v in service_config_data["credentials"].items() if v is not None}
     # --- MODIFICATION END ---

@@ -288,9 +288,7 @@
                     <!-- Column 1: MCP Server -->
                     <div class="bg-white/5 border border-white/10 rounded-lg p-6 flex flex-col">
                         <div class="flex items-center mb-4">
-                            <!-- --- MODIFICATION START: Update icon colors --- -->
                             <div class="bg-[#F15F22]/20 text-[#F15F22] rounded-lg p-2 mr-4">
-                            <!-- --- MODIFICATION END --- -->
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9V3m-3.516 6.636a9 9 0 015.032 0" /></svg>
                             </div>
                             <h4 class="font-bold text-lg text-white">MCP Server</h4>
@@ -319,9 +317,7 @@
                     <!-- Column 2: LLM Configuration -->
                     <div class="bg-white/5 border border-white/10 rounded-lg p-6 flex flex-col mt-8 lg:mt-0">
                          <div class="flex items-center mb-4">
-                            <!-- --- MODIFICATION START: Update icon colors --- -->
                             <div class="bg-[#F15F22]/20 text-[#F15F22] rounded-lg p-2 mr-4">
-                            <!-- --- MODIFICATION END --- -->
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
                             </div>
                             <h4 class="font-bold text-lg text-white">Language Model (LLM)</h4>
@@ -334,6 +330,7 @@
                                     <option value="Google">Google</option>
                                     <option value="Anthropic">Anthropic</option>
                                     <option value="OpenAI">OpenAI</option>
+                                    <option value="Azure">Microsoft Azure</option>
                                     <option value="Amazon">Amazon</option>
                                     <option value="Ollama">Ollama (Local)</option>
                                     <option value="Cohere" disabled>Cohere (coming soon)</option>
@@ -343,6 +340,24 @@
                             <div id="api-key-container">
                                 <label for="llm-api-key" class="block text-sm font-medium text-gray-300 mb-1">API Key</label>
                                 <input type="password" id="llm-api-key" name="apiKey" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your API Key">
+                            </div>
+                            <div id="azure-credentials-container" class="hidden space-y-4">
+                                <div>
+                                    <label for="azure-api-key" class="block text-sm font-medium text-gray-300 mb-1">Azure API Key</label>
+                                    <input type="password" id="azure-api-key" name="azure_api_key" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your Azure API Key">
+                                </div>
+                                <div>
+                                    <label for="azure-endpoint" class="block text-sm font-medium text-gray-300 mb-1">Azure Endpoint</label>
+                                    <input type="text" id="azure-endpoint" name="azure_endpoint" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., https://your-resource.openai.azure.com/">
+                                </div>
+                                <div>
+                                    <label for="azure-deployment-name" class="block text-sm font-medium text-gray-300 mb-1">Deployment Name</label>
+                                    <input type="text" id="azure-deployment-name" name="azure_deployment_name" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Your model deployment name">
+                                </div>
+                                <div>
+                                    <label for="azure-api-version" class="block text-sm font-medium text-gray-300 mb-1">API Version</label>
+                                    <input type="text" id="azure-api-version" name="azure_api_version" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., 2024-02-01">
+                                </div>
                             </div>
                             <div id="ollama-host-container" class="hidden">
                                 <label for="ollama-host" class="block text-sm font-medium text-gray-300 mb-1">Ollama Host</label>
@@ -393,9 +408,7 @@
                     <!-- Column 3: Optional Services -->
                     <div class="bg-white/5 border border-white/10 rounded-lg p-6 flex flex-col mt-8 lg:mt-0">
                          <div class="flex items-center mb-4">
-                            <!-- --- MODIFICATION START: Update icon colors --- -->
                             <div class="bg-[#F15F22]/20 text-[#F15F22] rounded-lg p-2 mr-4">
-                            <!-- --- MODIFICATION END --- -->
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
                             </div>
                             <h4 class="font-bold text-lg text-white">Optional Services</h4>
@@ -511,4 +524,3 @@
     <script type="module"src="{{ url_for('static', filename='js/main.js') }}?v=2.6"></script>
 </body>
 </html>
-

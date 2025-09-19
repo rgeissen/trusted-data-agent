@@ -207,6 +207,13 @@ export async function fetchModels() {
         body.listing_method = document.querySelector('input[name="listing_method"]:checked').value;
     } else if (provider === 'Ollama') {
         body.host = DOM.ollamaHostInput.value;
+    // --- MODIFICATION START: Add logic to gather Azure credentials ---
+    } else if (provider === 'Azure') {
+        body.azure_api_key = DOM.azureApiKeyInput.value;
+        body.azure_endpoint = DOM.azureEndpointInput.value;
+        body.azure_deployment_name = DOM.azureDeploymentNameInput.value;
+        body.azure_api_version = DOM.azureApiVersionInput.value;
+    // --- MODIFICATION END ---
     } else {
         body.apiKey = DOM.llmApiKeyInput.value;
     }
@@ -214,7 +221,10 @@ export async function fetchModels() {
     if (
         (provider === 'Amazon' && (!body.aws_access_key_id || !body.aws_secret_access_key || !body.aws_region)) ||
         (provider === 'Ollama' && !body.host) ||
-        (!['Amazon', 'Ollama'].includes(provider) && !body.apiKey)
+        // --- MODIFICATION START: Add validation check for Azure fields ---
+        (provider === 'Azure' && (!body.azure_api_key || !body.azure_endpoint || !body.azure_deployment_name || !body.azure_api_version)) ||
+        // --- MODIFICATION END ---
+        (!['Amazon', 'Ollama', 'Azure'].includes(provider) && !body.apiKey)
     ) {
         throw new Error('API credentials or host are required to fetch models.');
     }
@@ -231,4 +241,3 @@ export async function fetchModels() {
     }
     return result;
 }
-

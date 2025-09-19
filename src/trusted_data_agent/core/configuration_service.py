@@ -4,7 +4,7 @@ import httpx
 
 from google.api_core import exceptions as google_exceptions
 from anthropic import APIError, AsyncAnthropic
-from openai import AsyncOpenAI, APIError as OpenAI_APIError
+from openai import AsyncOpenAI, APIError as OpenAI_APIError, AsyncAzureOpenAI
 from botocore.exceptions import ClientError
 import google.generativeai as genai
 import boto3
@@ -13,9 +13,7 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
 from trusted_data_agent.llm import handler as llm_handler
 from trusted_data_agent.mcp import adapter as mcp_adapter
-# --- MODIFICATION START: Import utilities from the new central location ---
 from trusted_data_agent.core.utils import unwrap_exception, _regenerate_contexts
-# --- MODIFICATION END ---
 
 app_logger = logging.getLogger("quart.app")
 
@@ -37,7 +35,6 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
         if not server_name:
             return {"status": "error", "message": "Configuration failed: 'mcp_server.name' is a required field."}
 
-        # --- MODIFICATION START: Implement state-aware bypass logic ---
         is_already_configured = (
             APP_CONFIG.SERVICES_CONFIGURED and
             provider == APP_CONFIG.ACTIVE_PROVIDER and
@@ -48,7 +45,6 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
         if is_already_configured:
             app_logger.info("Bypassing configuration: The requested configuration is already active.")
             return {"status": "success", "message": f"Services are already configured with the requested settings."}
-        # --- MODIFICATION END ---
 
         temp_llm_instance = None
         temp_mcp_client = None
@@ -70,6 +66,18 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             elif provider == "OpenAI":
                 temp_llm_instance = AsyncOpenAI(api_key=credentials.get("apiKey"))
                 await temp_llm_instance.models.list()
+
+            elif provider == "Azure":
+                temp_llm_instance = AsyncAzureOpenAI(
+                    api_key=credentials.get("azure_api_key"),
+                    azure_endpoint=credentials.get("azure_endpoint"),
+                    api_version=credentials.get("azure_api_version")
+                )
+                # --- MODIFICATION START: Use the correct chat completions API for validation ---
+                # This uses the `chat.completions.create` method with a `messages` array,
+                # which is the correct format for modern chat-based models on Azure.
+                await temp_llm_instance.chat.completions.create(model=model, messages=[{"role": "user", "content": "test"}], max_tokens=1)
+                # --- MODIFICATION END ---
 
             elif provider == "Amazon":
                 aws_region = credentials.get("aws_region")
@@ -106,6 +114,10 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             APP_CONFIG.CURRENT_PROVIDER = provider
             APP_CONFIG.CURRENT_MODEL = model
             APP_CONFIG.CURRENT_AWS_REGION = credentials.get("aws_region") if provider == "Amazon" else None
+            if provider == "Azure":
+                APP_CONFIG.CURRENT_AZURE_ENDPOINT = credentials.get("azure_endpoint")
+                APP_CONFIG.CURRENT_AZURE_DEPLOYMENT_NAME = credentials.get("azure_deployment_name")
+                APP_CONFIG.CURRENT_AZURE_API_VERSION = credentials.get("azure_api_version")
             APP_CONFIG.CURRENT_MODEL_PROVIDER_IN_PROFILE = None
             APP_CONFIG.CURRENT_MCP_SERVER_NAME = server_name
             
@@ -125,7 +137,6 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
 
             APP_STATE['tts_credentials_json'] = tts_credentials_json
             if APP_CONFIG.VOICE_CONVERSATION_ENABLED:
-                # We need to import get_tts_client here to avoid a circular dependency at the top level
                 from trusted_data_agent.core.utils import get_tts_client
                 app_logger.info("AUDIO DEBUG: Configuration updated. Re-initializing TTS client.")
                 APP_STATE['tts_client'] = get_tts_client()
@@ -133,12 +144,10 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             # --- 5. Finalize Contexts ---
             _regenerate_contexts()
 
-            # --- MODIFICATION START: Set active configuration details on success ---
             APP_CONFIG.SERVICES_CONFIGURED = True
             APP_CONFIG.ACTIVE_PROVIDER = provider
             APP_CONFIG.ACTIVE_MODEL = model
             APP_CONFIG.ACTIVE_MCP_SERVER_NAME = server_name
-            # --- MODIFICATION END ---
 
             return {"status": "success", "message": f"MCP Server '{server_name}' and LLM configured successfully."}
 
@@ -150,12 +159,10 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             APP_CONFIG.MCP_SERVER_CONNECTED = False
             APP_CONFIG.CHART_MCP_CONNECTED = False
             
-            # --- MODIFICATION START: Reset active configuration details on failure ---
             APP_CONFIG.SERVICES_CONFIGURED = False
             APP_CONFIG.ACTIVE_PROVIDER = None
             APP_CONFIG.ACTIVE_MODEL = None
             APP_CONFIG.ACTIVE_MCP_SERVER_NAME = None
-            # --- MODIFICATION END ---
             
             root_exception = unwrap_exception(e)
             error_message = ""
@@ -175,3 +182,4 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             return {"status": "error", "message": f"Configuration failed: {error_message}"}
         finally:
             app_logger.info("Configuration lock released.")
+

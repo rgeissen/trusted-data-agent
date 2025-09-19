@@ -73,7 +73,11 @@ Its core superiority lies in its revolutionary architecture, which delivers:
 
 ### Comparative LLM Analysis
 
-* **Multi-Provider LLM Configuration**: Dynamically switch between LLM providers like **Google**, **Anthropic**, **AWS Bedrock**, and **Ollama**. Configure API keys, hosts, and select from available models directly in the UI.
+* **Multi-Provider LLM Configuration**: Dynamically switch between LLM providers like **Google**, **Anthropic**, **Microsoft Azure**, **AWS Bedrock**, and **Ollama**. Configure API keys, hosts, and select from available models directly in the UI.
+
+* **Support for Microsoft Azure**:
+
+  * **Azure OpenAI Service**: Connect directly to your deployed models (e.g., GPT-4, GPT-3.5-Turbo) on the Azure OpenAI Service, leveraging the enterprise-grade security and scalability of the Azure cloud.
 
 * **Support for AWS Bedrock**:
 
@@ -162,7 +166,7 @@ The application operates on a sophisticated client-server model, ensuring a clea
 
 2. **Backend** (`src/trusted_data_agent/`): A high-performance asynchronous web server built with **Quart**. It serves the frontend, manages user sessions, and orchestrates the entire AI workflow.
 
-3. **Large Language Model (LLM):** The reasoning engine. The backend dynamically initializes the connection to the selected LLM provider (e.g., Google, Anthropic, AWS Bedrock) based on user-provided credentials and sends structured prompts to the model's API.
+3. **Large Language Model (LLM):** The reasoning engine. The backend dynamically initializes the connection to the selected LLM provider (e.g., Google, Anthropic, Microsoft Azure, AWS Bedrock) based on user-provided credentials and sends structured prompts to the model's API.
 
 4. **MCP Server:** The **Model Context Protocol (MCP)** server acts as the secure, powerful bridge to the database, exposing functionalities as a well-defined API of "tools" for the AI agent.
 
@@ -208,6 +212,8 @@ This structure separates concerns, making it easier to navigate and extend the a
 
   * You can obtain a Claude API key from the [Anthropic Console](https://console.anthropic.com/dashboard).
 
+  * For **Azure**, you will need an **Azure OpenAI Endpoint**, **API Key**, **API Version**, and a **Model Deployment Name**.
+ 
   * For AWS, you will need an **AWS Access Key ID**, **Secret Access Key**, and the **Region** for your Bedrock service.
 
   * For Ollama, download and install it from [ollama.com](https://ollama.com/) and pull a model (e.g., `ollama run llama2`).
@@ -282,6 +288,12 @@ GEMINI_API_KEY="YOUR_GEMINI_API_KEY_HERE"
 # For Anthropic Models
 ANTHROPIC_API_KEY="YOUR_ANTHROPIC_API_KEY_HERE"
 
+# For Microsoft Azure Models
+AZURE_API_KEY="YOUR_AZURE_API_KEY"
+AZURE_ENDPOINT="YOUR_AZURE_ENDPOINT_URL"
+AZURE_DEPLOYMENT_NAME="YOUR_MODEL_DEPLOYMENT_NAME"
+AZURE_API_VERSION="YYYY-MM-DD"
+
 # For AWS Bedrock Models
 AWS_ACCESS_KEY_ID="YOUR_AWS_ACCESS_KEY_ID"
 AWS_SECRET_ACCESS_KEY="YOUR_AWS_SECRET_ACCESS_KEY"
@@ -329,11 +341,13 @@ Before you can interact with the agent, you must configure the connection to you
 
 2. **MCP Server:** Enter the **Host**, **Port**, and **Path** for your running MCP Server.
 
-3. **LLM Provider:** Select your desired LLM Provider (e.g., Google, Anthropic, Ollama).
+3. **LLM Provider:** Select your desired LLM Provider (e.g., Google, Anthropic, OpenAI, Microsoft, Ollama).
 
 4. **Credentials:**
 
    * For cloud providers, enter your **API Key**.
+
+  * For **Azure**, provide your **Endpoint URL**, **API Key**, **API Version**, and **Deployment Name**.
 
    * For AWS, provide your **Access Key ID**, **Secret Access Key**, and **Region**.
 

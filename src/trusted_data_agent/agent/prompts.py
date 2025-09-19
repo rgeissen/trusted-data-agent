@@ -123,6 +123,9 @@ PROVIDER_SYSTEM_PROMPTS = {
     "Anthropic": MASTER_SYSTEM_PROMPT,
     "Amazon": MASTER_SYSTEM_PROMPT,
     "OpenAI": MASTER_SYSTEM_PROMPT,
+    # --- MODIFICATION START: Add Azure to the prompts dictionary ---
+    "Azure": MASTER_SYSTEM_PROMPT,
+    # --- MODIFICATION END ---
     "Ollama": OLLAMA_MASTER_SYSTEM_PROMPT
 }
 
