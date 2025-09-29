@@ -400,8 +400,12 @@ async def get_models():
                 "aws_secret_access_key": data.get("aws_secret_access_key"),
                 "aws_region": data.get("aws_region")
             })
+        # --- MODIFICATION START: Make Ollama host key lookup resilient ---
         elif provider == 'Ollama':
-            credentials["host"] = data.get("ollama_host")
+            host_keys = ["ollama_host", "ollamaHost", "host"]
+            host_value = next((data.get(key) for key in host_keys if data.get(key) is not None), None)
+            credentials["host"] = host_value
+        # --- MODIFICATION END ---
         else:
             credentials["apiKey"] = data.get("apiKey")
 
@@ -429,6 +433,10 @@ async def configure_services():
     # --- MODIFICATION START: Adapter to reshape UI data for the service ---
     # This reshapes the flat structure from the UI into the nested structure
     # expected by the new, centralized configuration service.
+    # It now includes resilient logic for the Ollama host key.
+    host_keys = ["ollama_host", "ollamaHost", "host"]
+    ollama_host_value = next((data_from_ui.get(key) for key in host_keys if data_from_ui.get(key) is not None), None)
+    
     service_config_data = {
         "provider": data_from_ui.get("provider"),
         "model": data_from_ui.get("model"),
@@ -438,7 +446,7 @@ async def configure_services():
             "aws_access_key_id": data_from_ui.get("aws_access_key_id"),
             "aws_secret_access_key": data_from_ui.get("aws_secret_access_key"),
             "aws_region": data_from_ui.get("aws_region"),
-            "ollama_host": data_from_ui.get("ollama_host"),
+            "ollama_host": ollama_host_value,
             # --- MODIFICATION START: Extract Azure fields from the UI request ---
             "azure_api_key": data_from_ui.get("azure_api_key"),
             "azure_endpoint": data_from_ui.get("azure_endpoint"),
