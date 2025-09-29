@@ -138,7 +138,7 @@ APP_STATE = {
 
 # Whitelists for models that are officially supported.
 # The ALL_MODELS_UNLOCKED flag bypasses these checks.
-CERTIFIED_GOOGLE_MODELS = ["gemini-2.0-flash"]
+CERTIFIED_GOOGLE_MODELS = ["gemini-2.5-flash"]
 CERTIFIED_ANTHROPIC_MODELS = ["*claude-3-5-haiku-2024102*"]
 CERTIFIED_AMAZON_MODELS = ["*titan-text-express-v1*"]
 CERTIFIED_AMAZON_PROFILES = ["*nova-lite*"]
