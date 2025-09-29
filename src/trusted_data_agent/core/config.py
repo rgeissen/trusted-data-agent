@@ -132,12 +132,12 @@ APP_STATE = {
 
 # Whitelists for models that are officially supported.
 # The ALL_MODELS_UNLOCKED flag bypasses these checks.
-CERTIFIED_GOOGLE_MODELS = ["*gemini-1.5-flash*"]
-CERTIFIED_ANTHROPIC_MODELS = ["*claude-3-sonnet*"]
-CERTIFIED_AMAZON_MODELS = ["*amazon.titan-text-express-v1*"]
-CERTIFIED_AMAZON_PROFILES = ["*amazon.titan-text-express-v1*"]
-CERTIFIED_OLLAMA_MODELS = ["llama2"]
-CERTIFIED_OPENAI_MODELS = ["*gpt-4o-mini*"]
+CERTIFIED_GOOGLE_MODELS = ["gemini-2.0-flash"]
+CERTIFIED_ANTHROPIC_MODELS = ["*claude-3-5-haiku-2024102*"]
+CERTIFIED_AMAZON_MODELS = ["*titan-text-express-v1*"]
+CERTIFIED_AMAZON_PROFILES = ["*nova-lite*"]
+CERTIFIED_OLLAMA_MODELS = [""]
+CERTIFIED_OPENAI_MODELS = ["*gpt-4.1-mini*"]
 # --- MODIFICATION START: Add Azure certified models list ---
 CERTIFIED_AZURE_MODELS = ["*gpt-4o*"]
 # --- MODIFICATION END ---

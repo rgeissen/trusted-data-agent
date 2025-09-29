@@ -427,6 +427,7 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                 
                 break
             
+            # --- MODIFICATION START: Corrected dynamic payload logic for AWS Bedrock ---
             elif APP_CONFIG.CURRENT_PROVIDER == "Amazon":
                 history = []
                 if not disabled_history:
@@ -436,9 +437,24 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                     history = _condense_and_clean_history(history)
 
                 model_id_to_invoke = APP_CONFIG.CURRENT_MODEL
-                body = ""
+                
+                bedrock_provider = ""
+                # First, check if the model ID is an Inference Profile ARN
+                if model_id_to_invoke.startswith("arn:aws:bedrock:"):
+                    # Extract the provider from the ARN (e.g., .../eu.amazon.nova-lite... -> amazon)
+                    profile_part = model_id_to_invoke.split('/')[-1]
+                    provider_match = re.search(r'\.(.*?)\.', profile_part)
+                    if provider_match:
+                        bedrock_provider = provider_match.group(1)
+                else:
+                    # Fallback to the original logic for standard model IDs
+                    bedrock_provider = model_id_to_invoke.split('.')[0]
+                
+                app_logger.info(f"Determined Bedrock provider for payload construction: '{bedrock_provider}'")
 
-                if "anthropic" in model_id_to_invoke:
+                body = ""
+                # Construct the payload body based on the detected provider
+                if bedrock_provider == "anthropic":
                     messages = [{'role': 'assistant' if msg.get('role') == 'model' else msg.get('role'), 'content': msg.get('content')} for msg in history]
                     messages.append({'role': 'user', 'content': prompt})
                     body = json.dumps({
@@ -447,7 +463,7 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                         "system": system_prompt, 
                         "messages": messages
                     })
-                elif "amazon.titan" in model_id_to_invoke:
+                elif bedrock_provider == "amazon":
                     messages = [{'role': 'assistant' if msg.get('role') == 'model' else 'user', 'content': [{'text': msg.get('content')}]} for msg in history]
                     messages.append({"role": "user", "content": [{"text": prompt}]})
                     body_dict = {
@@ -457,26 +473,49 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                     if system_prompt:
                         body_dict["system"] = [{"text": system_prompt}]
                     body = json.dumps(body_dict)
-                else: 
+                elif bedrock_provider in ["cohere", "meta", "ai21", "mistral"]:
+                    # These providers use a consolidated text prompt
+                    text_prompt = f"{system_prompt}\n\n" + "".join([f"{msg['role']}: {msg['content']}\n\n" for msg in history]) + f"user: {prompt}\n\nassistant:"
+                    
+                    if bedrock_provider == "cohere":
+                        body_dict = {"prompt": text_prompt, "max_tokens": 4096}
+                    elif bedrock_provider == "meta":
+                        body_dict = {"prompt": text_prompt, "max_gen_len": 2048}
+                    elif bedrock_provider == "mistral":
+                        body_dict = {"prompt": text_prompt, "max_tokens": 4096}
+                    else: # ai21
+                        body_dict = {"prompt": text_prompt, "maxTokens": 4096}
+                    body = json.dumps(body_dict)
+                else: # Fallback for unknown or legacy models
+                    app_logger.warning(f"Unknown Bedrock provider '{bedrock_provider}'. Defaulting to legacy 'inputText' format.")
                     text_prompt = f"{system_prompt}\n\n" + "".join([f"{msg['role']}: {msg['content']}\n\n" for msg in history]) + f"user: {prompt}\n\nassistant:"
                     body = json.dumps({
                         "inputText": text_prompt, 
                         "textGenerationConfig": {"maxTokenCount": 4096}
                     })
-                
+
                 loop = asyncio.get_running_loop()
                 response = await loop.run_in_executor(None, lambda: llm_instance.invoke_model(body=body, modelId=model_id_to_invoke))
                 response_body = json.loads(response.get('body').read())
                 
-                if "anthropic" in model_id_to_invoke:
+                # Parse the response based on the detected provider
+                if bedrock_provider == "anthropic":
                     response_text = response_body.get('content')[0].get('text')
-                elif "amazon.titan" in model_id_to_invoke:
+                elif bedrock_provider == "amazon":
                     response_text = response_body.get('output', {}).get('message', {}).get('content', [{}])[0].get('text', '')
-                else:
+                elif bedrock_provider == "cohere":
+                    response_text = response_body.get('generations')[0].get('text')
+                elif bedrock_provider == "meta":
+                    response_text = response_body.get('generation')
+                elif bedrock_provider == "mistral":
+                    response_text = response_body.get('outputs')[0].get('text')
+                elif bedrock_provider == "ai21":
+                    response_text = response_body.get('completions')[0].get('data').get('text')
+                else: # Fallback
                     response_text = response_body.get('results')[0].get('outputText')
                 
                 break
-
+            # --- MODIFICATION END ---
             else:
                 raise NotImplementedError(f"Provider '{APP_CONFIG.CURRENT_PROVIDER}' is not yet supported.")
         
