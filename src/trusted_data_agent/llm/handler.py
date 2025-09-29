@@ -316,6 +316,16 @@ def _get_full_system_prompt(session_data: dict, dependencies: dict, system_promp
     
     return final_system_prompt
 
+def _normalize_bedrock_model_id(model_id: str) -> str:
+    """
+    Normalizes a standard Bedrock model ID by removing versioning suffixes,
+    but leaves Inference Profile ARNs untouched.
+    """
+    if model_id.startswith("arn:aws:bedrock:"):
+        return model_id
+    # Safely split by the version delimiter ':' and take the base model ID
+    return model_id.split(':')[0]
+
 async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, chat_history=None, raise_on_error: bool = False, system_prompt_override: str = None, dependencies: dict = None, reason: str = "No reason provided.", disabled_history: bool = False, active_prompt_name_for_filter: str = None, source: str = "text") -> tuple[str, int, int]:
     if not llm_instance:
         raise RuntimeError("LLM is not initialized.")
@@ -384,9 +394,7 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                 
                 break
 
-            # --- MODIFICATION START: Combine Azure and OpenAI logic ---
             elif APP_CONFIG.CURRENT_PROVIDER in ["Anthropic", "OpenAI", "Azure", "Ollama"]:
-            # --- MODIFICATION END ---
                 history_source = []
                 if not disabled_history:
                     history_source = chat_history if chat_history is not None else (session_data.get('chat_object', []) if session_id else [])
@@ -405,18 +413,14 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                     if hasattr(response, 'usage'):
                         input_tokens, output_tokens = response.usage.input_tokens, response.usage.output_tokens
                 
-                # --- MODIFICATION START: Handle both OpenAI and Azure providers ---
                 elif APP_CONFIG.CURRENT_PROVIDER in ["OpenAI", "Azure"]:
                     messages_for_api.insert(0, {'role': 'system', 'content': system_prompt})
-                    
-                    # The 'llm_instance' is either AsyncOpenAI or AsyncAzureOpenAI, both have the same interface.
                     response = await llm_instance.chat.completions.create(
                         model=APP_CONFIG.CURRENT_MODEL, messages=messages_for_api, max_tokens=4096, timeout=120.0
                     )
                     response_text = _sanitize_llm_output(response.choices[0].message.content)
                     if hasattr(response, 'usage'):
                         input_tokens, output_tokens = response.usage.prompt_tokens, response.usage.completion_tokens
-                # --- MODIFICATION END ---
                 
                 elif APP_CONFIG.CURRENT_PROVIDER == "Ollama":
                     response = await llm_instance.chat(
@@ -427,7 +431,7 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                 
                 break
             
-            # --- MODIFICATION START: Corrected dynamic payload logic for AWS Bedrock ---
+            # --- MODIFICATION START: Final context-aware payload logic for AWS Bedrock ---
             elif APP_CONFIG.CURRENT_PROVIDER == "Amazon":
                 history = []
                 if not disabled_history:
@@ -437,23 +441,20 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                     history = _condense_and_clean_history(history)
 
                 model_id_to_invoke = APP_CONFIG.CURRENT_MODEL
+                is_inference_profile = model_id_to_invoke.startswith("arn:aws:bedrock:")
                 
                 bedrock_provider = ""
-                # First, check if the model ID is an Inference Profile ARN
-                if model_id_to_invoke.startswith("arn:aws:bedrock:"):
-                    # Extract the provider from the ARN (e.g., .../eu.amazon.nova-lite... -> amazon)
+                if is_inference_profile:
                     profile_part = model_id_to_invoke.split('/')[-1]
                     provider_match = re.search(r'\.(.*?)\.', profile_part)
                     if provider_match:
                         bedrock_provider = provider_match.group(1)
                 else:
-                    # Fallback to the original logic for standard model IDs
                     bedrock_provider = model_id_to_invoke.split('.')[0]
                 
                 app_logger.info(f"Determined Bedrock provider for payload construction: '{bedrock_provider}'")
 
                 body = ""
-                # Construct the payload body based on the detected provider
                 if bedrock_provider == "anthropic":
                     messages = [{'role': 'assistant' if msg.get('role') == 'model' else msg.get('role'), 'content': msg.get('content')} for msg in history]
                     messages.append({'role': 'user', 'content': prompt})
@@ -464,17 +465,19 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                         "messages": messages
                     })
                 elif bedrock_provider == "amazon":
-                    messages = [{'role': 'assistant' if msg.get('role') == 'model' else 'user', 'content': [{'text': msg.get('content')}]} for msg in history]
-                    messages.append({"role": "user", "content": [{"text": prompt}]})
-                    body_dict = {
-                        "messages": messages, 
-                        "inferenceConfig": {"maxTokens": 4096}
-                    }
-                    if system_prompt:
-                        body_dict["system"] = [{"text": system_prompt}]
-                    body = json.dumps(body_dict)
+                    # Use modern `messages` format for newer models/profiles, legacy `inputText` for direct legacy calls
+                    if is_inference_profile or "titan-text-express" not in model_id_to_invoke:
+                         messages = [{'role': 'assistant' if msg.get('role') == 'model' else 'user', 'content': [{'text': msg.get('content')}]} for msg in history]
+                         messages.append({"role": "user", "content": [{"text": prompt}]})
+                         body_dict = {"messages": messages, "inferenceConfig": {"maxTokens": 4096}}
+                         if system_prompt:
+                             body_dict["system"] = [{"text": system_prompt}]
+                         body = json.dumps(body_dict)
+                    else: # Legacy Titan direct invocation
+                        text_prompt = f"{system_prompt}\n\n" + "".join([f"{msg['role']}: {msg['content']}\n\n" for msg in history]) + f"user: {prompt}\n\nassistant:"
+                        body = json.dumps({"inputText": text_prompt, "textGenerationConfig": {"maxTokenCount": 4096}})
+
                 elif bedrock_provider in ["cohere", "meta", "ai21", "mistral"]:
-                    # These providers use a consolidated text prompt
                     text_prompt = f"{system_prompt}\n\n" + "".join([f"{msg['role']}: {msg['content']}\n\n" for msg in history]) + f"user: {prompt}\n\nassistant:"
                     
                     if bedrock_provider == "cohere":
@@ -486,7 +489,7 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                     else: # ai21
                         body_dict = {"prompt": text_prompt, "maxTokens": 4096}
                     body = json.dumps(body_dict)
-                else: # Fallback for unknown or legacy models
+                else:
                     app_logger.warning(f"Unknown Bedrock provider '{bedrock_provider}'. Defaulting to legacy 'inputText' format.")
                     text_prompt = f"{system_prompt}\n\n" + "".join([f"{msg['role']}: {msg['content']}\n\n" for msg in history]) + f"user: {prompt}\n\nassistant:"
                     body = json.dumps({
@@ -494,15 +497,19 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                         "textGenerationConfig": {"maxTokenCount": 4096}
                     })
 
+                final_model_id_for_api = _normalize_bedrock_model_id(model_id_to_invoke)
+                
                 loop = asyncio.get_running_loop()
-                response = await loop.run_in_executor(None, lambda: llm_instance.invoke_model(body=body, modelId=model_id_to_invoke))
+                response = await loop.run_in_executor(None, lambda: llm_instance.invoke_model(body=body, modelId=final_model_id_for_api))
                 response_body = json.loads(response.get('body').read())
                 
-                # Parse the response based on the detected provider
                 if bedrock_provider == "anthropic":
                     response_text = response_body.get('content')[0].get('text')
                 elif bedrock_provider == "amazon":
-                    response_text = response_body.get('output', {}).get('message', {}).get('content', [{}])[0].get('text', '')
+                    if is_inference_profile or "titan-text-express" not in model_id_to_invoke:
+                        response_text = response_body.get('output', {}).get('message', {}).get('content', [{}])[0].get('text', '')
+                    else:
+                        response_text = response_body.get('results')[0].get('outputText')
                 elif bedrock_provider == "cohere":
                     response_text = response_body.get('generations')[0].get('text')
                 elif bedrock_provider == "meta":
@@ -511,7 +518,7 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                     response_text = response_body.get('outputs')[0].get('text')
                 elif bedrock_provider == "ai21":
                     response_text = response_body.get('completions')[0].get('data').get('text')
-                else: # Fallback
+                else:
                     response_text = response_body.get('results')[0].get('outputText')
                 
                 break
@@ -548,10 +555,8 @@ def _is_model_certified(model_name: str, certified_list: list[str]) -> bool:
     """
     Checks if a model is certified, a supporting wildcards.
     """
-    # --- MODIFICATION START: Correctly use the global config flag ---
     if APP_CONFIG.ALL_MODELS_UNLOCKED:
         return True
-    # --- MODIFICATION END ---
     for pattern in certified_list:
         regex_pattern = re.escape(pattern).replace('\\*', '.*')
         if re.fullmatch(regex_pattern, model_name):
@@ -600,16 +605,11 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
             response = await loop.run_in_executor(None, lambda: bedrock_client.list_foundation_models(byOutputModality='TEXT'))
             model_names = [m['modelId'] for m in response['modelSummaries']]
     
-    # --- MODIFICATION START: Add Azure model listing logic ---
     elif provider == "Azure":
         certified_list = CERTIFIED_AZURE_MODELS
-        # For Azure, we don't list models from an API. We just return the
-        # deployment name that the user provides in the configuration,
-        # as this is the "model" they will be interacting with.
         deployment_name = credentials.get("azure_deployment_name")
         if deployment_name:
             model_names = [deployment_name]
-    # --- MODIFICATION END ---
     
     elif provider == "Ollama":
         certified_list = CERTIFIED_OLLAMA_MODELS
@@ -624,3 +624,4 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
         }
         for name in model_names
     ]
+

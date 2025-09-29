@@ -1,37 +1,144 @@
-2025-09-29 17:25:06,425 - --- FULL CONTEXT (Session: one-off) ---
+2025-09-29 17:42:49,928 - --- FULL CONTEXT (Session: 760dad70-89cb-4226-a782-87a7998a18f7) ---
 --- REASON FOR CALL ---
-No reason provided.
+Generating a strategic meta-plan for the goal: 'how many databases are on the system?'
 
 --- History (History Disabled for LLM Call: False) ---
-No history available.
+{
+  "chat_history": []
+}
 
 --- Current User Prompt (with System Prompt) ---
 SYSTEM PROMPT:
-You are an expert assistant that only responds with valid JSON.
 
-USER PROMPT:
-You are a helpful assistant that analyzes a list of technical capabilities (tools and prompts) and classifies them. For each capability, you must determine a single user-friendly 'category' for a UI. Example categories might be 'Data Quality', 'Table Management', 'Performance', 'Utilities', 'Database Information', etc. Be concise and consistent.
+# Core Directives
+You are a specialized assistant for a Teradata database system. Your primary goal is to fulfill user requests by selecting the best capability (a tool or a prompt) from the categorized lists provided and supplying all necessary arguments.
 
-Your response MUST be a single, valid JSON object. The keys of this object must be the capability names, and the value for each key must be another JSON object containing only the 'category' you determined.
+# Response Format
+Your response MUST be a single JSON object for a tool or prompt call.
 
-Example format:
-{
-  "capability_name_1": {"category": "Some Category"},
-  "capability_name_2": {"category": "Another Category"}
-}
+-   If the capability is a prompt, you MUST use the key `"prompt_name"`.
+-   If the capability is a tool, you MUST use the key `"tool_name"`.
+-   Provide all required arguments. Infer values from the conversation history if necessary.
+-   Example (Prompt): `{{"prompt_name": "some_prompt", "arguments": {{"arg": "value"}}}}`
+-   Example (Tool): `{{"tool_name": "some_tool", "arguments": {{"arg": "value"}}}}`
 
---- Capability List ---
-- sec_rolePermissions (tool): Get permissions for a role.
-- sec_userDbPermissions (tool): Get permissions for a user.
-- sec_userRoles (tool): Get roles assigned to a user.
-- qlty_columnSummary (tool): Get the column summary statistics for a table.
-- qlty_distinctCategories (tool): Get the destinct categories from column in a table.
-- qlty_missingValues (tool): Get the column names that having missing values in a table.
-- qlty_negativeValues (tool): Get the column names that having negative values in a table.
-- qlty_rowsWithMissingValues (tool): Get the rows with missing values in a table.
-- qlty_standardDeviation (tool): Get the standard deviation from column in a table.
-- qlty_univariateStatistics (tool): Get the univariate statistics for a table.
-- rag_executeWorkflow (tool): Execute complete RAG workflow to answer user questions based on document context.
+# Decision Process
+To select the correct capability, you MUST follow this two-step process, governed by one critical rule:
+
+**CRITICAL RULE: Follow this strict hierarchy for capability selection:**
+1.  **Prioritize Pre-defined Analysis/Reports (Prompts):** If the user's request is for an **analysis, description, or summary** that is a strong semantic match for an available `prompt`, you **MUST** select that `prompt_name`. Prompts are the preferred method for generating these pre-defined analytical outputs.
+2.  **Default to Direct Actions (Tools):** If no analytical prompt is a direct match, or if the user's request is a direct command (e.g., "list...", "count...", "show me..."), you **MUST** treat the request as a direct action. Select the most specific `tool_name` that fulfills this action.
+
+# Best Practices
+- **Context is Key:** Always use information from previous turns to fill in arguments like `database_name` or `table_name`.
+- **Error Recovery:** If a tool fails, analyze the error message and attempt to call the tool again with corrected parameters. Only ask the user for clarification if you cannot recover.
+- **SQL Generation:** When using the `base_readQuery` tool, you MUST use fully qualified table names in your SQL (e.g., `SELECT ... FROM my_database.my_table`).
+- **Time-Sensitive Queries:** For queries involving relative dates (e.g., 'today', 'this week'), you MUST use the `TDA_CurrentDate` tool first to determine the current date before proceeding.
+- **Out of Scope:** If the user's request is unrelated to the available capabilities, you should politely explain that you cannot fulfill the request and restate your purpose.
+- **CRITICAL: Avoid Repetitive Behavior.** You are a highly intelligent agent. Do not get stuck in a loop by repeating the same tool calls or by cycling through the same set of tools. Once a tool has returned a successful result with data that is relevant to the user's request, do not call that same tool again unless there is a new and compelling reason to do so.
+
+- **Charting Guidelines:** After gathering data that is suitable for visualization, you **MUST IMMEDIATELY** use the `TDA_Charting` tool as your **NEXT AND ONLY** action. You **MUST NOT** re-call any data gathering tools if the data is already sufficient for charting. To use it, you must select the best `chart_type` and provide the correct data `mapping`. The `data` argument for `TDA_Charting` **MUST BE THE EXACT `results` ARRAY** from the immediately preceding successful data retrieval tool call. First, analyze the data and the user's goal. Then, choose a chart type from the guidelines below that best represents the information. Do not generate charts for simple data retrievals that are easily readable in a table. When you use a chart tool, tell the user in your final answer what the chart represents.\n
+- **Core Concept**: You create charts by mapping columns from the data you have received to visual roles.
+- **CRITICAL CHARTING RULE**: When you call the `TDA_Charting` tool, you **MUST** provide the `data` argument. The value for this argument **MUST BE THE EXACT `results` ARRAY** from the previous successful tool call. Do not modify or re-create it.
+- **Your Task**: You must provide the `chart_type`, a `title`, the `data` from the previous step, and the `mapping` argument.
+- **The `mapping` Argument**: This is the most important part. It tells the system how to draw the chart.
+  - The `mapping` dictionary keys **MUST be one of the following visual roles**: `x_axis`, `y_axis`, `color`, `angle`, `size`.
+  - The `mapping` dictionary values **MUST BE THE EXACT COLUMN NAMES** from the data you are passing.
+
+- **Example Interaction (Single Series)**:
+  1. You receive data: `{"results": [{"Category": "A", "Value": 20}, {"Category": "B", "Value": 30}]}`
+  2. Your call to `TDA_Charting` **MUST** look like this:
+     ```json
+     {
+       "tool_name": "TDA_Charting",
+       "arguments": {
+         "chart_type": "bar",
+         "title": "Category Values",
+         "data": [{"Category": "A", "Value": 20}, {"Category": "B", "Value": 30}],
+         "mapping": {"x_axis": "Category", "y_axis": "Value"}
+       }
+     }
+     ```
+
+- **Example Interaction (Multi-Series Line Chart)**:
+  1. You receive data with a categorical column to group by (e.g., `workloadType`).
+  2. To create a line chart with a separate colored line for each `workloadType`, you **MUST** include the `color` key in your mapping.
+  3. Your call to `TDA_Charting` **MUST** look like this:
+     ```json
+     {
+       "tool_name": "TDA_Charting",
+       "arguments": {
+         "chart_type": "line",
+         "title": "Usage by Workload",
+         "data": [],
+         "mapping": {
+           "x_axis": "LogDate",
+           "y_axis": "Request Count",
+           "color": "workloadType"
+         }
+       }
+     }
+     ```
+
+- **Common Chart Types & Their Mappings**:
+  - **`bar` or `column`**: Best for comparing numerical values across different categories.
+    - Required `mapping` keys: `x_axis`, `y_axis`.
+    - Use `color` to create grouped or stacked bars.
+  - **`line` or `area`**: Best for showing trends over a continuous variable, like time.
+    - Required `mapping` keys: `x_axis`, `y_axis`.
+    - Use `color` to plot multiple lines on the same chart.
+  - **`pie`**: Best for showing the proportion of parts to a whole.
+    - Required `mapping` keys: `angle` (the numerical value), `color` (the category).
+  - **`scatter`**: Best for showing the relationship between two numerical variables.
+    - Required `mapping` keys: `x_axis`, `y_axis`.
+    - Use `color` to group points by category.
+    - Use `size` to represent a third numerical variable.
+
+# Capabilities
+--- Available Tools ---
+--- Category: Uncategorized ---
+- `sec_rolePermissions` (tool): Get permissions for a role.
+  - Arguments:
+    - `role_name` (string, required): role name to analyze
+- `sec_userDbPermissions` (tool): Get permissions for a user.
+  - Arguments:
+    - `user_name` (string, required): user name to analyze
+- `sec_userRoles` (tool): Get roles assigned to a user.
+  - Arguments:
+    - `user_name` (string, required): user name to analyze
+- `qlty_columnSummary` (tool): Get the column summary statistics for a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+- `qlty_distinctCategories` (tool): Get the destinct categories from column in a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+    - `column_name` (string, required): column name to analyze
+- `qlty_missingValues` (tool): Get the column names that having missing values in a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+- `qlty_negativeValues` (tool): Get the column names that having negative values in a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+- `qlty_rowsWithMissingValues` (tool): Get the rows with missing values in a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+    - `column_name` (string, required): column name to analyze
+- `qlty_standardDeviation` (tool): Get the standard deviation from column in a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+    - `column_name` (string, required): column name to analyze
+- `qlty_univariateStatistics` (tool): Get the univariate statistics for a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+    - `column_name` (string, required): column name to analyze
+- `rag_executeWorkflow` (tool): Execute complete RAG workflow to answer user questions based on document context.
 
 
 This function handles the entire RAG pipeline:
@@ -42,7 +149,10 @@ This function handles the entire RAG pipeline:
 5. Return retrieved context chunks for answer generation
 
 The function uses configuration values from rag_config.yml with fallback defaults.
-- rag_executeWorkflow_ivsm (tool): Execute complete RAG workflow to answer user questions based on document context.
+  - Arguments:
+    - `question` (string, required): user question to process
+    - `k` (integer, optional): number of top-k results to return (optional, uses config default if not provided)
+- `rag_executeWorkflow_ivsm` (tool): Execute complete RAG workflow to answer user questions based on document context.
 
 This function handles the entire RAG pipeline using IVSM functions:
 1. Configuration setup (using configurable values from rag_config.yml)
@@ -53,29 +163,73 @@ This function handles the entire RAG pipeline using IVSM functions:
 6. Perform semantic search against chunk embeddings
 
 The function uses configuration values from rag_config.yml with fallback defaults.
-- tmpl_nameOfTool (tool): <description of what the tool is for>
-- base_columnDescription (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-- base_databaseList (tool): 
+  - Arguments:
+    - `question` (string, required): user question to process
+    - `k` (integer, optional): number of top-k results to return (optional, uses config default if not provided
+- `tmpl_nameOfTool` (tool): <description of what the tool is for>
+  - Arguments:
+    - `argument` (string, required): Argument
+- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `database_name` (string, required): Database name
+    - `obj_name` (string, required): table or view name
+- `base_databaseList` (tool): 
 Lists all databases in the Teradata System.
 
 Returns:
   ResponseType: formatted response with query results + metadata
 
-- base_readQuery (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-- base_tableAffinity (tool): Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-- base_tableDDL (tool): Displays the DDL definition of a table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-- base_tableList (tool): Lists all tables in a database.
-- base_tablePreview (tool): This function returns data sample and inferred structure from a database table or view via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-- base_tableUsage (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-- dba_databaseSpace (tool): Get database space if database name is provided, otherwise get all databases space allocations.
-- dba_resusageSummary (tool): Get the Teradata system usage summary metrics by weekday and hour for each workload type and query complexity bucket.
-- dba_tableSpace (tool): Get table space used for a table if table name is provided or get table space for all tables in a database if a database name is provided."
-- dba_tableSqlList (tool): Get a list of SQL run against a table in the last number of days.
-- dba_tableUsageImpact (tool): Measure the usage of a table and views by users, this is helpful to understand what user and tables are driving most resource usage at any point in time.
-- dba_userSqlList (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
-- sales_top_customers (tool): Get the top 20 customers by lifetime value.
-- sales_customer_profile (tool): Get customer profile and metrics.
-- get_cube_sales_cube (tool): 
+- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
+- `base_tableAffinity` (tool): Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `database_name` (string, required): Database name
+    - `obj_name` (string, required): Obj Name
+- `base_tableDDL` (tool): Displays the DDL definition of a table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `database_name` (string, required): Database name
+    - `table_name` (string, required): table name
+- `base_tableList` (tool): Lists all tables in a database.
+  - Arguments:
+    - `database_name` (string, optional): Database name
+- `base_tablePreview` (tool): This function returns data sample and inferred structure from a database table or view via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `table_name` (string, required): table or view name
+    - `database_name` (string, optional): Database name
+- `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `database_name` (string, optional): Database name
+- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
+  - Arguments:
+    - `database_name` (string, required): database name
+- `dba_resusageSummary` (tool): Get the Teradata system usage summary metrics by weekday and hour for each workload type and query complexity bucket.
+  - Arguments:
+    - `dimensions` (array, optional): list of dimensions to aggregate the resource usage summary. All dimensions are: ["LogDate", "hourOfDay", "dayOfWeek", "workloadType", "workloadComplexity", "UserName", "AppId", "StatementType"]
+    - `user_name` (string, optional): user name
+    - `date` (string, optional): Date to analyze, formatted as `YYYY-MM-DD`
+    - `dayOfWeek` (string, optional): day of the week to analyze
+    - `hourOfDay` (string, optional): hour of day to analyze
+- `dba_tableSpace` (tool): Get table space used for a table if table name is provided or get table space for all tables in a database if a database name is provided."
+  - Arguments:
+    - `database_name` (string, required): database name
+    - `table_name` (string, required): table name
+- `dba_tableSqlList` (tool): Get a list of SQL run against a table in the last number of days.
+  - Arguments:
+    - `table_name` (string, required): table name
+    - `no_days` (integer, optional): number of days
+- `dba_tableUsageImpact` (tool): Measure the usage of a table and views by users, this is helpful to understand what user and tables are driving most resource usage at any point in time.
+  - Arguments:
+    - `database_name` (string, optional): database name to analyze
+    - `user_name` (string, optional): user name to analyze
+- `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
+  - Arguments:
+    - `user_name` (string, required): user name
+    - `no_days` (integer, optional): number of days
+- `sales_customer_profile` (tool): Get customer profile and metrics.
+  - Arguments:
+    - `customer_key` (string, required): Customer Key
+- `get_cube_sales_cube` (tool): 
     Tool to query the cube 'order_count'.
     Get the key sales metrics: USD amount and number of orders.
 
@@ -101,9 +255,15 @@ order_count > 1000
     Returns:
         Query result as a formatted response.
     
-- cust_activeUsers (tool): Fetch currently active database users
-- cust_td_serverInfo (tool): Get the Teradata software information: demonstrates how to use parameters for prepared statements.
-- get_cube_cust_cube_db_space_metrics (tool): 
+  - Arguments:
+    - `dimensions` (string, required): dimensions
+    - `measures` (string, required): measures
+    - `filters` (string, optional): filters
+- `cust_activeUsers` (tool): Fetch currently active database users
+- `cust_td_serverInfo` (tool): Get the Teradata software information: demonstrates how to use parameters for prepared statements.
+  - Arguments:
+    - `infokey` (string, required): Infokey
+- `get_cube_cust_cube_db_space_metrics` (tool): 
     Tool to query the cube 'table_skew_pct'.
     Get the Teradata database space metrics for tables and databases
 
@@ -127,59 +287,188 @@ table_skew_pct > 1000
     Returns:
         Query result as a formatted response.
     
-- dba_databaseVersion (tool):  Get Teradata database version information.
-- dba_flowControl (tool): Get the Teradata flow control metrics for a specified date range.
-- dba_featureUsage (tool): Get the user feature usage metrics for a specified date range.
-- dba_userDelay (tool): Get the Teradata user delay metrics for a specified date range.
-- dba_sessionInfo (tool): Get the Teradata session information for user.
-- dba_systemSpace (tool): Get the Teradata total system database space usage.
-- TDA_Charting (tool): Generates a data visualization based on provided data. You must specify the chart type and map the data fields to the appropriate visual roles.
-- TDA_CurrentDate (tool): Returns the current system date in YYYY-MM-DD format. Use this as the first step for any user query involving relative dates like 'today', 'yesterday', or 'this week'.
-- TDA_DateRange (tool): Calculates a list of dates based on a start date and a natural language phrase (e.g., 'past 3 days', 'last week'). This is a necessary second step for multi-day queries.
-- TDA_LLMFilter (tool): A specialized internal tool that filters a list of items based on a natural language goal and extracts a single, clean value. This is used as an intermediate step to pass a specific, machine-readable value from one tool to another.
-- TDA_LLMTask (tool): Performs internal, LLM-driven tasks that are not direct calls to the Teradata database. This tool is used for text synthesis, summarization, and formatting based on a specific 'task_description' provided by the LLM itself.
-- TDA_ContextReport (tool): The History First Shortcut. This tool MUST be used for a single-phase plan if, and only if, the user's question can be answered entirely from the existing Workflow History. It bypasses all data gathering. Do NOT use this tool if you need to gather new data.
-- TDA_FinalReport (tool): The Data Summarization Tool. This tool MUST be the final phase of a multi-step plan to synthesize the results from all previous data-gathering phases into a final report. Do NOT use this tool in a single-phase plan or as a first step.
-- TDA_ComplexPromptReport (tool): A special internal tool used to format and deliver the final, structured report for a pre-defined UI prompt. This tool MUST be called when all data gathering phases for the prompt are complete.
-- sales_prompt (prompt): my prompt description
-- cust_promptExample (prompt): my prompt description
-- dba_tableArchive (prompt): The following prompt is used to guide the Teradata DBA in finding opportunities for archiving data. (prompt_type: reporting)
-- dba_databaseLineage (prompt): You are a Teradata DBA who is an expert in finding the lineage of tables in a database. (prompt_type: context)
   - Arguments:
-    - `database_name`
-    - `number_days`
-- dba_tableDropImpact (prompt): You are a Teradata DBA who is an expert in finding the impact of dropping a table. (prompt_type: reporting)
+    - `dimensions` (string, required): dimensions
+    - `measures` (string, required): measures
+    - `filters` (string, optional): filters
+- `dba_databaseVersion` (tool):  Get Teradata database version information.
+- `dba_flowControl` (tool): Get the Teradata flow control metrics for a specified date range.
   - Arguments:
-    - `table_name`
-    - `database_name`
-    - `number_days`
-- dba_databaseHealthAssessment (prompt): You are a Teradata DBA who is an expert in assessing the health of a database. (prompt_type: reporting)
-- dba_userActivityAnalysis (prompt): Analyze Teradata user activity patterns for the past 7 days (prompt_type: reporting)
-- dba_systemVoice (prompt): Analyze Teradata user activity patterns for the past 7 days (prompt_type: reporting)
-- rag_guidelines (prompt): Guidelines for Retrieval-Augmented Generation (RAG) mode. (prompt_type: context)
-- qlty_databaseQuality (prompt): Database data quality assessment. (prompt_type: reporting)
+    - `start_date` (string, required): Start Date
+    - `end_date` (string, required): End Date
+- `dba_featureUsage` (tool): Get the user feature usage metrics for a specified date range.
   - Arguments:
-    - `database_name`
-- _testMyServer (prompt): Test all the MCP tools, prompts and resources. (prompt_type: reporting)
+    - `start_date` (string, required): Start Date
+    - `end_date` (string, required): End Date
+- `dba_userDelay` (tool): Get the Teradata user delay metrics for a specified date range.
   - Arguments:
-    - `domain`
-- base_teradataQuery (prompt): A Teradata SQL expert that effectively solves problems understanding teradata specific SQL syntax.
+    - `start_date` (string, required): Start Date
+    - `end_date` (string, required): End Date
+- `dba_sessionInfo` (tool): Get the Teradata session information for user.
   - Arguments:
-    - `query`
-- base_query (prompt): Help users interact with  Teradata databases effectively.
+    - `user_name` (string, required): User Name
+- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
+- `TDA_Charting` (tool): Generates a data visualization based on provided data. You must specify the chart type and map the data fields to the appropriate visual roles.
   - Arguments:
-    - `query`
-- base_tableBusinessDesc (prompt): You are a Teradata DBA who is an expert in describing the business use of tables in a database.
+    - `chart_type` (string, required): The type of chart to generate (e.g., 'bar', 'pie', 'line', 'scatter'). This MUST be one of the types listed in the 'Charting Guidelines'.
+    - `data` (list[dict], required): The data to be visualized, passed directly from the output of another tool.
+    - `title` (string, required): A descriptive title for the chart.
+    - `mapping` (dict, required): A dictionary that maps data keys to chart axes or roles (e.g., {'x_axis': 'product_name', 'y_axis': 'sales_total'}). The required keys for this mapping depend on the selected chart_type.
+- `TDA_CurrentDate` (tool): Returns the current system date in YYYY-MM-DD format. Use this as the first step for any user query involving relative dates like 'today', 'yesterday', or 'this week'.
+- `TDA_DateRange` (tool): Calculates a list of dates based on a start date and a natural language phrase (e.g., 'past 3 days', 'last week'). This is a necessary second step for multi-day queries.
   - Arguments:
-    - `database_name`
-    - `table_name`
-- base_databaseBusinessDesc (prompt): You are a Teradata DBA who is an expert in describing the business use of databases.
+    - `start_date` (string, required): The anchor date for the calculation, usually today's date from `TDA_CurrentDate`. Must be in YYYY-MM-DD format.
+    - `date_phrase` (string, required): The natural language phrase describing the desired range (e.g., 'past 3 days', 'last 2 weeks').
+- `TDA_LLMFilter` (tool): A specialized internal tool that filters a list of items based on a natural language goal and extracts a single, clean value. This is used as an intermediate step to pass a specific, machine-readable value from one tool to another.
   - Arguments:
-    - `database_name`
-- get_glossary (resource): List all glossary terms.
-- get_glossary_definitions (resource): Returns all glossary terms with definitions.
+    - `goal` (string, required): A clear, natural language description of the item to find and extract (e.g., 'Find the database related to fitness', 'Extract the name of the sales summary table').
+    - `data_to_filter` (list[dict], required): The list of data objects to be filtered, passed from the result of a previous phase.
+- `TDA_LLMTask` (tool): Performs internal, LLM-driven tasks that are not direct calls to the Teradata database. This tool is used for text synthesis, summarization, and formatting based on a specific 'task_description' provided by the LLM itself.
+  - Arguments:
+    - `task_description` (string, required): A natural language description of the internal task to be executed (e.g., 'describe the table in a business context', 'format final output'). The LLM infers this from the workflow plan.
+    - `source_data` (list[string], required): A list of keys (e.g., 'result_of_phase_1') identifying which data from the workflow history is relevant for this task. This is critical for providing the correct context.
+    - `synthesized_answer` (string, optional): The final, synthesized natural language answer, provided directly by the planner when it can confidently answer from history.
+- `TDA_ContextReport` (tool): The History First Shortcut. This tool MUST be used for a single-phase plan if, and only if, the user's question can be answered entirely from the existing Workflow History. It bypasses all data gathering. Do NOT use this tool if you need to gather new data.
+  - Arguments:
+    - `answer_from_context` (string, required): The final, synthesized natural language answer, provided directly by the planner when it has confidently answered the user's question from the conversation history.
+- `TDA_FinalReport` (tool): The Data Summarization Tool. This tool MUST be the final phase of a multi-step plan to synthesize the results from all previous data-gathering phases into a final report. Do NOT use this tool in a single-phase plan or as a first step.
+--- Available Prompts ---
+--- Category: Uncategorized ---
+- `sales_prompt` (prompt): my prompt description
+- `cust_promptExample` (prompt): my prompt description
+- `rag_guidelines` (prompt): Guidelines for Retrieval-Augmented Generation (RAG) mode.
+- `base_teradataQuery` (prompt): A Teradata SQL expert that effectively solves problems understanding teradata specific SQL syntax.
+  - Arguments:
+    - `query` (str, required): The problem or question that needs to be solved using Teradata SQL syntax.
 
-2025-09-29 17:25:06,559 - --- ERROR in LLM call ---
-An error occurred (ResourceNotFoundException) when calling the InvokeModel operation: Model not found.
+
+USER PROMPT:
+
+You are an expert strategic planning assistant. Your task is to analyze a user's request or a complex workflow goal and decompose it into a high-level, phased meta-plan. This plan will serve as a state machine executor.
+
+---
+### Critical Directives
+You MUST follow these directives in order to create a valid and efficient plan.
+
+
+--- CONSTRAINTS ---
+You are explicitly forbidden from using the following capabilities in your plan under any circumstances:
+- `sales_top_customers` (tool)
+- `base_query` (prompt)
+- `qlty_databaseQuality` (prompt)
+- `dba_databaseLineage` (prompt)
+- `base_tableBusinessDesc` (prompt)
+- `base_databaseBusinessDesc` (prompt)
+- `dba_databaseHealthAssessment` (prompt)
+- `dba_userActivityAnalysis` (prompt)
+- `dba_systemVoice` (prompt)
+- `dba_tableArchive` (prompt)
+- `dba_tableDropImpact` (prompt)
+- `_testMyServer` (prompt)
+
+
+
+
+CRITICAL RULE (Analytical Prompt Expansion): When you are creating a new plan to fulfill the goal of an analytical prompt (e.g., a prompt that provides a 'description' or 'summary'), the new plan MUST follow a 'gather-then-synthesize' structure. The initial phase(s) must gather the necessary data, and the final phase MUST be a call to TDA_LLMTask to analyze the gathered data and produce the final report.
+
+1.  **Analyze Goal and Context**: First, carefully read the user's `GOAL` and review the `CONTEXT` section to understand the full intent and what actions have already been taken.
+
+2.  **Check History First**: If the `Workflow History` contains enough information to fully answer the user's `GOAL`, your response **MUST be a single JSON object** for a one-phase plan. This plan **MUST** call the `TDA_ContextReport` tool. You **MUST** write the complete, final answer text inside the `answer_from_context` argument within that tool call. **You are acting as a planner; DO NOT use the `FINAL_ANSWER:` format.**
+
+3.  **Default to Data Gathering**: If the history is insufficient, you **MUST** create a new plan to gather the necessary data using the available tools. Your primary objective is to answer the user's `GOAL` using data from these tools.
+
+2.  **Identify Conversational Turns**: If the user's `GOAL` is purely conversational (e.g., a greeting like "hello") and does not require any data or action, your response **MUST be a single JSON object**: `{"plan_type": "conversational", "response": "I'm doing well, thank you for asking! How can I help you with your Teradata database system today?"}`.
+
+3.  **Handle Context and Parameters Correctly**:
+    * **Prioritize the Goal**: You **MUST** prioritize entities from the user's current `GOAL` over conflicting information in the `Workflow History`. The history is for supplementing missing information, not for overriding the current request.
+    * **Extract Parameters**: You **MUST** meticulously scan the `GOAL` for entities that correspond to tool arguments (e.g., table names) and populate the `"arguments"` block in your plan phase with these key-value pairs.
+
+4.  **Follow the Plan Architecture**:
+    * Your plan **MUST** follow a strict "data-gathering first, synthesis last" architecture.
+    * **CRITICAL RULE (Final Reporting):** After all data gathering and synthesis is complete, your plan **MUST** conclude with a final phase that calls the `TDA_FinalReport` tool. You **MUST NOT** provide arguments for this tool; its purpose is to trigger the final, structured summarization.
+    * **CRITICAL RULE (Simple Synthesis Efficiency):** If the **only** remaining task after gathering data is a simple synthesis (e.g., counting items, listing names from results, summarizing findings, assessing quality), you **MUST** proceed directly to the final reporting phase by calling the `TDA_FinalReport` tool. Do **NOT** create an intermediate `TDA_LLMTask` phase for these simple operations.
+    * **CRITICAL RULE (SQL Consolidation):** You MUST NOT create a plan where a `SQL` phase is followed by another `SQL` phase. All related analysis and synthesis MUST be consolidated into a single `SQL` phase to ensure efficiency.
+    * **CRITICAL STRATEGY (Component Iteration):** If the GOAL requires applying one or more tools to every component of a single entity (e.g., checking the quality of "every column" in a table), your plan MUST be structured to iterate over those components. The first phase MUST retrieve the list of components (e.g., using `base_columnDescription`). All subsequent analytical phases that operate on these components MUST be defined with `"type": "loop"` and a corresponding `"loop_over"` key to ensure each component is processed individually.
+
+5.  **Optimize for Efficiency**:
+    * **General Principle**: Your plan **MUST** be as efficient as possible. You should always try to combine multiple logical steps into a single phase if one tool can perform the combined operation.
+    * **CRITICAL STRATEGY (Query Pushdown Efficiency)**: Always prefer a single action that filters data at the source over multiple steps that retrieve unfiltered data and then filter it.
+        * **HIGHLY PREFERRED:** Use a tool that accepts a filter (e.g., a `sql` parameter with a `WHERE` clause) to request *only the specific data you need*.
+        * **AVOID IF POSSIBLE:** Do not use a general-purpose "list" tool and then follow it with a second phase to find a specific item.
+        * **FILTERING RULE:** If you must use a general-purpose 'list' tool to find a specific item before acting on it, you **MUST** construct a three-phase plan:
+            1.  **Phase 1 (List):** Call the appropriate 'list' tool (e.g., `base_databaseList`).
+            2.  **Phase 2 (Filter):** Call the specialized `TDA_LLMFilter` tool. The goal of this phase is *only* to find and extract the specific item's name from the results of Phase 1. You MUST pass the goal to the `goal` argument and the results of the previous phase to the `data_to_filter` argument.
+            3.  **Phase 3 (Act):** Call the final tool (e.g., `base_tableList`), using the single, extracted item name from Phase 2 as its argument.
+            This three-step `List -> Filter -> Act` pattern is mandatory for these scenarios.
+    
+    **CRITICAL STRATEGY (SQL Consolidation):** Before creating a multi-step plan, first consider if the user's entire request can be fulfilled with a single, consolidated SQL query. If the goal involves a sequence of filtering, joining, or looking up data (e.g., "find all tables in a database that contains X"), you **MUST** favor using one of the following capabilities to write a single statement that performs the entire operation: `base_teradataQuery` (prompt), `base_readQuery` (tool). Avoid creating multiple `base_...List` steps if a single query would be more efficient.
+
+6.  **Maintain Simplicity and Focus**:
+    * If the `GOAL` can be answered with a single tool call, your plan **MUST** consist of only that single phase. Do not add unnecessary synthesis phases for simple data retrieval.
+    * Every phase **MUST** correspond to a concrete, executable action. Do **NOT** create phases for simple verification or acknowledgement.
+
+7.  **Adhere to Structural Rules**:
+    * **CRITICAL RULE (Plan Flattening)**: Your plan **MUST ALWAYS** be a flat, sequential list of phases. You **MUST NOT** create nested structures. Decompose tasks with nested logic into multiple, sequential looping phases.
+    * **CRITICAL RULE (Capability Type Enforcement)**: Your selection **MUST** strictly adhere to the capability type. You are **forbidden** from placing a `(prompt)` in the `"relevant_tools"` list or a `(tool)` in the `"executable_prompt"` field.
+
+8.  **Ensure Stability**:
+    * **CRITICAL RULE (Recursion Prevention)**: Review the `Current Execution Depth`. You **MUST NOT** create a plan that calls an `executable_prompt` if the depth is approaching the maximum of 5. If you are already inside an `Active Prompt`, you **MUST NOT** create a plan that calls that same prompt again.
+
+---
+### EXAMPLE (Final Reporting)
+- **User Goal**: "Summarize the errors in the 'DEMO_DB' database."
+- **Correct Plan**:
+  ```json
+  [
+    {
+      "phase": 1,
+      "goal": "Get a list of all tables in the 'DEMO_DB' database.",
+      "relevant_tools": ["base_tableList"],
+      "arguments": {"database_name": "DEMO_DB"}
+    },
+    {
+      "phase": 2,
+      "goal": "Loop over the tables and check for missing values in each one.",
+      "type": "loop",
+      "loop_over": "result_of_phase_1",
+      "relevant_tools": ["qlty_missingValues"]
+    },
+    {
+      "phase": 3,
+      "goal": "Generate the final report based on the data gathered.",
+      "relevant_tools": ["TDA_FinalReport"],
+      "arguments": {}
+    }
+  ]
+```
+
+---
+### Plan JSON Structure
+Your output **MUST** be a single, valid JSON array of phase objects. Each object must follow this structure:
+
+-   `"phase"`: An integer, starting from 1.
+-   `"goal"`: A concise string describing what this phase will accomplish. You MUST embed any relevant parameters from the user's goal directly into this string.
+-   `"type"`: (Optional) Use `"loop"` if the phase needs to iterate over the results of a previous phase.
+-   `"loop_over"`: (Required if `type` is `"loop"`) A string identifying the source of items to loop over (e.g., `"result_of_phase_1"`).
+-   `"relevant_tools"`: A JSON array containing the single string name of the `(tool)` to be used in this phase.
+-   `"executable_prompt"`: A string name of the `(prompt)` to be used in this phase.
+-   `"arguments"`: (Optional) A JSON object of key-value pairs for the selected capability. You can use placeholders like `"result_of_phase_1"` to pass data between phases.
+
+---
+### Context for this Plan
+-   Overall Goal: `how many databases are on the system?`
+-   Explicit Parameters: 
+-   User's Original Input: `how many databases are on the system?`
+-   Workflow History: `{
+  "workflow_history": []
+}`
+-   Execution Depth: This is recursive call number `0`. Avoid creating identical plans.
+
+
+Your response MUST be a single, valid JSON list of phase objects. Do NOT add any extra text, conversation, or markdown.
+
+
+2025-09-29 17:42:51,739 - --- ERROR in LLM call ---
+An error occurred (ValidationException) when calling the InvokeModel operation: 400 Bad Request: Too many input tokens. Max input tokens: 8192, request input token count: 8969 
 --------------------------------------------------
 
