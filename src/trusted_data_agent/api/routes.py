@@ -36,15 +36,22 @@ async def index():
     """Serves the main HTML page."""
     return await render_template("index.html")
 
-# --- MODIFICATION START: Add the new /api/status endpoint with logging ---
 @api_bp.route("/api/status")
 async def get_application_status():
     """
     Returns the current configuration status of the application.
     This is used by the front end on startup to synchronize its state.
+    It now respects the CONFIGURATION_PERSISTENCE flag.
     """
-    is_configured = APP_CONFIG.SERVICES_CONFIGURED
+    # --- MODIFICATION START: Add Configuration Persistence Check ---
+    # If persistence is disabled via the environment variable, always force
+    # the user to re-configure by reporting the status as unconfigured.
+    if not APP_CONFIG.CONFIGURATION_PERSISTENCE:
+        app_logger.info("Configuration persistence is disabled by environment setting. Forcing re-configuration.")
+        return jsonify({"isConfigured": False})
+    # --- MODIFICATION END ---
     
+    is_configured = APP_CONFIG.SERVICES_CONFIGURED
     app_logger.debug(f"API endpoint /api/status checked. Current configured status: {is_configured}")
 
     if is_configured:
@@ -60,7 +67,6 @@ async def get_application_status():
         status_payload = {"isConfigured": False}
         app_logger.debug(f"/api/status responding with unconfigured state.")
         return jsonify(status_payload)
-# --- MODIFICATION END ---
 
 @api_bp.route("/simple_chat", methods=["POST"])
 async def simple_chat():
@@ -136,7 +142,6 @@ async def get_api_key(provider):
     elif provider_lower == 'openai':
         key = os.environ.get("OPENAI_API_KEY")
         return jsonify({"apiKey": key or ""})
-    # --- MODIFICATION START: Add logic to fetch Azure credentials from environment ---
     elif provider_lower == 'azure':
         keys = {
             "azure_api_key": os.environ.get("AZURE_OPENAI_API_KEY"),
@@ -145,7 +150,6 @@ async def get_api_key(provider):
             "azure_api_version": os.environ.get("AZURE_OPENAI_API_VERSION")
         }
         return jsonify(keys)
-    # --- MODIFICATION END ---
     elif provider_lower == 'amazon':
         keys = {
             "aws_access_key_id": os.environ.get("AWS_ACCESS_KEY_ID"),
@@ -390,10 +394,8 @@ async def get_models():
         data = await request.get_json()
         provider = data.get("provider")
         credentials = { "listing_method": data.get("listing_method", "foundation_models") }
-        # --- MODIFICATION START: Pass Azure credentials to the handler ---
         if provider == 'Azure':
             credentials["azure_deployment_name"] = data.get("azure_deployment_name")
-        # --- MODIFICATION END ---
         elif provider == 'Amazon':
             credentials.update({
                 "aws_access_key_id": data.get("aws_access_key_id"),
@@ -447,12 +449,10 @@ async def configure_services():
             "aws_secret_access_key": data_from_ui.get("aws_secret_access_key"),
             "aws_region": data_from_ui.get("aws_region"),
             "ollama_host": ollama_host_value,
-            # --- MODIFICATION START: Extract Azure fields from the UI request ---
             "azure_api_key": data_from_ui.get("azure_api_key"),
             "azure_endpoint": data_from_ui.get("azure_endpoint"),
             "azure_deployment_name": data_from_ui.get("azure_deployment_name"),
             "azure_api_version": data_from_ui.get("azure_api_version"),
-            # --- MODIFICATION END ---
             "listing_method": data_from_ui.get("listing_method", "foundation_models")
         },
         "mcp_server": {
@@ -465,7 +465,6 @@ async def configure_services():
     # --- MODIFICATION END ---
     # Clean up None values to avoid sending empty keys
     service_config_data["credentials"] = {k: v for k, v in service_config_data["credentials"].items() if v is not None}
-    # --- MODIFICATION END ---
 
     # Call the centralized, lock-protected service function
     result = await configuration_service.setup_and_categorize_services(service_config_data)

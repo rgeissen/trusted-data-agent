@@ -11,6 +11,12 @@ class AppConfig:
     These values are typically set at startup and rarely change during runtime.
     """
     # --- Feature Flags & Behavior ---
+    # --- MODIFICATION START: Add Configuration Persistence Flag ---
+    # This flag controls whether the server's configuration is persistent across page loads.
+    # Set the environment variable TDA_CONFIGURATION_PERSISTENCE=false to disable persistence,
+    # which will force the configuration modal to appear on every visit. Defaults to true.
+    CONFIGURATION_PERSISTENCE = os.environ.get('TDA_CONFIGURATION_PERSISTENCE', 'true').lower() != 'false'
+    # --- MODIFICATION END ---
     ALL_MODELS_UNLOCKED = False # If True, bypasses model certification checks, allowing all models from a provider to be used.
     CHARTING_ENABLED = True # Master switch to enable or disable the agent's ability to generate charts.
     DEFAULT_CHARTING_INTENSITY = "medium" # Controls how proactively the agent suggests charts. Options: "none", "medium", "heavy".
