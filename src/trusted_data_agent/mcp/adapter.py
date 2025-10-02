@@ -123,31 +123,41 @@ CLIENT_SIDE_TOOLS = [
 ]
 # --- MODIFICATION END ---
 
+# --- MODIFICATION START: Implement robust argument synonym resolution ---
 def _normalize_tool_arguments(args: dict) -> dict:
     """
-    Expands tool arguments to include all known synonyms for canonical keys.
-    For example, if 'db_name' is provided, this will add 'database_name'
-    and 'DatabaseName' to the arguments dictionary with the same value.
-    This ensures compatibility with tools that may use different synonyms.
+    Resolves argument synonyms to their canonical form. It iterates through
+    the provided arguments, and if an argument is a known synonym, it replaces
+    it with the single, canonical argument name defined in the config.
+    This prevents validation errors caused by multiple synonyms being sent
+    to a tool that expects only one canonical argument name.
     """
     if not isinstance(args, dict):
         return {}
 
-    normalized_args = args.copy()
-    for canonical, synonyms in AppConfig.ARGUMENT_SYNONYM_MAP.items():
-        found_value = None
-        # First pass: find if any synonym has a value
-        for synonym in synonyms:
-            if synonym in args:
-                found_value = args[synonym]
-                break
+    resolved_args = {}
+    # Create a reverse map for quick lookup: {synonym: canonical}
+    reverse_synonym_map = {
+        synonym: canonical
+        for canonical, synonyms in AppConfig.ARGUMENT_SYNONYM_MAP.items()
+        for synonym in synonyms
+    }
+
+    for arg_name, arg_value in args.items():
+        # Find the canonical name for the current argument.
+        # If the arg_name is not a synonym, it is treated as its own canonical name.
+        canonical_name = reverse_synonym_map.get(arg_name, arg_name)
         
-        # Second pass: if a value was found, apply it to all synonyms
-        if found_value is not None:
-            for synonym in synonyms:
-                normalized_args[synonym] = found_value
-    
-    return normalized_args
+        # Only add the argument to the resolved dictionary if its canonical
+        # form is not already present. This ensures that even if multiple
+        # synonyms are provided (e.g., db_name and database_name), only the
+        # first one encountered (mapped to its canonical name) is used.
+        if canonical_name not in resolved_args:
+            resolved_args[canonical_name] = arg_value
+
+    return resolved_args
+# --- MODIFICATION END ---
+
 
 def _extract_and_clean_description(description: str | None) -> tuple[str, str]:
     if not isinstance(description, str):
