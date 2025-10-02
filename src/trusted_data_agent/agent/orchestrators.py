@@ -111,7 +111,7 @@ async def execute_column_iteration(executor, command: dict):
     all_column_results = [cols_result]
     
     yield _format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
-    tool_constraints = await executor._get_tool_constraints(tool_name)
+    tool_constraints, _ = await executor._get_tool_constraints(tool_name)
     yield _format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
     required_type = tool_constraints.get("dataType") if tool_constraints else None
     
@@ -201,3 +201,4 @@ async def execute_hallucinated_loop(executor, phase: dict):
 
     executor._add_to_structured_data(all_results)
     executor.last_tool_output = {"metadata": {"tool_name": tool_name}, "results": all_results, "status": "success"}
+

@@ -210,27 +210,68 @@ class PhaseExecutor:
             })
             
             session_context_args = {}
-            phase_context_args = phase.get("arguments", {})
+            # --- MODIFICATION START: The `phase_context_args` are now fully resolved BEFORE the loop ---
+            # This ensures that placeholders like "result_of_phase_1" are resolved once, preventing
+            # them from being incorrectly passed into the loop's merging logic.
+            phase_context_args = self.executor._resolve_arguments(phase.get("arguments", {}))
+            # --- MODIFICATION END ---
             
             all_loop_results = []
             yield self.executor._format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
             for i, item in enumerate(self.executor.current_loop_items):
                 yield self.executor._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.executor.current_loop_items)}", "type": "system_message", "details": item})
                 
-                merged_args = {**session_context_args, **phase_context_args}
-                if isinstance(item, dict):
-                    for key, value in item.items():
-                        found_canonical = None
-                        for canonical, synonyms in AppConfig.ARGUMENT_SYNONYM_MAP.items():
-                            if key in synonyms:
-                                found_canonical = canonical
-                                break
-                        
-                        if found_canonical:
-                            for synonym in AppConfig.ARGUMENT_SYNONYM_MAP[canonical]:
-                                merged_args[synonym] = value
-                        else:
-                            merged_args[key] = value
+                # --- MODIFICATION START: Implement robust, resilient placeholder resolution ---
+                # This new logic correctly handles variations in AI-generated placeholders
+                # and intelligently links arguments to data, fixing the core regression bug.
+                
+                current_item_args = copy.deepcopy(phase_context_args)
+                
+                for arg_name, arg_value in current_item_args.items():
+                    if isinstance(arg_value, str):
+                        # Regex to find placeholders like {key}, {{key}}, {item.key}}, etc.
+                        match = re.search(r'\{\{?item\.?(\w+)\}\}?', arg_value)
+                        if match and isinstance(item, dict):
+                            placeholder_key = match.group(1)
+                            
+                            # Find the matching value from the item using multiple strategies
+                            found_value = None
+                            
+                            # 1. Direct case-sensitive match
+                            if placeholder_key in item:
+                                found_value = item[placeholder_key]
+                            
+                            # 2. Case-insensitive match
+                            if found_value is None:
+                                for item_key, item_value in item.items():
+                                    if item_key.lower() == placeholder_key.lower():
+                                        found_value = item_value
+                                        break
+                            
+                            # 3. Synonym match (last resort)
+                            if found_value is None:
+                                for canonical, synonyms in AppConfig.ARGUMENT_SYNONYM_MAP.items():
+                                    if placeholder_key.lower() in {s.lower() for s in synonyms}:
+                                        for s in synonyms:
+                                            if s in item:
+                                                found_value = item[s]
+                                                break
+                                    if found_value:
+                                        break
+                            
+                            if found_value is not None:
+                                current_item_args[arg_name] = found_value
+                                app_logger.debug(f"Resolved placeholder '{arg_value}' to '{found_value}' for key '{placeholder_key}'")
+                            else:
+                                app_logger.warning(f"Could not resolve placeholder '{arg_value}'. Key '{placeholder_key}' not in item {item} via any strategy.")
+
+                item_data = item if isinstance(item, dict) else {}
+                # The crucial change: The specific `item_data` is merged *after* the
+                # general `current_item_args`, ensuring that the correct, single value
+                # for this iteration (e.g., the specific date) overwrites any
+                # broader, list-based values that may have been prematurely resolved.
+                merged_args = {**current_item_args, **item_data}
+                # --- MODIFICATION END ---
 
                 command = {"tool_name": tool_name, "arguments": merged_args}
                 async for event in self._execute_tool(command, phase, is_fast_path=True):
@@ -796,6 +837,15 @@ class PhaseExecutor:
                         yield event
                     
                     if corrected_action:
+                        # --- MODIFICATION START: Add type-safe check for FINAL_ANSWER ---
+                        # This ensures the executor doesn't crash if self-correction returns
+                        # a final answer string instead of a corrected action dictionary.
+                        if "FINAL_ANSWER" in corrected_action:
+                            final_answer_from_correction = corrected_action["FINAL_ANSWER"]
+                            self.executor.last_tool_output = {"status": "success", "results": [{"response": f"FINAL_ANSWER: {final_answer_from_correction}"}]}
+                            break
+                        # --- MODIFICATION END ---
+                        
                         if "prompt_name" in corrected_action:
                             async for event in self.executor._run_sub_prompt(
                                 corrected_action['prompt_name'],
@@ -812,9 +862,6 @@ class PhaseExecutor:
                                 app_logger.info(f"Successfully recovered from tool failure by executing prompt '{corrected_action['prompt_name']}'.")
                                 break 
 
-                        if "FINAL_ANSWER:" in corrected_action:
-                            self.executor.last_tool_output = {"status": "success", "results": [{"response": corrected_action}]}
-                            break
                         action = corrected_action
                         continue
                     else:
@@ -1339,10 +1386,13 @@ class PhaseExecutor:
                 "call_id": call_id
             }, "token_update"))
         
+        # --- MODIFICATION START: Ensure consistent dictionary return type ---
         if "FINAL_ANSWER:" in response_str:
             app_logger.info("Self-correction resulted in a FINAL_ANSWER. Halting retries.")
             final_answer_text = response_str.split("FINAL_ANSWER:", 1)[1].strip()
-            return final_answer_text, events
+            # Wrap the string in a dictionary to ensure a consistent return type.
+            return {"FINAL_ANSWER": final_answer_text}, events
+        # --- MODIFICATION END ---
 
         try:
             json_match = re.search(r"```json\s*\n(.*?)\n\s*```|(\{.*\})", response_str, re.DOTALL)
@@ -1390,4 +1440,3 @@ class PhaseExecutor:
             return None, events
             
         return None, events
-
