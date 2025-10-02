@@ -173,11 +173,13 @@ class PlanExecutor:
         
         return data
 
+    # --- MODIFICATION START: Fully Expressive Argument Resolution ---
     def _resolve_arguments(self, arguments: dict) -> dict:
         """
-        Scans tool arguments for placeholders (e.g., 'result_of_phase_1') and
-        replaces them with the actual data from the workflow state.
-        This version now supports a basic 'length' filter.
+        Scans tool arguments for placeholders and resolves them. This now
+        supports complex data access patterns (e.g., list indexing `[0]` and
+        dict key access `.key`) and includes a deterministic check to
+        automatically "unwrap" single-value results.
         """
         if not isinstance(arguments, dict):
             return arguments
@@ -185,44 +187,65 @@ class PlanExecutor:
         resolved_args = {}
         for key, value in arguments.items():
             if isinstance(value, str):
-                placeholder_match = re.fullmatch(r"result_of_phase_(\d+)", value)
-                jinja_match = re.search(r"\{\{\s*result_of_phase_(\d+)\s*\|\s*length\s*\}\}", value)
-
-                if jinja_match:
-                    phase_num = int(jinja_match.group(1))
-                    source_key = f"result_of_phase_{phase_num}"
-                    if source_key in self.workflow_state:
-                        data = self.workflow_state[source_key]
-                        data_length = 0
-                        if isinstance(data, list) and data and isinstance(data[0], dict) and 'results' in data[0]:
-                             data_length = len(data[0].get('results', []))
-                        elif isinstance(data, list):
-                             data_length = len(data)
-                        
-                        resolved_value = value.replace(jinja_match.group(0), str(data_length))
-                        resolved_args[key] = resolved_value
-                        app_logger.info(f"Resolved Jinja expression '{value}' to '{resolved_value}'")
-                    else:
-                        resolved_args[key] = value
-
-                elif placeholder_match:
-                    phase_num = int(placeholder_match.group(1))
-                    source_key = f"result_of_phase_{phase_num}"
+                # Regex to capture the base placeholder and any subsequent accessors
+                # e.g., "result_of_phase_1[0].date"
+                match = re.match(r"(result_of_phase_\d+)(.*)", value)
+                
+                if match:
+                    base_key = match.group(1)
+                    path_expression = match.group(2)
                     
-                    if source_key in self.workflow_state:
-                        data = self.workflow_state[source_key]
+                    if base_key in self.workflow_state:
+                        # Start with the full data from the referenced phase
+                        target_data = self.workflow_state[base_key]
                         
-                        if (isinstance(data, list) and len(data) == 1 and 
-                            isinstance(data[0], dict) and "results" in data[0] and
-                            isinstance(data[0]["results"], list) and len(data[0]["results"]) == 1 and
-                            isinstance(data[0]["results"][0], dict) and len(data[0]["results"][0]) == 1):
-                            
-                            extracted_value = next(iter(data[0]["results"][0].values()))
-                            resolved_args[key] = extracted_value
+                        # --- Automatic Unwrapping Logic ---
+                        is_single_value_structure = (
+                            not path_expression and
+                            isinstance(target_data, list) and len(target_data) == 1 and
+                            isinstance(target_data[0], dict) and "results" in target_data[0] and
+                            isinstance(target_data[0]["results"], list) and len(target_data[0]["results"]) == 1 and
+                            isinstance(target_data[0]["results"][0], dict) and len(target_data[0]["results"][0]) == 1
+                        )
+
+                        if is_single_value_structure:
+                            unwrapped_value = next(iter(target_data[0]["results"][0].values()))
+                            resolved_args[key] = unwrapped_value
+                            app_logger.info(f"Automatically unwrapped single-value result for placeholder '{value}' to: {unwrapped_value}")
+                            continue 
+                        # --- End of Unwrapping Logic ---
+
+                        if path_expression:
+                            try:
+                                # Split the path by delimiters like '.', '[', ']'
+                                path_parts = re.split(r'\.|\b', path_expression)
+                                # Filter out empty strings and brackets from the split
+                                path_parts = [p.replace('[','').replace(']','') for p in path_parts if p and p not in '[]']
+
+                                current_data = target_data
+                                for part in path_parts:
+                                    if isinstance(current_data, list):
+                                        try:
+                                            index = int(part)
+                                            current_data = current_data[index]
+                                        except (ValueError, IndexError):
+                                            raise KeyError(f"Invalid index '{part}'")
+                                    elif isinstance(current_data, dict):
+                                        current_data = current_data.get(part)
+                                    else:
+                                        raise TypeError("Cannot traverse a non-collection type.")
+                                
+                                resolved_args[key] = current_data
+                                app_logger.info(f"Resolved complex placeholder '{value}' to value: {current_data}")
+
+                            except (KeyError, IndexError, TypeError) as e:
+                                app_logger.warning(f"Could not resolve path '{path_expression}' in placeholder '{value}': {e}. Using None.")
+                                resolved_args[key] = None
                         else:
-                            resolved_args[key] = data
+                            # Simple case: No path, use the whole data structure
+                            resolved_args[key] = target_data
                     else:
-                        app_logger.warning(f"Could not resolve placeholder '{value}': key '{source_key}' not in workflow state.")
+                        app_logger.warning(f"Could not resolve placeholder '{value}': key '{base_key}' not in workflow state.")
                         resolved_args[key] = value 
                 else:
                     resolved_args[key] = value
@@ -240,6 +263,8 @@ class PlanExecutor:
                 resolved_args[key] = value
         
         return resolved_args
+    # --- MODIFICATION END ---
+
 
     async def run(self):
         """The main, unified execution loop for the agent."""
@@ -657,3 +682,4 @@ class PlanExecutor:
             "tts_payload": tts_payload,
             "source": self.source
         }, "final_answer")
+
