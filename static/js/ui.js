@@ -108,9 +108,24 @@ function _renderMetaPlanDetails(details) {
             `;
         }
 
+        // --- MODIFICATION START: Add rendering for structural plan keys ---
+        let structuralKeysHtml = '';
+        if (phase.type) {
+            structuralKeysHtml += `<div class="status-kv-item"><div class="status-kv-key">Type</div><div class="status-kv-value"><code class="status-code font-bold text-yellow-300">${phase.type}</code></div></div>`;
+        }
+        if (phase.loop_over) {
+            structuralKeysHtml += `<div class="status-kv-item"><div class="status-kv-key">Loop Over</div><div class="status-kv-value"><code class="status-code">${phase.loop_over}</code></div></div>`;
+        }
+        // --- MODIFICATION END ---
+
         html += `<div class="status-phase-card">
                     <div class="font-bold text-gray-300 mb-2">Phase ${phase.phase}</div>
                     <div class="status-kv-item"><div class="status-kv-key">Goal</div><div class="status-kv-value">${phase.goal}</div></div>`;
+        
+        // --- MODIFICATION START: Inject the new structural keys HTML ---
+        html += structuralKeysHtml;
+        // --- MODIFICATION END ---
+        
         if (phase.relevant_tools) {
             html += `<div class="status-kv-item"><div class="status-kv-key">Tools</div><div class="status-kv-value"><code class="status-code">${phase.relevant_tools.join(', ')}</code></div></div>`;
         }
@@ -249,11 +264,9 @@ export function updateStatusWindow(eventData, isFinal = false) {
     const metricsEl = document.createElement('div');
     metricsEl.className = 'per-call-metrics text-xs text-gray-400 mb-2 hidden';
     
-    // --- MODIFICATION START: Embed call_id if available ---
     if (typeof details === 'object' && details !== null && details.call_id) {
         metricsEl.dataset.callId = details.call_id;
     }
-    // --- MODIFICATION END ---
     
     stepEl.appendChild(metricsEl);
 
@@ -536,7 +549,6 @@ export function addSessionToList(sessionId, name, isActive = false) {
     return sessionItem;
 }
 
-// --- MODIFICATION START: Update button colors to Teradata Orange using hex codes ---
 export function updateConfigButtonState() {
     const isConnected = DOM.mcpStatusDot.classList.contains('connected');
 
@@ -564,7 +576,6 @@ export function updateConfigButtonState() {
         DOM.configActionButton.classList.add('bg-gray-600', 'hover:bg-gray-500');
     }
 }
-// --- MODIFICATION END ---
 
 export function showConfirmation(title, body, onConfirm) {
     DOM.confirmModalTitle.textContent = title;
