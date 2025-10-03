@@ -1,0 +1,17 @@
+{
+    // The 'version' and 'configurations' properties are required
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Module (trusted_data_agent.main)",
+            "type": "python",
+            "request": "launch",
+            // *** This is the crucial line for your scenario ***
+            "module": "trusted_data_agent.main",
+            "justMyCode": true,
+            // Add 'cwd' if your program needs to run from a specific directory
+            // "cwd": "${workspaceFolder}" 
+        },
+        // ... other configurations might be here
+    ]
+}

@@ -1073,25 +1073,45 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
             if found_args is not None:
                 args = found_args
     
-    # --- MODIFICATION START: Centralize argument normalization ---
-    # The old, manual expansion logic has been removed and replaced with a call
-    # to the new, centralized normalization function.
     normalized_args = _normalize_tool_arguments(args)
     if normalized_args != args:
         app_logger.info(f"Normalized tool arguments for '{tool_name}'. Original: {args}, Normalized: {normalized_args}")
     
     args = normalized_args
+    
+    # --- MODIFICATION START: Implement Intelligent Argument Alignment ---
+    tool_def = STATE.get('mcp_tools', {}).get(tool_name)
+    aligned_args = args.copy() 
+
+    if tool_def and hasattr(tool_def, 'args') and isinstance(tool_def.args, dict):
+        tool_arg_names = set(tool_def.args.keys())
+        canonical_to_synonyms_map = AppConfig.ARGUMENT_SYNONYM_MAP
+
+        for canonical_name in list(aligned_args.keys()):
+            if canonical_name not in tool_arg_names:
+                # This canonical name isn't what the tool wants. Let's find a synonym it DOES want.
+                synonyms = canonical_to_synonyms_map.get(canonical_name, set())
+                
+                for synonym in synonyms:
+                    if synonym in tool_arg_names:
+                        # Found a match! The tool wants this synonym. Rename the key.
+                        app_logger.info(
+                            f"Aligning argument for '{tool_name}': "
+                            f"Renaming canonical '{canonical_name}' to tool-specific '{synonym}'."
+                        )
+                        aligned_args[synonym] = aligned_args.pop(canonical_name)
+                        break 
     # --- MODIFICATION END ---
 
 
-    app_logger.debug(f"Invoking tool '{tool_name}' with args: {args}")
+    app_logger.debug(f"Invoking tool '{tool_name}' with aligned args: {aligned_args}")
     try:
         server_name = APP_CONFIG.CURRENT_MCP_SERVER_NAME
         if not server_name:
             raise Exception("MCP server name not found in configuration.")
             
         async with mcp_client.session(server_name) as temp_session:
-            call_tool_result = await temp_session.call_tool(tool_name, args)
+            call_tool_result = await temp_session.call_tool(tool_name, aligned_args)
     except Exception as e:
         app_logger.error(f"Error during tool invocation for '{tool_name}': {e}", exc_info=True)
         result = {"status": "error", "error": f"An exception occurred while invoking tool '{tool_name}'.", "data": str(e)}
