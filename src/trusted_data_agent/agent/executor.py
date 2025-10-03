@@ -173,7 +173,6 @@ class PlanExecutor:
         
         return data
 
-    # --- MODIFICATION START: Fully Expressive Argument Resolution ---
     def _resolve_arguments(self, arguments: dict) -> dict:
         """
         Scans tool arguments for placeholders and resolves them. This now
@@ -189,7 +188,7 @@ class PlanExecutor:
             if isinstance(value, str):
                 # Regex to capture the base placeholder and any subsequent accessors
                 # e.g., "result_of_phase_1[0].date"
-                match = re.match(r"(result_of_phase_\d+)(.*)", value)
+                match = re.match(r"(result_of_phase_\d+|injected_previous_turn_data)(.*)", value)
                 
                 if match:
                     base_key = match.group(1)
@@ -263,7 +262,6 @@ class PlanExecutor:
                 resolved_args[key] = value
         
         return resolved_args
-    # --- MODIFICATION END ---
 
 
     async def run(self):
@@ -501,7 +499,11 @@ class PlanExecutor:
 
         while self.current_phase_index < len(self.meta_plan):
             current_phase = self.meta_plan[self.current_phase_index]
-            current_phase["arguments"] = self._resolve_arguments(current_phase.get("arguments", {}))
+            # --- MODIFICATION START: Remove premature argument resolution ---
+            # The responsibility for resolving arguments is now delegated to the PhaseExecutor,
+            # which has the correct context (especially for loops).
+            # current_phase["arguments"] = self._resolve_arguments(current_phase.get("arguments", {}))
+            # --- MODIFICATION END ---
 
             is_delegated_prompt_phase = 'executable_prompt' in current_phase and self.execution_depth < self.MAX_EXECUTION_DEPTH
             
@@ -530,14 +532,9 @@ class PlanExecutor:
             "type": "workaround"
         })
         
-        # --- MODIFICATION START: Prevent history inheritance for delegated tasks ---
-        # For delegated recovery tasks, we explicitly disable history to prevent the
-        # sub-agent from receiving the bloated, failed action history from the parent.
-        # This keeps the recovery planning call lightweight and token-efficient.
         force_disable_sub_history = is_delegated_task
         if force_disable_sub_history:
             app_logger.info(f"Token Optimization: Disabling history for delegated recovery task '{prompt_name}'.")
-        # --- MODIFICATION END ---
         
         sub_executor = PlanExecutor(
             session_id=self.session_id,
@@ -546,30 +543,22 @@ class PlanExecutor:
             active_prompt_name=prompt_name,
             prompt_arguments=prompt_args,
             execution_depth=self.execution_depth + 1,
-            # --- MODIFICATION START: Apply the history disabling override ---
             disabled_history=self.disabled_history or force_disable_sub_history,
-            # --- MODIFICATION END ---
             previous_turn_data=self.previous_turn_data,
             source="prompt_library",
             is_delegated_task=is_delegated_task,
             force_final_summary=APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY
         )
         
-        # State Inheritance: The sub-process inherits the parent's current data state.
         sub_executor.workflow_state = self.workflow_state
         sub_executor.structured_collected_data = self.structured_collected_data
         
-        # --- MODIFICATION START: Conditionally inherit action history ---
-        # Only non-delegated sub-processes should inherit the action history. This
-        # prevents the recovery sub-agent from being polluted with irrelevant context.
         if not is_delegated_task:
             sub_executor.turn_action_history = self.turn_action_history
-        # --- MODIFICATION END ---
 
         async for event in sub_executor.run():
             yield event
         
-        # State Adoption: The parent adopts the complete, final state from the sub-process.
         self.structured_collected_data = sub_executor.structured_collected_data
         self.workflow_state = sub_executor.workflow_state
         self.turn_action_history = sub_executor.turn_action_history
@@ -597,11 +586,9 @@ class PlanExecutor:
         planner = Planner(self)
         app_logger.info(f"Delegated task: Directly expanding prompt '{self.active_prompt_name}' into a concrete plan.")
         
-        # This call generates the real plan for the prompt.
         async for event in planner.generate_and_refine_plan():
             yield event
         
-        # With the concrete plan now in self.meta_plan, we can proceed to execution.
         self.state = self.AgentState.EXECUTING
         async for event in self._run_plan():
             yield event

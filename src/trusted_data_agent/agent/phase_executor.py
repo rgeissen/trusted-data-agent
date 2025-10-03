@@ -144,6 +144,29 @@ class PhaseExecutor:
         if is_fast_path_candidate:
             tool_name = relevant_tools[0]
             
+            raw_phase_args = phase.get("arguments", {})
+            args_to_prune = [
+                arg_name for arg_name, arg_value in raw_phase_args.items()
+                if arg_value == loop_over_key
+            ]
+            if args_to_prune:
+                modified_args = raw_phase_args.copy()
+                for arg_name in args_to_prune:
+                    app_logger.info(f"System Correction: Pruning redundant loop argument '{arg_name}' from phase '{phase_goal}'.")
+                    del modified_args[arg_name]
+                
+                phase['arguments'] = modified_args
+                
+                yield self.executor._format_sse({
+                    "step": "System Correction",
+                    "type": "workaround",
+                    "details": {
+                        "summary": "The agent's plan contained a redundant argument in a loop. The system has automatically removed it to prevent an error.",
+                        "correction_type": "redundant_argument_pruning",
+                        "pruned_arguments": args_to_prune
+                    }
+                })
+            
             tool_scope = self.executor.dependencies['STATE'].get('tool_scopes', {}).get(tool_name)
 
             if tool_scope == 'column':
@@ -209,43 +232,15 @@ class PhaseExecutor:
                 "details": f"FASTPATH enabled for tool loop: '{tool_name}'"
             })
             
-            initial_loop_args = phase.get("arguments", {})
-            enriched_loop_args, enrich_events, _ = self._enrich_arguments_from_history([tool_name], current_args=initial_loop_args)
-            for event in enrich_events:
-                yield event
-            phase_context_args = self.executor._resolve_arguments(enriched_loop_args)
-            
-            # --- MODIFICATION START: Detect and prune redundant loop arguments ---
-            # This prevents errors where the planner redundantly sets an argument to the
-            # entire loop's data source, which would conflict with the single item value.
-            args_to_prune = [
-                arg_name for arg_name, arg_value in phase_context_args.items()
-                if arg_value == loop_over_key
-            ]
-            if args_to_prune:
-                for arg_name in args_to_prune:
-                    app_logger.info(f"System Correction: Pruning redundant loop argument '{arg_name}' from phase context.")
-                    del phase_context_args[arg_name]
-                yield self.executor._format_sse({
-                    "step": "System Correction",
-                    "type": "workaround",
-                    "details": {
-                        "summary": "The agent's plan contained a redundant argument in a loop. The system has automatically removed it to prevent an error.",
-                        "correction_type": "redundant_argument_pruning",
-                        "pruned_arguments": args_to_prune
-                    }
-                })
-            # --- MODIFICATION END ---
+            static_phase_args = phase.get("arguments", {})
             
             all_loop_results = []
             yield self.executor._format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
             for i, item in enumerate(self.executor.current_loop_items):
                 yield self.executor._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.executor.current_loop_items)}", "type": "system_message", "details": item})
                 
-                current_item_args = copy.deepcopy(phase_context_args)
                 item_data = item if isinstance(item, dict) else {}
-                
-                merged_args = {**item_data, **current_item_args}
+                merged_args = {**static_phase_args, **item_data}
 
                 command = {"tool_name": tool_name, "arguments": merged_args}
                 async for event in self._execute_tool(command, phase, is_fast_path=True):
@@ -326,7 +321,7 @@ class PhaseExecutor:
         phase_goal = phase.get("goal", "No goal defined.")
         phase_num = phase.get("phase", self.executor.current_phase_index + 1)
         relevant_tools = phase.get("relevant_tools", [])
-        strategic_args = phase.get("arguments", {})
+        strategic_args = self.executor._resolve_arguments(phase.get("arguments", {}))
         executable_prompt = phase.get("executable_prompt")
 
         if not is_loop_iteration:
@@ -676,8 +671,9 @@ class PhaseExecutor:
     async def _execute_tool(self, action: dict, phase: dict, is_fast_path: bool = False):
         """Executes a single tool call with a built-in retry and recovery mechanism."""
         
-        async for event in self._proactively_refine_arguments(action, phase):
-            yield event
+        if not is_fast_path:
+            async for event in self._proactively_refine_arguments(action, phase):
+                yield event
         
         tool_name = action.get("tool_name")
         arguments = action.get("arguments", {})
