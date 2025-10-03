@@ -209,11 +209,32 @@ class PhaseExecutor:
                 "details": f"FASTPATH enabled for tool loop: '{tool_name}'"
             })
             
-            session_context_args = {}
-            # --- MODIFICATION START: The `phase_context_args` are now fully resolved BEFORE the loop ---
-            # This ensures that placeholders like "result_of_phase_1" are resolved once, preventing
-            # them from being incorrectly passed into the loop's merging logic.
-            phase_context_args = self.executor._resolve_arguments(phase.get("arguments", {}))
+            initial_loop_args = phase.get("arguments", {})
+            enriched_loop_args, enrich_events, _ = self._enrich_arguments_from_history([tool_name], current_args=initial_loop_args)
+            for event in enrich_events:
+                yield event
+            phase_context_args = self.executor._resolve_arguments(enriched_loop_args)
+            
+            # --- MODIFICATION START: Detect and prune redundant loop arguments ---
+            # This prevents errors where the planner redundantly sets an argument to the
+            # entire loop's data source, which would conflict with the single item value.
+            args_to_prune = [
+                arg_name for arg_name, arg_value in phase_context_args.items()
+                if arg_value == loop_over_key
+            ]
+            if args_to_prune:
+                for arg_name in args_to_prune:
+                    app_logger.info(f"System Correction: Pruning redundant loop argument '{arg_name}' from phase context.")
+                    del phase_context_args[arg_name]
+                yield self.executor._format_sse({
+                    "step": "System Correction",
+                    "type": "workaround",
+                    "details": {
+                        "summary": "The agent's plan contained a redundant argument in a loop. The system has automatically removed it to prevent an error.",
+                        "correction_type": "redundant_argument_pruning",
+                        "pruned_arguments": args_to_prune
+                    }
+                })
             # --- MODIFICATION END ---
             
             all_loop_results = []
@@ -221,57 +242,10 @@ class PhaseExecutor:
             for i, item in enumerate(self.executor.current_loop_items):
                 yield self.executor._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.executor.current_loop_items)}", "type": "system_message", "details": item})
                 
-                # --- MODIFICATION START: Implement robust, resilient placeholder resolution ---
-                # This new logic correctly handles variations in AI-generated placeholders
-                # and intelligently links arguments to data, fixing the core regression bug.
-                
                 current_item_args = copy.deepcopy(phase_context_args)
-                
-                for arg_name, arg_value in current_item_args.items():
-                    if isinstance(arg_value, str):
-                        # Regex to find placeholders like {key}, {{key}}, {item.key}}, etc.
-                        match = re.search(r'\{\{?item\.?(\w+)\}\}?', arg_value)
-                        if match and isinstance(item, dict):
-                            placeholder_key = match.group(1)
-                            
-                            # Find the matching value from the item using multiple strategies
-                            found_value = None
-                            
-                            # 1. Direct case-sensitive match
-                            if placeholder_key in item:
-                                found_value = item[placeholder_key]
-                            
-                            # 2. Case-insensitive match
-                            if found_value is None:
-                                for item_key, item_value in item.items():
-                                    if item_key.lower() == placeholder_key.lower():
-                                        found_value = item_value
-                                        break
-                            
-                            # 3. Synonym match (last resort)
-                            if found_value is None:
-                                for canonical, synonyms in AppConfig.ARGUMENT_SYNONYM_MAP.items():
-                                    if placeholder_key.lower() in {s.lower() for s in synonyms}:
-                                        for s in synonyms:
-                                            if s in item:
-                                                found_value = item[s]
-                                                break
-                                    if found_value:
-                                        break
-                            
-                            if found_value is not None:
-                                current_item_args[arg_name] = found_value
-                                app_logger.debug(f"Resolved placeholder '{arg_value}' to '{found_value}' for key '{placeholder_key}'")
-                            else:
-                                app_logger.warning(f"Could not resolve placeholder '{arg_value}'. Key '{placeholder_key}' not in item {item} via any strategy.")
-
                 item_data = item if isinstance(item, dict) else {}
-                # The crucial change: The specific `item_data` is merged *after* the
-                # general `current_item_args`, ensuring that the correct, single value
-                # for this iteration (e.g., the specific date) overwrites any
-                # broader, list-based values that may have been prematurely resolved.
-                merged_args = {**current_item_args, **item_data}
-                # --- MODIFICATION END ---
+                
+                merged_args = {**item_data, **current_item_args}
 
                 command = {"tool_name": tool_name, "arguments": merged_args}
                 async for event in self._execute_tool(command, phase, is_fast_path=True):
@@ -435,15 +409,11 @@ class PhaseExecutor:
                     is_fast_path_candidate = True
         
         if is_fast_path_candidate:
-            # --- MODIFICATION START: Remove exclusion for LLM tools ---
-            # This allows the "FASTPATH" message to be shown for any tool that
-            # runs on the fast path, providing a more consistent UI experience.
             yield self.executor._format_sse({
                 "step": "Plan Optimization", 
                 "type": "plan_optimization",
                 "details": f"FASTPATH initiated for '{tool_name}'."
             })
-            # --- MODIFICATION END ---
 
             fast_path_action = {"tool_name": tool_name, "arguments": strategic_args}
             
@@ -837,14 +807,10 @@ class PhaseExecutor:
                         yield event
                     
                     if corrected_action:
-                        # --- MODIFICATION START: Add type-safe check for FINAL_ANSWER ---
-                        # This ensures the executor doesn't crash if self-correction returns
-                        # a final answer string instead of a corrected action dictionary.
                         if "FINAL_ANSWER" in corrected_action:
                             final_answer_from_correction = corrected_action["FINAL_ANSWER"]
                             self.executor.last_tool_output = {"status": "success", "results": [{"response": f"FINAL_ANSWER: {final_answer_from_correction}"}]}
                             break
-                        # --- MODIFICATION END ---
                         
                         if "prompt_name" in corrected_action:
                             async for event in self.executor._run_sub_prompt(
@@ -919,7 +885,7 @@ class PhaseExecutor:
             is_successful_data_action = (
                 isinstance(result, dict) and 
                 result.get('status') == 'success' and 
-                result.get('results')
+                'results' in result
             )
             is_successful_chart_action = (
                 isinstance(result, dict) and
@@ -1386,13 +1352,10 @@ class PhaseExecutor:
                 "call_id": call_id
             }, "token_update"))
         
-        # --- MODIFICATION START: Ensure consistent dictionary return type ---
         if "FINAL_ANSWER:" in response_str:
             app_logger.info("Self-correction resulted in a FINAL_ANSWER. Halting retries.")
             final_answer_text = response_str.split("FINAL_ANSWER:", 1)[1].strip()
-            # Wrap the string in a dictionary to ensure a consistent return type.
             return {"FINAL_ANSWER": final_answer_text}, events
-        # --- MODIFICATION END ---
 
         try:
             json_match = re.search(r"```json\s*\n(.*?)\n\s*```|(\{.*\})", response_str, re.DOTALL)
@@ -1440,3 +1403,4 @@ class PhaseExecutor:
             return None, events
             
         return None, events
+
