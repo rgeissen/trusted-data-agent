@@ -173,22 +173,46 @@ class PlanExecutor:
         
         return data
     
-    # --- MODIFICATION START: Add helper method to find value in nested structure ---
     def _find_value_by_key(self, data_structure: any, target_key: str) -> any:
         """Recursively searches a nested data structure for the first value of a given key."""
         if isinstance(data_structure, dict):
-            if target_key in data_structure:
-                return data_structure[target_key]
+            # Check for a direct match, but be case-insensitive for robustness
+            for key, value in data_structure.items():
+                if key.lower() == target_key.lower():
+                    return value
+            
+            # If no direct match, recurse into values
             for value in data_structure.values():
                 found = self._find_value_by_key(value, target_key)
                 if found is not None:
                     return found
+
         elif isinstance(data_structure, list):
             for item in data_structure:
                 found = self._find_value_by_key(item, target_key)
                 if found is not None:
                     return found
         return None
+
+    # --- MODIFICATION START: Add helper function to unwrap single-value results ---
+    def _unwrap_single_value_from_result(self, data_structure: any) -> any:
+        """
+        Deterministically unwraps a standard tool result structure to extract a
+        single primary value, if one exists.
+        """
+        is_single_value_structure = (
+            isinstance(data_structure, list) and len(data_structure) == 1 and
+            isinstance(data_structure[0], dict) and "results" in data_structure[0] and
+            isinstance(data_structure[0]["results"], list) and len(data_structure[0]["results"]) == 1 and
+            isinstance(data_structure[0]["results"][0], dict) and len(data_structure[0]["results"][0]) == 1
+        )
+
+        if is_single_value_structure:
+            # Extract the single value from the nested structure
+            return next(iter(data_structure[0]["results"][0].values()))
+        
+        # If the structure doesn't match, return the original data structure
+        return data_structure
     # --- MODIFICATION END ---
 
     def _resolve_arguments(self, arguments: dict, loop_item: dict = None) -> dict:
@@ -201,67 +225,103 @@ class PlanExecutor:
 
         resolved_args = {}
         for key, value in arguments.items():
+            source_phase_key = None
+            target_data_key = None
+            is_placeholder = False
+            original_placeholder = copy.deepcopy(value)
+
+            # 1. Simple string placeholder (e.g., "result_of_phase_1")
             if isinstance(value, str):
-                match = re.match(r"(result_of_phase_\d+|injected_previous_turn_data)", value)
+                match = re.match(r"(result_of_phase_\d+|phase_\d+|injected_previous_turn_data)", value)
                 if match:
-                    base_key = match.group(1)
-                    if base_key in self.workflow_state:
-                        target_data = self.workflow_state[base_key]
-                        
-                        is_single_value_structure = (
-                            isinstance(target_data, list) and len(target_data) == 1 and
-                            isinstance(target_data[0], dict) and "results" in target_data[0] and
-                            isinstance(target_data[0]["results"], list) and len(target_data[0]["results"]) == 1 and
-                            isinstance(target_data[0]["results"][0], dict) and len(target_data[0]["results"][0]) == 1
-                        )
-
-                        if is_single_value_structure:
-                            unwrapped_value = next(iter(target_data[0]["results"][0].values()))
-                            resolved_args[key] = unwrapped_value
-                            app_logger.info(f"Automatically unwrapped single-value result for placeholder '{value}' to: {unwrapped_value}")
-                        else:
-                            resolved_args[key] = target_data
-                    else:
-                        app_logger.warning(f"Could not resolve placeholder '{value}': key '{base_key}' not in workflow state.")
-                        resolved_args[key] = value 
-                else:
-                    resolved_args[key] = value
+                    source_phase_key = match.group(1)
+                    is_placeholder = True
+            
+            # 2. Dictionary-based placeholders (canonical, keyless, and hallucinated)
             elif isinstance(value, dict):
-                source = value.get("source")
-                source_key = value.get("key")
+                # Canonical format: {"source": "...", "key": "..."}
+                if "source" in value and "key" in value:
+                    source_phase_key = value["source"]
+                    target_data_key = value["key"]
+                    is_placeholder = True
 
-                if source == "loop_item" and source_key and loop_item is not None:
-                    if source_key in loop_item:
-                        resolved_args[key] = loop_item[source_key]
-                        app_logger.info(f"Resolved loop_item placeholder for '{key}' to value: '{loop_item[source_key]}'")
-                    else:
-                        app_logger.warning(f"Could not resolve loop_item placeholder: key '{source_key}' not in loop item {loop_item}.")
-                        resolved_args[key] = None
-                # --- MODIFICATION START: Handle canonical format for phase results ---
-                elif isinstance(source, str) and source.startswith("result_of_phase_") and source_key:
-                    if source in self.workflow_state:
-                        data_from_phase = self.workflow_state[source]
-                        found_value = self._find_value_by_key(data_from_phase, source_key)
+                # --- MODIFICATION START: Handle keyless source format ---
+                # Keyless format: {"source": "result_of_phase_1"}
+                elif "source" in value and "key" not in value:
+                    source_phase_key = value["source"]
+                    # No target_data_key is specified, so the intent is to unwrap the result.
+                    target_data_key = None
+                    is_placeholder = True
+                    self.events_to_yield.append(self._format_sse({
+                        "step": "System Correction", "type": "workaround",
+                        "details": {
+                            "summary": "The agent's plan used an incomplete placeholder. The system will automatically extract the primary value from the source.",
+                            "correction_type": "placeholder_unwrapping",
+                            "from": original_placeholder,
+                            "to": f"Unwrapped value from '{source_phase_key}'"
+                        }
+                    }))
+                # --- MODIFICATION END ---
+
+                # Hallucinated format: {"result_of_phase_1": "current_date"}
+                else:
+                    for k, v in value.items():
+                        if re.match(r"result_of_phase_\d+", k):
+                            source_phase_key = k
+                            target_data_key = v
+                            is_placeholder = True
+                            
+                            canonical_value = {"source": source_phase_key, "key": target_data_key}
+                            self.events_to_yield.append(self._format_sse({
+                                "step": "System Correction", "type": "workaround",
+                                "details": {
+                                    "summary": "The agent's plan contained a non-standard placeholder. The system has automatically normalized it to ensure correct data flow.",
+                                    "correction_type": "placeholder_normalization",
+                                    "from": original_placeholder,
+                                    "to": canonical_value
+                                }
+                            }))
+                            value = canonical_value # Overwrite for downstream logic
+                            break
+
+            # 3. Resolve the placeholder if one was identified
+            if is_placeholder:
+                if source_phase_key and source_phase_key.startswith("phase_"):
+                    source_phase_key = f"result_of_{source_phase_key}"
+                
+                if source_phase_key in self.workflow_state:
+                    data_from_phase = self.workflow_state[source_phase_key]
+                    
+                    if target_data_key: # Extract a specific key
+                        found_value = self._find_value_by_key(data_from_phase, target_data_key)
                         if found_value is not None:
                             resolved_args[key] = found_value
-                            app_logger.info(f"Resolved phase result placeholder for '{key}' to value: '{found_value}'")
                         else:
-                            app_logger.warning(f"Could not resolve phase result placeholder: key '{source_key}' not found in data for '{source}'.")
+                            app_logger.warning(f"Could not resolve placeholder: key '{target_data_key}' not found in '{source_phase_key}'.")
                             resolved_args[key] = None
-                    else:
-                        app_logger.warning(f"Could not resolve phase result placeholder: source '{source}' not in workflow state.")
-                        resolved_args[key] = value
-                # --- MODIFICATION END ---
+                    # --- MODIFICATION START: Handle unwrapping logic ---
+                    else: # No key provided, so unwrap the single value
+                        unwrapped_value = self._unwrap_single_value_from_result(data_from_phase)
+                        resolved_args[key] = unwrapped_value
+                        app_logger.info(f"Resolved placeholder for '{key}' by unwrapping the result of '{source_phase_key}'.")
+                    # --- MODIFICATION END ---
+
                 else:
-                    resolved_args[key] = self._resolve_arguments(value, loop_item)
+                    app_logger.warning(f"Could not resolve placeholder: source '{source_phase_key}' not in workflow state.")
+                    resolved_args[key] = value
+            
+            # 4. Handle other data types (loop items, nested structures, etc.)
+            elif isinstance(value, dict) and value.get("source") == "loop_item" and loop_item:
+                loop_key = value.get("key")
+                resolved_args[key] = loop_item.get(loop_key)
+            
+            elif isinstance(value, dict):
+                resolved_args[key] = self._resolve_arguments(value, loop_item)
+            
             elif isinstance(value, list):
-                resolved_list = []
-                for item in value:
-                    if isinstance(item, dict):
-                        resolved_list.append(self._resolve_arguments(item, loop_item))
-                    else:
-                        resolved_list.append(item)
+                resolved_list = [self._resolve_arguments(item, loop_item) if isinstance(item, dict) else item for item in value]
                 resolved_args[key] = resolved_list
+            
             else:
                 resolved_args[key] = value
         

@@ -2,6 +2,7 @@
 import json
 import logging
 from datetime import datetime, timedelta
+import re
 
 from trusted_data_agent.mcp import adapter as mcp_adapter
 from trusted_data_agent.llm import handler as llm_handler
@@ -16,72 +17,117 @@ def _format_sse(data: dict, event: str = None) -> str:
         msg += f"event: {event}\n"
     return f"{msg}\n"
 
-# --- MODIFICATION START: Update signature and add robust argument/state handling ---
 async def execute_date_range_orchestrator(executor, command: dict, date_param_name: str, date_phrase: str, phase: dict):
     """
     Executes a tool over a calculated date range when the tool itself
-    only supports a single date parameter. It now correctly saves its state
-    and cleans up arguments to prevent downstream errors.
+    only supports a single date parameter. It is now "plan-aware" and will use
+    pre-calculated date lists from previous phases if available, bypassing
+    redundant LLM calls.
     """
     tool_name = command.get("tool_name")
-    yield _format_sse({
-        "step": "System Orchestration", "type": "workaround",
-        "details": f"Detected date range query ('{date_phrase}') for single-day tool ('{tool_name}')."
-    })
+    args = command.get("arguments", {})
+    date_list = []
 
-    # Get the current date to resolve relative phrases like "yesterday"
-    date_command = {"tool_name": "TDA_CurrentDate"}
-    date_result, _, _ = await mcp_adapter.invoke_mcp_tool(executor.dependencies['STATE'], date_command)
-    if not (date_result and date_result.get("status") == "success" and date_result.get("results")):
-        raise RuntimeError("Date Range Orchestrator failed to fetch current date.")
-    current_date_str = date_result["results"][0].get("current_date")
+    # --- MODIFICATION START: Plan-Aware and Resilient Date Handling ---
+    is_pre_calculated = False
+    arg_value = args.get(date_param_name)
 
-    # Use an LLM to convert the natural language phrase into a concrete start/end date
-    conversion_prompt = (
-        f"Given the current date is {current_date_str}, "
-        f"what are the start and end dates for '{date_phrase}'? "
-        "Respond with ONLY a JSON object with 'start_date' and 'end_date' in YYYY-MM-DD format."
-    )
-    reason = "Calculating date range."
-    yield _format_sse({"step": "Calling LLM", "details": reason})
-    yield _format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
-    range_response_str, _, _ = await executor._call_llm_and_update_tokens(
-        prompt=conversion_prompt, reason=reason,
-        system_prompt_override="You are a JSON-only responding assistant.", raise_on_error=True
-    )
-    yield _format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
-    
-    try:
-        range_data = json.loads(range_response_str)
-        start_date = datetime.strptime(range_data['start_date'], '%Y-%m-%d').date()
-        end_date = datetime.strptime(range_data['end_date'], '%Y-%m-%d').date()
-    except (json.JSONDecodeError, KeyError, ValueError) as e:
-        raise RuntimeError(f"Date Range Orchestrator failed to parse date range. Error: {e}")
+    # Scenario 1: The date argument points to a pre-calculated list in the workflow state.
+    if isinstance(arg_value, dict) and "source" in arg_value:
+        source_key = arg_value.get("source")
+        if source_key in executor.workflow_state:
+            source_data = executor.workflow_state[source_key]
+            if (isinstance(source_data, list) and len(source_data) > 0 and 
+                isinstance(source_data[0], dict) and 'results' in source_data[0]):
+                
+                potential_dates = source_data[0]['results']
+                if isinstance(potential_dates, list) and all(isinstance(d, dict) and 'date' in d for d in potential_dates):
+                    date_list = potential_dates
+                    is_pre_calculated = True
 
-    # Clean up the original command by removing any potentially incorrect date arguments
-    # that the planner may have hallucinated.
-    cleaned_command_args = {
-        k: v for k, v in command.get("arguments", {}).items()
-        if 'date' not in k.lower()
-    }
+    # Scenario 2: The date argument is a single, valid date string (prevents recursion).
+    if not is_pre_calculated and isinstance(arg_value, str) and re.match(r'^\d{4}-\d{2}-\d{2}$', arg_value):
+        yield _format_sse({
+            "step": "System Correction", "type": "workaround",
+            "details": "Orchestrator called with a single date; executing directly to prevent recursion."
+        })
+        yield _format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
+        single_result, _, _ = await mcp_adapter.invoke_mcp_tool(executor.dependencies['STATE'], command)
+        yield _format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
+        
+        executor._add_to_structured_data(single_result)
+        executor.last_tool_output = single_result
+        return # Exit the orchestrator
+
+    if is_pre_calculated:
+        yield _format_sse({
+            "step": "Plan Optimization", "type": "plan_optimization",
+            "details": "Date Range Orchestrator is using pre-calculated date list from a previous phase."
+        })
+    else:
+        # Scenario 3: Fallback to original LLM-based calculation for natural language phrases.
+        yield _format_sse({
+            "step": "System Orchestration", "type": "workaround",
+            "details": f"Detected date range query ('{date_phrase}') for single-day tool ('{tool_name}')."
+        })
+
+        date_command = {"tool_name": "TDA_CurrentDate"}
+        date_result, _, _ = await mcp_adapter.invoke_mcp_tool(executor.dependencies['STATE'], date_command)
+        if not (date_result and date_result.get("status") == "success" and date_result.get("results")):
+            raise RuntimeError("Date Range Orchestrator failed to fetch current date.")
+        current_date_str = date_result["results"][0].get("current_date")
+
+        conversion_prompt = (
+            f"Given the current date is {current_date_str}, "
+            f"what are the start and end dates for '{date_phrase}'? "
+            "Respond with ONLY a JSON object with 'start_date' and 'end_date' in YYYY-MM-DD format."
+        )
+        reason = "Calculating date range."
+        yield _format_sse({"step": "Calling LLM", "details": {"summary": reason}})
+        yield _format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
+        range_response_str, _, _ = await executor._call_llm_and_update_tokens(
+            prompt=conversion_prompt, reason=reason,
+            system_prompt_override="You are a JSON-only responding assistant.", raise_on_error=True
+        )
+        yield _format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
+        
+        try:
+            # Added extraction logic to handle conversational models
+            json_match = re.search(r"```json\s*\n(.*?)\n\s*```|(\{.*\})", range_response_str, re.DOTALL)
+            if not json_match: raise json.JSONDecodeError("No JSON found in LLM response", range_response_str, 0)
+            json_str = json_match.group(1) or json_match.group(2)
+
+            range_data = json.loads(json_str)
+            start_date = datetime.strptime(range_data['start_date'], '%Y-%m-%d').date()
+            end_date = datetime.strptime(range_data['end_date'], '%Y-%m-%d').date()
+            
+            current_date_in_loop = start_date
+            while current_date_in_loop <= end_date:
+                date_list.append({"date": current_date_in_loop.strftime('%Y-%m-%d')})
+                current_date_in_loop += timedelta(days=1)
+
+        except (json.JSONDecodeError, KeyError, ValueError, AttributeError) as e:
+            raise RuntimeError(f"Date Range Orchestrator failed to parse date range. Error: {e}")
+    # --- MODIFICATION END ---
+
+    if not date_list or not all(isinstance(d, dict) and 'date' in d for d in date_list):
+         raise RuntimeError(f"Orchestrator failed: Date list is empty or malformed. Content: {date_list}")
+
+    cleaned_command_args = { k: v for k, v in args.items() if 'date' not in k.lower() }
     cleaned_command = {**command, 'arguments': cleaned_command_args}
 
-    # Loop through the date range and execute the tool for each day
     all_results = []
     yield _format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
-    current_date_in_loop = start_date
-    while current_date_in_loop <= end_date:
-        date_str = current_date_in_loop.strftime('%Y-%m-%d')
+    for date_item in date_list:
+        date_str = date_item['date']
         yield _format_sse({"step": f"Processing data for: {date_str}"})
         
-        # Create a new command for the specific day, using the cleaned base command.
         day_command = {**cleaned_command, 'arguments': {**cleaned_command['arguments'], date_param_name: date_str}}
         day_result, _, _ = await mcp_adapter.invoke_mcp_tool(executor.dependencies['STATE'], day_command)
         
         if isinstance(day_result, dict) and day_result.get("status") == "success" and day_result.get("results"):
             all_results.extend(day_result["results"])
         
-        current_date_in_loop += timedelta(days=1)
     yield _format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
     
     final_tool_output = {
@@ -90,15 +136,12 @@ async def execute_date_range_orchestrator(executor, command: dict, date_param_na
         "results": all_results
     }
 
-    # Correctly save the consolidated results to the main workflow state so that
-    # subsequent phases can access them.
     phase_num = phase.get("phase", executor.current_phase_index + 1)
     phase_result_key = f"result_of_phase_{phase_num}"
-    executor.workflow_state[phase_result_key] = [final_tool_output] # Wrap in list for consistency
+    executor.workflow_state[phase_result_key] = [final_tool_output]
     
     executor._add_to_structured_data(final_tool_output)
     executor.last_tool_output = final_tool_output
-# --- MODIFICATION END ---
 
 async def execute_column_iteration(executor, command: dict):
     """
@@ -108,16 +151,9 @@ async def execute_column_iteration(executor, command: dict):
     tool_name = command.get("tool_name")
     base_args = command.get("arguments", {})
     
-    # --- MODIFICATION START: Remove redundant synonym logic ---
-    # Argument normalization is now handled centrally in the mcp/adapter.py,
-    # so this manual, repetitive check is no longer needed. The adapter will
-    # ensure that `database_name` and `object_name` are present if any of their
-    # synonyms were provided.
     db_name = base_args.get('database_name')
     table_name = base_args.get('object_name')
-    # --- MODIFICATION END ---
 
-    # First, get the list of all columns for the target table
     cols_command = {"tool_name": "base_columnDescription", "arguments": {"database_name": db_name, "object_name": table_name}}
     yield _format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
     cols_result, _, _ = await mcp_adapter.invoke_mcp_tool(executor.dependencies['STATE'], cols_command, session_id=executor.session_id)
@@ -130,17 +166,17 @@ async def execute_column_iteration(executor, command: dict):
     all_column_results = [cols_result]
     
     yield _format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
-    tool_constraints, _ = await executor._get_tool_constraints(tool_name)
+    phase_executor = executor.dependencies.get("phase_executor")
+    if not phase_executor: raise RuntimeError("PhaseExecutor dependency not found.")
+    tool_constraints, _ = await phase_executor._get_tool_constraints(tool_name)
     yield _format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
     required_type = tool_constraints.get("dataType") if tool_constraints else None
     
-    # Loop through each column and execute the tool
     yield _format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
     for column_info in all_columns_metadata:
         column_name = column_info.get("ColumnName")
         col_type = next((v for k, v in column_info.items() if "type" in k.lower()), "").upper()
 
-        # Skip columns that don't match the required data type
         if required_type and col_type != "UNKNOWN":
             is_numeric = any(t in col_type for t in ["INT", "NUMERIC", "DECIMAL", "FLOAT"])
             is_char = any(t in col_type for t in ["CHAR", "VARCHAR", "TEXT"])
@@ -173,26 +209,21 @@ async def execute_hallucinated_loop(executor, phase: dict):
         "details": f"Planner hallucinated a loop. Correcting with generalized orchestrator for items: {hallucinated_items}"
     })
 
-    # If the list contains a single item that looks like a date phrase, reroute to the date orchestrator
     if len(hallucinated_items) == 1 and isinstance(hallucinated_items[0], str):
-        # A simple heuristic to check for date-like phrases
         date_keywords = ["day", "week", "month", "year", "past", "last", "next"]
         if any(keyword in hallucinated_items[0].lower() for keyword in date_keywords):
-            # This assumes the tool takes a 'date' parameter. This is a reasonable assumption for this specific failure mode.
-            # A more advanced version could infer the parameter name as well.
             command_for_date_orchestrator = {"tool_name": tool_name, "arguments": {}}
             async for event in execute_date_range_orchestrator(executor, command_for_date_orchestrator, 'date', hallucinated_items[0]):
                 yield event
             return
 
-    # For all other cases, use the generalized LLM-based approach
     semantic_prompt = (
         f"Given the tool `{tool_name}` and the list of items `{json.dumps(hallucinated_items)}`, "
         "what single tool argument name do these items represent? "
         "Respond with only a JSON object, like `{{\"argument_name\": \"table_name\"}}`."
     )
     reason = "Semantically analyzing hallucinated loop items."
-    yield _format_sse({"step": "Calling LLM", "details": reason})
+    yield _format_sse({"step": "Calling LLM", "details": {"summary": reason}})
     yield _format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
     response_str, _, _ = await executor._call_llm_and_update_tokens(
         prompt=semantic_prompt, reason=reason,
@@ -208,7 +239,6 @@ async def execute_hallucinated_loop(executor, phase: dict):
     except (json.JSONDecodeError, ValueError) as e:
         raise RuntimeError(f"Failed to semantically understand hallucinated loop items. Error: {e}")
 
-    # Execute a deterministic loop using the understood argument name
     all_results = []
     yield _format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
     for item in hallucinated_items:

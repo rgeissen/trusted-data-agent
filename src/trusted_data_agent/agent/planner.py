@@ -426,9 +426,9 @@ class Planner:
             uses_date_range_output = False
             if isinstance(next_phase.get("arguments"), dict):
                 for arg_value in next_phase["arguments"].values():
-                    if str(arg_value) == f"result_of_phase_{current_phase['phase']}":
-                        uses_date_range_output = True
-                        break
+                    if isinstance(arg_value, dict) and arg_value.get("source") == f"result_of_phase_{current_phase['phase']}":
+                         uses_date_range_output = True
+                         break
 
             if is_date_range_phase and is_missing_loop and uses_date_range_output:
                 app_logger.warning(
@@ -441,9 +441,16 @@ class Planner:
                 next_phase["type"] = "loop"
                 next_phase["loop_over"] = f"result_of_phase_{current_phase['phase']}"
                 
-                next_phase["arguments"] = {
-                    "date": f"result_of_phase_{current_phase['phase']}"
-                }
+                # Replace the placeholder with a loop_item reference
+                for arg_name, arg_value in next_phase["arguments"].items():
+                    if (isinstance(arg_value, dict) and 
+                        arg_value.get("source") == f"result_of_phase_{current_phase['phase']}"):
+                        
+                        next_phase["arguments"][arg_name] = {
+                            "source": "loop_item",
+                            "key": "date" 
+                        }
+                        break
 
                 yield self.executor._format_sse({
                     "step": "System Correction",
@@ -461,7 +468,7 @@ class Planner:
             i += 1
 
         if made_change:
-            app_logger.info(f"PLAN REWRITE: Final rewritten plan: {self.executor.meta_plan}")
+            app_logger.info(f"PLAN REWRITE (Date-Range): Final rewritten plan: {self.executor.meta_plan}")
 
     async def generate_and_refine_plan(self, force_disable_history: bool = False, replan_context: str = None):
         """
@@ -692,4 +699,3 @@ class Planner:
             if len(self.executor.meta_plan) > 1 or any(phase.get("type") == "loop" for phase in self.executor.meta_plan):
                 self.executor.is_complex_prompt_workflow = True
                 app_logger.info(f"'{self.executor.active_prompt_name}' has been qualified as a complex prompt workflow based on the generated plan.")
-
