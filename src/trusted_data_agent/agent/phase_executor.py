@@ -54,7 +54,9 @@ class CorrectionStrategy(ABC):
         """Generates a corrected action or concludes the task."""
         pass
 
-    async def _call_correction_llm(self, prompt: str, reason: str, system_prompt_override: str) -> Tuple[Dict | None, List]:
+    # --- MODIFICATION START: Add failed_action to signature ---
+    async def _call_correction_llm(self, prompt: str, reason: str, system_prompt_override: str, failed_action: Dict[str, Any]) -> Tuple[Dict | None, List]:
+    # --- MODIFICATION END ---
         """A helper method to standardize the LLM call for correction."""
         events = []
         call_id = str(uuid.uuid4())
@@ -138,7 +140,9 @@ class TableNotFoundStrategy(CorrectionStrategy):
         reason = f"Fact-based recovery for non-existent table '{invalid_table_name_only}'"
         system_prompt = "You are an expert troubleshooter. Follow the recovery directives precisely."
         
-        return await self._call_correction_llm(prompt, reason, system_prompt)
+        # --- MODIFICATION START: Pass failed_action to the helper ---
+        return await self._call_correction_llm(prompt, reason, system_prompt, failed_action)
+        # --- MODIFICATION END ---
 
 class ColumnNotFoundStrategy(CorrectionStrategy):
     """Handles errors where a specified column does not exist."""
@@ -163,7 +167,9 @@ class ColumnNotFoundStrategy(CorrectionStrategy):
         reason = f"Fact-based recovery for non-existent column '{invalid_column}'"
         system_prompt = "You are an expert troubleshooter. Follow the recovery directives precisely."
 
-        return await self._call_correction_llm(prompt, reason, system_prompt)
+        # --- MODIFICATION START: Pass failed_action to the helper ---
+        return await self._call_correction_llm(prompt, reason, system_prompt, failed_action)
+        # --- MODIFICATION END ---
 
 class GenericCorrectionStrategy(CorrectionStrategy):
     """The default fallback strategy for any other recoverable error."""
@@ -187,7 +193,9 @@ class GenericCorrectionStrategy(CorrectionStrategy):
         reason = f"Generic self-correction for failed tool call: {tool_name}"
         system_prompt = "You are an expert troubleshooter. Follow the recovery directives precisely."
 
-        return await self._call_correction_llm(prompt, reason, system_prompt)
+        # --- MODIFICATION START: Pass failed_action to the helper ---
+        return await self._call_correction_llm(prompt, reason, system_prompt, failed_action)
+        # --- MODIFICATION END ---
 
 class CorrectionHandler:
     """Manages and executes the appropriate correction strategy."""
@@ -981,10 +989,8 @@ class PhaseExecutor:
                     }
                     yield self.executor._format_sse({"step": "System Self-Correction", "type": "workaround", "details": correction_details})
                     
-                    # --- MODIFICATION START: Use the new CorrectionHandler ---
                     correction_handler = CorrectionHandler(self.executor)
                     corrected_action, correction_events = await correction_handler.attempt_correction(action, tool_result)
-                    # --- MODIFICATION END ---
                     
                     for event in correction_events:
                         yield event
@@ -1447,7 +1453,6 @@ class PhaseExecutor:
         except (json.JSONDecodeError, ValueError) as e:
             raise RuntimeError(f"LLM-based recovery failed. The LLM did not return a valid new plan. Response: {response_text}. Error: {e}")
 
-    # --- MODIFICATION START: Refactor method to use the CorrectionHandler ---
     async def _attempt_tool_self_correction(self, failed_action: dict, error_result: dict) -> tuple[dict | None, list]:
         """
         Delegates the correction task to the CorrectionHandler, which uses the
@@ -1455,4 +1460,3 @@ class PhaseExecutor:
         """
         correction_handler = CorrectionHandler(self.executor)
         return await correction_handler.attempt_correction(failed_action, error_result)
-    # --- MODIFICATION END ---

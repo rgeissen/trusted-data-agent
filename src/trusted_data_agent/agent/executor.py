@@ -194,7 +194,6 @@ class PlanExecutor:
                     return found
         return None
 
-    # --- MODIFICATION START: Add helper function to unwrap single-value results ---
     def _unwrap_single_value_from_result(self, data_structure: any) -> any:
         """
         Deterministically unwraps a standard tool result structure to extract a
@@ -213,7 +212,6 @@ class PlanExecutor:
         
         # If the structure doesn't match, return the original data structure
         return data_structure
-    # --- MODIFICATION END ---
 
     def _resolve_arguments(self, arguments: dict, loop_item: dict = None) -> dict:
         """
@@ -225,6 +223,15 @@ class PlanExecutor:
 
         resolved_args = {}
         for key, value in arguments.items():
+            # --- MODIFICATION START: Prioritize loop_item resolution ---
+            # This is now the first check to prevent the generic placeholder logic
+            # from incorrectly capturing and failing to resolve loop_item placeholders.
+            if isinstance(value, dict) and value.get("source") == "loop_item" and loop_item:
+                loop_key = value.get("key")
+                resolved_args[key] = loop_item.get(loop_key)
+                continue # Skip to the next argument
+            # --- MODIFICATION END ---
+            
             source_phase_key = None
             target_data_key = None
             is_placeholder = False
@@ -245,7 +252,6 @@ class PlanExecutor:
                     target_data_key = value["key"]
                     is_placeholder = True
 
-                # --- MODIFICATION START: Handle keyless source format ---
                 # Keyless format: {"source": "result_of_phase_1"}
                 elif "source" in value and "key" not in value:
                     source_phase_key = value["source"]
@@ -261,7 +267,6 @@ class PlanExecutor:
                             "to": f"Unwrapped value from '{source_phase_key}'"
                         }
                     }))
-                # --- MODIFICATION END ---
 
                 # Hallucinated format: {"result_of_phase_1": "current_date"}
                 else:
@@ -299,22 +304,16 @@ class PlanExecutor:
                         else:
                             app_logger.warning(f"Could not resolve placeholder: key '{target_data_key}' not found in '{source_phase_key}'.")
                             resolved_args[key] = None
-                    # --- MODIFICATION START: Handle unwrapping logic ---
                     else: # No key provided, so unwrap the single value
                         unwrapped_value = self._unwrap_single_value_from_result(data_from_phase)
                         resolved_args[key] = unwrapped_value
                         app_logger.info(f"Resolved placeholder for '{key}' by unwrapping the result of '{source_phase_key}'.")
-                    # --- MODIFICATION END ---
 
                 else:
                     app_logger.warning(f"Could not resolve placeholder: source '{source_phase_key}' not in workflow state.")
                     resolved_args[key] = value
             
-            # 4. Handle other data types (loop items, nested structures, etc.)
-            elif isinstance(value, dict) and value.get("source") == "loop_item" and loop_item:
-                loop_key = value.get("key")
-                resolved_args[key] = loop_item.get(loop_key)
-            
+            # 4. Handle other data types (nested structures, etc.)
             elif isinstance(value, dict):
                 resolved_args[key] = self._resolve_arguments(value, loop_item)
             
@@ -727,3 +726,4 @@ class PlanExecutor:
             "tts_payload": tts_payload,
             "source": self.source
         }, "final_answer")
+
