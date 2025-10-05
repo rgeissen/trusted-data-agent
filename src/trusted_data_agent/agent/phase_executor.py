@@ -4,7 +4,8 @@ import json
 import logging
 import copy
 import uuid
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Tuple, Dict, Any, List
+from abc import ABC, abstractmethod
 
 from trusted_data_agent.core import session_manager
 from trusted_data_agent.mcp import adapter as mcp_adapter
@@ -25,18 +26,188 @@ if TYPE_CHECKING:
 
 app_logger = logging.getLogger("quart.app")
 
-# Note: The following constants and exceptions are duplicated from the original
-# executor to maintain independence and avoid circular dependencies.
+
 DEFINITIVE_TOOL_ERRORS = {
     "Invalid query": "The generated query was invalid and could not be run against the database.",
-    "3523": "The user does not have the necessary permissions for the requested object." # Example of a specific Teradata error code
+    "3523": "The user does not have the necessary permissions for the requested object."
 }
 
 RECOVERABLE_TOOL_ERRORS = {
-    # This regex now captures the full object path (e.g., db.table) for better context
     "table_not_found": r"Object '([\w\.]+)' does not exist",
     "column_not_found": r"Column '(\w+)' does not exist"
 }
+
+# --- MODIFICATION START: Implement Correction Strategy Pattern ---
+class CorrectionStrategy(ABC):
+    """Abstract base class for all self-correction strategies."""
+
+    def __init__(self, executor: 'PlanExecutor'):
+        self.executor = executor
+
+    @abstractmethod
+    def can_handle(self, error_data_str: str) -> bool:
+        """Determines if this strategy can handle the given error."""
+        pass
+
+    @abstractmethod
+    async def generate_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any]) -> Tuple[Dict | None, List]:
+        """Generates a corrected action or concludes the task."""
+        pass
+
+    async def _call_correction_llm(self, prompt: str, reason: str, system_prompt_override: str) -> Tuple[Dict | None, List]:
+        """A helper method to standardize the LLM call for correction."""
+        events = []
+        call_id = str(uuid.uuid4())
+        events.append(self.executor._format_sse({"step": "Calling LLM for Self-Correction", "type": "system_message", "details": {"summary": reason, "call_id": call_id}}))
+        events.append(self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update"))
+        
+        response_str, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
+            prompt=prompt,
+            reason=reason,
+            system_prompt_override=system_prompt_override,
+            raise_on_error=False,
+            source=self.executor.source
+        )
+        events.append(self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update"))
+        
+        updated_session = session_manager.get_session(self.executor.session_id)
+        if updated_session:
+            events.append(self.executor._format_sse({
+                "statement_input": input_tokens, "statement_output": output_tokens,
+                "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0),
+                "call_id": call_id
+            }, "token_update"))
+
+        if "FINAL_ANSWER:" in response_str:
+            app_logger.info("Self-correction resulted in a FINAL_ANSWER. Halting retries.")
+            final_answer_text = response_str.split("FINAL_ANSWER:", 1)[1].strip()
+            return {"FINAL_ANSWER": final_answer_text}, events
+
+        try:
+            json_match = re.search(r"```json\s*\n(.*?)\n\s*```|(\{.*\})", response_str, re.DOTALL)
+            if not json_match: raise json.JSONDecodeError("No JSON object found", response_str, 0)
+            
+            json_str = json_match.group(1) or json_match.group(2)
+            if not json_str: raise json.JSONDecodeError("Extracted JSON is empty", response_str, 0)
+            
+            corrected_data = json.loads(json_str.strip())
+
+            if "prompt_name" in corrected_data and "arguments" in corrected_data:
+                events.append(self.executor._format_sse({"step": "System Self-Correction", "type": "workaround", "details": {"summary": f"LLM proposed switching to prompt '{corrected_data['prompt_name']}'.", "details": corrected_data}}))
+                return corrected_data, events
+
+            if "tool_name" in corrected_data and "arguments" in corrected_data:
+                events.append(self.executor._format_sse({"step": "System Self-Correction", "type": "workaround", "details": {"summary": f"LLM proposed retrying with tool '{corrected_data['tool_name']}'.", "details": corrected_data}}))
+                return corrected_data, events
+            
+            new_args = corrected_data.get("arguments", corrected_data)
+            if isinstance(new_args, dict):
+                corrected_action = {**failed_action, "arguments": new_args}
+                events.append(self.executor._format_sse({"step": "System Self-Correction", "type": "workaround", "details": {"summary": "LLM proposed new arguments.", "details": new_args}}))
+                return corrected_action, events
+            
+        except (json.JSONDecodeError, TypeError):
+            events.append(self.executor._format_sse({"step": "System Self-Correction", "type": "error", "details": {"summary": "LLM failed to provide a valid JSON correction.", "details": response_str}}))
+
+        return None, events
+
+class TableNotFoundStrategy(CorrectionStrategy):
+    """Handles errors where a specified table does not exist."""
+    def can_handle(self, error_data_str: str) -> bool:
+        return bool(re.search(RECOVERABLE_TOOL_ERRORS["table_not_found"], error_data_str, re.IGNORECASE))
+
+    async def generate_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any]) -> Tuple[Dict | None, List]:
+        error_data_str = str(error_result.get('data', ''))
+        table_error_match = re.search(RECOVERABLE_TOOL_ERRORS["table_not_found"], error_data_str, re.IGNORECASE)
+        invalid_table = table_error_match.group(1)
+        invalid_table_name_only = invalid_table.split('.')[-1]
+        failed_args = failed_action.get("arguments", {})
+        db_name = failed_args.get("database_name", "the specified database")
+        
+        app_logger.warning(f"Detected recoverable 'table_not_found' error for table: {invalid_table}")
+        
+        prompt = TACTICAL_SELF_CORRECTION_PROMPT_TABLE_ERROR.format(
+            user_question=self.executor.original_user_input,
+            tool_name=failed_action.get("tool_name"),
+            failed_arguments=json.dumps(failed_args),
+            invalid_table_name=invalid_table_name_only,
+            database_name=db_name,
+            tools_context=self.executor.dependencies['STATE'].get('tools_context', ''),
+            prompts_context=self.executor.dependencies['STATE'].get('prompts_context', '')
+        )
+        reason = f"Fact-based recovery for non-existent table '{invalid_table_name_only}'"
+        system_prompt = "You are an expert troubleshooter. Follow the recovery directives precisely."
+        
+        return await self._call_correction_llm(prompt, reason, system_prompt)
+
+class ColumnNotFoundStrategy(CorrectionStrategy):
+    """Handles errors where a specified column does not exist."""
+    def can_handle(self, error_data_str: str) -> bool:
+        return bool(re.search(RECOVERABLE_TOOL_ERRORS["column_not_found"], error_data_str, re.IGNORECASE))
+
+    async def generate_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any]) -> Tuple[Dict | None, List]:
+        error_data_str = str(error_result.get('data', ''))
+        column_error_match = re.search(RECOVERABLE_TOOL_ERRORS["column_not_found"], error_data_str, re.IGNORECASE)
+        invalid_column = column_error_match.group(1)
+        
+        app_logger.warning(f"Detected recoverable 'column_not_found' error for column: {invalid_column}")
+        
+        prompt = TACTICAL_SELF_CORRECTION_PROMPT_COLUMN_ERROR.format(
+            user_question=self.executor.original_user_input,
+            tool_name=failed_action.get("tool_name"),
+            failed_arguments=json.dumps(failed_action.get("arguments", {})),
+            invalid_column_name=invalid_column,
+            tools_context=self.executor.dependencies['STATE'].get('tools_context', ''),
+            prompts_context=self.executor.dependencies['STATE'].get('prompts_context', '')
+        )
+        reason = f"Fact-based recovery for non-existent column '{invalid_column}'"
+        system_prompt = "You are an expert troubleshooter. Follow the recovery directives precisely."
+
+        return await self._call_correction_llm(prompt, reason, system_prompt)
+
+class GenericCorrectionStrategy(CorrectionStrategy):
+    """The default fallback strategy for any other recoverable error."""
+    def can_handle(self, error_data_str: str) -> bool:
+        return True # It's the fallback, so it can always handle the error.
+
+    async def generate_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any]) -> Tuple[Dict | None, List]:
+        tool_name = failed_action.get("tool_name")
+        tool_def = self.executor.dependencies['STATE'].get('mcp_tools', {}).get(tool_name)
+        if not tool_def:
+            return None, []
+
+        prompt = TACTICAL_SELF_CORRECTION_PROMPT.format(
+            tool_definition=json.dumps(vars(tool_def), default=str),
+            failed_command=json.dumps(failed_action),
+            error_message=json.dumps(error_result.get('data', 'No error data.')),
+            user_question=self.executor.original_user_input,
+            tools_context=self.executor.dependencies['STATE'].get('tools_context', ''),
+            prompts_context=self.executor.dependencies['STATE'].get('prompts_context', '')
+        )
+        reason = f"Generic self-correction for failed tool call: {tool_name}"
+        system_prompt = "You are an expert troubleshooter. Follow the recovery directives precisely."
+
+        return await self._call_correction_llm(prompt, reason, system_prompt)
+
+class CorrectionHandler:
+    """Manages and executes the appropriate correction strategy."""
+    def __init__(self, executor: 'PlanExecutor'):
+        self.strategies = [
+            TableNotFoundStrategy(executor),
+            ColumnNotFoundStrategy(executor),
+            GenericCorrectionStrategy(executor)
+        ]
+
+    async def attempt_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any]) -> Tuple[Dict | None, List]:
+        error_data_str = str(error_result.get('data', ''))
+        
+        for strategy in self.strategies:
+            if strategy.can_handle(error_data_str):
+                app_logger.info(f"Using correction strategy: {strategy.__class__.__name__}")
+                return await strategy.generate_correction(failed_action, error_result)
+        
+        return None, [] # Should not be reached due to the generic fallback
+# --- MODIFICATION END ---
 
 
 class PhaseExecutor:
@@ -239,11 +410,9 @@ class PhaseExecutor:
             for i, item in enumerate(self.executor.current_loop_items):
                 yield self.executor._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.executor.current_loop_items)}", "type": "system_message", "details": item})
                 
-                # --- MODIFICATION START: Resolve arguments with loop context ---
                 item_data = item if isinstance(item, dict) else {}
                 resolved_item_args = self.executor._resolve_arguments(static_phase_args, loop_item=item_data)
                 merged_args = {**resolved_item_args, **item_data}
-                # --- MODIFICATION END ---
 
                 command = {"tool_name": tool_name, "arguments": merged_args}
                 async for event in self._execute_tool(command, phase, is_fast_path=True):
@@ -324,9 +493,7 @@ class PhaseExecutor:
         phase_goal = phase.get("goal", "No goal defined.")
         phase_num = phase.get("phase", self.executor.current_phase_index + 1)
         relevant_tools = phase.get("relevant_tools", [])
-        # --- MODIFICATION START: Resolve arguments with loop context awareness ---
         strategic_args = self.executor._resolve_arguments(phase.get("arguments", {}), loop_item=loop_item)
-        # --- MODIFICATION END ---
         executable_prompt = phase.get("executable_prompt")
 
         if not is_loop_iteration:
@@ -709,13 +876,6 @@ class PhaseExecutor:
         
         max_retries = 3
         
-        # --- MODIFICATION START: Remove premature argument resolution ---
-        # The executor's _resolve_arguments method is now called with context
-        # in the standard and looping phase methods, making this call redundant.
-        # if 'arguments' in action:
-        #     action['arguments'] = self.executor._resolve_arguments(arguments)
-        # --- MODIFICATION END ---
-
         if tool_name == "TDA_LLMTask" and self.executor.is_synthesis_from_history:
             app_logger.info("Preparing TDA_LLMTask for 'full_context' execution.")
             session_data = session_manager.get_session(self.executor.session_id)
@@ -807,7 +967,11 @@ class PhaseExecutor:
                     }
                     yield self.executor._format_sse({"step": "System Self-Correction", "type": "workaround", "details": correction_details})
                     
-                    corrected_action, correction_events = await self._attempt_tool_self_correction(action, tool_result)
+                    # --- MODIFICATION START: Use the new CorrectionHandler ---
+                    correction_handler = CorrectionHandler(self.executor)
+                    corrected_action, correction_events = await correction_handler.attempt_correction(action, tool_result)
+                    # --- MODIFICATION END ---
+                    
                     for event in correction_events:
                         yield event
                     
@@ -1269,142 +1433,13 @@ class PhaseExecutor:
         except (json.JSONDecodeError, ValueError) as e:
             raise RuntimeError(f"LLM-based recovery failed. The LLM did not return a valid new plan. Response: {response_text}. Error: {e}")
 
+    # --- MODIFICATION START: Refactor method to use the CorrectionHandler ---
     async def _attempt_tool_self_correction(self, failed_action: dict, error_result: dict) -> tuple[dict | None, list]:
         """
-        Attempts to correct a failed tool call using a tiered, pattern-based approach.
-        It first checks for specific, recoverable errors and uses specialized prompts
-        before falling back to a generic correction attempt.
+        Delegates the correction task to the CorrectionHandler, which uses the
+        Strategy Pattern to find and execute the appropriate recovery logic.
         """
-        events = []
-        tool_name = failed_action.get("tool_name")
-        error_data_str = str(error_result.get('data', ''))
-        correction_prompt = None
-        system_prompt_override = None
-        reason = ""
+        correction_handler = CorrectionHandler(self.executor)
+        return await correction_handler.attempt_correction(failed_action, error_result)
+    # --- MODIFICATION END ---
 
-        table_error_match = re.search(RECOVERABLE_TOOL_ERRORS["table_not_found"], error_data_str, re.IGNORECASE)
-        if table_error_match:
-            invalid_table = table_error_match.group(1)
-            invalid_table_name_only = invalid_table.split('.')[-1]
-            failed_args = failed_action.get("arguments", {})
-            db_name = failed_args.get("database_name", "the specified database")
-            
-            app_logger.warning(f"Detected recoverable 'table_not_found' error for table: {invalid_table}")
-            
-            correction_prompt = TACTICAL_SELF_CORRECTION_PROMPT_TABLE_ERROR.format(
-                user_question=self.executor.original_user_input,
-                tool_name=tool_name,
-                failed_arguments=json.dumps(failed_args),
-                invalid_table_name=invalid_table_name_only,
-                database_name=db_name,
-                tools_context=self.executor.dependencies['STATE'].get('tools_context', ''),
-                prompts_context=self.executor.dependencies['STATE'].get('prompts_context', '')
-            )
-            reason = f"Fact-based recovery for non-existent table '{invalid_table_name_only}'"
-            system_prompt_override = "You are an expert troubleshooter. Follow the recovery directives precisely."
-
-        if not correction_prompt:
-            column_error_match = re.search(RECOVERABLE_TOOL_ERRORS["column_not_found"], error_data_str, re.IGNORECASE)
-            if column_error_match:
-                invalid_column = column_error_match.group(1)
-                app_logger.warning(f"Detected recoverable 'column_not_found' error for column: {invalid_column}")
-                
-                correction_prompt = TACTICAL_SELF_CORRECTION_PROMPT_COLUMN_ERROR.format(
-                    user_question=self.executor.original_user_input,
-                    tool_name=tool_name,
-                    failed_arguments=json.dumps(failed_action.get("arguments", {})),
-                    invalid_column_name=invalid_column,
-                    tools_context=self.executor.dependencies['STATE'].get('tools_context', ''),
-                    prompts_context=self.executor.dependencies['STATE'].get('prompts_context', '')
-                )
-                reason = f"Fact-based recovery for non-existent column '{invalid_column}'"
-                system_prompt_override = "You are an expert troubleshooter. Follow the recovery directives precisely."
-        
-        if not correction_prompt:
-            tool_def = self.executor.dependencies['STATE'].get('mcp_tools', {}).get(tool_name)
-            if not tool_def: return None, events
-
-            correction_prompt = TACTICAL_SELF_CORRECTION_PROMPT.format(
-                tool_definition=json.dumps(vars(tool_def), default=str),
-                failed_command=json.dumps(failed_action),
-                error_message=json.dumps(error_result.get('data', 'No error data.')),
-                user_question=self.executor.original_user_input,
-                tools_context=self.executor.dependencies['STATE'].get('tools_context', ''),
-                prompts_context=self.executor.dependencies['STATE'].get('prompts_context', '')
-            )
-            reason = f"Generic self-correction for failed tool call: {tool_name}"
-            system_prompt_override = "You are an expert troubleshooter. Follow the recovery directives precisely."
-
-        call_id = str(uuid.uuid4())
-        events.append(self.executor._format_sse({"step": "Calling LLM for Self-Correction", "type": "system_message", "details": {"summary": reason, "call_id": call_id}}))
-        events.append(self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update"))
-        response_str, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
-            prompt=correction_prompt,
-            reason=reason,
-            system_prompt_override=system_prompt_override,
-            raise_on_error=False,
-            source=self.executor.source
-        )
-        events.append(self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update"))
-        
-        updated_session = session_manager.get_session(self.executor.session_id)
-        if updated_session:
-            events.append(self.executor._format_sse({
-                "statement_input": input_tokens, 
-                "statement_output": output_tokens, 
-                "total_input": updated_session.get("input_tokens", 0), 
-                "total_output": updated_session.get("output_tokens", 0),
-                "call_id": call_id
-            }, "token_update"))
-        
-        if "FINAL_ANSWER:" in response_str:
-            app_logger.info("Self-correction resulted in a FINAL_ANSWER. Halting retries.")
-            final_answer_text = response_str.split("FINAL_ANSWER:", 1)[1].strip()
-            return {"FINAL_ANSWER": final_answer_text}, events
-
-        try:
-            json_match = re.search(r"```json\s*\n(.*?)\n\s*```|(\{.*\})", response_str, re.DOTALL)
-            if not json_match: raise json.JSONDecodeError("No JSON object found", response_str, 0)
-            
-            json_str = json_match.group(1) or json_match.group(2)
-            if not json_str: raise json.JSONDecodeError("Extracted JSON is empty", response_str, 0)
-            
-            corrected_data = json.loads(json_str.strip())
-            
-            if "prompt_name" in corrected_data and "arguments" in corrected_data:
-                corrected_action = corrected_data
-                correction_details = {
-                    "summary": f"LLM proposed switching to a prompt. Executing '{corrected_action['prompt_name']}'.",
-                    "details": corrected_action
-                }
-                events.append(self.executor._format_sse({"step": "System Self-Correction", "type": "workaround", "details": correction_details}))
-                return corrected_action, events
-
-            if "tool_name" in corrected_data and "arguments" in corrected_data:
-                corrected_action = corrected_data
-                correction_details = {
-                    "summary": f"LLM proposed a new action. Retrying with tool '{corrected_action['tool_name']}'.",
-                    "details": corrected_action
-                }
-                events.append(self.executor._format_sse({"step": "System Self-Correction", "type": "workaround", "details": correction_details}))
-                return corrected_action, events
-            
-            new_args = corrected_data.get("arguments", corrected_data)
-            if isinstance(new_args, dict):
-                corrected_action = {**failed_action, "arguments": new_args}
-                correction_details = {
-                    "summary": f"LLM proposed a fix. Retrying tool with new arguments.",
-                    "details": new_args
-                }
-                events.append(self.executor._format_sse({"step": "System Self-Correction", "type": "workaround", "details": correction_details}))
-                return corrected_action, events
-
-        except (json.JSONDecodeError, TypeError):
-            correction_failed_details = {
-                "summary": "LLM failed to provide a valid JSON correction.",
-                "details": response_str
-            }
-            events.append(self.executor._format_sse({"step": "System Self-Correction", "type": "error", "details": correction_failed_details}))
-            return None, events
-            
-        return None, events

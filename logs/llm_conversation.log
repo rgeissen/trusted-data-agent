@@ -1,81 +1,162 @@
-2025-10-05 11:45:19,596 - --- REASON FOR CALL ---
-Generating a strategic meta-plan for the goal: 'what is the system utilization of the past 3 days?'
+2025-10-05 12:09:47,857 - --- REASON FOR CALL ---
+Generating a strategic meta-plan for the goal: '# Name:  Database data quality assessment
+
+# Description: 
+You are a Teradata User who is a data qua'
 --- RESPONSE ---
 ```json
 [
   {
     "phase": 1,
-    "goal": "Get the current date to use as the starting point for the date range.",
-    "relevant_tools": [
-      "TDA_CurrentDate"
-    ],
-    "arguments": {}
+    "goal": "Get a list of tables in the fitness_db database.",
+    "relevant_tools": ["base_tableList"],
+    "arguments": {"database_name": "fitness_db"}
   },
   {
     "phase": 2,
-    "goal": "Calculate the date range for the past 3 days, starting from the current date.",
-    "relevant_tools": [
-      "TDA_DateRange"
-    ],
+    "goal": "Loop through the list of tables and retrieve the DDL, column summary, univariate statistics, and rows with missing values for each one.",
+    "type": "loop",
+    "loop_over": "result_of_phase_1",
+    "relevant_tools": ["base_tableDDL"],
     "arguments": {
-      "start_date": "result_of_phase_1",
-      "date_phrase": "past 3 days"
+      "database_name": "fitness_db",
+      "table_name": {
+        "source": "loop_item",
+        "key": "TableName"
+      }
     }
   },
   {
     "phase": 3,
-    "goal": "Retrieve the system utilization data for the specified date range.",
-    "relevant_tools": [
-      "dba_resusageSummary"
-    ],
-    "arguments": {
-      "date": {
-        "source": "loop_item",
-        "key": "date"
-      }
-    },
+    "goal": "Loop through the list of tables and retrieve column summary for each one.",
     "type": "loop",
-    "loop_over": "result_of_phase_2"
+    "loop_over": "result_of_phase_1",
+    "relevant_tools": ["qlty_columnSummary"],
+    "arguments": {
+      "database_name": "fitness_db",
+      "table_name": {
+        "source": "loop_item",
+        "key": "TableName"
+      }
+    }
   },
   {
     "phase": 4,
-    "goal": "Generate a final report summarizing the system utilization data.",
-    "relevant_tools": [
-      "TDA_FinalReport"
-    ],
+    "goal": "Loop through the list of tables and retrieve univariate statistics for each one.",
+    "type": "loop",
+    "loop_over": "result_of_phase_1",
+    "relevant_tools": ["qlty_univariateStatistics"],
+    "arguments": {
+      "database_name": "fitness_db",
+      "table_name": {
+        "source": "loop_item",
+        "key": "TableName"
+      }
+    }
+  },
+  {
+    "phase": 5,
+    "goal": "Loop through the list of tables and retrieve rows with missing values for each one.",
+    "type": "loop",
+    "loop_over": "result_of_phase_1",
+    "relevant_tools": ["qlty_rowsWithMissingValues"],
+    "arguments": {
+      "database_name": "fitness_db",
+      "table_name": {
+        "source": "loop_item",
+        "key": "TableName"
+      }
+    }
+  },
+  {
+    "phase": 6,
+    "goal": "Generate the final report based on the data gathered.",
+    "relevant_tools": ["TDA_ComplexPromptReport"],
     "arguments": {}
   }
 ]
 ```
 --------------------------------------------------
 
-2025-10-05 11:45:20,170 - --- REASON FOR CALL ---
-Classifying date query.
+2025-10-05 12:09:52,475 - --- REASON FOR CALL ---
+Determining tool constraints for column iteration.
 --- RESPONSE ---
 ```json
-{
-  "type": "range",
-  "phrase": "past 3 days"
-}
+{"dataType": "numeric"}
 ```
 --------------------------------------------------
 
-2025-10-05 11:45:24,992 - --- REASON FOR CALL ---
-Client-Side Tool Call: TDA_FinalReport
-Goal: what is the system utilization of the past 3 days?
+2025-10-05 12:10:02,198 - --- REASON FOR CALL ---
+Determining tool constraints for column iteration.
+--- RESPONSE ---
+```json
+{"dataType": "any"}
+```
+--------------------------------------------------
+
+2025-10-05 12:10:32,681 - --- REASON FOR CALL ---
+Client-Side Tool Call: TDA_ComplexPromptReport
+Goal: # Name:  Database data quality assessment
+
+# Description: 
+You are a Teradata User who is a data quality expert focused on tables and their use for analytics.
+
+# Process 
+- You will work through all the phases in order
+- You will complete a phase and pass the outcomes to the subsequent phase
+- You will be assessing the fitness_db database and all the tables in it
+
+## Phase 1 - get database tables
+- Get a list of tables in the fitness_db database using the td_base_tableList tool
+- Create a list of database_name.table_name for the next phase
+
+## Phase 2 - collect table information
+Cycle through the list of tables, for each table do the following steps in order:
+- Step 1 - using the td_base_tableDDL tool to get the table structure, using the structure generate a business description of the table and all of the columns.
+- Step 2 - using the qlty_columnSummary tool, gather column statistics for the table
+- Step 3 - using the qlty_univariateStatistics tool to get the univariate statistics for a table 
+- Step 4 - using the qlty_rowsWithMissingValues tool to get rows with missing values in a table
+
+## Phase 3 - Present results as a dashboard
+- At the beginning of the dashboard identify the database
+- For each table present the results from phase 2 together
+- Ensure that each table is presented the same way
+- Use color to highlight points of interest
+
+# Communication guidelines
+- Be concise but informative in your explanation
+- Clearly indicate which phase you are currently in and only focus on the activities of the current phase
+- Summarize the outcome of the phase before moving to the next phase
+
+# Final output
+A professional data quality dashboard that is easily navigable.
+
 --- RESPONSE ---
 ```json
 {
-  "direct_answer": "System utilization metrics for the past 3 days (2025-10-02 to 2025-10-04) include request counts between 46,521 and 47,309, Total AMPCPUTime ranging from 97.88 to 452.68, and Total IO GB between 139.31 GB and 152.30 GB.",
-  "key_observations": [
+  "title": "Fitness Database Data Quality Assessment",
+  "executive_summary": "This report provides a data quality assessment of the fitness_db database, focusing on key tables used for analytics. The assessment includes an overview of table structures, column statistics, univariate statistics for numerical columns, and identification of rows with missing values. Key findings indicate a generally high level of data completeness across most tables, with a notable exception in the ServiceTickets table where the ResolutionDate column has a significant number of missing values. Additionally, univariate statistics highlight the distribution and potential outliers within numerical columns such as Price and StockQuantity in the Products table.",
+  "report_sections": [
     {
-      "text": "On 2025-10-02, the Total ReqIO GB was 149.47 GB, with a Request Count of 47,128."
+      "title": "Database Overview",
+      "content": "The fitness_db database contains five tables:\n\n*   Products\n*   SaleDetails\n*   Customers\n*   ServiceTickets\n*   Sales\n\nThese tables are crucial for understanding product performance, sales trends, customer behavior, and service issue resolution within the fitness business context."
     },
     {
-      "text": "On 2025-10-03, the Total AMPCPUTime was significantly higher at 452.68 compared to other days, with a Request Count of 47,309 and Total ReqIO GB of 152.30 GB."
+      "title": "Table DDL Analysis",
+      "content": "The following DDL statements define the structure of each table:\n\n```\nTable: Products\nCREATE MULTISET TABLE fitness_db.Products ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      ProductID INTEGER NOT NULL,\r      ProductName VARCHAR(100) CHARACTER SET LATIN NOT CASESPECIFIC NOT NULL,\r      ProductType VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Brand VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Price DECIMAL(10,2) NOT NULL,\r      StockQuantity INTEGER)\rUNIQUE PRIMARY INDEX ( ProductID );\n\nTable: SaleDetails\nCREATE MULTISET TABLE fitness_db.SaleDetails ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      SaleDetailID INTEGER NOT NULL,\r      SaleID INTEGER NOT NULL,\r      ProductID INTEGER NOT NULL,\r      Quantity INTEGER NOT NULL,\r      UnitPrice DECIMAL(10,2) NOT NULL, \rFOREIGN KEY ( SaleID ) REFERENCES fitness_db.Sales ( SaleID ),\rFOREIGN KEY ( ProductID ) REFERENCES fitness_db.Products ( ProductID ))\rUNIQUE PRIMARY INDEX ( SaleDetailID );\n\nTable: Customers\nCREATE MULTISET TABLE fitness_db.Customers ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      CustomerID INTEGER NOT NULL,\r      FirstName VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      LastName VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Email VARCHAR(100) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Phone VARCHAR(20) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Address VARCHAR(255) CHARACTER SET LATIN NOT CASESPECIFIC,\r      City VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      State VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      ZipCode VARCHAR(10) CHARACTER SET LATIN NOT CASESPECIFIC,\r      RegistrationDate DATE FORMAT 'YYYY-MM-DD')\rUNIQUE PRIMARY INDEX ( CustomerID );\n\nTable: ServiceTickets\nCREATE MULTISET TABLE fitness_db.ServiceTickets ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      TicketID INTEGER NOT NULL,\r      CustomerID INTEGER NOT NULL,\r      ProductID INTEGER NOT NULL,\r      TicketDate DATE FORMAT 'YYYY-MM-DD' NOT NULL,\r      IssueDescription VARCHAR(1000) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Status VARCHAR(20) CHARACTER SET LATIN NOT CASESPECIFIC,\r      ResolutionDate DATE FORMAT 'YYYY-MM-DD', \rFOREIGN KEY ( CustomerID ) REFERENCES fitness_db.Customers ( CustomerID ),\rFOREIGN KEY ( ProductID ) REFERENCES fitness_db.Products ( ProductID ))\rUNIQUE PRIMARY INDEX ( TicketID );\n\nTable: Sales\nCREATE MULTISET TABLE fitness_db.Sales ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      SaleID INTEGER NOT NULL,\r      CustomerID INTEGER NOT NULL,\r      SaleDate TIMESTAMP(6) NOT NULL,\r      TotalAmount DECIMAL(12,2) NOT NULL,\r      SalesPersonID INTEGER, \rCONSTRAINT pk_sales PRIMARY KEY ( SaleID ), \rFOREIGN KEY ( CustomerID ) REFERENCES fitness_db.Customers ( CustomerID ))\r;\n```"
     },
     {
-      "text": "On 2025-10-04, the Total ReqIO GB was 139.31 GB, with a Request Count of 46,521."
+      "title": "Column Statistics Summary",
+      "content": "The following table summarizes column statistics for each table:\n\n| Table           | Column           | Datatype                         | NonNullCount | NullCount | BlankCount | ZeroCount | PositiveCount | NegativeCount | NullPercentage | NonNullPercentage |\n| --------------- | ---------------- | -------------------------------- | ------------- | --------- | ---------- | --------- | ------------- | ------------- | -------------- | ------------------ |\n| Products        | ProductName      | VARCHAR(100) CHARACTER SET LATIN | 100           | 0         | 0          | None      | None          | None          | 0.0%           | 100.0%              |\n| Products        | Price            | DECIMAL(10,2)                    | 100           | 0         | None       | 0         | 100           | 0             | 0.0%           | 100.0%              |\n| Products        | ProductID        | INTEGER                          | 100           | 0         | None       | 0         | 100           | 0             | 0.0%           | 100.0%              |\n| Products        | ProductType      | VARCHAR(50) CHARACTER SET LATIN  | 100           | 0         | 0          | None      | None          | None          | 0.0%           | 100.0%              |\n| Products        | Brand            | VARCHAR(50) CHARACTER SET LATIN  | 100           | 0         | 0          | None      | None          | None          | 0.0%           | 100.0%              |\n| Products        | StockQuantity    | INTEGER                          | 100           | 0         | None       | 0         | 100           | 0             | 0.0%           | 100.0%              |\n| SaleDetails     | SaleID           | INTEGER                          | 103           | 0         | None       | 0         | 103           | 0             | 0.0%           | 100.0%              |\n| SaleDetails     | UnitPrice        | DECIMAL(10,2)                    | 103           | 0         | None       | 0         | 103           | 0             | 0.0%           | 100.0%              |\n| SaleDetails     | SaleDetailID     | INTEGER                          | 103           | 0         | None       | 0         | 103           | 0             | 0.0%           | 100.0%              |\n| SaleDetails     | ProductID        | INTEGER                          | 103           | 0         | None       | 0         | 103           | 0             | 0.0%           | 100.0%              |\n| SaleDetails     | Quantity         | INTEGER                          | 103           | 0         | None       | 0         | 103           | 0             | 0.0%           | 100.0%              |\n| Customers       | FirstName        | VARCHAR(50) CHARACTER SET LATIN  | 100           | 0         | 0          | None      | None          | None          | 0.0%           | 100.0%              |\n| Customers       | RegistrationDate | DATE                             | 100           | 0         | None       | None      | None          | None          | 0.0%           | 100.0%              |\n| Customers       | Phone            | VARCHAR(20) CHARACTER SET LATIN  | 100           | 0         | 0          | None      | None          | None          | 0.0%           | 100.0%              |\n| Customers       | CustomerID       | INTEGER                          | 100           | 0         | None       | 0         | 100           | 0             | 0.0%           | 100.0%              |\n| Customers       | LastName         | VARCHAR(50) CHARACTER SET LATIN  | 100           | 0         | 0          | None      | None          | None          | 0.0%           | 100.0%              |\n| Customers       | State            | VARCHAR(50) CHARACTER SET LATIN  | 100           | 0         | 0          | None      | None          | None          | 0.0%           | 100.0%              |\n| Customers       | City             | VARCHAR(50) CHARACTER SET LATIN  | 100           | 0         | 0          | None      | None          | None          | 0.0%           | 100.0%              |\n| Customers       | Email            | VARCHAR(100) CHARACTER SET LATIN | 100           | 0         | 0          | None      | None          | None          | 0.0%           | 100.0%              |\n| Customers       | Address          | VARCHAR(255) CHARACTER SET LATIN | 100           | 0         | 0          | None      | None          | None          | 0.0%           | 100.0%              |\n| Customers       | ZipCode          | VARCHAR(10) CHARACTER SET LATIN  | 100           | 0         | 0          | None      | None          | None          | 0.0%           | 100.0%              |\n| ServiceTickets  | CustomerID       | INTEGER                          | 100           | 0         | None       | 0         | 100           | 0             | 0.0%           | 100.0%              |\n| ServiceTickets  | IssueDescription | VARCHAR(1000) CHARACTER SET LATIN| 100           | 0         | 0          | None      | None          | None          | 0.0%           | 100.0%              |\n| ServiceTickets  | TicketID         | INTEGER                          | 100           | 0         | None       | 0         | 100           | 0             | 0.0%           | 100.0%              |\n| ServiceTickets  | ProductID        | INTEGER                          | 100           | 0         | None       | 0         | 100           | 0             | 0.0%           | 100.0%              |\n| ServiceTickets  | ResolutionDate   | DATE                             | 41            | 59        | None       | None      | None          | None          | 59.0%          | 41.0%               |\n| ServiceTickets  | TicketDate       | DATE                             | 100           | 0         | None       | None      | None          | None          | 0.0%           | 100.0%              |\n| ServiceTickets  | Status           | VARCHAR(20) CHARACTER SET LATIN  | 100           | 0         | 0          | None      | None          | None          | 0.0%           | 100.0%              |\n| Sales           | CustomerID       | INTEGER                          | 100           | 0         | None       | 0         | 100           | 0             | 0.0%           | 100.0%              |\n| Sales           | SalesPersonID    | INTEGER                          | 100           | 0         | None       | 0         | 100           | 0             | 0.0%           | 100.0%              |\n| Sales           | SaleID           | INTEGER                          | 100           | 0         | None       | 0         | 100           | 0             | 0.0%           | 100.0%              |\n| Sales           | SaleDate         | TIMESTAMP(6)                     | 100           | 0         | None       | None      | None          | None          | 0.0%           | 100.0%              |\n| Sales           | TotalAmount      | DECIMAL(12,2)                    | 100           | 0         | None       | 0         | 100           | 0             | 0.0%           | 100.0%              |\n",
+      "rows_with_missing_values": 0
+    },
+    {
+      "title": "Univariate Statistics Analysis",
+      "content": "Detailed univariate statistics have been calculated for the numerical columns in the Products, SaleDetails, ServiceTickets, and Sales tables. Below are selected highlights:\n\n*   **Products Table - Price Column**\n    *   Mean: 905.12\n    *   Median: 399.99\n    *   Standard Deviation: 1300.62\n    *   Minimum: 10.99\n    *   Maximum: 6999.0\n\n*   **Products Table - StockQuantity Column**\n    *   Mean: 130.16\n    *   Median: 70.5\n    *   Standard Deviation: 142.29\n    *   Minimum: 7.0\n    *   Maximum: 600.0\n\n*   **SaleDetails Table - UnitPrice Column**\n    *   Mean: 880.72\n    *   Median: 399.0\n    *   Standard Deviation: 1289.21\n    *   Minimum: 10.99\n    *   Maximum: 6999.0\n\n*   **SaleDetails Table - Quantity Column**\n    *   Mean: 1.03\n    *   Median: 1.0\n    *   Standard Deviation: 0.17\n    *   Minimum: 1.0\n    *   Maximum: 2.0\n\n*   **ServiceTickets Table - ProductID Column**\n    *   Mean: 150.5\n    *   Median: 150.5\n    *   Standard Deviation: 29.01\n    *   Minimum: 101.0\n    *   Maximum: 200.0\n\n*   **ServiceTickets Table - CustomerID Column**\n    *   Mean: 50.5\n    *   Median: 50.5\n    *   Standard Deviation: 29.01\n    *   Minimum: 1.0\n    *   Maximum: 100.0\n\n*   **Sales Table - TotalAmount Column**\n    *   Mean: 908.01\n    *   Median: 399.99\n    *   Standard Deviation: 1299.02\n    *   Minimum: 10.99\n    *   Maximum: 6999.0\n\n*   **Sales Table - SaleID Column**\n    *   Mean: 1050.5\n    *   Median: 1050.5\n    *   Standard Deviation: 29.01\n    *   Minimum: 1001.0\n    *   Maximum: 1100.0\n\nThese statistics provide insights into the distribution of values and potential outliers within these columns. The high standard deviation in Price and TotalAmount columns suggest a wide range of values, potentially due to premium products or large sales."
+    },
+    {
+      "title": "Missing Value Analysis",
+      "content": "The analysis of missing values across the tables revealed that:\n\n*   The **ServiceTickets** table contains missing values in the **ResolutionDate** column. 59 out of 100 rows have a missing resolution date, indicating open or unresolved service tickets.\n*   All other columns in all tables have no missing values, indicating a high level of data completeness."
     }
   ]
 }
