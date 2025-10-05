@@ -738,15 +738,29 @@ class PhaseExecutor:
                 yield event
             return
 
+        # --- MODIFICATION START: Update orchestrator logic to prevent self-triggering and pass phase context ---
         is_range_candidate, date_param_name, tool_supports_range = self._is_date_query_candidate(action)
-        if is_range_candidate and not tool_supports_range:
+
+        # The orchestrator should only run for tools that DON'T natively support date ranges.
+        # It should also NOT run on its own helper tools.
+        is_orchestrator_target = (
+            is_range_candidate and
+            not tool_supports_range and
+            tool_name not in ["TDA_DateRange", "TDA_CurrentDate"]
+        )
+
+        if is_orchestrator_target:
             yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
             async for event in self._classify_date_query_type(): yield event
             yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
+
             if self.executor.temp_data_holder and self.executor.temp_data_holder.get('type') == 'range':
-                async for event in orchestrators.execute_date_range_orchestrator(self.executor, action, date_param_name, self.executor.temp_data_holder.get('phrase')):
+                async for event in orchestrators.execute_date_range_orchestrator(
+                    self.executor, action, date_param_name, self.executor.temp_data_holder.get('phrase'), phase
+                ):
                     yield event
                 return
+        # --- MODIFICATION END ---
 
         tool_scope = self.executor.dependencies['STATE'].get('tool_scopes', {}).get(tool_name)
         has_column_arg = "column_name" in action.get("arguments", {})
@@ -1442,4 +1456,3 @@ class PhaseExecutor:
         correction_handler = CorrectionHandler(self.executor)
         return await correction_handler.attempt_correction(failed_action, error_result)
     # --- MODIFICATION END ---
-

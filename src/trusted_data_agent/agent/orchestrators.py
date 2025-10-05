@@ -16,10 +16,12 @@ def _format_sse(data: dict, event: str = None) -> str:
         msg += f"event: {event}\n"
     return f"{msg}\n"
 
-async def execute_date_range_orchestrator(executor, command: dict, date_param_name: str, date_phrase: str):
+# --- MODIFICATION START: Update signature and add robust argument/state handling ---
+async def execute_date_range_orchestrator(executor, command: dict, date_param_name: str, date_phrase: str, phase: dict):
     """
     Executes a tool over a calculated date range when the tool itself
-    only supports a single date parameter.
+    only supports a single date parameter. It now correctly saves its state
+    and cleans up arguments to prevent downstream errors.
     """
     tool_name = command.get("tool_name")
     yield _format_sse({
@@ -56,6 +58,14 @@ async def execute_date_range_orchestrator(executor, command: dict, date_param_na
     except (json.JSONDecodeError, KeyError, ValueError) as e:
         raise RuntimeError(f"Date Range Orchestrator failed to parse date range. Error: {e}")
 
+    # Clean up the original command by removing any potentially incorrect date arguments
+    # that the planner may have hallucinated.
+    cleaned_command_args = {
+        k: v for k, v in command.get("arguments", {}).items()
+        if 'date' not in k.lower()
+    }
+    cleaned_command = {**command, 'arguments': cleaned_command_args}
+
     # Loop through the date range and execute the tool for each day
     all_results = []
     yield _format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
@@ -64,7 +74,8 @@ async def execute_date_range_orchestrator(executor, command: dict, date_param_na
         date_str = current_date_in_loop.strftime('%Y-%m-%d')
         yield _format_sse({"step": f"Processing data for: {date_str}"})
         
-        day_command = {**command, 'arguments': {**command['arguments'], date_param_name: date_str}}
+        # Create a new command for the specific day, using the cleaned base command.
+        day_command = {**cleaned_command, 'arguments': {**cleaned_command['arguments'], date_param_name: date_str}}
         day_result, _, _ = await mcp_adapter.invoke_mcp_tool(executor.dependencies['STATE'], day_command)
         
         if isinstance(day_result, dict) and day_result.get("status") == "success" and day_result.get("results"):
@@ -78,8 +89,16 @@ async def execute_date_range_orchestrator(executor, command: dict, date_param_na
         "metadata": {"tool_name": tool_name, "comment": f"Consolidated results for {date_phrase}"},
         "results": all_results
     }
+
+    # Correctly save the consolidated results to the main workflow state so that
+    # subsequent phases can access them.
+    phase_num = phase.get("phase", executor.current_phase_index + 1)
+    phase_result_key = f"result_of_phase_{phase_num}"
+    executor.workflow_state[phase_result_key] = [final_tool_output] # Wrap in list for consistency
+    
     executor._add_to_structured_data(final_tool_output)
     executor.last_tool_output = final_tool_output
+# --- MODIFICATION END ---
 
 async def execute_column_iteration(executor, command: dict):
     """
@@ -201,4 +220,3 @@ async def execute_hallucinated_loop(executor, phase: dict):
 
     executor._add_to_structured_data(all_results)
     executor.last_tool_output = {"metadata": {"tool_name": tool_name}, "results": all_results, "status": "success"}
-

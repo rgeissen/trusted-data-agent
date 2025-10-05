@@ -143,7 +143,7 @@ CERTIFIED_ANTHROPIC_MODELS = ["*claude-3-5-haiku-2024102*"]
 CERTIFIED_AMAZON_MODELS = ["*titan-text-express-v1*"]
 CERTIFIED_AMAZON_PROFILES = ["*nova-lite*"]
 CERTIFIED_OLLAMA_MODELS = ["gemma-3-27b-it"]
-CERTIFIED_OPENAI_MODELS = ["*gpt-4.1-mini*"]
+CERTIFIED_OPENAI_MODELS = ["*gpt-4o-mini"]
 # --- MODIFICATION START: Add Azure certified models list ---
 CERTIFIED_AZURE_MODELS = ["*gpt-4o*"]
 # --- MODIFICATION END ---
