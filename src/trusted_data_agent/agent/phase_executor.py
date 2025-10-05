@@ -239,8 +239,11 @@ class PhaseExecutor:
             for i, item in enumerate(self.executor.current_loop_items):
                 yield self.executor._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.executor.current_loop_items)}", "type": "system_message", "details": item})
                 
+                # --- MODIFICATION START: Resolve arguments with loop context ---
                 item_data = item if isinstance(item, dict) else {}
-                merged_args = {**static_phase_args, **item_data}
+                resolved_item_args = self.executor._resolve_arguments(static_phase_args, loop_item=item_data)
+                merged_args = {**resolved_item_args, **item_data}
+                # --- MODIFICATION END ---
 
                 command = {"tool_name": tool_name, "arguments": merged_args}
                 async for event in self._execute_tool(command, phase, is_fast_path=True):
@@ -321,7 +324,9 @@ class PhaseExecutor:
         phase_goal = phase.get("goal", "No goal defined.")
         phase_num = phase.get("phase", self.executor.current_phase_index + 1)
         relevant_tools = phase.get("relevant_tools", [])
-        strategic_args = self.executor._resolve_arguments(phase.get("arguments", {}))
+        # --- MODIFICATION START: Resolve arguments with loop context awareness ---
+        strategic_args = self.executor._resolve_arguments(phase.get("arguments", {}), loop_item=loop_item)
+        # --- MODIFICATION END ---
         executable_prompt = phase.get("executable_prompt")
 
         if not is_loop_iteration:
@@ -704,8 +709,12 @@ class PhaseExecutor:
         
         max_retries = 3
         
-        if 'arguments' in action:
-            action['arguments'] = self.executor._resolve_arguments(arguments)
+        # --- MODIFICATION START: Remove premature argument resolution ---
+        # The executor's _resolve_arguments method is now called with context
+        # in the standard and looping phase methods, making this call redundant.
+        # if 'arguments' in action:
+        #     action['arguments'] = self.executor._resolve_arguments(arguments)
+        # --- MODIFICATION END ---
 
         if tool_name == "TDA_LLMTask" and self.executor.is_synthesis_from_history:
             app_logger.info("Preparing TDA_LLMTask for 'full_context' execution.")
@@ -1399,4 +1408,3 @@ class PhaseExecutor:
             return None, events
             
         return None, events
-

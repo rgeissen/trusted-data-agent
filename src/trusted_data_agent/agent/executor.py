@@ -172,13 +172,29 @@ class PlanExecutor:
             return [self._distill_data_for_llm_context(item) for item in data]
         
         return data
+    
+    # --- MODIFICATION START: Add helper method to find value in nested structure ---
+    def _find_value_by_key(self, data_structure: any, target_key: str) -> any:
+        """Recursively searches a nested data structure for the first value of a given key."""
+        if isinstance(data_structure, dict):
+            if target_key in data_structure:
+                return data_structure[target_key]
+            for value in data_structure.values():
+                found = self._find_value_by_key(value, target_key)
+                if found is not None:
+                    return found
+        elif isinstance(data_structure, list):
+            for item in data_structure:
+                found = self._find_value_by_key(item, target_key)
+                if found is not None:
+                    return found
+        return None
+    # --- MODIFICATION END ---
 
-    def _resolve_arguments(self, arguments: dict) -> dict:
+    def _resolve_arguments(self, arguments: dict, loop_item: dict = None) -> dict:
         """
-        Scans tool arguments for placeholders and resolves them. This now
-        supports complex data access patterns (e.g., list indexing `[0]` and
-        dict key access `.key`) and includes a deterministic check to
-        automatically "unwrap" single-value results.
+        Scans tool arguments for placeholders and resolves them based on the
+        current context (workflow state and the optional loop_item).
         """
         if not isinstance(arguments, dict):
             return arguments
@@ -186,21 +202,13 @@ class PlanExecutor:
         resolved_args = {}
         for key, value in arguments.items():
             if isinstance(value, str):
-                # Regex to capture the base placeholder and any subsequent accessors
-                # e.g., "result_of_phase_1[0].date"
-                match = re.match(r"(result_of_phase_\d+|injected_previous_turn_data)(.*)", value)
-                
+                match = re.match(r"(result_of_phase_\d+|injected_previous_turn_data)", value)
                 if match:
                     base_key = match.group(1)
-                    path_expression = match.group(2)
-                    
                     if base_key in self.workflow_state:
-                        # Start with the full data from the referenced phase
                         target_data = self.workflow_state[base_key]
                         
-                        # --- Automatic Unwrapping Logic ---
                         is_single_value_structure = (
-                            not path_expression and
                             isinstance(target_data, list) and len(target_data) == 1 and
                             isinstance(target_data[0], dict) and "results" in target_data[0] and
                             isinstance(target_data[0]["results"], list) and len(target_data[0]["results"]) == 1 and
@@ -211,53 +219,49 @@ class PlanExecutor:
                             unwrapped_value = next(iter(target_data[0]["results"][0].values()))
                             resolved_args[key] = unwrapped_value
                             app_logger.info(f"Automatically unwrapped single-value result for placeholder '{value}' to: {unwrapped_value}")
-                            continue 
-                        # --- End of Unwrapping Logic ---
-
-                        if path_expression:
-                            try:
-                                # Split the path by delimiters like '.', '[', ']'
-                                path_parts = re.split(r'\.|\b', path_expression)
-                                # Filter out empty strings and brackets from the split
-                                path_parts = [p.replace('[','').replace(']','') for p in path_parts if p and p not in '[]']
-
-                                current_data = target_data
-                                for part in path_parts:
-                                    if isinstance(current_data, list):
-                                        try:
-                                            index = int(part)
-                                            current_data = current_data[index]
-                                        except (ValueError, IndexError):
-                                            raise KeyError(f"Invalid index '{part}'")
-                                    elif isinstance(current_data, dict):
-                                        current_data = current_data.get(part)
-                                    else:
-                                        raise TypeError("Cannot traverse a non-collection type.")
-                                
-                                resolved_args[key] = current_data
-                                app_logger.info(f"Resolved complex placeholder '{value}' to value: {current_data}")
-
-                            except (KeyError, IndexError, TypeError) as e:
-                                app_logger.warning(f"Could not resolve path '{path_expression}' in placeholder '{value}': {e}. Using None.")
-                                resolved_args[key] = None
                         else:
-                            # Simple case: No path, use the whole data structure
                             resolved_args[key] = target_data
                     else:
                         app_logger.warning(f"Could not resolve placeholder '{value}': key '{base_key}' not in workflow state.")
                         resolved_args[key] = value 
                 else:
                     resolved_args[key] = value
+            elif isinstance(value, dict):
+                source = value.get("source")
+                source_key = value.get("key")
+
+                if source == "loop_item" and source_key and loop_item is not None:
+                    if source_key in loop_item:
+                        resolved_args[key] = loop_item[source_key]
+                        app_logger.info(f"Resolved loop_item placeholder for '{key}' to value: '{loop_item[source_key]}'")
+                    else:
+                        app_logger.warning(f"Could not resolve loop_item placeholder: key '{source_key}' not in loop item {loop_item}.")
+                        resolved_args[key] = None
+                # --- MODIFICATION START: Handle canonical format for phase results ---
+                elif isinstance(source, str) and source.startswith("result_of_phase_") and source_key:
+                    if source in self.workflow_state:
+                        data_from_phase = self.workflow_state[source]
+                        found_value = self._find_value_by_key(data_from_phase, source_key)
+                        if found_value is not None:
+                            resolved_args[key] = found_value
+                            app_logger.info(f"Resolved phase result placeholder for '{key}' to value: '{found_value}'")
+                        else:
+                            app_logger.warning(f"Could not resolve phase result placeholder: key '{source_key}' not found in data for '{source}'.")
+                            resolved_args[key] = None
+                    else:
+                        app_logger.warning(f"Could not resolve phase result placeholder: source '{source}' not in workflow state.")
+                        resolved_args[key] = value
+                # --- MODIFICATION END ---
+                else:
+                    resolved_args[key] = self._resolve_arguments(value, loop_item)
             elif isinstance(value, list):
                 resolved_list = []
                 for item in value:
                     if isinstance(item, dict):
-                        resolved_list.append(self._resolve_arguments(item))
+                        resolved_list.append(self._resolve_arguments(item, loop_item))
                     else:
                         resolved_list.append(item)
                 resolved_args[key] = resolved_list
-            elif isinstance(value, dict):
-                 resolved_args[key] = self._resolve_arguments(value)
             else:
                 resolved_args[key] = value
         
@@ -499,12 +503,6 @@ class PlanExecutor:
 
         while self.current_phase_index < len(self.meta_plan):
             current_phase = self.meta_plan[self.current_phase_index]
-            # --- MODIFICATION START: Remove premature argument resolution ---
-            # The responsibility for resolving arguments is now delegated to the PhaseExecutor,
-            # which has the correct context (especially for loops).
-            # current_phase["arguments"] = self._resolve_arguments(current_phase.get("arguments", {}))
-            # --- MODIFICATION END ---
-
             is_delegated_prompt_phase = 'executable_prompt' in current_phase and self.execution_depth < self.MAX_EXECUTION_DEPTH
             
             if is_delegated_prompt_phase:
