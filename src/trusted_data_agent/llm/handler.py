@@ -7,12 +7,12 @@ import re
 import random
 import time
 import copy
+from typing import Tuple, List
 
 import google.generativeai as genai
 from anthropic import APIError, AsyncAnthropic, InternalServerError, RateLimitError
-# --- MODIFICATION START: Import AzureOpenAI client ---
 from openai import AsyncOpenAI, APIError as OpenAI_APIError, AsyncAzureOpenAI
-# --- MODIFICATION END ---
+from pydantic import ValidationError, BaseModel
 import boto3
 
 from trusted_data_agent.core.config import APP_CONFIG
@@ -22,9 +22,7 @@ from trusted_data_agent.core.config import (
     CERTIFIED_GOOGLE_MODELS, CERTIFIED_ANTHROPIC_MODELS,
     CERTIFIED_AMAZON_MODELS, CERTIFIED_AMAZON_PROFILES,
     CERTIFIED_OLLAMA_MODELS, CERTIFIED_OPENAI_MODELS,
-    # --- MODIFICATION START: Import Azure certified models list ---
     CERTIFIED_AZURE_MODELS
-    # --- MODIFICATION END ---
 )
 
 llm_logger = logging.getLogger("llm_conversation")
@@ -64,6 +62,83 @@ class OllamaClient:
         except httpx.RequestError as e:
             app_logger.error(f"Ollama API request error: {e}")
             raise RuntimeError("Error during chat completion with Ollama.") from e
+
+def parse_and_coerce_llm_response(response_text: str, target_model: BaseModel) -> Tuple[BaseModel, List[str]]:
+    """
+    A resilient parser for LLM responses that attempts to correct common
+    schema deviations and reports on the corrections made.
+
+    Args:
+        response_text: The raw string output from the LLM.
+        target_model: The Pydantic model class to validate against.
+
+    Returns:
+        A tuple containing the validated model instance and a list of
+        strings describing any corrections that were applied.
+
+    Raises:
+        json.JSONDecodeError: If no valid JSON can be extracted.
+        ValidationError: If the JSON is valid but cannot be coerced into the target model.
+    """
+    app_logger.debug(f"Attempting to parse and coerce response into {target_model.__name__}.")
+    correction_descriptions = []
+
+    # 1. Robustly extract JSON from the raw text
+    json_match = re.search(r'```json\s*\n(.*?)\n\s*```|(\{.*\}|\[.*\])', response_text, re.DOTALL)
+    if not json_match:
+        raise json.JSONDecodeError("No valid JSON object or list found in the LLM response.", response_text, 0)
+    
+    json_str = next(g for g in json_match.groups() if g is not None)
+    if not json_str:
+        raise json.JSONDecodeError("Extracted JSON string is empty.", response_text, 0)
+
+    try:
+        data = json.loads(json_str)
+    except json.JSONDecodeError as e:
+        app_logger.error(f"Initial JSON parsing failed even after extraction. Error: {e}")
+        raise
+
+    # 2. First validation attempt
+    try:
+        validated_data = target_model.model_validate(data)
+        app_logger.debug("Initial validation successful. No coercion needed.")
+        return validated_data, []
+    except ValidationError as e:
+        app_logger.warning(f"Initial validation against {target_model.__name__} failed. Attempting proactive correction.")
+        
+        # 3. On failure, diagnose and apply corrections
+        corrected_data = copy.deepcopy(data)
+        errors = e.errors()
+
+        for error in errors:
+            field_name = error['loc'][0] if error['loc'] else None
+            
+            # Correction rule: List of strings to list of objects with a 'text' key
+            if 'model_type' in error['type'] and isinstance(error['input'], list) and all(isinstance(i, str) for i in error['input']):
+                if field_name and field_name in corrected_data:
+                    correction_msg = f"Corrected field '{field_name}': LLM provided a list of strings instead of a list of objects; the system automatically wrapped each string in the required format."
+                    app_logger.info(correction_msg)
+                    correction_descriptions.append(correction_msg)
+                    corrected_data[field_name] = [{"text": item} for item in error['input']]
+
+            # Correction rule: Coerce numbers to strings for specific fields
+            if 'string_type' in error['type'] and isinstance(error['input'], (int, float)):
+                field_loc = error.get('loc', [])
+                if len(field_loc) > 1 and field_loc[0] == 'key_metric' and field_loc[1] == 'value':
+                     correction_msg = "Corrected field 'key_metric.value': LLM provided a number instead of a string; the system automatically converted it."
+                     app_logger.info(correction_msg)
+                     correction_descriptions.append(correction_msg)
+                     if 'key_metric' in corrected_data and isinstance(corrected_data['key_metric'], dict):
+                         corrected_data['key_metric']['value'] = str(error['input'])
+
+        # 4. Final validation attempt after corrections
+        try:
+            validated_data = target_model.model_validate(corrected_data)
+            app_logger.info(f"Proactive correction successful. Data is now valid for {target_model.__name__}.")
+            return validated_data, correction_descriptions
+        except ValidationError:
+            app_logger.error(f"Correction failed. Re-raising original validation error.")
+            raise e
 
 def _sanitize_llm_output(text: str) -> str:
     """
@@ -570,11 +645,39 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
     certified_list = []
     model_names = []
 
+    # --- MODIFICATION START: Implement resilient model listing for Google ---
     if provider == "Google":
         certified_list = CERTIFIED_GOOGLE_MODELS
-        genai.configure(api_key=credentials.get("apiKey"))
-        models = [m for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        model_names = [model.name.split('/')[-1] for model in models]
+        api_key = credentials.get("apiKey")
+        if not api_key:
+            raise ValueError("API key for Google is required.")
+
+        # Use a direct, raw HTTP request to bypass the faulty SDK deserialization
+        url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                models_data = response.json().get("models", [])
+            
+            # Manually parse the raw response, ignoring any unexpected fields
+            model_names = [
+                model['name'].split('/')[-1]
+                for model in models_data
+                if 'generateContent' in model.get('supportedGenerationMethods', [])
+            ]
+        except (httpx.RequestError, json.JSONDecodeError, KeyError) as e:
+            app_logger.error(f"Failed to list Google models via direct API call: {e}", exc_info=True)
+            # As a fallback, try the original SDK method, which might work if the SDK is updated
+            try:
+                app_logger.warning("Direct API failed. Falling back to SDK's genai.list_models().")
+                genai.configure(api_key=api_key)
+                sdk_models = [m for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                model_names = [model.name.split('/')[-1] for model in sdk_models]
+            except Exception as sdk_e:
+                app_logger.error(f"SDK fallback for listing Google models also failed: {sdk_e}", exc_info=True)
+                raise RuntimeError("Could not retrieve model list from Google via API or SDK.") from sdk_e
+    # --- MODIFICATION END ---
 
     elif provider == "Anthropic":
         certified_list = CERTIFIED_ANTHROPIC_MODELS

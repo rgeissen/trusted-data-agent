@@ -5,6 +5,7 @@ import re
 import uuid
 from datetime import datetime, timedelta
 
+from pydantic import ValidationError
 from langchain_mcp_adapters.tools import load_mcp_tools
 from trusted_data_agent.llm import handler as llm_handler
 from trusted_data_agent.core.config import APP_CONFIG, AppConfig
@@ -807,21 +808,16 @@ async def _invoke_final_report_task(STATE: dict, command: dict, workflow_state: 
     )
 
     try:
-        json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
-        if not json_match:
-            raise json.JSONDecodeError("No JSON object found in response.", response_text, 0)
-        
-        clean_json_str = json_match.group(0)
-        report_data = json.loads(clean_json_str)
-        CanonicalResponse.model_validate(report_data)
+        report_data, correction_descriptions = llm_handler.parse_and_coerce_llm_response(response_text, CanonicalResponse)
 
         result = {
             "status": "success",
             "metadata": {"call_id": final_call_id, "tool_name": "TDA_FinalReport"},
-            "results": [report_data]
+            "results": [report_data.model_dump()],
+            "corrections": correction_descriptions
         }
         return result, input_tokens, output_tokens
-    except (json.JSONDecodeError, Exception) as e:
+    except (json.JSONDecodeError, ValidationError) as e:
         app_logger.error(f"Failed to parse/validate TDA_FinalReport: {e}. Response: {response_text}")
         return {"status": "error", "error_message": "Failed to generate valid report JSON.", "data": str(e)}, input_tokens, output_tokens
 
@@ -856,21 +852,16 @@ async def _invoke_complex_prompt_report_task(STATE: dict, command: dict, workflo
     )
 
     try:
-        json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
-        if not json_match:
-            raise json.JSONDecodeError("No JSON object found in response.", response_text, 0)
-        
-        clean_json_str = json_match.group(0)
-        report_data = json.loads(clean_json_str)
-        PromptReportResponse.model_validate(report_data)
+        report_data, correction_descriptions = llm_handler.parse_and_coerce_llm_response(response_text, PromptReportResponse)
 
         result = {
             "status": "success",
             "metadata": {"call_id": final_call_id, "tool_name": "TDA_ComplexPromptReport"},
-            "results": [report_data]
+            "results": [report_data.model_dump()],
+            "corrections": correction_descriptions
         }
         return result, input_tokens, output_tokens
-    except (json.JSONDecodeError, Exception) as e:
+    except (json.JSONDecodeError, ValidationError) as e:
         app_logger.error(f"Failed to parse/validate TDA_ComplexPromptReport: {e}. Response: {response_text}")
         return {"status": "error", "error_message": "Failed to generate valid report JSON.", "data": str(e)}, input_tokens, output_tokens
 
@@ -1135,3 +1126,4 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
                 return result, 0, 0
     
     raise RuntimeError(f"Unexpected tool result format for '{tool_name}': {call_tool_result}")
+
