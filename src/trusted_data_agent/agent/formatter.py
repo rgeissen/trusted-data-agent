@@ -290,13 +290,22 @@ class OutputFormatter:
         metadata = tool_result.get("metadata", {})
         title = metadata.get("tool_name", default_title)
         
-        if "response" in results[0] and title == default_title:
-            first_line_match = re.match(r'#\s*(.*?)(?:\n|$)', results[0]["response"])
-            if first_line_match:
-                title = first_line_match.group(1).strip()
-            else:
-                title = "LLM Generated Content"
+        # --- MODIFICATION START: Use content-aware rendering for single-response text ---
+        # This is the core logic change. If the result is clearly not tabular (e.g., from TDA_LLMTask),
+        # use the new markdown renderer instead of forcing it into a table.
+        is_single_text_response = (
+            len(results) == 1 and 
+            "response" in results[0] and 
+            len(results[0].keys()) == 1
+        )
 
+        if is_single_text_response:
+            response_text = results[0].get("response", "")
+            self.processed_data_indices.add(index)
+            # We wrap it in response-card to maintain consistent styling with other collateral items.
+            return f"<div class='response-card'>{self._render_synthesis_content(response_text)}</div>"
+        # --- MODIFICATION END ---
+        
         headers = results[0].keys()
         
         table_data_json = json.dumps(results)
@@ -423,9 +432,7 @@ class OutputFormatter:
                     if isinstance(item, dict) and "results" in item and isinstance(item["results"], list) and item["results"]:
                         response_text = item["results"][0].get("response", "")
                         if response_text:
-                            # --- MODIFICATION START: Use content-aware renderer ---
                             synthesis_html += f"<div class='response-card'>{self._render_synthesis_content(response_text)}</div>"
-                            # --- MODIFICATION END ---
                 
                 if synthesis_html:
                     html += f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Synthesis Report for: <code>{display_key}</code></summary><div class='px-4'>{synthesis_html}</div></details>"
@@ -465,13 +472,11 @@ class OutputFormatter:
                     html += f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>{display_key}</code></summary><div class='px-4'>{collateral_html}</div></details>"
         return html, tts_payload
 
-    # --- MODIFICATION START: New Content-Aware Rendering Logic for Standard Queries ---
     def _format_standard_query_report(self) -> tuple[str, dict]:
         """
         Formats a standard query report with content-aware rendering. If a chart
         is present, it is promoted as the primary visual element.
         """
-        # 1. Initialize summary content and TTS payload
         summary_html_parts = []
         tts_payload = {"direct_answer": "", "key_observations": "", "synthesis": ""}
 
@@ -495,7 +500,6 @@ class OutputFormatter:
         
         summary_html = f'<div class="response-card summary-card">{"".join(summary_html_parts)}</div>' if summary_html_parts else ""
 
-        # 2. Scan for primary visual (chart) and separate data sources
         data_source = []
         if isinstance(self.collected_data, dict):
             for item_list in self.collected_data.values():
@@ -510,23 +514,20 @@ class OutputFormatter:
         collateral_html_content = ""
         chart_indices_to_skip = set()
         
-        # First pass to find and render the primary chart
         for i, tool_result in enumerate(data_source):
             if isinstance(tool_result, dict) and tool_result.get("type") == "chart":
-                # Find the associated table data, which is usually the preceding result
                 table_data_result = data_source[i-1] if i > 0 else None
                 if table_data_result and isinstance(table_data_result, dict) and "results" in table_data_result:
                     primary_chart_html = self._render_chart_with_details(tool_result, table_data_result, i, i-1)
                     chart_indices_to_skip.add(i)
                     chart_indices_to_skip.add(i-1)
-                else: # Render chart without details if table data is not found
+                else: 
                     chart_id = f"chart-render-target-{uuid.uuid4()}"
                     chart_spec_json = json.dumps(tool_result.get("spec", {}))
                     primary_chart_html = f'<div class="response-card"><div id="{chart_id}" class="chart-render-target" data-spec=\'{chart_spec_json}\'></div></div>'
                     chart_indices_to_skip.add(i)
-                break # Only promote the first chart found
+                break 
 
-        # Second pass to render all other "collateral" data
         for i, tool_result in enumerate(data_source):
             if i in chart_indices_to_skip or not isinstance(tool_result, dict):
                 continue
@@ -539,10 +540,9 @@ class OutputFormatter:
             elif "results" in tool_result:
                 collateral_html_content += self._render_table(tool_result, i, tool_name or "Result")
 
-        # 3. Assemble the final HTML with the correct layout
         final_html_parts = []
-        final_html_parts.append(summary_html) # Summary text always comes first
-        final_html_parts.append(primary_chart_html) # Followed by the main chart (if any)
+        final_html_parts.append(summary_html) 
+        final_html_parts.append(primary_chart_html) 
         
         if collateral_html_content:
             display_key = self.active_prompt_name or "Ad-hoc Query"
@@ -555,7 +555,6 @@ class OutputFormatter:
             final_html_parts.append(collateral_wrapper)
             
         return "".join(final_html_parts), tts_payload
-    # --- MODIFICATION END ---
 
 
     def _format_complex_prompt_report(self) -> tuple[str, dict]:
@@ -571,7 +570,6 @@ class OutputFormatter:
             "key_observations": "" 
         }
 
-        # --- MODIFICATION START ---
         html_parts = [f"<div class='response-card summary-card'>"]
         html_parts.append(f'<h2 class="text-xl font-bold text-white mb-3 border-b border-gray-700 pb-2">{self._process_inline_markdown(report.title)}</h2>')
         html_parts.append('<h3 class="text-lg font-semibold text-white mb-2">Executive Summary</h3>')
@@ -608,9 +606,7 @@ class OutputFormatter:
                 if isinstance(item, dict) and "results" in item and isinstance(item["results"], list) and item["results"]:
                     response_text = item["results"][0].get("response", "")
                     if response_text:
-                        # --- MODIFICATION START: Use content-aware renderer ---
                         synthesis_html_content += f"<div class='response-card'>{self._render_synthesis_content(response_text)}</div>"
-                        # --- MODIFICATION END ---
             
             if synthesis_html_content:
                 html_parts.append(f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Synthesis Report for: <code>{display_key}</code></summary><div class='px-4'>{synthesis_html_content}</div></details>")
@@ -632,7 +628,6 @@ class OutputFormatter:
                     f"<div class='px-4'>{collateral_html_content}</div>"
                     f"</details>"
                 )
-        # --- MODIFICATION END ---
         
         final_html = "".join(html_parts)
         return final_html, tts_payload
@@ -646,9 +641,6 @@ class OutputFormatter:
             - final_html (str): The complete HTML string for the UI.
             - tts_payload (dict): The structured payload for the TTS engine.
         """
-        # --- MODIFICATION START: Corrected routing logic ---
-        # This now correctly prioritizes the specific PromptReportResponse type,
-        # ensuring it is always handled by its dedicated formatter.
         if isinstance(self.prompt_report, PromptReportResponse):
             return self._format_complex_prompt_report()
         
@@ -657,12 +649,10 @@ class OutputFormatter:
                  return self._format_workflow_report()
             else:
                  return self._format_standard_query_report()
-        # --- MODIFICATION END ---
                  
         elif self.llm_response_text:
             return self._format_standard_query_report()
         
-        # Fallback for empty responses
         final_html = "<div class='response-card summary-card'><p>The agent has completed its work.</p></div>"
         tts_payload = {"direct_answer": "The agent has completed its work.", "key_observations": "", "synthesis": ""}
         return final_html, tts_payload

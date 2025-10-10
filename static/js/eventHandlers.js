@@ -1022,6 +1022,10 @@ function getSystemPromptSummaryHTML() {
                 <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
                    <li><strong>19-SEP-2025:</strong> Microsoft Azure Integration</li>
                 </ul>
+                </ul>
+                <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
+                   <li><strong>10-Oct-2025:</strong> Context Aware Rendering of the Collateral Report</li>
+                </ul>
             </div>
             <div class="border-t border-white/10 pt-4 mt-4">
                  <h4 class="text-md font-bold text-yellow-300 mb-2">Model Price/Performance Leadership Board</h4>
