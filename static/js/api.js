@@ -214,6 +214,9 @@ export async function fetchModels() {
         body.azure_deployment_name = DOM.azureDeploymentNameInput.value;
         body.azure_api_version = DOM.azureApiVersionInput.value;
     // --- MODIFICATION END ---
+    } else if (provider === 'Friendli') {
+        body.friendli_token = DOM.friendliTokenInput.value;
+        body.friendli_endpoint_url = DOM.friendliEndpointUrlInput.value;
     } else {
         body.apiKey = DOM.llmApiKeyInput.value;
     }
@@ -224,7 +227,8 @@ export async function fetchModels() {
         // --- MODIFICATION START: Add validation check for Azure fields ---
         (provider === 'Azure' && (!body.azure_api_key || !body.azure_endpoint || !body.azure_deployment_name || !body.azure_api_version)) ||
         // --- MODIFICATION END ---
-        (!['Amazon', 'Ollama', 'Azure'].includes(provider) && !body.apiKey)
+        (provider === 'Friendli' && !body.friendli_token) ||
+        (!['Amazon', 'Ollama', 'Azure', 'Friendli'].includes(provider) && !body.apiKey)
     ) {
         throw new Error('API credentials or host are required to fetch models.');
     }
@@ -241,3 +245,4 @@ export async function fetchModels() {
     }
     return result;
 }
+

@@ -44,6 +44,9 @@ class AppConfig:
     # --- MODIFICATION START: Add Azure-specific configuration field ---
     CURRENT_AZURE_DEPLOYMENT_DETAILS = None # Stores Azure-specific details {endpoint, deployment_name, api_version}.
     # --- MODIFICATION END ---
+    # --- MODIFICATION START: Add Friendli.ai-specific configuration field ---
+    CURRENT_FRIENDLI_DETAILS = None # Stores Friendli.ai specific details {token, endpoint_url}.
+    # --- MODIFICATION END ---
     CURRENT_MODEL_PROVIDER_IN_PROFILE = None # For Amazon Bedrock, stores the model provider if using an inference profile ARN.
 
     # --- LLM & Agent Configuration ---
@@ -147,3 +150,7 @@ CERTIFIED_OPENAI_MODELS = ["*gpt-4o-mini"]
 # --- MODIFICATION START: Add Azure certified models list ---
 CERTIFIED_AZURE_MODELS = ["*gpt-4o*"]
 # --- MODIFICATION END ---
+# --- MODIFICATION START: Add Friendli.ai certified models list ---
+CERTIFIED_FRIENDLI_MODELS = ["google/gemma-3-27b-it"]
+# --- MODIFICATION END ---
+

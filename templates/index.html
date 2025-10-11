@@ -331,6 +331,7 @@
                                     <option value="Anthropic">Anthropic</option>
                                     <option value="OpenAI">OpenAI</option>
                                     <option value="Azure">Microsoft Azure</option>
+                                    <option value="Friendli">Friendli.ai</option>
                                     <option value="Amazon">Amazon</option>
                                     <option value="Ollama">Ollama (Local)</option>
                                     <option value="Cohere" disabled>Cohere (coming soon)</option>
@@ -340,6 +341,16 @@
                             <div id="api-key-container">
                                 <label for="llm-api-key" class="block text-sm font-medium text-gray-300 mb-1">API Key</label>
                                 <input type="password" id="llm-api-key" name="apiKey" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your API Key">
+                            </div>
+                            <div id="friendli-credentials-container" class="hidden space-y-4">
+                                <div>
+                                    <label for="friendli-token" class="block text-sm font-medium text-gray-300 mb-1">Personal Access Token</label>
+                                    <input type="password" id="friendli-token" name="friendli_token" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your Friendli PAT">
+                                </div>
+                                <div>
+                                    <label for="friendli-endpoint-url" class="block text-sm font-medium text-gray-300 mb-1">Dedicated Endpoint URL (Optional)</label>
+                                    <input type="text" id="friendli-endpoint-url" name="friendli_endpoint_url" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., https://your-endpoint.friendli.ai">
+                                </div>
                             </div>
                             <div id="azure-credentials-container" class="hidden space-y-4">
                                 <div>
@@ -524,3 +535,4 @@
     <script type="module"src="{{ url_for('static', filename='js/main.js') }}?v=2.6"></script>
 </body>
 </html>
+

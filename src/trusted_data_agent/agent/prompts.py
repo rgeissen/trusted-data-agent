@@ -126,6 +126,9 @@ PROVIDER_SYSTEM_PROMPTS = {
     # --- MODIFICATION START: Add Azure to the prompts dictionary ---
     "Azure": MASTER_SYSTEM_PROMPT,
     # --- MODIFICATION END ---
+    # --- MODIFICATION START: Add Friendli.ai to the prompts dictionary ---
+    "Friendli": MASTER_SYSTEM_PROMPT,
+    # --- MODIFICATION END ---
     "Ollama": OLLAMA_MASTER_SYSTEM_PROMPT
 }
 

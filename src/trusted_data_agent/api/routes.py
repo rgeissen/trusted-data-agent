@@ -150,6 +150,14 @@ async def get_api_key(provider):
             "azure_api_version": os.environ.get("AZURE_OPENAI_API_VERSION")
         }
         return jsonify(keys)
+    # --- MODIFICATION START: Add logic to fetch Friendli.ai credentials from environment variables ---
+    elif provider_lower == 'friendli':
+        keys = {
+            "friendli_token": os.environ.get("FRIENDLI_TOKEN"),
+            "friendli_endpoint_url": os.environ.get("FRIENDLI_ENDPOINT_URL")
+        }
+        return jsonify(keys)
+    # --- MODIFICATION END ---
     elif provider_lower == 'amazon':
         keys = {
             "aws_access_key_id": os.environ.get("AWS_ACCESS_KEY_ID"),
@@ -402,12 +410,15 @@ async def get_models():
                 "aws_secret_access_key": data.get("aws_secret_access_key"),
                 "aws_region": data.get("aws_region")
             })
-        # --- MODIFICATION START: Make Ollama host key lookup resilient ---
-        elif provider == 'Ollama':
-            host_keys = ["ollama_host", "ollamaHost", "host"]
-            host_value = next((data.get(key) for key in host_keys if data.get(key) is not None), None)
-            credentials["host"] = host_value
+        # --- MODIFICATION START: Add logic to correctly handle Friendli.ai credentials ---
+        elif provider == 'Friendli':
+            credentials.update({
+                "friendli_token": data.get("friendli_token"),
+                "friendli_endpoint_url": data.get("friendli_endpoint_url")
+            })
         # --- MODIFICATION END ---
+        elif provider == 'Ollama':
+            credentials["host"] = data.get("host")
         else:
             credentials["apiKey"] = data.get("apiKey")
 
@@ -453,7 +464,11 @@ async def configure_services():
             "azure_endpoint": data_from_ui.get("azure_endpoint"),
             "azure_deployment_name": data_from_ui.get("azure_deployment_name"),
             "azure_api_version": data_from_ui.get("azure_api_version"),
-            "listing_method": data_from_ui.get("listing_method", "foundation_models")
+            "listing_method": data_from_ui.get("listing_method", "foundation_models"),
+            # --- MODIFICATION START: Add Friendli.ai keys to the credentials adapter ---
+            "friendli_token": data_from_ui.get("friendli_token"),
+            "friendli_endpoint_url": data_from_ui.get("friendli_endpoint_url")
+            # --- MODIFICATION END ---
         },
         "mcp_server": {
             "name": data_from_ui.get("server_name"),

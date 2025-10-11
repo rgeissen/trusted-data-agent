@@ -22,7 +22,7 @@ from trusted_data_agent.core.config import (
     CERTIFIED_GOOGLE_MODELS, CERTIFIED_ANTHROPIC_MODELS,
     CERTIFIED_AMAZON_MODELS, CERTIFIED_AMAZON_PROFILES,
     CERTIFIED_OLLAMA_MODELS, CERTIFIED_OPENAI_MODELS,
-    CERTIFIED_AZURE_MODELS
+    CERTIFIED_AZURE_MODELS, CERTIFIED_FRIENDLI_MODELS
 )
 
 llm_logger = logging.getLogger("llm_conversation")
@@ -469,7 +469,7 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                 
                 break
 
-            elif APP_CONFIG.CURRENT_PROVIDER in ["Anthropic", "OpenAI", "Azure", "Ollama"]:
+            elif APP_CONFIG.CURRENT_PROVIDER in ["Anthropic", "OpenAI", "Azure", "Ollama", "Friendli"]:
                 history_source = []
                 if not disabled_history:
                     history_source = chat_history if chat_history is not None else (session_data.get('chat_object', []) if session_id else [])
@@ -488,7 +488,7 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                     if hasattr(response, 'usage'):
                         input_tokens, output_tokens = response.usage.input_tokens, response.usage.output_tokens
                 
-                elif APP_CONFIG.CURRENT_PROVIDER in ["OpenAI", "Azure"]:
+                elif APP_CONFIG.CURRENT_PROVIDER in ["OpenAI", "Azure", "Friendli"]:
                     messages_for_api.insert(0, {'role': 'system', 'content': system_prompt})
                     response = await llm_instance.chat.completions.create(
                         model=APP_CONFIG.CURRENT_MODEL, messages=messages_for_api, max_tokens=4096, timeout=120.0
@@ -691,6 +691,27 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
         models_page = await client.models.list()
         model_names = [model.id for model in models_page.data if "gpt" in model.id]
 
+    # --- MODIFICATION START: Implement bifurcated model listing for Friendli.ai ---
+    elif provider == "Friendli":
+        certified_list = CERTIFIED_FRIENDLI_MODELS
+        friendli_token = credentials.get("friendli_token")
+        endpoint_url = credentials.get("friendli_endpoint_url")
+        
+        if endpoint_url: # Dedicated Endpoint: Fetch models dynamically
+            request_url = f"{endpoint_url.rstrip('/')}/v1/models"
+            headers = {"Authorization": f"Bearer {friendli_token}"}
+            async with httpx.AsyncClient() as client:
+                app_logger.info(f"Fetching Friendli.ai models from: {request_url}")
+                response = await client.get(request_url, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+            model_names = [model.get("id") for model in data if model.get("id")]
+        else: # Serverless Endpoint: Use a hardcoded list, as per the new design
+            app_logger.info("Friendli.ai Serverless mode: No model listing endpoint available. Returning certified list.")
+            # Return the raw names from the certified list, removing wildcards
+            model_names = [name.replace('*', '') for name in certified_list]
+    # --- MODIFICATION END ---
+            
     elif provider == "Amazon":
         bedrock_client = boto3.client(
             service_name='bedrock',

@@ -615,6 +615,12 @@ async function handleConfigFormSubmit(e) {
         };
         localStorage.setItem('azureApiKey', JSON.stringify(azureCreds));
     // --- MODIFICATION END ---
+    } else if (config.provider === 'Friendli') {
+        const friendliCreds = {
+            friendli_token: config.friendli_token,
+            friendli_endpoint_url: config.friendli_endpoint_url
+        };
+        localStorage.setItem('friendliApiKey', JSON.stringify(friendliCreds));
     } else {
         localStorage.setItem(`${config.provider.toLowerCase()}ApiKey`, config.apiKey);
     }
@@ -668,6 +674,7 @@ export async function loadCredentialsAndModels() {
     DOM.awsListingMethodContainer.classList.add('hidden');
     DOM.ollamaHostContainer.classList.add('hidden');
     DOM.azureCredentialsContainer.classList.add('hidden'); // Hide Azure by default
+    DOM.friendliCredentialsContainer.classList.add('hidden'); // Hide Friendli by default
 
     if (newProvider === 'Amazon') {
         DOM.awsCredentialsContainer.classList.remove('hidden');
@@ -689,6 +696,12 @@ export async function loadCredentialsAndModels() {
         DOM.azureEndpointInput.value = envCreds.azure_endpoint || savedCreds.azure_endpoint || '';
         DOM.azureDeploymentNameInput.value = envCreds.azure_deployment_name || savedCreds.azure_deployment_name || '';
         DOM.azureApiVersionInput.value = envCreds.azure_api_version || savedCreds.azure_api_version || '2024-02-01';
+    } else if (newProvider === 'Friendli') {
+        DOM.friendliCredentialsContainer.classList.remove('hidden');
+        const envCreds = await API.getApiKey('friendli');
+        const savedCreds = JSON.parse(localStorage.getItem('friendliApiKey')) || {};
+        DOM.friendliTokenInput.value = envCreds.friendli_token || savedCreds.friendli_token || '';
+        DOM.friendliEndpointUrlInput.value = envCreds.friendli_endpoint_url || savedCreds.friendli_endpoint_url || '';
     } else {
         DOM.apiKeyContainer.classList.remove('hidden');
         const data = await API.getApiKey(newProvider);
@@ -1025,6 +1038,11 @@ function getSystemPromptSummaryHTML() {
                 </ul>
                 <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
                    <li><strong>10-Oct-2025:</strong> Context Aware Rendering of the Collateral Report</li>
+                </ul>
+                </ul>
+                </ul>
+                <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
+                   <li><strong>11-Oct-2025:</strong> Friendly.AI Integration</li>
                 </ul>
             </div>
             <div class="border-t border-white/10 pt-4 mt-4">
@@ -1391,3 +1409,4 @@ export function initializeEventListeners() {
         }
     });
 }
+

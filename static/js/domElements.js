@@ -99,6 +99,11 @@ export const azureEndpointInput = document.getElementById('azure-endpoint');
 export const azureDeploymentNameInput = document.getElementById('azure-deployment-name');
 export const azureApiVersionInput = document.getElementById('azure-api-version');
 // --- MODIFICATION END ---
+// --- MODIFICATION START: Add selectors for new Friendli.ai credential fields ---
+export const friendliCredentialsContainer = document.getElementById('friendli-credentials-container');
+export const friendliTokenInput = document.getElementById('friendli-token');
+export const friendliEndpointUrlInput = document.getElementById('friendli-endpoint-url');
+// --- MODIFICATION END ---
 export const chartingIntensitySelect = document.getElementById('charting-intensity');
 export const ttsCredentialsJsonTextarea = document.getElementById('tts-credentials-json');
 
@@ -154,3 +159,4 @@ export const viewPromptModalContent = document.getElementById('view-prompt-modal
 export const viewPromptModalTitle = document.getElementById('view-prompt-modal-title');
 export const viewPromptModalText = document.getElementById('view-prompt-modal-text');
 export const viewPromptModalClose = document.getElementById('view-prompt-modal-close');
+
