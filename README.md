@@ -22,7 +22,6 @@ This solution provides unparalleled, real-time insight into the complete convers
 10. [License](#-license)
 11. [Author & Contributions](#-author--contributions)
 
-
 ---
 
 ## 💡 Overview: A Superior Approach
@@ -40,8 +39,6 @@ Its core superiority lies in its revolutionary architecture, which delivers:
 * **Comparative LLM Analysis:** In a rapidly evolving AI landscape, the ability to benchmark and compare models is critical. The agent allows for seamless, real-time switching between top-tier LLM providers, including local models, providing an essential platform for enterprise-grade testing and validation.
 
 * **Voice-to-Text Interaction:** Engage with your data naturally through a high-quality, voice-driven interface. Featuring flexible interaction modes, the agent allows for a fluid, hands-free conversational experience.
-
----
 
 ## ✨ Key Features
 
@@ -73,7 +70,7 @@ Its core superiority lies in its revolutionary architecture, which delivers:
 
 ### Comparative LLM Analysis
 
-* **Multi-Provider LLM Configuration**: Dynamically switch between LLM providers like **Google**, **Anthropic**, **Microsoft Azure**, **AWS Bedrock**, and **Ollama**. Configure API keys, hosts, and select from available models directly in the UI.
+* **Multi-Provider LLM Configuration**: Dynamically switch between LLM providers like **Google**, **Anthropic**, **Microsoft Azure**, **AWS Bedrock**, **Friendli.AI**, and **Ollama**. Configure API keys, hosts, and select from available models directly in the UI.
 
 * **Support for Microsoft Azure**:
 
@@ -98,8 +95,6 @@ Its core superiority lies in its revolutionary architecture, which delivers:
 * **Interactive Voice Recognition**: Employs the browser's Speech Recognition API for seamless voice input, enabling hands-free conversation with the agent.
 
 * **Flexible Voice Modes**: Control the conversational flow with configurable modes for handling "Key Observations"—play them automatically, ask for confirmation before playing, or disable them entirely.
-
----
 
 ## 🧠 The Heart of the Application - The Engine & its Fusion Optimizer
 
@@ -147,26 +142,25 @@ The Optimizer is built with enterprise-grade reliability in mind.
 
 * **Definitive Error Handling**: The agent recognizes unrecoverable errors (e.g., database permission denied) and halts execution immediately, providing a clear explanation to the user instead of wasting resources on futile retry attempts.
 
----
-
 ## ⚙️ How It Works: Architecture
 
 The application operates on a sophisticated client-server model, ensuring a clean separation of concerns and robust performance.
 
-```text
+```
 +----------+      +-------------------------+      +------------------+      +----------------------+      +------------------+
 |          |      |                         |      |                  |      |                      |      |                  |
 | End User | <--> |  Frontend (index.html)  | <--> | Backend (Python) | <--> | Large Language Model | <--> |       MCP        |
 |          |      |    (HTML, JS, CSS)      |      |  (Quart Server)  |      |  (Reasoning Engine)  |      |  Server (Tools)  |
 |          |      |                         |      |                  |      |                      |      |                  |
 +----------+      +-------------------------+      +------------------+      +----------------------+      +------------------+
+
 ```
 
 1. **Frontend (`templates/index.html`):** A sleek, single-page application built with HTML, Tailwind CSS, and vanilla JavaScript. It captures user input and uses Server-Sent Events (SSE) to render real-time updates from the backend.
 
 2. **Backend** (`src/trusted_data_agent/`): A high-performance asynchronous web server built with **Quart**. It serves the frontend, manages user sessions, and orchestrates the entire AI workflow.
 
-3. **Large Language Model (LLM):** The reasoning engine. The backend dynamically initializes the connection to the selected LLM provider (e.g., Google, Anthropic, Microsoft Azure, AWS Bedrock) based on user-provided credentials and sends structured prompts to the model's API.
+3. **Large Language Model (LLM):** The reasoning engine. The backend dynamically initializes the connection to the selected LLM provider (e.g., Google, Anthropic, Microsoft Azure, AWS Bedrock, Friendli.AI) based on user-provided credentials and sends structured prompts to the model's API.
 
 4. **MCP Server:** The **Model Context Protocol (MCP)** server acts as the secure, powerful bridge to the database, exposing functionalities as a well-defined API of "tools" for the AI agent.
 
@@ -174,7 +168,7 @@ The application operates on a sophisticated client-server model, ensuring a clea
 
 The Python source code is organized in a standard `src` layout for better maintainability and scalability.
 
-```text
+```
 /trusted-data-agent/
 |
 ├── src/
@@ -192,11 +186,10 @@ The Python source code is organized in a standard `src` layout for better mainta
 ├── pyproject.toml             # Project definition
 ├── requirements.txt
 └── ...
+
 ```
 
 This structure separates concerns, making it easier to navigate and extend the application's functionality.
-
----
 
 ## 🚀 Installation and Setup Guide
 
@@ -206,23 +199,24 @@ This structure separates concerns, making it easier to navigate and extend the a
 
 * Access to a running **MCP Server**.
 
-* An **API Key** from a supported LLM provider or a **local Ollama installation**. The initial validated providers are **Google**, **Anthropic**, **Amazon Web Services (AWS)**, and **Ollama**.
+* An **API Key** from a supported LLM provider or a **local Ollama installation**. The initial validated providers are **Google**, **Anthropic**, **Amazon Web Services (AWS)**, **Friendli.AI**, and **Ollama**.
 
   * You can obtain a Gemini API key from the [Google AI Studio](https://aistudio.google.com/app/apikey).
 
   * You can obtain a Claude API key from the [Anthropic Console](https://console.anthropic.com/dashboard).
 
   * For **Azure**, you will need an **Azure OpenAI Endpoint**, **API Key**, **API Version**, and a **Model Deployment Name**.
- 
+
   * For AWS, you will need an **AWS Access Key ID**, **Secret Access Key**, and the **Region** for your Bedrock service.
 
   * For Ollama, download and install it from [ollama.com](https://ollama.com/) and pull a model (e.g., `ollama run llama2`).
 
 ### Step 1: Clone the Repository
 
-```bash
+```
 git clone [https://github.com/rgeissen/trusted-data-agent.git](https://github.com/rgeissen/trusted-data-agent.git)
 cd trusted-data-agent
+
 ```
 
 ### Step 2: Set Up the Python Environment
@@ -231,7 +225,7 @@ It is highly recommended to use a Python virtual environment.
 
 1. **Create and activate a virtual environment:**
 
-   ```bash
+   ```
    # For macOS/Linux
    python3 -m venv venv
    source venv/bin/activate
@@ -239,12 +233,14 @@ It is highly recommended to use a Python virtual environment.
    # For Windows
    python -m venv venv
    .\venv\Scripts\activate
+   
    ```
 
 2. **Install the required packages:**
 
-   ```bash
+   ```
    pip install -r requirements.txt
+   
    ```
 
 ### Step 3: Create the Project Configuration File
@@ -253,7 +249,7 @@ In the project's root directory, create a new file named `pyproject.toml`. This 
 
 Copy and paste the following content into `pyproject.toml`:
 
-```toml
+```
 [project]
 name = "trusted-data-agent"
 version = "0.1.0"
@@ -265,14 +261,16 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
 ```
 
 ### Step 4: Install the Application in Editable Mode
 
 This crucial step links your source code to your Python environment, resolving all import paths. **Run this command from the project's root directory.**
 
-```bash
+```
 pip install -e .
+
 ```
 
 The `-e` flag stands for "editable," meaning any changes you make to the source code will be immediately effective without needing to reinstall.
@@ -281,7 +279,7 @@ The `-e` flag stands for "editable," meaning any changes you make to the source 
 
 You can either enter your API keys in the UI at runtime or, for convenience during development, create a `.env` file in the project root. The application will automatically load these keys.
 
-```dotenv
+```
 # For Google Models
 GEMINI_API_KEY="YOUR_GEMINI_API_KEY_HERE"
 
@@ -299,8 +297,12 @@ AWS_ACCESS_KEY_ID="YOUR_AWS_ACCESS_KEY_ID"
 AWS_SECRET_ACCESS_KEY="YOUR_AWS_SECRET_ACCESS_KEY"
 AWS_REGION="your-bedrock-region"
 
+# For Friendli.AI Models
+FRIENDLI_API_KEY="YOUR_FRIENDLI_API_KEY_HERE"
+
 # For Ollama (Local)
 OLLAMA_HOST="http://localhost:11434"
+
 ```
 
 ### Running the Application
@@ -311,23 +313,21 @@ OLLAMA_HOST="http://localhost:11434"
 
 For standard operation with the certified models:
 
-```bash
-python -m trusted_data_agent.main
 ```
+python -m trusted_data_agent.main
 
----
+```
 
 ## 👨‍💻 Developer Mode: Unlocking Models
 
 To enable all discovered models for testing and development purposes, start the server with the `--all-models` flag.
 
-```bash
+```
 python -m trusted_data_agent.main --all-models
+
 ```
 
 **Note:** **No Ollama models are currently certified.** For testing purposes, Ollama models can be evaluated by starting the server with the `--all-models` developer flag.
-
----
 
 ## 📚 User Guide
 
@@ -341,17 +341,17 @@ Before you can interact with the agent, you must configure the connection to you
 
 2. **MCP Server:** Enter the **Host**, **Port**, and **Path** for your running MCP Server.
 
-3. **LLM Provider:** Select your desired LLM Provider (e.g., Google, Anthropic, OpenAI, Microsoft, Ollama).
+3. **LLM Provider:** Select your desired LLM Provider (e.g., Google, Anthropic, OpenAI, Microsoft, Friendli.AI, Ollama).
 
 4. **Credentials:**
 
    * For cloud providers, enter your **API Key**.
 
-  * For **Azure**, provide your **Endpoint URL**, **API Key**, **API Version**, and **Deployment Name**.
+* For **Azure**, provide your **Endpoint URL**, **API Key**, **API Version**, and **Deployment Name**.
 
-   * For AWS, provide your **Access Key ID**, **Secret Access Key**, and **Region**.
+* For AWS, provide your **Access Key ID**, **Secret Access Key**, and **Region**.
 
-   * For Ollama, provide the **Host URL** (e.g., `http://localhost:11434`).
+* For Ollama, provide the **Host URL** (e.g., `http://localhost:11434`).
 
 5. **Fetch Models:** Click the refresh icon next to the model dropdown to fetch a list of available models from your provider.
 
@@ -423,8 +423,6 @@ To test the raw intelligence of a model without the agent's tool-using logic, yo
 
 2. A modal will appear, allowing you to have a direct, tool-less conversation with the currently configured LLM. This is useful for evaluating a model's baseline knowledge or creative capabilities.
 
----
-
 ## 🔌 Application REST API
 
 The Trusted Data Agent includes a powerful, asynchronous REST API to enable programmatic control, automation, and integration into larger enterprise workflows.
@@ -440,9 +438,7 @@ This API exposes the core functionalities of the agent, allowing developers to b
 * **Full Agent Functionality**: Create sessions and submit natural language queries or execute pre-defined prompts programmatically, receiving the same rich, structured JSON output as the web UI.
 
 For complete technical details, endpoint definitions, and cURL examples, please see the full documentation:
-[**REST API Documentation (docs/RestAPI/restAPI.md)**](docs/RestAPI/restAPI.md)
-
----
+[**REST API Documentation (docs/RestAPI/restAPI.md)**](https://www.google.com/search?q=docs/RestAPI/restAPI.md)
 
 ## 🛠️ Troubleshooting
 
@@ -457,8 +453,6 @@ For complete technical details, endpoint definitions, and cURL examples, please 
   * Ensure your AWS credentials have the necessary IAM permissions (`bedrock:ListFoundationModels`, `bedrock:ListInferenceProfiles`, `bedrock-runtime:InvokeModel`).
 
   * Verify that the selected model is enabled for access in the AWS Bedrock console for your specified region.
-
----
 
 ## 📜 License
 
@@ -505,8 +499,6 @@ Under the AGPLv3, you are free to use, modify, and distribute this software. How
 * **Intended User:** Commercial organizations, power users, and data scientists requiring maximum flexibility and control for proprietary use.
 
 * **Description:** This is the premium commercial tier and the only one that **uplifts the software license to the permissive MIT License**. This allows organizations to modify the code, integrate it into proprietary applications, and deploy it without any obligation to share their source code. Crucially, this is also is the **only tier that enables full prompt editing capabilities (including the licensing system for prompts)**, giving businesses complete control to customize and protect their unique analytical workflows and intellectual property. This license is designed for commercial entities that need to maintain a competitive advantage.
-
----
 
 ## ✍️ Author & Contributions
 
