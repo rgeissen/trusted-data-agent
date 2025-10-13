@@ -12,7 +12,8 @@ from trusted_data_agent.core import session_manager
 from trusted_data_agent.core.config import APP_CONFIG
 from trusted_data_agent.agent.prompts import (
     WORKFLOW_META_PLANNING_PROMPT,
-    TASK_CLASSIFICATION_PROMPT
+    TASK_CLASSIFICATION_PROMPT,
+    SQL_CONSOLIDATION_PROMPT
 )
 
 if TYPE_CHECKING:
@@ -438,7 +439,6 @@ class Planner:
                 next_phase["type"] = "loop"
                 next_phase["loop_over"] = f"result_of_phase_{current_phase['phase']}"
                 
-                # Replace the placeholder with a loop_item reference
                 for arg_name, arg_value in next_phase["arguments"].items():
                     if (isinstance(arg_value, str) and 
                         arg_value == f"result_of_phase_{current_phase['phase']}"):
@@ -467,6 +467,123 @@ class Planner:
         if made_change:
             app_logger.info(f"PLAN REWRITE (Date-Range): Final rewritten plan: {self.executor.meta_plan}")
 
+    # --- MODIFICATION START: Implement the new SQL consolidation rewrite rule ---
+    async def _rewrite_plan_for_sql_consolidation(self):
+        """
+        Detects and consolidates sequential, inefficient SQL query phases into a
+        single, optimized query using a specialized LLM call.
+        """
+        if not self.executor.meta_plan or len(self.executor.meta_plan) < 2:
+            return
+        
+        sql_tools = set(APP_CONFIG.SQL_OPTIMIZATION_TOOLS)
+        
+        i = 0
+        while i < len(self.executor.meta_plan) - 1:
+            current_phase = self.executor.meta_plan[i]
+            
+            current_tool = (current_phase.get("relevant_tools") or [None])[0]
+            if current_tool not in sql_tools:
+                i += 1
+                continue
+
+            j = i + 1
+            while j < len(self.executor.meta_plan):
+                next_tool = (self.executor.meta_plan[j].get("relevant_tools") or [None])[0]
+                if next_tool not in sql_tools:
+                    break
+                j += 1
+            
+            sql_sequence = self.executor.meta_plan[i:j]
+            
+            if len(sql_sequence) > 1:
+                app_logger.warning(f"PLAN REWRITE: Detected inefficient sequential SQL plan from phase {i+1} to {j}. Consolidating...")
+                
+                inefficient_queries = []
+                # --- MODIFICATION START: Flexible argument search for 'sql' or 'query' ---
+                sql_arg_synonyms = ["sql", "query", "query_request"]
+                for phase in sql_sequence:
+                    args = phase.get("arguments", {})
+                    query = next((args[key] for key in sql_arg_synonyms if key in args), None)
+                    if query:
+                        inefficient_queries.append(f"-- Query from Phase {phase['phase']}:\n{query}")
+                # --- MODIFICATION END ---
+                
+                if not inefficient_queries:
+                    i = j
+                    continue
+
+                consolidation_prompt = SQL_CONSOLIDATION_PROMPT.format(
+                    user_goal=self.executor.original_user_input,
+                    inefficient_queries="\n\n".join(inefficient_queries)
+                )
+                
+                reason = "Consolidating inefficient SQL plan."
+                call_id = str(uuid.uuid4())
+                yield self.executor._format_sse({
+                    "step": "Optimizing SQL Plan", "type": "plan_optimization",
+                    "details": {"summary": "Detected an inefficient multi-step SQL plan. The agent is consolidating it into a single, optimized query.", "call_id": call_id}
+                })
+                yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
+
+                response_text, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
+                    prompt=consolidation_prompt, reason=reason,
+                    system_prompt_override="You are a JSON-only responding SQL expert.",
+                    raise_on_error=True, source=self.executor.source
+                )
+                
+                yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
+                
+                updated_session = session_manager.get_session(self.executor.session_id)
+                if updated_session:
+                    yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
+
+                try:
+                    json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+                    if not json_match: raise ValueError("No JSON object found in consolidation response.")
+                    
+                    data = json.loads(json_match.group(0))
+                    consolidated_query = data.get("consolidated_query")
+                    if not consolidated_query: raise ValueError("'consolidated_query' key not found.")
+
+                    original_phases = copy.deepcopy(sql_sequence)
+                    
+                    consolidated_phase = sql_sequence[-1]
+                    consolidated_phase['phase'] = sql_sequence[0]['phase']
+                    consolidated_phase['goal'] = f"Execute consolidated SQL query to achieve the goal: '{self.executor.original_user_input}'"
+                    
+                    # --- MODIFICATION START: Update the correct argument ---
+                    args = consolidated_phase.get("arguments", {})
+                    found_key = next((key for key in sql_arg_synonyms if key in args), "sql") # Default to 'sql'
+                    args[found_key] = consolidated_query
+                    consolidated_phase['arguments'] = args
+                    # --- MODIFICATION END ---
+                    
+                    num_phases_to_remove = len(sql_sequence)
+                    self.executor.meta_plan[i] = consolidated_phase
+                    for _ in range(num_phases_to_remove - 1):
+                        del self.executor.meta_plan[i+1]
+                    
+                    for phase_idx in range(i + 1, len(self.executor.meta_plan)):
+                        self.executor.meta_plan[phase_idx]['phase'] -= (num_phases_to_remove - 1)
+                    
+                    yield self.executor._format_sse({
+                        "step": "System Correction", "type": "workaround",
+                        "details": {
+                            "summary": "The agent's SQL plan was inefficient. The system has automatically consolidated it into a single query.",
+                            "correction": {"from": original_phases, "to": consolidated_phase}
+                        }
+                    })
+                    app_logger.info(f"PLAN REWRITE (SQL Consolidation): Final rewritten plan: {self.executor.meta_plan}")
+                    i = 0
+                    continue
+
+                except (json.JSONDecodeError, ValueError, AttributeError) as e:
+                    app_logger.error(f"Failed to consolidate SQL plan: {e}. Proceeding with original inefficient plan. Response: {response_text}")
+            
+            i += 1
+    # --- MODIFICATION END ---
+
     async def generate_and_refine_plan(self, force_disable_history: bool = False, replan_context: str = None):
         """
         The main public method to generate a plan and then run all validation and
@@ -478,6 +595,8 @@ class Planner:
         ):
             yield event
         
+        async for event in self._rewrite_plan_for_sql_consolidation():
+            yield event
         async for event in self._rewrite_plan_for_multi_loop_synthesis():
             yield event
         async for event in self._rewrite_plan_for_corellmtask_loops():
@@ -694,3 +813,4 @@ class Planner:
             if len(self.executor.meta_plan) > 1 or any(phase.get("type") == "loop" for phase in self.executor.meta_plan):
                 self.executor.is_complex_prompt_workflow = True
                 app_logger.info(f"'{self.executor.active_prompt_name}' has been qualified as a complex prompt workflow based on the generated plan.")
+

@@ -37,7 +37,6 @@ RECOVERABLE_TOOL_ERRORS = {
     "column_not_found": r"Column '(\w+)' does not exist"
 }
 
-# --- MODIFICATION START: Implement Correction Strategy Pattern ---
 class CorrectionStrategy(ABC):
     """Abstract base class for all self-correction strategies."""
 
@@ -54,9 +53,7 @@ class CorrectionStrategy(ABC):
         """Generates a corrected action or concludes the task."""
         pass
 
-    # --- MODIFICATION START: Add failed_action to signature ---
     async def _call_correction_llm(self, prompt: str, reason: str, system_prompt_override: str, failed_action: Dict[str, Any]) -> Tuple[Dict | None, List]:
-    # --- MODIFICATION END ---
         """A helper method to standardize the LLM call for correction."""
         events = []
         call_id = str(uuid.uuid4())
@@ -140,9 +137,7 @@ class TableNotFoundStrategy(CorrectionStrategy):
         reason = f"Fact-based recovery for non-existent table '{invalid_table_name_only}'"
         system_prompt = "You are an expert troubleshooter. Follow the recovery directives precisely."
         
-        # --- MODIFICATION START: Pass failed_action to the helper ---
         return await self._call_correction_llm(prompt, reason, system_prompt, failed_action)
-        # --- MODIFICATION END ---
 
 class ColumnNotFoundStrategy(CorrectionStrategy):
     """Handles errors where a specified column does not exist."""
@@ -167,9 +162,7 @@ class ColumnNotFoundStrategy(CorrectionStrategy):
         reason = f"Fact-based recovery for non-existent column '{invalid_column}'"
         system_prompt = "You are an expert troubleshooter. Follow the recovery directives precisely."
 
-        # --- MODIFICATION START: Pass failed_action to the helper ---
         return await self._call_correction_llm(prompt, reason, system_prompt, failed_action)
-        # --- MODIFICATION END ---
 
 class GenericCorrectionStrategy(CorrectionStrategy):
     """The default fallback strategy for any other recoverable error."""
@@ -193,9 +186,7 @@ class GenericCorrectionStrategy(CorrectionStrategy):
         reason = f"Generic self-correction for failed tool call: {tool_name}"
         system_prompt = "You are an expert troubleshooter. Follow the recovery directives precisely."
 
-        # --- MODIFICATION START: Pass failed_action to the helper ---
         return await self._call_correction_llm(prompt, reason, system_prompt, failed_action)
-        # --- MODIFICATION END ---
 
 class CorrectionHandler:
     """Manages and executes the appropriate correction strategy."""
@@ -214,8 +205,7 @@ class CorrectionHandler:
                 app_logger.info(f"Using correction strategy: {strategy.__class__.__name__}")
                 return await strategy.generate_correction(failed_action, error_result)
         
-        return None, [] # Should not be reached due to the generic fallback
-# --- MODIFICATION END ---
+        return None, []
 
 
 class PhaseExecutor:
@@ -746,11 +736,8 @@ class PhaseExecutor:
                 yield event
             return
 
-        # --- MODIFICATION START: Update orchestrator logic to prevent self-triggering and pass phase context ---
         is_range_candidate, date_param_name, tool_supports_range = self._is_date_query_candidate(action)
 
-        # The orchestrator should only run for tools that DON'T natively support date ranges.
-        # It should also NOT run on its own helper tools.
         is_orchestrator_target = (
             is_range_candidate and
             not tool_supports_range and
@@ -768,7 +755,6 @@ class PhaseExecutor:
                 ):
                     yield event
                 return
-        # --- MODIFICATION END ---
 
         tool_scope = self.executor.dependencies['STATE'].get('tool_scopes', {}).get(tool_name)
         has_column_arg = "column_name" in action.get("arguments", {})
@@ -782,9 +768,9 @@ class PhaseExecutor:
 
     async def _proactively_refine_arguments(self, action: dict, phase: dict):
         """
-        Performs a pre-flight check on tool arguments, looking for type mismatches
-        (e.g., passing a list to an arg that expects a string). If found, it uses
-        an LLM to intelligently extract the correct value from the list.
+        Performs an intelligent, LLM-driven pre-flight check on tool arguments. It
+        detects and corrects mismatches between the planner's provided arguments
+        and the tool's actual schema, preventing validation errors.
         """
         tool_name = action.get("tool_name")
         if not tool_name:
@@ -794,73 +780,70 @@ class PhaseExecutor:
         if not tool_def or not hasattr(tool_def, 'args') or not isinstance(tool_def.args, dict):
             return
 
-        original_args = action.get("arguments", {})
-        refined_args = original_args.copy()
+        provided_args = action.get("arguments", {})
+        official_arg_names = set(tool_def.args.keys())
+        provided_arg_names = set(provided_args.keys())
+
+        if provided_arg_names == official_arg_names:
+            return
+
+        app_logger.warning(f"Argument mismatch for tool '{tool_name}'. Planner provided: {provided_arg_names}, Tool requires: {official_arg_names}. Initiating LLM-based refinement.")
+
+        yield self.executor._format_sse({
+            "step": "System Correction",
+            "type": "workaround",
+            "details": {
+                "summary": f"Detected an argument mismatch for tool '{tool_name}'. Agent is proactively correcting the arguments.",
+                "correction_type": "argument_refinement"
+            }
+        })
         
-        for arg_name, arg_value in original_args.items():
-            arg_spec = tool_def.args.get(arg_name)
-            if not arg_spec: continue
+        tool_schema_str = json.dumps({name: details for name, details in tool_def.args.items()}, indent=2)
+        
+        refinement_prompt = (
+            "You are an expert argument mapper. Your task is to correct a failed tool call by re-mapping the provided arguments to the tool's official schema.\n\n"
+            f"--- GOAL ---\n{phase.get('goal', self.executor.original_user_input)}\n\n"
+            f"--- FAILED ARGUMENTS ---\n{json.dumps(provided_args, indent=2)}\n\n"
+            f"--- CORRECT TOOL SCHEMA ---\n{tool_schema_str}\n\n"
+            "--- INSTRUCTIONS ---\n"
+            "1. Analyze the `GOAL` and the `FAILED ARGUMENTS` to understand the user's intent and what data is available.\n"
+            "2. Examine the `CORRECT TOOL SCHEMA` to understand the exact argument names and structure the tool expects.\n"
+            "3. Create a new, valid set of arguments by mapping the values from the `FAILED ARGUMENTS` to the correct names in the `CORRECT TOOL SCHEMA`.\n"
+            "4. Discard any arguments from the failed call that do not exist in the correct schema.\n"
+            "5. Your response MUST be a single JSON object containing only the corrected arguments.\n\n"
+            "Example:\n"
+            "`{{\"sql\": \"SELECT * FROM ...\"}}`"
+        )
 
-            expected_type = arg_spec.get("type", "any").lower()
+        reason = f"Proactively refining arguments for '{tool_name}' to prevent tool failure."
+        call_id = str(uuid.uuid4())
+        yield self.executor._format_sse({"step": "Calling LLM for Argument Refinement", "type": "system_message", "details": {"summary": reason, "call_id": call_id}})
+        yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
 
-            if expected_type == 'string' and isinstance(arg_value, list):
-                if not arg_value or not isinstance(arg_value[0], dict): continue
-                
-                phase_goal = phase.get("goal", self.executor.original_user_input)
-                list_of_items_json = json.dumps(arg_value, indent=2)
+        response_text, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
+            prompt=refinement_prompt, reason=reason,
+            system_prompt_override="You are a JSON-only responding assistant.",
+            raise_on_error=True,
+            source=self.executor.source
+        )
+        
+        yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
+        updated_session = session_manager.get_session(self.executor.session_id)
+        if updated_session:
+            yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
+        
+        try:
+            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            if not json_match: raise ValueError("No JSON object found in refinement response.")
 
-                yield self.executor._format_sse({
-                    "step": "System Correction",
-                    "type": "workaround",
-                    "details": {
-                        "summary": f"Detected a data type mismatch for argument '{arg_name}'. Agent is proactively extracting the correct value.",
-                        "correction_type": "argument_refinement"
-                    }
-                })
-
-                extraction_prompt = (
-                    "You are an expert data extractor. Your task is to find a single, specific item within a list of JSON objects that matches a given goal.\n\n"
-                    f"--- GOAL ---\n{phase_goal}\n\n"
-                    f"--- DATA LIST ---\n{list_of_items_json}\n\n"
-                    "--- INSTRUCTIONS ---\n"
-                    "1. Analyze the GOAL to understand what specific entity is being sought (e.g., a specific database name, a table name).\n"
-                    "2. Scan the DATA LIST to find the JSON object that contains this entity.\n"
-                    "3. From that single object, determine the key that holds the entity's name (e.g., 'DatabaseName').\n"
-                    "4. Extract the value associated with that key.\n"
-                    "5. Your response MUST be a single JSON object with one key: 'extracted_value'.\n\n"
-                    "Example:\n"
-                    "`{\"extracted_value\": \"fitness_db\"}`"
-                )
-                
-                reason = f"Proactively refining argument '{arg_name}' to prevent tool failure."
-                call_id = str(uuid.uuid4())
-                yield self.executor._format_sse({"step": "Calling LLM for Argument Refinement", "type": "system_message", "details": {"summary": reason, "call_id": call_id}})
-                yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
-
-                response_text, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
-                    prompt=extraction_prompt, reason=reason,
-                    system_prompt_override="You are a JSON-only responding assistant.",
-                    raise_on_error=True,
-                    source=self.executor.source
-                )
-                
-                yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
-                updated_session = session_manager.get_session(self.executor.session_id)
-                if updated_session:
-                    yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
-                
-                try:
-                    extraction_data = json.loads(response_text)
-                    extracted_value = extraction_data.get("extracted_value")
-                    if extracted_value:
-                        refined_args[arg_name] = extracted_value
-                        app_logger.info(f"Argument refinement successful. Replaced list with extracted value '{extracted_value}' for argument '{arg_name}'.")
-                    else:
-                        app_logger.warning("Argument refinement failed: LLM did not return an 'extracted_value'.")
-                except (json.JSONDecodeError, AttributeError) as e:
-                    app_logger.error(f"Failed to parse argument refinement response: {e}. Original argument will be used.")
-
-        action['arguments'] = refined_args
+            corrected_args = json.loads(json_match.group(0))
+            if isinstance(corrected_args, dict):
+                action['arguments'] = corrected_args
+                app_logger.info(f"Argument refinement successful. New args for '{tool_name}': {corrected_args}")
+            else:
+                 app_logger.warning("Argument refinement failed: LLM did not return a valid dictionary.")
+        except (json.JSONDecodeError, ValueError, AttributeError) as e:
+            app_logger.error(f"Failed to parse argument refinement response: {e}. Original arguments will be used.")
 
     async def _execute_tool(self, action: dict, phase: dict, is_fast_path: bool = False):
         """Executes a single tool call with a built-in retry and recovery mechanism."""
@@ -1460,3 +1443,4 @@ class PhaseExecutor:
         """
         correction_handler = CorrectionHandler(self.executor)
         return await correction_handler.attempt_correction(failed_action, error_result)
+
