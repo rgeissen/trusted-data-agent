@@ -93,7 +93,6 @@ class Planner:
         if source_phase_num >= looping_phase_num:
             data_to_inject = None
             
-            # --- MODIFICATION START: Correctly access the nested workflow history ---
             workflow_history = self.executor.previous_turn_data.get("workflow_history", [])
             if not isinstance(workflow_history, list):
                  return
@@ -101,7 +100,6 @@ class Planner:
             for turn in reversed(workflow_history):
                 if not isinstance(turn, dict): continue
                 execution_trace = turn.get("execution_trace", [])
-                # --- MODIFICATION END ---
                 for entry in reversed(execution_trace):
                     result_summary = entry.get("tool_output_summary", {})
                     if (isinstance(result_summary, dict) and
@@ -177,7 +175,7 @@ class Planner:
                         }
                     }
                 })
-    # --- MODIFICATION START: Add context-aware final report check ---
+
     def _ensure_final_report_phase(self):
         """
         Deterministically checks and adds a final reporting phase. It is context-aware
@@ -225,7 +223,6 @@ class Planner:
                 "correction": { "added_phase": final_phase }
             }
         })
-    # --- MODIFICATION END ---
 
 
     async def _rewrite_plan_for_multi_loop_synthesis(self):
@@ -426,7 +423,7 @@ class Planner:
             uses_date_range_output = False
             if isinstance(next_phase.get("arguments"), dict):
                 for arg_value in next_phase["arguments"].values():
-                    if isinstance(arg_value, dict) and arg_value.get("source") == f"result_of_phase_{current_phase['phase']}":
+                    if isinstance(arg_value, str) and arg_value == f"result_of_phase_{current_phase['phase']}":
                          uses_date_range_output = True
                          break
 
@@ -443,8 +440,8 @@ class Planner:
                 
                 # Replace the placeholder with a loop_item reference
                 for arg_name, arg_value in next_phase["arguments"].items():
-                    if (isinstance(arg_value, dict) and 
-                        arg_value.get("source") == f"result_of_phase_{current_phase['phase']}"):
+                    if (isinstance(arg_value, str) and 
+                        arg_value == f"result_of_phase_{current_phase['phase']}"):
                         
                         next_phase["arguments"][arg_name] = {
                             "source": "loop_item",
@@ -491,10 +488,8 @@ class Planner:
             yield event
         for event in self._hydrate_plan_from_previous_turn():
             yield event
-        # --- MODIFICATION START: Call the new final report check ---
         for event in self._ensure_final_report_phase():
             yield event
-        # --- MODIFICATION END ---
 
 
         yield self.executor._format_sse({
