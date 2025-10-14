@@ -395,50 +395,57 @@ class PhaseExecutor:
                     yield self.executor._format_sse({"step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}", "type": "phase_end", "details": {"phase_num": phase_num, "total_phases": len(self.executor.meta_plan), "status": "skipped"}})
                     return
             
+            yield self.executor._format_sse({
+                "step": "Plan Optimization", 
+                "type": "plan_optimization",
+                "details": f"FASTPATH enabled for tool loop: '{tool_name}'"
+            })
+            
             static_phase_args = phase.get("arguments", {})
+            
+            # --- MODIFICATION START: Synonym-Aware Argument Pruning ---
+            # Get the destination tool's definition to determine its valid arguments.
+            tool_def = self.executor.dependencies['STATE'].get('mcp_tools', {}).get(tool_name)
+            allowed_arg_names = set()
+            if tool_def and hasattr(tool_def, 'args') and isinstance(tool_def.args, dict):
+                # Build an allowlist of all valid synonyms for the tool's arguments.
+                for arg_name in tool_def.args.keys():
+                    allowed_arg_names.add(arg_name)
+                    # Find the canonical name for this argument
+                    canonical_name = None
+                    for c, s in AppConfig.ARGUMENT_SYNONYM_MAP.items():
+                        if arg_name in s:
+                            canonical_name = c
+                            break
+                    # If a canonical name was found, add all its synonyms to the allowlist.
+                    if canonical_name:
+                        allowed_arg_names.update(AppConfig.ARGUMENT_SYNONYM_MAP.get(canonical_name, set()))
+            # --- MODIFICATION END ---
             
             all_loop_results = []
             yield self.executor._format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
-
-            # --- MODIFICATION START: Consolidated Event Logic ---
-            pruning_event_fired = False
-            
             for i, item in enumerate(self.executor.current_loop_items):
                 yield self.executor._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.executor.current_loop_items)}", "type": "system_message", "details": item})
                 
                 item_data = item if isinstance(item, dict) else {}
                 resolved_item_args = self.executor._resolve_arguments(static_phase_args, loop_item=item_data)
-                merged_args = {**resolved_item_args, **item_data}
                 
-                tool_def = self.executor.dependencies['STATE'].get('mcp_tools', {}).get(tool_name)
-                pruned_args = merged_args.copy()
-                
-                if tool_def and hasattr(tool_def, 'args') and isinstance(tool_def.args, dict):
-                    official_tool_args = set(tool_def.args.keys())
-                    
-                    pruned_args = {
-                        key: value for key, value in merged_args.items()
-                        if key in official_tool_args
+                # --- MODIFICATION START: Synonym-Aware Argument Pruning ---
+                # Prune the item_data to only include keys that are in the allowlist.
+                if allowed_arg_names:
+                    pruned_item_data = {
+                        key: value for key, value in item_data.items()
+                        if key in allowed_arg_names
                     }
-                    
-                    if len(pruned_args) < len(merged_args) and not pruning_event_fired:
-                        pruned_keys = set(merged_args.keys()) - set(pruned_args.keys())
-                        app_logger.info(f"Proactively pruned superfluous arguments for tool '{tool_name}': {pruned_keys}")
-                        
-                        yield self.executor._format_sse({
-                            "step": "System Correction & Optimization",
-                            "type": "workaround",
-                            "details": {
-                                "summary": f"FASTPATH enabled for tool loop '{tool_name}'. Superfluous arguments were automatically pruned to prevent errors.",
-                                "correction_type": "proactive_argument_pruning",
-                                "pruned_arguments": list(pruned_keys)
-                            }
-                        })
-                        pruning_event_fired = True
+                else:
+                    # Fallback if tool definition isn't found, though this is unlikely.
+                    pruned_item_data = item_data
                 
-                command = {"tool_name": tool_name, "arguments": pruned_args}
+                # Merge the static phase args with the (now pruned) item-specific data.
+                merged_args = {**resolved_item_args, **pruned_item_data}
                 # --- MODIFICATION END ---
-
+                
+                command = {"tool_name": tool_name, "arguments": merged_args}
                 async for event in self._execute_tool(command, phase, is_fast_path=True):
                     yield event
                 
@@ -456,15 +463,6 @@ class PhaseExecutor:
                 
                 self.executor.turn_action_history.append({"action": command, "result": enriched_tool_output})
                 all_loop_results.append(enriched_tool_output)
-
-            # --- MODIFICATION START: Fallback Event for No Pruning ---
-            if not pruning_event_fired:
-                yield self.executor._format_sse({
-                    "step": "Plan Optimization", 
-                    "type": "plan_optimization",
-                    "details": f"FASTPATH enabled for tool loop: '{tool_name}'"
-                })
-            # --- MODIFICATION END ---
 
             yield self.executor._format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
             
@@ -1478,4 +1476,3 @@ class PhaseExecutor:
         """
         correction_handler = CorrectionHandler(self.executor)
         return await correction_handler.attempt_correction(failed_action, error_result)
-
