@@ -395,16 +395,14 @@ class PhaseExecutor:
                     yield self.executor._format_sse({"step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}", "type": "phase_end", "details": {"phase_num": phase_num, "total_phases": len(self.executor.meta_plan), "status": "skipped"}})
                     return
             
-            yield self.executor._format_sse({
-                "step": "Plan Optimization", 
-                "type": "plan_optimization",
-                "details": f"FASTPATH enabled for tool loop: '{tool_name}'"
-            })
-            
             static_phase_args = phase.get("arguments", {})
             
             all_loop_results = []
             yield self.executor._format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
+
+            # --- MODIFICATION START: Consolidated Event Logic ---
+            pruning_event_fired = False
+            
             for i, item in enumerate(self.executor.current_loop_items):
                 yield self.executor._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.executor.current_loop_items)}", "type": "system_message", "details": item})
                 
@@ -423,23 +421,23 @@ class PhaseExecutor:
                         if key in official_tool_args
                     }
                     
-                    if len(pruned_args) < len(merged_args):
+                    if len(pruned_args) < len(merged_args) and not pruning_event_fired:
                         pruned_keys = set(merged_args.keys()) - set(pruned_args.keys())
                         app_logger.info(f"Proactively pruned superfluous arguments for tool '{tool_name}': {pruned_keys}")
-                        # --- MODIFICATION START: Add System Correction Event ---
+                        
                         yield self.executor._format_sse({
-                            "step": "System Correction",
+                            "step": "System Correction & Optimization",
                             "type": "workaround",
                             "details": {
-                                "summary": "Automatically pruned superfluous arguments to prevent a tool execution error.",
+                                "summary": f"FASTPATH enabled for tool loop '{tool_name}'. Superfluous arguments were automatically pruned to prevent errors.",
                                 "correction_type": "proactive_argument_pruning",
-                                "pruned_arguments": list(pruned_keys),
-                                "tool_name": tool_name
+                                "pruned_arguments": list(pruned_keys)
                             }
                         })
-                        # --- MODIFICATION END ---
+                        pruning_event_fired = True
                 
                 command = {"tool_name": tool_name, "arguments": pruned_args}
+                # --- MODIFICATION END ---
 
                 async for event in self._execute_tool(command, phase, is_fast_path=True):
                     yield event
@@ -458,6 +456,15 @@ class PhaseExecutor:
                 
                 self.executor.turn_action_history.append({"action": command, "result": enriched_tool_output})
                 all_loop_results.append(enriched_tool_output)
+
+            # --- MODIFICATION START: Fallback Event for No Pruning ---
+            if not pruning_event_fired:
+                yield self.executor._format_sse({
+                    "step": "Plan Optimization", 
+                    "type": "plan_optimization",
+                    "details": f"FASTPATH enabled for tool loop: '{tool_name}'"
+                })
+            # --- MODIFICATION END ---
 
             yield self.executor._format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
             
