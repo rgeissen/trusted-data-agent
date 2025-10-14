@@ -411,8 +411,36 @@ class PhaseExecutor:
                 item_data = item if isinstance(item, dict) else {}
                 resolved_item_args = self.executor._resolve_arguments(static_phase_args, loop_item=item_data)
                 merged_args = {**resolved_item_args, **item_data}
+                
+                tool_def = self.executor.dependencies['STATE'].get('mcp_tools', {}).get(tool_name)
+                pruned_args = merged_args.copy()
+                
+                if tool_def and hasattr(tool_def, 'args') and isinstance(tool_def.args, dict):
+                    official_tool_args = set(tool_def.args.keys())
+                    
+                    pruned_args = {
+                        key: value for key, value in merged_args.items()
+                        if key in official_tool_args
+                    }
+                    
+                    if len(pruned_args) < len(merged_args):
+                        pruned_keys = set(merged_args.keys()) - set(pruned_args.keys())
+                        app_logger.info(f"Proactively pruned superfluous arguments for tool '{tool_name}': {pruned_keys}")
+                        # --- MODIFICATION START: Add System Correction Event ---
+                        yield self.executor._format_sse({
+                            "step": "System Correction",
+                            "type": "workaround",
+                            "details": {
+                                "summary": "Automatically pruned superfluous arguments to prevent a tool execution error.",
+                                "correction_type": "proactive_argument_pruning",
+                                "pruned_arguments": list(pruned_keys),
+                                "tool_name": tool_name
+                            }
+                        })
+                        # --- MODIFICATION END ---
+                
+                command = {"tool_name": tool_name, "arguments": pruned_args}
 
-                command = {"tool_name": tool_name, "arguments": merged_args}
                 async for event in self._execute_tool(command, phase, is_fast_path=True):
                     yield event
                 
