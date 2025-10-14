@@ -467,7 +467,6 @@ class Planner:
         if made_change:
             app_logger.info(f"PLAN REWRITE (Date-Range): Final rewritten plan: {self.executor.meta_plan}")
 
-    # --- MODIFICATION START: Implement the new SQL consolidation rewrite rule ---
     async def _rewrite_plan_for_sql_consolidation(self):
         """
         Detects and consolidates sequential, inefficient SQL query phases into a
@@ -500,14 +499,12 @@ class Planner:
                 app_logger.warning(f"PLAN REWRITE: Detected inefficient sequential SQL plan from phase {i+1} to {j}. Consolidating...")
                 
                 inefficient_queries = []
-                # --- MODIFICATION START: Flexible argument search for 'sql' or 'query' ---
                 sql_arg_synonyms = ["sql", "query", "query_request"]
                 for phase in sql_sequence:
                     args = phase.get("arguments", {})
                     query = next((args[key] for key in sql_arg_synonyms if key in args), None)
                     if query:
                         inefficient_queries.append(f"-- Query from Phase {phase['phase']}:\n{query}")
-                # --- MODIFICATION END ---
                 
                 if not inefficient_queries:
                     i = j
@@ -552,12 +549,10 @@ class Planner:
                     consolidated_phase['phase'] = sql_sequence[0]['phase']
                     consolidated_phase['goal'] = f"Execute consolidated SQL query to achieve the goal: '{self.executor.original_user_input}'"
                     
-                    # --- MODIFICATION START: Update the correct argument ---
                     args = consolidated_phase.get("arguments", {})
-                    found_key = next((key for key in sql_arg_synonyms if key in args), "sql") # Default to 'sql'
+                    found_key = next((key for key in sql_arg_synonyms if key in args), "sql")
                     args[found_key] = consolidated_query
                     consolidated_phase['arguments'] = args
-                    # --- MODIFICATION END ---
                     
                     num_phases_to_remove = len(sql_sequence)
                     self.executor.meta_plan[i] = consolidated_phase
@@ -582,7 +577,6 @@ class Planner:
                     app_logger.error(f"Failed to consolidate SQL plan: {e}. Proceeding with original inefficient plan. Response: {response_text}")
             
             i += 1
-    # --- MODIFICATION END ---
 
     async def generate_and_refine_plan(self, force_disable_history: bool = False, replan_context: str = None):
         """
@@ -595,8 +589,12 @@ class Planner:
         ):
             yield event
         
-        async for event in self._rewrite_plan_for_sql_consolidation():
-            yield event
+        # --- MODIFICATION START: Make SQL consolidation rewrite conditional ---
+        if APP_CONFIG.ENABLE_SQL_CONSOLIDATION_REWRITE:
+            async for event in self._rewrite_plan_for_sql_consolidation():
+                yield event
+        # --- MODIFICATION END ---
+        
         async for event in self._rewrite_plan_for_multi_loop_synthesis():
             yield event
         async for event in self._rewrite_plan_for_corellmtask_loops():

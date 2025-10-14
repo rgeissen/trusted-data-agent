@@ -11,42 +11,31 @@ class AppConfig:
     These values are typically set at startup and rarely change during runtime.
     """
     # --- Feature Flags & Behavior ---
-    # --- MODIFICATION START: Add Configuration Persistence Flag ---
-    # This flag controls whether the server's configuration is persistent across page loads.
-    # Set the environment variable TDA_CONFIGURATION_PERSISTENCE=false to disable persistence,
-    # which will force the configuration modal to appear on every visit. Defaults to true.
     CONFIGURATION_PERSISTENCE = os.environ.get('TDA_CONFIGURATION_PERSISTENCE', 'true').lower() != 'false'
-    # --- MODIFICATION END ---
     ALL_MODELS_UNLOCKED = False # If True, bypasses model certification checks, allowing all models from a provider to be used.
     CHARTING_ENABLED = True # Master switch to enable or disable the agent's ability to generate charts.
     DEFAULT_CHARTING_INTENSITY = "medium" # Controls how proactively the agent suggests charts. Options: "none", "medium", "heavy".
     ALLOW_SYNTHESIS_FROM_HISTORY = True # If True, allows the planner to generate an answer directly from conversation history without using tools.
     VOICE_CONVERSATION_ENABLED = True # Master switch for the Text-to-Speech (TTS) feature.
     SUB_PROMPT_FORCE_SUMMARY = False # If True, forces sub-executors for prompts to generate their own final summary. Default is False.
+    ENABLE_SQL_CONSOLIDATION_REWRITE = False # If True, enables an LLM-based plan rewrite rule to consolidate sequential SQL queries.
     GRANTED_PROMPTS_FOR_EFFICIENCY_REPLANNING = ["base_teradataQuery"] # A list of complex prompts that are exempt from the "Re-planning for Efficiency" optimization.
     CONDENSE_SYSTEMPROMPT_HISTORY = True # If True, sends a condensed list of tools/prompts in the system prompt for subsequent turns in a conversation to save tokens.
 
 
     # --- Connection & Model State ---
-    # --- MODIFICATION START: Add state-aware configuration flags ---
     SERVICES_CONFIGURED = False # Master flag indicating if the core services (LLM, MCP) have been successfully configured.
-    # The following fields store the details of the *active* configuration to detect changes.
     ACTIVE_PROVIDER = None
     ACTIVE_MODEL = None
     ACTIVE_MCP_SERVER_NAME = None
-    # --- MODIFICATION END ---
     MCP_SERVER_CONNECTED = False # Runtime flag indicating if a connection to the MCP server is active.
     CHART_MCP_CONNECTED = False # Runtime flag indicating if a connection to the Charting server is active.
     CURRENT_PROVIDER = None # Stores the name of the currently configured LLM provider (e.g., "Google").
     CURRENT_MODEL = None # Stores the name of the currently configured LLM model (e.g., "gemini-1.5-flash").
     CURRENT_MCP_SERVER_NAME = None # Stores the name of the active MCP server configuration.
     CURRENT_AWS_REGION = None # Stores the AWS region, used specifically for the "Amazon" provider.
-    # --- MODIFICATION START: Add Azure-specific configuration field ---
     CURRENT_AZURE_DEPLOYMENT_DETAILS = None # Stores Azure-specific details {endpoint, deployment_name, api_version}.
-    # --- MODIFICATION END ---
-    # --- MODIFICATION START: Add Friendli.ai-specific configuration field ---
     CURRENT_FRIENDLI_DETAILS = None # Stores Friendli.ai specific details {token, endpoint_url}.
-    # --- MODIFICATION END ---
     CURRENT_MODEL_PROVIDER_IN_PROFILE = None # For Amazon Bedrock, stores the model provider if using an inference profile ARN.
 
     # --- LLM & Agent Configuration ---
@@ -76,13 +65,11 @@ class AppConfig:
     INITIALLY_DISABLED_TOOLS = ["sales_top_customers"] # A list of tool names to be disabled by default on application startup.
 
     # --- Tool & Argument Parsing Logic ---
-    # Defines the hierarchy for inferring a tool's operational scope (e.g., column-level, table-level) based on its required arguments.
     TOOL_SCOPE_HIERARCHY = [
         ('column', {'database_name', 'object_name', 'column_name'}),
         ('table', {'database_name', 'object_name'}),
         ('database', {'database_name'}),
     ]
-    # A central map to normalize different argument names (e.g., 'table_name', 'object_name') to a single canonical concept.
     ARGUMENT_SYNONYM_MAP = {
         'database_name': {
             'database_name', 'db_name', 'DatabaseName'
@@ -147,10 +134,6 @@ CERTIFIED_AMAZON_MODELS = ["*titan-text-express-v1*"]
 CERTIFIED_AMAZON_PROFILES = ["*nova-lite*"]
 CERTIFIED_OLLAMA_MODELS = ["gemma-3-27b-it"]
 CERTIFIED_OPENAI_MODELS = ["*gpt-4o-mini"]
-# --- MODIFICATION START: Add Azure certified models list ---
 CERTIFIED_AZURE_MODELS = ["*gpt-4o*"]
-# --- MODIFICATION END ---
-# --- MODIFICATION START: Add Friendli.ai certified models list ---
 CERTIFIED_FRIENDLI_MODELS = ["google/gemma-3-27b-it"]
-# --- MODIFICATION END ---
 
