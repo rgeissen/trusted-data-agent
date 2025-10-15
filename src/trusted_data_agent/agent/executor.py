@@ -222,20 +222,72 @@ class PlanExecutor:
             return arguments
 
         resolved_args = {}
+
+        # --- MODIFICATION START: Define a regex and replacer for embedded placeholders ---
+        # This pattern specifically looks for JSON objects with a "source" key, allowing for whitespace.
+        placeholder_pattern = re.compile(r'(\s*\{[\s\n]*"source":\s*"[^"]+"(?:,[\s\n]*"key":\s*"[^"]+")?[\s\n]*\}\s*)')
+
+        def _resolve_embedded_placeholder(match):
+            """Callback function for re.sub to resolve a matched placeholder string."""
+            placeholder_str = match.group(1).strip()
+            try:
+                placeholder_data = json.loads(placeholder_str)
+                source_key = placeholder_data.get("source")
+                target_key = placeholder_data.get("key")
+
+                # Determine the data source for the placeholder
+                data_from_source = None
+                if source_key == "loop_item" and loop_item:
+                    data_from_source = loop_item
+                elif source_key and source_key.startswith("phase_"):
+                    data_from_source = self.workflow_state.get(f"result_of_{source_key}")
+                elif source_key:
+                    data_from_source = self.workflow_state.get(source_key)
+
+                if data_from_source is None:
+                    app_logger.warning(f"Could not resolve embedded placeholder: source '{source_key}' not found.")
+                    return match.group(1) # Return original full match (with any whitespace)
+
+                # Extract the final value from the determined source
+                if target_key:
+                    found_value = self._find_value_by_key(data_from_source, target_key)
+                else:
+                    found_value = self._unwrap_single_value_from_result(data_from_source)
+                
+                if found_value is not None:
+                    app_logger.info(f"Resolved embedded placeholder '{placeholder_str}' to value '{found_value}'.")
+                    return str(found_value)
+                else:
+                    app_logger.warning(f"Could not resolve embedded placeholder: key '{target_key}' not found in source '{source_key}'.")
+                    return match.group(1)
+            
+            except (json.JSONDecodeError, AttributeError):
+                # If it's not valid JSON or doesn't have the expected structure, it's not our placeholder.
+                return match.group(1)
+        # --- MODIFICATION END ---
+
         for key, value in arguments.items():
-            # --- MODIFICATION START: Prioritize loop_item resolution ---
-            # This is now the first check to prevent the generic placeholder logic
-            # from incorrectly capturing and failing to resolve loop_item placeholders.
-            if isinstance(value, dict) and value.get("source") == "loop_item" and loop_item:
-                loop_key = value.get("key")
-                resolved_args[key] = loop_item.get(loop_key)
-                continue # Skip to the next argument
+            # --- MODIFICATION START: Add a new first step to scan and resolve embedded placeholders ---
+            # This logic handles placeholders that are part of a larger string (e.g., inside a SQL query).
+            # It explicitly skips strings that are *only* a placeholder to let the main logic handle them,
+            # which correctly preserves data types (e.g., numbers vs. strings).
+            if isinstance(value, str) and '"source":' in value and not placeholder_pattern.fullmatch(value.strip()):
+                resolved_value = placeholder_pattern.sub(_resolve_embedded_placeholder, value)
+                resolved_args[key] = resolved_value
+                continue
             # --- MODIFICATION END ---
             
+            # This is the original logic, which now serves as the handler for full-value placeholders and recursion.
             source_phase_key = None
             target_data_key = None
             is_placeholder = False
             original_placeholder = copy.deepcopy(value)
+
+            # Prioritize loop_item resolution for dictionary-based placeholders
+            if isinstance(value, dict) and value.get("source") == "loop_item" and loop_item:
+                loop_key = value.get("key")
+                resolved_args[key] = loop_item.get(loop_key)
+                continue
 
             # 1. Simple string placeholder (e.g., "result_of_phase_1")
             if isinstance(value, str):
@@ -246,16 +298,13 @@ class PlanExecutor:
             
             # 2. Dictionary-based placeholders (canonical, keyless, and hallucinated)
             elif isinstance(value, dict):
-                # Canonical format: {"source": "...", "key": "..."}
                 if "source" in value and "key" in value:
                     source_phase_key = value["source"]
                     target_data_key = value["key"]
                     is_placeholder = True
 
-                # Keyless format: {"source": "result_of_phase_1"}
                 elif "source" in value and "key" not in value:
                     source_phase_key = value["source"]
-                    # No target_data_key is specified, so the intent is to unwrap the result.
                     target_data_key = None
                     is_placeholder = True
                     self.events_to_yield.append(self._format_sse({
@@ -268,7 +317,6 @@ class PlanExecutor:
                         }
                     }))
 
-                # Hallucinated format: {"result_of_phase_1": "current_date"}
                 else:
                     for k, v in value.items():
                         if re.match(r"result_of_phase_\d+", k):
@@ -286,7 +334,7 @@ class PlanExecutor:
                                     "to": canonical_value
                                 }
                             }))
-                            value = canonical_value # Overwrite for downstream logic
+                            value = canonical_value
                             break
 
             # 3. Resolve the placeholder if one was identified
@@ -297,14 +345,14 @@ class PlanExecutor:
                 if source_phase_key in self.workflow_state:
                     data_from_phase = self.workflow_state[source_phase_key]
                     
-                    if target_data_key: # Extract a specific key
+                    if target_data_key:
                         found_value = self._find_value_by_key(data_from_phase, target_data_key)
                         if found_value is not None:
                             resolved_args[key] = found_value
                         else:
                             app_logger.warning(f"Could not resolve placeholder: key '{target_data_key}' not found in '{source_phase_key}'.")
                             resolved_args[key] = None
-                    else: # No key provided, so unwrap the single value
+                    else:
                         unwrapped_value = self._unwrap_single_value_from_result(data_from_phase)
                         resolved_args[key] = unwrapped_value
                         app_logger.info(f"Resolved placeholder for '{key}' by unwrapping the result of '{source_phase_key}'.")
@@ -726,4 +774,3 @@ class PlanExecutor:
             "tts_payload": tts_payload,
             "source": self.source
         }, "final_answer")
-
