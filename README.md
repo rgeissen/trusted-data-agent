@@ -1,4 +1,5 @@
 # The Trusted Data Agent
+### The industry-leading AI conversational engine for your most complex enterprise data.
 
 The **Trusted Data Agent** represents a paradigm shift in how Business Leaders, Business Analysts, Developers, and Architects interact with complex data ecosystems. It is a sophisticated engine backend & web front-end application designed not only to showcase AI-powered interaction with a Relational Information system, but to serve as a powerful, fully transparent "study buddy" for mastering the integration of Large Language Models (LLMs) with enterprise data.
 
