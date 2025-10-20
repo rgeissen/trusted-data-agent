@@ -239,6 +239,8 @@ class PlanExecutor:
                 data_from_source = None
                 if source_key == "loop_item" and loop_item:
                     data_from_source = loop_item
+                elif source_key and source_key.startswith("result_of_phase_"):
+                    data_from_source = self.workflow_state.get(source_key)
                 elif source_key and source_key.startswith("phase_"):
                     data_from_source = self.workflow_state.get(f"result_of_{source_key}")
                 elif source_key:
@@ -774,3 +776,4 @@ class PlanExecutor:
             "tts_payload": tts_payload,
             "source": self.source
         }, "final_answer")
+
