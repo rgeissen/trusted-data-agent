@@ -19,9 +19,7 @@ from trusted_data_agent.agent.prompts import (
 )
 from trusted_data_agent.agent import orchestrators
 from trusted_data_agent.agent.response_models import CanonicalResponse
-# --- MODIFICATION START: Import the argument helper ---
 from trusted_data_agent.core.utils import get_argument_by_canonical_name
-# --- MODIFICATION END ---
 
 
 if TYPE_CHECKING:
@@ -57,8 +55,11 @@ class CorrectionStrategy(ABC):
         """Generates a corrected action or concludes the task."""
         pass
 
-    async def _call_correction_llm(self, prompt: str, reason: str, system_prompt_override: str, failed_action: Dict[str, Any]) -> Tuple[Dict | None, List]:
-        """A helper method to standardize the LLM call for correction."""
+    async def _call_correction_llm(self, prompt: str, reason: str, system_prompt_override: str, failed_action: Dict[str, Any], extra_args_for_llm_task: Dict[str, Any] = None) -> Tuple[Dict | None, List]:
+        """
+        A helper method to standardize the LLM call for correction.
+        Includes optional extra_args for TDA_LLMTask corrections.
+        """
         events = []
         call_id = str(uuid.uuid4())
         events.append(self.executor._format_sse({"step": "Calling LLM for Self-Correction", "type": "system_message", "details": {"summary": reason, "call_id": call_id}}))
@@ -94,6 +95,15 @@ class CorrectionStrategy(ABC):
             if not json_str: raise json.JSONDecodeError("Extracted JSON is empty", response_str, 0)
 
             corrected_data = json.loads(json_str.strip())
+
+            # --- MODIFICATION START: Merge extra_args if TDA_LLMTask is chosen ---
+            if corrected_data.get("tool_name") == "TDA_LLMTask" and extra_args_for_llm_task:
+                if "arguments" not in corrected_data:
+                    corrected_data["arguments"] = {}
+                # Merge, letting extra_args overwrite if necessary (e.g., providing input_text)
+                corrected_data["arguments"].update(extra_args_for_llm_task)
+                events.append(self.executor._format_sse({"step": "System Self-Correction", "type": "workaround", "details": {"summary": f"LLM proposed TDA_LLMTask. Injecting required context.", "details": extra_args_for_llm_task}}))
+            # --- MODIFICATION END ---
 
             if "prompt_name" in corrected_data and "arguments" in corrected_data:
                 events.append(self.executor._format_sse({"step": "System Self-Correction", "type": "workaround", "details": {"summary": f"LLM proposed switching to prompt '{corrected_data['prompt_name']}'.", "details": corrected_data}}))
@@ -175,14 +185,77 @@ class GenericCorrectionStrategy(CorrectionStrategy):
 
     async def generate_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any]) -> Tuple[Dict | None, List]:
         tool_name = failed_action.get("tool_name")
+        error_message = str(error_result.get('data', 'No error data.'))
+        error_summary = str(error_result.get('error_message', error_message)) # Use error_message if summary missing
+
+        # --- MODIFICATION START: Handle JSONDecodeError specifically ---
+        # Check if the error indicates a JSON parsing problem, often seen with complex report tools
+        is_json_parsing_error = "JSON" in error_summary or "Invalid control character" in error_message
+        is_report_tool = tool_name in ["TDA_FinalReport", "TDA_ComplexPromptReport"]
+
+        extra_args_for_llm_task = None
+
+        if is_json_parsing_error and is_report_tool:
+            app_logger.warning(f"Detected JSON parsing error for report tool '{tool_name}'. Attempting text sanitization recovery.")
+            # Extract the raw, problematic text output that caused the error
+            # This relies on the error result structure containing the raw data, common for LLM tool errors
+            problematic_text = str(error_result.get('data', '')) # Get the raw text if available
+
+            if problematic_text:
+                # Prepare arguments to instruct TDA_LLMTask to clean the text
+                # We reuse 'synthesized_answer' to pass the raw text into the *next* LLM call's context
+                # The tactical LLM (_get_next_tactical_action) will then see this text
+                # when processing the correction strategy's suggested TDA_LLMTask call.
+                extra_args_for_llm_task = {
+                    "task_description": (
+                        "The previous attempt to generate a JSON report failed due to invalid characters or formatting. "
+                        "Analyze the 'synthesized_answer' field below, which contains the raw text output. "
+                        "Your task is to meticulously clean this text, removing any invalid control characters, "
+                        "extraneous markdown, or conversational text. Ensure the output is a single, valid JSON object "
+                        "strictly adhering to the required report schema. Preserve the original content as much as possible."
+                    ),
+                    "synthesized_answer": problematic_text,
+                    # We don't use source_data here, as the input is passed directly
+                    "source_data": [] # Explicitly empty
+                }
+                # Use a specific prompt that guides the LLM to choose TDA_LLMTask for cleaning
+                prompt = (
+                    "A report generation tool failed because its output was invalid JSON (likely due to control characters or bad formatting).\n"
+                    f"Error: {error_summary}\n"
+                    "The best recovery is to use the `TDA_LLMTask` tool to clean the original text output and produce valid JSON.\n"
+                    "Respond with a JSON object calling `TDA_LLMTask`. The necessary `task_description` and the problematic text (as `synthesized_answer`) will be automatically injected by the system."
+                 )
+                reason = f"Recovering from JSON error in {tool_name} via text sanitization."
+                system_prompt = "You are an expert troubleshooter focused on JSON recovery. Call TDA_LLMTask as instructed."
+
+                # Pass extra_args to _call_correction_llm so they can be merged if TDA_LLMTask is chosen
+                return await self._call_correction_llm(prompt, reason, system_prompt, failed_action, extra_args_for_llm_task=extra_args_for_llm_task)
+            else:
+                 app_logger.error(f"Cannot attempt JSON sanitization for {tool_name}: Original error data containing the text is missing.")
+                 # Fall through to generic correction without extra args
+
+        # --- Fallback to original generic correction logic ---
+        # --- MODIFICATION END ---
         tool_def = self.executor.dependencies['STATE'].get('mcp_tools', {}).get(tool_name)
         if not tool_def:
-            return None, []
+            # Handle cases where the tool definition might be missing (e.g., client-side tool not in MCP list)
+            tool_def_str = f"{{\"name\": \"{tool_name}\", \"description\": \"Client-side tool, definition not available.\"}}"
+        else:
+             # Ensure tool_def is serializable (vars might not work on all objects)
+             try:
+                 tool_def_str = json.dumps({
+                     "name": getattr(tool_def, 'name', tool_name),
+                     "description": getattr(tool_def, 'description', "No description"),
+                     "args": getattr(tool_def, 'args', {})
+                 }, default=str)
+             except TypeError:
+                 tool_def_str = f"{{\"name\": \"{tool_name}\", \"description\": \"Could not serialize tool definition.\"}}"
+
 
         prompt = TACTICAL_SELF_CORRECTION_PROMPT.format(
-            tool_definition=json.dumps(vars(tool_def), default=str),
+            tool_definition=tool_def_str,
             failed_command=json.dumps(failed_action),
-            error_message=json.dumps(error_result.get('data', 'No error data.')),
+            error_message=json.dumps(error_message),
             user_question=self.executor.original_user_input,
             tools_context=self.executor.dependencies['STATE'].get('tools_context', ''),
             prompts_context=self.executor.dependencies['STATE'].get('prompts_context', '')
@@ -190,7 +263,9 @@ class GenericCorrectionStrategy(CorrectionStrategy):
         reason = f"Generic self-correction for failed tool call: {tool_name}"
         system_prompt = "You are an expert troubleshooter. Follow the recovery directives precisely."
 
-        return await self._call_correction_llm(prompt, reason, system_prompt, failed_action)
+        # Pass extra_args (will be None unless JSON error recovery logic prepared them)
+        return await self._call_correction_llm(prompt, reason, system_prompt, failed_action, extra_args_for_llm_task=extra_args_for_llm_task)
+
 
 class CorrectionHandler:
     """Manages and executes the appropriate correction strategy."""
@@ -198,17 +273,24 @@ class CorrectionHandler:
         self.strategies = [
             TableNotFoundStrategy(executor),
             ColumnNotFoundStrategy(executor),
-            GenericCorrectionStrategy(executor)
+            GenericCorrectionStrategy(executor) # Generic is last
         ]
 
     async def attempt_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any]) -> Tuple[Dict | None, List]:
         error_data_str = str(error_result.get('data', ''))
+        error_summary = str(error_result.get('error_message', ''))
+
+        # Combine summary and data string for broader matching
+        full_error_context = f"{error_summary} {error_data_str}"
 
         for strategy in self.strategies:
-            if strategy.can_handle(error_data_str):
+            # Pass the combined context for matching
+            if strategy.can_handle(full_error_context):
                 app_logger.info(f"Using correction strategy: {strategy.__class__.__name__}")
                 return await strategy.generate_correction(failed_action, error_result)
 
+        # Should theoretically not be reached due to GenericCorrectionStrategy
+        app_logger.error("No correction strategy could handle the error.")
         return None, []
 
 
@@ -405,13 +487,10 @@ class PhaseExecutor:
 
                 yield self.executor._format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
                 for table_item in tables_to_process:
-                    # --- MODIFICATION START: Use canonical helper for table name ---
                     table_name = get_argument_by_canonical_name(table_item, 'object_name')
-                    # --- MODIFICATION END ---
                     if not table_name: continue
 
                     args_for_col_tool = {'database_name': db_name}
-                    # Populate all synonyms for object_name with the found table_name
                     for synonym in AppConfig.ARGUMENT_SYNONYM_MAP.get('object_name', {'object_name', 'table_name'}):
                         args_for_col_tool[synonym] = table_name
 
@@ -433,7 +512,6 @@ class PhaseExecutor:
                                     skip_details = f"Tool '{tool_name}' requires a {required_type} column, but '{col_name}' is '{col_type}'. Skipping."
                                     yield self.executor._format_sse({"step": "Skipping Incompatible Column", "type": "plan_optimization", "details": skip_details})
                                     continue
-                            # Ensure the canonical 'column_name' is added
                             expanded_loop_items.append({**table_item, "column_name": col_name})
                     else:
                         app_logger.warning(f"Data expansion: Failed to get columns for table '{table_name}'. Tool `base_columnDescription` may have failed. Result: {cols_result}")
@@ -748,9 +826,72 @@ class PhaseExecutor:
                     f"{task_desc}\n\n"
                     f"CRITICAL CONTEXT: You MUST focus your response on the following item provided from the loop: {loop_item_str}"
                 )
-
-                fast_path_action["arguments"] = modified_args
                 app_logger.info(f"Injected loop context into TDA_LLMTask description for item: {loop_item_str}")
+
+                source_data_keys = modified_args.get("source_data", [])
+                focused_data_payload = {}
+                if source_data_keys:
+                    app_logger.info(f"Filtering source data for loop item based on keys: {source_data_keys}")
+                    loop_item_id_key = None
+                    loop_item_id_value = None
+                    possible_id_keys = ['TableName', 'ProductID', 'CustomerID', 'SaleID', 'TicketID', 'ColumnName'] # Extend as needed
+                    for key in possible_id_keys:
+                        if key in loop_item:
+                            loop_item_id_key = key
+                            loop_item_id_value = loop_item[key]
+                            break
+
+                    if loop_item_id_key:
+                        app_logger.debug(f"Matching loop item using key '{loop_item_id_key}' with value '{loop_item_id_value}'")
+                        for source_key in source_data_keys: # Renamed loop variable to avoid conflict
+                            if source_key in self.executor.workflow_state:
+                                full_data_list = self.executor.workflow_state[source_key]
+                                if isinstance(full_data_list, list):
+                                    matching_items = []
+                                    for data_item in full_data_list:
+                                        potential_match_locations = []
+                                        if isinstance(data_item, dict):
+                                            potential_match_locations.append(data_item) # Check top level
+                                            if 'results' in data_item and isinstance(data_item['results'], list):
+                                                potential_match_locations.extend(data_item['results']) # Check results list items
+                                            if 'metadata' in data_item and isinstance(data_item['metadata'], dict):
+                                                potential_match_locations.append(data_item['metadata']) # Check metadata
+
+                                        found_match_in_item = False
+                                        for location in potential_match_locations:
+                                            if isinstance(location, dict) and location.get(loop_item_id_key) == loop_item_id_value:
+                                                matching_items.append(data_item) # Append the original structure (e.g., the DDL result dict)
+                                                found_match_in_item = True
+                                                break # Found match for this data_item, move to next
+
+                                        if not found_match_in_item:
+                                            if any(loop_item == loc for loc in potential_match_locations if isinstance(loc, dict)):
+                                                 matching_items.append(data_item)
+                                                 app_logger.debug(f"Found match for loop item via deep comparison in source '{source_key}'.")
+
+
+                                    if matching_items:
+                                        focused_data_payload.setdefault(source_key, []).extend(matching_items)
+                                        app_logger.debug(f"Found {len(matching_items)} matching item(s) in source '{source_key}' for current loop item.")
+                                    else:
+                                         app_logger.warning(f"Could not find matching data in source '{source_key}' for loop item key '{loop_item_id_key}'='{loop_item_id_value}'. Source data might be missing or key mismatch.")
+                                else:
+                                     app_logger.warning(f"Source data '{source_key}' in workflow state is not a list.")
+                            else:
+                                app_logger.warning(f"Source data key '{source_key}' not found in workflow state.")
+                    else:
+                        app_logger.warning(f"Could not find a reliable unique identifier (e.g., TableName) in loop item {loop_item} to filter source data.")
+                        focused_data_payload = {k: self.executor.workflow_state[k] for k in source_data_keys if k in self.executor.workflow_state}
+
+                else:
+                    app_logger.warning("No source data keys specified for TDA_LLMTask in loop.")
+                    focused_data_payload = {}
+
+
+                modified_args["data"] = self.executor._distill_data_for_llm_context(focused_data_payload)
+                fast_path_action["arguments"] = modified_args
+                app_logger.info(f"Prepared focused data payload for TDA_LLMTask loop item: {json.dumps(modified_args['data'])}")
+
 
             async for event in self._execute_action_with_orchestrators(fast_path_action, phase):
                 yield event
@@ -818,11 +959,7 @@ class PhaseExecutor:
                 yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": tactical_call_id }, "token_update")
 
             if isinstance(next_action, str) and next_action == "SYSTEM_ACTION_COMPLETE":
-                # --- MODIFICATION START: Correct state transition ---
-                # Should not transition to SUMMARIZING here, just complete the phase/loop iteration.
-                # The PlanExecutor handles the final transition.
                 app_logger.info("Tactical LLM decided phase is complete.")
-                # --- MODIFICATION END ---
                 break # Exit the while loop for this phase/iteration
 
             if not isinstance(next_action, dict):
@@ -945,6 +1082,7 @@ class PhaseExecutor:
         Performs an intelligent, LLM-driven pre-flight check on tool arguments. It
         detects and corrects mismatches between the planner's provided arguments
         and the tool's actual schema, preventing validation errors.
+        Now preserves the 'data' key for TDA_LLMTask in loops.
         """
         tool_name = action.get("tool_name")
         if not tool_name:
@@ -955,9 +1093,15 @@ class PhaseExecutor:
             return
 
         provided_args = action.get("arguments", {})
-        # --- MODIFICATION START: Normalize provided args before comparison ---
+
+        is_llm_task_in_loop = tool_name == "TDA_LLMTask" and self.executor.is_in_loop
+        focused_data_payload = None
+        if is_llm_task_in_loop and "data" in provided_args:
+            focused_data_payload = provided_args.pop("data") # Temporarily remove 'data'
+            app_logger.debug("Temporarily removing focused 'data' payload for argument refinement.")
+
+
         normalized_provided_args = mcp_adapter._normalize_tool_arguments(provided_args)
-        # Get canonical names the tool *actually* uses based on its schema
         tool_canonical_arg_names = set()
         for schema_arg_name in tool_def.args.keys():
             found_canonical = False
@@ -966,19 +1110,18 @@ class PhaseExecutor:
                     tool_canonical_arg_names.add(canonical)
                     found_canonical = True
                     break
-            if not found_canonical: # If not a known synonym, treat it as its own canonical name
+            if not found_canonical:
                 tool_canonical_arg_names.add(schema_arg_name)
 
         provided_canonical_arg_names = set(normalized_provided_args.keys())
-        # --- MODIFICATION END ---
 
-
-        # --- MODIFICATION START: Use canonical sets for comparison ---
+        # --- Don't refine if arguments already match ---
         if provided_canonical_arg_names == tool_canonical_arg_names:
-             app_logger.debug(f"Argument check for tool '{tool_name}': Canonical arguments match schema. No refinement needed.")
-             return # Arguments already match, no refinement needed
-        # --- MODIFICATION END ---
-
+            app_logger.debug(f"Argument check for tool '{tool_name}': Canonical arguments match schema. No refinement needed.")
+            if is_llm_task_in_loop and focused_data_payload is not None:
+                action['arguments']['data'] = focused_data_payload # Put it back in the original action
+                app_logger.debug("Restored focused 'data' payload after skipping refinement.")
+            return
 
         app_logger.warning(f"Argument mismatch for tool '{tool_name}'. Planner provided (canonically): {provided_canonical_arg_names}, Tool requires (canonically): {tool_canonical_arg_names}. Initiating LLM-based refinement.")
 
@@ -997,7 +1140,7 @@ class PhaseExecutor:
         refinement_prompt = (
             "You are an expert argument mapper. Your task is to correct a potential tool call failure by re-mapping the provided arguments to the tool's official schema.\n\n"
             f"--- GOAL ---\n{phase.get('goal', self.executor.original_user_input)}\n\n"
-            f"--- PROVIDED ARGUMENTS (May be incorrect or incomplete) ---\n{json.dumps(provided_args, indent=2)}\n\n" # Use original provided args here for LLM context
+            f"--- PROVIDED ARGUMENTS (May be incorrect or incomplete) ---\n{json.dumps(provided_args, indent=2)}\n\n" # Use original (potentially without 'data')
             f"--- CORRECT TOOL SCHEMA ---\n{tool_schema_str}\n\n"
             "--- INSTRUCTIONS ---\n"
             "1. Analyze the `GOAL` and the `PROVIDED ARGUMENTS` to understand the user's intent and what data is available.\n"
@@ -1040,6 +1183,10 @@ class PhaseExecutor:
             corrected_args = json.loads(json_str.strip())
 
             if isinstance(corrected_args, dict):
+                if is_llm_task_in_loop and focused_data_payload is not None:
+                    corrected_args['data'] = focused_data_payload
+                    app_logger.info("Restored focused 'data' payload after argument refinement.")
+
                 # Update the original action's arguments IN PLACE
                 action['arguments'] = corrected_args
                 app_logger.info(f"Argument refinement successful. New args for '{tool_name}': {corrected_args}")
@@ -1054,19 +1201,30 @@ class PhaseExecutor:
                 })
             else:
                  app_logger.warning("Argument refinement failed: LLM did not return a valid dictionary.")
+                 if is_llm_task_in_loop and focused_data_payload is not None:
+                     action['arguments']['data'] = focused_data_payload
+                     app_logger.debug("Restored focused 'data' payload after failed refinement.")
+
         except (json.JSONDecodeError, ValueError, AttributeError) as e:
             app_logger.error(f"Failed to parse argument refinement response: {e}. Original arguments will be used. Response: {response_text}")
+            if is_llm_task_in_loop and focused_data_payload is not None:
+                action['arguments']['data'] = focused_data_payload
+                app_logger.debug("Restored focused 'data' payload after refinement parsing error.")
 
 
     async def _execute_tool(self, action: dict, phase: dict, is_fast_path: bool = False):
         """Executes a single tool call with a built-in retry and recovery mechanism."""
 
-        # --- MODIFICATION START: Always run proactive refinement unless it's a Fast Path loop ---
-        # The Fast Path loop already does argument merging/pruning, so refinement isn't needed there.
-        # For multi-tool phases handled by the dispatcher, refinement IS needed.
-        if not is_fast_path:
+        # --- MODIFICATION START: Skip proactive refinement in multi-tool phases ---
+        # Check if the phase involves more than one tool.
+        is_multi_tool_phase = len(phase.get("relevant_tools", [])) > 1
+
+        # Only run proactive refinement if it's NOT a fast path loop AND it's NOT a multi-tool phase.
+        if not is_fast_path and not is_multi_tool_phase:
              async for event in self._proactively_refine_arguments(action, phase):
                  yield event
+        elif is_multi_tool_phase:
+             app_logger.debug(f"Skipping proactive argument refinement for tool '{action.get('tool_name')}' because it's part of a multi-tool phase.")
         # --- MODIFICATION END ---
 
 
@@ -1088,7 +1246,6 @@ class PhaseExecutor:
                 "metadata": {"tool_name": tool_name},
                 "results": [{"response": arguments.get(answer_key)}]
             }
-            # --- MODIFICATION START: Ensure state updates even for bypassed tools ---
             # Yield result, add to history, update workflow state, add to structured data
             yield self.executor._format_sse({"step": "Tool Execution Result", "details": self.executor.last_tool_output, "tool_name": tool_name}, "tool_result")
             self.executor.turn_action_history.append({"action": action, "result": self.executor.last_tool_output})
@@ -1097,7 +1254,6 @@ class PhaseExecutor:
             # Use setdefault correctly for list append even in non-loop context
             self.executor.workflow_state.setdefault(phase_result_key, []).append(self.executor.last_tool_output)
             self.executor._add_to_structured_data(self.executor.last_tool_output)
-            # --- MODIFICATION END ---
             return
 
         max_retries = 3
@@ -1116,14 +1272,9 @@ class PhaseExecutor:
                 yield self.executor._format_sse({"step": "System Notification", "details": action['notification'], "type": "workaround"})
                 del action['notification']
 
-            if tool_name == "TDA_LLMTask" and not self.executor.is_synthesis_from_history:
-                distilled_workflow_state = self.executor._distill_data_for_llm_context(copy.deepcopy(self.executor.workflow_state))
-                action.setdefault("arguments", {})["data"] = distilled_workflow_state
-
-            # --- MODIFICATION START: Yield intent only if not Fast Path Loop ---
+            # Yield intent only if not Fast Path Loop
             if not is_fast_path: # Fast path loop yields item processing message instead
                  yield self.executor._format_sse({"step": "Tool Execution Intent", "details": action, "tool_name": tool_name}, "tool_intent") # Changed event type
-            # --- MODIFICATION END ---
 
             status_target = "db"
             call_id_for_tool = None
@@ -1182,12 +1333,17 @@ class PhaseExecutor:
                 yield self.executor._format_sse({"details": tool_result, "tool_name": tool_name}, "tool_error")
 
                 error_data_str = str(tool_result.get('data', ''))
+                error_summary = str(tool_result.get('error_message', '')) # Get summary as well
 
+                # Check for definitive, unrecoverable errors first
                 for error_pattern, friendly_message in DEFINITIVE_TOOL_ERRORS.items():
-                    if re.search(error_pattern, error_data_str, re.IGNORECASE):
+                     # Match against both the raw data and the summary for broader coverage
+                    if re.search(error_pattern, error_data_str, re.IGNORECASE) or re.search(error_pattern, error_summary, re.IGNORECASE):
                         from trusted_data_agent.agent.executor import DefinitiveToolError
-                        raise DefinitiveToolError(error_data_str, friendly_message)
+                        raise DefinitiveToolError(error_summary or error_data_str, friendly_message)
 
+
+                # Proceed with recoverable error handling if not definitive
                 if attempt < max_retries - 1:
                     correction_details = {
                         "summary": f"Tool failed. Attempting self-correction ({attempt + 1}/{max_retries - 1}).",
@@ -1195,8 +1351,7 @@ class PhaseExecutor:
                     }
                     yield self.executor._format_sse({"step": "System Self-Correction", "type": "workaround", "details": correction_details})
 
-                    correction_handler = CorrectionHandler(self.executor)
-                    corrected_action, correction_events = await correction_handler.attempt_correction(action, tool_result)
+                    corrected_action, correction_events = await self._attempt_tool_self_correction(action, tool_result)
 
                     for event in correction_events:
                         yield event
@@ -1240,23 +1395,26 @@ class PhaseExecutor:
                     yield self.executor._format_sse({"step": "Persistent Failure", "type": "error", "details": persistent_failure_details})
                     # Let loop end, error status is already set in last_tool_output
             else:
-                 # --- MODIFICATION START: Yield result only if not Fast Path Loop ---
+                # Yield result only if not Fast Path Loop
                 if not is_fast_path: # Fast path loop handles results differently
                      yield self.executor._format_sse({"step": "Tool Execution Result", "details": tool_result, "tool_name": tool_name}, "tool_result")
-                 # --- MODIFICATION END ---
                 break # Tool succeeded, break retry loop
 
-        # --- State updates after the retry loop (applies to both success and failure) ---
-        # --- MODIFICATION START: Only update state if NOT Fast Path Loop ---
+        # State updates after the retry loop (applies to both success and failure)
+        # Only update state if NOT Fast Path Loop
         # Fast path loop manages its own state updates collectively after the loop finishes.
         if not is_fast_path:
              self.executor.turn_action_history.append({"action": action, "result": self.executor.last_tool_output})
              phase_num = phase.get("phase", self.executor.current_phase_index + 1)
              phase_result_key = f"result_of_phase_{phase_num}"
              # Ensure workflow state is updated correctly even for single tool calls
-             self.executor.workflow_state.setdefault(phase_result_key, []).append(self.executor.last_tool_output)
+             # Append result to list associated with the phase key
+             if phase_result_key not in self.executor.workflow_state:
+                 self.executor.workflow_state[phase_result_key] = []
+             # Only append if it's not already somehow present (e.g., recursive calls, though unlikely here)
+             if self.executor.last_tool_output not in self.executor.workflow_state[phase_result_key]:
+                  self.executor.workflow_state[phase_result_key].append(self.executor.last_tool_output)
              self.executor._add_to_structured_data(self.executor.last_tool_output)
-        # --- MODIFICATION END ---
 
 
     def _enrich_arguments_from_history(self, relevant_tools: list[str], current_args: dict = None) -> tuple[dict, list, bool]:
@@ -1278,12 +1436,11 @@ class PhaseExecutor:
                 if arg_details.get('required', False):
                     required_args_for_phase.add(arg_name)
 
-        # --- MODIFICATION START: Use canonical check ---
+        # Use canonical check
         args_to_find = {
             arg for arg in required_args_for_phase
             if get_argument_by_canonical_name(enriched_args, arg) is None # Check canonical presence
         }
-        # --- MODIFICATION END ---
 
         if not args_to_find:
             return enriched_args, [], False
@@ -1308,13 +1465,12 @@ class PhaseExecutor:
 
             action_args = entry.get("action", {}).get("arguments", {})
             for arg_name in list(args_to_find):
-                # --- MODIFICATION START: Use canonical check during enrichment ---
+                # Use canonical check during enrichment
                 value_from_action = get_argument_by_canonical_name(action_args, arg_name)
                 if value_from_action is not None:
                      # Add using the specific required name found, not necessarily the canonical one
                     enriched_args[arg_name] = value_from_action
                     args_to_find.remove(arg_name)
-                # --- MODIFICATION END ---
 
 
             if isinstance(result, dict):
@@ -1624,9 +1780,7 @@ class PhaseExecutor:
 
             if isinstance(plan_object, dict) and ("tool_name" in plan_object or "prompt_name" in plan_object):
                 app_logger.warning("Recovery LLM returned a direct action; wrapping it in a plan.")
-                # --- MODIFICATION START: Correct the incomplete string literal ---
-                tool_name = plan_object.get("tool_name") or plan_object.get("prompt_name") # Fixed "tool_n..." to "tool_name"
-                # --- MODIFICATION END ---
+                tool_name = plan_object.get("tool_name") or plan_object.get("prompt_name")
                 new_plan = [{
                     "phase": 1,
                     "goal": f"Recovered plan: Execute the action for the user's request: '{self.executor.original_user_input}'",

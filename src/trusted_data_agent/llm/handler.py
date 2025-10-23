@@ -63,10 +63,15 @@ class OllamaClient:
             app_logger.error(f"Ollama API request error: {e}")
             raise RuntimeError("Error during chat completion with Ollama.") from e
 
+# --- MODIFICATION START: Added JSONDecodeError import ---
+from json import JSONDecodeError
+# --- MODIFICATION END ---
+
 def parse_and_coerce_llm_response(response_text: str, target_model: BaseModel) -> Tuple[BaseModel, List[str]]:
     """
     A resilient parser for LLM responses that attempts to correct common
-    schema deviations and reports on the corrections made.
+    schema deviations and reports on the corrections made. Includes robust
+    JSON extraction and error handling.
 
     Args:
         response_text: The raw string output from the LLM.
@@ -77,26 +82,35 @@ def parse_and_coerce_llm_response(response_text: str, target_model: BaseModel) -
         strings describing any corrections that were applied.
 
     Raises:
-        json.JSONDecodeError: If no valid JSON can be extracted.
+        json.JSONDecodeError: If no valid JSON can be extracted or parsed
+                              after sanitization.
         ValidationError: If the JSON is valid but cannot be coerced into the target model.
     """
     app_logger.debug(f"Attempting to parse and coerce response into {target_model.__name__}.")
     correction_descriptions = []
 
-    # 1. Robustly extract JSON from the raw text
-    json_match = re.search(r'```json\s*\n(.*?)\n\s*```|(\{.*\}|\[.*\])', response_text, re.DOTALL)
+    # --- MODIFICATION START: Use _sanitize_llm_output before extraction ---
+    sanitized_response_text = _sanitize_llm_output(response_text)
+    # --- MODIFICATION END ---
+
+    # 1. Robustly extract JSON from the sanitized text
+    json_match = re.search(r'```json\s*\n(.*?)\n\s*```|(\{.*\}|\[.*\])', sanitized_response_text, re.DOTALL)
     if not json_match:
-        raise json.JSONDecodeError("No valid JSON object or list found in the LLM response.", response_text, 0)
-    
+        app_logger.error(f"No valid JSON structure found in sanitized LLM response: {sanitized_response_text[:500]}...")
+        raise JSONDecodeError("No valid JSON object or list found in the LLM response.", sanitized_response_text, 0)
+
     json_str = next(g for g in json_match.groups() if g is not None)
     if not json_str:
-        raise json.JSONDecodeError("Extracted JSON string is empty.", response_text, 0)
+        app_logger.error(f"Extracted JSON string is empty from sanitized response: {sanitized_response_text[:500]}...")
+        raise JSONDecodeError("Extracted JSON string is empty.", sanitized_response_text, 0)
 
+    # --- MODIFICATION START: Wrap initial json.loads() in try...except ---
     try:
         data = json.loads(json_str)
-    except json.JSONDecodeError as e:
-        app_logger.error(f"Initial JSON parsing failed even after extraction. Error: {e}")
-        raise
+    except JSONDecodeError as e:
+        app_logger.error(f"Initial JSON parsing failed even after extraction and sanitization. Error: {e}. String: {json_str[:500]}...")
+        raise # Re-raise the specific JSONDecodeError
+    # --- MODIFICATION END ---
 
     # 2. First validation attempt
     try:
@@ -105,14 +119,14 @@ def parse_and_coerce_llm_response(response_text: str, target_model: BaseModel) -
         return validated_data, []
     except ValidationError as e:
         app_logger.warning(f"Initial validation against {target_model.__name__} failed. Attempting proactive correction.")
-        
+
         # 3. On failure, diagnose and apply corrections
         corrected_data = copy.deepcopy(data)
         errors = e.errors()
 
         for error in errors:
             field_name = error['loc'][0] if error['loc'] else None
-            
+
             # Correction rule: List of strings to list of objects with a 'text' key
             if 'model_type' in error['type'] and isinstance(error['input'], list) and all(isinstance(i, str) for i in error['input']):
                 if field_name and field_name in corrected_data:
@@ -137,16 +151,37 @@ def parse_and_coerce_llm_response(response_text: str, target_model: BaseModel) -
             app_logger.info(f"Proactive correction successful. Data is now valid for {target_model.__name__}.")
             return validated_data, correction_descriptions
         except ValidationError:
-            app_logger.error(f"Correction failed. Re-raising original validation error.")
-            raise e
+            # --- MODIFICATION START: Log the corrected data that still failed ---
+            app_logger.error(f"Correction failed for {target_model.__name__}. Re-raising original validation error. Corrected data was: {json.dumps(corrected_data)}")
+            # --- MODIFICATION END ---
+            raise e # Re-raise the original validation error 'e'
+
+# --- MODIFICATION START: Enhance _sanitize_llm_output ---
+# Define a stricter regex to remove ASCII control characters (0x00-0x1F)
+# except for Tab (0x09), Line Feed (0x0A), and Carriage Return (0x0D).
+# Also removes DEL (0x7F).
+_INVALID_JSON_CONTROL_CHARS_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
 
 def _sanitize_llm_output(text: str) -> str:
     """
-    Strips invalid characters from LLM output.
+    Strips invalid characters from LLM output, focusing on problematic
+    ASCII control characters that break JSON parsing, while preserving
+    valid whitespace like tabs, newlines, and carriage returns. Also removes
+    Byte Order Mark (BOM).
     """
+    if not isinstance(text, str):
+        return "" # Return empty string for non-string input
+
+    # Remove BOM if present
     sanitized_text = text.replace('\ufeff', '')
-    sanitized_text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', sanitized_text)
+
+    # Remove invalid control characters using the stricter regex
+    sanitized_text = _INVALID_JSON_CONTROL_CHARS_RE.sub('', sanitized_text)
+
+    # Basic stripping of leading/trailing whitespace
     return sanitized_text.strip()
+# --- MODIFICATION END ---
+
 
 def _extract_final_answer_from_json(text: str) -> str:
     """
@@ -154,16 +189,19 @@ def _extract_final_answer_from_json(text: str) -> str:
     If so, it extracts the FINAL_ANSWER string and returns it.
     This makes the agent more robust to common LLM formatting errors.
     """
+    # --- MODIFICATION START: Use sanitized text ---
+    sanitized_text = _sanitize_llm_output(text)
     try:
-        json_match = re.search(r"```json\s*\n(.*?)\n\s*```|(\{.*?\})", text, re.DOTALL)
+        json_match = re.search(r"```json\s*\n(.*?)\n\s*```|(\{.*?\})", sanitized_text, re.DOTALL)
         if not json_match:
-            return text
+            return sanitized_text # Return sanitized text if no JSON found
 
         json_str = json_match.group(1) or json_match.group(2)
         if not json_str:
-            return text
-            
+            return sanitized_text # Return sanitized text if extracted JSON is empty
+
         data = json.loads(json_str.strip())
+    # --- MODIFICATION END ---
 
         def find_answer_in_values(d):
             if isinstance(d, dict):
@@ -187,9 +225,13 @@ def _extract_final_answer_from_json(text: str) -> str:
             return final_answer_value
 
     except (json.JSONDecodeError, AttributeError):
-        return text
-    
-    return text
+        # --- MODIFICATION START: Return sanitized text on error ---
+        return sanitized_text
+        # --- MODIFICATION END ---
+
+    # --- MODIFICATION START: Return sanitized text as default ---
+    return sanitized_text
+    # --- MODIFICATION END ---
 
 def _condense_and_clean_history(history: list) -> list:
     """
@@ -231,11 +273,11 @@ def _condense_and_clean_history(history: list) -> list:
         return generic_history
 
     normalized_history = _normalize_history(history)
-    
+
     cleaned_history = []
     seen_tool_outputs = set()
     capabilities_pattern = re.compile(r'# Capabilities\n--- Available Tools ---.*', re.DOTALL)
-    
+
     system_prompt_wrapper_pattern = re.compile(r"SYSTEM PROMPT:.*USER PROMPT:\n", re.DOTALL)
 
     for msg in normalized_history:
@@ -245,24 +287,26 @@ def _condense_and_clean_history(history: list) -> list:
         if msg_copy.get('role') == 'user' and system_prompt_wrapper_pattern.match(content):
             app_logger.debug("History Condensation: Removing system prompt wrapper from user message.")
             content = system_prompt_wrapper_pattern.sub("", content)
-        
+
         if capabilities_pattern.search(content):
             app_logger.debug("History Condensation: Removing obsolete capability definitions.")
             content = capabilities_pattern.sub("# Capabilities\n[... Omitted for Brevity ...]", content)
 
         if msg_copy.get('role') in ['assistant', 'model']:
             try:
+                # Attempt to parse as JSON to normalize and identify duplicates
                 json_content = json.loads(content)
                 normalized_content = json.dumps(json_content, sort_keys=True)
-                
+
                 if normalized_content in seen_tool_outputs:
                     app_logger.debug("History Condensation: Replacing duplicate tool output.")
                     content = json.dumps({"status": "success", "comment": "Duplicate output omitted for brevity."})
                 else:
                     seen_tool_outputs.add(normalized_content)
             except (json.JSONDecodeError, TypeError):
+                # If it's not JSON (e.g., a text response), keep it as is
                 pass
-        
+
         msg_copy['content'] = content
         cleaned_history.append(msg_copy)
 
@@ -327,7 +371,7 @@ def _get_full_system_prompt(session_data: dict, dependencies: dict, system_promp
                 for tool_info in enabled_tools_in_category:
                     tool_obj = mcp_tools.get(tool_info['name'])
                     if not tool_obj: continue
-                    
+
                     tool_str = f"- `{tool_obj.name}` (tool): {tool_obj.description}"
                     args_dict = tool_obj.args if isinstance(tool_obj.args, dict) else {}
 
@@ -341,11 +385,11 @@ def _get_full_system_prompt(session_data: dict, dependencies: dict, system_promp
                             tool_str += f"\n    - `{arg_name}` ({arg_type}, {req_str}): {arg_desc}"
                     tool_context_parts.append(tool_str)
         tools_context = "\n".join(tool_context_parts) if len(tool_context_parts) > 1 else "--- No Tools Available ---"
-    
+
     prompts_context = STATE.get('prompts_context', '')
     if active_prompt_name_for_filter:
         app_logger.info(f"Recursion prevention: Filtering active prompt '{active_prompt_name_for_filter}' from planner context.")
-        
+
         filtered_prompts_context_parts = []
         current_prompt_block = []
         is_in_target_prompt = False
@@ -356,12 +400,12 @@ def _get_full_system_prompt(session_data: dict, dependencies: dict, system_promp
             if is_new_prompt_start:
                 if current_prompt_block and not is_in_target_prompt:
                     filtered_prompts_context_parts.extend(current_prompt_block)
-                
+
                 current_prompt_block = [line]
                 is_in_target_prompt = f"`{active_prompt_name_for_filter}`" in line
             else:
                 current_prompt_block.append(line)
-        
+
         if current_prompt_block and not is_in_target_prompt:
             filtered_prompts_context_parts.extend(current_prompt_block)
 
@@ -375,7 +419,7 @@ def _get_full_system_prompt(session_data: dict, dependencies: dict, system_promp
             if enabled_prompts:
                 condensed_prompts_parts.append(f"- **{category}**: {', '.join(enabled_prompts)}")
         prompts_context = "\n".join(condensed_prompts_parts) if len(condensed_prompts_parts) > 1 else "--- No Prompts Available ---"
-    
+
     if not use_condensed_context and session_data:
         session_data["full_context_sent"] = True
 
@@ -388,7 +432,7 @@ def _get_full_system_prompt(session_data: dict, dependencies: dict, system_promp
     ).replace(
         '{mcp_system_name}', APP_CONFIG.MCP_SYSTEM_NAME
     )
-    
+
     return final_system_prompt
 
 def _normalize_bedrock_model_id(model_id: str) -> str:
@@ -404,18 +448,18 @@ def _normalize_bedrock_model_id(model_id: str) -> str:
 async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, chat_history=None, raise_on_error: bool = False, system_prompt_override: str = None, dependencies: dict = None, reason: str = "No reason provided.", disabled_history: bool = False, active_prompt_name_for_filter: str = None, source: str = "text") -> tuple[str, int, int]:
     if not llm_instance:
         raise RuntimeError("LLM is not initialized.")
-    
+
     response_text = ""
     input_tokens, output_tokens = 0, 0
-    
+
     max_retries = APP_CONFIG.LLM_API_MAX_RETRIES
     base_delay = APP_CONFIG.LLM_API_BASE_DELAY
-    
+
     session_data = get_session(session_id) if session_id else None
     system_prompt = _get_full_system_prompt(session_data, dependencies, system_prompt_override, active_prompt_name_for_filter, source)
 
     history_for_log_str = "No history available."
-    if session_data: 
+    if session_data:
         history_source = []
         if not disabled_history:
              history_source = chat_history if chat_history is not None else session_data.get('chat_object', [])
@@ -427,7 +471,7 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
              history_json_obj = {"chat_history": normalized_history}
         else:
              history_json_obj = {"chat_history": history_source}
-        
+
         history_for_log_str = json.dumps(history_json_obj, indent=2)
 
     full_log_message = (
@@ -445,14 +489,14 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
         try:
             if APP_CONFIG.CURRENT_PROVIDER == "Google":
                 is_session_call = session_data is not None and 'chat_object' in session_data and not disabled_history
-                
+
                 if is_session_call:
                     chat_session = session_data['chat_object']
                     full_prompt_for_api = f"SYSTEM PROMPT:\n{system_prompt}\n\nUSER PROMPT:\n{prompt}"
-                    
+
                     if APP_CONFIG.CONDENSE_SYSTEMPROMPT_HISTORY:
                         chat_session.history = _condense_and_clean_history(chat_session.history)
-                    
+
                     response = await chat_session.send_message_async(full_prompt_for_api)
                 else:
                     full_prompt_for_api = f"{system_prompt}\n\n{prompt}"
@@ -460,13 +504,17 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
 
                 if not response or not hasattr(response, 'text'):
                     raise RuntimeError("Google LLM returned an empty or invalid response.")
-                response_text = response.text.strip()
-                
+                response_text = response.text # Keep potential whitespace for now
+                # --- MODIFICATION START: Sanitize *after* getting text ---
+                response_text = _sanitize_llm_output(response_text)
+                # --- MODIFICATION END ---
+
+
                 if hasattr(response, 'usage_metadata'):
                     usage = response.usage_metadata
                     input_tokens = usage.prompt_token_count
                     output_tokens = usage.candidates_token_count
-                
+
                 break
 
             elif APP_CONFIG.CURRENT_PROVIDER in ["Anthropic", "OpenAI", "Azure", "Ollama", "Friendli"]:
@@ -479,34 +527,42 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
 
                 messages_for_api = [{'role': 'assistant' if msg.get('role') == 'model' else msg.get('role'), 'content': msg.get('content')} for msg in history_source]
                 messages_for_api.append({'role': 'user', 'content': prompt})
-                
+
                 if APP_CONFIG.CURRENT_PROVIDER == "Anthropic":
                     response = await llm_instance.messages.create(
                         model=APP_CONFIG.CURRENT_MODEL, system=system_prompt, messages=messages_for_api, max_tokens=4096, timeout=120.0
                     )
-                    response_text = _sanitize_llm_output(response.content[0].text)
+                    # --- MODIFICATION START: Apply sanitization ---
+                    raw_text = response.content[0].text if response.content else ""
+                    response_text = _sanitize_llm_output(raw_text)
+                    # --- MODIFICATION END ---
                     if hasattr(response, 'usage'):
                         input_tokens, output_tokens = response.usage.input_tokens, response.usage.output_tokens
-                
+
                 elif APP_CONFIG.CURRENT_PROVIDER in ["OpenAI", "Azure", "Friendli"]:
                     messages_for_api.insert(0, {'role': 'system', 'content': system_prompt})
                     response = await llm_instance.chat.completions.create(
                         model=APP_CONFIG.CURRENT_MODEL, messages=messages_for_api, max_tokens=4096, timeout=120.0
                     )
-                    response_text = _sanitize_llm_output(response.choices[0].message.content)
+                    # --- MODIFICATION START: Apply sanitization ---
+                    raw_text = response.choices[0].message.content if response.choices else ""
+                    response_text = _sanitize_llm_output(raw_text)
+                    # --- MODIFICATION END ---
                     if hasattr(response, 'usage'):
                         input_tokens, output_tokens = response.usage.prompt_tokens, response.usage.completion_tokens
-                
+
                 elif APP_CONFIG.CURRENT_PROVIDER == "Ollama":
                     response = await llm_instance.chat(
                         model=APP_CONFIG.CURRENT_MODEL, messages=messages_for_api, system_prompt=system_prompt
                     )
-                    response_text = response["message"]["content"].strip()
+                    # --- MODIFICATION START: Apply sanitization ---
+                    raw_text = response.get("message", {}).get("content", "")
+                    response_text = _sanitize_llm_output(raw_text)
+                    # --- MODIFICATION END ---
                     input_tokens, output_tokens = response.get('prompt_eval_count', 0), response.get('eval_count', 0)
-                
+
                 break
-            
-            # --- MODIFICATION START: Final context-aware payload logic for AWS Bedrock ---
+
             elif APP_CONFIG.CURRENT_PROVIDER == "Amazon":
                 history = []
                 if not disabled_history:
@@ -517,7 +573,7 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
 
                 model_id_to_invoke = APP_CONFIG.CURRENT_MODEL
                 is_inference_profile = model_id_to_invoke.startswith("arn:aws:bedrock:")
-                
+
                 bedrock_provider = ""
                 if is_inference_profile:
                     profile_part = model_id_to_invoke.split('/')[-1]
@@ -526,7 +582,7 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                         bedrock_provider = provider_match.group(1)
                 else:
                     bedrock_provider = model_id_to_invoke.split('.')[0]
-                
+
                 app_logger.info(f"Determined Bedrock provider for payload construction: '{bedrock_provider}'")
 
                 body = ""
@@ -534,13 +590,12 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                     messages = [{'role': 'assistant' if msg.get('role') == 'model' else msg.get('role'), 'content': msg.get('content')} for msg in history]
                     messages.append({'role': 'user', 'content': prompt})
                     body = json.dumps({
-                        "anthropic_version": "bedrock-2023-05-31", 
-                        "max_tokens": 4096, 
-                        "system": system_prompt, 
+                        "anthropic_version": "bedrock-2023-05-31",
+                        "max_tokens": 4096,
+                        "system": system_prompt,
                         "messages": messages
                     })
                 elif bedrock_provider == "amazon":
-                    # Use modern `messages` format for newer models/profiles, legacy `inputText` for direct legacy calls
                     if is_inference_profile or "titan-text-express" not in model_id_to_invoke:
                          messages = [{'role': 'assistant' if msg.get('role') == 'model' else 'user', 'content': [{'text': msg.get('content')}]} for msg in history]
                          messages.append({"role": "user", "content": [{"text": prompt}]})
@@ -548,59 +603,67 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                          if system_prompt:
                              body_dict["system"] = [{"text": system_prompt}]
                          body = json.dumps(body_dict)
-                    else: # Legacy Titan direct invocation
+                    else:
                         text_prompt = f"{system_prompt}\n\n" + "".join([f"{msg['role']}: {msg['content']}\n\n" for msg in history]) + f"user: {prompt}\n\nassistant:"
                         body = json.dumps({"inputText": text_prompt, "textGenerationConfig": {"maxTokenCount": 4096}})
 
                 elif bedrock_provider in ["cohere", "meta", "ai21", "mistral"]:
                     text_prompt = f"{system_prompt}\n\n" + "".join([f"{msg['role']}: {msg['content']}\n\n" for msg in history]) + f"user: {prompt}\n\nassistant:"
-                    
+
                     if bedrock_provider == "cohere":
                         body_dict = {"prompt": text_prompt, "max_tokens": 4096}
                     elif bedrock_provider == "meta":
                         body_dict = {"prompt": text_prompt, "max_gen_len": 2048}
                     elif bedrock_provider == "mistral":
                         body_dict = {"prompt": text_prompt, "max_tokens": 4096}
-                    else: # ai21
+                    else:
                         body_dict = {"prompt": text_prompt, "maxTokens": 4096}
                     body = json.dumps(body_dict)
                 else:
                     app_logger.warning(f"Unknown Bedrock provider '{bedrock_provider}'. Defaulting to legacy 'inputText' format.")
                     text_prompt = f"{system_prompt}\n\n" + "".join([f"{msg['role']}: {msg['content']}\n\n" for msg in history]) + f"user: {prompt}\n\nassistant:"
                     body = json.dumps({
-                        "inputText": text_prompt, 
+                        "inputText": text_prompt,
                         "textGenerationConfig": {"maxTokenCount": 4096}
                     })
 
                 final_model_id_for_api = _normalize_bedrock_model_id(model_id_to_invoke)
-                
+
                 loop = asyncio.get_running_loop()
                 response = await loop.run_in_executor(None, lambda: llm_instance.invoke_model(body=body, modelId=final_model_id_for_api))
                 response_body = json.loads(response.get('body').read())
-                
+
+                raw_text = "" # Initialize raw_text
                 if bedrock_provider == "anthropic":
-                    response_text = response_body.get('content')[0].get('text')
+                    raw_text = response_body.get('content')[0].get('text') if response_body.get('content') else ""
                 elif bedrock_provider == "amazon":
                     if is_inference_profile or "titan-text-express" not in model_id_to_invoke:
-                        response_text = response_body.get('output', {}).get('message', {}).get('content', [{}])[0].get('text', '')
+                        raw_text = response_body.get('output', {}).get('message', {}).get('content', [{}])[0].get('text', '')
                     else:
-                        response_text = response_body.get('results')[0].get('outputText')
+                        raw_text = response_body.get('results')[0].get('outputText') if response_body.get('results') else ""
                 elif bedrock_provider == "cohere":
-                    response_text = response_body.get('generations')[0].get('text')
+                    raw_text = response_body.get('generations')[0].get('text') if response_body.get('generations') else ""
                 elif bedrock_provider == "meta":
-                    response_text = response_body.get('generation')
+                    raw_text = response_body.get('generation') or ""
                 elif bedrock_provider == "mistral":
-                    response_text = response_body.get('outputs')[0].get('text')
+                    raw_text = response_body.get('outputs')[0].get('text') if response_body.get('outputs') else ""
                 elif bedrock_provider == "ai21":
-                    response_text = response_body.get('completions')[0].get('data').get('text')
+                    raw_text = response_body.get('completions')[0].get('data').get('text') if response_body.get('completions') else ""
                 else:
-                    response_text = response_body.get('results')[0].get('outputText')
-                
+                    raw_text = response_body.get('results')[0].get('outputText') if response_body.get('results') else ""
+
+                # --- MODIFICATION START: Apply sanitization ---
+                response_text = _sanitize_llm_output(raw_text)
+                # --- MODIFICATION END ---
+
+                # Note: Token counts are not consistently available for all Bedrock models/providers
+                input_tokens = response_body.get('usage', {}).get('input_tokens', 0) if bedrock_provider == 'anthropic' else 0
+                output_tokens = response_body.get('usage', {}).get('output_tokens', 0) if bedrock_provider == 'anthropic' else 0
+
                 break
-            # --- MODIFICATION END ---
             else:
                 raise NotImplementedError(f"Provider '{APP_CONFIG.CURRENT_PROVIDER}' is not yet supported.")
-        
+
         except (InternalServerError, RateLimitError, OpenAI_APIError) as e:
             if attempt < max_retries - 1:
                 delay = (base_delay * (2 ** attempt)) + random.uniform(0, 1)
@@ -609,15 +672,42 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                 continue
             else:
                 raise e
+        # --- MODIFICATION START: Catch JSONDecodeError from parse_and_coerce ---
+        except JSONDecodeError as e: # Catch the specific error from parsing
+            app_logger.error(f"Failed to parse JSON response from LLM after sanitization. Error: {e}")
+            llm_history_logger.error(f"--- ERROR in LLM JSON parsing ---\n{e}\n" + "-"*50 + "\n")
+            # If raise_on_error is True, re-raise it so the caller knows it failed definitively
+            if raise_on_error:
+                raise # Re-raise the JSONDecodeError
+            else:
+                # If not raising, return an empty string or handle as needed
+                response_text = ""
+                break # Exit retry loop after parsing failure
+        # --- MODIFICATION END ---
         except Exception as e:
             app_logger.error(f"Error calling LLM API for provider {APP_CONFIG.CURRENT_PROVIDER}: {e}", exc_info=True)
             llm_history_logger.error(f"--- ERROR in LLM call ---\n{e}\n" + "-"*50 + "\n")
-            raise e
+            # --- MODIFICATION START: Check raise_on_error before raising ---
+            if raise_on_error:
+                raise e # Re-raise general exceptions only if requested
+            else:
+                # Log but don't crash the whole process if raise_on_error is False
+                app_logger.warning(f"LLM call failed after {attempt+1} attempts but raise_on_error=False. Continuing with empty response.")
+                response_text = ""
+                break # Exit retry loop after general failure
+            # --- MODIFICATION END ---
 
-    if not response_text and raise_on_error:
+
+    # --- MODIFICATION START: Handle case where retries exhausted without success ---
+    if not response_text and attempt == max_retries - 1 and raise_on_error:
+        # This ensures an error is raised if all retries failed and raise_on_error is True
         raise RuntimeError(f"LLM call failed after {max_retries} retries.")
+    # --- MODIFICATION END ---
 
+
+    # --- MODIFICATION START: Use sanitized text for hallucination check ---
     response_text = _extract_final_answer_from_json(response_text)
+    # --- MODIFICATION END ---
 
     llm_logger.info(f"--- REASON FOR CALL ---\n{reason}\n--- RESPONSE ---\n{response_text}\n" + "-"*50 + "\n")
 
@@ -645,22 +735,19 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
     certified_list = []
     model_names = []
 
-    # --- MODIFICATION START: Implement resilient model listing for Google ---
     if provider == "Google":
         certified_list = CERTIFIED_GOOGLE_MODELS
         api_key = credentials.get("apiKey")
         if not api_key:
             raise ValueError("API key for Google is required.")
 
-        # Use a direct, raw HTTP request to bypass the faulty SDK deserialization
         url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(url)
                 response.raise_for_status()
                 models_data = response.json().get("models", [])
-            
-            # Manually parse the raw response, ignoring any unexpected fields
+
             model_names = [
                 model['name'].split('/')[-1]
                 for model in models_data
@@ -668,7 +755,6 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
             ]
         except (httpx.RequestError, json.JSONDecodeError, KeyError) as e:
             app_logger.error(f"Failed to list Google models via direct API call: {e}", exc_info=True)
-            # As a fallback, try the original SDK method, which might work if the SDK is updated
             try:
                 app_logger.warning("Direct API failed. Falling back to SDK's genai.list_models().")
                 genai.configure(api_key=api_key)
@@ -677,7 +763,6 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
             except Exception as sdk_e:
                 app_logger.error(f"SDK fallback for listing Google models also failed: {sdk_e}", exc_info=True)
                 raise RuntimeError("Could not retrieve model list from Google via API or SDK.") from sdk_e
-    # --- MODIFICATION END ---
 
     elif provider == "Anthropic":
         certified_list = CERTIFIED_ANTHROPIC_MODELS
@@ -691,13 +776,12 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
         models_page = await client.models.list()
         model_names = [model.id for model in models_page.data if "gpt" in model.id]
 
-    # --- MODIFICATION START: Implement bifurcated model listing for Friendli.ai ---
     elif provider == "Friendli":
         certified_list = CERTIFIED_FRIENDLI_MODELS
         friendli_token = credentials.get("friendli_token")
         endpoint_url = credentials.get("friendli_endpoint_url")
-        
-        if endpoint_url: # Dedicated Endpoint: Fetch models dynamically
+
+        if endpoint_url:
             request_url = f"{endpoint_url.rstrip('/')}/v1/models"
             headers = {"Authorization": f"Bearer {friendli_token}"}
             async with httpx.AsyncClient() as client:
@@ -706,12 +790,10 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
                 response.raise_for_status()
                 data = response.json()
             model_names = [model.get("id") for model in data if model.get("id")]
-        else: # Serverless Endpoint: Use a hardcoded list, as per the new design
+        else:
             app_logger.info("Friendli.ai Serverless mode: No model listing endpoint available. Returning certified list.")
-            # Return the raw names from the certified list, removing wildcards
             model_names = [name.replace('*', '') for name in certified_list]
-    # --- MODIFICATION END ---
-            
+
     elif provider == "Amazon":
         bedrock_client = boto3.client(
             service_name='bedrock',
@@ -728,13 +810,13 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
             certified_list = CERTIFIED_AMAZON_MODELS
             response = await loop.run_in_executor(None, lambda: bedrock_client.list_foundation_models(byOutputModality='TEXT'))
             model_names = [m['modelId'] for m in response['modelSummaries']]
-    
+
     elif provider == "Azure":
         certified_list = CERTIFIED_AZURE_MODELS
         deployment_name = credentials.get("azure_deployment_name")
         if deployment_name:
             model_names = [deployment_name]
-    
+
     elif provider == "Ollama":
         certified_list = CERTIFIED_OLLAMA_MODELS
         client = OllamaClient(host=credentials.get("host"))
@@ -748,4 +830,3 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
         }
         for name in model_names
     ]
-

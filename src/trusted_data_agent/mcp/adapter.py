@@ -149,7 +149,7 @@ def _normalize_tool_arguments(args: dict) -> dict:
         # Find the canonical name for the current argument.
         # If the arg_name is not a synonym, it is treated as its own canonical name.
         canonical_name = reverse_synonym_map.get(arg_name, arg_name)
-        
+
         # --- MODIFICATION START: Implement "last-wins" logic ---
         # Unconditionally set (or overwrite) the value for the canonical name.
         # This ensures the last synonym encountered takes precedence.
@@ -228,7 +228,7 @@ async def load_and_categorize_mcp_resources(STATE: dict):
 
         list_tools_result = await temp_session.list_tools()
         raw_tools = list_tools_result.tools if hasattr(list_tools_result, 'tools') else []
-        
+
         processed_tools = []
         class SimpleTool:
             def __init__(self, **kwargs):
@@ -244,7 +244,7 @@ async def load_and_categorize_mcp_resources(STATE: dict):
                 cleaned_description, arg_desc_map = _get_arg_descriptions_from_string(tool_desc)
                 schema = raw_tool.inputSchema
                 required_args = schema.get('required', []) or []
-                
+
                 for arg_name, arg_schema in schema['properties'].items():
                     processed_args.append({
                         "name": arg_name,
@@ -252,7 +252,7 @@ async def load_and_categorize_mcp_resources(STATE: dict):
                         "required": arg_name in required_args,
                         "description": arg_desc_map.get(arg_name, arg_schema.get('title', 'No description.'))
                     })
-            
+
             processed_tools.append(SimpleTool(
                 name=tool_name,
                 description=cleaned_description,
@@ -260,7 +260,7 @@ async def load_and_categorize_mcp_resources(STATE: dict):
             ))
 
         loaded_tools = processed_tools
-        
+
         loaded_prompts = []
         try:
             list_prompts_result = await temp_session.list_prompts()
@@ -268,7 +268,7 @@ async def load_and_categorize_mcp_resources(STATE: dict):
                 loaded_prompts = list_prompts_result.prompts
         except Exception as e:
             app_logger.error(f"CRITICAL ERROR while loading prompts: {e}", exc_info=True)
-        
+
         # --- MODIFICATION START: Gracefully handle resource loading ---
         loaded_resources = []
         try:
@@ -297,7 +297,7 @@ async def load_and_categorize_mcp_resources(STATE: dict):
 
         all_capabilities = []
         all_capabilities.extend([f"- {tool.name} (tool): {tool.description}" for tool in loaded_tools])
-        
+
         for p in loaded_prompts:
             prompt_str = f"- {p.name} (prompt): {p.description or 'No description available.'}"
             if hasattr(p, 'arguments') and p.arguments:
@@ -307,7 +307,7 @@ async def load_and_categorize_mcp_resources(STATE: dict):
                     arg_name = arg_dict.get('name', 'unknown_arg')
                     prompt_str += f"\n    - `{arg_name}`"
             all_capabilities.append(prompt_str)
-        
+
         # --- MODIFICATION START: Include loaded resources in the capabilities list for classification ---
         if loaded_resources:
              all_capabilities.extend([f"- {res.name} (resource): {res.description or 'No description.'}" for res in loaded_resources])
@@ -330,29 +330,29 @@ async def load_and_categorize_mcp_resources(STATE: dict):
             f"--- Capability List ---\n{capabilities_list_str}"
         )
         categorization_system_prompt = "You are an expert assistant that only responds with valid JSON."
-        
+
         classified_capabilities_str, _, _ = await llm_handler.call_llm_api(
             llm_instance, classification_prompt, raise_on_error=True,
             system_prompt_override=categorization_system_prompt
         )
-        
+
         match = re.search(r'\{.*\}', classified_capabilities_str, re.DOTALL)
         if match is None:
             raise ValueError(f"LLM failed to return a valid JSON for capability classification. Response: '{classified_capabilities_str}'")
-        
+
         cleaned_str = match.group(0)
         classified_data = json.loads(cleaned_str)
 
         STATE['structured_tools'] = {}
         disabled_tools_list = STATE.get("disabled_tools", [])
-        
+
         for tool in loaded_tools:
             classification = classified_data.get(tool.name, {})
             category = classification.get("category", "Uncategorized")
 
             if category not in STATE['structured_tools']:
                 STATE['structured_tools'][category] = []
-            
+
             processed_args = []
             if hasattr(tool, 'args') and isinstance(tool.args, dict):
                 for arg_name, arg_details in tool.args.items():
@@ -366,7 +366,7 @@ async def load_and_categorize_mcp_resources(STATE: dict):
 
             STATE.setdefault('tool_scopes', {})
             required_args_raw = {arg['name'] for arg in processed_args if arg.get('required')}
-            
+
             canonical_required_args = set()
             for arg_name in required_args_raw:
                 found_canonical = False
@@ -377,11 +377,11 @@ async def load_and_categorize_mcp_resources(STATE: dict):
                         break
                 if not found_canonical:
                     canonical_required_args.add(arg_name)
-            
+
             for scope, required_set in AppConfig.TOOL_SCOPE_HIERARCHY:
                 if required_set.issubset(canonical_required_args):
                     STATE['tool_scopes'][tool.name] = scope
-                    break 
+                    break
 
             is_disabled = tool.name in disabled_tools_list
             STATE['structured_tools'][category].append({
@@ -398,17 +398,17 @@ async def load_and_categorize_mcp_resources(STATE: dict):
 
         STATE['structured_prompts'] = {}
         disabled_prompts_list = STATE.get("disabled_prompts", [])
-        
+
         if loaded_prompts:
             for prompt_obj in loaded_prompts:
                 classification = classified_data.get(prompt_obj.name, {})
                 category = classification.get("category", "Uncategorized")
-                
+
                 if category not in STATE['structured_prompts']:
                     STATE['structured_prompts'][category] = []
 
                 is_disabled = prompt_obj.name in disabled_prompts_list
-                
+
                 cleaned_prompt_desc, prompt_type = _extract_prompt_type_from_description(prompt_obj.description)
 
                 processed_args = []
@@ -419,7 +419,7 @@ async def load_and_categorize_mcp_resources(STATE: dict):
                         arg_dict['description'] = cleaned_arg_desc
                         arg_dict['type'] = arg_type
                         processed_args.append(arg_dict)
-                
+
                 STATE['structured_prompts'][category].append({
                     "name": prompt_obj.name,
                     "description": cleaned_prompt_desc or "No description available.",
@@ -437,7 +437,7 @@ async def load_and_categorize_mcp_resources(STATE: dict):
 
                 if category not in STATE['structured_resources']:
                     STATE['structured_resources'][category] = []
-                
+
                 STATE['structured_resources'][category].append({
                     "name": resource_obj.name,
                     "description": resource_obj.description or "No description."
@@ -453,7 +453,7 @@ async def load_and_categorize_mcp_resources(STATE: dict):
                 for prompt_info in enabled_prompts_in_category:
                     prompt_description = prompt_info.get("description", "No description available.")
                     prompt_str = f"- `{prompt_info['name']}` (prompt): {prompt_description}"
-                    
+
                     processed_args = prompt_info.get('arguments', [])
                     if processed_args:
                         prompt_str += "\n  - Arguments:"
@@ -470,12 +470,12 @@ async def load_and_categorize_mcp_resources(STATE: dict):
             STATE['prompts_context'] = "\n".join(prompt_context_parts)
         else:
             STATE['prompts_context'] = "--- No Prompts Available ---"
-            
+
         tool_args = set()
         for tool in STATE['mcp_tools'].values():
             if hasattr(tool, 'args') and isinstance(tool.args, dict):
                 tool_args.update(tool.args.keys())
-        
+
         prompt_args = set()
         for prompt_list in STATE['structured_prompts'].values():
             for prompt_info in prompt_list:
@@ -483,7 +483,7 @@ async def load_and_categorize_mcp_resources(STATE: dict):
                     for arg_details in prompt_info['arguments']:
                         if 'name' in arg_details:
                             prompt_args.add(arg_details['name'])
-                            
+
         STATE['all_known_mcp_arguments'] = {
             "tool": list(tool_args),
             "prompt": list(prompt_args)
@@ -511,7 +511,7 @@ def _transform_chart_data(data: any) -> list[dict]:
         app_logger.warning("Correcting hallucinated chart data format from columns/rows to list of dicts.")
         if isinstance(data.get('rows'), list):
             return data['rows']
-    
+
     if isinstance(data, list) and data and isinstance(data[0], dict):
         if "ColumnName" in data[0] and "DistinctValue" in data[0] and "DistinctValueCount" in data[0]:
             app_logger.info("Detected qlty_distinctCategories output pattern. Renaming 'ColumnName' to 'SourceColumnName'.")
@@ -528,14 +528,14 @@ def _transform_chart_data(data: any) -> list[dict]:
 def _build_g2plot_spec(args: dict, data: list[dict]) -> dict:
     chart_type = args.get("chart_type", "").lower()
     mapping = args.get("mapping", {})
-    
+
     canonical_map = {
-        'x_axis': 'xField', 
-        'y_axis': 'yField', 
+        'x_axis': 'xField',
+        'y_axis': 'yField',
         'color': 'seriesField',
         'angle': 'angleField',
-        'category': 'xField', 
-        'value': 'yField'      
+        'category': 'xField',
+        'value': 'yField'
     }
 
     # Create a reverse lookup from alias (lowercase) to canonical G2Plot key
@@ -547,11 +547,11 @@ def _build_g2plot_spec(args: dict, data: list[dict]) -> dict:
             reverse_canonical_map['category'] = g2plot_key
         if canonical == 'y_axis':
             reverse_canonical_map['value'] = g2plot_key
-    
+
     options = {"title": {"text": args.get("title", "Generated Chart")}}
-    
+
     first_row_keys_lower = {k.lower(): k for k in data[0].keys()} if data and data[0] else {}
-    
+
     processed_mapping = {}
     for llm_key, data_col_name in mapping.items():
         g2plot_key = reverse_canonical_map.get(llm_key.lower()) # Use reverse map
@@ -585,13 +585,13 @@ def _build_g2plot_spec(args: dict, data: list[dict]) -> dict:
                         except (ValueError, TypeError):
                             app_logger.warning(f"Non-numeric value '{cell_value}' encountered for numeric field '{actual_col_name}'. Conversion failed.")
             final_data.append(new_row)
-    
+
     options["data"] = final_data
-    
+
     # Map common names to official G2Plot types
     g2plot_type_map = {
         "bar": "Column", "column": "Column", "line": "Line", "area": "Area",
-        "pie": "Pie", "scatter": "Scatter", "histogram": "Histogram", 
+        "pie": "Pie", "scatter": "Scatter", "histogram": "Histogram",
         "heatmap": "Heatmap", "boxplot": "Box", "wordcloud": "WordCloud"
     }
     g2plot_type = g2plot_type_map.get(chart_type, chart_type.capitalize()) # Default to capitalized if not found
@@ -608,7 +608,7 @@ async def _invoke_llm_filter_task(STATE: dict, command: dict, session_id: str = 
     goal = args.get("goal")
     data_to_filter = args.get("data_to_filter")
     llm_instance = STATE.get('llm')
-    
+
     final_call_id = call_id or str(uuid.uuid4())
 
     if not goal or not data_to_filter:
@@ -628,7 +628,7 @@ async def _invoke_llm_filter_task(STATE: dict, command: dict, session_id: str = 
     )
 
     reason = f"Client-Side Tool Call: TDA_LLMFilter\nGoal: {goal}"
-    
+
     response_text, input_tokens, output_tokens = await llm_handler.call_llm_api(
         llm_instance=llm_instance,
         prompt=filtering_prompt,
@@ -647,19 +647,21 @@ async def _invoke_llm_filter_task(STATE: dict, command: dict, session_id: str = 
         # --- MODIFICATION END ---
         "results": [{"response": cleaned_response_text}]
     }
-    
+
     return result, input_tokens, output_tokens
 
-async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: list = None, mode: str = "standard", session_id: str = None, call_id: str | None = None) -> tuple[dict, int, int]:
+# --- MODIFICATION START: Correct data fetching and refine prompt ---
+async def _invoke_core_llm_task(STATE: dict, command: dict, workflow_state: dict, session_history: list = None, mode: str = "standard", session_id: str = None, call_id: str | None = None) -> tuple[dict, int, int]:
     args = command.get("arguments", {})
     user_question = args.get("user_question", "No user question provided.")
     llm_instance = STATE.get('llm')
     final_prompt = ""
     reason = ""
-    
+
     final_call_id = call_id or str(uuid.uuid4())
 
     if mode == 'full_context':
+        # ... (full_context mode logic remains unchanged) ...
         app_logger.info(f"Executing client-side LLM task in 'full_context' mode.")
         reason = f"Client-Side Tool Call: TDA_LLMTask (Full Context)\nSynthesizing answer for: '{user_question}'"
 
@@ -691,38 +693,69 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: lis
         task_description = args.get("task_description")
         source_data_keys = args.get("source_data", [])
         formatting_instructions = args.get("formatting_instructions")
-        full_workflow_state = args.get("data", {})
-        
+
+        # Prioritize 'data' argument if present (from looping phase)
+        focused_data_for_task = args.get("data")
+        data_keys_found = [] # Track which keys were actually found
+
+        if focused_data_for_task is None:
+            # Fallback: Explicitly fetch from workflow_state using source_data_keys
+            app_logger.info(f"TDA_LLMTask standard mode: Fetching data from workflow_state using keys: {source_data_keys}")
+            focused_data_for_task = {}
+            if isinstance(workflow_state, dict):
+                for key in source_data_keys:
+                    if key in workflow_state:
+                        focused_data_for_task[key] = workflow_state[key]
+                        data_keys_found.append(key)
+                    else:
+                        app_logger.warning(f"TDA_LLMTask: Source data key '{key}' specified in arguments was NOT found in the current workflow state.")
+            else:
+                 app_logger.error(f"TDA_LLMTask: workflow_state is not a dictionary. Cannot fetch source data. State type: {type(workflow_state)}")
+
+            # Accurate Warning: Only warn if keys were specified but *none* were found.
+            if source_data_keys and not data_keys_found:
+                 app_logger.warning(f"TDA_LLMTask was called for '{task_description}' but NO source data was found for the specified keys: {source_data_keys}. The data payload will be empty.")
+                 # Ensure focused_data_for_task is explicitly empty if nothing was found
+                 focused_data_for_task = {}
+            elif source_data_keys and len(data_keys_found) < len(source_data_keys):
+                 app_logger.warning(f"TDA_LLMTask: Not all specified source data keys were found. Found: {data_keys_found}, Missing: {set(source_data_keys) - set(data_keys_found)}")
+
+
+        else:
+             app_logger.info(f"TDA_LLMTask is using the pre-filtered 'data' argument provided by the executor.")
+
         app_logger.info(f"Executing client-side LLM task in 'standard' mode: {task_description}")
         reason = f"Client-Side Tool Call: TDA_LLMTask\nTask: {task_description}"
 
-        focused_data_for_task = {}
-        if isinstance(full_workflow_state, dict):
-            for key in source_data_keys:
-                if key in full_workflow_state:
-                    focused_data_for_task[key] = full_workflow_state[key]
-        
-        if not focused_data_for_task and source_data_keys:
-            app_logger.warning(f"TDA_LLMTask was called for '{task_description}' but no source data was found for keys: {source_data_keys}. Passing all data as a fallback.")
-            focused_data_for_task = full_workflow_state
 
         known_context = {}
-        if isinstance(full_workflow_state, dict):
-            for phase_results in full_workflow_state.values():
+        # Try to extract context from focused data first, then full state if needed
+        # Use the definitively populated focused_data_for_task
+        context_source = focused_data_for_task
+        if isinstance(context_source, dict):
+            for phase_results in context_source.values():
+                # Handle both list of results and single result dicts robustly
+                results_to_process = []
                 if isinstance(phase_results, list):
-                    for result in phase_results:
-                        if isinstance(result, dict) and "metadata" in result:
-                            metadata = result.get("metadata", {})
-                            if "database" in metadata and "database_name" not in known_context:
-                                known_context["database_name"] = metadata["database"]
-                            if "table" in metadata and "table_name" not in known_context:
-                                known_context["table_name"] = metadata["table"]
+                    results_to_process = phase_results
+                elif isinstance(phase_results, dict): # Handle case where source might be a single dict
+                    results_to_process = [phase_results]
+
+                for result in results_to_process:
+                    if isinstance(result, dict) and "metadata" in result:
+                        metadata = result.get("metadata", {})
+                        if "database" in metadata and "database_name" not in known_context:
+                            known_context["database_name"] = metadata["database"]
+                        if "table" in metadata and "table_name" not in known_context:
+                            known_context["table_name"] = metadata["table"]
+                        if "column_name" in metadata and "column_name" not in known_context:
+                             known_context["column_name"] = metadata["column_name"]
 
         known_context_str = "\n".join([f"- {key}: {value}" for key, value in known_context.items()]) if known_context else "None"
 
         final_prompt = "You are a highly capable text processing and synthesis assistant.\n\n"
 
-        if user_question:
+        if user_question and user_question != "Executing prompt...": # Don't inject default text
             final_prompt += (
                 "--- PRIMARY GOAL ---\n"
                 f"Your most important task is to directly answer the user's original question: '{user_question}'.\n"
@@ -734,7 +767,7 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: lis
             "--- TASK ---\n"
             f"{task_description}\n\n"
             "--- RELEVANT DATA (Selected from Previous Phases) ---\n"
-            f"{json.dumps(focused_data_for_task, indent=2)}\n\n"
+            f"{json.dumps(focused_data_for_task, indent=2)}\n\n" # Use the definitively populated data
             "--- KNOWN CONTEXT ---\n"
             "The following key information has already been established in previous steps. You MUST use this information to populate header fields like 'Table Name' or 'Database Name'.\n"
             f"{known_context_str}\n\n"
@@ -745,17 +778,20 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: lis
             "- If the 'TASK' asks for a 'summary of errors', you MUST provide a concise overview of the issues, not just a list of error codes.\n"
             "Always prioritize generating content that matches the *meaning* and *purpose* of the 'TASK', interpreting the raw data to produce the desired semantic output.\n\n"
             "--- CRITICAL RULES ---\n"
-            "1. **Separate Data from Description:** If the 'TASK' requires you to output header fields (like `***Table Name:***` or `***Database Name:***`) AND a main description, you MUST treat these as separate steps. First, populate the header fields using the 'KNOWN CONTEXT'. Then, write the main description. Do NOT merge context data (like the database name) into a single header field.\n"
-            "2. **Content and Formatting Precision:** You MUST adhere to any and all formatting instructions contained in the 'TASK' description with absolute precision. Do not deviate, simplify, or change the requested format in any way. You MUST generate content that genuinely fulfills the semantic goal of the 'TASK'.\n"
-            "3. **Key Name Adherence:** If the 'TASK' description provides an example format, you MUST use the exact key names (e.g., `***Description:***`, `***Table Name:***`) shown in the example. Do not invent new key names or use synonyms like 'Table Description'.\n"
-            "4. **Column Placeholder Replacement:** If the 'TASK' involves describing table columns and the formatting guidelines include a placeholder like `***ColumnX:***` or `***[Column Name]:***`, you MUST replace that placeholder with the actual name of the column you are describing (e.g., `***CUST_ID:***`, `***FIRSTNAME:***`). Do not use generic, numbered placeholders like 'Column1', 'Column2', etc.\n"
-            "5. **Layout and Line Breaks:** Each key-value pair or list item specified in the formatting guidelines MUST be on its own separate line. Do not combine multiple items onto a single line.\n\n"
+            "1. **Accurate Refusal:** If you cannot complete the `TASK` because the `RELEVANT DATA` is missing or is of the wrong type (e.g., you need descriptions but received DDLs), you MUST state this clearly. Explain *why* the provided data is insufficient (e.g., 'I need table descriptions, but only DDLs were provided'). Do NOT falsely claim the `RELEVANT DATA` section is empty if data is present.\n"
+            "2. **Separate Data from Description:** If the 'TASK' requires you to output header fields (like `***Table Name:***` or `***Database Name:***`) AND a main description, you MUST treat these as separate steps. First, populate the header fields using the 'KNOWN CONTEXT'. Then, write the main description. Do NOT merge context data (like the database name) into a single header field.\n"
+            "3. **Content and Formatting Precision:** You MUST adhere to any and all formatting instructions contained in the 'TASK' description with absolute precision. Do not deviate, simplify, or change the requested format in any way. You MUST generate content that genuinely fulfills the semantic goal of the 'TASK'.\n"
+            "4. **Key Name Adherence:** If the 'TASK' description provides an example format, you MUST use the exact key names (e.g., `***Description:***`, `***Table Name:***`) shown in the example. Do not invent new key names or use synonyms like 'Table Description'.\n"
+            "5. **Column Placeholder Replacement:** If the 'TASK' involves describing table columns and the formatting guidelines include a placeholder like `***ColumnX:***` or `***[Column Name]:***`, you MUST replace that placeholder with the actual name of the column you are describing (e.g., `***CUST_ID:***`, `***FIRSTNAME:***`). Do not use generic, numbered placeholders like 'Column1', 'Column2', etc.\n"
+            "6. **Layout and Line Breaks:** Each key-value pair or list item specified in the formatting guidelines MUST be on its own separate line. Do not combine multiple items onto a single line.\n\n"
         )
 
         if formatting_instructions:
             final_prompt += f"--- ADDITIONAL FORMATTING INSTRUCTIONS ---\n{formatting_instructions}\n\n"
 
         final_prompt += "Your response should be the direct result of the task. Do not add any conversational text or extra formatting unless explicitly requested by the task description."
+    # --- MODIFICATION END ---
+
 
     response_text, input_tokens, output_tokens = await llm_handler.call_llm_api(
         llm_instance=llm_instance,
@@ -767,20 +803,20 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, session_history: lis
     )
 
     refusal_phrases = [
-        "i'm unable to", "i cannot", "unable to generate", "no specific task", 
+        "i'm unable to", "i cannot", "unable to generate", "no specific task",
         "as an ai model", "i can't provide"
     ]
-    
+
     if any(phrase in response_text.lower() for phrase in refusal_phrases):
         app_logger.error(f"TDA_LLMTask failed due to detected LLM refusal. Response: '{response_text}'")
         result = {
-            "status": "error", 
+            "status": "error",
             "error_message": "LLM refused to perform the synthesis task.",
             "data": response_text
         }
     else:
         result = {
-            "status": "success", 
+            "status": "success",
             # --- MODIFICATION START ---
             "metadata": {"call_id": final_call_id, "tool_name": "TDA_LLMTask"},
             # --- MODIFICATION END ---
@@ -806,9 +842,9 @@ async def _invoke_final_report_task(STATE: dict, command: dict, workflow_state: 
         "2.  `key_metric`: OPTIONAL. Use ONLY if the answer can be summarized by a single, primary value (e.g., a total count, a status). Requires `value` (string) and `label` (string). Omit the entire field if not applicable.\n"
         "3.  `key_observations`: OPTIONAL. A list of objects, each with a `text` field containing a single, narrative bullet point of supporting detail or context. Do NOT include raw data or code."
     )
-    
+
     reason = f"Client-Side Tool Call: TDA_FinalReport\nGoal: {user_question}"
-    
+
     response_text, input_tokens, output_tokens = await llm_handler.call_llm_api(
         llm_instance=llm_instance,
         prompt=final_summary_prompt_text,
@@ -836,7 +872,7 @@ async def _invoke_complex_prompt_report_task(STATE: dict, command: dict, workflo
     llm_instance = STATE.get('llm')
     prompt_goal = command.get("arguments", {}).get("prompt_goal", "No prompt goal provided.")
     final_call_id = call_id or str(uuid.uuid4())
-    
+
     final_summary_prompt_text = (
         "You are an expert technical writer and data analyst. Your task is to synthesize all the collected data from a completed workflow into a formal, structured report that fulfills the original prompt's goal.\n\n"
         f"--- ORIGINAL PROMPT GOAL ---\n{prompt_goal}\n\n"
@@ -850,7 +886,7 @@ async def _invoke_complex_prompt_report_task(STATE: dict, command: dict, workflo
         "    - `title`: The title for that specific section (e.g., 'Data Quality Analysis', 'Table DDL').\n"
         "    - `content`: The detailed findings for that section, formatted in markdown. You can use lists, bolding, and code blocks for clarity."
     )
-    
+
     reason = f"Client-Side Tool Call: TDA_ComplexPromptReport\nGoal: {prompt_goal}"
 
     response_text, input_tokens, output_tokens = await llm_handler.call_llm_api(
@@ -881,7 +917,7 @@ async def _invoke_util_calculate_date_range(STATE: dict, command: dict, session_
     args = command.get("arguments", {})
     start_date_str = args.get("start_date")
     date_phrase = args.get("date_phrase", "").lower().strip()
-    
+
     app_logger.info(f"Executing client-side tool: TDA_DateRange with start: '{start_date_str}', phrase: '{date_phrase}'")
 
     if not start_date_str or not date_phrase:
@@ -889,7 +925,7 @@ async def _invoke_util_calculate_date_range(STATE: dict, command: dict, session_
 
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
     end_date = None
-    
+
     try:
         # Simplified deterministic logic - add more cases as needed
         if "yesterday" in date_phrase:
@@ -919,7 +955,7 @@ async def _invoke_util_calculate_date_range(STATE: dict, command: dict, session_
             if match:
                 quantity = int(match.group(1))
                 unit = match.group(2)
-                
+
                 if "past" in date_phrase or "last" in date_phrase:
                     if unit == "day":
                         end_date = start_date - timedelta(days=1)
@@ -949,13 +985,13 @@ async def _invoke_util_calculate_date_range(STATE: dict, command: dict, session_
     # Fallback to LLM if deterministic logic didn't find a range
     if end_date is None:
         app_logger.info(f"Deterministic logic failed for '{date_phrase}'. Falling back to LLM-based date extraction.")
-        
+
         llm_prompt = (
             f"Given the current date is {start_date_str}, analyze the phrase '{date_phrase}'. "
             "Determine the exact start and end dates for this phrase. "
             "Your response MUST be ONLY a single, valid JSON object with two keys: 'start_date' and 'end_date', both in 'YYYY-MM-DD' format."
         )
-        
+
         response_text, _, _ = await llm_handler.call_llm_api(
             llm_instance=STATE.get('llm'),
             prompt=llm_prompt,
@@ -964,13 +1000,13 @@ async def _invoke_util_calculate_date_range(STATE: dict, command: dict, session_
             raise_on_error=True,
             session_id=session_id
         )
-        
+
         try:
             # Added extraction logic for robustness
             json_match = re.search(r"```json\s*\n(.*?)\n\s*```|(\{.*\})", response_text, re.DOTALL)
             if not json_match: raise json.JSONDecodeError("No JSON found in LLM response", response_text, 0)
             json_str = json_match.group(1) or json_match.group(2)
-            
+
             date_data = json.loads(json_str)
             start_date = datetime.strptime(date_data['start_date'], '%Y-%m-%d').date()
             end_date = datetime.strptime(date_data['end_date'], '%Y-%m-%d').date()
@@ -995,7 +1031,7 @@ async def _invoke_util_calculate_date_range(STATE: dict, command: dict, session_
 async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, call_id: str | None = None, workflow_state: dict = None) -> tuple[any, int, int]:
     mcp_client = STATE.get('mcp_client')
     tool_name = command.get("tool_name")
-    
+
     # --- MODIFICATION START: Add handler for the new TDA_ContextReport tool ---
     if tool_name == "TDA_ContextReport":
         app_logger.info("Executing client-side tool: TDA_ContextReport")
@@ -1010,14 +1046,18 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
 
     if tool_name == "TDA_LLMFilter":
         return await _invoke_llm_filter_task(STATE, command, session_id=session_id, call_id=call_id)
-    
+
     if tool_name == "TDA_FinalReport":
         command.setdefault("arguments", {})["user_question"] = workflow_state.get("original_user_input", "N/A")
+        # --- MODIFICATION START: Pass workflow_state correctly ---
         return await _invoke_final_report_task(STATE, command, workflow_state, session_id=session_id, call_id=call_id)
+        # --- MODIFICATION END ---
 
     if tool_name == "TDA_ComplexPromptReport":
         command.setdefault("arguments", {})["prompt_goal"] = workflow_state.get("workflow_goal_prompt", "N/A")
+        # --- MODIFICATION START: Pass workflow_state correctly ---
         return await _invoke_complex_prompt_report_task(STATE, command, workflow_state, session_id=session_id, call_id=call_id)
+        # --- MODIFICATION END ---
 
     if tool_name == "TDA_LLMTask":
         args = command.get("arguments", {})
@@ -1026,7 +1066,11 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
         session_history = args.pop("session_history", None)
         # Reconstruct the command with the remaining args for the core task function
         command_for_core = {"tool_name": "TDA_LLMTask", "arguments": args}
-        return await _invoke_core_llm_task(STATE, command_for_core, session_history=session_history, mode=mode, session_id=session_id, call_id=call_id)
+        # --- MODIFICATION START: Pass workflow_state correctly ---
+        # Note: workflow_state contains the *entire* state, including results from previous phases.
+        # _invoke_core_llm_task will handle extracting the relevant parts based on 'source_data' or using 'data' if present.
+        return await _invoke_core_llm_task(STATE, command_for_core, workflow_state=workflow_state, session_history=session_history, mode=mode, session_id=session_id, call_id=call_id)
+        # --- MODIFICATION END ---
 
 
     if tool_name == "TDA_CurrentDate":
@@ -1045,13 +1089,13 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
 
     if tool_name == "TDA_Charting":
         app_logger.info(f"Handling abstract chart generation for: {command}")
-        
+
         try:
             args = command.get("arguments", {})
             data = args.get("data")
             # --- Robust Data Transformation ---
-            data = _transform_chart_data(data) 
-            
+            data = _transform_chart_data(data)
+
             if not isinstance(data, list) or not data:
                 # Handle empty list case specifically
                 if isinstance(data, list) and not data:
@@ -1060,14 +1104,14 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
                      error_detail = "The 'data' argument must be a non-empty list of dictionaries."
                 result = {"status": "error", "error": "Validation failed", "data": error_detail}
                 return result, 0, 0
-            
+
             # Ensure data is list of dicts after transformation
             if not all(isinstance(item, dict) for item in data):
                 result = {"status": "error", "error": "Validation failed", "data": "Transformed 'data' is not a list of dictionaries."}
                 return result, 0, 0
 
             chart_spec = _build_g2plot_spec(args, data)
-            
+
             result = {"type": "chart", "spec": chart_spec, "metadata": {"tool_name": "TDA_Charting"}}
             return result, 0, 0
         except Exception as e:
@@ -1079,17 +1123,17 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
     args = {}
     if isinstance(command, dict):
         potential_arg_keys = [
-            "arguments", "args", "tool_args", "parameters", 
+            "arguments", "args", "tool_args", "parameters",
             "tool_input", "action_input", "tool_arguments"
         ]
-        
+
         found_args = None
         # Check top-level keys first
         for key in potential_arg_keys:
             if key in command and isinstance(command[key], dict):
                 found_args = command[key]
                 break
-        
+
         # If not found, check nested structures (e.g., {"action": {"arguments": ...}})
         if found_args is None:
             possible_wrapper_keys = ["action", "tool"]
@@ -1102,7 +1146,7 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
                             break # Found args in nested structure
                     if found_args is not None:
                         break # Found args, no need to check other wrapper keys
-            
+
         # Fallback: Assume the whole command *might* be the args if no standard keys found
         if found_args is None and command and all(k not in command for k in ["tool_name", "action", "tool"]):
              app_logger.warning(f"Could not find standard argument key for tool '{tool_name}'. Assuming entire command object contains arguments: {command}")
@@ -1110,16 +1154,16 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
 
     # Ensure found_args is a dict before normalization
     args = found_args if isinstance(found_args, dict) else {}
-    
+
     normalized_args = _normalize_tool_arguments(args)
     if normalized_args != args:
         app_logger.info(f"Normalized tool arguments for '{tool_name}'. Original: {args}, Normalized: {normalized_args}")
-    
+
     args = normalized_args
-    
+
     # --- MODIFICATION START: Implement Intelligent Argument Alignment ---
     tool_def = STATE.get('mcp_tools', {}).get(tool_name)
-    aligned_args = args.copy() 
+    aligned_args = args.copy()
 
     if tool_def and hasattr(tool_def, 'args') and isinstance(tool_def.args, dict):
         tool_arg_names = set(tool_def.args.keys()) # Names the actual tool expects
@@ -1131,7 +1175,7 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
             if canonical_name not in tool_arg_names:
                 # ...find all synonyms for this canonical name.
                 synonyms = canonical_to_synonyms_map.get(canonical_name, set())
-                
+
                 # Check if any of those synonyms ARE what the tool expects.
                 for synonym in synonyms:
                     if synonym in tool_arg_names:
@@ -1151,14 +1195,14 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
         server_name = APP_CONFIG.CURRENT_MCP_SERVER_NAME
         if not server_name:
             raise Exception("MCP server name not found in configuration.")
-            
+
         async with mcp_client.session(server_name) as temp_session:
             call_tool_result = await temp_session.call_tool(tool_name, aligned_args)
     except Exception as e:
         app_logger.error(f"Error during tool invocation for '{tool_name}': {e}", exc_info=True)
         result = {"status": "error", "error": f"An exception occurred while invoking tool '{tool_name}'.", "data": str(e)}
         return result, 0, 0
-    
+
     # --- Robust Result Parsing ---
     # Try to parse the standard content structure
     if hasattr(call_tool_result, 'content') and isinstance(call_tool_result.content, list) and len(call_tool_result.content) > 0:
@@ -1175,6 +1219,10 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
                     if isinstance(result, dict) and "metadata" not in result and "status" not in result:
                          result["metadata"] = {"tool_name": tool_name}
                          result["status"] = "success"
+                    # --- MODIFICATION START: Add tool_name to existing metadata if missing ---
+                    elif isinstance(result, dict) and "metadata" in result and isinstance(result["metadata"], dict) and "tool_name" not in result["metadata"]:
+                         result["metadata"]["tool_name"] = tool_name
+                    # --- MODIFICATION END ---
                     return result, 0, 0
                 else:
                     # If no JSON found, treat as potential error string
@@ -1185,8 +1233,9 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
                 app_logger.warning(f"Tool '{tool_name}' returned a malformed JSON string: '{raw_text}' - treating as error.")
                 result = {"status": "error", "error": "Tool returned malformed JSON string", "data": raw_text}
                 return result, 0, 0
-                
+
     # Fallback for unexpected formats - log and return error
     app_logger.error(f"Unexpected tool result format for '{tool_name}': {call_tool_result}")
     result = {"status": "error", "error": "Unexpected tool result format", "data": str(call_tool_result)}
     return result, 0, 0
+
