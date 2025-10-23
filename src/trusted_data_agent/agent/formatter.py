@@ -82,65 +82,130 @@ class OutputFormatter:
         """Handles basic inline markdown like code backticks and bolding."""
         if not isinstance(text_content, str):
             return ""
+        # Handle escaped underscores first if necessary
         text_content = text_content.replace(r'\_', '_')
+        # Process code backticks
         text_content = re.sub(r'`(.*?)`', r'<code class="bg-gray-900/70 text-teradata-orange rounded-md px-1.5 py-0.5 font-mono text-sm">\1</code>', text_content)
+        # Process bold markdown (ensure it doesn't interfere with other markdown like italics if added later)
         text_content = re.sub(r'(?<!\*)\*\*(?!\*)(.*?)(?<!\*)\*\*(?!\*)', r'<strong>\1</strong>', text_content)
         return text_content
 
-    # --- MODIFICATION START: Enhanced Markdown Renderer ---
+
     def _render_standard_markdown(self, text: str) -> str:
         """
         Renders a block of text by processing standard markdown elements,
-        including special key-value formats and fenced code blocks.
+        including special key-value formats, fenced code blocks (handling SQL DDL
+        specifically), and tables.
         """
         if not isinstance(text, str):
             return ""
-            
+
         lines = text.strip().split('\n')
         html_output = []
         list_level_stack = []
         in_code_block = False
         code_lang = ""
         code_content = []
+        in_table = False
+        table_headers = []
+        table_rows = []
 
         def get_indent_level(line_text):
             return len(line_text) - len(line_text.lstrip(' '))
 
-        for line in lines:
-            # Handle code blocks first
+        def is_table_separator(line_text):
+            return re.match(r'^\s*\|?\s*:?-+:?\s*\|?(\s*:?-+:?\s*\|?)*\s*$', line_text)
+
+        def parse_table_row(line_text):
+            # Remove leading/trailing pipes and whitespace, then split by pipe
+            cells = [cell.strip() for cell in line_text.strip().strip('|').split('|')]
+            return cells
+
+        # --- MODIFICATION START: Pattern to check for DDL content ---
+        ddl_pattern = re.compile(r'^\s*CREATE\s+(MULTISET\s+)?TABLE', re.IGNORECASE)
+        # --- MODIFICATION END ---
+
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+
+            # --- Table Detection and Processing ---
+            if not in_code_block and '|' in line and i + 1 < len(lines) and is_table_separator(lines[i+1]):
+                if not in_table: # Start of a new table
+                    in_table = True
+                    table_headers = parse_table_row(line)
+                    table_rows = []
+                    i += 2 # Skip header and separator line
+                    continue
+
+            if in_table:
+                if '|' in line:
+                    table_rows.append(parse_table_row(line))
+                    i += 1
+                    continue
+                else: # End of table block
+                    in_table = False
+                    # Render the collected table
+                    html_output.append("<div class='table-container mb-4'><table class='assistant-table'><thead><tr>")
+                    html_output.extend(f'<th>{self._process_inline_markdown(h)}</th>' for h in table_headers)
+                    html_output.append("</tr></thead><tbody>")
+                    for row in table_rows:
+                        html_output.append("<tr>")
+                        for k in range(len(table_headers)):
+                            cell_content = row[k] if k < len(row) else ""
+                            html_output.append(f'<td>{self._process_inline_markdown(cell_content)}</td>')
+                        html_output.append("</tr>")
+                    html_output.append("</tbody></table></div>")
+
+
+            # --- Code Block Processing (with DDL Handling) ---
             if line.strip().startswith('```'):
                 if in_code_block:
-                    # End of code block
-                    sanitized_code = "".join(code_content).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                    html_output.append(f"""
+                    # --- MODIFICATION START: Check for SQL DDL before rendering generic block ---
+                    full_code_content = "".join(code_content)
+                    is_sql_ddl = (code_lang == 'sql' and ddl_pattern.match(full_code_content))
+
+                    if is_sql_ddl:
+                        # Delegate rendering to _render_ddl
+                        # Create the minimal structure _render_ddl expects
+                        mock_tool_result = {
+                            "results": [{'Request Text': full_code_content}],
+                            "metadata": {} # Add empty metadata for safety
+                        }
+                        # Call _render_ddl (index doesn't matter here)
+                        html_output.append(self._render_ddl(mock_tool_result, 0))
+                    else:
+                        # Render as a generic code block
+                        sanitized_code = full_code_content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                        html_output.append(f"""
 <div class="sql-code-block mb-4">
     <div class="sql-header">
         <span>{code_lang.upper() if code_lang else 'Code'}</span>
         <button class="copy-button" onclick="copyToClipboard(this)">
-            <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg>
-            Copy
+             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg> Copy
         </button>
     </div>
     <pre><code class="language-{code_lang}">{sanitized_code}</code></pre>
-</div>
-""")
+</div>""")
+                    # --- MODIFICATION END ---
                     in_code_block = False
                     code_content = []
                     code_lang = ""
                 else:
-                    # Start of code block
                     in_code_block = True
-                    code_lang = line.strip()[3:].strip()
-                continue
-            
-            if in_code_block:
-                code_content.append(line + '\n')
+                    code_lang = line.strip()[3:].strip().lower()
+                i += 1
                 continue
 
-            # Standard markdown processing
+            if in_code_block:
+                code_content.append(line + '\n')
+                i += 1
+                continue
+
+            # --- Standard Markdown Processing (Lists, Headings, Paragraphs) ---
             stripped_line = line.lstrip(' ')
             current_indent = get_indent_level(line)
-            
+
             key_value_match = re.match(r'^\s*\*\*\*(.*?):\*\*\*\s*(.*)$', stripped_line)
             list_item_match = re.match(r'^([*-])\s+(.*)$', stripped_line)
 
@@ -156,30 +221,26 @@ class OutputFormatter:
 <div class="grid grid-cols-1 md:grid-cols-[1fr,3fr] gap-x-4 gap-y-1 py-2 border-b border-gray-800">
     <dt class="text-sm font-medium text-gray-400">{key}:</dt>
     <dd class="text-sm text-gray-200 mt-0">{processed_value}</dd>
-</div>
-""")
+</div>""")
             elif list_item_match:
                 if not list_level_stack or current_indent > list_level_stack[-1]:
                     html_output.append('<ul class="list-disc list-outside space-y-2 text-gray-300 mb-4 pl-5">')
                     list_level_stack.append(current_indent)
-                
+
                 content = list_item_match.group(2).strip()
-                
                 nested_kv_match = re.match(r'^\s*\*\*\*(.*?):\*\*\*\s*(.*)$', content)
-                
+
                 if nested_kv_match:
                     key = nested_kv_match.group(1).strip()
                     value = nested_kv_match.group(2).strip()
                     processed_value = self._process_inline_markdown(value)
-                    
                     html_output.append(f"""
-<li class="list-none -ml-5"> 
+<li class="list-none -ml-5">
     <div class="grid grid-cols-1 md:grid-cols-[1fr,3fr] gap-x-4 gap-y-1 py-1">
         <dt class="text-sm font-medium text-gray-400">{key}:</dt>
         <dd class="text-sm text-gray-200 mt-0">{processed_value}</dd>
     </div>
-</li>
-""")
+</li>""")
                 elif content:
                     html_output.append(f'<li>{self._process_inline_markdown(content)}</li>')
             else:
@@ -200,14 +261,28 @@ class OutputFormatter:
                 elif stripped_line:
                     html_output.append(f'<p class="text-gray-300 mb-4">{self._process_inline_markdown(stripped_line)}</p>')
 
-        while list_level_stack:
+            i += 1
+
+        # --- Cleanup after loop ---
+        if in_table: # Render any pending table
+            html_output.append("<div class='table-container mb-4'><table class='assistant-table'><thead><tr>")
+            html_output.extend(f'<th>{self._process_inline_markdown(h)}</th>' for h in table_headers)
+            html_output.append("</tr></thead><tbody>")
+            for row in table_rows:
+                html_output.append("<tr>")
+                for k in range(len(table_headers)):
+                    cell_content = row[k] if k < len(row) else ""
+                    html_output.append(f'<td>{self._process_inline_markdown(cell_content)}</td>')
+                html_output.append("</tr>")
+            html_output.append("</tbody></table></div>")
+
+        while list_level_stack: # Close any open lists
             html_output.append('</ul>')
             list_level_stack.pop()
 
         return "".join(html_output)
-    # --- MODIFICATION END ---
+
     
-    # --- MODIFICATION START: Add content-aware synthesis renderer ---
     def _render_json_synthesis(self, data: list) -> str:
         """
         Renders a list of JSON objects into a structured HTML format,
@@ -218,7 +293,6 @@ class OutputFormatter:
             if not isinstance(item, dict):
                 continue
 
-            # Intelligently find title and summary keys, preferring more semantic names
             title_keys = ['table_name', 'name', 'title', 'header']
             summary_keys = ['summary', 'description', 'text', 'content']
             
@@ -244,87 +318,102 @@ class OutputFormatter:
             return ""
         
         try:
-            # Attempt to parse the content as JSON
             match = re.search(r'\[.*\]|\{.*\}', text_content, re.DOTALL)
             if match:
                 data = json.loads(match.group(0))
                 if isinstance(data, list):
                     return self._render_json_synthesis(data)
         except json.JSONDecodeError:
-            # If parsing fails, it's not JSON. Fallback to markdown.
             pass
         
-        # Fallback for non-JSON or single-object JSON content
         return self._render_standard_markdown(text_content)
-    # --- MODIFICATION END ---
 
     def _render_ddl(self, tool_result: dict, index: int) -> str:
+        """
+        Renders DDL statements found within a tool result. Handles cases
+        where the 'results' list might contain multiple DDL statements.
+        Now wrapped in response-card div.
+        """
         if not isinstance(tool_result, dict) or "results" not in tool_result: return ""
         results = tool_result.get("results")
         if not isinstance(results, list) or not results: return ""
-        ddl_text = results[0].get('Request Text', 'DDL not available.')
-        ddl_text_sanitized = ddl_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        metadata = tool_result.get("metadata", {})
-        table_name = metadata.get("table", "DDL")
-        self.processed_data_indices.add(index)
-        return f"""
-        <div class="response-card">
-            <div class="sql-code-block">
-                <div class="sql-header">
-                    <span>SQL DDL: {table_name}</span>
-                    <button class="copy-button" onclick="copyToClipboard(this)">
-                        <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg>
-                        Copy
-                    </button>
-                </div>
-                <pre><code class="language-sql">{ddl_text_sanitized}</code></pre>
-            </div>
+
+        html_parts = []
+        ddl_key = 'Request Text' 
+
+        for result_item in results:
+            if not isinstance(result_item, dict) or ddl_key not in result_item:
+                continue
+
+            ddl_text = result_item.get(ddl_key, '')
+            if not ddl_text:
+                continue
+
+            ddl_text_sanitized = ddl_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            
+            metadata = tool_result.get("metadata", {})
+            table_name = metadata.get("table")
+            if not table_name:
+                 name_match = re.search(r'TABLE\s+([\w."]+)', ddl_text, re.IGNORECASE)
+                 table_name = name_match.group(1) if name_match else "DDL"
+            
+            # --- MODIFICATION START: Wrap each DDL block in response-card ---
+            html_parts.append(f"""
+<div class="response-card mb-4"> 
+    <div class="sql-code-block">
+        <div class="sql-header">
+            <span>SQL DDL: {table_name}</span>
+            <button class="copy-button" onclick="copyToClipboard(this)">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg> Copy
+            </button>
         </div>
-        """
+        <pre><code class="language-sql">{ddl_text_sanitized}</code></pre>
+    </div>
+</div>""")
+            # --- MODIFICATION END ---
+
+        self.processed_data_indices.add(index)
+        return "".join(html_parts)
 
     def _render_table(self, tool_result: dict, index: int, default_title: str) -> str:
+        # ... (rest of _render_table is unchanged) ...
         if not isinstance(tool_result, dict) or "results" not in tool_result: return ""
         results = tool_result.get("results")
-        if not isinstance(results, list) or not results or not all(isinstance(item, dict) for item in results): return ""
+        if not isinstance(results, list) or not results: return ""
+        dict_results = [item for item in results if isinstance(item, dict)]
+        if not dict_results: return ""
         
         metadata = tool_result.get("metadata", {})
         title = metadata.get("tool_name", default_title)
         
-        # --- MODIFICATION START: Use content-aware rendering for single-response text ---
-        # This is the core logic change. If the result is clearly not tabular (e.g., from TDA_LLMTask),
-        # use the new markdown renderer instead of forcing it into a table.
         is_single_text_response = (
-            len(results) == 1 and 
-            "response" in results[0] and 
-            len(results[0].keys()) == 1
+            len(dict_results) == 1 and 
+            "response" in dict_results[0] and 
+            len(dict_results[0].keys()) == 1
         )
 
         if is_single_text_response:
-            response_text = results[0].get("response", "")
+            response_text = dict_results[0].get("response", "")
             self.processed_data_indices.add(index)
-            # We wrap it in response-card to maintain consistent styling with other collateral items.
             return f"<div class='response-card'>{self._render_synthesis_content(response_text)}</div>"
-        # --- MODIFICATION END ---
         
-        headers = results[0].keys()
-        
-        table_data_json = json.dumps(results)
+        headers = dict_results[0].keys() 
+        table_data_json = json.dumps(dict_results) 
 
         html = f"""
         <div class="response-card">
             <div class="flex justify-between items-center mb-2">
                 <h4 class="text-lg font-semibold text-white">Data: Result for <code>{title}</code></h4>
                 <button class="copy-button" onclick="copyTableToClipboard(this)" data-table='{table_data_json}'>
-                    <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg>
-                        Copy Table
-                    </button>
-                </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg> Copy Table
+                </button>
+            </div>
             <div class='table-container'>
                 <table class='assistant-table'>
                     <thead><tr>{''.join(f'<th>{h}</th>' for h in headers)}</tr></thead>
                     <tbody>
         """
-        for row in results:
+        for row in dict_results: 
             html += "<tr>"
             for header in headers:
                 cell_data = str(row.get(header, ''))
@@ -336,6 +425,7 @@ class OutputFormatter:
         return html
         
     def _render_chart_with_details(self, chart_data: dict, table_data: dict, chart_index: int, table_index: int) -> str:
+        # ... (unchanged) ...
         chart_id = f"chart-render-target-{uuid.uuid4()}"
         chart_spec_json = json.dumps(chart_data.get("spec", {}))
         
@@ -349,8 +439,7 @@ class OutputFormatter:
             <div class="flex justify-between items-center mt-4 mb-2">
                 <h5 class="text-md font-semibold text-white">Chart Data</h5>
                 <button class="copy-button" onclick="copyTableToClipboard(this)" data-table='{table_data_json}'>
-                    <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg>
-                    Copy Table
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z"/></svg> Copy Table
                 </button>
             </div>
             """
@@ -363,7 +452,7 @@ class OutputFormatter:
                 for header in headers:
                     cell_data = str(row.get(header, ''))
                     sanitized_cell = cell_data.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                    table_html += f"<td>{sanitized_cell}</td>" # Corrected variable name
+                    table_html += f"<td>{sanitized_cell}</td>"
                 table_html += "</tr>"
             table_html += "</tbody></table></div>"
 
@@ -381,9 +470,7 @@ class OutputFormatter:
         """
 
     def _format_workflow_report(self) -> tuple[str, dict]:
-        """
-        A specialized formatter for multi-step workflows that uses the CanonicalResponse model.
-        """
+        # ... (unchanged) ...
         tts_payload = { "direct_answer": "", "key_observations": "", "synthesis": "" }
         if self.canonical_report:
             tts_payload = {
@@ -439,7 +526,11 @@ class OutputFormatter:
 
             if collateral_items:
                 collateral_html = ""
-                for i, item in enumerate(collateral_items):
+                for i in range(len(collateral_items)):
+                    if i in self.processed_data_indices:
+                        continue
+                        
+                    item = collateral_items[i]
                     tool_name = item.get("metadata", {}).get("tool_name") if isinstance(item, dict) else None
                     
                     if isinstance(item, list) and item and isinstance(item[0], dict):
@@ -455,28 +546,29 @@ class OutputFormatter:
                             collateral_html += self._render_table(table_to_render, i, "Column Iteration Result")
                         elif any(isinstance(sub_item, dict) and (sub_item.get('status') == 'skipped' or sub_item.get('status') == 'error') for sub_item in item):
                             collateral_html += f"<div class='response-card'><p class='text-sm text-gray-400 italic'>No data results for '{display_key}' due to skipped or errored sub-steps.</p></div>"
+                        self.processed_data_indices.add(i)
                         continue
                     elif isinstance(item, dict):
                         if item.get("type") == "business_description":
                             collateral_html += f"<div class='response-card'><h4 class='text-lg font-semibold text-white mb-2'>Business Description</h4><p class='text-gray-300'>{item.get('description')}</p></div>"
+                            self.processed_data_indices.add(i)
                         elif tool_name == 'base_tableDDL':
                             collateral_html += self._render_ddl(item, i)
                         elif "results" in item:
                             collateral_html += self._render_table(item, i, f"Result for {tool_name}")
                         elif item.get("status") == "skipped":
                             collateral_html += f"<div class='response-card'><p class='text-sm text-gray-400 italic'>Skipped Step: <strong>{tool_name or 'N/A'}</strong>. Reason: {item.get('reason')}</p></div>"
+                            self.processed_data_indices.add(i)
                         elif item.get("status") == "error":
                             collateral_html += f"<div class='response-card'><p class='text-sm text-red-400 italic'>Error in Step: <strong>{tool_name or 'N/A'}</strong>. Details: {item.get('error_message', item.get('data', ''))}</p></div>"
+                            self.processed_data_indices.add(i)
                 
                 if collateral_html:
                     html += f"<details class='response-card bg-white/5 open:pb-4 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>{display_key}</code></summary><div class='px-4'>{collateral_html}</div></details>"
         return html, tts_payload
 
     def _format_standard_query_report(self) -> tuple[str, dict]:
-        """
-        Formats a standard query report with content-aware rendering. If a chart
-        is present, it is promoted as the primary visual element.
-        """
+        # ... (unchanged) ...
         summary_html_parts = []
         tts_payload = {"direct_answer": "", "key_observations": "", "synthesis": ""}
 
@@ -512,24 +604,25 @@ class OutputFormatter:
         
         primary_chart_html = ""
         collateral_html_content = ""
-        chart_indices_to_skip = set()
         
         for i, tool_result in enumerate(data_source):
             if isinstance(tool_result, dict) and tool_result.get("type") == "chart":
                 table_data_result = data_source[i-1] if i > 0 else None
                 if table_data_result and isinstance(table_data_result, dict) and "results" in table_data_result:
                     primary_chart_html = self._render_chart_with_details(tool_result, table_data_result, i, i-1)
-                    chart_indices_to_skip.add(i)
-                    chart_indices_to_skip.add(i-1)
                 else: 
                     chart_id = f"chart-render-target-{uuid.uuid4()}"
                     chart_spec_json = json.dumps(tool_result.get("spec", {}))
                     primary_chart_html = f'<div class="response-card"><div id="{chart_id}" class="chart-render-target" data-spec=\'{chart_spec_json}\'></div></div>'
-                    chart_indices_to_skip.add(i)
+                    self.processed_data_indices.add(i)
                 break 
 
-        for i, tool_result in enumerate(data_source):
-            if i in chart_indices_to_skip or not isinstance(tool_result, dict):
+        for i in range(len(data_source)):
+            if i in self.processed_data_indices: 
+                continue
+            
+            tool_result = data_source[i] 
+            if not isinstance(tool_result, dict):
                 continue
             
             metadata = tool_result.get("metadata", {})
@@ -558,9 +651,7 @@ class OutputFormatter:
 
 
     def _format_complex_prompt_report(self) -> tuple[str, dict]:
-        """
-        A specialized formatter for the structured PromptReportResponse model.
-        """
+        # ... (unchanged) ...
         report = self.prompt_report
         if not report:
             return "<p>Error: Report data is missing.</p>", {}
@@ -613,7 +704,10 @@ class OutputFormatter:
 
         if collateral_items:
             collateral_html_content = ""
-            for i, tool_result in enumerate(collateral_items):
+            for i in range(len(collateral_items)):
+                if i in self.processed_data_indices:
+                    continue
+                tool_result = collateral_items[i]
                 metadata = tool_result.get("metadata", {})
                 tool_name = metadata.get("tool_name")
                 if tool_name == 'base_tableDDL':
@@ -641,18 +735,20 @@ class OutputFormatter:
             - final_html (str): The complete HTML string for the UI.
             - tts_payload (dict): The structured payload for the TTS engine.
         """
+        self.processed_data_indices = set()
+        
         if isinstance(self.prompt_report, PromptReportResponse):
-            return self._format_complex_prompt_report()
-        
-        if self.canonical_report or self.active_prompt_name:
+            final_html, tts_payload = self._format_complex_prompt_report()
+        elif self.canonical_report or self.active_prompt_name:
             if self.active_prompt_name:
-                 return self._format_workflow_report()
-            else:
-                 return self._format_standard_query_report()
-                 
+                 final_html, tts_payload = self._format_workflow_report()
+            else: 
+                 final_html, tts_payload = self._format_standard_query_report()
         elif self.llm_response_text:
-            return self._format_standard_query_report()
-        
-        final_html = "<div class='response-card summary-card'><p>The agent has completed its work.</p></div>"
-        tts_payload = {"direct_answer": "The agent has completed its work.", "key_observations": "", "synthesis": ""}
+            final_html, tts_payload = self._format_standard_query_report()
+        else:
+            final_html = "<div class='response-card summary-card'><p>The agent has completed its work.</p></div>"
+            tts_payload = {"direct_answer": "The agent has completed its work.", "key_observations": "", "synthesis": ""}
+
         return final_html, tts_payload
+

@@ -5,6 +5,7 @@ import logging
 import copy
 import uuid
 from enum import Enum, auto
+from typing import Tuple, List
 
 from trusted_data_agent.agent.formatter import OutputFormatter
 from trusted_data_agent.core import session_manager
@@ -131,6 +132,62 @@ class PlanExecutor:
         self.llm_debug_history.append({"reason": reason, "response": response_text})
         app_logger.debug(f"LLM RESPONSE (DEBUG): Reason='{reason}', Response='{response_text}'")
         return response_text, statement_input_tokens, statement_output_tokens
+
+    # --- MODIFICATION START: Relocate method from PhaseExecutor to PlanExecutor ---
+    async def _get_tool_constraints(self, tool_name: str) -> Tuple[dict, list]:
+        """
+        Uses an LLM to determine if a tool requires numeric or character columns.
+        Returns the constraints and a list of events to be yielded by the caller.
+        """
+        if tool_name in self.tool_constraints_cache:
+            return self.tool_constraints_cache[tool_name], []
+
+        events = []
+        tool_definition = self.dependencies['STATE'].get('mcp_tools', {}).get(tool_name)
+        constraints = {}
+        
+        if tool_definition:
+            prompt_modifier = ""
+            if any(k in tool_name.lower() for k in ["univariate", "standarddeviation", "negativevalues"]):
+                prompt_modifier = "This tool is for quantitative analysis and requires a 'numeric' data type for `column_name`."
+            elif any(k in tool_name.lower() for k in ["distinctcategories"]):
+                prompt_modifier = "This tool is for categorical analysis and requires a 'character' data type for `column_name`."
+
+            prompt = (
+                f"Analyze the tool to determine if its `column_name` argument is for 'numeric', 'character', or 'any' type.\n"
+                f"Tool: `{tool_definition.name}`\nDescription: \"{tool_definition.description}\"\nHint: {prompt_modifier}\n"
+                "Respond with a single JSON object: {\"dataType\": \"numeric\" | \"character\" | \"any\"}"
+            )
+            
+            reason="Determining tool constraints for column iteration."
+            call_id = str(uuid.uuid4())
+            events.append(self._format_sse({"step": "Calling LLM", "type": "system_message", "details": {"summary": reason, "call_id": call_id}}))
+            
+            response_text, input_tokens, output_tokens = await self._call_llm_and_update_tokens(
+                prompt=prompt, reason=reason,
+                system_prompt_override="You are a JSON-only responding assistant.",
+                raise_on_error=True,
+                source=self.source
+            )
+
+            updated_session = session_manager.get_session(self.session_id)
+            if updated_session:
+                events.append(self._format_sse({
+                    "statement_input": input_tokens,
+                    "statement_output": output_tokens,
+                    "total_input": updated_session.get("input_tokens", 0),
+                    "total_output": updated_session.get("output_tokens", 0),
+                    "call_id": call_id
+                }, "token_update"))
+
+            try:
+                constraints = json.loads(re.search(r'\{.*\}', response_text, re.DOTALL).group(0))
+            except (json.JSONDecodeError, AttributeError):
+                constraints = {}
+        
+        self.tool_constraints_cache[tool_name] = constraints
+        return constraints, events
+    # --- MODIFICATION END ---
 
     def _add_to_structured_data(self, tool_result: dict, context_key_override: str = None):
         """Adds tool results to the structured data dictionary."""
@@ -776,4 +833,3 @@ class PlanExecutor:
             "tts_payload": tts_payload,
             "source": self.source
         }, "final_answer")
-

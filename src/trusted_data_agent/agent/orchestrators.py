@@ -7,6 +7,8 @@ import re
 from trusted_data_agent.mcp import adapter as mcp_adapter
 from trusted_data_agent.llm import handler as llm_handler
 from trusted_data_agent.core.config import AppConfig
+from trusted_data_agent.core.utils import get_argument_by_canonical_name
+
 
 app_logger = logging.getLogger("quart.app")
 
@@ -150,9 +152,11 @@ async def execute_column_iteration(executor, command: dict):
     """
     tool_name = command.get("tool_name")
     base_args = command.get("arguments", {})
-    
-    db_name = base_args.get('database_name')
-    table_name = base_args.get('object_name')
+
+    # --- MODIFICATION START: Use synonym-aware helper to get arguments ---
+    db_name = get_argument_by_canonical_name(base_args, 'database_name')
+    table_name = get_argument_by_canonical_name(base_args, 'object_name')
+    # --- MODIFICATION END ---
 
     cols_command = {"tool_name": "base_columnDescription", "arguments": {"database_name": db_name, "object_name": table_name}}
     yield _format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
@@ -166,9 +170,11 @@ async def execute_column_iteration(executor, command: dict):
     all_column_results = [cols_result]
     
     yield _format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
-    phase_executor = executor.dependencies.get("phase_executor")
-    if not phase_executor: raise RuntimeError("PhaseExecutor dependency not found.")
-    tool_constraints, _ = await phase_executor._get_tool_constraints(tool_name)
+    # --- MODIFICATION START: Call the relocated method on the main executor ---
+    tool_constraints, constraint_events = await executor._get_tool_constraints(tool_name)
+    for event in constraint_events:
+        yield event
+    # --- MODIFICATION END ---
     yield _format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
     required_type = tool_constraints.get("dataType") if tool_constraints else None
     
@@ -186,8 +192,21 @@ async def execute_column_iteration(executor, command: dict):
                 all_column_results.append(skipped_result)
                 yield _format_sse({"step": "Skipping incompatible column", "details": skipped_result}, "tool_result")
                 continue
-
-        iter_command = {"tool_name": tool_name, "arguments": {**base_args, 'column_name': column_name}}
+        
+        # --- MODIFICATION START: Explicitly replace placeholder column_name ---
+        # Create a mutable copy of the base arguments for this iteration.
+        iter_args = base_args.copy()
+        # Find all synonyms for 'column_name' that might exist in the arguments.
+        column_synonyms = AppConfig.ARGUMENT_SYNONYM_MAP.get('column_name', set())
+        # Remove any placeholder synonyms (like '*') from the arguments.
+        for synonym in column_synonyms:
+            if synonym in iter_args:
+                del iter_args[synonym]
+        # Set the one, correct 'column_name' for this specific iteration.
+        iter_args['column_name'] = column_name
+        
+        iter_command = {"tool_name": tool_name, "arguments": iter_args}
+        # --- MODIFICATION END ---
         col_result, _, _ = await mcp_adapter.invoke_mcp_tool(executor.dependencies['STATE'], iter_command, session_id=executor.session_id)
         all_column_results.append(col_result)
     yield _format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
@@ -250,3 +269,4 @@ async def execute_hallucinated_loop(executor, phase: dict):
 
     executor._add_to_structured_data(all_results)
     executor.last_tool_output = {"metadata": {"tool_name": tool_name}, "results": all_results, "status": "success"}
+

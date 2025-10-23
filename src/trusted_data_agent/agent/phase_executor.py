@@ -342,7 +342,7 @@ class PhaseExecutor:
                 yield self.executor._format_sse({"step": "Plan Optimization", "type": "plan_optimization", "details": f"FASTPATH Data Expansion: Preparing column-level iteration for '{tool_name}'."})
                 
                 yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
-                tool_constraints, constraint_events = await self._get_tool_constraints(tool_name)
+                tool_constraints, constraint_events = await self.executor._get_tool_constraints(tool_name)
                 for event in constraint_events:
                     yield event
                 yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
@@ -403,24 +403,18 @@ class PhaseExecutor:
             
             static_phase_args = phase.get("arguments", {})
             
-            # --- MODIFICATION START: Synonym-Aware Argument Pruning ---
-            # Get the destination tool's definition to determine its valid arguments.
             tool_def = self.executor.dependencies['STATE'].get('mcp_tools', {}).get(tool_name)
             allowed_arg_names = set()
             if tool_def and hasattr(tool_def, 'args') and isinstance(tool_def.args, dict):
-                # Build an allowlist of all valid synonyms for the tool's arguments.
                 for arg_name in tool_def.args.keys():
                     allowed_arg_names.add(arg_name)
-                    # Find the canonical name for this argument
                     canonical_name = None
                     for c, s in AppConfig.ARGUMENT_SYNONYM_MAP.items():
                         if arg_name in s:
                             canonical_name = c
                             break
-                    # If a canonical name was found, add all its synonyms to the allowlist.
                     if canonical_name:
                         allowed_arg_names.update(AppConfig.ARGUMENT_SYNONYM_MAP.get(canonical_name, set()))
-            # --- MODIFICATION END ---
             
             all_loop_results = []
             yield self.executor._format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
@@ -430,20 +424,15 @@ class PhaseExecutor:
                 item_data = item if isinstance(item, dict) else {}
                 resolved_item_args = self.executor._resolve_arguments(static_phase_args, loop_item=item_data)
                 
-                # --- MODIFICATION START: Synonym-Aware Argument Pruning ---
-                # Prune the item_data to only include keys that are in the allowlist.
                 if allowed_arg_names:
                     pruned_item_data = {
                         key: value for key, value in item_data.items()
                         if key in allowed_arg_names
                     }
                 else:
-                    # Fallback if tool definition isn't found, though this is unlikely.
                     pruned_item_data = item_data
                 
-                # Merge the static phase args with the (now pruned) item-specific data.
                 merged_args = {**resolved_item_args, **pruned_item_data}
-                # --- MODIFICATION END ---
                 
                 command = {"tool_name": tool_name, "arguments": merged_args}
                 async for event in self._execute_tool(command, phase, is_fast_path=True):
@@ -1343,60 +1332,6 @@ class PhaseExecutor:
         except (json.JSONDecodeError, KeyError):
             self.executor.temp_data_holder = {'type': 'single', 'phrase': self.executor.original_user_input}
 
-    async def _get_tool_constraints(self, tool_name: str) -> Tuple[dict, list]:
-        """
-        Uses an LLM to determine if a tool requires numeric or character columns.
-        Returns the constraints and a list of events to be yielded by the caller.
-        """
-        if tool_name in self.executor.tool_constraints_cache:
-            return self.executor.tool_constraints_cache[tool_name], []
-
-        events = []
-        tool_definition = self.executor.dependencies['STATE'].get('mcp_tools', {}).get(tool_name)
-        constraints = {}
-        
-        if tool_definition:
-            prompt_modifier = ""
-            if any(k in tool_name.lower() for k in ["univariate", "standarddeviation", "negativevalues"]):
-                prompt_modifier = "This tool is for quantitative analysis and requires a 'numeric' data type for `column_name`."
-            elif any(k in tool_name.lower() for k in ["distinctcategories"]):
-                prompt_modifier = "This tool is for categorical analysis and requires a 'character' data type for `column_name`."
-
-            prompt = (
-                f"Analyze the tool to determine if its `column_name` argument is for 'numeric', 'character', or 'any' type.\n"
-                f"Tool: `{tool_definition.name}`\nDescription: \"{tool_definition.description}\"\nHint: {prompt_modifier}\n"
-                "Respond with a single JSON object: {\"dataType\": \"numeric\" | \"character\" | \"any\"}"
-            )
-            
-            reason="Determining tool constraints for column iteration."
-            call_id = str(uuid.uuid4())
-            events.append(self.executor._format_sse({"step": "Calling LLM", "type": "system_message", "details": {"summary": reason, "call_id": call_id}}))
-            
-            response_text, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
-                prompt=prompt, reason=reason,
-                system_prompt_override="You are a JSON-only responding assistant.",
-                raise_on_error=True,
-                source=self.executor.source
-            )
-
-            updated_session = session_manager.get_session(self.executor.session_id)
-            if updated_session:
-                events.append(self.executor._format_sse({
-                    "statement_input": input_tokens,
-                    "statement_output": output_tokens,
-                    "total_input": updated_session.get("input_tokens", 0),
-                    "total_output": updated_session.get("output_tokens", 0),
-                    "call_id": call_id
-                }, "token_update"))
-
-            try:
-                constraints = json.loads(re.search(r'\{.*\}', response_text, re.DOTALL).group(0))
-            except (json.JSONDecodeError, AttributeError):
-                constraints = {}
-        
-        self.executor.tool_constraints_cache[tool_name] = constraints
-        return constraints, events
-
     async def _recover_from_phase_failure(self, failed_phase_goal: str):
         """
         Attempts to recover from a persistently failing phase by generating a new plan.
@@ -1476,3 +1411,4 @@ class PhaseExecutor:
         """
         correction_handler = CorrectionHandler(self.executor)
         return await correction_handler.attempt_correction(failed_action, error_result)
+

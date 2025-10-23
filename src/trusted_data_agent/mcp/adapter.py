@@ -127,11 +127,12 @@ CLIENT_SIDE_TOOLS = [
 # --- MODIFICATION START: Implement robust argument synonym resolution ---
 def _normalize_tool_arguments(args: dict) -> dict:
     """
-    Resolves argument synonyms to their canonical form. It iterates through
-    the provided arguments, and if an argument is a known synonym, it replaces
-    it with the single, canonical argument name defined in the config.
-    This prevents validation errors caused by multiple synonyms being sent
-    to a tool that expects only one canonical argument name.
+    Resolves argument synonyms to their canonical form using a 'last-wins'
+    strategy. It iterates through the provided arguments, and if an argument
+    is a known synonym, it maps it to the single, canonical argument name
+    defined in the config, overwriting any previous value for that canonical name.
+    This prevents validation errors and correctly handles cases where specific
+    loop data should override generic plan data.
     """
     if not isinstance(args, dict):
         return {}
@@ -149,12 +150,11 @@ def _normalize_tool_arguments(args: dict) -> dict:
         # If the arg_name is not a synonym, it is treated as its own canonical name.
         canonical_name = reverse_synonym_map.get(arg_name, arg_name)
         
-        # Only add the argument to the resolved dictionary if its canonical
-        # form is not already present. This ensures that even if multiple
-        # synonyms are provided (e.g., db_name and database_name), only the
-        # first one encountered (mapped to its canonical name) is used.
-        if canonical_name not in resolved_args:
-            resolved_args[canonical_name] = arg_value
+        # --- MODIFICATION START: Implement "last-wins" logic ---
+        # Unconditionally set (or overwrite) the value for the canonical name.
+        # This ensures the last synonym encountered takes precedence.
+        resolved_args[canonical_name] = arg_value
+        # --- MODIFICATION END ---
 
     return resolved_args
 # --- MODIFICATION END ---
@@ -429,6 +429,7 @@ async def load_and_categorize_mcp_resources(STATE: dict):
                 })
 
         # --- MODIFICATION START: Process and categorize loaded resources ---
+        STATE['structured_resources'] = {} # Initialize the structure
         if loaded_resources:
             for resource_obj in loaded_resources:
                 classification = classified_data.get(resource_obj.name, {})
@@ -537,10 +538,15 @@ def _build_g2plot_spec(args: dict, data: list[dict]) -> dict:
         'value': 'yField'      
     }
 
-    reverse_canonical_map = {
-        alias.lower(): canonical for canonical, aliases in canonical_map.items() 
-        for alias in [canonical] + [key for key in aliases]
-    }
+    # Create a reverse lookup from alias (lowercase) to canonical G2Plot key
+    reverse_canonical_map = {}
+    for canonical, g2plot_key in canonical_map.items():
+        reverse_canonical_map[canonical.lower()] = g2plot_key
+        # Add common aliases - extend this if needed
+        if canonical == 'x_axis':
+            reverse_canonical_map['category'] = g2plot_key
+        if canonical == 'y_axis':
+            reverse_canonical_map['value'] = g2plot_key
     
     options = {"title": {"text": args.get("title", "Generated Chart")}}
     
@@ -548,42 +554,47 @@ def _build_g2plot_spec(args: dict, data: list[dict]) -> dict:
     
     processed_mapping = {}
     for llm_key, data_col_name in mapping.items():
-        canonical_key = reverse_canonical_map.get(llm_key.lower())
-        if canonical_key:
+        g2plot_key = reverse_canonical_map.get(llm_key.lower()) # Use reverse map
+        if g2plot_key:
             actual_col_name = first_row_keys_lower.get(data_col_name.lower())
             if not actual_col_name:
                 raise KeyError(f"The mapped column '{data_col_name}' (from '{llm_key}') was not found in the provided data.")
-            processed_mapping[canonical_map[canonical_key]] = actual_col_name
+            processed_mapping[g2plot_key] = actual_col_name # Use g2plot_key here
         else:
             app_logger.warning(f"Unknown mapping key from LLM: '{llm_key}'. Skipping.")
 
     options.update(processed_mapping)
 
+    # Specific adjustments for G2Plot types
     if chart_type == 'pie' and 'seriesField' in options:
-        options['colorField'] = options.pop('seriesField')
+        options['colorField'] = options.pop('seriesField') # Pie uses colorField for categories
 
+    # Ensure numeric fields are actually numbers
     final_data = []
     if data:
         for row in data:
             new_row = row.copy()
             for g2plot_key, actual_col_name in options.items():
-                if g2plot_key in ['yField', 'angleField', 'size']:
+                if g2plot_key in ['yField', 'angleField', 'sizeField', 'value']: # Added 'value' just in case
                     cell_value = new_row.get(actual_col_name)
                     if cell_value is not None:
                         try:
-                            new_row[actual_col_name] = float(cell_value)
+                            # Attempt conversion, handling potential commas
+                            numeric_value = float(str(cell_value).replace(',', ''))
+                            new_row[actual_col_name] = numeric_value
                         except (ValueError, TypeError):
                             app_logger.warning(f"Non-numeric value '{cell_value}' encountered for numeric field '{actual_col_name}'. Conversion failed.")
             final_data.append(new_row)
     
     options["data"] = final_data
     
+    # Map common names to official G2Plot types
     g2plot_type_map = {
         "bar": "Column", "column": "Column", "line": "Line", "area": "Area",
         "pie": "Pie", "scatter": "Scatter", "histogram": "Histogram", 
         "heatmap": "Heatmap", "boxplot": "Box", "wordcloud": "WordCloud"
     }
-    g2plot_type = g2plot_type_map.get(chart_type, chart_type.capitalize())
+    g2plot_type = g2plot_type_map.get(chart_type, chart_type.capitalize()) # Default to capitalized if not found
 
     return {"type": g2plot_type, "options": options}
 
@@ -880,15 +891,16 @@ async def _invoke_util_calculate_date_range(STATE: dict, command: dict, session_
     end_date = None
     
     try:
+        # Simplified deterministic logic - add more cases as needed
         if "yesterday" in date_phrase:
             start_date = start_date - timedelta(days=1)
             end_date = start_date
         elif "today" in date_phrase:
             end_date = start_date
         elif "past weekend" in date_phrase or "last weekend" in date_phrase:
-            days_since_sunday = (start_date.weekday() - 6) % 7
-            end_date = start_date - timedelta(days=days_since_sunday)
-            start_date = end_date - timedelta(days=1)
+            days_since_sunday = (start_date.weekday() - 6) % 7 # Sunday is 6
+            end_date = start_date - timedelta(days=days_since_sunday + 1) # Go back to previous Sunday
+            start_date = end_date - timedelta(days=1) # Previous Saturday
         elif "last week" in date_phrase or "past week" in date_phrase:
             start_of_last_week = start_date - timedelta(days=start_date.weekday() + 7)
             end_of_last_week = start_of_last_week + timedelta(days=6)
@@ -913,21 +925,28 @@ async def _invoke_util_calculate_date_range(STATE: dict, command: dict, session_
                         end_date = start_date - timedelta(days=1)
                         start_date = end_date - timedelta(days=quantity - 1)
                     elif unit == "week":
+                        # End of previous week (Sunday)
                         end_date = start_date - timedelta(days=start_date.weekday() + 1)
-                        start_date = end_date - timedelta(weeks=quantity - 1) - timedelta(days=end_date.weekday())
+                        # Start of N-1 weeks before that (Monday)
+                        start_date = end_date - timedelta(weeks=quantity - 1, days=6)
                     elif unit == "month":
+                        # Last day of previous month
                         end_date = start_date.replace(day=1) - timedelta(days=1)
+                        # First day of N-1 months before that
                         start_date = end_date.replace(day=1)
                         for _ in range(quantity - 1):
-                            start_date = (start_date - timedelta(days=1)).replace(day=1)
+                             start_date = (start_date - timedelta(days=1)).replace(day=1)
                     elif unit == "year":
+                        # Last day of previous year
                         end_date = start_date.replace(month=1, day=1) - timedelta(days=1)
+                        # First day of N-1 years before that
                         start_date = end_date.replace(year=end_date.year - (quantity - 1), month=1, day=1)
 
     except Exception as e:
         app_logger.warning(f"Deterministic date parsing failed with error: {e}. This may be expected for complex phrases.")
-        end_date = None
+        end_date = None # Ensure fallback if deterministic logic fails
 
+    # Fallback to LLM if deterministic logic didn't find a range
     if end_date is None:
         app_logger.info(f"Deterministic logic failed for '{date_phrase}'. Falling back to LLM-based date extraction.")
         
@@ -947,14 +966,20 @@ async def _invoke_util_calculate_date_range(STATE: dict, command: dict, session_
         )
         
         try:
-            date_data = json.loads(response_text)
+            # Added extraction logic for robustness
+            json_match = re.search(r"```json\s*\n(.*?)\n\s*```|(\{.*\})", response_text, re.DOTALL)
+            if not json_match: raise json.JSONDecodeError("No JSON found in LLM response", response_text, 0)
+            json_str = json_match.group(1) or json_match.group(2)
+            
+            date_data = json.loads(json_str)
             start_date = datetime.strptime(date_data['start_date'], '%Y-%m-%d').date()
             end_date = datetime.strptime(date_data['end_date'], '%Y-%m-%d').date()
-        except (json.JSONDecodeError, KeyError, ValueError) as e:
+        except (json.JSONDecodeError, KeyError, ValueError, AttributeError) as e:
             error_msg = f"LLM fallback for date range failed to produce a valid result. Response: '{response_text}'. Error: {e}"
             app_logger.error(error_msg)
             return {"status": "error", "error_message": error_msg}
 
+    # Generate the list of dates
     date_list = []
     current_date = start_date
     while current_date <= end_date:
@@ -996,9 +1021,13 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
 
     if tool_name == "TDA_LLMTask":
         args = command.get("arguments", {})
+        # Ensure 'mode' and 'session_history' are popped so they aren't passed to the core logic
         mode = args.pop("mode", "standard")
         session_history = args.pop("session_history", None)
-        return await _invoke_core_llm_task(STATE, command, session_history=session_history, mode=mode, session_id=session_id, call_id=call_id)
+        # Reconstruct the command with the remaining args for the core task function
+        command_for_core = {"tool_name": "TDA_LLMTask", "arguments": args}
+        return await _invoke_core_llm_task(STATE, command_for_core, session_history=session_history, mode=mode, session_id=session_id, call_id=call_id)
+
 
     if tool_name == "TDA_CurrentDate":
         app_logger.info("Executing client-side tool: TDA_CurrentDate")
@@ -1020,21 +1049,33 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
         try:
             args = command.get("arguments", {})
             data = args.get("data")
+            # --- Robust Data Transformation ---
             data = _transform_chart_data(data) 
             
             if not isinstance(data, list) or not data:
-                result = {"error": "Validation failed", "data": "The 'data' argument must be a non-empty list of dictionaries."}
+                # Handle empty list case specifically
+                if isinstance(data, list) and not data:
+                     error_detail = "The 'data' argument was an empty list. Cannot generate chart without data."
+                else: # Handle non-list case
+                     error_detail = "The 'data' argument must be a non-empty list of dictionaries."
+                result = {"status": "error", "error": "Validation failed", "data": error_detail}
                 return result, 0, 0
             
+            # Ensure data is list of dicts after transformation
+            if not all(isinstance(item, dict) for item in data):
+                result = {"status": "error", "error": "Validation failed", "data": "Transformed 'data' is not a list of dictionaries."}
+                return result, 0, 0
+
             chart_spec = _build_g2plot_spec(args, data)
             
             result = {"type": "chart", "spec": chart_spec, "metadata": {"tool_name": "TDA_Charting"}}
             return result, 0, 0
         except Exception as e:
             app_logger.error(f"Error building G2Plot spec: {e}", exc_info=True)
-            result = {"error": "Chart Generation Failed", "data": str(e)}
+            result = {"status": "error", "error": "Chart Generation Failed", "data": str(e)}
             return result, 0, 0
 
+    # --- Argument Extraction and Normalization ---
     args = {}
     if isinstance(command, dict):
         potential_arg_keys = [
@@ -1043,26 +1084,32 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
         ]
         
         found_args = None
+        # Check top-level keys first
         for key in potential_arg_keys:
             if key in command and isinstance(command[key], dict):
                 found_args = command[key]
                 break
         
-        if found_args is not None:
-            args = found_args
-        else:
+        # If not found, check nested structures (e.g., {"action": {"arguments": ...}})
+        if found_args is None:
             possible_wrapper_keys = ["action", "tool"]
             for wrapper_key in possible_wrapper_keys:
                 if wrapper_key in command and isinstance(command[wrapper_key], dict):
+                    nested_dict = command[wrapper_key]
                     for arg_key in potential_arg_keys:
-                        if arg_key in command[wrapper_key] and isinstance(command[wrapper_key][arg_key], dict):
-                            found_args = command[wrapper_key][arg_key]
-                            break
+                        if arg_key in nested_dict and isinstance(nested_dict[arg_key], dict):
+                            found_args = nested_dict[arg_key]
+                            break # Found args in nested structure
                     if found_args is not None:
-                        break
+                        break # Found args, no need to check other wrapper keys
             
-            if found_args is not None:
-                args = found_args
+        # Fallback: Assume the whole command *might* be the args if no standard keys found
+        if found_args is None and command and all(k not in command for k in ["tool_name", "action", "tool"]):
+             app_logger.warning(f"Could not find standard argument key for tool '{tool_name}'. Assuming entire command object contains arguments: {command}")
+             found_args = command
+
+    # Ensure found_args is a dict before normalization
+    args = found_args if isinstance(found_args, dict) else {}
     
     normalized_args = _normalize_tool_arguments(args)
     if normalized_args != args:
@@ -1075,23 +1122,27 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
     aligned_args = args.copy() 
 
     if tool_def and hasattr(tool_def, 'args') and isinstance(tool_def.args, dict):
-        tool_arg_names = set(tool_def.args.keys())
+        tool_arg_names = set(tool_def.args.keys()) # Names the actual tool expects
         canonical_to_synonyms_map = AppConfig.ARGUMENT_SYNONYM_MAP
 
+        # Iterate through the *canonical* names we have after normalization
         for canonical_name in list(aligned_args.keys()):
+            # If the canonical name itself is NOT what the tool expects...
             if canonical_name not in tool_arg_names:
-                # This canonical name isn't what the tool wants. Let's find a synonym it DOES want.
+                # ...find all synonyms for this canonical name.
                 synonyms = canonical_to_synonyms_map.get(canonical_name, set())
                 
+                # Check if any of those synonyms ARE what the tool expects.
                 for synonym in synonyms:
                     if synonym in tool_arg_names:
-                        # Found a match! The tool wants this synonym. Rename the key.
+                        # Found a match! The tool wants this specific synonym.
                         app_logger.info(
                             f"Aligning argument for '{tool_name}': "
                             f"Renaming canonical '{canonical_name}' to tool-specific '{synonym}'."
                         )
+                        # Rename the key in our arguments to match the tool's expectation.
                         aligned_args[synonym] = aligned_args.pop(canonical_name)
-                        break 
+                        break # Found the correct synonym, move to the next canonical name
     # --- MODIFICATION END ---
 
 
@@ -1108,22 +1159,34 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
         result = {"status": "error", "error": f"An exception occurred while invoking tool '{tool_name}'.", "data": str(e)}
         return result, 0, 0
     
+    # --- Robust Result Parsing ---
+    # Try to parse the standard content structure
     if hasattr(call_tool_result, 'content') and isinstance(call_tool_result.content, list) and len(call_tool_result.content) > 0:
         text_content_obj = call_tool_result.content[0]
         if hasattr(text_content_obj, 'text') and isinstance(text_content_obj.text, str):
             raw_text = text_content_obj.text
             try:
+                # Attempt to find JSON within the string
                 json_match = re.search(r'\{.*\}|\[.*\]', raw_text, re.DOTALL)
                 if json_match:
                     json_str = json_match.group(0)
                     result = json.loads(json_str)
+                    # Add metadata if missing and result looks like success
+                    if isinstance(result, dict) and "metadata" not in result and "status" not in result:
+                         result["metadata"] = {"tool_name": tool_name}
+                         result["status"] = "success"
                     return result, 0, 0
                 else:
-                    raise json.JSONDecodeError("No JSON object or array found in the response.", raw_text, 0)
+                    # If no JSON found, treat as potential error string
+                    app_logger.warning(f"Tool '{tool_name}' returned a non-JSON string: '{raw_text}' - treating as error.")
+                    result = {"status": "error", "error": "Tool returned non-JSON string", "data": raw_text}
+                    return result, 0, 0
             except json.JSONDecodeError:
-                app_logger.warning(f"Tool '{tool_name}' returned a non-JSON or malformed string: '{raw_text}'")
-                result = {"status": "error", "error": "Tool returned non-JSON or malformed string", "data": raw_text}
+                app_logger.warning(f"Tool '{tool_name}' returned a malformed JSON string: '{raw_text}' - treating as error.")
+                result = {"status": "error", "error": "Tool returned malformed JSON string", "data": raw_text}
                 return result, 0, 0
-    
-    raise RuntimeError(f"Unexpected tool result format for '{tool_name}': {call_tool_result}")
-
+                
+    # Fallback for unexpected formats - log and return error
+    app_logger.error(f"Unexpected tool result format for '{tool_name}': {call_tool_result}")
+    result = {"status": "error", "error": "Unexpected tool result format", "data": str(call_tool_result)}
+    return result, 0, 0

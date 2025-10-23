@@ -10,9 +10,42 @@ except ImportError:
     texttospeech = None
     service_account = None
 
-from trusted_data_agent.core.config import APP_STATE
+from trusted_data_agent.core.config import APP_STATE, AppConfig
 
 app_logger = logging.getLogger("quart.app")
+
+# --- MODIFICATION START: Add a centralized, synonym-aware argument reader ---
+def get_argument_by_canonical_name(args: dict, canonical_name: str) -> any:
+    """
+    Intelligently retrieves a value from an arguments dictionary by checking
+    for the canonical name and all of its registered synonyms.
+
+    This provides a robust, centralized way to access arguments without
+    needing to know which specific synonym (e.g., 'table_name', 'object_name')
+    was used in a particular tool call.
+
+    Args:
+        args: The dictionary of arguments from a tool call.
+        canonical_name: The canonical name of the argument to find (e.g., 'object_name').
+
+    Returns:
+        The value of the argument if found, otherwise None.
+    """
+    if not isinstance(args, dict):
+        return None
+
+    # Get all possible names for the desired argument from the synonym map.
+    # Fallback to a set containing just the canonical_name if it's not in the map.
+    possible_names = AppConfig.ARGUMENT_SYNONYM_MAP.get(canonical_name, {canonical_name})
+
+    # Iterate through all possible names and return the value for the first one found.
+    for name in possible_names:
+        if name in args:
+            return args[name]
+
+    return None
+# --- MODIFICATION END ---
+
 
 def get_tts_client():
     """
@@ -230,3 +263,4 @@ def _regenerate_contexts():
         app_logger.info("Regenerated LLM constraints context. No capabilities are currently forbidden.")
     
     print("\n" + "-"*44)
+
