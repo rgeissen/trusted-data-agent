@@ -819,7 +819,9 @@ class OutputFormatter:
             elif tool_result.get("type") == "chart": # Render unpaired chart
                  chart_id = f"chart-render-target-{uuid.uuid4()}"
                  chart_spec_json = json.dumps(tool_result.get("spec", {}))
-                 collateral_html_content += f'<div class="response-card mb-4"><div id="{chart_id}" class="chart-render-target" data-spec=\'{chart_spec_json.replace("'", "&apos;")}\'></div></div>'
+                 # --- MODIFICATION START: Fix the unterminated string literal error ---
+                 collateral_html_content += f"""<div class="response-card mb-4"><div id="{chart_id}" class="chart-render-target" data-spec='{chart_spec_json.replace("'", "&apos;")}'></div></div>"""
+                 # --- MODIFICATION END ---
                  self.processed_data_indices.add(i)
             elif tool_result.get("status") == "skipped":
                 reason = tool_result.get('reason', tool_result.get('results', [{}])[0].get('reason', 'No reason provided.'))
@@ -868,7 +870,7 @@ class OutputFormatter:
         if report.report_sections:
             for section in report.report_sections:
                 # Add top border for separation
-                html_parts.append(f'<h3 class="text-lg font-semibold text-white mt-6 mb-2 border-t border-gray-700 pt-4">{self._process_inline_markdown(section.title)}</h3>')
+                html_parts.append(f'<h3 class_ ="text-lg font-semibold text-white mt-6 mb-2 border-t border-gray-700 pt-4">{self._process_inline_markdown(section.title)}</h3>')
                 # Render section content using the robust markdown renderer
                 html_parts.append(f'<div class="prose prose-invert max-w-none">{self._render_standard_markdown(section.content)}</div>')
 
@@ -1013,4 +1015,3 @@ class OutputFormatter:
             tts_payload = {"direct_answer": "The agent has completed its work.", "key_observations": "", "synthesis": ""}
 
         return final_html, tts_payload
-
