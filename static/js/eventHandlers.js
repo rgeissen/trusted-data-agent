@@ -1043,9 +1043,12 @@ function getSystemPromptSummaryHTML() {
                    <li><strong>10-Oct-2025:</strong> Context Aware Rendering of the Collateral Report</li>
                 </ul>
                 </ul>
-                </ul>
                 <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
                    <li><strong>11-Oct-2025:</strong> Friendly.AI Integration</li>
+                </ul>
+                </ul>                
+                <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
+                   <li><strong>23-Oct-2025:</strong> Robust Multi-Tool Phase Handling</li>
                 </ul>
             </div>
             <div class="border-t border-white/10 pt-4 mt-4">
