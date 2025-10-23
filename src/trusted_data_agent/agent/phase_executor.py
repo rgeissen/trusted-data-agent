@@ -19,6 +19,10 @@ from trusted_data_agent.agent.prompts import (
 )
 from trusted_data_agent.agent import orchestrators
 from trusted_data_agent.agent.response_models import CanonicalResponse
+# --- MODIFICATION START: Import the argument helper ---
+from trusted_data_agent.core.utils import get_argument_by_canonical_name
+# --- MODIFICATION END ---
+
 
 if TYPE_CHECKING:
     from trusted_data_agent.agent.executor import PlanExecutor, DefinitiveToolError
@@ -59,7 +63,7 @@ class CorrectionStrategy(ABC):
         call_id = str(uuid.uuid4())
         events.append(self.executor._format_sse({"step": "Calling LLM for Self-Correction", "type": "system_message", "details": {"summary": reason, "call_id": call_id}}))
         events.append(self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update"))
-        
+
         response_str, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
             prompt=prompt,
             reason=reason,
@@ -68,7 +72,7 @@ class CorrectionStrategy(ABC):
             source=self.executor.source
         )
         events.append(self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update"))
-        
+
         updated_session = session_manager.get_session(self.executor.session_id)
         if updated_session:
             events.append(self.executor._format_sse({
@@ -85,10 +89,10 @@ class CorrectionStrategy(ABC):
         try:
             json_match = re.search(r"```json\s*\n(.*?)\n\s*```|(\{.*\})", response_str, re.DOTALL)
             if not json_match: raise json.JSONDecodeError("No JSON object found", response_str, 0)
-            
+
             json_str = json_match.group(1) or json_match.group(2)
             if not json_str: raise json.JSONDecodeError("Extracted JSON is empty", response_str, 0)
-            
+
             corrected_data = json.loads(json_str.strip())
 
             if "prompt_name" in corrected_data and "arguments" in corrected_data:
@@ -98,13 +102,13 @@ class CorrectionStrategy(ABC):
             if "tool_name" in corrected_data and "arguments" in corrected_data:
                 events.append(self.executor._format_sse({"step": "System Self-Correction", "type": "workaround", "details": {"summary": f"LLM proposed retrying with tool '{corrected_data['tool_name']}'.", "details": corrected_data}}))
                 return corrected_data, events
-            
+
             new_args = corrected_data.get("arguments", corrected_data)
             if isinstance(new_args, dict):
                 corrected_action = {**failed_action, "arguments": new_args}
                 events.append(self.executor._format_sse({"step": "System Self-Correction", "type": "workaround", "details": {"summary": "LLM proposed new arguments.", "details": new_args}}))
                 return corrected_action, events
-            
+
         except (json.JSONDecodeError, TypeError):
             events.append(self.executor._format_sse({"step": "System Self-Correction", "type": "error", "details": {"summary": "LLM failed to provide a valid JSON correction.", "details": response_str}}))
 
@@ -122,9 +126,9 @@ class TableNotFoundStrategy(CorrectionStrategy):
         invalid_table_name_only = invalid_table.split('.')[-1]
         failed_args = failed_action.get("arguments", {})
         db_name = failed_args.get("database_name", "the specified database")
-        
+
         app_logger.warning(f"Detected recoverable 'table_not_found' error for table: {invalid_table}")
-        
+
         prompt = TACTICAL_SELF_CORRECTION_PROMPT_TABLE_ERROR.format(
             user_question=self.executor.original_user_input,
             tool_name=failed_action.get("tool_name"),
@@ -136,7 +140,7 @@ class TableNotFoundStrategy(CorrectionStrategy):
         )
         reason = f"Fact-based recovery for non-existent table '{invalid_table_name_only}'"
         system_prompt = "You are an expert troubleshooter. Follow the recovery directives precisely."
-        
+
         return await self._call_correction_llm(prompt, reason, system_prompt, failed_action)
 
 class ColumnNotFoundStrategy(CorrectionStrategy):
@@ -148,9 +152,9 @@ class ColumnNotFoundStrategy(CorrectionStrategy):
         error_data_str = str(error_result.get('data', ''))
         column_error_match = re.search(RECOVERABLE_TOOL_ERRORS["column_not_found"], error_data_str, re.IGNORECASE)
         invalid_column = column_error_match.group(1)
-        
+
         app_logger.warning(f"Detected recoverable 'column_not_found' error for column: {invalid_column}")
-        
+
         prompt = TACTICAL_SELF_CORRECTION_PROMPT_COLUMN_ERROR.format(
             user_question=self.executor.original_user_input,
             tool_name=failed_action.get("tool_name"),
@@ -199,12 +203,12 @@ class CorrectionHandler:
 
     async def attempt_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any]) -> Tuple[Dict | None, List]:
         error_data_str = str(error_result.get('data', ''))
-        
+
         for strategy in self.strategies:
             if strategy.can_handle(error_data_str):
                 app_logger.info(f"Using correction strategy: {strategy.__class__.__name__}")
                 return await strategy.generate_correction(failed_action, error_result)
-        
+
         return None, []
 
 
@@ -240,36 +244,79 @@ class PhaseExecutor:
 
         source_data = self.executor.workflow_state[source_phase_key]
 
+        # Handle case where source was a previous multi-tool loop/phase
+        if isinstance(source_data, list) and all(isinstance(item, list) for item in source_data):
+            app_logger.info(f"Detected nested list structure from previous multi-tool loop '{source_phase_key}'. Attempting to flatten.")
+            flattened_data = []
+            for sub_list in source_data:
+                # Look for the actual results within each sub-list item
+                if isinstance(sub_list, list):
+                    for tool_result in sub_list:
+                        if isinstance(tool_result, dict) and 'results' in tool_result and isinstance(tool_result['results'], list):
+                             flattened_data.extend(tool_result['results'])
+            if flattened_data:
+                 app_logger.info(f"Successfully flattened {len(flattened_data)} items.")
+                 return flattened_data
+            else:
+                 app_logger.warning("Flattening attempt yielded no results.")
+
+
+        # Handle case where source was a single-tool loop/phase
         if isinstance(source_data, list) and all(isinstance(item, dict) and 'results' in item for item in source_data):
             flattened_results = []
             for tool_result in source_data:
                 if isinstance(tool_result.get('results'), list):
                     flattened_results.extend(tool_result['results'])
-            
+
             if flattened_results:
                 app_logger.info(f"Extracted and flattened {len(flattened_results)} items from previous loop phase '{source_phase_key}'.")
                 return flattened_results
 
+        # Fallback: Find the first 'results' list recursively (original logic)
         def find_results_list(data):
             if isinstance(data, list):
+                # If the list itself contains dicts with 'results', return it (handles simple cases)
+                if all(isinstance(item, dict) and 'results' in item for item in data):
+                     return data # Return the list of tool result objects
+                # Otherwise, recurse into list items
                 for item in data:
                     found = find_results_list(item)
                     if found is not None: return found
             elif isinstance(data, dict):
                 if 'results' in data and isinstance(data['results'], list):
-                    return data['results']
+                    return data['results'] # Return the actual list of data items
                 for value in data.values():
                     found = find_results_list(value)
                     if found is not None: return found
             return None
 
         items = find_results_list(source_data)
-        
+
+        # Final check if we got a list of tool results instead of data items
+        if isinstance(items, list) and all(isinstance(item, dict) and 'results' in item for item in items):
+             app_logger.info("Fallback found list of tool results. Flattening.")
+             flattened_items = []
+             for item in items:
+                 if isinstance(item.get('results'), list):
+                     flattened_items.extend(item['results'])
+             items = flattened_items
+
+
         if items is None:
             app_logger.warning(f"Could not find a 'results' list in '{source_phase_key}' using fallback. Returning empty list.")
             return []
-            
+
+        # Ensure the final result is actually a list of data dictionaries
+        if not isinstance(items, list) or not all(isinstance(i, dict) for i in items):
+             app_logger.warning(f"Extracted loop items from '{source_phase_key}' are not in the expected format (list of dicts). Content: {items}")
+             # Attempt to recover if it's a list containing a single list
+             if isinstance(items, list) and len(items) == 1 and isinstance(items[0], list) and all(isinstance(i, dict) for i in items[0]):
+                 app_logger.info("Recovered loop items from nested list.")
+                 return items[0]
+             return [] # Return empty if format is wrong
+
         return items
+
 
     async def _execute_looping_phase(self, phase: dict):
         """
@@ -295,7 +342,7 @@ class PhaseExecutor:
         })
 
         self.executor.current_loop_items = self._extract_loop_items(loop_over_key)
-        
+
         if not self.executor.current_loop_items:
             yield self.executor._format_sse({"step": "Skipping Empty Loop", "type": "system_message", "details": f"No items found from '{loop_over_key}' to loop over."})
             yield self.executor._format_sse({
@@ -306,13 +353,13 @@ class PhaseExecutor:
             return
 
         is_fast_path_candidate = (
-            len(relevant_tools) == 1 and 
+            len(relevant_tools) == 1 and
             relevant_tools[0] not in ["TDA_LLMTask", "TDA_Charting", "TDA_FinalReport", "TDA_ComplexPromptReport"]
         )
 
         if is_fast_path_candidate:
             tool_name = relevant_tools[0]
-            
+
             raw_phase_args = phase.get("arguments", {})
             args_to_prune = [
                 arg_name for arg_name, arg_value in raw_phase_args.items()
@@ -323,9 +370,9 @@ class PhaseExecutor:
                 for arg_name in args_to_prune:
                     app_logger.info(f"System Correction: Pruning redundant loop argument '{arg_name}' from phase '{phase_goal}'.")
                     del modified_args[arg_name]
-                
+
                 phase['arguments'] = modified_args
-                
+
                 yield self.executor._format_sse({
                     "step": "System Correction",
                     "type": "workaround",
@@ -335,12 +382,12 @@ class PhaseExecutor:
                         "pruned_arguments": args_to_prune
                     }
                 })
-            
+
             tool_scope = self.executor.dependencies['STATE'].get('tool_scopes', {}).get(tool_name)
 
             if tool_scope == 'column':
                 yield self.executor._format_sse({"step": "Plan Optimization", "type": "plan_optimization", "details": f"FASTPATH Data Expansion: Preparing column-level iteration for '{tool_name}'."})
-                
+
                 yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
                 tool_constraints, constraint_events = await self.executor._get_tool_constraints(tool_name)
                 for event in constraint_events:
@@ -358,13 +405,17 @@ class PhaseExecutor:
 
                 yield self.executor._format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
                 for table_item in tables_to_process:
-                    table_name = next((v for k, v in table_item.items() if k in AppConfig.ARGUMENT_SYNONYM_MAP.get('object_name', {})), None)
+                    # --- MODIFICATION START: Use canonical helper for table name ---
+                    table_name = get_argument_by_canonical_name(table_item, 'object_name')
+                    # --- MODIFICATION END ---
                     if not table_name: continue
 
                     args_for_col_tool = {'database_name': db_name}
-                    for synonym in AppConfig.ARGUMENT_SYNONYM_MAP.get('object_name', {}):
+                    # Populate all synonyms for object_name with the found table_name
+                    for synonym in AppConfig.ARGUMENT_SYNONYM_MAP.get('object_name', {'object_name', 'table_name'}):
                         args_for_col_tool[synonym] = table_name
-                    
+
+
                     cols_command = {"tool_name": "base_columnDescription", "arguments": args_for_col_tool}
                     cols_result, _, _ = await mcp_adapter.invoke_mcp_tool(self.executor.dependencies['STATE'], cols_command, session_id=self.executor.session_id)
 
@@ -373,7 +424,7 @@ class PhaseExecutor:
                         for col_info in columns_metadata:
                             col_name = col_info.get("ColumnName")
                             if not col_name: continue
-                            
+
                             col_type = next((v for k, v in col_info.items() if "type" in k.lower()), "").upper()
                             if required_type and col_type != "UNKNOWN":
                                 is_numeric = any(t in col_type for t in ["INT", "NUMERIC", "DECIMAL", "FLOAT", "BYTEINT", "SMALLINT", "BIGINT"])
@@ -382,27 +433,27 @@ class PhaseExecutor:
                                     skip_details = f"Tool '{tool_name}' requires a {required_type} column, but '{col_name}' is '{col_type}'. Skipping."
                                     yield self.executor._format_sse({"step": "Skipping Incompatible Column", "type": "plan_optimization", "details": skip_details})
                                     continue
-                            
-                            expanded_loop_items.append({**table_item, "ColumnName": col_name})
+                            # Ensure the canonical 'column_name' is added
+                            expanded_loop_items.append({**table_item, "column_name": col_name})
                     else:
                         app_logger.warning(f"Data expansion: Failed to get columns for table '{table_name}'. Tool `base_columnDescription` may have failed. Result: {cols_result}")
-                
+
                 yield self.executor._format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
                 self.executor.current_loop_items = expanded_loop_items
-                
+
                 if not self.executor.current_loop_items:
                     yield self.executor._format_sse({"step": "Skipping Empty Loop", "type": "system_message", "details": f"No compatible columns found for '{tool_name}'."})
                     yield self.executor._format_sse({"step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}", "type": "phase_end", "details": {"phase_num": phase_num, "total_phases": len(self.executor.meta_plan), "status": "skipped"}})
                     return
-            
+
             yield self.executor._format_sse({
-                "step": "Plan Optimization", 
+                "step": "Plan Optimization",
                 "type": "plan_optimization",
                 "details": f"FASTPATH enabled for tool loop: '{tool_name}'"
             })
-            
+
             static_phase_args = phase.get("arguments", {})
-            
+
             tool_def = self.executor.dependencies['STATE'].get('mcp_tools', {}).get(tool_name)
             allowed_arg_names = set()
             if tool_def and hasattr(tool_def, 'args') and isinstance(tool_def.args, dict):
@@ -415,80 +466,99 @@ class PhaseExecutor:
                             break
                     if canonical_name:
                         allowed_arg_names.update(AppConfig.ARGUMENT_SYNONYM_MAP.get(canonical_name, set()))
-            
+
             all_loop_results = []
             yield self.executor._format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
             for i, item in enumerate(self.executor.current_loop_items):
                 yield self.executor._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.executor.current_loop_items)}", "type": "system_message", "details": item})
-                
+
                 item_data = item if isinstance(item, dict) else {}
                 resolved_item_args = self.executor._resolve_arguments(static_phase_args, loop_item=item_data)
-                
+
+                # Prune item data keys not relevant to the tool, considering synonyms
+                pruned_item_data = {}
                 if allowed_arg_names:
-                    pruned_item_data = {
-                        key: value for key, value in item_data.items()
-                        if key in allowed_arg_names
-                    }
-                else:
-                    pruned_item_data = item_data
-                
+                    for key, value in item_data.items():
+                         if key in allowed_arg_names:
+                             pruned_item_data[key] = value
+
                 merged_args = {**resolved_item_args, **pruned_item_data}
-                
+
                 command = {"tool_name": tool_name, "arguments": merged_args}
                 async for event in self._execute_tool(command, phase, is_fast_path=True):
                     yield event
-                
+
                 enriched_tool_output = copy.deepcopy(self.executor.last_tool_output)
-                if (isinstance(enriched_tool_output, dict) and 
-                    enriched_tool_output.get("status") == "success" and 
+                # Enrich results with loop item context *only* if successful
+                if (isinstance(enriched_tool_output, dict) and
+                    enriched_tool_output.get("status") == "success" and
                     isinstance(item, dict)):
-                    
+
                     if 'results' in enriched_tool_output and isinstance(enriched_tool_output['results'], list):
                         for result_row in enriched_tool_output['results']:
                             if isinstance(result_row, dict):
+                                # Add loop item keys if they don't already exist in the result row
                                 for key, value in item.items():
                                     if key not in result_row:
                                         result_row[key] = value
-                
+
+                # Append result regardless of success/failure
                 self.executor.turn_action_history.append({"action": command, "result": enriched_tool_output})
                 all_loop_results.append(enriched_tool_output)
 
             yield self.executor._format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
-            
+
             phase_result_key = f"result_of_phase_{phase_num}"
             self.executor.workflow_state[phase_result_key] = all_loop_results
             self.executor._add_to_structured_data(all_loop_results)
             self.executor.last_tool_output = all_loop_results
 
-        else: 
+        else: # Slow Path (Multi-tool or complex single tool like TDA_LLMTask)
             self.executor.is_in_loop = True
             self.executor.processed_loop_items = []
-            
+            all_loop_item_results_aggregate = [] # Store results across all items for this phase
+
             for i, item in enumerate(self.executor.current_loop_items):
                 yield self.executor._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.executor.current_loop_items)}", "type": "system_message", "details": item})
-                
+
                 try:
+                    # Execute the standard phase logic for this single loop item
                     async for event in self._execute_standard_phase(phase, is_loop_iteration=True, loop_item=item):
                         yield event
+                    # `_execute_standard_phase` updates `self.executor.last_tool_output` for the item
+                    # Append the result(s) for this item to the aggregate list
+                    if isinstance(self.executor.last_tool_output, list):
+                         all_loop_item_results_aggregate.extend(copy.deepcopy(self.executor.last_tool_output))
+                    elif isinstance(self.executor.last_tool_output, dict):
+                         all_loop_item_results_aggregate.append(copy.deepcopy(self.executor.last_tool_output))
+
                 except Exception as e:
                     error_message = f"Error processing item {item}: {e}"
                     app_logger.error(error_message, exc_info=True)
                     error_result = {
-                        "status": "error", 
-                        "item": item, 
+                        "status": "error",
+                        "metadata": {"loop_item": item}, # Add loop item to metadata
                         "error_message": {
                             "summary": f"An error occurred while processing the item.",
                             "details": str(e)
                         }
                     }
-                    self.executor._add_to_structured_data(error_result)
+                    all_loop_item_results_aggregate.append(error_result) # Add error to aggregate results
+                    self.executor._add_to_structured_data(error_result) # Log error in structured data
                     yield self.executor._format_sse({"step": "Loop Item Failed", "details": error_result, "type": "error"}, "tool_result")
 
                 self.executor.processed_loop_items.append(item)
 
+            # After loop finishes, update workflow state with aggregated results
+            phase_result_key = f"result_of_phase_{phase_num}"
+            self.executor.workflow_state[phase_result_key] = all_loop_item_results_aggregate
+            # structured_data is updated per item/error within the loop
+            self.executor.last_tool_output = all_loop_item_results_aggregate # Set final output for the phase
+
             self.executor.is_in_loop = False
             self.executor.current_loop_items = []
             self.executor.processed_loop_items = []
+
 
         yield self.executor._format_sse({
             "step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}",
@@ -528,98 +598,163 @@ class PhaseExecutor:
                     "execution_depth": self.executor.execution_depth
                 }
             })
-        
-        if len(relevant_tools) > 1 and not is_loop_iteration:
+
+        # --- MODIFICATION START: Implement Scope-Aware Dispatcher for Multi-Tool Phases ---
+        if len(relevant_tools) > 1:
             yield self.executor._format_sse({
-                "step": "System Correction",
-                "type": "workaround",
-                "details": f"Multi-tool phase detected. The agent will execute {len(relevant_tools)} tools sequentially."
+                "step": "Scope-Aware Dispatcher Active",
+                "type": "workaround", # Use 'workaround' type for system corrections/optimizations
+                "details": f"Multi-tool phase detected. Agent will dispatch {len(relevant_tools)} tools based on scope."
             })
-            
-            all_phase_results = []
+
+            all_phase_results = [] # Store results for this specific phase/iteration
             for tool_name in relevant_tools:
-                fast_path_action = {"tool_name": tool_name, "arguments": strategic_args}
-                async for event in self._execute_action_with_orchestrators(fast_path_action, phase):
+                app_logger.info(f"Dispatcher: Processing tool '{tool_name}' in multi-tool phase.")
+
+                # Determine the arguments for this specific tool call within the loop/phase
+                current_args = {}
+                if is_loop_iteration and loop_item:
+                     # Start with strategic args resolved *without* the loop item
+                     base_resolved_args = self.executor._resolve_arguments(phase.get("arguments", {}), loop_item=None)
+                     item_args = loop_item.copy() # Use a copy to avoid modification
+                     # Overlay item args onto base args - loop item takes precedence
+                     current_args = {**base_resolved_args, **item_args}
+                else: # Not a loop iteration, just use strategic args
+                    current_args = strategic_args
+
+
+                # Check the scope of the current tool
+                tool_scope = self.executor.dependencies['STATE'].get('tool_scopes', {}).get(tool_name)
+                # Check if 'column_name' (or a synonym) is present in the current arguments
+                has_column_arg = get_argument_by_canonical_name(current_args, 'column_name') is not None
+
+                # Dispatch Logic: If it's a column tool missing the column name, call the orchestrator directly
+                if tool_scope == 'column' and not has_column_arg:
+                    app_logger.info(f"Dispatcher: Tool '{tool_name}' is column-scoped but missing column_name. Calling column iteration orchestrator.")
+                    yield self.executor._format_sse({
+                        "step": "Scope-Aware Dispatcher Action",
+                        "type": "plan_optimization", # Use 'plan_optimization' as it's fixing the plan implicitly
+                        "details": f"Dispatcher is invoking column iteration for '{tool_name}' because 'column_name' was missing."
+                    })
+
+                    # Construct the action for the orchestrator
+                    action_for_orchestrator = {"tool_name": tool_name, "arguments": current_args}
+                    try:
+                        # Directly await the orchestrator's execution
+                        async for event in orchestrators.execute_column_iteration(self.executor, action_for_orchestrator):
+                            yield event
+                        # The orchestrator updates self.executor.last_tool_output directly
+                        all_phase_results.append(copy.deepcopy(self.executor.last_tool_output))
+                    except Exception as orch_e:
+                         app_logger.error(f"Dispatcher: Column iteration orchestrator failed for '{tool_name}': {orch_e}", exc_info=True)
+                         error_result = {"status": "error", "error_message": f"Column iteration failed for {tool_name}: {str(orch_e)}"}
+                         all_phase_results.append(error_result)
+                         self.executor.last_tool_output = error_result # Ensure last_tool_output reflects the error
+                    continue # Move to the next tool in the multi-tool list
+
+                # Standard Execution Path (Not column-scoped OR column name is present)
+                app_logger.info(f"Dispatcher: Tool '{tool_name}' (scope: {tool_scope}) has sufficient args or is not column-scoped. Executing normally.")
+                action_to_execute = {"tool_name": tool_name, "arguments": current_args}
+                async for event in self._execute_action_with_orchestrators(action_to_execute, phase):
                     yield event
-                all_phase_results.append(self.executor.last_tool_output)
-            
+                all_phase_results.append(copy.deepcopy(self.executor.last_tool_output)) # Add result
+
+            # Update state after processing all tools in the phase/iteration
             phase_result_key = f"result_of_phase_{phase_num}"
-            self.executor.workflow_state[phase_result_key] = all_phase_results
-            self.executor._add_to_structured_data(all_phase_results)
-            self.executor.last_tool_output = all_phase_results
+            if is_loop_iteration:
+                 # In a loop, results are aggregated in the calling function (_execute_looping_phase)
+                 # We only update last_tool_output here for the *current item* processing
+                 self.executor.last_tool_output = all_phase_results
+                 # Add to structured data immediately for this item
+                 self.executor._add_to_structured_data(all_phase_results)
+                 # Add to history immediately for this item
+                 # Note: History might become verbose, consider summarizing later if needed
+                 self.executor.turn_action_history.append({
+                     "action": f"Multi-Tool Phase Item: {loop_item}",
+                     "result": all_phase_results
+                 })
+            else:
+                 # For a non-looping phase, set the results directly
+                 self.executor.workflow_state[phase_result_key] = all_phase_results
+                 self.executor.last_tool_output = all_phase_results
+                 self.executor._add_to_structured_data(all_phase_results)
+                 self.executor.turn_action_history.append({
+                     "action": f"Multi-Tool Phase: {phase_goal}",
+                     "result": all_phase_results
+                 })
 
-            yield self.executor._format_sse({
-                "step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}",
-                "type": "phase_end",
-                "details": {"phase_num": phase_num, "total_phases": len(self.executor.meta_plan), "status": "completed"}
-            })
-            return
-        elif len(relevant_tools) > 1 and is_loop_iteration:
-             yield self.executor._format_sse({
-                "step": "System Correction",
-                "type": "workaround",
-                "details": f"Multi-tool phase detected. The agent will execute {len(relevant_tools)} tools sequentially for each item."
-            })
-             
-             all_loop_item_results = []
-             for tool_name in relevant_tools:
-                item_args = {}
-                if isinstance(loop_item, dict):
-                    for key, value in loop_item.items():
-                        item_args[key] = value
 
-                merged_args = {**strategic_args, **item_args}
-                fast_path_action = {"tool_name": tool_name, "arguments": merged_args}
+            # End the phase only if it's not a loop iteration
+            if not is_loop_iteration:
+                yield self.executor._format_sse({
+                    "step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}",
+                    "type": "phase_end",
+                    "details": {"phase_num": phase_num, "total_phases": len(self.executor.meta_plan), "status": "completed"}
+                })
+            return # Finished processing the multi-tool phase/iteration
+        # --- MODIFICATION END ---
 
-                async for event in self._execute_action_with_orchestrators(fast_path_action, phase):
-                    yield event
-                all_loop_item_results.append(self.executor.last_tool_output)
-             
-             phase_result_key = f"result_of_phase_{phase_num}"
-             if phase_result_key not in self.executor.workflow_state:
-                 self.executor.workflow_state[phase_result_key] = []
 
-             self.executor.workflow_state[phase_result_key].extend(all_loop_item_results)
-             self.executor._add_to_structured_data(all_loop_item_results)
-             self.executor.last_tool_output = all_loop_item_results
-             return
-
+        # --- Original Logic for Single-Tool Phases or LLM-Driven Tactical Execution ---
         tool_name = relevant_tools[0] if len(relevant_tools) == 1 else None
-        
+
         is_fast_path_candidate = False
         if tool_name:
             all_tools = self.executor.dependencies['STATE'].get('mcp_tools', {})
             tool_def = all_tools.get(tool_name)
             if tool_def:
-                required_args = {name for name, details in (tool_def.args.items() if hasattr(tool_def, 'args') and isinstance(tool_def.args, dict) else {}) if details.get('required')}
-                if required_args.issubset(strategic_args.keys()):
-                    is_fast_path_candidate = True
-        
+                required_args_set = {name for name, details in (tool_def.args.items() if hasattr(tool_def, 'args') and isinstance(tool_def.args, dict) else {}) if details.get('required')}
+                # Check if *all* required args are present in the *strategic* args (resolved from plan/loop)
+                # We need to check using canonical names and synonyms here.
+                present_args_canonical = set(mcp_adapter._normalize_tool_arguments(strategic_args).keys())
+                required_args_canonical = set()
+                for req_arg in required_args_set:
+                     found_canonical = False
+                     for canonical, synonyms in AppConfig.ARGUMENT_SYNONYM_MAP.items():
+                         if req_arg in synonyms:
+                             required_args_canonical.add(canonical)
+                             found_canonical = True
+                             break
+                     if not found_canonical:
+                         required_args_canonical.add(req_arg)
+
+                if required_args_canonical.issubset(present_args_canonical):
+                     # Further check: ensure no required arg has a None or empty string value using canonical check
+                     all_required_present_and_valid = True
+                     for req_can_arg in required_args_canonical:
+                          value = get_argument_by_canonical_name(strategic_args, req_can_arg)
+                          if value in [None, ""]:
+                              all_required_present_and_valid = False
+                              break
+                     if all_required_present_and_valid:
+                         is_fast_path_candidate = True
+
+
         if is_fast_path_candidate:
             yield self.executor._format_sse({
-                "step": "Plan Optimization", 
+                "step": "Plan Optimization",
                 "type": "plan_optimization",
                 "details": f"FASTPATH initiated for '{tool_name}'."
             })
 
             fast_path_action = {"tool_name": tool_name, "arguments": strategic_args}
-            
+
             if tool_name == "TDA_LLMTask" and is_loop_iteration and loop_item:
                 modified_args = fast_path_action["arguments"].copy()
                 task_desc = modified_args.get("task_description", "")
                 loop_item_str = json.dumps(loop_item)
-                
+
                 modified_args["task_description"] = (
                     f"{task_desc}\n\n"
                     f"CRITICAL CONTEXT: You MUST focus your response on the following item provided from the loop: {loop_item_str}"
                 )
-                
+
                 fast_path_action["arguments"] = modified_args
                 app_logger.info(f"Injected loop context into TDA_LLMTask description for item: {loop_item_str}")
 
             async for event in self._execute_action_with_orchestrators(fast_path_action, phase):
                 yield event
-            
+
             call_id_for_completion = None
             if isinstance(self.executor.last_tool_output, dict):
                 call_id_for_completion = self.executor.last_tool_output.get("metadata", {}).get("call_id")
@@ -638,6 +773,7 @@ class PhaseExecutor:
                 })
             return
 
+        # --- Tactical LLM Path (Slow Path) ---
         phase_attempts = 0
         max_phase_attempts = 5
         tactical_call_id = None
@@ -647,32 +783,32 @@ class PhaseExecutor:
                 app_logger.error(f"Phase '{phase_goal}' failed after {max_phase_attempts} attempts. Attempting LLM recovery.")
                 async for event in self._recover_from_phase_failure(phase_goal):
                     yield event
-                return 
+                return
 
-            enriched_args, enrich_events, _ = self._enrich_arguments_from_history(relevant_tools)
-            
+            enriched_args, enrich_events, _ = self._enrich_arguments_from_history(relevant_tools, strategic_args) # Pass strategic_args here
+
             for event in enrich_events:
                 self.executor.events_to_yield.append(event)
-            
+
             tactical_call_id = str(uuid.uuid4())
             yield self.executor._format_sse({"step": "Calling LLM for Tactical Action", "type": "system_message", "details": {"summary": f"Deciding next action for phase goal: '{phase_goal}'", "call_id": tactical_call_id}})
             yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
-            
+
             next_action, input_tokens, output_tokens = await self._get_next_tactical_action(
                 phase_goal, relevant_tools, enriched_args, strategic_args, executable_prompt
             )
-            
+
             yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
-            
+
             current_action_str = json.dumps(next_action, sort_keys=True)
             if current_action_str == self.executor.last_action_str:
                 app_logger.warning(f"LOOP DETECTED: Repeating action: {current_action_str}")
                 self.executor.last_failed_action_info = "Your last attempt failed because it was an exact repeat of the previous failed action. You MUST choose a different tool or different arguments."
                 yield self.executor._format_sse({"step": "System Error", "details": "Repetitive action detected.", "type": "error"}, "tool_result")
-                self.executor.last_action_str = None 
+                self.executor.last_action_str = None
                 continue
             self.executor.last_action_str = current_action_str
-            
+
             if self.executor.events_to_yield:
                 for event in self.executor.events_to_yield: yield event
                 self.executor.events_to_yield = []
@@ -682,15 +818,19 @@ class PhaseExecutor:
                 yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": tactical_call_id }, "token_update")
 
             if isinstance(next_action, str) and next_action == "SYSTEM_ACTION_COMPLETE":
-                self.executor.state = self.executor.AgentState.SUMMARIZING
-                return
+                # --- MODIFICATION START: Correct state transition ---
+                # Should not transition to SUMMARIZING here, just complete the phase/loop iteration.
+                # The PlanExecutor handles the final transition.
+                app_logger.info("Tactical LLM decided phase is complete.")
+                # --- MODIFICATION END ---
+                break # Exit the while loop for this phase/iteration
 
             if not isinstance(next_action, dict):
                 raise RuntimeError(f"Tactical LLM failed to provide a valid action. Received: {next_action}")
 
             async for event in self._execute_action_with_orchestrators(next_action, phase):
                 yield event
-            
+
             is_standard_success = (isinstance(self.executor.last_tool_output, dict) and self.executor.last_tool_output.get("status") == "success")
             is_chart_success = (isinstance(self.executor.last_tool_output, dict) and self.executor.last_tool_output.get("type") == "chart")
 
@@ -703,11 +843,11 @@ class PhaseExecutor:
                     if not any(key in options for key in mapping_keys):
                         is_valid_chart = False
                         self.executor.last_failed_action_info = "The last attempt to create a chart failed because the 'mapping' argument was incorrect or missing. You MUST provide a valid mapping with the correct keys (e.g., 'angle', 'color')."
-                    
+
                     if is_valid_chart:
                         mapping = next_action.get("arguments", {}).get("mapping", {})
                         data = next_action.get("arguments", {}).get("data", [])
-                        if data and mapping:
+                        if data and mapping and isinstance(data, list) and data[0]: # Check if data is list and not empty
                             first_row = data[0]
                             numeric_roles = ['angle', 'y_axis', 'value']
                             for role, column_name in mapping.items():
@@ -716,18 +856,20 @@ class PhaseExecutor:
                                         is_valid_chart = False
                                         self.executor.last_failed_action_info = f"The last attempt failed. You mapped the non-numeric column '{column_name}' to the '{role}' role, which requires a number. You MUST map a numeric column to this role."
                                         break
-                    
+
                     if not is_valid_chart:
                         app_logger.warning(f"Silent chart failure detected. Reason: {self.executor.last_failed_action_info}")
                         continue
-                
+
                 self.executor.last_action_str = None
-                break 
+                break # Successful action, exit the while loop
             else:
                 app_logger.warning(f"Action failed. Attempt {phase_attempts}/{max_phase_attempts} for phase.")
-        
+                # Loop continues for retry
+
+        # --- Code after the while loop (successful execution or SYSTEM_ACTION_COMPLETE) ---
         yield self.executor._format_sse(
-            {"target": "context", "state": "processing_complete", "call_id": tactical_call_id}, 
+            {"target": "context", "state": "processing_complete", "call_id": tactical_call_id},
             "context_state_update"
         )
         if not is_loop_iteration:
@@ -736,6 +878,7 @@ class PhaseExecutor:
                 "type": "phase_end",
                 "details": {"phase_num": phase_num, "total_phases": len(self.executor.meta_plan), "status": "completed"}
             })
+
 
     async def _execute_action_with_orchestrators(self, action: dict, phase: dict):
         """
@@ -758,15 +901,15 @@ class PhaseExecutor:
                 yield event
             return
 
+        # --- Date Range Orchestrator Check (Remains relevant) ---
         is_range_candidate, date_param_name, tool_supports_range = self._is_date_query_candidate(action)
-
-        is_orchestrator_target = (
+        is_date_orchestrator_target = (
             is_range_candidate and
             not tool_supports_range and
             tool_name not in ["TDA_DateRange", "TDA_CurrentDate"]
         )
 
-        if is_orchestrator_target:
+        if is_date_orchestrator_target:
             yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
             async for event in self._classify_date_query_type(): yield event
             yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
@@ -776,17 +919,26 @@ class PhaseExecutor:
                     self.executor, action, date_param_name, self.executor.temp_data_holder.get('phrase'), phase
                 ):
                     yield event
-                return
+                return # Date orchestrator handles execution
 
-        tool_scope = self.executor.dependencies['STATE'].get('tool_scopes', {}).get(tool_name)
-        has_column_arg = "column_name" in action.get("arguments", {})
-        if tool_scope == 'column' and not has_column_arg:
-             async for event in orchestrators.execute_column_iteration(self.executor, action):
+        # --- Hallucinated Loop Orchestrator Check (New) ---
+        # This orchestrator handles loops over plain strings instead of data sources.
+        # It's better checked here than relying on the dispatcher logic,
+        # as it fundamentally changes how the *entire phase* should execute.
+        # Note: This specific check might be better placed before the dispatcher
+        # in _execute_standard_phase if it needs to preempt multi-tool logic.
+        # For now, placing it here intercepts single-tool hallucinated loops.
+        if phase.get("type") == "loop" and isinstance(phase.get("loop_over"), list) and all(isinstance(i, str) for i in phase["loop_over"]):
+             app_logger.warning("Detected hallucinated loop over strings. Invoking orchestrator.")
+             async for event in orchestrators.execute_hallucinated_loop(self.executor, phase):
                  yield event
-             return
-        
+             return # Hallucinated loop orchestrator handles execution
+
+
+        # Proceed directly to tool execution (Dispatcher already handled column iteration)
         async for event in self._execute_tool(action, phase):
             yield event
+
 
     async def _proactively_refine_arguments(self, action: dict, phase: dict):
         """
@@ -803,13 +955,33 @@ class PhaseExecutor:
             return
 
         provided_args = action.get("arguments", {})
-        official_arg_names = set(tool_def.args.keys())
-        provided_arg_names = set(provided_args.keys())
+        # --- MODIFICATION START: Normalize provided args before comparison ---
+        normalized_provided_args = mcp_adapter._normalize_tool_arguments(provided_args)
+        # Get canonical names the tool *actually* uses based on its schema
+        tool_canonical_arg_names = set()
+        for schema_arg_name in tool_def.args.keys():
+            found_canonical = False
+            for canonical, synonyms in AppConfig.ARGUMENT_SYNONYM_MAP.items():
+                if schema_arg_name in synonyms:
+                    tool_canonical_arg_names.add(canonical)
+                    found_canonical = True
+                    break
+            if not found_canonical: # If not a known synonym, treat it as its own canonical name
+                tool_canonical_arg_names.add(schema_arg_name)
 
-        if provided_arg_names == official_arg_names:
-            return
+        provided_canonical_arg_names = set(normalized_provided_args.keys())
+        # --- MODIFICATION END ---
 
-        app_logger.warning(f"Argument mismatch for tool '{tool_name}'. Planner provided: {provided_arg_names}, Tool requires: {official_arg_names}. Initiating LLM-based refinement.")
+
+        # --- MODIFICATION START: Use canonical sets for comparison ---
+        if provided_canonical_arg_names == tool_canonical_arg_names:
+             app_logger.debug(f"Argument check for tool '{tool_name}': Canonical arguments match schema. No refinement needed.")
+             return # Arguments already match, no refinement needed
+        # --- MODIFICATION END ---
+
+
+        app_logger.warning(f"Argument mismatch for tool '{tool_name}'. Planner provided (canonically): {provided_canonical_arg_names}, Tool requires (canonically): {tool_canonical_arg_names}. Initiating LLM-based refinement.")
+
 
         yield self.executor._format_sse({
             "step": "System Correction",
@@ -819,23 +991,26 @@ class PhaseExecutor:
                 "correction_type": "argument_refinement"
             }
         })
-        
+
         tool_schema_str = json.dumps({name: details for name, details in tool_def.args.items()}, indent=2)
-        
+
         refinement_prompt = (
-            "You are an expert argument mapper. Your task is to correct a failed tool call by re-mapping the provided arguments to the tool's official schema.\n\n"
+            "You are an expert argument mapper. Your task is to correct a potential tool call failure by re-mapping the provided arguments to the tool's official schema.\n\n"
             f"--- GOAL ---\n{phase.get('goal', self.executor.original_user_input)}\n\n"
-            f"--- FAILED ARGUMENTS ---\n{json.dumps(provided_args, indent=2)}\n\n"
+            f"--- PROVIDED ARGUMENTS (May be incorrect or incomplete) ---\n{json.dumps(provided_args, indent=2)}\n\n" # Use original provided args here for LLM context
             f"--- CORRECT TOOL SCHEMA ---\n{tool_schema_str}\n\n"
             "--- INSTRUCTIONS ---\n"
-            "1. Analyze the `GOAL` and the `FAILED ARGUMENTS` to understand the user's intent and what data is available.\n"
+            "1. Analyze the `GOAL` and the `PROVIDED ARGUMENTS` to understand the user's intent and what data is available.\n"
             "2. Examine the `CORRECT TOOL SCHEMA` to understand the exact argument names and structure the tool expects.\n"
-            "3. Create a new, valid set of arguments by mapping the values from the `FAILED ARGUMENTS` to the correct names in the `CORRECT TOOL SCHEMA`.\n"
-            "4. Discard any arguments from the failed call that do not exist in the correct schema.\n"
-            "5. Your response MUST be a single JSON object containing only the corrected arguments.\n\n"
+            "3. Create a new, valid set of arguments by mapping the values from the `PROVIDED ARGUMENTS` to the correct names in the `CORRECT TOOL SCHEMA`.\n"
+            "4. Use argument synonyms (e.g., 'table_name' vs 'object_name') intelligently if needed to bridge the gap.\n"
+            "5. Discard any arguments from the provided call that do not correspond to anything in the correct schema.\n"
+            "6. Ensure all *required* arguments from the schema are present, inferring values from the GOAL or PROVIDED ARGUMENTS if possible.\n"
+            "7. Your response MUST be a single JSON object containing only the corrected arguments.\n\n"
             "Example:\n"
             "`{{\"sql\": \"SELECT * FROM ...\"}}`"
         )
+
 
         reason = f"Proactively refining arguments for '{tool_name}' to prevent tool failure."
         call_id = str(uuid.uuid4())
@@ -848,35 +1023,56 @@ class PhaseExecutor:
             raise_on_error=True,
             source=self.executor.source
         )
-        
+
         yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
         updated_session = session_manager.get_session(self.executor.session_id)
         if updated_session:
             yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
-        
+
         try:
-            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            # More robust JSON extraction
+            json_match = re.search(r"```json\s*\n(.*?)\n\s*```|(\{.*\})", response_text, re.DOTALL)
             if not json_match: raise ValueError("No JSON object found in refinement response.")
 
-            corrected_args = json.loads(json_match.group(0))
+            json_str = json_match.group(1) or json_match.group(2)
+            if not json_str: raise ValueError("Extracted JSON string is empty.")
+
+            corrected_args = json.loads(json_str.strip())
+
             if isinstance(corrected_args, dict):
+                # Update the original action's arguments IN PLACE
                 action['arguments'] = corrected_args
                 app_logger.info(f"Argument refinement successful. New args for '{tool_name}': {corrected_args}")
+                yield self.executor._format_sse({ # Add SSE event for successful refinement
+                    "step": "System Correction",
+                    "type": "workaround",
+                    "details": {
+                        "summary": f"Arguments for '{tool_name}' proactively corrected.",
+                        "correction_type": "argument_refinement_applied",
+                        "new_arguments": corrected_args
+                    }
+                })
             else:
                  app_logger.warning("Argument refinement failed: LLM did not return a valid dictionary.")
         except (json.JSONDecodeError, ValueError, AttributeError) as e:
-            app_logger.error(f"Failed to parse argument refinement response: {e}. Original arguments will be used.")
+            app_logger.error(f"Failed to parse argument refinement response: {e}. Original arguments will be used. Response: {response_text}")
+
 
     async def _execute_tool(self, action: dict, phase: dict, is_fast_path: bool = False):
         """Executes a single tool call with a built-in retry and recovery mechanism."""
-        
+
+        # --- MODIFICATION START: Always run proactive refinement unless it's a Fast Path loop ---
+        # The Fast Path loop already does argument merging/pruning, so refinement isn't needed there.
+        # For multi-tool phases handled by the dispatcher, refinement IS needed.
         if not is_fast_path:
-            async for event in self._proactively_refine_arguments(action, phase):
-                yield event
-        
+             async for event in self._proactively_refine_arguments(action, phase):
+                 yield event
+        # --- MODIFICATION END ---
+
+
         tool_name = action.get("tool_name")
         arguments = action.get("arguments", {})
-        
+
         if tool_name == "TDA_ContextReport" or (tool_name == "TDA_LLMTask" and "synthesized_answer" in arguments):
             if tool_name == "TDA_ContextReport":
                 answer_key = "answer_from_context"
@@ -892,26 +1088,29 @@ class PhaseExecutor:
                 "metadata": {"tool_name": tool_name},
                 "results": [{"response": arguments.get(answer_key)}]
             }
-            if not is_fast_path:
-                yield self.executor._format_sse({"step": "Tool Execution Result", "details": self.executor.last_tool_output, "tool_name": tool_name}, "tool_result")
-                self.executor.turn_action_history.append({"action": action, "result": self.executor.last_tool_output})
-                phase_num = phase.get("phase", self.executor.current_phase_index + 1)
-                phase_result_key = f"result_of_phase_{phase_num}"
-                self.executor.workflow_state.setdefault(phase_result_key, []).append(self.executor.last_tool_output)
-                self.executor._add_to_structured_data(self.executor.last_tool_output)
+            # --- MODIFICATION START: Ensure state updates even for bypassed tools ---
+            # Yield result, add to history, update workflow state, add to structured data
+            yield self.executor._format_sse({"step": "Tool Execution Result", "details": self.executor.last_tool_output, "tool_name": tool_name}, "tool_result")
+            self.executor.turn_action_history.append({"action": action, "result": self.executor.last_tool_output})
+            phase_num = phase.get("phase", self.executor.current_phase_index + 1)
+            phase_result_key = f"result_of_phase_{phase_num}"
+            # Use setdefault correctly for list append even in non-loop context
+            self.executor.workflow_state.setdefault(phase_result_key, []).append(self.executor.last_tool_output)
+            self.executor._add_to_structured_data(self.executor.last_tool_output)
+            # --- MODIFICATION END ---
             return
-        
+
         max_retries = 3
-        
+
         if tool_name == "TDA_LLMTask" and self.executor.is_synthesis_from_history:
             app_logger.info("Preparing TDA_LLMTask for 'full_context' execution.")
             session_data = session_manager.get_session(self.executor.session_id)
             session_history = session_data.get("session_history", []) if session_data else []
-            
+
             action.setdefault("arguments", {})["mode"] = "full_context"
             action.setdefault("arguments", {})["session_history"] = session_history
             action["arguments"]["user_question"] = self.executor.original_user_input
-        
+
         for attempt in range(max_retries):
             if 'notification' in action:
                 yield self.executor._format_sse({"step": "System Notification", "details": action['notification'], "type": "workaround"})
@@ -920,17 +1119,19 @@ class PhaseExecutor:
             if tool_name == "TDA_LLMTask" and not self.executor.is_synthesis_from_history:
                 distilled_workflow_state = self.executor._distill_data_for_llm_context(copy.deepcopy(self.executor.workflow_state))
                 action.setdefault("arguments", {})["data"] = distilled_workflow_state
-            
-            if not is_fast_path:
-                yield self.executor._format_sse({"step": "Tool Execution Intent", "details": action}, "tool_result")
-            
+
+            # --- MODIFICATION START: Yield intent only if not Fast Path Loop ---
+            if not is_fast_path: # Fast path loop yields item processing message instead
+                 yield self.executor._format_sse({"step": "Tool Execution Intent", "details": action, "tool_name": tool_name}, "tool_intent") # Changed event type
+            # --- MODIFICATION END ---
+
             status_target = "db"
             call_id_for_tool = None
-            
+
             if tool_name in ["TDA_LLMTask", "TDA_LLMFilter", "TDA_CurrentDate", "TDA_DateRange", "TDA_FinalReport", "TDA_ComplexPromptReport"]:
                 status_target = "llm"
                 call_id_for_tool = str(uuid.uuid4())
-                
+
                 reason_map = {
                     "TDA_LLMTask": action.get("arguments", {}).get("task_description", "Executing LLM-based task."),
                     "TDA_LLMFilter": action.get("arguments", {}).get("goal", "Filtering data with LLM."),
@@ -944,9 +1145,9 @@ class PhaseExecutor:
                     "type": "system_message",
                     "details": {"summary": reason, "call_id": call_id_for_tool}
                 })
-            
+
             yield self.executor._format_sse({"target": status_target, "state": "busy"}, "status_indicator_update")
-            
+
             full_context_for_tool = {
                 "original_user_input": self.executor.original_user_input,
                 "workflow_goal_prompt": self.executor.workflow_goal_prompt,
@@ -954,9 +1155,9 @@ class PhaseExecutor:
             }
 
             tool_result, input_tokens, output_tokens = await mcp_adapter.invoke_mcp_tool(
-                self.executor.dependencies['STATE'], 
-                action, 
-                session_id=self.executor.session_id, 
+                self.executor.dependencies['STATE'],
+                action,
+                session_id=self.executor.session_id,
                 call_id=call_id_for_tool,
                 workflow_state=full_context_for_tool
             )
@@ -974,38 +1175,38 @@ class PhaseExecutor:
                         "total_output": updated_session.get("output_tokens", 0),
                         "call_id": final_call_id
                     }, "token_update")
-            
-            self.executor.last_tool_output = tool_result 
-            
+
+            self.executor.last_tool_output = tool_result
+
             if isinstance(tool_result, dict) and tool_result.get("status") == "error":
                 yield self.executor._format_sse({"details": tool_result, "tool_name": tool_name}, "tool_error")
-                
+
                 error_data_str = str(tool_result.get('data', ''))
-                
+
                 for error_pattern, friendly_message in DEFINITIVE_TOOL_ERRORS.items():
                     if re.search(error_pattern, error_data_str, re.IGNORECASE):
                         from trusted_data_agent.agent.executor import DefinitiveToolError
                         raise DefinitiveToolError(error_data_str, friendly_message)
-                
+
                 if attempt < max_retries - 1:
                     correction_details = {
                         "summary": f"Tool failed. Attempting self-correction ({attempt + 1}/{max_retries - 1}).",
                         "details": tool_result
                     }
                     yield self.executor._format_sse({"step": "System Self-Correction", "type": "workaround", "details": correction_details})
-                    
+
                     correction_handler = CorrectionHandler(self.executor)
                     corrected_action, correction_events = await correction_handler.attempt_correction(action, tool_result)
-                    
+
                     for event in correction_events:
                         yield event
-                    
+
                     if corrected_action:
                         if "FINAL_ANSWER" in corrected_action:
                             final_answer_from_correction = corrected_action["FINAL_ANSWER"]
                             self.executor.last_tool_output = {"status": "success", "results": [{"response": f"FINAL_ANSWER: {final_answer_from_correction}"}]}
-                            break
-                        
+                            break # Correction led to final answer, break retry loop
+
                         if "prompt_name" in corrected_action:
                             async for event in self.executor._run_sub_prompt(
                                 corrected_action['prompt_name'],
@@ -1013,41 +1214,50 @@ class PhaseExecutor:
                                 is_delegated_task=True
                             ):
                                 yield event
-                            
+
                             if self.executor.state == self.executor.AgentState.ERROR:
                                 app_logger.error(f"Recovery prompt '{corrected_action['prompt_name']}' failed. Continuing retry loop.")
                                 self.executor.last_tool_output = {"status": "error", "data": "The recovery prompt failed to execute."}
-                                continue 
+                                continue # Prompt failed, continue retry loop for original tool
                             else:
                                 app_logger.info(f"Successfully recovered from tool failure by executing prompt '{corrected_action['prompt_name']}'.")
-                                break 
+                                break # Prompt succeeded, break retry loop
 
-                        action = corrected_action
-                        continue
+                        action = corrected_action # Update action for the next retry attempt
+                        continue # Go to next attempt with corrected action
                     else:
                         correction_failed_details = {
                             "summary": "Unable to find a correction. Aborting retries for this action.",
                             "details": tool_result
                         }
                         yield self.executor._format_sse({"step": "System Self-Correction Failed", "type": "error", "details": correction_failed_details})
-                        break
+                        break # Correction failed, break retry loop
                 else:
                     persistent_failure_details = {
                         "summary": f"Tool '{tool_name}' failed after {max_retries} attempts.",
                         "details": tool_result
                     }
                     yield self.executor._format_sse({"step": "Persistent Failure", "type": "error", "details": persistent_failure_details})
+                    # Let loop end, error status is already set in last_tool_output
             else:
-                if not is_fast_path:
-                    yield self.executor._format_sse({"step": "Tool Execution Result", "details": tool_result, "tool_name": tool_name}, "tool_result")
-                break 
-        
+                 # --- MODIFICATION START: Yield result only if not Fast Path Loop ---
+                if not is_fast_path: # Fast path loop handles results differently
+                     yield self.executor._format_sse({"step": "Tool Execution Result", "details": tool_result, "tool_name": tool_name}, "tool_result")
+                 # --- MODIFICATION END ---
+                break # Tool succeeded, break retry loop
+
+        # --- State updates after the retry loop (applies to both success and failure) ---
+        # --- MODIFICATION START: Only update state if NOT Fast Path Loop ---
+        # Fast path loop manages its own state updates collectively after the loop finishes.
         if not is_fast_path:
-            self.executor.turn_action_history.append({"action": action, "result": self.executor.last_tool_output})
-            phase_num = phase.get("phase", self.executor.current_phase_index + 1)
-            phase_result_key = f"result_of_phase_{phase_num}"
-            self.executor.workflow_state.setdefault(phase_result_key, []).append(self.executor.last_tool_output)
-            self.executor._add_to_structured_data(self.executor.last_tool_output)
+             self.executor.turn_action_history.append({"action": action, "result": self.executor.last_tool_output})
+             phase_num = phase.get("phase", self.executor.current_phase_index + 1)
+             phase_result_key = f"result_of_phase_{phase_num}"
+             # Ensure workflow state is updated correctly even for single tool calls
+             self.executor.workflow_state.setdefault(phase_result_key, []).append(self.executor.last_tool_output)
+             self.executor._add_to_structured_data(self.executor.last_tool_output)
+        # --- MODIFICATION END ---
+
 
     def _enrich_arguments_from_history(self, relevant_tools: list[str], current_args: dict = None) -> tuple[dict, list, bool]:
         """
@@ -1057,7 +1267,7 @@ class PhaseExecutor:
         events_to_yield = []
         initial_args = current_args.copy() if current_args else {}
         enriched_args = initial_args.copy()
-        
+
         all_tools = self.executor.dependencies['STATE'].get('mcp_tools', {})
         required_args_for_phase = set()
         for tool_name in relevant_tools:
@@ -1068,17 +1278,23 @@ class PhaseExecutor:
                 if arg_details.get('required', False):
                     required_args_for_phase.add(arg_name)
 
-        args_to_find = {arg for arg in required_args_for_phase if arg not in enriched_args or not enriched_args.get(arg)}
+        # --- MODIFICATION START: Use canonical check ---
+        args_to_find = {
+            arg for arg in required_args_for_phase
+            if get_argument_by_canonical_name(enriched_args, arg) is None # Check canonical presence
+        }
+        # --- MODIFICATION END ---
+
         if not args_to_find:
             return enriched_args, [], False
 
         for entry in reversed(self.executor.turn_action_history):
             if not args_to_find: break
-            
+
             result = entry.get("result", {})
             is_successful_data_action = (
-                isinstance(result, dict) and 
-                result.get('status') == 'success' and 
+                isinstance(result, dict) and
+                result.get('status') == 'success' and
                 'results' in result
             )
             is_successful_chart_action = (
@@ -1092,27 +1308,35 @@ class PhaseExecutor:
 
             action_args = entry.get("action", {}).get("arguments", {})
             for arg_name in list(args_to_find):
-                if arg_name in action_args and action_args[arg_name] is not None:
-                    enriched_args[arg_name] = action_args[arg_name]
+                # --- MODIFICATION START: Use canonical check during enrichment ---
+                value_from_action = get_argument_by_canonical_name(action_args, arg_name)
+                if value_from_action is not None:
+                     # Add using the specific required name found, not necessarily the canonical one
+                    enriched_args[arg_name] = value_from_action
                     args_to_find.remove(arg_name)
+                # --- MODIFICATION END ---
+
 
             if isinstance(result, dict):
                 result_metadata = result.get("metadata", {})
                 if result_metadata:
                     metadata_to_arg_map = {
                         "database": "database_name",
-                        "table": "table_name",
+                        "table": "table_name", # Assuming 'table_name' is preferred/required
                         "column": "column_name"
                     }
                     for meta_key, arg_name in metadata_to_arg_map.items():
                         if arg_name in args_to_find and meta_key in result_metadata:
-                            enriched_args[arg_name] = result_metadata[meta_key]
-                            args_to_find.remove(arg_name)
-        
+                             # Check if this required arg isn't already filled by action_args
+                             if get_argument_by_canonical_name(enriched_args, arg_name) is None:
+                                enriched_args[arg_name] = result_metadata[meta_key]
+                                args_to_find.remove(arg_name)
+
+
         was_enriched = enriched_args != initial_args
         if was_enriched:
             for arg_name, value in enriched_args.items():
-                if arg_name not in initial_args:
+                if arg_name not in initial_args or initial_args.get(arg_name) is None: # Check if it was newly added or filled
                     app_logger.info(f"Proactively inferred '{arg_name}' from turn history: '{value}'")
                     events_to_yield.append(self.executor._format_sse({
                         "step": "System Correction",
@@ -1123,19 +1347,20 @@ class PhaseExecutor:
 
         return enriched_args, events_to_yield, was_enriched
 
+
     async def _get_next_tactical_action(self, current_phase_goal: str, relevant_tools: list[str], enriched_args: dict, strategic_args: dict, executable_prompt: str = None) -> tuple[dict | str, int, int]:
         """Makes a tactical LLM call to decide the single next best action for the current phase."""
-        
+
         permitted_tools_with_details = ""
         all_tools = self.executor.dependencies['STATE'].get('mcp_tools', {})
-        
+
         for tool_name in relevant_tools:
             tool = all_tools.get(tool_name)
             if not tool: continue
 
             tool_str = f"\n- Tool: `{tool.name}`\n  - Description: {tool.description}"
             args_dict = tool.args if isinstance(tool.args, dict) else {}
-            
+
             if args_dict:
                 tool_str += "\n  - Arguments:"
                 for arg_name, arg_details in args_dict.items():
@@ -1145,7 +1370,7 @@ class PhaseExecutor:
                     arg_desc = arg_details.get('description', 'No description.')
                     tool_str += f"\n    - `{arg_name}` ({arg_type}, {req_str}): {arg_desc}"
             permitted_tools_with_details += tool_str + "\n"
-        
+
         permitted_prompts_with_details = "None"
         if executable_prompt:
             all_prompts = self.executor.dependencies['STATE'].get('structured_prompts', {})
@@ -1156,7 +1381,7 @@ class PhaseExecutor:
                         prompt_info = p
                         break
                 if prompt_info: break
-            
+
             if prompt_info:
                 prompt_str = f"\n- Prompt: `{prompt_info['name']}`\n  - Description: {prompt_info.get('description', 'No description.')}"
                 if prompt_info.get('arguments'):
@@ -1215,38 +1440,40 @@ class PhaseExecutor:
             disabled_history=True,
             source=self.executor.source
         )
-        
+
         self.executor.last_failed_action_info = "None"
 
         if "FINAL_ANSWER:" in response_text.upper() or "SYSTEM_ACTION_COMPLETE" in response_text.upper():
             return "SYSTEM_ACTION_COMPLETE", input_tokens, output_tokens
 
         try:
+            # More robust JSON extraction
             json_match = re.search(r"```json\s*\n(.*?)\n\s*```|(\{.*\})", response_text, re.DOTALL)
             if not json_match: raise json.JSONDecodeError("No JSON object found", response_text, 0)
-            
+
             json_str = json_match.group(1) or json_match.group(2)
             if not json_str: raise json.JSONDecodeError("Extracted JSON is empty", response_text, 0)
 
+
             raw_action = json.loads(json_str.strip())
-            
+
             action_details = raw_action
             tool_name_synonyms = ["tool_name", "name", "tool", "action_name"]
             prompt_name_synonyms = ["prompt_name", "prompt"]
             arg_synonyms = ["arguments", "args", "tool_input", "action_input", "parameters"]
-            
+
             possible_wrapper_keys = ["action", "tool_call", "tool", "prompt_call", "prompt"]
             for key in possible_wrapper_keys:
                 if key in action_details and isinstance(action_details[key], dict):
                     action_details = action_details[key]
-                    break 
+                    break
 
             found_tool_name = None
             for key in tool_name_synonyms:
                 if key in action_details:
                     found_tool_name = action_details.pop(key)
                     break
-            
+
             found_prompt_name = None
             for key in prompt_name_synonyms:
                 if key in action_details:
@@ -1258,15 +1485,18 @@ class PhaseExecutor:
                 if key in action_details and isinstance(action_details[key], dict):
                     found_args = action_details[key]
                     break
-            
+
             if found_args is None:
-                found_args = action_details
+                # If no standard arg key, use the remaining dict if it looks like args
+                if isinstance(action_details, dict) and not any(k in action_details for k in tool_name_synonyms + prompt_name_synonyms):
+                    found_args = action_details
 
             normalized_action = {
                 "tool_name": found_tool_name,
                 "prompt_name": found_prompt_name,
                 "arguments": found_args if isinstance(found_args, dict) else {}
             }
+
 
             if not normalized_action.get("tool_name") and not normalized_action.get("prompt_name"):
                 if len(relevant_tools) == 1:
@@ -1285,7 +1515,7 @@ class PhaseExecutor:
                         "correction_type": "inferred_prompt_name",
                         "details": f"LLM omitted prompt_name. System inferred '{executable_prompt}'."
                     }))
-            
+
             if not normalized_action.get("tool_name") and not normalized_action.get("prompt_name"):
                  raise ValueError("Could not determine tool_name or prompt_name from LLM response.")
 
@@ -1302,10 +1532,10 @@ class PhaseExecutor:
 
         tool_arg_names = set(tool_spec.args.keys())
         tool_supports_range = 'start_date' in tool_arg_names and 'end_date' in tool_arg_names
-        
+
         args = command.get("arguments", {})
         date_param_name = next((param for param in args if 'date' in param.lower()), None)
-        
+
         return bool(date_param_name), date_param_name, tool_supports_range
 
     async def _classify_date_query_type(self):
@@ -1328,9 +1558,14 @@ class PhaseExecutor:
         if updated_session:
             yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
         try:
-            self.executor.temp_data_holder = json.loads(response_str)
-        except (json.JSONDecodeError, KeyError):
+             # Added extraction logic for robustness
+            json_match = re.search(r"```json\s*\n(.*?)\n\s*```|(\{.*\})", response_str, re.DOTALL)
+            if not json_match: raise json.JSONDecodeError("No JSON found in LLM response", response_str, 0)
+            json_str = json_match.group(1) or json_match.group(2)
+            self.executor.temp_data_holder = json.loads(json_str)
+        except (json.JSONDecodeError, KeyError, AttributeError):
             self.executor.temp_data_holder = {'type': 'single', 'phrase': self.executor.original_user_input}
+
 
     async def _recover_from_phase_failure(self, failed_phase_goal: str):
         """
@@ -1349,7 +1584,7 @@ class PhaseExecutor:
                 failed_tool_name = action.get("action", {}).get("tool_name", failed_tool_name)
                 self.executor.globally_skipped_tools.add(failed_tool_name)
                 break
-        
+
         distilled_workflow_state = self.executor._distill_data_for_llm_context(copy.deepcopy(self.executor.workflow_state))
 
         recovery_prompt = ERROR_RECOVERY_PROMPT.format(
@@ -1359,44 +1594,53 @@ class PhaseExecutor:
             all_collected_data=json.dumps(distilled_workflow_state, indent=2),
             workflow_goal_and_plan=f"The agent was trying to achieve this goal: '{failed_phase_goal}'"
         )
-        
+
         reason = "Recovering from persistent phase failure."
         yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
         response_text, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
-            prompt=recovery_prompt, 
+            prompt=recovery_prompt,
             reason=reason,
             raise_on_error=True,
             source=self.executor.source
         )
         yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
-        
+
         updated_session = session_manager.get_session(self.executor.session_id)
         if updated_session:
             yield self.executor._format_sse({"statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id}, "token_update")
 
         try:
-            json_match = re.search(r'(\[.*\]|\{.*\})', response_text, re.DOTALL)
+            # More robust JSON extraction for recovery plan
+            json_match = re.search(r"```json\s*\n(.*?)```|(\[.*?\]|\{.*?\})", response_text, re.DOTALL)
             if not json_match:
                 raise ValueError("No valid JSON plan or action found in the recovery response.")
-            
-            json_str = json_match.group(1)
-            plan_object = json.loads(json_str)
+
+            json_str = next(g for g in json_match.groups() if g is not None)
+            if not json_str:
+                 raise ValueError("Extracted JSON string for recovery plan is empty.")
+
+            plan_object = json.loads(json_str.strip())
+
 
             if isinstance(plan_object, dict) and ("tool_name" in plan_object or "prompt_name" in plan_object):
                 app_logger.warning("Recovery LLM returned a direct action; wrapping it in a plan.")
-                tool_name = plan_object.get("tool_name") or plan_object.get("prompt_name")
+                # --- MODIFICATION START: Correct the incomplete string literal ---
+                tool_name = plan_object.get("tool_name") or plan_object.get("prompt_name") # Fixed "tool_n..." to "tool_name"
+                # --- MODIFICATION END ---
                 new_plan = [{
                     "phase": 1,
                     "goal": f"Recovered plan: Execute the action for the user's request: '{self.executor.original_user_input}'",
-                    "relevant_tools": [tool_name]
+                    "relevant_tools": [tool_name], # Use the extracted tool_name
+                    "arguments": plan_object.get("arguments", {}) # Include arguments
                 }]
+
             elif isinstance(plan_object, list):
                 new_plan = plan_object
             else:
                 raise ValueError("Recovered plan is not a valid list or action object.")
 
             yield self.executor._format_sse({"step": "Recovery Plan Generated", "type": "system_message", "details": new_plan})
-            
+
             self.executor.meta_plan = new_plan
             self.executor.current_phase_index = 0
             self.executor.turn_action_history.append({"action": "RECOVERY_REPLAN", "result": {"status": "success"}})

@@ -8,7 +8,10 @@ import * as DOM from './domElements.js';
 import { state } from './state.js';
 import * as API from './api.js';
 import * as UI from './ui.js';
+// --- MODIFICATION START: Import specific copy functions ---
 import * as Utils from './utils.js';
+import { copyToClipboard, copyTableToClipboard } from './utils.js'; // Import specific functions
+// --- MODIFICATION END ---
 import { startRecognition, stopRecognition, startConfirmationRecognition } from './voice.js';
 
 // --- Stream Processing ---
@@ -46,7 +49,7 @@ async function processStream(responseBody) {
 
                 if (eventName === 'status_indicator_update') {
                     const { target, state: statusState } = eventData;
-                    
+
                     let dot;
                     if (target === 'db') {
                         dot = DOM.mcpStatusDot;
@@ -57,12 +60,12 @@ async function processStream(responseBody) {
                     if (target === 'llm') {
                         UI.setThinkingIndicator(statusState === 'busy');
                     }
-                    
+
                     if (dot) {
                         if (statusState === 'busy') {
                             dot.classList.remove('idle', 'connected');
                             dot.classList.add('busy');
-                        } else { 
+                        } else {
                             dot.classList.remove('busy');
                             dot.classList.add(target === 'db' ? 'connected' : 'idle');
                         }
@@ -72,7 +75,7 @@ async function processStream(responseBody) {
                     if (target === 'context') {
                         if (statusState === 'history_disabled_processing') {
                             DOM.contextStatusDot.classList.remove('idle', 'history-disabled-preview');
-                            DOM.contextStatusDot.classList.add('busy'); 
+                            DOM.contextStatusDot.classList.add('busy');
                         } else if (statusState === 'processing_complete') {
                             state.isInFastPath = false;
                         }
@@ -128,7 +131,7 @@ async function processStream(responseBody) {
                                 });
                             }
                         }
-                        
+
                         if (key_observations) {
                             switch (state.keyObservationsMode) {
                                 case 'autoplay-off':
@@ -138,7 +141,7 @@ async function processStream(responseBody) {
 
                                     const confirmationQuestion = "Do you want to hear the key observations?";
                                     const questionAudio = await API.synthesizeText(confirmationQuestion);
-                                    
+
                                     if (questionAudio) {
                                         const questionUrl = URL.createObjectURL(questionAudio);
                                         const questionPlayer = new Audio(questionUrl);
@@ -163,7 +166,7 @@ async function processStream(responseBody) {
                                             audio.play();
                                         });
                                     }
-                                
+
                                 case 'off':
                                     if (state.isVoiceModeLocked) {
                                         setTimeout(() => startRecognition(), 100);
@@ -245,8 +248,8 @@ export async function handleChatSubmit(e, source = 'text') {
     e.preventDefault();
     const message = DOM.userInput.value.trim();
     if (!message || !state.currentSessionId) return;
-    handleStreamRequest('/ask_stream', { 
-        message, 
+    handleStreamRequest('/ask_stream', {
+        message,
         session_id: state.currentSessionId,
         source: source
     });
@@ -260,7 +263,7 @@ export async function handleLoadResources(type) {
 
     try {
         const data = await API.loadResources(type);
-        
+
         if (!data || Object.keys(data).length === 0) {
             if(tabButton) {
                 tabButton.style.display = 'none';
@@ -549,7 +552,7 @@ export async function finalizeConfiguration(config) {
             await resetSystemPrompt(true);
         }
     }
-    
+
     const promptEditorMenuItem = DOM.promptEditorButton.parentElement;
     if (Utils.isPrivilegedUser()) {
         promptEditorMenuItem.style.display = 'block';
@@ -558,10 +561,10 @@ export async function finalizeConfiguration(config) {
         promptEditorMenuItem.style.display = 'none';
         DOM.promptEditorButton.disabled = true;
     }
-    
+
     DOM.chatModalButton.disabled = false;
     DOM.userInput.placeholder = "Ask about databases, tables, users...";
-    
+
     await Promise.all([
         handleLoadResources('tools'),
         handleLoadResources('prompts'),
@@ -573,7 +576,7 @@ export async function finalizeConfiguration(config) {
     state.pristineConfig = getCurrentCoreConfig();
     UI.updateConfigButtonState();
     openSystemPromptPopup();
-    
+
     setTimeout(UI.closeConfigModal, 1000);
 }
 
@@ -624,7 +627,7 @@ async function handleConfigFormSubmit(e) {
     } else {
         localStorage.setItem(`${config.provider.toLowerCase()}ApiKey`, config.apiKey);
     }
-    
+
     if (config.tts_credentials_json) {
         localStorage.setItem('ttsCredentialsJson', config.tts_credentials_json);
     }
@@ -707,7 +710,7 @@ export async function loadCredentialsAndModels() {
         const data = await API.getApiKey(newProvider);
         DOM.llmApiKeyInput.value = data.apiKey || localStorage.getItem(`${newProvider.toLowerCase()}ApiKey`) || '';
     }
-    
+
     // Now that credentials are confirmed to be loaded, fetch the models.
     await handleRefreshModelsClick();
 }
@@ -717,7 +720,7 @@ export async function loadCredentialsAndModels() {
 async function handleProviderChange() {
     DOM.llmModelSelect.innerHTML = '<option value="">-- Select Provider & Enter Credentials --</option>';
     DOM.configStatus.textContent = '';
-    
+
     // --- MODIFICATION START: Call the new, centralized function ---
     await loadCredentialsAndModels();
     // --- MODIFICATION END ---
@@ -947,7 +950,7 @@ function handleKeyObservationsToggleClick() {
     }
     localStorage.setItem('keyObservationsMode', state.keyObservationsMode);
     UI.updateKeyObservationsModeUI();
-    
+
     let announcementText = '';
     switch (state.keyObservationsMode) {
         case 'autoplay-off':
@@ -1240,7 +1243,24 @@ export function initializeEventListeners() {
     DOM.newChatButton.addEventListener('click', handleStartNewSession);
     DOM.resourceTabs.addEventListener('click', handleResourceTabClick);
     DOM.keyObservationsToggleButton.addEventListener('click', handleKeyObservationsToggleClick);
-    
+
+    // --- MODIFICATION START: Add delegated event listener for copy buttons ---
+    // Listen for clicks on the chat log area
+    DOM.chatLog.addEventListener('click', (e) => {
+        // Find the closest ancestor button with the 'copy-button' class
+        const copyButton = e.target.closest('.copy-button');
+        if (copyButton) {
+            const copyType = copyButton.dataset.copyType;
+            if (copyType === 'code') {
+                copyToClipboard(copyButton); // Call imported function
+            } else if (copyType === 'table') {
+                copyTableToClipboard(copyButton); // Call imported function
+            }
+        }
+    });
+    // --- MODIFICATION END ---
+
+
     DOM.mainContent.addEventListener('click', (e) => {
         const runButton = e.target.closest('.run-prompt-button');
         const viewButton = e.target.closest('.view-prompt-button');
@@ -1306,7 +1326,7 @@ export function initializeEventListeners() {
             handleLoadSession(sessionItem.dataset.sessionId);
         }
     });
-    
+
     // All modal listeners
     DOM.promptModalClose.addEventListener('click', UI.closePromptModal);
     DOM.promptModalOverlay.addEventListener('click', (e) => {
@@ -1409,4 +1429,3 @@ export function initializeEventListeners() {
         }
     });
 }
-

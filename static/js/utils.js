@@ -8,12 +8,14 @@ import { state } from './state.js';
 import { promptEditorStatus } from './domElements.js';
 
 export function isPrivilegedUser() {
+    // ... (no changes in this function) ...
     const privilegedTiers = ['Prompt Engineer', 'Enterprise'];
     const userTier = state.appConfig.license_info?.tier;
     return privilegedTiers.includes(userTier);
 }
 
 export function getSystemPrompts() {
+    // ... (no changes in this function) ...
     if (!isPrivilegedUser()) return {};
 
     try {
@@ -26,6 +28,7 @@ export function getSystemPrompts() {
 }
 
 export function getNormalizedModelId(modelId) {
+    // ... (no changes in this function) ...
     if (!modelId) return '';
     if (modelId.startsWith('arn:aws:bedrock:')) {
         const parts = modelId.split('/');
@@ -36,11 +39,13 @@ export function getNormalizedModelId(modelId) {
 }
 
 export function getPromptStorageKey(provider, model) {
+    // ... (no changes in this function) ...
     const normalizedModel = getNormalizedModelId(model);
     return `${provider}-${normalizedModel}`;
 }
 
 export function saveSystemPromptForModel(provider, model, promptText, isCustom) {
+    // ... (no changes in this function) ...
     if (!isPrivilegedUser()) return;
 
     const prompts = getSystemPrompts();
@@ -50,6 +55,7 @@ export function saveSystemPromptForModel(provider, model, promptText, isCustom) 
 }
 
 export function getSystemPromptForModel(provider, model) {
+    // ... (no changes in this function) ...
     if (!isPrivilegedUser()) return null;
 
     const prompts = getSystemPrompts();
@@ -58,6 +64,7 @@ export function getSystemPromptForModel(provider, model) {
 }
 
 export function isPromptCustomForModel(provider, model) {
+    // ... (no changes in this function) ...
     if (!isPrivilegedUser()) return false;
 
     const prompts = getSystemPrompts();
@@ -66,6 +73,7 @@ export function isPromptCustomForModel(provider, model) {
 }
 
 export async function getDefaultSystemPrompt(provider, model) {
+    // ... (no changes in this function) ...
     if (!isPrivilegedUser()) return null;
 
     const key = getPromptStorageKey(provider, model);
@@ -92,68 +100,148 @@ export async function getDefaultSystemPrompt(provider, model) {
     }
 }
 
+/**
+ * Copies text content from a code block associated with the clicked button
+ * to the clipboard using the document.execCommand method for better
+ * compatibility in restricted environments.
+ * @param {HTMLButtonElement} button - The button element that was clicked.
+ */
 export function copyToClipboard(button) {
-    const codeBlock = button.closest('.sql-code-block').querySelector('code');
+    // ... (no changes in this function) ...
+    const codeBlock = button.closest('.sql-code-block')?.querySelector('code');
+    if (!codeBlock) {
+        console.error('Could not find code block to copy from.');
+        return;
+    }
     const textToCopy = codeBlock.innerText;
 
-    navigator.clipboard.writeText(textToCopy).then(() => {
+    const textarea = document.createElement('textarea');
+    textarea.value = textToCopy;
+    textarea.style.position = 'fixed'; // Prevent scrolling to bottom of page in MS Edge.
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, 99999); // For mobile devices
+
+    let success = false;
+    try {
+        success = document.execCommand('copy');
+        if (!success) {
+            throw new Error('document.execCommand returned false');
+        }
+    } catch (err) {
+        console.error('Fallback copy failed: ', err);
+        // Optionally provide user feedback about the failure
+        alert('Failed to copy text. Please try copying manually.');
+    }
+
+    document.body.removeChild(textarea);
+
+    if (success) {
         const originalContent = button.innerHTML;
-        button.textContent = 'Copied!';
+        // Keep the SVG icon, just change the text
+        const textNode = button.childNodes[button.childNodes.length - 1];
+        if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+            textNode.textContent = ' Copied!';
+        } else {
+             button.textContent = 'Copied!'; // Fallback if structure changes
+        }
         button.classList.add('copied');
         setTimeout(() => {
-            button.innerHTML = originalContent;
+            button.innerHTML = originalContent; // Restore original HTML (including SVG)
             button.classList.remove('copied');
         }, 2000);
-    }).catch(err => {
-        console.error('Failed to copy text: ', err);
-    });
+    }
 }
 
+/**
+ * Copies table data (formatted as TSV) associated with the clicked button
+ * to the clipboard using the document.execCommand method.
+ * @param {HTMLButtonElement} button - The button element that was clicked.
+ */
 export function copyTableToClipboard(button) {
+    // ... (no changes in this function) ...
     const dataStr = button.dataset.table;
     if (!dataStr) {
         console.error("No data-table attribute found on the button.");
         return;
     }
 
+    let tsvContent = '';
     try {
         const data = JSON.parse(dataStr);
-        if (!Array.isArray(data) || data.length === 0) {
+        if (!Array.isArray(data) || data.length === 0 || typeof data[0] !== 'object') {
+            console.warn("Table data is empty or not in the expected format (array of objects).");
             return;
         }
 
         const headers = Object.keys(data[0]);
-        let tsvContent = headers.join('\t') + '\n';
+        tsvContent = headers.join('\t') + '\n'; // Header row
 
         data.forEach(row => {
             const values = headers.map(header => {
                 let value = row[header] === null || row[header] === undefined ? '' : String(row[header]);
-                value = value.replace(/\t/g, ' ').replace(/\n/g, ' ');
+                // Sanitize value for TSV: remove tabs and newlines within cells
+                value = value.replace(/[\t\n\r]/g, ' ');
                 return value;
             });
-            tsvContent += values.join('\t') + '\n';
-        });
-
-        navigator.clipboard.writeText(tsvContent).then(() => {
-            const originalContent = button.innerHTML;
-            button.textContent = 'Copied!';
-            button.classList.add('copied');
-            setTimeout(() => {
-                button.innerHTML = originalContent;
-                button.classList.remove('copied');
-            }, 2000);
-        }).catch(err => {
-            console.error('Failed to copy table data: ', err);
+            tsvContent += values.join('\t') + '\n'; // Data row
         });
 
     } catch (e) {
         console.error("Failed to parse or process table data for copying:", e);
+        alert('Failed to process table data for copying.');
+        return;
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = tsvContent;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, 99999);
+
+    let success = false;
+    try {
+        success = document.execCommand('copy');
+         if (!success) {
+            throw new Error('document.execCommand returned false');
+        }
+    } catch (err) {
+        console.error('Fallback table copy failed: ', err);
+        alert('Failed to copy table. Please try copying manually.');
+    }
+
+    document.body.removeChild(textarea);
+
+    if (success) {
+        const originalContent = button.innerHTML;
+        const textNode = button.childNodes[button.childNodes.length - 1];
+         if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+            textNode.textContent = ' Copied!';
+        } else {
+             button.textContent = 'Copied!';
+        }
+        button.classList.add('copied');
+        setTimeout(() => {
+            button.innerHTML = originalContent;
+            button.classList.remove('copied');
+        }, 2000);
     }
 }
 
+
 export function renderChart(containerId, spec) {
+    // ... (no changes in this function) ...
     try {
         const chartSpec = typeof spec === 'string' ? JSON.parse(spec) : spec;
+        if (!chartSpec || !chartSpec.type || !chartSpec.options) {
+             throw new Error("Invalid chart specification provided.");
+        }
+        if (typeof G2Plot === 'undefined' || !G2Plot[chartSpec.type]) {
+             throw new Error(`Chart type "${chartSpec.type}" is not supported or G2Plot is not loaded.`);
+        }
         const plot = new G2Plot[chartSpec.type](containerId, chartSpec.options);
         plot.render();
     } catch (e) {
@@ -165,7 +253,9 @@ export function renderChart(containerId, spec) {
     }
 }
 
+
 export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIcon) {
+    // ... (no changes in this function) ...
     const toggle = (isOpen) => {
         const isCollapsed = !isOpen;
         panel.classList.toggle('collapsed', isCollapsed);
@@ -180,14 +270,13 @@ export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIc
     }
 }
 
-// --- MODIFICATION START: Add deterministic confirmation classifier ---
 /**
  * Classifies a user's spoken confirmation as 'yes', 'no', or 'unknown'.
  * @param {string} text - The transcribed text from the user.
  * @returns {'yes' | 'no' | 'unknown'}
  */
 export function classifyConfirmation(text) {
-    // Use regex with word boundaries (\b) for more accurate matching.
+    // ... (no changes in this function) ...
     const affirmativeRegex = /\b(yes|yeah|yep|sure|ok|okay|please|do it|go ahead)\b/i;
     const negativeRegex = /\b(no|nope|don't|stop|cancel)\b/i;
 
@@ -201,4 +290,9 @@ export function classifyConfirmation(text) {
     }
     return 'unknown';
 }
+
+// --- MODIFICATION START: Remove global assignments ---
+// window.copyToClipboard = copyToClipboard; // REMOVED
+// window.copyTableToClipboard = copyTableToClipboard; // REMOVED
 // --- MODIFICATION END ---
+
