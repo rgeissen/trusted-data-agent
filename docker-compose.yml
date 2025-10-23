@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  trusted-data-agent:
+    # This 'build' section tells Compose to use your Dockerfile
+    build:
+      context: . # Assumes Dockerfile is in this directory
+      dockerfile: Dockerfile
+    # This will be the name of the image after it's built
+    image: trusted-data-agent-v08:latest
+    
+    # This is the container name from your JSON config
+    container_name: trusted-data-agent-v08
+    
+    # This 'command' overrides the default CMD in the Dockerfile
+    # It's taken directly from the "cmd" field in your JSON
+    command: python -m trusted_data_agent.main --host 0.0.0.0 --port 5000
+    
+    ports:
+      # Maps host port 5050 to container port 5000
+      - "5050:5000"
+      
+    volumes:
+      # This volume mount is from your JSON config.
+      # It mounts a folder from your host computer into the container at /app
+      # WARNING: This will hide any code copied by the Dockerfile at /app.
+      - /volume2/docker/trusted-data-agent-v08:/app
+      
+    environment:
+      # These are the application-specific variables from your JSON
+      - TDA_CONFIGURATION_PERSISTENCE=false
+      - CORS_ALLOWED_ORIGINS=https://tda.uderia.com
+      
+    networks:
+      # Connects this service to the 'tda_network' defined below
+      - tda_network
+      
+    # This is a high-risk setting from your JSON ("privileged": true).
+    # It gives the container root access to your host machine.
+    privileged: true
+    
+    # Your JSON had "enable_restart_policy": false, which means 'no' restart.
+    # For production, you might want to change this to "unless-stopped".
+    restart: "no"
+
+# This top-level section defines the networks
+networks:
+  tda_network:
+    driver: bridge
+    # This specifies the exact network name from your JSON
+    name: TDA_Network

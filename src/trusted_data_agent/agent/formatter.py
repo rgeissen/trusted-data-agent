@@ -711,7 +711,7 @@ class OutputFormatter:
                         elif item.get("type") == "chart":
                              chart_id = f"chart-render-target-{uuid.uuid4()}"
                              chart_spec_json = json.dumps(item.get("spec", {}))
-                             collateral_html += f'<div class="response-card mb-4"><div id="{chart_id}" class="chart-render-target" data-spec=\'{chart_spec_json.replace("'", "&apos;")}\'></div></div>'
+                             collateral_html += f'''<div class="response-card mb-4"><div id="{chart_id}" class="chart-render-target" data-spec='{chart_spec_json.replace("'", "&apos;")}'></div></div>'''
                              self.processed_data_indices.add(orig_idx)
 
 
@@ -870,7 +870,7 @@ class OutputFormatter:
         if report.report_sections:
             for section in report.report_sections:
                 # Add top border for separation
-                html_parts.append(f'<h3 class_ ="text-lg font-semibold text-white mt-6 mb-2 border-t border-gray-700 pt-4">{self._process_inline_markdown(section.title)}</h3>')
+                html_parts.append(f'<h3 class="text-lg font-semibold text-white mt-6 mb-2 border-t border-gray-700 pt-4">{self._process_inline_markdown(section.title)}</h3>')
                 # Render section content using the robust markdown renderer
                 html_parts.append(f'<div class="prose prose-invert max-w-none">{self._render_standard_markdown(section.content)}</div>')
 
