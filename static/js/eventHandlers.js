@@ -1082,6 +1082,11 @@ function getSystemPromptSummaryHTML() {
                 <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
                    <li><strong>23-Oct-2025:</strong> Robust Multi-Tool Phase Handling</li>
                 </ul>
+                </ul>
+                </ul>
+                <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
+                   <li><strong>24-Oct-2025:</strong> Stop Button Added - Ability to immediately Stop Workflows</li>
+                </ul>
             </div>
             <div class="border-t border-white/10 pt-4 mt-4">
                  <h4 class="text-md font-bold text-yellow-300 mb-2">Model Price/Performance Leadership Board</h4>
