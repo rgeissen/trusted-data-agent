@@ -6,20 +6,17 @@ import logging
 import shutil
 import argparse
 
-from quart import Quart
+# --- MODIFICATION START: Import Response from Quart ---
+# Required if you add test routes later, good practice to have it
+from quart import Quart, Response
+# --- MODIFICATION END ---
 from quart_cors import cors
 import hypercorn.asyncio
 from hypercorn.config import Config
 
 os.environ["LANGCHAIN_TRACING_V2"] = "false"
 
-# --- MODIFICATION START: Configure logging with absolute paths ---
-# This ensures logging is set up before any other application modules are imported.
-
-# Determine the absolute path to the project's root directory.
-# __file__ -> /path/to/teradata-trusted-data-agent/src/trusted_data_agent/main.py
-# script_dir -> /path/to/teradata-trusted-data-agent/src/trusted_data_agent
-# project_root -> /path/to/teradata-trusted-data-agent
+# --- Logging Setup (from your original file) ---
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(os.path.dirname(script_dir))
 LOG_DIR = os.path.join(project_root, "logs")
@@ -27,12 +24,7 @@ LOG_DIR = os.path.join(project_root, "logs")
 if os.path.exists(LOG_DIR): shutil.rmtree(LOG_DIR)
 os.makedirs(LOG_DIR)
 
-# --- Custom log filter to suppress benign SSE connection warnings ---
 class SseConnectionFilter(logging.Filter):
-    """
-    Filters out benign validation warnings from the MCP client related to
-    the initial SSE connection handshake message from the chart server.
-    """
     def filter(self, record):
         is_validation_error = "Failed to validate notification" in record.getMessage()
         is_sse_connection_method = "sse/connection" in record.getMessage()
@@ -47,7 +39,6 @@ root_logger.handlers.clear()
 root_logger.addHandler(handler)
 root_logger.setLevel(logging.INFO)
 
-# Configure the specific logger used throughout the application
 app_logger = logging.getLogger("quart.app")
 app_logger.setLevel(logging.INFO)
 app_logger.addHandler(handler)
@@ -71,12 +62,11 @@ llm_history_logger = logging.getLogger("llm_conversation_history")
 llm_history_logger.setLevel(logging.INFO)
 llm_history_logger.addHandler(llm_history_log_handler)
 llm_history_logger.propagate = False
-# --- MODIFICATION END ---
+# --- End Logging Setup ---
 
 try:
     from trusted_data_agent.agent import prompts
 except RuntimeError as e:
-    # Use the now-configured logger for startup errors
     app_logger.critical(f"Application startup failed during initial import: {e}")
     sys.exit(1)
 
@@ -85,20 +75,24 @@ from trusted_data_agent.api.routes import get_tts_client
 
 
 def create_app():
-    # The project root is now calculated at the top level, so we can reuse it here.
     template_folder = os.path.join(project_root, 'templates')
     static_folder = os.path.join(project_root, 'static')
-    
+
     app = Quart(__name__, template_folder=template_folder, static_folder=static_folder)
     app = cors(app, allow_origin="*")
 
+    # --- MODIFICATION START: Increase Quart's RESPONSE_TIMEOUT ---
+    # This prevents Quart from closing long SSE streams prematurely (default is 60s)
+    app.config['RESPONSE_TIMEOUT'] = 1800 # Set to 30 minutes (adjust as needed, or use None for unlimited)
+    # You might also want to set REQUEST_TIMEOUT if needed, though less relevant here
+    app.config['REQUEST_TIMEOUT'] = None
+    # --- MODIFICATION END ---
+
     from trusted_data_agent.api.routes import api_bp
-    # --- MODIFICATION START: Import and register the new REST API blueprint ---
     from trusted_data_agent.api.rest_routes import rest_api_bp
-    
+
     app.register_blueprint(api_bp)
     app.register_blueprint(rest_api_bp, url_prefix="/api")
-    # --- MODIFICATION END ---
 
     @app.after_request
     async def add_security_headers(response):
@@ -114,37 +108,42 @@ def create_app():
         ]
         response.headers['Content-Security-Policy'] = "; ".join(csp_policy)
         return response
-    
+
     return app
 
 app = create_app()
 
 async def main(args): # MODIFIED: Accept args
     print("\n--- Starting Hypercorn Server for Quart App ---")
-    # MODIFIED: Use args to build the address and the print statement
     host = args.host
     port = args.port
     print(f"Web client initialized and ready. Navigate to http://{host}:{port}")
     config = Config()
     config.bind = [f"{host}:{port}"] # MODIFIED: Use dynamic host and port
     config.accesslog = None
-    config.errorlog = None 
+    config.errorlog = None
+    # --- MODIFICATION START: Add longer Hypercorn timeouts (Good Practice) ---
+    # While Quart's RESPONSE_TIMEOUT was the main fix, setting these high
+    # ensures Hypercorn doesn't impose its own shorter limits.
+    config.worker_timeout = 600 # e.g., 10 minutes
+    config.read_timeout = 600  # e.g., 10 minutes
+    #app_logger.info(f"Hypercorn worker timeout set to {config.worker_timeout} seconds.")
+    #app_logger.info(f"Hypercorn read timeout set to {config.read_timeout} seconds.")
+    # --- MODIFICATION END ---
     await hypercorn.asyncio.serve(app, config)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the Trusted Data Agent web client.")
-    # ADDED: Argument for the host address
     parser.add_argument(
-        "--host", 
-        type=str, 
-        default="127.0.0.1", 
+        "--host",
+        type=str,
+        default="127.0.0.1",
         help="Host address to bind the server to. Use '0.0.0.0' for Docker."
     )
-    # ADDED: Argument for the port
     parser.add_argument(
-        "--port", 
-        type=int, 
-        default=5000, 
+        "--port",
+        type=int,
+        default=5000,
         help="Port to bind the server to."
     )
     parser.add_argument("--all-models", action="store_true", help="Allow selection of all available models.")
@@ -153,25 +152,18 @@ if __name__ == "__main__":
     if args.all_models:
         APP_CONFIG.ALL_MODELS_UNLOCKED = True
         print("\n--- DEV MODE: All models will be selectable. ---")
-    
+
     print("\n--- CHARTING ENABLED: Charting configuration is active. ---")
 
-# --- MODIFICATION START: Adjust TTS startup check ---
-# This check now only prints a warning if the environment variable is missing,
-# but it NO LONGER disables the feature. This allows the UI-provided
-# credentials to be used later. The TTS client is now initialized on-demand
-# in routes.py instead of here at startup.
-if APP_CONFIG.VOICE_CONVERSATION_ENABLED:
-    if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-        print("\n--- ⚠️ VOICE FEATURE WARNING ---")
-        print("The 'GOOGLE_APPLICATION_CREDENTIALS' environment variable is not set.")
-        print("The voice conversation feature will require credentials to be provided in the config UI.")
-    else:
-        print("\n--- VOICE FEATURE ENABLED: Credentials found in environment. ---")
-# --- MODIFICATION END ---
+    if APP_CONFIG.VOICE_CONVERSATION_ENABLED:
+        if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+            print("\n--- ⚠️ VOICE FEATURE WARNING ---")
+            print("The 'GOOGLE_APPLICATION_CREDENTIALS' environment variable is not set.")
+            print("The voice conversation feature will require credentials to be provided in the config UI.")
+        else:
+            print("\n--- VOICE FEATURE ENABLED: Credentials found in environment. ---")
 
-try:
-    # MODIFIED: Pass args to main
-    asyncio.run(main(args))
-except KeyboardInterrupt:
-    print("\nServer shut down.")
+    try:
+        asyncio.run(main(args)) # MODIFIED: Pass args to main
+    except KeyboardInterrupt:
+        print("\nServer shut down.")
