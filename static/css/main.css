@@ -302,6 +302,19 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     cursor: not-allowed;
 }
 
+/* --- MODIFICATION START: Define pulse animation --- */
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 8px currentColor; /* Use current color for shadow */
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 0 12px currentColor; /* Increase shadow size */
+    }
+}
+/* --- MODIFICATION END --- */
+
 /* Connection status dot styling */
 @keyframes blink {
     50% { background-color: #facc15; box-shadow: 0 0 8px #facc15; } /* yellow-400 */
@@ -315,28 +328,41 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
 }
 .connection-dot.disconnected {
     background-color: #ef4444; /* red-500 */
+    color: #ef4444; /* Set color for pulse shadow */
 }
 .connection-dot.connected {
     background-color: #10b981; /* green-500 */
     box-shadow: 0 0 8px #10b981;
+    color: #10b981; /* Set color for pulse shadow */
 }
 .connection-dot.idle {
     background-color: #10b981; /* green-500 */
     box-shadow: 0 0 8px #10b981;
+    color: #10b981; /* Set color for pulse shadow */
 }
 .connection-dot.busy {
     background-color: #facc15; /* yellow-400 */
     box-shadow: 0 0 8px #facc15;
     animation: blink 1s infinite;
+    color: #facc15; /* Set color for pulse shadow */
 }
 .connection-dot.context-last-turn-temp {
     background-color: #facc15; /* yellow-400 */
     box-shadow: 0 0 8px #facc15;
+    color: #facc15; /* Set color for pulse shadow */
 }
 .connection-dot.context-last-turn-locked {
     background-color: var(--teradata-orange);
     box-shadow: 0 0 8px var(--teradata-orange);
+    color: var(--teradata-orange); /* Set color for pulse shadow */
 }
+
+/* --- MODIFICATION START: Add pulsing class --- */
+.connection-dot.pulsing {
+    animation: pulse 1.5s infinite ease-in-out;
+}
+/* --- MODIFICATION END --- */
+
 
 #send-icon {
     transition: transform 0.2s ease-in-out;
@@ -546,3 +572,4 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     background-color: transparent !important; /* Prevent hover effect when disabled */
     color: var(--medium-text) !important; /* Ensure disabled text color is gray */
 }
+

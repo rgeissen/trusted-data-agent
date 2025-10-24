@@ -48,35 +48,43 @@ export function addMessage(role, content) {
     wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// --- MODIFICATION START: Replace toggleLoading, showStopButton, and enableStopButton with setExecutionState ---
-
+// --- MODIFICATION START: Centralized execution state UI updates ---
 /**
- * Sets the UI state for an active, cancellable execution.
- * This is the single source of truth for disabling inputs and showing/hiding the stop button.
- * @param {boolean} isActive - True if execution is starting, false if it's ending.
+ * Sets the UI state for active execution (disables input, shows stop button, etc.).
+ * @param {boolean} isActive - True if execution is starting, false if ending.
  */
 export function setExecutionState(isActive) {
-    // Disable/enable primary inputs
     DOM.userInput.disabled = isActive;
     DOM.submitButton.disabled = isActive;
-    DOM.newChatButton.disabled = isActive; // Also disable new chat during execution
-
-    // Toggle loading spinner vs. send icon
+    DOM.newChatButton.disabled = isActive; // Disable new chat during execution
     DOM.sendIcon.classList.toggle('hidden', isActive);
     DOM.loadingSpinner.classList.toggle('hidden', !isActive);
 
-    // Manage stop button visibility and state
     if (DOM.stopExecutionButton) {
         DOM.stopExecutionButton.classList.toggle('hidden', !isActive);
-        // Always enable when showing, disable when hiding
-        DOM.stopExecutionButton.disabled = !isActive; 
-    } else {
-        console.error("setExecutionState: stopExecutionButton not found in DOM.");
+        // Ensure the stop button is enabled when shown, disabled when hidden
+        DOM.stopExecutionButton.disabled = !isActive;
+    }
+
+    // --- Add/Remove pulsing class ---
+    DOM.mcpStatusDot.classList.toggle('pulsing', isActive);
+    DOM.llmStatusDot.classList.toggle('pulsing', isActive);
+    // --- End Add/Remove pulsing class ---
+
+    // Ensure indicator state is updated correctly when stopping
+    if (!isActive) {
+         setThinkingIndicator(false); // Make sure LLM thinking stops visually
+         // Reset dots to a non-busy state if they are currently busy
+         // Note: A 'status_indicator_update' event should ideally follow to set the true state.
+         if(DOM.mcpStatusDot.classList.contains('busy')) {
+             DOM.mcpStatusDot.classList.replace('busy', 'connected');
+         }
+         if(DOM.llmStatusDot.classList.contains('busy')) {
+             DOM.llmStatusDot.classList.replace('busy', 'idle');
+         }
     }
 }
-
 // --- MODIFICATION END ---
-
 
 function _renderPlanningDetails(details) {
     if (!details.summary || !details.full_text) return null;

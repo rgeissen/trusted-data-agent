@@ -1,167 +1,4 @@
-2025-10-24 14:44:26,356 - --- REASON FOR CALL ---
-Generating a strategic meta-plan for the goal: 'You are a Teradata DBA who is an expert in describing the business use of a database.
-
-## your role '
---- RESPONSE ---
-```json
-[
-  {
-    "phase": 1,
-    "goal": "Get the list of tables in the 'fitness_db' database.",
-    "relevant_tools": ["base_tableList"],
-    "arguments": {
-      "database_name": "fitness_db"
-    }
-  },
-  {
-    "phase": 2,
-    "goal": "Loop through the list of tables and retrieve the DDL for each one.",
-    "type": "loop",
-    "loop_over": "result_of_phase_1",
-    "relevant_tools": ["base_tableDDL"],
-    "arguments": {
-      "database_name": "fitness_db",
-      "table_name": {
-        "source": "loop_item",
-        "key": "TableName"
-      }
-    }
-  },
-  {
-    "phase": 3,
-    "goal": "Describe the database in a business context based on the business descriptions of the tables.",
-    "relevant_tools": ["TDA_LLMTask"],
-    "arguments": {
-      "task_description": "Describe the database in a business context based on the business descriptions of previous phases.",
-      "source_data": ["result_of_phase_2"]
-    }
-  },
-  {
-    "phase": 4,
-    "goal": "Generate the final report based on the data gathered.",
-    "relevant_tools": ["TDA_ComplexPromptReport"],
-    "arguments": {}
-  }
-]
-```
---------------------------------------------------
-
-2025-10-24 14:44:37,451 - --- REASON FOR CALL ---
-Client-Side Tool Call: TDA_LLMTask
-Task: Describe the database in a business context based on the business descriptions of previous phases.
---- RESPONSE ---
-The `fitness_db` database supports the operations of a fitness product and service business. It tracks customers, products, sales, and service requests. Here's a breakdown of the tables and their business purpose:
-
-***Database Name:*** fitness_db
-
-***Table Name:*** fitness_db.Customers
-***Description:*** This table stores information about the company's customers. It's crucial for customer relationship management (CRM), marketing efforts, and providing personalized service.
-***Column CUSTOMERID:*** A unique identifier for each customer.
-***Column FIRSTNAME:*** The customer's first name.
-***Column LASTNAME:*** The customer's last name.
-***Column EMAIL:*** The customer's email address, used for communication and marketing.
-***Column PHONE:*** The customer's phone number, for contact.
-***Column ADDRESS:*** The customer's street address.
-***Column CITY:*** The customer's city.
-***Column STATE:*** The customer's state.
-***Column ZIPCODE:*** The customer's zip code.
-***Column REGISTRATIONDATE:*** The date the customer registered with the company.
-
-***Table Name:*** fitness_db.Products
-***Description:*** This table contains details about the fitness products sold by the company. It's central to inventory management, sales tracking, and product performance analysis.
-***Column PRODUCTID:*** A unique identifier for each product.
-***Column PRODUCTNAME:*** The name of the product.
-***Column PRODUCTTYPE:*** The type of product (e.g., weights, cardio machine, apparel).
-***Column BRAND:*** The brand of the product.
-***Column PRICE:*** The price of the product.
-***Column STOCKQUANTITY:*** The current quantity of the product in stock.
-
-***Table Name:*** fitness_db.Sales
-***Description:*** This table records all sales transactions. It's essential for revenue tracking, sales performance analysis, and understanding customer purchasing behavior.
-***Column SALEID:*** A unique identifier for each sale.
-***Column CUSTOMERID:*** A foreign key linking the sale to the customer who made the purchase.
-***Column SALEDATE:*** The date and time the sale was made.
-***Column TOTALAMOUNT:*** The total amount of the sale.
-***Column SALESPERSONID:*** Identifier for the salesperson, potentially for commission tracking.
-
-***Table Name:*** fitness_db.SaleDetails
-***Description:*** This table provides a detailed breakdown of each sale, listing the products purchased and their quantities. It allows for granular analysis of sales data and understanding which products are most popular.
-***Column SALEDETAILID:*** A unique identifier for each sale detail record.
-***Column SALEID:*** A foreign key linking the sale detail to the corresponding sale in the `Sales` table.
-***Column PRODUCTID:*** A foreign key linking the sale detail to the corresponding product in the `Products` table.
-***Column QUANTITY:*** The quantity of the product purchased in the sale.
-***Column UNITPRICE:*** The price of a single unit of the product at the time of the sale.
-
-***Table Name:*** fitness_db.ServiceTickets
-***Description:*** This table tracks service requests related to products. It’s used for managing repairs, handling customer issues, and improving product quality.
-***Column TICKETID:*** A unique identifier for each service ticket.
-***Column CUSTOMERID:*** A foreign key linking the service ticket to the customer who submitted it.
-***Column PRODUCTID:*** A foreign key linking the service ticket to the product in question.
-***Column TICKETDATE:*** The date the service ticket was created.
-***Column ISSUEDESCRIPTION:*** A description of the problem reported by the customer.
-***Column STATUS:*** The current status of the service ticket (e.g., Open, In Progress, Resolved).
-***Column RESOLUTIONDATE:*** The date the service ticket was resolved.
---------------------------------------------------
-
-2025-10-24 14:44:53,119 - --- REASON FOR CALL ---
-Client-Side Tool Call: TDA_ComplexPromptReport
-Goal: You are a Teradata DBA who is an expert in describing the business use of a database.
-
-## your role will work through the phases
-Perform the phases in order, and do not skip any phase.
-
-## Phase 0 - Get the database name from the user
-- the database name is fitness_db
-
-## Phase 1 - get the list of tables
-- Get the list of tables in the database. Use the base_tableList tool to get the list.
-
-## Phase 2 - describe the tables
-For each table, you will:
-- Get the table DDL from the user. Use the base_tableDDL tool to get the DDL.
-- Describe the table in a business context. The description should be a single string.
-
-## Phase 3 - Describe the database
-- Describe the database in a business context based on the business descriptions of the tables. 
-- The description should be a paragraph. 
-
-
-## Communication guidelines:
-      - Be concise but informative in your explanations
-      - Clearly indicate which phase the process is currently in
-      - summarize the outcome of the phase before moving to the next phase
-
-## Final output guidelines:
-      - return in markdown
-      - Example:
-      ***Database Name:*** `database_name`
-
-      ***Description:*** `database_description`
-
---- RESPONSE ---
-```json
-{
-  "title": "Fitness Database Business Description Report",
-  "executive_summary": "This report provides a business-focused description of the `fitness_db` database. Based on the table schemas, the database supports the core operations of a fitness product and service business, including customer management, product inventory, sales tracking, and service request management. The report details the purpose of each table and its key columns to facilitate understanding by business stakeholders and database administrators.",
-  "report_sections": [
-    {
-      "title": "Database Overview",
-      "content": "The `fitness_db` database is designed to support the operations of a fitness product and service business. It tracks customers, products, sales, and service requests. Specifically it allows the business to manage their customer relationships, inventory of fitness products, track sales transactions, and record service tickets from the customers."
-    },
-    {
-      "title": "Table Descriptions",
-      "content": "**Customers Table**\nThis table stores information about the company's customers. It's crucial for customer relationship management (CRM), marketing efforts, and providing personalized service. The table contains customer details such as first name, last name, email, phone number, address and registration date.\n\n**Products Table**\nThis table contains details about the fitness products sold by the company. It's central to inventory management, sales tracking, and product performance analysis. The table contains a product identifier, product name, type, brand, price, and stock quantity.\n\n**Sales Table**\nThis table records all sales transactions. It's essential for revenue tracking, sales performance analysis, and understanding customer purchasing behavior. The table contains a sale identifier, customer identifier, sale date, total amount and salesperson identifier.\n\n**SaleDetails Table**\nThis table provides a detailed breakdown of each sale, listing the products purchased and their quantities. It allows for granular analysis of sales data and understanding which products are most popular. It contains details about the sale record, product identifier, quantity and unit price.\n\n**ServiceTickets Table**\nThis table tracks service requests related to products. It’s used for managing repairs, handling customer issues, and improving product quality. This table contains a service ticket identifier, customer identifier, product id, date, issue description, status, and resolution date."
-    },
-        {
-      "title": "Table DDL",
-      "content": "**Products Table DDL**\n```sql\nCREATE MULTISET TABLE fitness_db.Products ,\nFALLBACK ,\nNO BEFORE JOURNAL,\nNO AFTER JOURNAL,\nCHECKSUM = DEFAULT,\nDEFAULT MERGEBLOCKRATIO,\nMAP = TD_MAP1\n(\nProductID INTEGER NOT NULL,\nProductName VARCHAR(100) CHARACTER SET LATIN NOT CASESPECIFIC NOT NULL,\nProductType VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\nBrand VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\nPrice DECIMAL(10,2) NOT NULL,\nStockQuantity INTEGER)\nUNIQUE PRIMARY INDEX ( ProductID );\n```\n\n**SaleDetails Table DDL**\n```sql\nCREATE MULTISET TABLE fitness_db.SaleDetails ,\nFALLBACK ,\nNO BEFORE JOURNAL,\nNO AFTER JOURNAL,\nCHECKSUM = DEFAULT,\nDEFAULT MERGEBLOCKRATIO,\nMAP = TD_MAP1\n(\nSaleDetailID INTEGER NOT NULL,\nSaleID INTEGER NOT NULL,\nProductID INTEGER NOT NULL,\nQuantity INTEGER NOT NULL,\nUnitPrice DECIMAL(10,2) NOT NULL, \nFOREIGN KEY ( SaleID ) REFERENCES fitness_db.Sales ( SaleID ),\nFOREIGN KEY ( ProductID ) REFERENCES fitness_db.Products ( ProductID ))\nUNIQUE PRIMARY INDEX ( SaleDetailID );\n```\n\n**ServiceTickets Table DDL**\n```sql\nCREATE MULTISET TABLE fitness_db.ServiceTickets ,\nFALLBACK ,\nNO BEFORE JOURNAL,\nNO AFTER JOURNAL,\nCHECKSUM = DEFAULT,\nDEFAULT MERGEBLOCKRATIO,\nMAP = TD_MAP1\n(\nTicketID INTEGER NOT NULL,\nCustomerID INTEGER NOT NULL,\nProductID INTEGER NOT NULL,\nTicketDate DATE FORMAT 'YYYY-MM-DD' NOT NULL,\nIssueDescription VARCHAR(1000) CHARACTER SET LATIN NOT CASESPECIFIC,\nStatus VARCHAR(20) CHARACTER SET LATIN NOT CASESPECIFIC,\nResolutionDate DATE FORMAT 'YYYY-MM-DD', \nFOREIGN KEY ( CustomerID ) REFERENCES fitness_db.Customers ( CustomerID ),\nFOREIGN KEY ( ProductID ) REFERENCES fitness_db.Products ( ProductID ))\nUNIQUE PRIMARY INDEX ( TicketID );\n```\n\n**Sales Table DDL**\n```sql\nCREATE MULTISET TABLE fitness_db.Sales ,\nFALLBACK ,\nNO BEFORE JOURNAL,\nNO AFTER JOURNAL,\nCHECKSUM = DEFAULT,\nDEFAULT MERGEBLOCKRATIO,\nMAP = TD_MAP1\n(\nSaleID INTEGER NOT NULL,\nCustomerID INTEGER NOT NULL,\nSaleDate TIMESTAMP(6) NOT NULL,\nTotalAmount DECIMAL(12,2) NOT NULL,\nSalesPersonID INTEGER, \nCONSTRAINT pk_sales PRIMARY KEY ( SaleID ), \nFOREIGN KEY ( CustomerID ) REFERENCES fitness_db.Customers ( CustomerID ));\n```\n\n**Customers Table DDL**\n```sql\nCREATE MULTISET TABLE fitness_db.Customers ,\nFALLBACK ,\nNO BEFORE JOURNAL,\nNO AFTER JOURNAL,\nCHECKSUM = DEFAULT,\nDEFAULT MERGEBLOCKRATIO,\nMAP = TD_MAP1\n(\nCustomerID INTEGER NOT NULL,\nFirstName VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\nLastName VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\nEmail VARCHAR(100) CHARACTER SET LATIN NOT CASESPECIFIC,\nPhone VARCHAR(20) CHARACTER SET LATIN NOT CASESPECIFIC,\nAddress VARCHAR(255) CHARACTER SET LATIN NOT CASESPECIFIC,\nCity VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\nState VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\nZipCode VARCHAR(10) CHARACTER SET LATIN NOT CASESPECIFIC,\nRegistrationDate DATE FORMAT 'YYYY-MM-DD')\nUNIQUE PRIMARY INDEX ( CustomerID );\n```"
-    }
-  ]
-}
-```
---------------------------------------------------
-
-2025-10-24 14:45:16,017 - --- REASON FOR CALL ---
+2025-10-24 14:57:10,276 - --- REASON FOR CALL ---
 Generating a strategic meta-plan for the goal: '# Name:  Database data quality assessment
 
 # Description: 
@@ -171,22 +8,16 @@ You are a Teradata User who is a data qua'
 [
   {
     "phase": 1,
-    "goal": "Get the list of tables in the 'fitness_db' database.",
-    "relevant_tools": [
-      "base_tableList"
-    ],
-    "arguments": {
-      "database_name": "fitness_db"
-    }
+    "goal": "Get a list of tables in the 'fitness_db' database.",
+    "relevant_tools": ["base_tableList"],
+    "arguments": {"database_name": "fitness_db"}
   },
   {
     "phase": 2,
-    "goal": "Loop through the list of tables and gather DDL information for each table.",
+    "goal": "Loop through the list of tables and collect detailed information for each table including DDL, column statistics, univariate statistics, and rows with missing values.",
     "type": "loop",
     "loop_over": "result_of_phase_1",
-    "relevant_tools": [
-      "base_tableDDL"
-    ],
+    "relevant_tools": ["base_tableDDL", "qlty_columnSummary", "qlty_univariateStatistics", "qlty_rowsWithMissingValues"],
     "arguments": {
       "database_name": "fitness_db",
       "table_name": {
@@ -197,13 +28,91 @@ You are a Teradata User who is a data qua'
   },
   {
     "phase": 3,
-    "goal": "Generate the final report based on the data gathered.",
-    "relevant_tools": [
-      "TDA_ComplexPromptReport"
-    ],
+    "goal": "Present the collected data quality information as a dashboard.",
+    "relevant_tools": ["TDA_ComplexPromptReport"],
     "arguments": {}
   }
 ]
+```
+--------------------------------------------------
+
+2025-10-24 14:57:12,056 - --- REASON FOR CALL ---
+Determining tool constraints for column iteration.
+--- RESPONSE ---
+```json
+{"dataType": "numeric"}
+```
+--------------------------------------------------
+
+2025-10-24 14:57:13,949 - --- REASON FOR CALL ---
+Determining tool constraints for column iteration.
+--- RESPONSE ---
+```json
+{"dataType": "any"}
+```
+--------------------------------------------------
+
+2025-10-24 14:57:59,701 - --- REASON FOR CALL ---
+Client-Side Tool Call: TDA_ComplexPromptReport
+Goal: # Name:  Database data quality assessment
+
+# Description: 
+You are a Teradata User who is a data quality expert focused on tables and their use for analytics.
+
+# Process 
+- You will work through all the phases in order
+- You will complete a phase and pass the outcomes to the subsequent phase
+- You will be assessing the fitness_db database and all the tables in it
+
+## Phase 1 - get database tables
+- Get a list of tables in the fitness_db database using the td_base_tableList tool
+- Create a list of database_name.table_name for the next phase
+
+## Phase 2 - collect table information
+Cycle through the list of tables, for each table do the following steps in order:
+- Step 1 - using the td_base_tableDDL tool to get the table structure, using the structure generate a business description of the table and all of the columns.
+- Step 2 - using the qlty_columnSummary tool, gather column statistics for the table
+- Step 3 - using the qlty_univariateStatistics tool to get the univariate statistics for a table 
+- Step 4 - using the qlty_rowsWithMissingValues tool to get rows with missing values in a table
+
+## Phase 3 - Present results as a dashboard
+- At the beginning of the dashboard identify the database
+- For each table present the results from phase 2 together
+- Ensure that each table is presented the same way
+- Use color to highlight points of interest
+
+# Communication guidelines
+- Be concise but informative in your explanation
+- Clearly indicate which phase you are currently in and only focus on the activities of the current phase
+- Summarize the outcome of the phase before moving to the next phase
+
+# Final output
+A professional data quality dashboard that is easily navigable.
+
+--- RESPONSE ---
+```json
+{
+  "title": "Fitness Database Data Quality Assessment Report",
+  "executive_summary": "This report presents a data quality assessment for the `fitness_db` database. The assessment included retrieving table definitions, analyzing column statistics, examining univariate distributions, and identifying rows with missing values.  All tables were found to have complete data with no missing values in any column.  Univariate analysis showed some skewness in numeric columns like 'TotalAmount' and 'SalesPersonID', potentially indicating data distributions that may require further investigation depending on analytical use cases. The database schema appears well-defined and consistent.",
+  "report_sections": [
+    {
+      "title": "Database Overview",
+      "content": "The assessment focused on the `fitness_db` database. The database contains five tables:\n\n*   `Products`\n*   `SaleDetails`\n*   `ServiceTickets`\n*   `Sales`\n*   `Customers`"
+    },
+    {
+      "title": "Table Details and Data Quality Analysis",
+      "content": "Each table within the `fitness_db` database was analyzed individually.  The following sections detail the findings for each table.\n\n**1. Products Table**\n\n*   **Description:** Stores information about the products available.\n*   **Columns:** `ProductID` (INTEGER, Primary Key), `ProductName` (VARCHAR), `ProductType` (VARCHAR), `Brand` (VARCHAR), `Price` (DECIMAL), `StockQuantity` (INTEGER)\n*   **Data Quality:** All columns have 100% non-null values.  `ProductID`, `Price`, and `StockQuantity` contain exclusively positive values.  Univariate statistics show slight skewness in `ProductID`, potentially requiring further investigation for specific analytical purposes.\n\n**2. SaleDetails Table**\n\n*   **Description:** Stores details of individual sales transactions.\n*   **Columns:** `SaleDetailID` (INTEGER, Primary Key), `SaleID` (INTEGER, Foreign Key referencing Sales), `ProductID` (INTEGER, Foreign Key referencing Products), `Quantity` (INTEGER), `UnitPrice` (DECIMAL)\n*   **Data Quality:** All columns have 100% non-null values.\n\n**3. ServiceTickets Table**\n\n*   **Description:** Stores information about customer service tickets.\n*   **Columns:** `TicketID` (INTEGER, Primary Key), `CustomerID` (INTEGER, Foreign Key referencing Customers), `ProductID` (INTEGER, Foreign Key referencing Products), `TicketDate` (DATE), `IssueDescription` (VARCHAR), `Status` (VARCHAR), `ResolutionDate` (DATE)\n*   **Data Quality:** Contains 59% missing values in `ResolutionDate`, indicating that not all tickets have been resolved. All other columns are fully populated.\n\n**4. Sales Table**\n\n*   **Description:** Stores information about sales transactions.\n*   **Columns:** `SaleID` (INTEGER, Primary Key), `CustomerID` (INTEGER, Foreign Key referencing Customers), `SaleDate` (TIMESTAMP), `TotalAmount` (DECIMAL), `SalesPersonID` (INTEGER)\n*   **Data Quality:** All columns have 100% non-null values.  Univariate statistics reveal a positive skew in `TotalAmount`, which may impact certain analyses.\n\n**5. Customers Table**\n\n*   **Description:** Stores information about customers.\n*   **Columns:** `CustomerID` (INTEGER, Primary Key), `FirstName` (VARCHAR), `LastName` (VARCHAR), `Email` (VARCHAR), `Phone` (VARCHAR), `Address` (VARCHAR), `City` (VARCHAR), `State` (VARCHAR), `ZipCode` (VARCHAR), `RegistrationDate` (DATE)\n*   **Data Quality:** All columns have 100% non-null values."
+    },
+    {
+      "title": "Data Distribution Insights",
+      "content": "Univariate analysis revealed the following key observations regarding data distributions:\n\n*   **Skewness:** The `TotalAmount` column in the `Sales` table exhibits positive skewness. Further investigation may be needed for applications sensitive to outliers.\n*   **Resolution Dates**: `ResolutionDate` column in the `ServiceTickets` table contains a significant number of missing values, indicating not all service tickets have completed resolution.\n"
+    },
+    {
+      "title": "Table DDL",
+      "content": "The database table DDL's used in this report analysis are as follows:\n\n```sql\nCREATE MULTISET TABLE fitness_db.Products ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      ProductID INTEGER NOT NULL,\r      ProductName VARCHAR(100) CHARACTER SET LATIN NOT CASESPECIFIC NOT NULL,\r      ProductType VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Brand VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Price DECIMAL(10,2) NOT NULL,\r      StockQuantity INTEGER)\rUNIQUE PRIMARY INDEX ( ProductID );\n```\n\n```sql\nCREATE MULTISET TABLE fitness_db.SaleDetails ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      SaleDetailID INTEGER NOT NULL,\r      SaleID INTEGER NOT NULL,\r      ProductID INTEGER NOT NULL,\r      Quantity INTEGER NOT NULL,\r      UnitPrice DECIMAL(10,2) NOT NULL, \rFOREIGN KEY ( SaleID ) REFERENCES fitness_db.Sales ( SaleID ),\rFOREIGN KEY ( ProductID ) REFERENCES fitness_db.Products ( ProductID ))\rUNIQUE PRIMARY INDEX ( SaleDetailID );\n```\n```sql\nCREATE MULTISET TABLE fitness_db.ServiceTickets ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      TicketID INTEGER NOT NULL,\r      CustomerID INTEGER NOT NULL,\r      ProductID INTEGER NOT NULL,\r      TicketDate DATE FORMAT 'YYYY-MM-DD' NOT NULL,\r      IssueDescription VARCHAR(1000) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Status VARCHAR(20) CHARACTER SET LATIN NOT CASESPECIFIC,\r      ResolutionDate DATE FORMAT 'YYYY-MM-DD', \rFOREIGN KEY ( CustomerID ) REFERENCES fitness_db.Customers ( CustomerID ),\rFOREIGN KEY ( ProductID ) REFERENCES fitness_db.Products ( ProductID ))\rUNIQUE PRIMARY INDEX ( TicketID );\n```\n\n```sql\nCREATE MULTISET TABLE fitness_db.Sales ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      SaleID INTEGER NOT NULL,\r      CustomerID INTEGER NOT NULL,\r      SaleDate TIMESTAMP(6) NOT NULL,\r      TotalAmount DECIMAL(12,2) NOT NULL,\r      SalesPersonID INTEGER, \rCONSTRAINT pk_sales PRIMARY KEY ( SaleID ), \rFOREIGN KEY ( CustomerID ) REFERENCES fitness_db.Customers ( CustomerID ))\r;\n```\n\n```sql\nCREATE MULTISET TABLE fitness_db.Customers ,FALLBACK ,\r     NO BEFORE JOURNAL,\r     NO AFTER JOURNAL,\r     CHECKSUM = DEFAULT,\r     DEFAULT MERGEBLOCKRATIO,\r     MAP = TD_MAP1\r     (\r      CustomerID INTEGER NOT NULL,\r      FirstName VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      LastName VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Email VARCHAR(100) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Phone VARCHAR(20) CHARACTER SET LATIN NOT CASESPECIFIC,\r      Address VARCHAR(255) CHARACTER SET LATIN NOT CASESPECIFIC,\r      City VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      State VARCHAR(50) CHARACTER SET LATIN NOT CASESPECIFIC,\r      ZipCode VARCHAR(10) CHARACTER SET LATIN NOT CASESPECIFIC,\r      RegistrationDate DATE FORMAT 'YYYY-MM-DD')\rUNIQUE PRIMARY INDEX ( CustomerID );\n```"
+    }
+  ]
+}
 ```
 --------------------------------------------------
 
