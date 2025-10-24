@@ -48,7 +48,7 @@ export function addMessage(role, content) {
     wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// --- MODIFICATION START: Centralized execution state UI updates ---
+// --- MODIFICATION START: Cleaned up execution state UI updates (pulsing handled in eventHandlers) ---
 /**
  * Sets the UI state for active execution (disables input, shows stop button, etc.).
  * @param {boolean} isActive - True if execution is starting, false if ending.
@@ -66,25 +66,27 @@ export function setExecutionState(isActive) {
         DOM.stopExecutionButton.disabled = !isActive;
     }
 
-    // --- Add/Remove pulsing class ---
-    DOM.mcpStatusDot.classList.toggle('pulsing', isActive);
-    DOM.llmStatusDot.classList.toggle('pulsing', isActive);
-    // --- End Add/Remove pulsing class ---
-
-    // Ensure indicator state is updated correctly when stopping
     if (!isActive) {
-         setThinkingIndicator(false); // Make sure LLM thinking stops visually
-         // Reset dots to a non-busy state if they are currently busy
-         // Note: A 'status_indicator_update' event should ideally follow to set the true state.
-         if(DOM.mcpStatusDot.classList.contains('busy')) {
-             DOM.mcpStatusDot.classList.replace('busy', 'connected');
-         }
-         if(DOM.llmStatusDot.classList.contains('busy')) {
-             DOM.llmStatusDot.classList.replace('busy', 'idle');
-         }
+        // --- Cleanup on Stop ---
+        // Ensure pulsing and busy states are removed as a final cleanup,
+        // regardless of whether the final status update event arrived.
+        setThinkingIndicator(false); // Make sure LLM thinking stops visually
+        DOM.mcpStatusDot.classList.remove('pulsing', 'busy');
+        DOM.llmStatusDot.classList.remove('pulsing', 'busy');
+
+        // Reset to default connected/idle state if they aren't disconnected
+        if (!DOM.mcpStatusDot.classList.contains('disconnected')) {
+            DOM.mcpStatusDot.classList.add('connected');
+        }
+        if (!DOM.llmStatusDot.classList.contains('disconnected')) {
+            DOM.llmStatusDot.classList.add('idle'); // LLM defaults to idle when connected
+        }
     }
+    // Note: Adding the pulsing class is now handled solely within the
+    // 'status_indicator_update' event handler in eventHandlers.js based on the 'busy' state.
 }
 // --- MODIFICATION END ---
+
 
 function _renderPlanningDetails(details) {
     if (!details.summary || !details.full_text) return null;

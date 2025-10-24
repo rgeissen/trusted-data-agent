@@ -302,15 +302,27 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     cursor: not-allowed;
 }
 
-/* --- MODIFICATION START: Define pulse animation --- */
+/* --- MODIFICATION START: Refine pulse animation with dimming --- */
 @keyframes pulse {
-    0%, 100% {
+    0% {
         transform: scale(1);
-        box-shadow: 0 0 8px currentColor; /* Use current color for shadow */
+        opacity: 1;
+        box-shadow: 0 0 8px currentColor;
     }
     50% {
-        transform: scale(1.1);
-        box-shadow: 0 0 12px currentColor; /* Increase shadow size */
+        transform: scale(1.15); /* Slightly larger scale */
+        opacity: 1;
+        box-shadow: 0 0 14px currentColor; /* Brighter shadow */
+    }
+    75% {
+        transform: scale(1); /* Back to normal size */
+        opacity: 0.6;        /* Dimmed */
+        box-shadow: 0 0 6px currentColor; /* Dimmer shadow */
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;          /* Back to full opacity before repeating */
+        box-shadow: 0 0 8px currentColor;
     }
 }
 /* --- MODIFICATION END --- */
@@ -324,7 +336,7 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    transition: background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    transition: background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out, opacity 0.3s ease-in-out; /* Added opacity transition */
 }
 .connection-dot.disconnected {
     background-color: #ef4444; /* red-500 */
@@ -343,7 +355,8 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
 .connection-dot.busy {
     background-color: #facc15; /* yellow-400 */
     box-shadow: 0 0 8px #facc15;
-    animation: blink 1s infinite;
+    /* Removed the blink animation here, pulse will handle activity */
+    /* animation: blink 1s infinite; */
     color: #facc15; /* Set color for pulse shadow */
 }
 .connection-dot.context-last-turn-temp {
@@ -357,11 +370,10 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     color: var(--teradata-orange); /* Set color for pulse shadow */
 }
 
-/* --- MODIFICATION START: Add pulsing class --- */
 .connection-dot.pulsing {
-    animation: pulse 1.5s infinite ease-in-out;
+    /* Slightly faster pulse */
+    animation: pulse 1.2s infinite ease-in-out;
 }
-/* --- MODIFICATION END --- */
 
 
 #send-icon {

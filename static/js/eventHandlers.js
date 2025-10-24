@@ -52,10 +52,20 @@ async function processStream(responseBody) {
                         let dot;
                         if (target === 'db') dot = DOM.mcpStatusDot;
                         else if (target === 'llm') dot = DOM.llmStatusDot;
+                        // Handle LLM thinking indicator separately
                         if (target === 'llm') UI.setThinkingIndicator(statusState === 'busy');
+
                         if (dot) {
-                            if (statusState === 'busy') dot.classList.replace('idle', 'busy') || dot.classList.replace('connected', 'busy');
-                            else dot.classList.replace('busy', target === 'db' ? 'connected' : 'idle');
+                            // --- MODIFICATION START: Manage pulsing based on SPECIFIC dot's busy state ---
+                            if (statusState === 'busy') {
+                                dot.classList.replace('idle', 'busy') || dot.classList.replace('connected', 'busy');
+                                dot.classList.add('pulsing'); // Add pulse ONLY when this dot is busy
+                            } else {
+                                dot.classList.remove('pulsing'); // Remove pulse when this dot is NOT busy
+                                // Set the correct non-busy state (connected for db, idle for llm)
+                                dot.classList.replace('busy', target === 'db' ? 'connected' : 'idle');
+                            }
+                            // --- MODIFICATION END ---
                         }
                     } else if (eventName === 'context_state_update') {
                         // Context state update logic... (no changes needed here for stop button)
@@ -70,9 +80,7 @@ async function processStream(responseBody) {
                         }
                     } else if (eventName === 'request_user_input') {
                         UI.updateStatusWindow({ step: "Action Required", details: "Waiting for user to correct parameters.", type: 'workaround' });
-                        // --- MODIFICATION START: Use setExecutionState ---
-                        UI.setExecutionState(false); // Stop execution state when waiting for input
-                        // --- MODIFICATION END ---
+                        UI.setExecutionState(false); // Use centralized function
                         openCorrectionModal(eventData.details);
                     } else if (eventName === 'session_update') {
                         // Session update logic... (no changes needed)
@@ -87,7 +95,6 @@ async function processStream(responseBody) {
                             const toolType = eventData.tool_name.startsWith('generate_') ? 'charts' : 'tools';
                             UI.highlightResource(eventData.tool_name, toolType);
                         }
-                    // --- MODIFICATION START: Handle 'cancelled' event ---
                     } else if (eventName === 'cancelled') {
                         // Update the last status step visually to show cancellation
                         const lastStep = document.getElementById(`status-step-${state.currentStatusId}`);
@@ -96,16 +103,11 @@ async function processStream(responseBody) {
                             lastStep.classList.add('cancelled'); // Use the new CSS class
                         }
                         UI.updateStatusWindow({ step: "Execution Stopped", details: eventData.message || "Process cancelled by user.", type: 'cancelled'}, true);
-                        // --- MODIFICATION START: Use setExecutionState ---
-                        UI.setExecutionState(false); // Stop execution state on cancellation
-                        // --- MODIFICATION END ---
-                    // --- MODIFICATION END ---
+                        UI.setExecutionState(false); // Use centralized function
                     } else if (eventName === 'final_answer') {
                         UI.addMessage('assistant', eventData.final_answer);
                         UI.updateStatusWindow({ step: "Finished", details: "Response sent to chat." }, true);
-                        // --- MODIFICATION START: Use setExecutionState ---
-                        UI.setExecutionState(false); // Stop execution state on completion
-                        // --- MODIFICATION END ---
+                        UI.setExecutionState(false); // Use centralized function
 
                         // Voice/TTS logic (remains the same)
                         if (eventData.source === 'voice' && eventData.tts_payload) {
@@ -180,9 +182,7 @@ async function processStream(responseBody) {
                     } else if (eventName === 'error') {
                         UI.addMessage('assistant', `Sorry, an error occurred: ${eventData.error || 'Unknown error'}`);
                         UI.updateStatusWindow({ step: "Error", details: eventData.details || eventData.error, type: 'error' }, true);
-                        // --- MODIFICATION START: Use setExecutionState ---
-                        UI.setExecutionState(false); // Stop execution state on error
-                        // --- MODIFICATION END ---
+                        UI.setExecutionState(false); // Use centralized function
                     } else {
                         // Default handler for other events
                         UI.updateStatusWindow(eventData);
@@ -231,13 +231,11 @@ async function handleStreamRequest(endpoint, body) {
         UI.addMessage('user', `Executing prompt: ${body.prompt_name}`);
     }
     DOM.userInput.value = '';
-    // --- MODIFICATION START: Use setExecutionState ---
-    UI.setExecutionState(true); // Start execution state
-    // --- MODIFICATION END ---
+    UI.setExecutionState(true); // Use centralized function to disable input, show stop btn etc.
     DOM.statusWindowContent.innerHTML = '';
     state.currentStatusId = 0;
     state.isInFastPath = false;
-    UI.setThinkingIndicator(false);
+    UI.setThinkingIndicator(false); // Reset thinking indicator at start
     state.currentPhaseContainerEl = null;
 
     const useLastTurnMode = state.isLastTurnModeLocked || state.isTempLastTurnMode;
@@ -253,13 +251,11 @@ async function handleStreamRequest(endpoint, body) {
     } catch (error) {
         UI.addMessage('assistant', `Sorry, a stream processing error occurred: ${error.message}`);
         UI.updateStatusWindow({ step: "Error", details: error.stack, type: 'error' }, true);
+        // setExecutionState(false) will be called in the finally block
     } finally {
         // Final UI cleanup regardless of success/error/cancel
-        // --- MODIFICATION START: Use setExecutionState ---
-        UI.setExecutionState(false); // Ensure execution state is always reset
-        // --- MODIFICATION END ---
-        UI.setThinkingIndicator(false);
-        UI.updateHintAndIndicatorState();
+        UI.setExecutionState(false); // Centralized cleanup: enable input, hide stop btn, remove pulse etc.
+        UI.updateHintAndIndicatorState(); // Update context hint/dot
     }
 }
 
@@ -277,7 +273,6 @@ export async function handleChatSubmit(e, source = 'text') {
     });
 }
 
-// --- MODIFICATION START: Add handler for stop button click ---
 async function handleStopExecutionClick() {
     console.log("Stop button clicked.");
     if (!state.currentSessionId) {
@@ -285,32 +280,19 @@ async function handleStopExecutionClick() {
         return;
     }
     // Disable button immediately to prevent multiple clicks
-    // --- MODIFICATION START: Directly disable the DOM element ---
-    if (DOM.stopExecutionButton) {
-        DOM.stopExecutionButton.disabled = true;
-    }
-    // --- MODIFICATION END ---
+    if(DOM.stopExecutionButton) DOM.stopExecutionButton.disabled = true; // Directly disable
     try {
         const result = await API.cancelStream(state.currentSessionId);
         console.log("Cancellation request result:", result);
-        // Optionally update status window immediately, though the 'cancelled' event should handle it
-        // UI.updateStatusWindow({ step: "Cancellation Requested", details: result.message || "Sending stop signal...", type: 'workaround' });
+        // The 'cancelled' event from processStream will handle UI reset via setExecutionState(false)
     } catch (error) {
         console.error("Error sending cancellation request:", error);
         UI.addMessage('assistant', `Error trying to stop execution: ${error.message}`);
-        // Re-enable button if the API call itself failed
-        // --- MODIFICATION START: Directly enable the DOM element ---
-        // The 'cancelled' or error event should eventually call setExecutionState(false),
-        // which will re-enable the button if needed. Manually re-enabling here
-        // might cause issues if the cancellation is still processing.
-        // We'll rely on setExecutionState for the final state reset.
-        // if (DOM.stopExecutionButton) {
-        //     DOM.stopExecutionButton.disabled = false;
-        // }
-        // --- MODIFICATION END ---
+        // Re-enable button ONLY if the API call itself failed.
+        // If cancellation succeeds, the 'cancelled' event handles UI reset.
+        if(DOM.stopExecutionButton) DOM.stopExecutionButton.disabled = false;
     }
 }
-// --- MODIFICATION END ---
 
 
 export async function handleLoadResources(type) {
@@ -396,21 +378,17 @@ export async function handleStartNewSession() {
     DOM.statusWindowContent.innerHTML = '<p class="text-gray-400">Waiting for a new request...</p>';
     UI.updateTokenDisplay({ statement_input: 0, statement_output: 0, total_input: 0, total_output: 0 });
     UI.addMessage('assistant', "Starting a new conversation... Please wait.");
-    UI.setExecutionState(true); // Use setExecutionState for loading
+    // UI.toggleLoading(true); // Replaced by setExecutionState if needed, but likely not needed here
     UI.setThinkingIndicator(false);
     try {
         const data = await API.startNewSession();
         const sessionItem = UI.addSessionToList(data.session_id, data.name, true);
         DOM.sessionList.prepend(sessionItem);
-        // --- MODIFICATION: No need to call handleLoadSession here, startNewSession handles the initial state ---
-        // await handleLoadSession(data.session_id); // This will add the "I'm ready" message
-        state.currentSessionId = data.session_id; // Set current session ID directly
-        UI.updateStatusPromptName(); // Update prompt name based on new session
-        UI.addMessage('assistant', "I'm ready to help. How can I assist you with your Teradata system today?"); // Add ready message
+        await handleLoadSession(data.session_id);
     } catch (error) {
         UI.addMessage('assistant', `Failed to start a new session: ${error.message}`);
     } finally {
-        UI.setExecutionState(false); // Stop loading state
+        // UI.toggleLoading(false); // Replaced by setExecutionState if needed
         DOM.userInput.focus();
     }
 }
@@ -418,7 +396,7 @@ export async function handleStartNewSession() {
 export async function handleLoadSession(sessionId) {
     if (state.currentSessionId === sessionId) return;
 
-    UI.setExecutionState(true); // Use setExecutionState for loading
+    // UI.toggleLoading(true); // Replaced by setExecutionState if needed, but likely not needed here
     try {
         const data = await API.loadSession(sessionId);
         state.currentSessionId = sessionId;
@@ -437,7 +415,7 @@ export async function handleLoadSession(sessionId) {
     } catch (error) {
         UI.addMessage('assistant', `Error loading session: ${error.message}`);
     } finally {
-        UI.setExecutionState(false); // Stop loading state
+        // UI.toggleLoading(false); // Replaced by setExecutionState if needed
         DOM.userInput.focus();
     }
 }
@@ -593,14 +571,13 @@ function handleConfigActionButtonClick(e) {
     }
 }
 
-// --- MODIFICATION START: Ensure handleStartNewSession completes before closing modal ---
 export async function finalizeConfiguration(config) {
     DOM.configStatus.textContent = 'Success! MCP & LLM services connected.';
     DOM.configStatus.className = 'text-sm text-green-400 text-center';
     DOM.mcpStatusDot.classList.remove('disconnected');
     DOM.mcpStatusDot.classList.add('connected');
     DOM.llmStatusDot.classList.remove('disconnected', 'busy');
-    DOM.llmStatusDot.classList.add('connected');
+    DOM.llmStatusDot.classList.add('connected'); // Should start as connected/idle
     DOM.contextStatusDot.classList.remove('disconnected');
     DOM.contextStatusDot.classList.add('idle');
 
@@ -627,33 +604,23 @@ export async function finalizeConfiguration(config) {
 
     DOM.chatModalButton.disabled = false;
     DOM.userInput.placeholder = "Ask about databases, tables, users...";
+    DOM.userInput.disabled = false; // Ensure input is enabled after config
 
-    try {
-        await Promise.all([
-            handleLoadResources('tools'),
-            handleLoadResources('prompts'),
-            handleLoadResources('resources')
-        ]);
+    await Promise.all([
+        handleLoadResources('tools'),
+        handleLoadResources('prompts'),
+        handleLoadResources('resources')
+    ]);
 
-        await handleStartNewSession(); // Wait for session to start
+    // Await session start before closing modal
+    await handleStartNewSession();
 
-        state.pristineConfig = getCurrentCoreConfig();
-        UI.updateConfigButtonState();
-        openSystemPromptPopup();
+    state.pristineConfig = getCurrentCoreConfig();
+    UI.updateConfigButtonState();
+    openSystemPromptPopup();
 
-        // Only close the modal if everything succeeded
-        setTimeout(UI.closeConfigModal, 1000);
-
-    } catch (error) {
-         console.error("Error during final configuration steps:", error);
-         // Keep the config modal open if an error occurs during resource/session loading
-         DOM.configStatus.textContent = `Configuration partially successful, but failed to load resources/session: ${error.message}`;
-         DOM.configStatus.className = 'text-sm text-yellow-400 text-center';
-         // Ensure UI reflects connected state even if session failed
-         UI.updateConfigButtonState();
-    }
+    setTimeout(UI.closeConfigModal, 1000);
 }
-// --- MODIFICATION END ---
 
 
 async function handleConfigFormSubmit(e) {
@@ -715,7 +682,7 @@ async function handleConfigFormSubmit(e) {
         const result = await res.json();
 
         if (res.ok) {
-            await finalizeConfiguration(config); // This now awaits internal steps
+            await finalizeConfiguration(config);
         } else {
             throw new Error(result.message || 'An unknown configuration error occurred.');
         }
@@ -730,15 +697,10 @@ async function handleConfigFormSubmit(e) {
         DOM.llmStatusDot.classList.remove('connected', 'idle');
         DOM.contextStatusDot.classList.add('disconnected');
         DOM.contextStatusDot.classList.remove('idle', 'context-active');
-        // Ensure buttons are re-enabled after error
+    } finally {
         DOM.configLoadingSpinner.classList.add('hidden');
         DOM.configActionButton.disabled = false;
-        UI.updateConfigButtonState(); // Update button state based on connection status
-    } finally {
-        // Spinner and button disabling are handled within the try/catch blocks now
-        // DOM.configLoadingSpinner.classList.add('hidden');
-        // DOM.configActionButton.disabled = false;
-        // UI.updateConfigButtonState(); // Moved to ensure it runs even on early success/error
+        UI.updateConfigButtonState();
     }
 }
 
@@ -1330,14 +1292,12 @@ export function initializeEventListeners() {
         }
     });
 
-    // --- MODIFICATION START: Add stop button listener ---
-    // Ensure stopExecutionButton is defined in domElements.js
+    // Stop button listener
     if (DOM.stopExecutionButton) {
         DOM.stopExecutionButton.addEventListener('click', handleStopExecutionClick);
     } else {
         console.error("Stop execution button not found in DOM elements.");
     }
-    // --- MODIFICATION END ---
 
 
     DOM.mainContent.addEventListener('click', (e) => {
