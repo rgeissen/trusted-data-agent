@@ -439,7 +439,7 @@ This API exposes the core functionalities of the agent, allowing developers to b
 * **Full Agent Functionality**: Create sessions and submit natural language queries or execute pre-defined prompts programmatically, receiving the same rich, structured JSON output as the web UI.
 
 For complete technical details, endpoint definitions, and cURL examples, please see the full documentation:
-[**REST API Documentation (docs/RestAPI/restAPI.md)**](https://www.google.com/search?q=docs/RestAPI/restAPI.md)
+[**REST API Documentation (docs/RestAPI/restAPI.md)**](https://github.com/rgeissen/trusted-data-agent/blob/main/docs/RestAPI/restAPI.md)
 
 ## 🛠️ Troubleshooting
 
