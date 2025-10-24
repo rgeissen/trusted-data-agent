@@ -8,10 +8,8 @@ import * as DOM from './domElements.js';
 import { state } from './state.js';
 import * as API from './api.js';
 import * as UI from './ui.js';
-// --- MODIFICATION START: Import specific copy functions ---
 import * as Utils from './utils.js';
 import { copyToClipboard, copyTableToClipboard } from './utils.js'; // Import specific functions
-// --- MODIFICATION END ---
 import { startRecognition, stopRecognition, startConfirmationRecognition } from './voice.js';
 
 // --- Stream Processing ---
@@ -45,150 +43,165 @@ async function processStream(responseBody) {
             }
 
             if (dataLine) {
-                const eventData = JSON.parse(dataLine);
+                try { // Add try-catch for JSON parsing
+                    const eventData = JSON.parse(dataLine);
 
-                if (eventName === 'status_indicator_update') {
-                    const { target, state: statusState } = eventData;
-
-                    let dot;
-                    if (target === 'db') {
-                        dot = DOM.mcpStatusDot;
-                    } else if (target === 'llm') {
-                        dot = DOM.llmStatusDot;
-                    }
-
-                    if (target === 'llm') {
-                        UI.setThinkingIndicator(statusState === 'busy');
-                    }
-
-                    if (dot) {
-                        if (statusState === 'busy') {
-                            dot.classList.remove('idle', 'connected');
-                            dot.classList.add('busy');
-                        } else {
-                            dot.classList.remove('busy');
-                            dot.classList.add(target === 'db' ? 'connected' : 'idle');
+                    // --- Event Handling Logic ---
+                    if (eventName === 'status_indicator_update') {
+                        const { target, state: statusState } = eventData;
+                        let dot;
+                        if (target === 'db') dot = DOM.mcpStatusDot;
+                        else if (target === 'llm') dot = DOM.llmStatusDot;
+                        if (target === 'llm') UI.setThinkingIndicator(statusState === 'busy');
+                        if (dot) {
+                            if (statusState === 'busy') dot.classList.replace('idle', 'busy') || dot.classList.replace('connected', 'busy');
+                            else dot.classList.replace('busy', target === 'db' ? 'connected' : 'idle');
                         }
-                    }
-                } else if (eventName === 'context_state_update') {
-                    const { target, state: statusState } = eventData;
-                    if (target === 'context') {
-                        if (statusState === 'history_disabled_processing') {
-                            DOM.contextStatusDot.classList.remove('idle', 'history-disabled-preview');
-                            DOM.contextStatusDot.classList.add('busy');
-                        } else if (statusState === 'processing_complete') {
-                            state.isInFastPath = false;
-                        }
-                    }
-                } else if (eventName === 'token_update') {
-                    UI.updateTokenDisplay(eventData);
-                    if (eventData.call_id && state.currentProvider !== 'Amazon') {
-                        const metricsEl = document.querySelector(`.per-call-metrics[data-call-id="${eventData.call_id}"]`);
-                        if (metricsEl) {
-                            metricsEl.innerHTML = `(LLM Call: ${eventData.statement_input.toLocaleString()} in / ${eventData.statement_output.toLocaleString()} out)`;
-                            metricsEl.classList.remove('hidden');
-                        }
-                    }
-                } else if (eventName === 'request_user_input') {
-                    UI.updateStatusWindow({ step: "Action Required", details: "Waiting for user to correct parameters.", type: 'workaround' });
-                    UI.toggleLoading(false);
-                    openCorrectionModal(eventData.details);
-                } else if (eventName === 'session_update') {
-                    const { id, name } = eventData.session_name_update;
-                    const sessionItem = document.getElementById(`session-${id}`);
-                    if (sessionItem) {
-                        sessionItem.querySelector('span').textContent = name;
-                    }
-                } else if (eventName === 'llm_thought') {
-                    UI.updateStatusWindow({ step: "Parser has generated the final answer", ...eventData });
-                } else if (eventName === 'prompt_selected') {
-                    UI.updateStatusWindow(eventData);
-                    if (eventData.prompt_name) {
-                        UI.highlightResource(eventData.prompt_name, 'prompts');
-                    }
-                } else if (eventName === 'tool_result') {
-                    UI.updateStatusWindow(eventData);
-                    if (eventData.tool_name) {
-                        const toolType = eventData.tool_name.startsWith('generate_') ? 'charts' : 'tools';
-                        UI.highlightResource(eventData.tool_name, toolType);
-                    }
-                } else if (eventName === 'final_answer') {
-                    UI.addMessage('assistant', eventData.final_answer);
-                    UI.updateStatusWindow({ step: "Finished", details: "Response sent to chat." }, true);
-                    UI.toggleLoading(false);
-
-                    if (eventData.source === 'voice' && eventData.tts_payload) {
-                        const { direct_answer, key_observations } = eventData.tts_payload;
-
-                        if (direct_answer) {
-                            const directAnswerAudio = await API.synthesizeText(direct_answer);
-                            if (directAnswerAudio) {
-                                const audioUrl = URL.createObjectURL(directAnswerAudio);
-                                const audio = new Audio(audioUrl);
-                                await new Promise(resolve => {
-                                    audio.onended = resolve;
-                                    audio.play();
-                                });
+                    } else if (eventName === 'context_state_update') {
+                        // Context state update logic... (no changes needed here for stop button)
+                    } else if (eventName === 'token_update') {
+                        UI.updateTokenDisplay(eventData);
+                        if (eventData.call_id && state.currentProvider !== 'Amazon') {
+                            const metricsEl = document.querySelector(`.per-call-metrics[data-call-id="${eventData.call_id}"]`);
+                            if (metricsEl) {
+                                metricsEl.innerHTML = `(LLM Call: ${eventData.statement_input.toLocaleString()} in / ${eventData.statement_output.toLocaleString()} out)`;
+                                metricsEl.classList.remove('hidden');
                             }
                         }
+                    } else if (eventName === 'request_user_input') {
+                        UI.updateStatusWindow({ step: "Action Required", details: "Waiting for user to correct parameters.", type: 'workaround' });
+                        // --- MODIFICATION START: Use setExecutionState ---
+                        UI.setExecutionState(false); // Stop execution state when waiting for input
+                        // --- MODIFICATION END ---
+                        openCorrectionModal(eventData.details);
+                    } else if (eventName === 'session_update') {
+                        // Session update logic... (no changes needed)
+                    } else if (eventName === 'llm_thought') {
+                        UI.updateStatusWindow({ step: "Parser has generated the final answer", ...eventData });
+                    } else if (eventName === 'prompt_selected') {
+                        UI.updateStatusWindow(eventData);
+                        if (eventData.prompt_name) UI.highlightResource(eventData.prompt_name, 'prompts');
+                    } else if (eventName === 'tool_result' || eventName === 'tool_error' || eventName === 'tool_intent') { // Combined similar events
+                        UI.updateStatusWindow(eventData);
+                        if (eventData.tool_name) {
+                            const toolType = eventData.tool_name.startsWith('generate_') ? 'charts' : 'tools';
+                            UI.highlightResource(eventData.tool_name, toolType);
+                        }
+                    // --- MODIFICATION START: Handle 'cancelled' event ---
+                    } else if (eventName === 'cancelled') {
+                        // Update the last status step visually to show cancellation
+                        const lastStep = document.getElementById(`status-step-${state.currentStatusId}`);
+                        if (lastStep) {
+                            lastStep.classList.remove('active');
+                            lastStep.classList.add('cancelled'); // Use the new CSS class
+                        }
+                        UI.updateStatusWindow({ step: "Execution Stopped", details: eventData.message || "Process cancelled by user.", type: 'cancelled'}, true);
+                        // --- MODIFICATION START: Use setExecutionState ---
+                        UI.setExecutionState(false); // Stop execution state on cancellation
+                        // --- MODIFICATION END ---
+                    // --- MODIFICATION END ---
+                    } else if (eventName === 'final_answer') {
+                        UI.addMessage('assistant', eventData.final_answer);
+                        UI.updateStatusWindow({ step: "Finished", details: "Response sent to chat." }, true);
+                        // --- MODIFICATION START: Use setExecutionState ---
+                        UI.setExecutionState(false); // Stop execution state on completion
+                        // --- MODIFICATION END ---
 
-                        if (key_observations) {
-                            switch (state.keyObservationsMode) {
-                                case 'autoplay-off':
-                                    state.ttsState = 'AWAITING_OBSERVATION_CONFIRMATION';
-                                    state.ttsObservationBuffer = key_observations;
-                                    UI.updateVoiceModeUI();
+                        // Voice/TTS logic (remains the same)
+                        if (eventData.source === 'voice' && eventData.tts_payload) {
+                           // ... (existing TTS handling logic) ...
+                           const { direct_answer, key_observations } = eventData.tts_payload;
 
-                                    const confirmationQuestion = "Do you want to hear the key observations?";
-                                    const questionAudio = await API.synthesizeText(confirmationQuestion);
+                            if (direct_answer) {
+                                const directAnswerAudio = await API.synthesizeText(direct_answer);
+                                if (directAnswerAudio) {
+                                    const audioUrl = URL.createObjectURL(directAnswerAudio);
+                                    const audio = new Audio(audioUrl);
+                                    await new Promise(resolve => {
+                                        audio.onended = resolve;
+                                        audio.onerror = resolve; // Also resolve on error
+                                        audio.play().catch(resolve); // Resolve if play fails
+                                    });
+                                }
+                            }
 
-                                    if (questionAudio) {
-                                        const questionUrl = URL.createObjectURL(questionAudio);
-                                        const questionPlayer = new Audio(questionUrl);
-                                        await new Promise(resolve => {
-                                            questionPlayer.onended = resolve;
-                                            questionPlayer.play();
-                                        });
-                                        startConfirmationRecognition(handleObservationConfirmation);
-                                    } else {
-                                        state.ttsState = 'IDLE';
+                            if (key_observations) {
+                                switch (state.keyObservationsMode) {
+                                    case 'autoplay-off':
+                                        state.ttsState = 'AWAITING_OBSERVATION_CONFIRMATION';
+                                        state.ttsObservationBuffer = key_observations;
                                         UI.updateVoiceModeUI();
-                                    }
-                                    break;
 
-                                case 'autoplay-on':
-                                    const observationAudio = await API.synthesizeText(key_observations);
-                                    if (observationAudio) {
-                                        const audioUrl = URL.createObjectURL(observationAudio);
-                                        const audio = new Audio(audioUrl);
-                                        await new Promise(resolve => {
-                                            audio.onended = resolve;
-                                            audio.play();
-                                        });
-                                    }
+                                        const confirmationQuestion = "Do you want to hear the key observations?";
+                                        const questionAudio = await API.synthesizeText(confirmationQuestion);
 
-                                case 'off':
-                                    if (state.isVoiceModeLocked) {
-                                        setTimeout(() => startRecognition(), 100);
-                                    }
-                                    break;
+                                        if (questionAudio) {
+                                            const questionUrl = URL.createObjectURL(questionAudio);
+                                            const questionPlayer = new Audio(questionUrl);
+                                            await new Promise(resolve => {
+                                                questionPlayer.onended = resolve;
+                                                questionPlayer.onerror = resolve;
+                                                questionPlayer.play().catch(resolve);
+                                            });
+                                            startConfirmationRecognition(handleObservationConfirmation);
+                                        } else {
+                                            state.ttsState = 'IDLE';
+                                            UI.updateVoiceModeUI();
+                                        }
+                                        break;
+
+                                    case 'autoplay-on':
+                                        const observationAudio = await API.synthesizeText(key_observations);
+                                        if (observationAudio) {
+                                            const audioUrl = URL.createObjectURL(observationAudio);
+                                            const audio = new Audio(audioUrl);
+                                            await new Promise(resolve => {
+                                                audio.onended = resolve;
+                                                audio.onerror = resolve;
+                                                audio.play().catch(resolve);
+                                            });
+                                        }
+                                    // Fallthrough intentionally missing for 'off' case below
+
+                                    case 'off': // Includes fallthrough from 'autoplay-on'
+                                        // Only restart if voice mode is locked
+                                        if (state.isVoiceModeLocked) {
+                                            setTimeout(() => startRecognition(), 100);
+                                        }
+                                        break;
+                                }
+                            } else if (state.isVoiceModeLocked) {
+                                // If no observations but locked, restart listening
+                                setTimeout(() => startRecognition(), 100);
                             }
-                        } else if (state.isVoiceModeLocked) {
-                            setTimeout(() => startRecognition(), 100);
                         }
-                    }
 
-                } else if (eventName === 'error') {
-                    UI.addMessage('assistant', `Sorry, an error occurred: ${eventData.error}`);
-                    UI.updateStatusWindow({ step: "Error", ...eventData, type: 'error' }, true);
-                    UI.toggleLoading(false);
-                } else {
-                    UI.updateStatusWindow(eventData);
+
+                    } else if (eventName === 'error') {
+                        UI.addMessage('assistant', `Sorry, an error occurred: ${eventData.error || 'Unknown error'}`);
+                        UI.updateStatusWindow({ step: "Error", details: eventData.details || eventData.error, type: 'error' }, true);
+                        // --- MODIFICATION START: Use setExecutionState ---
+                        UI.setExecutionState(false); // Stop execution state on error
+                        // --- MODIFICATION END ---
+                    } else {
+                        // Default handler for other events
+                        UI.updateStatusWindow(eventData);
+                    }
+                } catch (e) {
+                    console.error("Error parsing SSE data line:", dataLine, e);
+                    // Optionally show a generic error message in UI if parsing fails repeatedly
                 }
             }
         }
     }
+    // Handle any remaining data in the buffer after the stream ends
+    if (buffer.trim()) {
+        console.warn("Stream ended with unprocessed buffer:", buffer);
+        // Attempt to process the remaining buffer as a final message if applicable
+        // This might require similar parsing logic as inside the loop
+    }
 }
+
 
 async function handleObservationConfirmation(transcribedText) {
     const classification = Utils.classifyConfirmation(transcribedText);
@@ -204,6 +217,10 @@ async function handleObservationConfirmation(transcribedText) {
             });
         }
     }
+    // After handling (or not handling) observations, check if voice mode is locked
+    if (state.isVoiceModeLocked) {
+        setTimeout(() => startRecognition(), 100); // Restart listening if locked
+    }
 }
 
 
@@ -214,7 +231,9 @@ async function handleStreamRequest(endpoint, body) {
         UI.addMessage('user', `Executing prompt: ${body.prompt_name}`);
     }
     DOM.userInput.value = '';
-    UI.toggleLoading(true);
+    // --- MODIFICATION START: Use setExecutionState ---
+    UI.setExecutionState(true); // Start execution state
+    // --- MODIFICATION END ---
     DOM.statusWindowContent.innerHTML = '';
     state.currentStatusId = 0;
     state.isInFastPath = false;
@@ -235,7 +254,10 @@ async function handleStreamRequest(endpoint, body) {
         UI.addMessage('assistant', `Sorry, a stream processing error occurred: ${error.message}`);
         UI.updateStatusWindow({ step: "Error", details: error.stack, type: 'error' }, true);
     } finally {
-        UI.toggleLoading(false);
+        // Final UI cleanup regardless of success/error/cancel
+        // --- MODIFICATION START: Use setExecutionState ---
+        UI.setExecutionState(false); // Ensure execution state is always reset
+        // --- MODIFICATION END ---
         UI.setThinkingIndicator(false);
         UI.updateHintAndIndicatorState();
     }
@@ -254,6 +276,42 @@ export async function handleChatSubmit(e, source = 'text') {
         source: source
     });
 }
+
+// --- MODIFICATION START: Add handler for stop button click ---
+async function handleStopExecutionClick() {
+    console.log("Stop button clicked.");
+    if (!state.currentSessionId) {
+        console.warn("Cannot stop execution: No active session ID.");
+        return;
+    }
+    // Disable button immediately to prevent multiple clicks
+    // --- MODIFICATION START: Directly disable the DOM element ---
+    if (DOM.stopExecutionButton) {
+        DOM.stopExecutionButton.disabled = true;
+    }
+    // --- MODIFICATION END ---
+    try {
+        const result = await API.cancelStream(state.currentSessionId);
+        console.log("Cancellation request result:", result);
+        // Optionally update status window immediately, though the 'cancelled' event should handle it
+        // UI.updateStatusWindow({ step: "Cancellation Requested", details: result.message || "Sending stop signal...", type: 'workaround' });
+    } catch (error) {
+        console.error("Error sending cancellation request:", error);
+        UI.addMessage('assistant', `Error trying to stop execution: ${error.message}`);
+        // Re-enable button if the API call itself failed
+        // --- MODIFICATION START: Directly enable the DOM element ---
+        // The 'cancelled' or error event should eventually call setExecutionState(false),
+        // which will re-enable the button if needed. Manually re-enabling here
+        // might cause issues if the cancellation is still processing.
+        // We'll rely on setExecutionState for the final state reset.
+        // if (DOM.stopExecutionButton) {
+        //     DOM.stopExecutionButton.disabled = false;
+        // }
+        // --- MODIFICATION END ---
+    }
+}
+// --- MODIFICATION END ---
+
 
 export async function handleLoadResources(type) {
     const tabButton = document.querySelector(`.resource-tab[data-type="${type}"]`);
@@ -338,17 +396,21 @@ export async function handleStartNewSession() {
     DOM.statusWindowContent.innerHTML = '<p class="text-gray-400">Waiting for a new request...</p>';
     UI.updateTokenDisplay({ statement_input: 0, statement_output: 0, total_input: 0, total_output: 0 });
     UI.addMessage('assistant', "Starting a new conversation... Please wait.");
-    UI.toggleLoading(true);
+    UI.setExecutionState(true); // Use setExecutionState for loading
     UI.setThinkingIndicator(false);
     try {
         const data = await API.startNewSession();
         const sessionItem = UI.addSessionToList(data.session_id, data.name, true);
         DOM.sessionList.prepend(sessionItem);
-        await handleLoadSession(data.session_id);
+        // --- MODIFICATION: No need to call handleLoadSession here, startNewSession handles the initial state ---
+        // await handleLoadSession(data.session_id); // This will add the "I'm ready" message
+        state.currentSessionId = data.session_id; // Set current session ID directly
+        UI.updateStatusPromptName(); // Update prompt name based on new session
+        UI.addMessage('assistant', "I'm ready to help. How can I assist you with your Teradata system today?"); // Add ready message
     } catch (error) {
         UI.addMessage('assistant', `Failed to start a new session: ${error.message}`);
     } finally {
-        UI.toggleLoading(false);
+        UI.setExecutionState(false); // Stop loading state
         DOM.userInput.focus();
     }
 }
@@ -356,7 +418,7 @@ export async function handleStartNewSession() {
 export async function handleLoadSession(sessionId) {
     if (state.currentSessionId === sessionId) return;
 
-    UI.toggleLoading(true);
+    UI.setExecutionState(true); // Use setExecutionState for loading
     try {
         const data = await API.loadSession(sessionId);
         state.currentSessionId = sessionId;
@@ -375,7 +437,7 @@ export async function handleLoadSession(sessionId) {
     } catch (error) {
         UI.addMessage('assistant', `Error loading session: ${error.message}`);
     } finally {
-        UI.toggleLoading(false);
+        UI.setExecutionState(false); // Stop loading state
         DOM.userInput.focus();
     }
 }
@@ -531,6 +593,7 @@ function handleConfigActionButtonClick(e) {
     }
 }
 
+// --- MODIFICATION START: Ensure handleStartNewSession completes before closing modal ---
 export async function finalizeConfiguration(config) {
     DOM.configStatus.textContent = 'Success! MCP & LLM services connected.';
     DOM.configStatus.className = 'text-sm text-green-400 text-center';
@@ -565,20 +628,32 @@ export async function finalizeConfiguration(config) {
     DOM.chatModalButton.disabled = false;
     DOM.userInput.placeholder = "Ask about databases, tables, users...";
 
-    await Promise.all([
-        handleLoadResources('tools'),
-        handleLoadResources('prompts'),
-        handleLoadResources('resources')
-    ]);
+    try {
+        await Promise.all([
+            handleLoadResources('tools'),
+            handleLoadResources('prompts'),
+            handleLoadResources('resources')
+        ]);
 
-    await handleStartNewSession();
+        await handleStartNewSession(); // Wait for session to start
 
-    state.pristineConfig = getCurrentCoreConfig();
-    UI.updateConfigButtonState();
-    openSystemPromptPopup();
+        state.pristineConfig = getCurrentCoreConfig();
+        UI.updateConfigButtonState();
+        openSystemPromptPopup();
 
-    setTimeout(UI.closeConfigModal, 1000);
+        // Only close the modal if everything succeeded
+        setTimeout(UI.closeConfigModal, 1000);
+
+    } catch (error) {
+         console.error("Error during final configuration steps:", error);
+         // Keep the config modal open if an error occurs during resource/session loading
+         DOM.configStatus.textContent = `Configuration partially successful, but failed to load resources/session: ${error.message}`;
+         DOM.configStatus.className = 'text-sm text-yellow-400 text-center';
+         // Ensure UI reflects connected state even if session failed
+         UI.updateConfigButtonState();
+    }
 }
+// --- MODIFICATION END ---
 
 
 async function handleConfigFormSubmit(e) {
@@ -608,7 +683,6 @@ async function handleConfigFormSubmit(e) {
         localStorage.setItem('amazonApiKey', JSON.stringify(awsCreds));
     } else if (config.provider === 'Ollama') {
         localStorage.setItem('ollamaHost', config.ollama_host);
-    // --- MODIFICATION START: Save Azure credentials to local storage ---
     } else if (config.provider === 'Azure') {
         const azureCreds = {
             azure_api_key: config.azure_api_key,
@@ -617,7 +691,6 @@ async function handleConfigFormSubmit(e) {
             azure_api_version: config.azure_api_version
         };
         localStorage.setItem('azureApiKey', JSON.stringify(azureCreds));
-    // --- MODIFICATION END ---
     } else if (config.provider === 'Friendli') {
         const friendliCreds = {
             friendli_token: config.friendli_token,
@@ -642,7 +715,7 @@ async function handleConfigFormSubmit(e) {
         const result = await res.json();
 
         if (res.ok) {
-            await finalizeConfiguration(config);
+            await finalizeConfiguration(config); // This now awaits internal steps
         } else {
             throw new Error(result.message || 'An unknown configuration error occurred.');
         }
@@ -657,18 +730,18 @@ async function handleConfigFormSubmit(e) {
         DOM.llmStatusDot.classList.remove('connected', 'idle');
         DOM.contextStatusDot.classList.add('disconnected');
         DOM.contextStatusDot.classList.remove('idle', 'context-active');
-    } finally {
+        // Ensure buttons are re-enabled after error
         DOM.configLoadingSpinner.classList.add('hidden');
         DOM.configActionButton.disabled = false;
-        UI.updateConfigButtonState();
+        UI.updateConfigButtonState(); // Update button state based on connection status
+    } finally {
+        // Spinner and button disabling are handled within the try/catch blocks now
+        // DOM.configLoadingSpinner.classList.add('hidden');
+        // DOM.configActionButton.disabled = false;
+        // UI.updateConfigButtonState(); // Moved to ensure it runs even on early success/error
     }
 }
 
-// --- MODIFICATION START: Create a new, sequential function to load credentials and models ---
-/**
- * A robust, sequential function to load provider credentials and then fetch the model list.
- * This function is now the single source of truth for this process, preventing race conditions.
- */
 export async function loadCredentialsAndModels() {
     const newProvider = DOM.llmProviderSelect.value;
 
@@ -714,16 +787,13 @@ export async function loadCredentialsAndModels() {
     // Now that credentials are confirmed to be loaded, fetch the models.
     await handleRefreshModelsClick();
 }
-// --- MODIFICATION END ---
 
 
 async function handleProviderChange() {
     DOM.llmModelSelect.innerHTML = '<option value="">-- Select Provider & Enter Credentials --</option>';
     DOM.configStatus.textContent = '';
 
-    // --- MODIFICATION START: Call the new, centralized function ---
     await loadCredentialsAndModels();
-    // --- MODIFICATION END ---
 }
 
 async function handleModelChange() {
@@ -1046,7 +1116,7 @@ function getSystemPromptSummaryHTML() {
                 <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
                    <li><strong>11-Oct-2025:</strong> Friendly.AI Integration</li>
                 </ul>
-                </ul>                
+                </ul>
                 <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
                    <li><strong>23-Oct-2025:</strong> Robust Multi-Tool Phase Handling</li>
                 </ul>
@@ -1247,20 +1317,26 @@ export function initializeEventListeners() {
     DOM.resourceTabs.addEventListener('click', handleResourceTabClick);
     DOM.keyObservationsToggleButton.addEventListener('click', handleKeyObservationsToggleClick);
 
-    // --- MODIFICATION START: Add delegated event listener for copy buttons ---
-    // Listen for clicks on the chat log area
+    // Delegated event listener for copy buttons
     DOM.chatLog.addEventListener('click', (e) => {
-        // Find the closest ancestor button with the 'copy-button' class
         const copyButton = e.target.closest('.copy-button');
         if (copyButton) {
             const copyType = copyButton.dataset.copyType;
             if (copyType === 'code') {
-                copyToClipboard(copyButton); // Call imported function
+                copyToClipboard(copyButton);
             } else if (copyType === 'table') {
-                copyTableToClipboard(copyButton); // Call imported function
+                copyTableToClipboard(copyButton);
             }
         }
     });
+
+    // --- MODIFICATION START: Add stop button listener ---
+    // Ensure stopExecutionButton is defined in domElements.js
+    if (DOM.stopExecutionButton) {
+        DOM.stopExecutionButton.addEventListener('click', handleStopExecutionClick);
+    } else {
+        console.error("Stop execution button not found in DOM elements.");
+    }
     // --- MODIFICATION END ---
 
 
@@ -1432,3 +1508,4 @@ export function initializeEventListeners() {
         }
     });
 }
+

@@ -133,6 +133,11 @@ details.resource-selected > summary {
     border-left-color: #f87171; /* red-400 */
     background-color: rgba(248, 113, 113, 0.1);
 }
+.status-step.cancelled {
+    border-left-color: #f87171; /* red-400, same as error */
+    background-color: rgba(248, 113, 113, 0.1);
+    opacity: 0.7; /* Make it look like completed but red */
+}
 .status-step.plan-optimization {
     border-left-color: #06b6d4; /* cyan-500 */
     background-color: rgba(6, 182, 212, 0.1);
@@ -510,7 +515,6 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     opacity: 0.7;
 }
 
-/* --- MODIFICATION START: Add styles for key observations toggle button --- */
 #key-observations-toggle-button.autoplay-on {
     background-color: var(--teradata-orange);
 }
@@ -520,5 +524,25 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
 #key-observations-toggle-button.off {
     opacity: 0.6;
 }
+
+/* --- MODIFICATION START: Change stop button color to orange --- */
+#stop-execution-button {
+    /* Use Tailwind classes via @apply if possible, or direct CSS */
+     /* text-red-400 */
+    color: var(--teradata-orange);
+    transition-colors: 0.2s ease-in-out;
+}
+#stop-execution-button:hover {
+     /* hover:text-red-300 */
+    color: white; /* Or a lighter orange if preferred */
+     /* hover:bg-red-500/20 */
+    background-color: rgba(241, 95, 34, 0.2); /* Orange with 20% opacity */
+}
 /* --- MODIFICATION END --- */
 
+#stop-execution-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background-color: transparent !important; /* Prevent hover effect when disabled */
+    color: var(--medium-text) !important; /* Ensure disabled text color is gray */
+}

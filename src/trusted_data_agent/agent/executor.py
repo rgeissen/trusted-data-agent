@@ -4,6 +4,9 @@ import json
 import logging
 import copy
 import uuid
+# --- MODIFICATION START: Import asyncio ---
+import asyncio
+# --- MODIFICATION END ---
 from enum import Enum, auto
 from typing import Tuple, List
 
@@ -64,14 +67,14 @@ class PlanExecutor:
         self.original_user_input = original_user_input
         self.dependencies = dependencies
         self.state = self.AgentState.PLANNING
-        
+
         self.structured_collected_data = {}
-        self.workflow_state = {} 
+        self.workflow_state = {}
         self.turn_action_history = []
         self.meta_plan = None
         self.current_phase_index = 0
         self.last_tool_output = None
-        
+
         self.active_prompt_name = active_prompt_name
         self.prompt_arguments = prompt_arguments or {}
         self.workflow_goal_prompt = ""
@@ -82,20 +85,20 @@ class PlanExecutor:
         self.is_in_loop = False
         self.current_loop_items = []
         self.processed_loop_items = []
-        
+
         self.tool_constraints_cache = {}
         self.globally_skipped_tools = set()
         self.temp_data_holder = None
         self.last_failed_action_info = "None"
         self.events_to_yield = []
-        self.last_action_str = None 
-        
+        self.last_action_str = None
+
         self.llm_debug_history = []
         self.max_steps = 40
-        
+
         self.execution_depth = execution_depth
         self.MAX_EXECUTION_DEPTH = 5
-        
+
         self.disabled_history = disabled_history or force_history_disable
         self.previous_turn_data = previous_turn_data or {}
         self.is_synthesis_from_history = False
@@ -103,7 +106,7 @@ class PlanExecutor:
         self.source = source
         self.is_delegated_task = is_delegated_task
         self.force_final_summary = force_final_summary
-        
+
         self.is_complex_prompt_workflow = False
         self.final_canonical_response = None
         self.is_single_prompt_plan = False
@@ -116,11 +119,11 @@ class PlanExecutor:
         if event is not None:
             msg += f"event: {event}\n"
         return f"{msg}\n"
-        
+
     async def _call_llm_and_update_tokens(self, prompt: str, reason: str, system_prompt_override: str = None, raise_on_error: bool = False, disabled_history: bool = False, active_prompt_name_for_filter: str = None, source: str = "text") -> tuple[str, int, int]:
         """A centralized wrapper for calling the LLM that handles token updates."""
         final_disabled_history = disabled_history or self.disabled_history
-        
+
         response_text, statement_input_tokens, statement_output_tokens = await llm_handler.call_llm_api(
             self.dependencies['STATE']['llm'], prompt, self.session_id,
             dependencies=self.dependencies, reason=reason,
@@ -133,7 +136,6 @@ class PlanExecutor:
         app_logger.debug(f"LLM RESPONSE (DEBUG): Reason='{reason}', Response='{response_text}'")
         return response_text, statement_input_tokens, statement_output_tokens
 
-    # --- MODIFICATION START: Relocate method from PhaseExecutor to PlanExecutor ---
     async def _get_tool_constraints(self, tool_name: str) -> Tuple[dict, list]:
         """
         Uses an LLM to determine if a tool requires numeric or character columns.
@@ -145,7 +147,7 @@ class PlanExecutor:
         events = []
         tool_definition = self.dependencies['STATE'].get('mcp_tools', {}).get(tool_name)
         constraints = {}
-        
+
         if tool_definition:
             prompt_modifier = ""
             if any(k in tool_name.lower() for k in ["univariate", "standarddeviation", "negativevalues"]):
@@ -158,11 +160,11 @@ class PlanExecutor:
                 f"Tool: `{tool_definition.name}`\nDescription: \"{tool_definition.description}\"\nHint: {prompt_modifier}\n"
                 "Respond with a single JSON object: {\"dataType\": \"numeric\" | \"character\" | \"any\"}"
             )
-            
+
             reason="Determining tool constraints for column iteration."
             call_id = str(uuid.uuid4())
             events.append(self._format_sse({"step": "Calling LLM", "type": "system_message", "details": {"summary": reason, "call_id": call_id}}))
-            
+
             response_text, input_tokens, output_tokens = await self._call_llm_and_update_tokens(
                 prompt=prompt, reason=reason,
                 system_prompt_override="You are a JSON-only responding assistant.",
@@ -184,17 +186,16 @@ class PlanExecutor:
                 constraints = json.loads(re.search(r'\{.*\}', response_text, re.DOTALL).group(0))
             except (json.JSONDecodeError, AttributeError):
                 constraints = {}
-        
+
         self.tool_constraints_cache[tool_name] = constraints
         return constraints, events
-    # --- MODIFICATION END ---
 
     def _add_to_structured_data(self, tool_result: dict, context_key_override: str = None):
         """Adds tool results to the structured data dictionary."""
         context_key = context_key_override or f"Plan Results: {self.active_prompt_name or 'Ad-hoc'}"
         if context_key not in self.structured_collected_data:
             self.structured_collected_data[context_key] = []
-        
+
         if isinstance(tool_result, list):
              self.structured_collected_data[context_key].extend(tool_result)
         else:
@@ -208,7 +209,7 @@ class PlanExecutor:
         if isinstance(data, dict):
             if 'results' in data and isinstance(data['results'], list):
                 results_list = data['results']
-                is_large = (len(results_list) > APP_CONFIG.CONTEXT_DISTILLATION_MAX_ROWS or 
+                is_large = (len(results_list) > APP_CONFIG.CONTEXT_DISTILLATION_MAX_ROWS or
                             len(json.dumps(results_list)) > APP_CONFIG.CONTEXT_DISTILLATION_MAX_CHARS)
 
                 if is_large and all(isinstance(item, dict) for item in results_list):
@@ -222,14 +223,14 @@ class PlanExecutor:
                         "comment": "Full data is too large for context. This is a summary."
                     }
                     return distilled_result
-            
+
             return {key: self._distill_data_for_llm_context(value) for key, value in data.items()}
-        
+
         elif isinstance(data, list):
             return [self._distill_data_for_llm_context(item) for item in data]
-        
+
         return data
-    
+
     def _find_value_by_key(self, data_structure: any, target_key: str) -> any:
         """Recursively searches a nested data structure for the first value of a given key."""
         if isinstance(data_structure, dict):
@@ -237,7 +238,7 @@ class PlanExecutor:
             for key, value in data_structure.items():
                 if key.lower() == target_key.lower():
                     return value
-            
+
             # If no direct match, recurse into values
             for value in data_structure.values():
                 found = self._find_value_by_key(value, target_key)
@@ -266,7 +267,7 @@ class PlanExecutor:
         if is_single_value_structure:
             # Extract the single value from the nested structure
             return next(iter(data_structure[0]["results"][0].values()))
-        
+
         # If the structure doesn't match, return the original data structure
         return data_structure
 
@@ -280,8 +281,6 @@ class PlanExecutor:
 
         resolved_args = {}
 
-        # --- MODIFICATION START: Define a regex and replacer for embedded placeholders ---
-        # This pattern specifically looks for JSON objects with a "source" key, allowing for whitespace.
         placeholder_pattern = re.compile(r'(\s*\{[\s\n]*"source":\s*"[^"]+"(?:,[\s\n]*"key":\s*"[^"]+")?[\s\n]*\}\s*)')
 
         def _resolve_embedded_placeholder(match):
@@ -292,7 +291,6 @@ class PlanExecutor:
                 source_key = placeholder_data.get("source")
                 target_key = placeholder_data.get("key")
 
-                # Determine the data source for the placeholder
                 data_from_source = None
                 if source_key == "loop_item" and loop_item:
                     data_from_source = loop_item
@@ -305,57 +303,45 @@ class PlanExecutor:
 
                 if data_from_source is None:
                     app_logger.warning(f"Could not resolve embedded placeholder: source '{source_key}' not found.")
-                    return match.group(1) # Return original full match (with any whitespace)
+                    return match.group(1)
 
-                # Extract the final value from the determined source
                 if target_key:
                     found_value = self._find_value_by_key(data_from_source, target_key)
                 else:
                     found_value = self._unwrap_single_value_from_result(data_from_source)
-                
+
                 if found_value is not None:
                     app_logger.info(f"Resolved embedded placeholder '{placeholder_str}' to value '{found_value}'.")
                     return str(found_value)
                 else:
                     app_logger.warning(f"Could not resolve embedded placeholder: key '{target_key}' not found in source '{source_key}'.")
                     return match.group(1)
-            
+
             except (json.JSONDecodeError, AttributeError):
-                # If it's not valid JSON or doesn't have the expected structure, it's not our placeholder.
                 return match.group(1)
-        # --- MODIFICATION END ---
 
         for key, value in arguments.items():
-            # --- MODIFICATION START: Add a new first step to scan and resolve embedded placeholders ---
-            # This logic handles placeholders that are part of a larger string (e.g., inside a SQL query).
-            # It explicitly skips strings that are *only* a placeholder to let the main logic handle them,
-            # which correctly preserves data types (e.g., numbers vs. strings).
             if isinstance(value, str) and '"source":' in value and not placeholder_pattern.fullmatch(value.strip()):
                 resolved_value = placeholder_pattern.sub(_resolve_embedded_placeholder, value)
                 resolved_args[key] = resolved_value
                 continue
-            # --- MODIFICATION END ---
-            
-            # This is the original logic, which now serves as the handler for full-value placeholders and recursion.
+
             source_phase_key = None
             target_data_key = None
             is_placeholder = False
             original_placeholder = copy.deepcopy(value)
 
-            # Prioritize loop_item resolution for dictionary-based placeholders
             if isinstance(value, dict) and value.get("source") == "loop_item" and loop_item:
                 loop_key = value.get("key")
                 resolved_args[key] = loop_item.get(loop_key)
                 continue
 
-            # 1. Simple string placeholder (e.g., "result_of_phase_1")
             if isinstance(value, str):
                 match = re.match(r"(result_of_phase_\d+|phase_\d+|injected_previous_turn_data)", value)
                 if match:
                     source_phase_key = match.group(1)
                     is_placeholder = True
-            
-            # 2. Dictionary-based placeholders (canonical, keyless, and hallucinated)
+
             elif isinstance(value, dict):
                 if "source" in value and "key" in value:
                     source_phase_key = value["source"]
@@ -382,7 +368,7 @@ class PlanExecutor:
                             source_phase_key = k
                             target_data_key = v
                             is_placeholder = True
-                            
+
                             canonical_value = {"source": source_phase_key, "key": target_data_key}
                             self.events_to_yield.append(self._format_sse({
                                 "step": "System Correction", "type": "workaround",
@@ -396,14 +382,13 @@ class PlanExecutor:
                             value = canonical_value
                             break
 
-            # 3. Resolve the placeholder if one was identified
             if is_placeholder:
                 if source_phase_key and source_phase_key.startswith("phase_"):
                     source_phase_key = f"result_of_{source_phase_key}"
-                
+
                 if source_phase_key in self.workflow_state:
                     data_from_phase = self.workflow_state[source_phase_key]
-                    
+
                     if target_data_key:
                         found_value = self._find_value_by_key(data_from_phase, target_data_key)
                         if found_value is not None:
@@ -419,21 +404,20 @@ class PlanExecutor:
                 else:
                     app_logger.warning(f"Could not resolve placeholder: source '{source_phase_key}' not in workflow state.")
                     resolved_args[key] = value
-            
-            # 4. Handle other data types (nested structures, etc.)
+
             elif isinstance(value, dict):
                 resolved_args[key] = self._resolve_arguments(value, loop_item)
-            
+
             elif isinstance(value, list):
                 resolved_list = [self._resolve_arguments(item, loop_item) if isinstance(item, dict) else item for item in value]
                 resolved_args[key] = resolved_list
-            
+
             else:
                 resolved_args[key] = value
-        
+
         return resolved_args
 
-
+    # --- MODIFICATION START: Wrap run() content in try/except/finally ---
     async def run(self):
         """The main, unified execution loop for the agent."""
         final_answer_override = None
@@ -445,8 +429,9 @@ class PlanExecutor:
             if self.is_delegated_task:
                 async for event in self._run_delegated_prompt():
                     yield event
-                return
-            
+                return # Exit early for delegated tasks
+
+            # --- Planning Phase ---
             if self.state == self.AgentState.PLANNING:
                 planner = Planner(self)
                 should_replan = False
@@ -460,18 +445,15 @@ class PlanExecutor:
 
                     if is_replan:
                         prompts_in_plan = {p['executable_prompt'] for p in (self.meta_plan or []) if 'executable_prompt' in p}
-                        
                         granted_prompts_in_plan = {p for p in prompts_in_plan if p in APP_CONFIG.GRANTED_PROMPTS_FOR_EFFICIENCY_REPLANNING}
                         non_granted_prompts_to_deconstruct = {p for p in prompts_in_plan if p not in granted_prompts_in_plan}
 
                         context_parts = ["\n--- CONTEXT FOR RE-PLANNING ---"]
-                        
                         deconstruction_instruction = (
                             "Your previous plan was inefficient because it contained high-level prompts that must be broken down. "
                             "You MUST create a new, more detailed plan that achieves the same overall goal."
                         )
                         context_parts.append(deconstruction_instruction)
-
                         if granted_prompts_in_plan:
                             preservation_rule = (
                                 f"\n**CRITICAL PRESERVATION RULE:** The following prompts are explicitly granted and you **MUST** "
@@ -479,7 +461,6 @@ class PlanExecutor:
                                 "You should rebuild the other parts of the plan around these required steps.\n"
                             )
                             context_parts.append(preservation_rule)
-
                         if non_granted_prompts_to_deconstruct:
                             deconstruction_directive = (
                                 "\n**CRITICAL REPLANNING DIRECTIVE:** You **MUST** replicate the logical goal of the following discarded prompt(s) "
@@ -490,7 +471,6 @@ class PlanExecutor:
                                 prompt_info = self._get_prompt_info(prompt_name)
                                 if prompt_info:
                                     context_parts.append(f"- The goal of the discarded prompt `{prompt_name}` was: \"{prompt_info.get('description', 'No description.')}\"")
-                        
                         replan_context = "\n".join(context_parts)
 
                     async for event in planner.generate_and_refine_plan(
@@ -504,10 +484,8 @@ class PlanExecutor:
                     if plan_has_prompt:
                         prompts_in_plan = {phase['executable_prompt'] for phase in self.meta_plan if 'executable_prompt' in phase}
                         non_granted_prompts = [p for p in prompts_in_plan if p not in APP_CONFIG.GRANTED_PROMPTS_FOR_EFFICIENCY_REPLANNING]
-                        
                         has_other_significant_tool = any('executable_prompt' not in phase and phase.get('relevant_tools') != ['TDA_LLMTask'] for phase in self.meta_plan)
                         is_single_phase_prompt = len(self.meta_plan) == 1
-                        
                         if has_other_significant_tool and not is_single_phase_prompt and non_granted_prompts:
                             replan_triggered = True
 
@@ -521,7 +499,6 @@ class PlanExecutor:
                             }
                         })
                         continue
-                    
                     break
 
                 self.is_single_prompt_plan = (self.meta_plan and len(self.meta_plan) == 1 and 'executable_prompt' in self.meta_plan[0] and not self.is_delegated_task)
@@ -536,6 +513,7 @@ class PlanExecutor:
                 else:
                     self.state = self.AgentState.EXECUTING
 
+            # --- Execution Phase ---
             try:
                 if self.state == self.AgentState.EXECUTING:
                     async for event in self._run_plan(): yield event
@@ -544,24 +522,38 @@ class PlanExecutor:
                 yield self._format_sse({"step": "Unrecoverable Error", "details": e.friendly_message, "type": "error"}, "tool_result")
                 final_answer_override = f"I could not complete the request. Reason: {e.friendly_message}"
                 self.state = self.AgentState.SUMMARIZING
-            
+
+            # --- Summarization Phase ---
             if self.state == self.AgentState.SUMMARIZING:
                 async for event in self._handle_summarization(final_answer_override):
                     yield event
 
+        except asyncio.CancelledError:
+            # Handle cancellation specifically
+            app_logger.info(f"PlanExecutor execution cancelled for session {self.session_id}.")
+            self.state = self.AgentState.ERROR # Mark as error to prevent history update
+            # Yield a specific event to the frontend
+            yield self._format_sse({"step": "Execution Stopped", "details": "The process was stopped by the user.", "type": "cancelled"}, "cancelled")
+            # Re-raise so the caller (routes.py) knows it was cancelled
+            raise
+
         except Exception as e:
+            # Handle other general exceptions
             root_exception = unwrap_exception(e)
             app_logger.error(f"Error in state {self.state.name}: {root_exception}", exc_info=True)
             self.state = self.AgentState.ERROR
             yield self._format_sse({"error": "Execution stopped due to an unrecoverable error.", "details": str(root_exception)}, "error")
+
         finally:
-            if not self.disabled_history:
+            # --- Cleanup Phase (Always runs) ---
+            # Update history only if the execution wasn't cancelled or errored out definitively
+            if not self.disabled_history and self.state != self.AgentState.ERROR:
                 execution_trace = []
                 for entry in self.turn_action_history:
                     tool_call = entry.get("action", {})
                     tool_output = entry.get("result", {})
                     execution_trace.append({
-                        "phase": "N/A", 
+                        "phase": "N/A",
                         "thought": "No goal recorded.",
                         "tool_call": tool_call,
                         "tool_output_summary": self._distill_data_for_llm_context(tool_output)
@@ -576,7 +568,11 @@ class PlanExecutor:
                 }
                 session_manager.update_last_turn_data(self.session_id, turn_summary)
                 app_logger.debug(f"Saved last turn data to session {self.session_id}")
-    
+            else:
+                 app_logger.info(f"Skipping history update due to disabled history or final state: {self.state.name}")
+    # --- MODIFICATION END ---
+
+
     async def _handle_single_prompt_plan(self, planner: Planner):
         """Orchestrates the logic for expanding a single-prompt plan."""
         single_phase = self.meta_plan[0]
@@ -592,7 +588,7 @@ class PlanExecutor:
         if prompt_info:
             required_args = {arg['name'] for arg in prompt_info.get('arguments', []) if arg.get('required')}
             missing_args = required_args - set(prompt_args.keys())
-            
+
             if missing_args:
                 yield self._format_sse({
                     "step": "System Correction", "type": "workaround",
@@ -605,7 +601,7 @@ class PlanExecutor:
                     "Respond with only a single, valid JSON object mapping the argument names to their extracted values."
                 )
                 reason = f"Extracting missing arguments for prompt '{prompt_name}'"
-                
+
                 call_id = str(uuid.uuid4())
                 yield self._format_sse({
                     "step": "Calling LLM for Argument Enrichment",
@@ -613,14 +609,14 @@ class PlanExecutor:
                     "details": {"summary": reason, "call_id": call_id}
                 })
                 yield self._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
-                
+
                 response_text, input_tokens, output_tokens = await self._call_llm_and_update_tokens(
                     prompt=enrichment_prompt, reason=reason,
                     system_prompt_override="You are a JSON-only responding assistant.",
                     raise_on_error=True,
                     source=self.source
                 )
-                
+
                 updated_session = session_manager.get_session(self.session_id)
                 if updated_session:
                     yield self._format_sse({
@@ -629,7 +625,7 @@ class PlanExecutor:
                         "total_output": updated_session.get("output_tokens", 0),
                         "call_id": call_id
                     }, "token_update")
-                
+
                 yield self._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
 
                 try:
@@ -642,7 +638,7 @@ class PlanExecutor:
         self.active_prompt_name = prompt_name
         self.prompt_arguments = self._resolve_arguments(prompt_args)
         self.prompt_type = prompt_info.get("prompt_type", "reporting") if prompt_info else "reporting"
-        
+
         async for event in planner.generate_and_refine_plan():
             yield event
 
@@ -650,14 +646,14 @@ class PlanExecutor:
         """Executes the generated meta-plan, delegating to the PhaseExecutor."""
         if not self.meta_plan:
             raise RuntimeError("Cannot execute plan: meta_plan is not generated.")
-        
+
         phase_executor = PhaseExecutor(self)
 
         if not APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY and self.execution_depth > 0 and len(self.meta_plan) > 1:
             last_phase = self.meta_plan[-1]
             last_phase_tools = last_phase.get('relevant_tools', [])
             is_final_report_phase = any(tool in ["TDA_FinalReport", "TDA_ComplexPromptReport"] for tool in last_phase_tools)
-            
+
             if is_final_report_phase:
                 app_logger.info(f"Sub-process (depth {self.execution_depth}) is skipping its final summary phase.")
                 yield self._format_sse({
@@ -670,7 +666,7 @@ class PlanExecutor:
         while self.current_phase_index < len(self.meta_plan):
             current_phase = self.meta_plan[self.current_phase_index]
             is_delegated_prompt_phase = 'executable_prompt' in current_phase and self.execution_depth < self.MAX_EXECUTION_DEPTH
-            
+
             if is_delegated_prompt_phase:
                 prompt_name = current_phase.get('executable_prompt')
                 prompt_args = current_phase.get('arguments', {})
@@ -679,7 +675,7 @@ class PlanExecutor:
             else:
                 async for event in phase_executor.execute_phase(current_phase):
                     yield event
-            
+
             self.current_phase_index += 1
 
         app_logger.info("Meta-plan has been fully executed. Transitioning to summarization.")
@@ -695,11 +691,11 @@ class PlanExecutor:
             "details": f"Executing prompt '{prompt_name}' as part of the plan.",
             "type": "workaround"
         })
-        
+
         force_disable_sub_history = is_delegated_task
         if force_disable_sub_history:
             app_logger.info(f"Token Optimization: Disabling history for delegated recovery task '{prompt_name}'.")
-        
+
         sub_executor = PlanExecutor(
             session_id=self.session_id,
             original_user_input=f"Executing prompt: {prompt_name}",
@@ -713,16 +709,16 @@ class PlanExecutor:
             is_delegated_task=is_delegated_task,
             force_final_summary=APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY
         )
-        
+
         sub_executor.workflow_state = self.workflow_state
         sub_executor.structured_collected_data = self.structured_collected_data
-        
+
         if not is_delegated_task:
             sub_executor.turn_action_history = self.turn_action_history
 
         async for event in sub_executor.run():
             yield event
-        
+
         self.structured_collected_data = sub_executor.structured_collected_data
         self.workflow_state = sub_executor.workflow_state
         self.turn_action_history = sub_executor.turn_action_history
@@ -749,10 +745,10 @@ class PlanExecutor:
 
         planner = Planner(self)
         app_logger.info(f"Delegated task: Directly expanding prompt '{self.active_prompt_name}' into a concrete plan.")
-        
+
         async for event in planner.generate_and_refine_plan():
             yield event
-        
+
         self.state = self.AgentState.EXECUTING
         async for event in self._run_plan():
             yield event
@@ -782,7 +778,7 @@ class PlanExecutor:
             else:
                 last_result = results[0]
                 tool_name = self.last_tool_output.get("metadata", {}).get("tool_name")
-                
+
                 if self.active_prompt_name and tool_name == "TDA_ComplexPromptReport":
                     final_content = PromptReportResponse.model_validate(last_result)
                 elif tool_name == "TDA_FinalReport":
@@ -813,17 +809,17 @@ class PlanExecutor:
             formatter_kwargs["canonical_response"] = final_content
 
         formatter = OutputFormatter(**formatter_kwargs)
-        
+
         final_html, tts_payload = formatter.render()
-        
+
         session_manager.add_to_history(self.session_id, 'assistant', final_html)
-        
+
         clean_summary_for_thought = "The agent has completed its work."
         if hasattr(final_content, 'direct_answer'):
             clean_summary_for_thought = final_content.direct_answer
         elif hasattr(final_content, 'executive_summary'):
             clean_summary_for_thought = final_content.executive_summary
-        
+
         self.final_summary_text = clean_summary_for_thought
 
         yield self._format_sse({"step": "LLM has generated the final answer", "details": clean_summary_for_thought}, "llm_thought")

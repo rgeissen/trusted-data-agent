@@ -18,7 +18,6 @@ export async function checkServerStatus() {
     return await res.json();
 }
 
-// --- MODIFICATION START: Add the missing getApiKey helper function to centralize this logic ---
 /**
  * Fetches API keys from the backend /api_key/ endpoint.
  * @param {string} provider The name of the LLM provider.
@@ -31,7 +30,6 @@ export async function getApiKey(provider) {
     }
     return await res.json();
 }
-// --- MODIFICATION END ---
 
 
 export async function startStream(endpoint, body) {
@@ -46,6 +44,42 @@ export async function startStream(endpoint, body) {
     }
     return response;
 }
+
+// --- MODIFICATION START: Add cancelStream function ---
+/**
+ * Sends a request to the backend to cancel the active stream for a session.
+ * @param {string} sessionId The ID of the session whose stream should be cancelled.
+ * @returns {Promise<object>} A promise that resolves with the server's response.
+ */
+export async function cancelStream(sessionId) {
+    if (!sessionId) {
+        throw new Error("Session ID is required to cancel a stream.");
+    }
+    const response = await fetch(`/api/session/${sessionId}/cancel_stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // No body needed for this request
+    });
+    // Don't throw error on 404 (task not found), just return the status
+    if (!response.ok && response.status !== 404) {
+        let errorData;
+        try {
+            errorData = await response.json();
+        } catch(e) {
+            errorData = { message: `Request failed with status ${response.status}` };
+        }
+        throw new Error(errorData.message || `Request failed with status ${response.status}`);
+    }
+    // Return the JSON response (or potentially null/empty if 404 and no body)
+    try {
+        return await response.json();
+    } catch(e) {
+        // Handle cases where the response might be empty (e.g., successful 200 with no body)
+        return { status: response.status === 200 ? 'success' : 'info', message: response.statusText };
+    }
+}
+// --- MODIFICATION END ---
+
 
 export async function synthesizeText(text) {
     console.log("AUDIO DEBUG: synthesizeText called with text:", `"${text.substring(0,100)}..."`);
@@ -73,7 +107,7 @@ export async function synthesizeText(text) {
 export async function checkAndUpdateDefaultPrompts() {
     if (!isPrivilegedUser()) {
         console.log("Standard user tier. Skipping client-side prompt cache check.");
-        localStorage.removeItem('userSystemPrompts'); 
+        localStorage.removeItem('userSystemPrompts');
         return;
     }
 
@@ -95,7 +129,7 @@ export async function checkAndUpdateDefaultPrompts() {
 
         if (serverVersion !== localVersion) {
             console.log('New master system prompts detected on server. Flushing non-custom local prompts.');
-            
+
             const allPrompts = getSystemPrompts();
             const updatedPrompts = {};
 
@@ -141,7 +175,7 @@ export async function toggleToolApi(toolName, isDisabled) {
 
 export async function loadResources(type) {
     const res = await fetch(`/${type}`);
-    
+
     if (res.status === 404) {
         return {};
     }
@@ -207,13 +241,11 @@ export async function fetchModels() {
         body.listing_method = document.querySelector('input[name="listing_method"]:checked').value;
     } else if (provider === 'Ollama') {
         body.host = DOM.ollamaHostInput.value;
-    // --- MODIFICATION START: Add logic to gather Azure credentials ---
     } else if (provider === 'Azure') {
         body.azure_api_key = DOM.azureApiKeyInput.value;
         body.azure_endpoint = DOM.azureEndpointInput.value;
         body.azure_deployment_name = DOM.azureDeploymentNameInput.value;
         body.azure_api_version = DOM.azureApiVersionInput.value;
-    // --- MODIFICATION END ---
     } else if (provider === 'Friendli') {
         body.friendli_token = DOM.friendliTokenInput.value;
         body.friendli_endpoint_url = DOM.friendliEndpointUrlInput.value;
@@ -224,15 +256,13 @@ export async function fetchModels() {
     if (
         (provider === 'Amazon' && (!body.aws_access_key_id || !body.aws_secret_access_key || !body.aws_region)) ||
         (provider === 'Ollama' && !body.host) ||
-        // --- MODIFICATION START: Add validation check for Azure fields ---
         (provider === 'Azure' && (!body.azure_api_key || !body.azure_endpoint || !body.azure_deployment_name || !body.azure_api_version)) ||
-        // --- MODIFICATION END ---
         (provider === 'Friendli' && !body.friendli_token) ||
         (!['Amazon', 'Ollama', 'Azure', 'Friendli'].includes(provider) && !body.apiKey)
     ) {
         throw new Error('API credentials or host are required to fetch models.');
     }
-    
+
     const response = await fetch('/models', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -245,4 +275,3 @@ export async function fetchModels() {
     }
     return result;
 }
-

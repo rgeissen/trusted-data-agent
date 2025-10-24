@@ -43,6 +43,9 @@ export const toggleStatusButton = document.getElementById('toggle-status-button'
 export const statusCollapseIcon = document.getElementById('status-collapse-icon');
 export const statusExpandIcon = document.getElementById('status-expand-icon');
 export const toggleStatusCheckbox = document.getElementById('toggle-status-checkbox');
+// --- MODIFICATION START: Add stop button element ---
+export const stopExecutionButton = document.getElementById('stop-execution-button');
+// --- MODIFICATION END ---
 
 // Session history panel elements
 export const sessionHistoryPanel = document.getElementById('session-history-panel');
@@ -159,4 +162,3 @@ export const viewPromptModalContent = document.getElementById('view-prompt-modal
 export const viewPromptModalTitle = document.getElementById('view-prompt-modal-title');
 export const viewPromptModalText = document.getElementById('view-prompt-modal-text');
 export const viewPromptModalClose = document.getElementById('view-prompt-modal-close');
-

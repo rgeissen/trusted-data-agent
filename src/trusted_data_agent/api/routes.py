@@ -2,7 +2,9 @@
 import json
 import os
 import logging
+# --- MODIFICATION START: Import asyncio ---
 import asyncio
+# --- MODIFICATION END ---
 import sys
 import copy
 import hashlib
@@ -50,7 +52,7 @@ async def get_application_status():
         app_logger.info("Configuration persistence is disabled by environment setting. Forcing re-configuration.")
         return jsonify({"isConfigured": False})
     # --- MODIFICATION END ---
-    
+
     is_configured = APP_CONFIG.SERVICES_CONFIGURED
     app_logger.debug(f"API endpoint /api/status checked. Current configured status: {is_configured}")
 
@@ -80,7 +82,7 @@ async def simple_chat():
     data = await request.get_json()
     message = data.get("message")
     history = data.get("history", [])
-    
+
     if not message:
         return jsonify({"error": "No message provided."}), 400
 
@@ -93,7 +95,7 @@ async def simple_chat():
             dependencies={'STATE': APP_STATE},
             reason="Simple, tool-less chat."
         )
-        
+
         final_response = response_text.replace("FINAL_ANSWER:", "").strip()
 
         return jsonify({"response": final_response})
@@ -132,7 +134,7 @@ async def get_api_key(provider):
     """Retrieves API keys from environment variables for pre-population."""
     key = None
     provider_lower = provider.lower()
-    
+
     if provider_lower == 'google':
         key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
         return jsonify({"apiKey": key or ""})
@@ -150,14 +152,12 @@ async def get_api_key(provider):
             "azure_api_version": os.environ.get("AZURE_OPENAI_API_VERSION")
         }
         return jsonify(keys)
-    # --- MODIFICATION START: Add logic to fetch Friendli.ai credentials from environment variables ---
     elif provider_lower == 'friendli':
         keys = {
             "friendli_token": os.environ.get("FRIENDLI_TOKEN"),
             "friendli_endpoint_url": os.environ.get("FRIENDLI_ENDPOINT_URL")
         }
         return jsonify(keys)
-    # --- MODIFICATION END ---
     elif provider_lower == 'amazon':
         keys = {
             "aws_access_key_id": os.environ.get("AWS_ACCESS_KEY_ID"),
@@ -168,7 +168,7 @@ async def get_api_key(provider):
     elif provider_lower == 'ollama':
         host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
         return jsonify({"host": host})
-        
+
     return jsonify({"error": "Unknown provider"}), 404
 
 @api_bp.route("/api/synthesize-speech", methods=["POST"])
@@ -240,9 +240,9 @@ async def toggle_tool_status():
     else:
         disabled_tools_set.discard(tool_name)
         app_logger.info(f"Enabling tool '{tool_name}' for agent use.")
-    
+
     APP_STATE["disabled_tools"] = list(disabled_tools_set)
-    
+
     _regenerate_contexts()
 
     return jsonify({"status": "success", "message": f"Tool '{tool_name}' status updated."})
@@ -267,9 +267,9 @@ async def toggle_prompt_status():
     else:
         disabled_prompts_set.discard(prompt_name)
         app_logger.info(f"Enabling prompt '{prompt_name}' for agent use.")
-    
+
     APP_STATE["disabled_prompts"] = list(disabled_prompts_set)
-    
+
     _regenerate_contexts()
 
     return jsonify({"status": "success", "message": f"Prompt '{prompt_name}' status updated."})
@@ -283,7 +283,7 @@ async def get_prompt_content(prompt_name):
     mcp_client = APP_STATE.get("mcp_client")
     if not mcp_client:
         return jsonify({"error": "MCP client not configured."}), 400
-    
+
     server_name = APP_CONFIG.CURRENT_MCP_SERVER_NAME
     if not server_name:
          return jsonify({"error": "MCP server name not configured."}), 400
@@ -298,7 +298,7 @@ async def get_prompt_content(prompt_name):
                 arg_name = arg.get("name")
                 if arg_name:
                     placeholder_args[arg_name] = f"<{arg_name}>"
-        
+
         async with mcp_client.session(server_name) as temp_session:
             if placeholder_args:
                 prompt_obj = await load_mcp_prompt(
@@ -306,10 +306,10 @@ async def get_prompt_content(prompt_name):
                 )
             else:
                 prompt_obj = await temp_session.get_prompt(name=prompt_name)
-        
+
         if not prompt_obj:
             return jsonify({"error": f"Prompt '{prompt_name}' not found."}), 404
-        
+
         prompt_text = "Prompt content is not available."
         if isinstance(prompt_obj, str):
             prompt_text = prompt_obj
@@ -318,8 +318,8 @@ async def get_prompt_content(prompt_name):
                  prompt_text = prompt_obj[0].content
              elif hasattr(prompt_obj[0].content, 'text'):
                  prompt_text = prompt_obj[0].content.text
-        elif (hasattr(prompt_obj, 'messages') and 
-            isinstance(prompt_obj.messages, list) and 
+        elif (hasattr(prompt_obj, 'messages') and
+            isinstance(prompt_obj.messages, list) and
             len(prompt_obj.messages) > 0 and
             hasattr(prompt_obj.messages[0], 'content') and
             hasattr(prompt_obj.messages[0].content, 'text')):
@@ -328,7 +328,7 @@ async def get_prompt_content(prompt_name):
             prompt_text = prompt_obj.text
 
         return jsonify({"name": prompt_name, "content": prompt_text})
-    
+
     except Exception as e:
         root_exception = unwrap_exception(e)
         app_logger.error(f"Error fetching prompt content for '{prompt_name}': {root_exception}", exc_info=True)
@@ -357,7 +357,7 @@ async def new_session():
     """Creates a new chat session."""
     if not APP_STATE.get('llm') or not APP_CONFIG.MCP_SERVER_CONNECTED:
         return jsonify({"error": "Application not configured. Please set MCP and LLM details in Config."}), 400
-    
+
     try:
         loggers_to_purge = ["llm_conversation", "llm_conversation_history"]
         for logger_name in loggers_to_purge:
@@ -367,7 +367,7 @@ async def new_session():
                     log_file_path = handler.baseFilename
                     handler.close()
                     logger.removeHandler(handler)
-                    
+
                     with open(log_file_path, 'w'):
                         pass
 
@@ -410,13 +410,11 @@ async def get_models():
                 "aws_secret_access_key": data.get("aws_secret_access_key"),
                 "aws_region": data.get("aws_region")
             })
-        # --- MODIFICATION START: Add logic to correctly handle Friendli.ai credentials ---
         elif provider == 'Friendli':
             credentials.update({
                 "friendli_token": data.get("friendli_token"),
                 "friendli_endpoint_url": data.get("friendli_endpoint_url")
             })
-        # --- MODIFICATION END ---
         elif provider == 'Ollama':
             credentials["host"] = data.get("host")
         else:
@@ -443,13 +441,9 @@ async def configure_services():
     if not data_from_ui:
         return jsonify({"status": "error", "message": "Request body must be a valid JSON."}), 400
 
-    # --- MODIFICATION START: Adapter to reshape UI data for the service ---
-    # This reshapes the flat structure from the UI into the nested structure
-    # expected by the new, centralized configuration service.
-    # It now includes resilient logic for the Ollama host key.
     host_keys = ["ollama_host", "ollamaHost", "host"]
     ollama_host_value = next((data_from_ui.get(key) for key in host_keys if data_from_ui.get(key) is not None), None)
-    
+
     service_config_data = {
         "provider": data_from_ui.get("provider"),
         "model": data_from_ui.get("model"),
@@ -465,10 +459,8 @@ async def configure_services():
             "azure_deployment_name": data_from_ui.get("azure_deployment_name"),
             "azure_api_version": data_from_ui.get("azure_api_version"),
             "listing_method": data_from_ui.get("listing_method", "foundation_models"),
-            # --- MODIFICATION START: Add Friendli.ai keys to the credentials adapter ---
             "friendli_token": data_from_ui.get("friendli_token"),
             "friendli_endpoint_url": data_from_ui.get("friendli_endpoint_url")
-            # --- MODIFICATION END ---
         },
         "mcp_server": {
             "name": data_from_ui.get("server_name"),
@@ -477,14 +469,10 @@ async def configure_services():
             "path": data_from_ui.get("path")
         }
     }
-    # --- MODIFICATION END ---
-    # Clean up None values to avoid sending empty keys
     service_config_data["credentials"] = {k: v for k, v in service_config_data["credentials"].items() if v is not None}
 
-    # Call the centralized, lock-protected service function
     result = await configuration_service.setup_and_categorize_services(service_config_data)
-    
-    # Return the result from the service directly to the UI
+
     if result.get("status") == "success":
         return jsonify(result), 200
     else:
@@ -505,7 +493,22 @@ async def ask_stream():
     session_id = data.get("session_id")
     disabled_history = data.get("disabled_history", False)
     source = data.get("source", "text")
-    
+
+    # --- MODIFICATION START: Cancel existing task for the session ---
+    if session_id in APP_STATE.get("active_tasks", {}):
+        existing_task = APP_STATE["active_tasks"].pop(session_id)
+        if not existing_task.done():
+            app_logger.warning(f"Cancelling previous active task for session {session_id}.")
+            existing_task.cancel()
+            try:
+                # Give the task a moment to finish cancelling
+                await asyncio.wait_for(existing_task, timeout=0.1)
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                pass # Expected exceptions
+            except Exception as e:
+                app_logger.error(f"Error during cancellation cleanup: {e}")
+    # --- MODIFICATION END ---
+
     async def stream_generator():
         queue = asyncio.Queue()
 
@@ -514,23 +517,44 @@ async def ask_stream():
             await queue.put(sse_event)
 
         async def run_and_signal_completion():
-            await execution_service.run_agent_execution(
-                session_id=session_id,
-                user_input=user_input,
-                event_handler=event_handler,
-                disabled_history=disabled_history,
-                source=source
-            )
-            await queue.put(None)
+            # --- MODIFICATION START: Task management ---
+            task = None
+            try:
+                task = asyncio.create_task(
+                    execution_service.run_agent_execution(
+                        session_id=session_id,
+                        user_input=user_input,
+                        event_handler=event_handler,
+                        disabled_history=disabled_history,
+                        source=source
+                    )
+                )
+                APP_STATE.setdefault("active_tasks", {})[session_id] = task
+                await task
+            except asyncio.CancelledError:
+                app_logger.info(f"Task for session {session_id} was cancelled.")
+                # Optionally send a specific cancellation event
+                await event_handler({"message": "Execution stopped by user."}, "cancelled")
+            except Exception as e:
+                 app_logger.error(f"Error during task execution for session {session_id}: {e}", exc_info=True)
+                 await event_handler({"error": str(e)}, "error")
+            finally:
+                # Ensure task is removed from tracking upon completion/cancellation
+                if session_id in APP_STATE.get("active_tasks", {}):
+                    del APP_STATE["active_tasks"][session_id]
+                await queue.put(None) # Signal end of stream generation
+            # --- MODIFICATION END ---
 
+        # Start the background task runner
         asyncio.create_task(run_and_signal_completion())
-        
+
+        # Yield events from the queue until None is received
         while True:
             item = await queue.get()
             if item is None:
                 break
             yield item
-        
+
     return Response(stream_generator(), mimetype="text/event-stream")
 
 @api_bp.route("/invoke_prompt_stream", methods=["POST"])
@@ -551,7 +575,21 @@ async def invoke_prompt_stream():
     arguments = data.get("arguments", {})
     disabled_history = data.get("disabled_history", False)
     source = data.get("source", "prompt_library")
-    
+
+    # --- MODIFICATION START: Cancel existing task for the session ---
+    if session_id in APP_STATE.get("active_tasks", {}):
+        existing_task = APP_STATE["active_tasks"].pop(session_id)
+        if not existing_task.done():
+            app_logger.warning(f"Cancelling previous active task for session {session_id} during prompt invocation.")
+            existing_task.cancel()
+            try:
+                await asyncio.wait_for(existing_task, timeout=0.1)
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                pass
+            except Exception as e:
+                app_logger.error(f"Error during cancellation cleanup: {e}")
+    # --- MODIFICATION END ---
+
     async def stream_generator():
         queue = asyncio.Queue()
 
@@ -560,19 +598,36 @@ async def invoke_prompt_stream():
             await queue.put(sse_event)
 
         async def run_and_signal_completion():
-            await execution_service.run_agent_execution(
-                session_id=session_id,
-                user_input="Executing prompt...",
-                event_handler=event_handler,
-                active_prompt_name=prompt_name,
-                prompt_arguments=arguments,
-                disabled_history=disabled_history,
-                source=source
-            )
-            await queue.put(None)
+             # --- MODIFICATION START: Task management (same as ask_stream) ---
+            task = None
+            try:
+                task = asyncio.create_task(
+                    execution_service.run_agent_execution(
+                        session_id=session_id,
+                        user_input="Executing prompt...", # User input is less relevant here
+                        event_handler=event_handler,
+                        active_prompt_name=prompt_name,
+                        prompt_arguments=arguments,
+                        disabled_history=disabled_history,
+                        source=source
+                    )
+                )
+                APP_STATE.setdefault("active_tasks", {})[session_id] = task
+                await task
+            except asyncio.CancelledError:
+                app_logger.info(f"Prompt task for session {session_id} was cancelled.")
+                await event_handler({"message": "Execution stopped by user."}, "cancelled")
+            except Exception as e:
+                 app_logger.error(f"Error during prompt task execution for session {session_id}: {e}", exc_info=True)
+                 await event_handler({"error": str(e)}, "error")
+            finally:
+                if session_id in APP_STATE.get("active_tasks", {}):
+                    del APP_STATE["active_tasks"][session_id]
+                await queue.put(None)
+            # --- MODIFICATION END ---
 
         asyncio.create_task(run_and_signal_completion())
-        
+
         while True:
             item = await queue.get()
             if item is None:
@@ -580,3 +635,28 @@ async def invoke_prompt_stream():
             yield item
 
     return Response(stream_generator(), mimetype="text/event-stream")
+
+# --- MODIFICATION START: Add cancellation endpoint ---
+@api_bp.route("/api/session/<session_id>/cancel_stream", methods=["POST"])
+async def cancel_stream(session_id: str):
+    """Cancels the active execution task for a given session."""
+    active_tasks = APP_STATE.get("active_tasks", {})
+    task = active_tasks.get(session_id)
+
+    if task and not task.done():
+        app_logger.info(f"Received request to cancel task for session {session_id}.")
+        task.cancel()
+        # Remove immediately, the finally block in the task handles actual removal later
+        if session_id in active_tasks:
+             del active_tasks[session_id]
+        return jsonify({"status": "success", "message": "Cancellation request sent."}), 200
+    elif task and task.done():
+        app_logger.info(f"Cancellation request for session {session_id} ignored: task already completed.")
+        # Clean up if the finally block somehow missed it
+        if session_id in active_tasks:
+             del active_tasks[session_id]
+        return jsonify({"status": "info", "message": "Task already completed."}), 200
+    else:
+        app_logger.warning(f"Cancellation request for session {session_id} failed: No active task found.")
+        return jsonify({"status": "error", "message": "No active task found for this session."}), 404
+# --- MODIFICATION END ---

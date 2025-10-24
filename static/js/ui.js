@@ -48,13 +48,35 @@ export function addMessage(role, content) {
     wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-export function toggleLoading(isLoading) {
-    DOM.userInput.disabled = isLoading;
-    DOM.submitButton.disabled = isLoading;
-    DOM.newChatButton.disabled = isLoading;
-    DOM.sendIcon.classList.toggle('hidden', isLoading);
-    DOM.loadingSpinner.classList.toggle('hidden', !isLoading);
+// --- MODIFICATION START: Replace toggleLoading, showStopButton, and enableStopButton with setExecutionState ---
+
+/**
+ * Sets the UI state for an active, cancellable execution.
+ * This is the single source of truth for disabling inputs and showing/hiding the stop button.
+ * @param {boolean} isActive - True if execution is starting, false if it's ending.
+ */
+export function setExecutionState(isActive) {
+    // Disable/enable primary inputs
+    DOM.userInput.disabled = isActive;
+    DOM.submitButton.disabled = isActive;
+    DOM.newChatButton.disabled = isActive; // Also disable new chat during execution
+
+    // Toggle loading spinner vs. send icon
+    DOM.sendIcon.classList.toggle('hidden', isActive);
+    DOM.loadingSpinner.classList.toggle('hidden', !isActive);
+
+    // Manage stop button visibility and state
+    if (DOM.stopExecutionButton) {
+        DOM.stopExecutionButton.classList.toggle('hidden', !isActive);
+        // Always enable when showing, disable when hiding
+        DOM.stopExecutionButton.disabled = !isActive; 
+    } else {
+        console.error("setExecutionState: stopExecutionButton not found in DOM.");
+    }
 }
+
+// --- MODIFICATION END ---
+
 
 function _renderPlanningDetails(details) {
     if (!details.summary || !details.full_text) return null;
@@ -108,7 +130,6 @@ function _renderMetaPlanDetails(details) {
             `;
         }
 
-        // --- MODIFICATION START: Add rendering for structural plan keys ---
         let structuralKeysHtml = '';
         if (phase.type) {
             structuralKeysHtml += `<div class="status-kv-item"><div class="status-kv-key">Type</div><div class="status-kv-value"><code class="status-code font-bold text-yellow-300">${phase.type}</code></div></div>`;
@@ -116,16 +137,13 @@ function _renderMetaPlanDetails(details) {
         if (phase.loop_over) {
             structuralKeysHtml += `<div class="status-kv-item"><div class="status-kv-key">Loop Over</div><div class="status-kv-value"><code class="status-code">${phase.loop_over}</code></div></div>`;
         }
-        // --- MODIFICATION END ---
 
         html += `<div class="status-phase-card">
                     <div class="font-bold text-gray-300 mb-2">Phase ${phase.phase}</div>
                     <div class="status-kv-item"><div class="status-kv-key">Goal</div><div class="status-kv-value">${phase.goal}</div></div>`;
-        
-        // --- MODIFICATION START: Inject the new structural keys HTML ---
+
         html += structuralKeysHtml;
-        // --- MODIFICATION END ---
-        
+
         if (phase.relevant_tools) {
             html += `<div class="status-kv-item"><div class="status-kv-key">Tools</div><div class="status-kv-value"><code class="status-code">${phase.relevant_tools.join(', ')}</code></div></div>`;
         }
@@ -140,10 +158,10 @@ function _renderMetaPlanDetails(details) {
 
 function _renderToolIntentDetails(details) {
     if (!details.tool_name && !details.prompt_name) return null;
-    
+
     const name = details.tool_name || details.prompt_name;
     const type = details.tool_name ? 'Tool' : 'Prompt';
-    
+
     let argsHtml = '';
     if (details.arguments) {
         const argsString = JSON.stringify(details.arguments, null, 2);
@@ -183,7 +201,7 @@ export function updateStatusWindow(eventData, isFinal = false) {
 
         const phaseContainer = document.createElement('details');
         phaseContainer.className = 'status-phase-container';
-        
+
         const phaseHeader = document.createElement('summary');
         phaseHeader.className = 'status-phase-header phase-start';
 
@@ -196,7 +214,7 @@ export function updateStatusWindow(eventData, isFinal = false) {
             <span class="font-bold flex-shrink-0">${depthIndicator}Starting Plan Phase ${phase_num}/${total_phases}</span>
             <span class="text-gray-400 text-xs truncate ml-2">${goal}</span>
         `;
-        
+
         phaseContainer.appendChild(phaseHeader);
 
         const phaseContent = document.createElement('div');
@@ -205,7 +223,7 @@ export function updateStatusWindow(eventData, isFinal = false) {
 
         DOM.statusWindowContent.appendChild(phaseContainer);
         state.currentPhaseContainerEl = phaseContainer;
-        
+
         if (!state.isMouseOverStatus) {
             DOM.statusWindowContent.scrollTop = DOM.statusWindowContent.scrollHeight;
         }
@@ -218,7 +236,7 @@ export function updateStatusWindow(eventData, isFinal = false) {
             const phaseFooter = document.createElement('div');
             phaseFooter.className = 'status-phase-header phase-end';
             phaseFooter.innerHTML = `<span class="font-bold">Plan Phase ${phase_num}/${total_phases} Completed</span>`;
-            
+
             if (status === 'skipped') {
                 phaseFooter.classList.add('skipped');
                 phaseFooter.innerHTML = `<span class="font-bold">Plan Phase ${phase_num}/${total_phases} Skipped</span>`;
@@ -227,29 +245,36 @@ export function updateStatusWindow(eventData, isFinal = false) {
             }
 
             state.currentPhaseContainerEl.appendChild(phaseFooter);
-            state.currentPhaseContainerEl = null;
+            state.currentPhaseContainerEl = null; // Reset for next phase
         }
-        state.isInFastPath = false;
+        state.isInFastPath = false; // Reset fast path flag at end of phase
         if (!state.isMouseOverStatus) {
             DOM.statusWindowContent.scrollTop = DOM.statusWindowContent.scrollHeight;
         }
         return;
     }
 
+    // Handle standard step events
     const parentContainer = state.currentPhaseContainerEl ? state.currentPhaseContainerEl.querySelector('.status-phase-content') : DOM.statusWindowContent;
 
+    // Mark previous step as completed if it was active
     const lastStep = document.getElementById(`status-step-${state.currentStatusId}`);
-    if (lastStep && parentContainer.contains(lastStep)) {
+    if (lastStep && lastStep.classList.contains('active') && parentContainer.contains(lastStep)) {
         lastStep.classList.remove('active');
         lastStep.classList.add('completed');
-        if (state.isInFastPath) {
-            lastStep.classList.add('plan-optimization');
+        // Ensure fast path optimization style persists if it was applied
+        if (state.isInFastPath && !lastStep.classList.contains('plan-optimization')) {
+             lastStep.classList.add('plan-optimization');
         }
     }
 
-    if (type === 'plan_optimization') {
-        state.isInFastPath = true;
+    // Reset fast path flag if this isn't an optimization step itself
+    if (type !== 'plan_optimization') {
+        state.isInFastPath = false;
+    } else {
+        state.isInFastPath = true; // Mark that we are currently in a fast path
     }
+
 
     state.currentStatusId++;
     const stepEl = document.createElement('div');
@@ -263,11 +288,11 @@ export function updateStatusWindow(eventData, isFinal = false) {
 
     const metricsEl = document.createElement('div');
     metricsEl.className = 'per-call-metrics text-xs text-gray-400 mb-2 hidden';
-    
+
     if (typeof details === 'object' && details !== null && details.call_id) {
         metricsEl.dataset.callId = details.call_id;
     }
-    
+
     stepEl.appendChild(metricsEl);
 
     if (details) {
@@ -275,14 +300,19 @@ export function updateStatusWindow(eventData, isFinal = false) {
         let detailsString = '';
 
         if (typeof details === 'object' && details !== null) {
-            if (step.startsWith("Calling LLM for")) { // More generic check for any LLM call
+            if (step.startsWith("Calling LLM for")) {
                 customRenderedHtml = _renderPlanningDetails(details);
             } else if (step === "Strategic Meta-Plan Generated") {
                 customRenderedHtml = _renderMetaPlanDetails(details);
             } else if (step === "Tool Execution Intent") {
                 customRenderedHtml = _renderToolIntentDetails(details);
             } else {
-                detailsString = JSON.stringify(details, null, 2);
+                // Default JSON rendering for other object details
+                try {
+                    detailsString = JSON.stringify(details, null, 2);
+                } catch (e) {
+                    detailsString = "[Could not stringify details]"; // Fallback
+                }
             }
         } else {
             detailsString = String(details);
@@ -293,22 +323,26 @@ export function updateStatusWindow(eventData, isFinal = false) {
             detailsContainer.innerHTML = customRenderedHtml;
             stepEl.appendChild(detailsContainer);
         } else if (detailsString) {
-            const characterThreshold = 300;
+            const characterThreshold = 300; // Character limit before collapsing
             if (detailsString.length > characterThreshold) {
                 const detailsEl = document.createElement('details');
                 detailsEl.className = 'text-xs';
 
                 const summaryEl = document.createElement('summary');
                 summaryEl.className = 'cursor-pointer text-gray-400 hover:text-white';
-                
+
                 let summaryText = `Details (${detailsString.length} chars)`;
-                if (step.includes('Tool Execution Result') && typeof details === 'object' && details.results) {
-                    const itemCount = Array.isArray(details.results) ? details.results.length : 0;
-                    summaryText = `Tool Result (${itemCount} items)`;
+                // Specific summary for tool results
+                if ((step.includes('Tool Execution Result') || step.includes('Tool Execution Error')) && typeof details === 'object' && details.results) {
+                    const itemCount = Array.isArray(details.results) ? details.results.length : (details.results ? 1 : 0);
+                    const status = details.status || 'unknown';
+                    summaryText = `Tool Result (${status}, ${itemCount} items)`;
                 } else if (step.includes('Final Answer')) {
                     summaryText = `Final Answer Summary`;
+                } else if (type === 'cancelled') {
+                    summaryText = 'Cancellation Details';
                 }
-                
+
                 summaryEl.textContent = `${summaryText} - Click to expand`;
                 detailsEl.appendChild(summaryEl);
 
@@ -318,6 +352,7 @@ export function updateStatusWindow(eventData, isFinal = false) {
                 detailsEl.appendChild(pre);
                 stepEl.appendChild(detailsEl);
             } else {
+                // Render shorter details directly in a pre block
                 const pre = document.createElement('pre');
                 pre.className = 'p-2 bg-gray-900/70 rounded-md text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap';
                 pre.textContent = detailsString;
@@ -328,24 +363,35 @@ export function updateStatusWindow(eventData, isFinal = false) {
 
     parentContainer.appendChild(stepEl);
 
+    // Apply specific styling based on event type
     if (type === 'workaround') {
         stepEl.classList.add('workaround');
     } else if (type === 'error') {
         stepEl.classList.add('error');
-    } else if (state.isInFastPath) {
+    } else if (type === 'cancelled') {
+        stepEl.classList.add('cancelled');
+    } else if (state.isInFastPath) { // Apply optimization style if currently in fast path
         stepEl.classList.add('plan-optimization');
     }
 
+    // Mark as active unless it's explicitly final
     if (!isFinal) {
         stepEl.classList.add('active');
     } else {
-        stepEl.classList.add('completed');
+        // If final, ensure it doesn't have 'active' but retains other styles
+        stepEl.classList.remove('active');
+        if (!stepEl.classList.contains('error') && !stepEl.classList.contains('cancelled')) {
+             stepEl.classList.add('completed');
+        }
     }
 
+
+    // Auto-scroll logic
     if (!state.isMouseOverStatus) {
         DOM.statusWindowContent.scrollTop = DOM.statusWindowContent.scrollHeight;
     }
 }
+
 
 export function updateTokenDisplay(data) {
     const normalDisplay = document.getElementById('token-normal-display');
@@ -429,7 +475,7 @@ export function createResourceItem(resource, type) {
         });
         argsHTML += `</ul></div>`;
     }
-    
+
     let contentHTML = '';
     if (type === 'prompts') {
         const runButtonDisabledAttr = ''; // Always enabled
@@ -469,7 +515,6 @@ export function createResourceItem(resource, type) {
         ${contentHTML}
     `;
 
-    // Event listeners are attached in eventHandlers.js to prevent circular dependencies
     return detailsEl;
 }
 
@@ -505,28 +550,36 @@ export function highlightResource(resourceName, type) {
     }
 
     let resourceCategory = null;
-    for (const category in state.resourceData[type]) {
-        if (state.resourceData[type][category].some(r => r.name === resourceName)) {
-            resourceCategory = category;
-            break;
+    if (state.resourceData[type]) { // Check if data exists
+        for (const category in state.resourceData[type]) {
+            if (state.resourceData[type][category].some(r => r.name === resourceName)) {
+                resourceCategory = category;
+                break;
+            }
         }
     }
 
+
     if (resourceCategory) {
-        document.querySelector(`.resource-tab[data-type="${type}"]`).click();
+        const resourceTab = document.querySelector(`.resource-tab[data-type="${type}"]`);
+        if (resourceTab) resourceTab.click(); // Select the main type tab (Tools/Prompts)
+
         const categoryTab = document.querySelector(`.category-tab[data-type="${type}"][data-category="${resourceCategory}"]`);
-        if(categoryTab) categoryTab.click();
+        if(categoryTab) categoryTab.click(); // Select the specific category tab
 
         const resourceElement = document.getElementById(`resource-${type}-${resourceName}`);
         if (resourceElement) {
-            resourceElement.open = true;
+            resourceElement.open = true; // Ensure the details are open
             resourceElement.classList.add('resource-selected');
             state.currentlySelectedResource = resourceElement;
 
+            // Scroll into view after a short delay to allow tab switching/opening animation
             setTimeout(() => {
                 resourceElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 350);
         }
+    } else {
+        console.warn(`Could not find category for resource '${resourceName}' of type '${type}'. Highlight failed.`);
     }
 }
 
@@ -545,7 +598,7 @@ export function addSessionToList(sessionId, name, isActive = false) {
     nameSpan.textContent = name;
     sessionItem.appendChild(nameSpan);
 
-    // The event listener is attached in eventHandlers.js
+    // Event listener is attached in eventHandlers.js
     return sessionItem;
 }
 
@@ -632,28 +685,28 @@ export function addMessageToModal(role, content) {
 export function updateHintAndIndicatorState() {
     const hintTextSpan = DOM.inputHint.querySelector('span:first-child');
     const hintTooltipSpan = DOM.inputHint.querySelector('.tooltip');
-    
+
     if (state.isLastTurnModeLocked) {
         hintTextSpan.innerHTML = `<strong>Last Turn Context:</strong> <span class="text-orange-400 font-semibold">Locked</span>`;
         hintTooltipSpan.innerHTML = `'Last Turn' context is locked on. Press <kbd>Shift</kbd> + <kbd>Alt</kbd> to switch back to the default 'Full Session Context'.`;
-        DOM.contextStatusDot.className = 'connection-dot context-last-turn-locked'; 
+        DOM.contextStatusDot.className = 'connection-dot context-last-turn-locked';
         DOM.sendIcon.classList.remove('flipped');
     } else if (state.isTempLastTurnMode) {
         hintTextSpan.innerHTML = `<strong>Context:</strong> <span class="text-yellow-400 font-semibold">Last Turn</span>`;
         hintTooltipSpan.innerHTML = `Temporarily using 'Last Turn' context for this query.`;
-        DOM.contextStatusDot.className = 'connection-dot context-last-turn-temp'; 
+        DOM.contextStatusDot.className = 'connection-dot context-last-turn-temp';
         DOM.sendIcon.classList.remove('flipped');
     } else {
         hintTextSpan.innerHTML = `<strong>Full Session Context:</strong> <span class="text-green-400 font-semibold">On</span>`;
         hintTooltipSpan.innerHTML = `Full session context is the default. Hold <kbd>Alt</kbd> to temporarily use 'Last Turn' context. Press <kbd>Shift</kbd> + <kbd>Alt</kbd> to lock 'Last Turn' context on.`;
-        DOM.contextStatusDot.className = 'connection-dot idle'; 
+        DOM.contextStatusDot.className = 'connection-dot idle';
         DOM.sendIcon.classList.add('flipped');
     }
 }
 
 export function updateVoiceModeUI() {
     const isActive = state.isVoiceModeLocked || state.isTempVoiceMode || state.ttsState === 'AWAITING_OBSERVATION_CONFIRMATION';
-    
+
     if (isActive) {
         DOM.voiceInputButton.classList.remove('bg-gray-600');
         DOM.voiceInputButton.classList.add('bg-[#F15F22]');
@@ -706,30 +759,27 @@ export function updateKeyObservationsModeUI() {
     }
 }
 
-// NEW: Pure UI function for closing the config modal
 export function closeConfigModal() {
     DOM.configModalOverlay.classList.add('opacity-0');
     DOM.configModalContent.classList.add('scale-95', 'opacity-0');
     setTimeout(() => DOM.configModalOverlay.classList.add('hidden'), 300);
 }
 
-// NEW: Pure UI function for closing the prompt modal
 export function closePromptModal() {
     DOM.promptModalOverlay.classList.add('opacity-0');
     DOM.promptModalContent.classList.add('scale-95', 'opacity-0');
     setTimeout(() => DOM.promptModalOverlay.classList.add('hidden'), 300);
 }
 
-// NEW: Pure UI function for closing the view prompt modal
 export function closeViewPromptModal() {
     DOM.viewPromptModalOverlay.classList.add('opacity-0');
     DOM.viewPromptModalContent.classList.add('scale-95', 'opacity-0');
     setTimeout(() => DOM.viewPromptModalOverlay.classList.add('hidden'), 300);
 }
 
-// NEW & FIXED: Export the function to close the chat modal
 export function closeChatModal() {
     DOM.chatModalOverlay.classList.add('opacity-0');
     DOM.chatModalContent.classList.add('scale-95', 'opacity-0');
     setTimeout(() => DOM.chatModalOverlay.classList.add('hidden'), 300);
 }
+
