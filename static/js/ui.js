@@ -203,11 +203,17 @@ export function updateStatusWindow(eventData, isFinal = false) {
     if (type === 'phase_start') {
         const { phase_num, total_phases, goal, execution_depth } = details;
 
-        const lastStep = Array.from(DOM.statusWindowContent.querySelectorAll(':scope > .status-step')).pop();
+        // --- MODIFICATION START: Fix "fast path" step remaining active ---
+        // Correctly find the very last step, even if nested
+        const lastStep = Array.from(DOM.statusWindowContent.querySelectorAll('.status-step')).pop();
         if (lastStep && lastStep.classList.contains('active')) {
             lastStep.classList.remove('active');
-            lastStep.classList.add('completed');
+            // Apply fast-path-aware logic: only add 'completed' if it's not a 'plan-optimization' step
+            if (!lastStep.classList.contains('plan-optimization')) {
+                 lastStep.classList.add('completed');
+            }
         }
+        // --- MODIFICATION END ---
 
         const phaseContainer = document.createElement('details');
         phaseContainer.className = 'status-phase-container';
@@ -792,4 +798,3 @@ export function closeChatModal() {
     DOM.chatModalContent.classList.add('scale-95', 'opacity-0');
     setTimeout(() => DOM.chatModalOverlay.classList.add('hidden'), 300);
 }
-
