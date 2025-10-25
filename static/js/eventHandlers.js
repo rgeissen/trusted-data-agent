@@ -604,7 +604,10 @@ export async function finalizeConfiguration(config) {
 
     DOM.chatModalButton.disabled = false;
     DOM.userInput.placeholder = "Ask about databases, tables, users...";
-    DOM.userInput.disabled = false; // Ensure input is enabled after config
+    
+    // --- MODIFICATION START: Use centralized UI function ---
+    UI.setExecutionState(false); // This enables the input, button, and hides the spinner
+    // --- MODIFICATION END ---
 
     await Promise.all([
         handleLoadResources('tools'),
@@ -1473,4 +1476,3 @@ export function initializeEventListeners() {
         }
     });
 }
-
