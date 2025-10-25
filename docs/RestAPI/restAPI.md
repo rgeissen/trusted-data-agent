@@ -4,7 +4,7 @@
 
 Welcome to the Trusted Data Agent (TDA) REST API. This API provides a programmatic interface to interact with the agent's powerful data analysis and querying capabilities.
 
-The API is designed around an **asynchronous task-based architecture**. This pattern is ideal for handling potentially long-running agent processes in a robust and scalable way. Instead of holding a connection open while the agent works, you initiate a task and then poll a status endpoint to get progress updates and the final result.
+The API is designed around an **asynchronous task-based architecture**. This pattern is ideal for handling potentially long-running agent processes in a robust and scalable way. Instead of holding a connection open while the agent works, you initiate a task and then poll a status endpoint to get progress updates and the final result. You can also cancel a running task if needed.
 
 This document provides a comprehensive guide to all available endpoints and data models.
 
@@ -24,7 +24,7 @@ Initializes and validates the agent's core services, including the LLM provider 
 * **Method**: `POST`
 * **Body**:
     A JSON object containing the full configuration. The structure varies slightly by provider.
-    
+
     **For Google, Anthropic, OpenAI:**
     ```json
     {
@@ -78,7 +78,7 @@ Initializes and validates the agent's core services, including the LLM provider 
         }
         ```
 * **Error Response**:
-    * **Code**: `500 Internal Server Error`
+    * **Code**: `400 Bad Request` (e.g., if configuration fails validation)
     * **Content**:
         ```json
         {
@@ -152,6 +152,43 @@ Polls for the status of a background task. This endpoint provides real-time prog
 * **Error Response**:
     * **Code**: `404 Not Found` (if `task_id` is invalid)
 
+### 3.5. Cancel Task Execution
+
+Requests cancellation of an actively running background task.
+
+* **Endpoint**: `POST /v1/tasks/{task_id}/cancel`
+* **Method**: `POST`
+* **URL Parameters**:
+    * `task_id` (string, required): The unique identifier for the task to cancel.
+* **Body**: None
+* **Success Response**:
+    * **Code**: `200 OK`
+    * **Content**:
+        ```json
+        {
+          "status": "success",
+          "message": "Cancellation request sent."
+        }
+        ```
+* **Informational Response (Task Already Done)**:
+    * **Code**: `200 OK`
+    * **Content**:
+        ```json
+        {
+          "status": "info",
+          "message": "Task already completed."
+        }
+        ```
+* **Error Response**:
+    * **Code**: `404 Not Found` (if `task_id` does not correspond to an active or recently completed task)
+    * **Content**:
+        ```json
+        {
+          "status": "error",
+          "message": "No active task found for this task ID."
+        }
+        ```
+
 ## 4. The Task Object
 
 The Task Object is the central data structure for monitoring a query. It is returned by the `GET /v1/tasks/{task_id}` endpoint.
@@ -183,11 +220,11 @@ The Task Object is the central data structure for monitoring a query. It is retu
 ### 4.2. Fields
 
 * `task_id`: The unique ID of the task.
-* `status`: The current state of the task (`pending`, `processing`, `complete`, or `error`).
+* `status`: The current state of the task (`pending`, `processing`, `complete`, `error`, `cancelled`, `cancelling`).
 * `last_updated`: The UTC timestamp of the last update to this task object.
 * `events`: A chronological log of events from the agent's execution process.
 * `intermediate_data`: A list of successful data results from tool calls as they are generated.
-* `result`: The final, structured output from the agent. This field is `null` until the `status` is `complete`.
+* `result`: The final, structured output from the agent. This field is `null` until the `status` is `complete` or `error`. If the status is `cancelled`, it might contain a cancellation message.
 
 ### 4.3. Event Types
 
@@ -200,6 +237,7 @@ The `event_data` object within the `events` list provides insight into the agent
 | `tool_result`    | A tool was executed.                                        |
 | `token_update`   | Tokens were consumed in a call to the LLM.                  |
 | `workaround`     | The agent performed a self-correction or optimization.      |
+| `cancelled`      | The execution was stopped, usually due to user request.     |
 | `error`          | A general or unrecoverable error occurred during execution. |
 
 ### 4.4. The Result Object
@@ -236,18 +274,18 @@ Send a `POST` request to the `/api/v1/configure` endpoint with the appropriate c
 
 ### Method 2: Web UI (for Manual Setup)
 
-1.  Start the application server.
-2.  Open a web browser and navigate to the application's URL (e.g., `http://127.0.0.1:5000`).
-3.  Click on the **Config** tab.
-4.  Enter and validate your LLM provider credentials and MCP server details.
-5.  Once the UI shows a "Successfully configured" message, the REST API is ready to accept requests.
+1. Start the application server.
+2. Open a web browser and navigate to the application's URL (e.g., `http://127.0.0.1:5000`).
+3. Click on the **Config** tab.
+4. Enter and validate your LLM provider credentials and MCP server details.
+5. Once the UI shows a "Successfully configured" message, the REST API is ready to accept requests.
 
 ## 6. Full Workflow Example (cURL)
 
 **1. Configure the Application (Run this first!)**
 
 ```bash
-curl -X POST http://127.0.0.1:5000/api/v1/configure \
+curl -X POST [http://127.0.0.1:5000/api/v1/configure](http://127.0.0.1:5000/api/v1/configure) \
      -H "Content-Type: application/json" \
      -d '{
            "provider": "YOUR_PROVIDER",
@@ -265,17 +303,22 @@ curl -X POST http://127.0.0.1:5000/api/v1/configure \
 **2. Create a Session**
 
 ```bash
-SESSION_ID=$(curl -s -X POST http://127.0.0.1:5000/api/v1/sessions | jq -r .session_id)
+SESSION_ID=$(curl -s -X POST [http://127.0.0.1:5000/api/v1/sessions](http://127.0.0.1:5000/api/v1/sessions) | jq -r .session_id)
 echo "Created Session: $SESSION_ID"
 ```
 
 **3. Submit a Query**
 
 ```bash
-TASK_URL=$(curl -s -X POST http://127.0.0.1:5000/api/v1/sessions/$SESSION_ID/query \
+# Capture both task_id and status_url
+RESPONSE_JSON=$(curl -s -X POST [http://127.0.0.1:5000/api/v1/sessions/$SESSION_ID/query](http://127.0.0.1:5000/api/v1/sessions/$SESSION_ID/query) \
      -H "Content-Type: application/json" \
-     -d '{"prompt": "What is the business description for the DEMO_DB database?"}' | jq -r .status_url)
-echo "Task URL: $TASK_URL"
+     -d '{"prompt": "What is the business description for the DEMO_DB database?"}')
+
+TASK_ID=$(echo "$RESPONSE_JSON" | jq -r .task_id)
+TASK_URL=$(echo "$RESPONSE_JSON" | jq -r .status_url)
+echo "Task ID: $TASK_ID"
+echo "Task Status URL: $TASK_URL"
 ```
 
 **4. Poll for the Result with Intermediate Events**
@@ -292,14 +335,14 @@ echo "Task URL: $TASK_URL"
 # --- 1. Argument Validation ---
 # Check if a task URL path was provided as an argument.
 if [ -z "$1" ]; then
-  echo "Usage: ./check_status.sh <task_url_path>"
+  echo "Usage: ./check_status.sh "
   echo "Example: ./check_status.sh /api/v1/tasks/some-task-id"
   exit 1
 fi
 
 # --- 2. Initialization ---
 TASK_URL_PATH=$1
-BASE_URL="http://127.0.0.1:5000"
+BASE_URL="[http://127.0.0.1:5000](http://127.0.0.1:5000)"
 FULL_URL="$BASE_URL$TASK_URL_PATH"
 EVENTS_SEEN=0
 
@@ -310,7 +353,7 @@ echo "-------------------------------------"
 while true; do
   # Fetch the latest task status
   RESPONSE=$(curl -s "$FULL_URL")
-  
+
   # Gracefully handle cases where the server response is empty
   if [ -z "$RESPONSE" ]; then
     echo "Warning: Received empty response from server. Retrying..."
@@ -321,7 +364,7 @@ while true; do
   # --- Print NEW events ---
   # Safely get the total number of events, providing a default of 0
   TOTAL_EVENTS=$(echo "$RESPONSE" | jq '(.events | length) // 0')
-  
+
   # Add a final check to ensure TOTAL_EVENTS is a number before comparison
   if ! [[ "$TOTAL_EVENTS" =~ ^[0-9]+$ ]]; then
     echo "Warning: Could not parse event count from response. The response may not be valid JSON."
@@ -332,24 +375,24 @@ while true; do
   if [ "$TOTAL_EVENTS" -gt "$EVENTS_SEEN" ]; then
     # If so, get only the new events
     NEW_EVENTS=$(echo "$RESPONSE" | jq -c ".events[$EVENTS_SEEN:] | .[]")
-    
+
     # Print each new event, formatting with jq for readability
     echo "$NEW_EVENTS" | jq
-    
+
     # Update the count of events we've seen
     EVENTS_SEEN=$TOTAL_EVENTS
   fi
 
   # --- Check for completion ---
   STATUS=$(echo "$RESPONSE" | jq -r .status)
-  if [ "$STATUS" = "complete" ] || [ "$STATUS" = "error" ]; then
+  if [[ "$STATUS" == "complete" || "$STATUS" == "error" || "$STATUS" == "cancelled" ]]; then # Added cancelled status check
     echo "-------------------------------------"
     echo "--- FINAL STATUS: $STATUS ---"
     echo "--- FINAL RESULT ---"
     echo "$RESPONSE" | jq '.result'
     break
   fi
-  
+
   sleep 1
 done
 ```
@@ -362,6 +405,14 @@ chmod +x check_status.sh
 
 # Run the script, passing the TASK_URL from Step 3 as the argument
 ./check_status.sh "$TASK_URL"
+```
+
+**(Optional) 6. Cancel the Task (if needed)**
+
+If the task is taking too long or you no longer need the result, you can cancel it using the `TASK_ID` obtained in Step 3.
+
+```bash
+curl -X POST [http://127.0.0.1:5000/api/v1/tasks/$TASK_ID/cancel](http://127.0.0.1:5000/api/v1/tasks/$TASK_ID/cancel)
 ```
 
 ## 7. Troubleshooting
