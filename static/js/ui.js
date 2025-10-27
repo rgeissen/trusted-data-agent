@@ -618,6 +618,29 @@ export function addSessionToList(sessionId, name, isActive = false) {
     return sessionItem;
 }
 
+// --- NEW Function: updateSessionListItemName ---
+/**
+ * Updates the displayed name of a session item in the history list.
+ * @param {string} sessionId - The ID of the session to update.
+ * @param {string} newName - The new name for the session.
+ */
+export function updateSessionListItemName(sessionId, newName) {
+    const sessionItem = document.getElementById(`session-${sessionId}`);
+    if (sessionItem) {
+        const nameSpan = sessionItem.querySelector('span');
+        if (nameSpan) {
+            nameSpan.textContent = newName;
+            console.log(`UI Updated: Session item ${sessionId} name changed to '${newName}'`);
+        } else {
+            console.warn(`Could not find name span within session item ${sessionId}`);
+        }
+    } else {
+        console.warn(`Could not find session item ${sessionId} in the list to update name.`);
+    }
+}
+// --- END NEW Function ---
+
+
 export function updateConfigButtonState() {
     const isConnected = DOM.mcpStatusDot.classList.contains('connected');
 

@@ -84,6 +84,12 @@ async function processStream(responseBody) {
                         openCorrectionModal(eventData.details);
                     } else if (eventName === 'session_update') {
                         // Session update logic... (no changes needed)
+                    // --- NEW: Handle Session Name Update ---
+                    } else if (eventName === 'session_name_update') {
+                        const { session_id, newName } = eventData;
+                        console.log(`Received session_name_update for ${session_id} to '${newName}'`);
+                        UI.updateSessionListItemName(session_id, newName);
+                    // --- END NEW ---
                     } else if (eventName === 'llm_thought') {
                         UI.updateStatusWindow({ step: "Parser has generated the final answer", ...eventData });
                     } else if (eventName === 'prompt_selected') {
@@ -604,7 +610,7 @@ export async function finalizeConfiguration(config) {
 
     DOM.chatModalButton.disabled = false;
     DOM.userInput.placeholder = "Ask about databases, tables, users...";
-    
+
     // --- MODIFICATION START: Use centralized UI function ---
     UI.setExecutionState(false); // This enables the input, button, and hides the spinner
     // --- MODIFICATION END ---

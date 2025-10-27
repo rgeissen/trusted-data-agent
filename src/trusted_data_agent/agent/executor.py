@@ -432,6 +432,43 @@ class PlanExecutor:
 
         return resolved_args
 
+    # --- NEW METHOD: _generate_session_name ---
+    async def _generate_session_name(self, query: str) -> str:
+        """
+        Uses the LLM to generate a concise name for the session based on the initial query.
+        """
+        prompt = (
+            f"Based on the following user query, generate a concise and descriptive name (3-5 words) "
+            f"suitable for a chat session history list. Do not include any punctuation or extra text.\n\n"
+            f"User Query: \"{query}\"\n\n"
+            f"Session Name:"
+        )
+        reason = "Generating session name from initial query."
+        system_prompt = "You generate short, descriptive titles. Only respond with the title text."
+
+        try:
+            name_text, _, _ = await self._call_llm_and_update_tokens(
+                prompt=prompt,
+                reason=reason,
+                system_prompt_override=system_prompt,
+                raise_on_error=True,
+                disabled_history=True, # Don't need history for naming
+                source="system" # Indicate system-initiated call
+            )
+            # Basic cleaning: remove extra quotes, trim whitespace
+            cleaned_name = name_text.strip().strip('"\'')
+            if cleaned_name:
+                app_logger.info(f"Generated session name: '{cleaned_name}'")
+                return cleaned_name
+            else:
+                app_logger.warning("LLM returned an empty session name.")
+                return "New Chat" # Fallback
+        except Exception as e:
+            app_logger.error(f"Failed to generate session name: {e}", exc_info=True)
+            return "New Chat" # Fallback on error
+    # --- END NEW METHOD ---
+
+
     async def run(self):
         """The main, unified execution loop for the agent."""
         final_answer_override = None
@@ -604,7 +641,25 @@ class PlanExecutor:
                 # Pass user_uuid to update_last_turn_data
                 session_manager.update_last_turn_data(self.user_uuid, self.session_id, turn_summary)
                 app_logger.debug(f"Saved last turn data to session {self.session_id} for user {self.user_uuid}")
-                # --- MODIFICATION END ---
+
+                # --- NEW: Session Naming Logic ---
+                if turn_number == 1 and session_data and session_data.get("name") == "New Chat":
+                    app_logger.info(f"First turn detected for session {self.session_id}. Attempting to generate name.")
+                    new_name = await self._generate_session_name(self.original_user_input)
+                    if new_name != "New Chat":
+                        try:
+                            # Update the name persistently
+                            session_manager.update_session_name(self.user_uuid, self.session_id, new_name)
+                            # Emit SSE to update UI
+                            yield self._format_sse({
+                                "session_id": self.session_id,
+                                "newName": new_name
+                            }, "session_name_update")
+                            app_logger.info(f"Successfully updated session {self.session_id} name to '{new_name}'.")
+                        except Exception as name_e:
+                            app_logger.error(f"Failed to save or emit updated session name '{new_name}': {name_e}", exc_info=True)
+                # --- END NEW Session Naming Logic ---
+
             else:
                  app_logger.info(f"Skipping history update for user {self.user_uuid}, session {self.session_id} due to disabled history or final state: {self.state.name}")
     # --- MODIFICATION END (end of run method) ---
@@ -917,4 +972,3 @@ class PlanExecutor:
             "turn_id": current_turn_number # Add the turn number here
         }, "final_answer")
         # --- MODIFICATION END ---
-
