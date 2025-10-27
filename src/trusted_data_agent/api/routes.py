@@ -373,6 +373,33 @@ async def get_session_history(session_id):
     app_logger.warning(f"Session {session_id} not found for user {user_uuid}.")
     return jsonify({"error": "Session not found"}), 404
 
+# --- NEW: Session Rename Endpoint ---
+@api_bp.route("/api/session/<session_id>/rename", methods=["POST"])
+async def rename_session(session_id: str):
+    """Renames a specific session for the requesting user."""
+    user_uuid = _get_user_uuid_from_request()
+    data = await request.get_json()
+    new_name = data.get("newName")
+
+    if not new_name or not isinstance(new_name, str) or len(new_name.strip()) == 0:
+        return jsonify({"status": "error", "message": "Invalid or empty 'newName' provided."}), 400
+
+    # Verify user owns the session
+    session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
+    if not session_data:
+        app_logger.warning(f"Rename failed: Session {session_id} not found for user {user_uuid}.")
+        return jsonify({"status": "error", "message": "Session not found or access denied."}), 404
+
+    try:
+        session_manager.update_session_name(user_uuid, session_id, new_name.strip())
+        app_logger.info(f"User {user_uuid} renamed session {session_id} to '{new_name.strip()}'.")
+        return jsonify({"status": "success", "message": "Session renamed successfully."}), 200
+    except Exception as e:
+        app_logger.error(f"Error renaming session {session_id} for user {user_uuid}: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": "Failed to update session name on the server."}), 500
+# --- END NEW Endpoint ---
+
+
 @api_bp.route("/session", methods=["POST"])
 async def new_session():
     """Creates a new chat session for the requesting user."""
@@ -725,4 +752,3 @@ async def cancel_stream(session_id: str):
         app_logger.warning(f"Cancellation request for user {user_uuid}, session {session_id} failed: No active task found.")
         return jsonify({"status": "error", "message": "No active task found for this session."}), 404
 # --- MODIFICATION END ---
-

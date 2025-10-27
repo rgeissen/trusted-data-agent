@@ -9,7 +9,10 @@ import { state } from './state.js';
 import * as API from './api.js';
 import * as UI from './ui.js';
 import * as Utils from './utils.js';
-import { copyToClipboard, copyTableToClipboard } from './utils.js'; // Import specific functions
+// --- MODIFICATION START: Import specific utils and renameSession ---
+import { copyToClipboard, copyTableToClipboard, classifyConfirmation } from './utils.js';
+import { renameSession } from './api.js'; // Import the rename API function
+// --- MODIFICATION END ---
 import { startRecognition, stopRecognition, startConfirmationRecognition } from './voice.js';
 
 // --- Stream Processing ---
@@ -78,18 +81,17 @@ async function processStream(responseBody) {
                                 metricsEl.classList.remove('hidden');
                             }
                         }
+                    // --- MODIFICATION START: Add session_name_update handler ---
+                    } else if (eventName === 'session_name_update') {
+                        const { session_id, newName } = eventData;
+                        UI.updateSessionListItemName(session_id, newName);
+                    // --- MODIFICATION END ---
                     } else if (eventName === 'request_user_input') {
                         UI.updateStatusWindow({ step: "Action Required", details: "Waiting for user to correct parameters.", type: 'workaround' });
                         UI.setExecutionState(false); // Use centralized function
                         openCorrectionModal(eventData.details);
                     } else if (eventName === 'session_update') {
                         // Session update logic... (no changes needed)
-                    // --- NEW: Handle Session Name Update ---
-                    } else if (eventName === 'session_name_update') {
-                        const { session_id, newName } = eventData;
-                        console.log(`Received session_name_update for ${session_id} to '${newName}'`);
-                        UI.updateSessionListItemName(session_id, newName);
-                    // --- END NEW ---
                     } else if (eventName === 'llm_thought') {
                         UI.updateStatusWindow({ step: "Parser has generated the final answer", ...eventData });
                     } else if (eventName === 'prompt_selected') {
@@ -389,8 +391,8 @@ export async function handleStartNewSession() {
     try {
         const data = await API.startNewSession();
         const sessionItem = UI.addSessionToList(data.session_id, data.name, true);
-        DOM.sessionList.prepend(sessionItem);
-        await handleLoadSession(data.session_id);
+        DOM.sessionList.prepend(sessionItem); // Prepend so new sessions are at the top
+        await handleLoadSession(data.session_id, true); // Pass flag to indicate it's a new session load
     } catch (error) {
         UI.addMessage('assistant', `Failed to start a new session: ${error.message}`);
     } finally {
@@ -399,24 +401,27 @@ export async function handleStartNewSession() {
     }
 }
 
-export async function handleLoadSession(sessionId) {
-    if (state.currentSessionId === sessionId) return;
+
+export async function handleLoadSession(sessionId, isNewSession = false) {
+    if (state.currentSessionId === sessionId && !isNewSession) return; // Don't reload if already active, unless forced by new session creation
 
     // UI.toggleLoading(true); // Replaced by setExecutionState if needed, but likely not needed here
     try {
         const data = await API.loadSession(sessionId);
         state.currentSessionId = sessionId;
-        DOM.chatLog.innerHTML = '';
-        data.history.forEach(msg => UI.addMessage(msg.role, msg.content));
+        DOM.chatLog.innerHTML = ''; // Clear chat log
+        if (data.history && data.history.length > 0) {
+            data.history.forEach(msg => UI.addMessage(msg.role, msg.content));
+        } else {
+            // Only add the welcome message if the history is truly empty (e.g., brand new session)
+             UI.addMessage('assistant', "I'm ready to help. How can I assist you with your Teradata system today?");
+        }
         UI.updateTokenDisplay({ total_input: data.input_tokens, total_output: data.output_tokens });
 
         document.querySelectorAll('.session-item').forEach(item => {
             item.classList.toggle('active', item.dataset.sessionId === sessionId);
         });
 
-        if (data.history.length === 0) {
-             UI.addMessage('assistant', "I'm ready to help. How can I assist you with your Teradata system today?");
-        }
         UI.updateStatusPromptName();
     } catch (error) {
         UI.addMessage('assistant', `Error loading session: ${error.message}`);
@@ -1285,6 +1290,56 @@ async function handleToggleTool(toolName, isDisabled, buttonEl) {
     }
 }
 
+// --- MODIFICATION START: Add Save/Cancel Handlers ---
+/**
+ * Handles the save action when editing a session name (Enter or Blur).
+ * @param {Event} e - The event object (blur or keydown).
+ */
+export async function handleSessionRenameSave(e) {
+    const inputElement = e.target;
+    const sessionItem = inputElement.closest('.session-item');
+    if (!sessionItem) return;
+
+    const sessionId = sessionItem.dataset.sessionId;
+    const newName = inputElement.value.trim();
+    const originalName = inputElement.dataset.originalName;
+
+    // If name is empty or unchanged, cancel the edit
+    if (!newName || newName === originalName) {
+        UI.exitSessionEditMode(inputElement, originalName);
+        return;
+    }
+
+    // Indicate saving (optional)
+    inputElement.disabled = true;
+    inputElement.style.opacity = '0.7';
+
+    try {
+        await renameSession(sessionId, newName); // Call API
+        UI.exitSessionEditMode(inputElement, newName); // Update UI with new name on success
+        console.log(`Session ${sessionId} renamed to '${newName}'`);
+    } catch (error) {
+        console.error(`Failed to rename session ${sessionId}:`, error);
+        // Show error state on input (e.g., red border) and re-enable
+        inputElement.style.borderColor = 'red';
+        inputElement.disabled = false;
+        // Optionally show a more specific error message to the user
+        // Do not exit edit mode on error
+    }
+}
+
+/**
+ * Handles the cancel action when editing a session name (Escape).
+ * @param {Event} e - The event object (keydown).
+ */
+export function handleSessionRenameCancel(e) {
+    const inputElement = e.target;
+    const originalName = inputElement.dataset.originalName;
+    UI.exitSessionEditMode(inputElement, originalName);
+}
+// --- MODIFICATION END ---
+
+
 // --- Initializer ---
 
 export function initializeEventListeners() {
@@ -1375,9 +1430,17 @@ export function initializeEventListeners() {
 
     DOM.sessionList.addEventListener('click', (e) => {
         const sessionItem = e.target.closest('.session-item');
-        if (sessionItem) {
+        // --- MODIFICATION START: Add click handler for session name span ---
+        const nameSpan = e.target.closest('.session-name-span');
+
+        if (nameSpan && sessionItem) {
+            // Clicked on the name span, enter edit mode
+            UI.enterSessionEditMode(nameSpan);
+        } else if (sessionItem) {
+            // Clicked on the session item itself (but not the name span), load session
             handleLoadSession(sessionItem.dataset.sessionId);
         }
+        // --- MODIFICATION END ---
     });
 
     // All modal listeners
@@ -1482,3 +1545,4 @@ export function initializeEventListeners() {
         }
     });
 }
+

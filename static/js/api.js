@@ -275,6 +275,34 @@ export async function loadAllSessions() {
     return sessions;
 }
 
+// --- NEW Function: renameSession ---
+/**
+ * Renames a specific session via the backend API.
+ * @param {string} sessionId - The ID of the session to rename.
+ * @param {string} newName - The desired new name for the session.
+ * @returns {Promise<object>} A promise that resolves with the success/error response from the server.
+ * @throws {Error} If the API call fails or returns an error status.
+ */
+export async function renameSession(sessionId, newName) {
+    if (!sessionId || !newName) {
+        throw new Error("Session ID and new name are required for renaming.");
+    }
+
+    const response = await fetch(`/api/session/${sessionId}/rename`, {
+        method: 'POST',
+        headers: _getHeaders(), // Includes Content-Type and X-TDA-User-UUID
+        body: JSON.stringify({ newName: newName.trim() }) // Send newName in body
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+        throw new Error(result.message || `Failed to rename session (status ${response.status}).`);
+    }
+    return result; // Should contain { status: "success", message: "..." }
+}
+// --- END NEW Function ---
+
+
 export async function fetchModels() {
     const provider = DOM.llmProviderSelect.value;
     let body = { provider };

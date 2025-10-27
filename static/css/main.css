@@ -266,6 +266,40 @@ details.resource-selected > summary {
     border-left: 4px solid var(--teradata-orange);
 }
 
+/* --- MODIFICATION START: Styles for Session Rename --- */
+.session-item .session-name-span {
+    cursor: text; /* Indicate it's clickable for editing */
+    display: inline-block; /* Needed for width */
+    width: calc(100% - 10px); /* Adjust width as needed, leave space if adding icons */
+    padding: 2px 0; /* Add slight padding for click target */
+    border-radius: 3px;
+    transition: background-color 0.1s ease-in-out;
+}
+
+.session-item .session-name-span:hover {
+    background-color: rgba(255, 255, 255, 0.1); /* Subtle hover */
+}
+
+.session-edit-input {
+    background-color: rgba(255, 255, 255, 0.1); /* Slightly lighter background for input */
+    border: 1px solid var(--teradata-orange); /* Highlight with border */
+    color: white;
+    font-size: 0.875rem; /* text-sm */
+    font-weight: 600; /* font-semibold */
+    padding: 1px 4px; /* Adjust padding to match span appearance */
+    border-radius: 3px;
+    width: 100%; /* Take full width */
+    outline: none; /* Remove default outline */
+    box-shadow: 0 0 5px rgba(241, 95, 34, 0.5); /* Add subtle glow */
+}
+
+.session-edit-input:focus {
+    /* Optional: Slightly enhance focus */
+    box-shadow: 0 0 8px rgba(241, 95, 34, 0.7);
+}
+/* --- MODIFICATION END --- */
+
+
 #tool-header {
     transition: max-height 0.4s ease-in-out, padding 0.4s ease-in-out, border-bottom-width 0.4s ease-in-out, opacity 0.3s ease-in-out;
     overflow: hidden;
@@ -584,4 +618,3 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     background-color: transparent !important; /* Prevent hover effect when disabled */
     color: var(--medium-text) !important; /* Ensure disabled text color is gray */
 }
-

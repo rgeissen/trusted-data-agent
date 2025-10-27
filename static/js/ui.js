@@ -7,6 +7,11 @@
 import * as DOM from './domElements.js';
 import { state } from './state.js';
 import { renderChart, isPrivilegedUser, isPromptCustomForModel, getNormalizedModelId } from './utils.js';
+// --- MODIFICATION START: Import necessary event handler functions ---
+// We need access to the functions that will handle save/cancel from the input
+import { handleSessionRenameSave, handleSessionRenameCancel } from './eventHandlers.js';
+// --- MODIFICATION END ---
+
 
 // NOTE: This module no longer imports from eventHandlers.js, breaking a circular dependency.
 // Instead, eventHandlers.js will import these UI functions.
@@ -610,7 +615,9 @@ export function addSessionToList(sessionId, name, isActive = false) {
     }
 
     const nameSpan = document.createElement('span');
-    nameSpan.className = 'font-semibold text-sm text-white';
+    // --- MODIFICATION START: Add class for click targeting ---
+    nameSpan.className = 'session-name-span font-semibold text-sm text-white cursor-pointer hover:underline'; // Added session-name-span and cursor/hover
+    // --- MODIFICATION END ---
     nameSpan.textContent = name;
     sessionItem.appendChild(nameSpan);
 
@@ -627,7 +634,9 @@ export function addSessionToList(sessionId, name, isActive = false) {
 export function updateSessionListItemName(sessionId, newName) {
     const sessionItem = document.getElementById(`session-${sessionId}`);
     if (sessionItem) {
-        const nameSpan = sessionItem.querySelector('span');
+        // --- MODIFICATION START: Target the specific span ---
+        const nameSpan = sessionItem.querySelector('.session-name-span');
+        // --- MODIFICATION END ---
         if (nameSpan) {
             nameSpan.textContent = newName;
             console.log(`UI Updated: Session item ${sessionId} name changed to '${newName}'`);
@@ -637,6 +646,76 @@ export function updateSessionListItemName(sessionId, newName) {
     } else {
         console.warn(`Could not find session item ${sessionId} in the list to update name.`);
     }
+}
+// --- END NEW Function ---
+
+// --- NEW Function: enterSessionEditMode ---
+/**
+ * Switches a session list item's name span to an input field for editing.
+ * @param {HTMLSpanElement} spanElement - The session name span element that was clicked.
+ */
+export function enterSessionEditMode(spanElement) {
+    const sessionItem = spanElement.closest('.session-item');
+    if (!sessionItem || sessionItem.querySelector('.session-name-input')) {
+        return; // Already in edit mode or element not found
+    }
+
+    const currentName = spanElement.textContent;
+    const inputElement = document.createElement('input');
+    inputElement.type = 'text';
+    inputElement.value = currentName;
+    inputElement.dataset.originalName = currentName; // Store original name
+    inputElement.className = 'session-name-input w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm outline-none ring-2 ring-transparent focus:ring-teradata-orange';
+
+    // Replace span with input
+    spanElement.style.display = 'none';
+    sessionItem.insertBefore(inputElement, spanElement.nextSibling); // Insert input after the (hidden) span
+
+    // Focus and select text
+    inputElement.focus();
+    inputElement.select();
+
+    // Attach listeners (handled in eventHandlers.js via delegation is better, but this works too)
+    // We pass the handlers from eventHandlers.js to avoid circular dependencies
+    inputElement.addEventListener('blur', handleSessionRenameSave);
+    inputElement.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault(); // Prevent form submission if inside one
+            handleSessionRenameSave(e); // Pass event to handler
+        } else if (e.key === 'Escape') {
+            handleSessionRenameCancel(e); // Pass event to handler
+        }
+    });
+}
+// --- END NEW Function ---
+
+// --- NEW Function: exitSessionEditMode ---
+/**
+ * Switches a session list item back from input mode to display mode.
+ * @param {HTMLInputElement} inputElement - The input element currently being edited.
+ * @param {string} finalName - The name to display in the span (either original or new).
+ */
+export function exitSessionEditMode(inputElement, finalName) {
+    const sessionItem = inputElement.closest('.session-item');
+    if (!sessionItem) return;
+
+    const spanElement = sessionItem.querySelector('.session-name-span');
+    if (spanElement) {
+        spanElement.textContent = finalName;
+        spanElement.style.display = ''; // Show the span again
+    }
+
+    // Clean up input element and its listeners
+    inputElement.removeEventListener('blur', handleSessionRenameSave);
+    // --- MODIFICATION START: Correctly reference keydown handler ---
+    // Remove the specific keydown handler, not just the function name
+    // Since the handler is anonymous within enterSessionEditMode, we need a different approach
+    // Easiest is to just remove the element itself, which also removes its listeners.
+    // The blur listener removal is okay as it's a direct reference.
+    // inputElement.removeEventListener('keydown', handleSessionRenameSave); // Incorrect
+    // inputElement.removeEventListener('keydown', handleSessionRenameCancel); // Incorrect
+    // --- MODIFICATION END ---
+    inputElement.remove();
 }
 // --- END NEW Function ---
 
@@ -821,3 +900,4 @@ export function closeChatModal() {
     DOM.chatModalContent.classList.add('scale-95', 'opacity-0');
     setTimeout(() => DOM.chatModalOverlay.classList.add('hidden'), 300);
 }
+
