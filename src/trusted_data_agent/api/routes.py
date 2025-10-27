@@ -2,15 +2,15 @@
 import json
 import os
 import logging
-# --- MODIFICATION START: Import asyncio ---
 import asyncio
-# --- MODIFICATION END ---
 import sys
 import copy
 import hashlib
 import httpx
 
-from quart import Blueprint, request, jsonify, render_template, Response
+# --- MODIFICATION START: Import abort ---
+from quart import Blueprint, request, jsonify, render_template, Response, abort
+# --- MODIFICATION END ---
 from langchain_mcp_adapters.prompts import load_mcp_prompt
 
 from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
@@ -31,6 +31,16 @@ from trusted_data_agent.core.utils import (
 
 api_bp = Blueprint('api', __name__)
 app_logger = logging.getLogger("quart.app")
+
+# --- MODIFICATION START: Add helper to get user UUID ---
+def _get_user_uuid_from_request():
+    """Extracts User UUID from request header or aborts."""
+    user_uuid = request.headers.get("X-TDA-User-UUID")
+    if not user_uuid:
+        app_logger.error("Missing X-TDA-User-UUID header in request.")
+        abort(400, description="X-TDA-User-UUID header is required.")
+    return user_uuid
+# --- MODIFICATION END ---
 
 
 @api_bp.route("/")
@@ -86,6 +96,8 @@ async def simple_chat():
     if not message:
         return jsonify({"error": "No message provided."}), 400
 
+    # Note: Simple chat doesn't use user UUID scoping currently.
+    # If needed, it could be added here, but typically simple chat is stateless.
     try:
         response_text, _, _ = await llm_handler.call_llm_api(
             llm_instance=APP_STATE.get('llm'),
@@ -94,6 +106,8 @@ async def simple_chat():
             system_prompt_override="You are a helpful assistant.",
             dependencies={'STATE': APP_STATE},
             reason="Simple, tool-less chat."
+            # user_uuid=user_uuid, # Add if simple chat needs session context
+            # session_id=session_id # Add if simple chat needs session context
         )
 
         final_response = response_text.replace("FINAL_ANSWER:", "").strip()
@@ -334,15 +348,21 @@ async def get_prompt_content(prompt_name):
         app_logger.error(f"Error fetching prompt content for '{prompt_name}': {root_exception}", exc_info=True)
         return jsonify({"error": "An unexpected error occurred while fetching the prompt."}), 500
 
+# --- MODIFICATION START: Add logging to /sessions GET endpoint ---
 @api_bp.route("/sessions", methods=["GET"])
 async def get_sessions():
-    """Returns a list of all active chat sessions."""
-    return jsonify(session_manager.get_all_sessions())
+    """Returns a list of all active chat sessions for the requesting user."""
+    user_uuid = _get_user_uuid_from_request()
+    app_logger.info(f"GET /sessions endpoint hit for user {user_uuid}") # Added log
+    sessions = session_manager.get_all_sessions(user_uuid=user_uuid)
+    return jsonify(sessions)
+# --- MODIFICATION END ---
 
 @api_bp.route("/session/<session_id>", methods=["GET"])
 async def get_session_history(session_id):
     """Retrieves the chat history and token counts for a specific session."""
-    session_data = session_manager.get_session(session_id)
+    user_uuid = _get_user_uuid_from_request()
+    session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
     if session_data:
         response_data = {
             "history": session_data.get("session_history", []),
@@ -350,11 +370,14 @@ async def get_session_history(session_id):
             "output_tokens": session_data.get("output_tokens", 0)
         }
         return jsonify(response_data)
+    app_logger.warning(f"Session {session_id} not found for user {user_uuid}.")
     return jsonify({"error": "Session not found"}), 404
 
 @api_bp.route("/session", methods=["POST"])
 async def new_session():
-    """Creates a new chat session."""
+    """Creates a new chat session for the requesting user."""
+    user_uuid = _get_user_uuid_from_request()
+
     if not APP_STATE.get('llm') or not APP_CONFIG.MCP_SERVER_CONNECTED:
         return jsonify({"error": "Application not configured. Please set MCP and LLM details in Config."}), 400
 
@@ -368,15 +391,21 @@ async def new_session():
                     handler.close()
                     logger.removeHandler(handler)
 
-                    with open(log_file_path, 'w'):
-                        pass
-
-                    new_handler = logging.FileHandler(log_file_path)
-                    new_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
-                    logger.addHandler(new_handler)
-                    app_logger.info(f"Successfully purged and reset log file: {log_file_path}")
+                    # --- MODIFICATION START: Clear file content instead of recreating handler ---
+                    try:
+                        with open(log_file_path, 'w'):
+                            pass
+                        app_logger.info(f"Successfully purged log file: {log_file_path}")
+                        # Re-add the original handler
+                        logger.addHandler(handler)
+                    except Exception as clear_e:
+                        app_logger.error(f"Failed to clear log file {log_file_path}: {clear_e}. Attempting to re-add handler anyway.")
+                        # Still try to re-add handler if clearing failed
+                        logger.addHandler(handler)
+                    # --- MODIFICATION END ---
     except Exception as e:
         app_logger.error(f"Failed to purge log files for new session: {e}", exc_info=True)
+
 
     data = await request.get_json()
     charting_intensity = data.get("charting_intensity", APP_CONFIG.DEFAULT_CHARTING_INTENSITY) if APP_CONFIG.CHARTING_ENABLED else "none"
@@ -384,15 +413,16 @@ async def new_session():
 
     try:
         session_id = session_manager.create_session(
+            user_uuid=user_uuid, # Pass user_uuid
             provider=APP_CONFIG.CURRENT_PROVIDER,
             llm_instance=APP_STATE.get('llm'),
             charting_intensity=charting_intensity,
             system_prompt_template=system_prompt_template
         )
-        app_logger.info(f"Created new session: {session_id} for provider {APP_CONFIG.CURRENT_PROVIDER}.")
+        app_logger.info(f"Created new session: {session_id} for user {user_uuid} provider {APP_CONFIG.CURRENT_PROVIDER}.")
         return jsonify({"session_id": session_id, "name": "New Chat"})
     except Exception as e:
-        app_logger.error(f"Failed to create new session: {e}", exc_info=True)
+        app_logger.error(f"Failed to create new session for user {user_uuid}: {e}", exc_info=True)
         return jsonify({"error": f"Failed to initialize a new chat session: {e}"}), 500
 
 @api_bp.route("/models", methods=["POST"])
@@ -423,6 +453,9 @@ async def get_models():
         models = await llm_handler.list_models(provider, credentials)
         return jsonify({"status": "success", "models": models})
     except Exception as e:
+        # --- MODIFICATION START: Log exception details ---
+        app_logger.error(f"Failed to list models for provider {provider}: {e}", exc_info=True)
+        # --- MODIFICATION END ---
         return jsonify({"status": "error", "message": str(e)}), 400
 
 @api_bp.route("/system_prompt/<provider>/<model_name>", methods=["GET"])
@@ -476,11 +509,14 @@ async def configure_services():
     if result.get("status") == "success":
         return jsonify(result), 200
     else:
+        # Return 500 for server-side config errors, 400 might be appropriate too
         return jsonify(result), 500
 
 @api_bp.route("/ask_stream", methods=["POST"])
 async def ask_stream():
     """Handles the main chat conversation stream for ad-hoc user queries."""
+    user_uuid = _get_user_uuid_from_request()
+
     if not APP_STATE.get('mcp_tools'):
         async def error_gen():
             yield PlanExecutor._format_sse({
@@ -494,11 +530,23 @@ async def ask_stream():
     disabled_history = data.get("disabled_history", False)
     source = data.get("source", "text")
 
+    # --- Session Validation ---
+    session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
+    if not session_data:
+        app_logger.error(f"ask_stream denied: Session {session_id} not found for user {user_uuid}.")
+        async def error_gen():
+            yield PlanExecutor._format_sse({"error": "Session not found or invalid."}, "error")
+        return Response(error_gen(), mimetype="text/event-stream")
+    # --- End Session Validation ---
+
+
     # --- MODIFICATION START: Cancel existing task for the session ---
-    if session_id in APP_STATE.get("active_tasks", {}):
-        existing_task = APP_STATE["active_tasks"].pop(session_id)
+    active_tasks_key = f"{user_uuid}_{session_id}" # Use composite key
+    active_tasks = APP_STATE.get("active_tasks", {})
+    if active_tasks_key in active_tasks:
+        existing_task = active_tasks.pop(active_tasks_key)
         if not existing_task.done():
-            app_logger.warning(f"Cancelling previous active task for session {session_id}.")
+            app_logger.warning(f"Cancelling previous active task for user {user_uuid}, session {session_id}.")
             existing_task.cancel()
             try:
                 # Give the task a moment to finish cancelling
@@ -522,6 +570,7 @@ async def ask_stream():
             try:
                 task = asyncio.create_task(
                     execution_service.run_agent_execution(
+                        user_uuid=user_uuid, # Pass user_uuid
                         session_id=session_id,
                         user_input=user_input,
                         event_handler=event_handler,
@@ -529,19 +578,19 @@ async def ask_stream():
                         source=source
                     )
                 )
-                APP_STATE.setdefault("active_tasks", {})[session_id] = task
+                APP_STATE.setdefault("active_tasks", {})[active_tasks_key] = task # Use composite key
                 await task
             except asyncio.CancelledError:
-                app_logger.info(f"Task for session {session_id} was cancelled.")
+                app_logger.info(f"Task for user {user_uuid}, session {session_id} was cancelled.")
                 # Optionally send a specific cancellation event
                 await event_handler({"message": "Execution stopped by user."}, "cancelled")
             except Exception as e:
-                 app_logger.error(f"Error during task execution for session {session_id}: {e}", exc_info=True)
+                 app_logger.error(f"Error during task execution for user {user_uuid}, session {session_id}: {e}", exc_info=True)
                  await event_handler({"error": str(e)}, "error")
             finally:
                 # Ensure task is removed from tracking upon completion/cancellation
-                if session_id in APP_STATE.get("active_tasks", {}):
-                    del APP_STATE["active_tasks"][session_id]
+                if active_tasks_key in APP_STATE.get("active_tasks", {}):
+                    del APP_STATE["active_tasks"][active_tasks_key]
                 await queue.put(None) # Signal end of stream generation
             # --- MODIFICATION END ---
 
@@ -562,6 +611,8 @@ async def invoke_prompt_stream():
     """
     Handles the direct invocation of a prompt from the UI.
     """
+    user_uuid = _get_user_uuid_from_request()
+
     if not APP_STATE.get('mcp_tools'):
         async def error_gen():
             yield PlanExecutor._format_sse({
@@ -576,11 +627,22 @@ async def invoke_prompt_stream():
     disabled_history = data.get("disabled_history", False)
     source = data.get("source", "prompt_library")
 
+    # --- Session Validation ---
+    session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
+    if not session_data:
+        app_logger.error(f"invoke_prompt_stream denied: Session {session_id} not found for user {user_uuid}.")
+        async def error_gen():
+            yield PlanExecutor._format_sse({"error": "Session not found or invalid."}, "error")
+        return Response(error_gen(), mimetype="text/event-stream")
+    # --- End Session Validation ---
+
     # --- MODIFICATION START: Cancel existing task for the session ---
-    if session_id in APP_STATE.get("active_tasks", {}):
-        existing_task = APP_STATE["active_tasks"].pop(session_id)
+    active_tasks_key = f"{user_uuid}_{session_id}" # Use composite key
+    active_tasks = APP_STATE.get("active_tasks", {})
+    if active_tasks_key in active_tasks:
+        existing_task = active_tasks.pop(active_tasks_key)
         if not existing_task.done():
-            app_logger.warning(f"Cancelling previous active task for session {session_id} during prompt invocation.")
+            app_logger.warning(f"Cancelling previous active task for user {user_uuid}, session {session_id} during prompt invocation.")
             existing_task.cancel()
             try:
                 await asyncio.wait_for(existing_task, timeout=0.1)
@@ -603,6 +665,7 @@ async def invoke_prompt_stream():
             try:
                 task = asyncio.create_task(
                     execution_service.run_agent_execution(
+                        user_uuid=user_uuid, # Pass user_uuid
                         session_id=session_id,
                         user_input="Executing prompt...", # User input is less relevant here
                         event_handler=event_handler,
@@ -612,17 +675,17 @@ async def invoke_prompt_stream():
                         source=source
                     )
                 )
-                APP_STATE.setdefault("active_tasks", {})[session_id] = task
+                APP_STATE.setdefault("active_tasks", {})[active_tasks_key] = task # Use composite key
                 await task
             except asyncio.CancelledError:
-                app_logger.info(f"Prompt task for session {session_id} was cancelled.")
+                app_logger.info(f"Prompt task for user {user_uuid}, session {session_id} was cancelled.")
                 await event_handler({"message": "Execution stopped by user."}, "cancelled")
             except Exception as e:
-                 app_logger.error(f"Error during prompt task execution for session {session_id}: {e}", exc_info=True)
+                 app_logger.error(f"Error during prompt task execution for user {user_uuid}, session {session_id}: {e}", exc_info=True)
                  await event_handler({"error": str(e)}, "error")
             finally:
-                if session_id in APP_STATE.get("active_tasks", {}):
-                    del APP_STATE["active_tasks"][session_id]
+                if active_tasks_key in APP_STATE.get("active_tasks", {}):
+                    del APP_STATE["active_tasks"][active_tasks_key]
                 await queue.put(None)
             # --- MODIFICATION END ---
 
@@ -640,23 +703,26 @@ async def invoke_prompt_stream():
 @api_bp.route("/api/session/<session_id>/cancel_stream", methods=["POST"])
 async def cancel_stream(session_id: str):
     """Cancels the active execution task for a given session."""
+    user_uuid = _get_user_uuid_from_request()
+    active_tasks_key = f"{user_uuid}_{session_id}" # Use composite key
     active_tasks = APP_STATE.get("active_tasks", {})
-    task = active_tasks.get(session_id)
+    task = active_tasks.get(active_tasks_key)
 
     if task and not task.done():
-        app_logger.info(f"Received request to cancel task for session {session_id}.")
+        app_logger.info(f"Received request to cancel task for user {user_uuid}, session {session_id}.")
         task.cancel()
         # Remove immediately, the finally block in the task handles actual removal later
-        if session_id in active_tasks:
-             del active_tasks[session_id]
+        if active_tasks_key in active_tasks:
+             del active_tasks[active_tasks_key]
         return jsonify({"status": "success", "message": "Cancellation request sent."}), 200
     elif task and task.done():
-        app_logger.info(f"Cancellation request for session {session_id} ignored: task already completed.")
+        app_logger.info(f"Cancellation request for user {user_uuid}, session {session_id} ignored: task already completed.")
         # Clean up if the finally block somehow missed it
-        if session_id in active_tasks:
-             del active_tasks[session_id]
+        if active_tasks_key in active_tasks:
+             del active_tasks[active_tasks_key]
         return jsonify({"status": "info", "message": "Task already completed."}), 200
     else:
-        app_logger.warning(f"Cancellation request for session {session_id} failed: No active task found.")
+        app_logger.warning(f"Cancellation request for user {user_uuid}, session {session_id} failed: No active task found.")
         return jsonify({"status": "error", "message": "No active task found for this session."}), 404
 # --- MODIFICATION END ---
+

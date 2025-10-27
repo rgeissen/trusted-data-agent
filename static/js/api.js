@@ -8,9 +8,32 @@ import * as DOM from './domElements.js';
 import { state } from './state.js';
 import { getSystemPromptForModel, isPrivilegedUser } from './utils.js';
 
+// --- MODIFICATION START: Helper to get standard headers including User UUID ---
+/**
+ * Gets standard headers for API requests, including Content-Type and User UUID.
+ * @param {boolean} includeContentType - Whether to include 'Content-Type: application/json'. Defaults to true.
+ * @returns {HeadersInit} The headers object.
+ */
+function _getHeaders(includeContentType = true) {
+    const headers = {};
+    if (includeContentType) {
+        headers['Content-Type'] = 'application/json';
+    }
+    if (state.userUUID) {
+        headers['X-TDA-User-UUID'] = state.userUUID;
+    } else {
+        console.warn("User UUID not found in state when creating headers.");
+        // Potentially throw an error or handle recovery if UUID is critical
+    }
+    return headers;
+}
+// --- MODIFICATION END ---
+
 
 export async function checkServerStatus() {
-    const res = await fetch('/api/status');
+    // --- MODIFICATION START: Use headers ---
+    const res = await fetch('/api/status', { headers: _getHeaders(false) }); // No content-type for GET
+    // --- MODIFICATION END ---
     if (!res.ok) {
         // If the endpoint fails, it's safer to assume not configured.
         return { isConfigured: false };
@@ -24,7 +47,10 @@ export async function checkServerStatus() {
  * @returns {Promise<object>} A promise that resolves to the credentials object.
  */
 export async function getApiKey(provider) {
-    const res = await fetch(`/api_key/${provider.toLowerCase()}`);
+    // --- MODIFICATION START: Use headers ---
+    // No user-specific data needed here, but adding header for consistency
+    const res = await fetch(`/api_key/${provider.toLowerCase()}`, { headers: _getHeaders(false) });
+    // --- MODIFICATION END ---
     if (!res.ok) {
         throw new Error(`Failed to fetch API key for ${provider}`);
     }
@@ -33,11 +59,13 @@ export async function getApiKey(provider) {
 
 
 export async function startStream(endpoint, body) {
+    // --- MODIFICATION START: Use headers ---
     const response = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: _getHeaders(),
         body: JSON.stringify(body),
     });
+    // --- MODIFICATION END ---
     if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || `Request failed with status ${response.status}`);
@@ -45,7 +73,6 @@ export async function startStream(endpoint, body) {
     return response;
 }
 
-// --- MODIFICATION START: Add cancelStream function ---
 /**
  * Sends a request to the backend to cancel the active stream for a session.
  * @param {string} sessionId The ID of the session whose stream should be cancelled.
@@ -55,11 +82,13 @@ export async function cancelStream(sessionId) {
     if (!sessionId) {
         throw new Error("Session ID is required to cancel a stream.");
     }
+    // --- MODIFICATION START: Use headers ---
     const response = await fetch(`/api/session/${sessionId}/cancel_stream`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: _getHeaders(), // Send UUID even for cancel
         // No body needed for this request
     });
+    // --- MODIFICATION END ---
     // Don't throw error on 404 (task not found), just return the status
     if (!response.ok && response.status !== 404) {
         let errorData;
@@ -78,7 +107,6 @@ export async function cancelStream(sessionId) {
         return { status: response.status === 200 ? 'success' : 'info', message: response.statusText };
     }
 }
-// --- MODIFICATION END ---
 
 
 export async function synthesizeText(text) {
@@ -87,11 +115,13 @@ export async function synthesizeText(text) {
         console.log("AUDIO DEBUG: Voice feature is disabled in app config. Skipping synthesis.");
         return null;
     }
+    // --- MODIFICATION START: Use headers ---
     const response = await fetch('/api/synthesize-speech', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: _getHeaders(),
         body: JSON.stringify({ text }),
     });
+    // --- MODIFICATION END ---
 
     if (response.ok) {
         console.log("AUDIO DEBUG: Synthesis API call successful.");
@@ -112,7 +142,10 @@ export async function checkAndUpdateDefaultPrompts() {
     }
 
     try {
-        const res = await fetch('/api/prompts-version');
+        // --- MODIFICATION START: Use headers ---
+        // No user-specific data needed here, but adding header for consistency
+        const res = await fetch('/api/prompts-version', { headers: _getHeaders(false) });
+        // --- MODIFICATION END ---
         if (!res.ok) {
             console.error('Could not fetch prompt version from server.');
             return;
@@ -152,29 +185,35 @@ export async function checkAndUpdateDefaultPrompts() {
 }
 
 export async function togglePromptApi(promptName, isDisabled) {
+    // --- MODIFICATION START: Use headers ---
     const res = await fetch('/prompt/toggle_status', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: _getHeaders(),
         body: JSON.stringify({ name: promptName, disabled: isDisabled })
     });
+    // --- MODIFICATION END ---
     if (!res.ok) {
         throw new Error('Server responded with an error.');
     }
 }
 
 export async function toggleToolApi(toolName, isDisabled) {
+    // --- MODIFICATION START: Use headers ---
     const res = await fetch('/tool/toggle_status', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: _getHeaders(),
         body: JSON.stringify({ name: toolName, disabled: isDisabled })
     });
+    // --- MODIFICATION END ---
     if (!res.ok) {
         throw new Error('Server responded with an error.');
     }
 }
 
 export async function loadResources(type) {
-    const res = await fetch(`/${type}`);
+    // --- MODIFICATION START: Use headers ---
+    const res = await fetch(`/${type}`, { headers: _getHeaders(false) });
+    // --- MODIFICATION END ---
 
     if (res.status === 404) {
         return {};
@@ -200,11 +239,13 @@ export async function startNewSession() {
         payload.system_prompt = activePrompt;
     }
 
+    // --- MODIFICATION START: Use headers ---
     const res = await fetch('/session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: _getHeaders(),
         body: JSON.stringify(payload)
     });
+    // --- MODIFICATION END ---
     const data = await res.json();
     if (!res.ok) {
         throw new Error(data.error || "Failed to get a session ID.");
@@ -213,7 +254,9 @@ export async function startNewSession() {
 }
 
 export async function loadSession(sessionId) {
-    const res = await fetch(`/session/${sessionId}`);
+    // --- MODIFICATION START: Use headers ---
+    const res = await fetch(`/session/${sessionId}`, { headers: _getHeaders(false) });
+    // --- MODIFICATION END ---
     const data = await res.json();
     if (!res.ok) {
         throw new Error(data.error || "Failed to load session.");
@@ -222,7 +265,9 @@ export async function loadSession(sessionId) {
 }
 
 export async function loadAllSessions() {
-    const res = await fetch('/sessions');
+    // --- MODIFICATION START: Use headers ---
+    const res = await fetch('/sessions', { headers: _getHeaders(false) });
+    // --- MODIFICATION END ---
     const sessions = await res.json();
     if (!res.ok) {
         throw new Error(sessions.error || "Could not retrieve past sessions.");
@@ -234,6 +279,7 @@ export async function fetchModels() {
     const provider = DOM.llmProviderSelect.value;
     let body = { provider };
 
+    // Credentials gathering logic remains the same...
     if (provider === 'Amazon') {
         body.aws_access_key_id = DOM.awsAccessKeyIdInput.value;
         body.aws_secret_access_key = DOM.awsSecretAccessKeyInput.value;
@@ -263,11 +309,14 @@ export async function fetchModels() {
         throw new Error('API credentials or host are required to fetch models.');
     }
 
+    // --- MODIFICATION START: Use headers ---
+    // No user-specific data needed here, but adding header for consistency
     const response = await fetch('/models', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: _getHeaders(),
         body: JSON.stringify(body)
     });
+    // --- MODIFICATION END ---
     const result = await response.json();
 
     if (!response.ok) {

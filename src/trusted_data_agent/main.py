@@ -37,12 +37,20 @@ handler.addFilter(SseConnectionFilter())
 root_logger = logging.getLogger()
 root_logger.handlers.clear()
 root_logger.addHandler(handler)
-root_logger.setLevel(logging.INFO)
+# --- MODIFICATION START: Set Root Logger Level to DEBUG ---
+# root_logger.setLevel(logging.INFO)
+root_logger.setLevel(logging.DEBUG)
+# --- MODIFICATION END ---
+
 
 app_logger = logging.getLogger("quart.app")
-app_logger.setLevel(logging.INFO)
+# --- MODIFICATION START: Set Quart App Logger Level to DEBUG ---
+# app_logger.setLevel(logging.INFO)
+app_logger.setLevel(logging.DEBUG) # Ensures quart.app messages (like ours) are shown
+# --- MODIFICATION END ---
 app_logger.addHandler(handler)
 app_logger.propagate = False # Prevent duplicate messages in the root logger
+
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("mcp.client.streamable_http").setLevel(logging.WARNING)
@@ -71,7 +79,7 @@ except RuntimeError as e:
     sys.exit(1)
 
 from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
-from trusted_data_agent.api.routes import get_tts_client
+from trusted_data_agent.api.routes import get_tts_client # Assuming get_tts_client is still relevant
 
 
 def create_app():
@@ -96,12 +104,13 @@ def create_app():
 
     @app.after_request
     async def add_security_headers(response):
+        # Allow connections to unpkg for G2Plot if needed, adjust connect-src
         csp_policy = [
             "default-src 'self'",
             "script-src 'self' https://cdn.tailwindcss.com https://unpkg.com",
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", # Allow inline styles for G2Plot tooltips etc.
             "font-src 'self' https://fonts.gstatic.com",
-            "connect-src 'self' *.googleapis.com https://*.withgoogle.com https://unpkg.com",
+            "connect-src 'self' *.googleapis.com https://*.withgoogle.com https://unpkg.com", # Added unpkg
             "worker-src 'self' blob:",
             "img-src 'self' data:",
             "media-src 'self' blob:" # Allow media from blobs for TTS audio
@@ -127,8 +136,8 @@ async def main(args): # MODIFIED: Accept args
     # ensures Hypercorn doesn't impose its own shorter limits.
     config.worker_timeout = 600 # e.g., 10 minutes
     config.read_timeout = 600  # e.g., 10 minutes
-    #app_logger.info(f"Hypercorn worker timeout set to {config.worker_timeout} seconds.")
-    #app_logger.info(f"Hypercorn read timeout set to {config.read_timeout} seconds.")
+    app_logger.info(f"Hypercorn worker timeout set to {config.worker_timeout} seconds.")
+    app_logger.info(f"Hypercorn read timeout set to {config.read_timeout} seconds.")
     # --- MODIFICATION END ---
     await hypercorn.asyncio.serve(app, config)
 

@@ -7,6 +7,7 @@ import re
 import random
 import time
 import copy
+import pprint # Added for debugging
 from typing import Tuple, List
 
 import google.generativeai as genai
@@ -16,7 +17,9 @@ from pydantic import ValidationError, BaseModel
 import boto3
 
 from trusted_data_agent.core.config import APP_CONFIG
+# --- MODIFICATION START: Import session manager functions ---
 from trusted_data_agent.core.session_manager import get_session, update_token_count
+# --- MODIFICATION END ---
 from trusted_data_agent.agent.prompts import CHARTING_INSTRUCTIONS, PROVIDER_SYSTEM_PROMPTS
 from trusted_data_agent.core.config import (
     CERTIFIED_GOOGLE_MODELS, CERTIFIED_ANTHROPIC_MODELS,
@@ -63,9 +66,7 @@ class OllamaClient:
             app_logger.error(f"Ollama API request error: {e}")
             raise RuntimeError("Error during chat completion with Ollama.") from e
 
-# --- MODIFICATION START: Added JSONDecodeError import ---
 from json import JSONDecodeError
-# --- MODIFICATION END ---
 
 def parse_and_coerce_llm_response(response_text: str, target_model: BaseModel) -> Tuple[BaseModel, List[str]]:
     """
@@ -89,9 +90,7 @@ def parse_and_coerce_llm_response(response_text: str, target_model: BaseModel) -
     app_logger.debug(f"Attempting to parse and coerce response into {target_model.__name__}.")
     correction_descriptions = []
 
-    # --- MODIFICATION START: Use _sanitize_llm_output before extraction ---
     sanitized_response_text = _sanitize_llm_output(response_text)
-    # --- MODIFICATION END ---
 
     # 1. Robustly extract JSON from the sanitized text
     json_match = re.search(r'```json\s*\n(.*?)\n\s*```|(\{.*\}|\[.*\])', sanitized_response_text, re.DOTALL)
@@ -104,13 +103,11 @@ def parse_and_coerce_llm_response(response_text: str, target_model: BaseModel) -
         app_logger.error(f"Extracted JSON string is empty from sanitized response: {sanitized_response_text[:500]}...")
         raise JSONDecodeError("Extracted JSON string is empty.", sanitized_response_text, 0)
 
-    # --- MODIFICATION START: Wrap initial json.loads() in try...except ---
     try:
         data = json.loads(json_str)
     except JSONDecodeError as e:
         app_logger.error(f"Initial JSON parsing failed even after extraction and sanitization. Error: {e}. String: {json_str[:500]}...")
         raise # Re-raise the specific JSONDecodeError
-    # --- MODIFICATION END ---
 
     # 2. First validation attempt
     try:
@@ -151,15 +148,9 @@ def parse_and_coerce_llm_response(response_text: str, target_model: BaseModel) -
             app_logger.info(f"Proactive correction successful. Data is now valid for {target_model.__name__}.")
             return validated_data, correction_descriptions
         except ValidationError:
-            # --- MODIFICATION START: Log the corrected data that still failed ---
             app_logger.error(f"Correction failed for {target_model.__name__}. Re-raising original validation error. Corrected data was: {json.dumps(corrected_data)}")
-            # --- MODIFICATION END ---
             raise e # Re-raise the original validation error 'e'
 
-# --- MODIFICATION START: Enhance _sanitize_llm_output ---
-# Define a stricter regex to remove ASCII control characters (0x00-0x1F)
-# except for Tab (0x09), Line Feed (0x0A), and Carriage Return (0x0D).
-# Also removes DEL (0x7F).
 _INVALID_JSON_CONTROL_CHARS_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
 
 def _sanitize_llm_output(text: str) -> str:
@@ -180,8 +171,6 @@ def _sanitize_llm_output(text: str) -> str:
 
     # Basic stripping of leading/trailing whitespace
     return sanitized_text.strip()
-# --- MODIFICATION END ---
-
 
 def _extract_final_answer_from_json(text: str) -> str:
     """
@@ -189,7 +178,6 @@ def _extract_final_answer_from_json(text: str) -> str:
     If so, it extracts the FINAL_ANSWER string and returns it.
     This makes the agent more robust to common LLM formatting errors.
     """
-    # --- MODIFICATION START: Use sanitized text ---
     sanitized_text = _sanitize_llm_output(text)
     try:
         json_match = re.search(r"```json\s*\n(.*?)\n\s*```|(\{.*?\})", sanitized_text, re.DOTALL)
@@ -201,7 +189,6 @@ def _extract_final_answer_from_json(text: str) -> str:
             return sanitized_text # Return sanitized text if extracted JSON is empty
 
         data = json.loads(json_str.strip())
-    # --- MODIFICATION END ---
 
         def find_answer_in_values(d):
             if isinstance(d, dict):
@@ -225,13 +212,9 @@ def _extract_final_answer_from_json(text: str) -> str:
             return final_answer_value
 
     except (json.JSONDecodeError, AttributeError):
-        # --- MODIFICATION START: Return sanitized text on error ---
         return sanitized_text
-        # --- MODIFICATION END ---
 
-    # --- MODIFICATION START: Return sanitized text as default ---
     return sanitized_text
-    # --- MODIFICATION END ---
 
 def _condense_and_clean_history(history: list) -> list:
     """
@@ -247,16 +230,23 @@ def _condense_and_clean_history(history: list) -> list:
     def _normalize_history(provider_history: list) -> list:
         """Converts provider-specific history to a generic internal format using type-aware checks."""
         normalized = []
-        for msg in provider_history:
-            role, content = "", ""
-            if hasattr(msg, 'parts') and hasattr(msg, 'role'):
+        # --- MODIFICATION START: Handle Google history structure correctly ---
+        if APP_CONFIG.CURRENT_PROVIDER == "Google" and provider_history and hasattr(provider_history[0], 'role'):
+            # Assume it's already in the expected structure with 'role' and 'parts'
+            for msg in provider_history:
+                role, content = "", ""
                 role = msg.role
                 if msg.parts and hasattr(msg.parts[0], 'text'):
                     content = msg.parts[0].text
-            elif isinstance(msg, dict):
-                role = msg.get('role', '')
-                content = msg.get('content', '')
-            normalized.append({'role': role, 'content': content})
+                normalized.append({'role': role, 'content': content})
+        # --- MODIFICATION END ---
+        else: # Handle list of dicts format for other providers
+            for msg in provider_history:
+                role, content = "", ""
+                if isinstance(msg, dict):
+                    role = msg.get('role', '')
+                    content = msg.get('content', '')
+                normalized.append({'role': role, 'content': content})
         return normalized
 
     def _denormalize_history(generic_history: list, provider: str) -> list:
@@ -265,11 +255,16 @@ def _condense_and_clean_history(history: list) -> list:
             denormalized = []
             for msg in generic_history:
                 role = 'model' if msg['role'] == 'assistant' else msg['role']
+                # Ensure role is valid for Google API
+                if role not in ['user', 'model']:
+                    app_logger.warning(f"Invalid role '{role}' found during Google history denormalization. Skipping message.")
+                    continue
                 denormalized.append({
                     'role': role,
                     'parts': [{'text': msg['content']}]
                 })
             return denormalized
+        # For other providers, assume list of dicts is fine
         return generic_history
 
     normalized_history = _normalize_history(history)
@@ -284,7 +279,11 @@ def _condense_and_clean_history(history: list) -> list:
         msg_copy = copy.deepcopy(msg)
         content = msg_copy.get('content', '')
 
-        if msg_copy.get('role') == 'user' and system_prompt_wrapper_pattern.match(content):
+        # --- MODIFICATION START: Handle Google's 'model' role ---
+        msg_role = msg_copy.get('role')
+        # --- MODIFICATION END ---
+
+        if msg_role == 'user' and system_prompt_wrapper_pattern.match(content):
             app_logger.debug("History Condensation: Removing system prompt wrapper from user message.")
             content = system_prompt_wrapper_pattern.sub("", content)
 
@@ -292,7 +291,9 @@ def _condense_and_clean_history(history: list) -> list:
             app_logger.debug("History Condensation: Removing obsolete capability definitions.")
             content = capabilities_pattern.sub("# Capabilities\n[... Omitted for Brevity ...]", content)
 
-        if msg_copy.get('role') in ['assistant', 'model']:
+        # --- MODIFICATION START: Check for 'assistant' OR 'model' role ---
+        if msg_role in ['assistant', 'model']:
+        # --- MODIFICATION END ---
             try:
                 # Attempt to parse as JSON to normalize and identify duplicates
                 json_content = json.loads(content)
@@ -445,7 +446,9 @@ def _normalize_bedrock_model_id(model_id: str) -> str:
     # Safely split by the version delimiter ':' and take the base model ID
     return model_id.split(':')[0]
 
-async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, chat_history=None, raise_on_error: bool = False, system_prompt_override: str = None, dependencies: dict = None, reason: str = "No reason provided.", disabled_history: bool = False, active_prompt_name_for_filter: str = None, source: str = "text") -> tuple[str, int, int]:
+# --- MODIFICATION START: Add user_uuid parameter ---
+async def call_llm_api(llm_instance: any, prompt: str, user_uuid: str = None, session_id: str = None, chat_history=None, raise_on_error: bool = False, system_prompt_override: str = None, dependencies: dict = None, reason: str = "No reason provided.", disabled_history: bool = False, active_prompt_name_for_filter: str = None, source: str = "text") -> tuple[str, int, int]:
+# --- MODIFICATION END ---
     if not llm_instance:
         raise RuntimeError("LLM is not initialized.")
 
@@ -455,27 +458,44 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
     max_retries = APP_CONFIG.LLM_API_MAX_RETRIES
     base_delay = APP_CONFIG.LLM_API_BASE_DELAY
 
-    session_data = get_session(session_id) if session_id else None
+    # --- MODIFICATION START: Pass user_uuid to get_session ---
+    session_data = get_session(user_uuid, session_id) if user_uuid and session_id else None
+    # --- MODIFICATION END ---
     system_prompt = _get_full_system_prompt(session_data, dependencies, system_prompt_override, active_prompt_name_for_filter, source)
 
     history_for_log_str = "No history available."
+    history_source = [] # Initialize history source
     if session_data:
-        history_source = []
         if not disabled_history:
-             history_source = chat_history if chat_history is not None else session_data.get('chat_object', [])
+            # --- MODIFICATION START: Use session_data['chat_object'] for history if available ---
+            # Prioritize explicitly passed chat_history if present
+            history_source = chat_history if chat_history is not None else session_data.get('chat_object', [])
+            # Ensure history_source is a list
+            if not isinstance(history_source, list):
+                 app_logger.warning(f"History source for {APP_CONFIG.CURRENT_PROVIDER} was not a list, resetting. Type: {type(history_source)}")
+                 history_source = []
+            # --- MODIFICATION END ---
 
-        if APP_CONFIG.CURRENT_PROVIDER == "Google" and hasattr(session_data.get('chat_object'), 'history'):
-             normalized_history = [
-                 {'role': msg.role, 'content': msg.parts[0].text} for msg in session_data['chat_object'].history
+        # --- MODIFICATION START: Handle Google history logging explicitly ---
+        if APP_CONFIG.CURRENT_PROVIDER == "Google" and isinstance(history_source, list) and history_source and hasattr(history_source[0], 'role'):
+             # Assume Google's genai history object list
+             normalized_history_for_log = [
+                 {'role': msg.role, 'content': msg.parts[0].text if msg.parts and hasattr(msg.parts[0], 'text') else '[Content missing]'} for msg in history_source
              ]
-             history_json_obj = {"chat_history": normalized_history}
-        else:
+             history_json_obj = {"chat_history": normalized_history_for_log}
+        elif isinstance(history_source, list):
+             # Assume list of dicts for other providers
              history_json_obj = {"chat_history": history_source}
-
+        else:
+             history_json_obj = {"chat_history": []}
+        # --- MODIFICATION END ---
         history_for_log_str = json.dumps(history_json_obj, indent=2)
 
+
     full_log_message = (
-        f"--- FULL CONTEXT (Session: {session_id or 'one-off'}) ---\n"
+        # --- MODIFICATION START: Include user_uuid in log ---
+        f"--- FULL CONTEXT (User: {user_uuid}, Session: {session_id or 'one-off'}) ---\n"
+        # --- MODIFICATION END ---
         f"--- REASON FOR CALL ---\n{reason}\n\n"
         f"--- History (History Disabled for LLM Call: {disabled_history}) ---\n{history_for_log_str}\n\n"
         f"--- Current User Prompt (with System Prompt) ---\n"
@@ -488,66 +508,104 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
     for attempt in range(max_retries):
         try:
             if APP_CONFIG.CURRENT_PROVIDER == "Google":
-                is_session_call = session_data is not None and 'chat_object' in session_data and not disabled_history
+                # --- MODIFICATION START: Check session_data and chat_object type ---
+                is_session_call = (
+                    session_data is not None and
+                    'chat_object' in session_data and
+                    isinstance(session_data['chat_object'], genai.ChatSession) and # Check type
+                    not disabled_history
+                )
+                # --- MODIFICATION END ---
 
                 if is_session_call:
                     chat_session = session_data['chat_object']
-                    full_prompt_for_api = f"SYSTEM PROMPT:\n{system_prompt}\n\nUSER PROMPT:\n{prompt}"
-
+                    # --- MODIFICATION START: Send ONLY the user prompt to the session ---
+                    app_logger.debug("Google API Call: Using ChatSession.send_message_async with user prompt only.")
                     if APP_CONFIG.CONDENSE_SYSTEMPROMPT_HISTORY:
-                        chat_session.history = _condense_and_clean_history(chat_session.history)
+                         # Condense history *before* sending the message
+                         chat_session.history = _condense_and_clean_history(chat_session.history)
 
-                    response = await chat_session.send_message_async(full_prompt_for_api)
+                    response = await chat_session.send_message_async(prompt)
+                    # --- MODIFICATION END ---
                 else:
+                    app_logger.debug("Google API Call: Using GenerativeModel.generate_content_async with full prompt.")
+                    # Non-session calls still need the system prompt concatenated
                     full_prompt_for_api = f"{system_prompt}\n\n{prompt}"
+                    # Add history for non-session calls if needed (rare case, but possible)
+                    # Google's generate_content_async doesn't directly take history like ChatSession
+                    # We would need to format history into the full_prompt_for_api if disabled_history is False
+                    # For now, assuming non-session calls don't use prior history in this flow.
                     response = await llm_instance.generate_content_async(full_prompt_for_api)
 
+                # --- Debugging: Log raw response object ---
+                app_logger.debug(f"RAW LLM Response Object (Google): {pprint.pformat(response)}")
+                # --- End Debugging ---
+
                 if not response or not hasattr(response, 'text'):
-                    raise RuntimeError("Google LLM returned an empty or invalid response.")
-                response_text = response.text # Keep potential whitespace for now
-                # --- MODIFICATION START: Sanitize *after* getting text ---
+                    # --- MODIFICATION START: Add more context to error ---
+                    error_detail = "empty response" if not response else "response missing 'text' attribute"
+                    safety_ratings = getattr(response, 'prompt_feedback', {}).get('safety_ratings', 'N/A')
+                    app_logger.error(f"Google LLM returned an invalid response ({error_detail}). Safety Ratings: {safety_ratings}")
+                    raise RuntimeError(f"Google LLM returned an invalid response ({error_detail}). Check logs for safety ratings.")
+                    # --- MODIFICATION END ---
+                response_text = response.text
                 response_text = _sanitize_llm_output(response_text)
-                # --- MODIFICATION END ---
 
 
                 if hasattr(response, 'usage_metadata'):
                     usage = response.usage_metadata
-                    input_tokens = usage.prompt_token_count
-                    output_tokens = usage.candidates_token_count
+                    input_tokens = getattr(usage, 'prompt_token_count', 0) # Use getattr for safety
+                    output_tokens = getattr(usage, 'candidates_token_count', 0) # Use getattr for safety
 
-                break
+                break # Exit retry loop on success
 
             elif APP_CONFIG.CURRENT_PROVIDER in ["Anthropic", "OpenAI", "Azure", "Ollama", "Friendli"]:
-                history_source = []
+                # --- MODIFICATION START: Use history_source consistently ---
+                current_history = []
                 if not disabled_history:
-                    history_source = chat_history if chat_history is not None else (session_data.get('chat_object', []) if session_id else [])
+                    current_history = history_source # Use the already prepared history_source
 
                 if APP_CONFIG.CONDENSE_SYSTEMPROMPT_HISTORY:
-                    history_source = _condense_and_clean_history(history_source)
+                    # Apply condensation if needed (might be redundant if history_source was already condensed)
+                    current_history = _condense_and_clean_history(current_history)
+                # --- MODIFICATION END ---
 
-                messages_for_api = [{'role': 'assistant' if msg.get('role') == 'model' else msg.get('role'), 'content': msg.get('content')} for msg in history_source]
+                # --- MODIFICATION START: Ensure roles are 'user' or 'assistant' for Anthropic/OpenAI/Azure/Friendli/Ollama ---
+                messages_for_api = []
+                for msg in current_history:
+                    role = msg.get('role')
+                    content = msg.get('content')
+                    if role == 'model': role = 'assistant' # Normalize role
+                    if role in ['user', 'assistant'] and content is not None:
+                        messages_for_api.append({'role': role, 'content': content})
+                    else:
+                        app_logger.warning(f"Skipping history message with invalid role ('{role}') or missing content for {APP_CONFIG.CURRENT_PROVIDER}.")
+                # --- MODIFICATION END ---
                 messages_for_api.append({'role': 'user', 'content': prompt})
 
                 if APP_CONFIG.CURRENT_PROVIDER == "Anthropic":
                     response = await llm_instance.messages.create(
                         model=APP_CONFIG.CURRENT_MODEL, system=system_prompt, messages=messages_for_api, max_tokens=4096, timeout=120.0
                     )
-                    # --- MODIFICATION START: Apply sanitization ---
+                    # --- Debugging: Log raw response object ---
+                    app_logger.debug(f"RAW LLM Response Object (Anthropic): {pprint.pformat(response.dict())}")
+                    # --- End Debugging ---
                     raw_text = response.content[0].text if response.content else ""
                     response_text = _sanitize_llm_output(raw_text)
-                    # --- MODIFICATION END ---
                     if hasattr(response, 'usage'):
                         input_tokens, output_tokens = response.usage.input_tokens, response.usage.output_tokens
 
                 elif APP_CONFIG.CURRENT_PROVIDER in ["OpenAI", "Azure", "Friendli"]:
+                    # Prepend system prompt for these providers
                     messages_for_api.insert(0, {'role': 'system', 'content': system_prompt})
                     response = await llm_instance.chat.completions.create(
                         model=APP_CONFIG.CURRENT_MODEL, messages=messages_for_api, max_tokens=4096, timeout=120.0
                     )
-                    # --- MODIFICATION START: Apply sanitization ---
+                    # --- Debugging: Log raw response object ---
+                    app_logger.debug(f"RAW LLM Response Object (OpenAI/Azure/Friendli): {pprint.pformat(response.dict())}")
+                    # --- End Debugging ---
                     raw_text = response.choices[0].message.content if response.choices else ""
                     response_text = _sanitize_llm_output(raw_text)
-                    # --- MODIFICATION END ---
                     if hasattr(response, 'usage'):
                         input_tokens, output_tokens = response.usage.prompt_tokens, response.usage.completion_tokens
 
@@ -555,85 +613,106 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                     response = await llm_instance.chat(
                         model=APP_CONFIG.CURRENT_MODEL, messages=messages_for_api, system_prompt=system_prompt
                     )
-                    # --- MODIFICATION START: Apply sanitization ---
+                    # --- Debugging: Log raw response object ---
+                    app_logger.debug(f"RAW LLM Response Object (Ollama): {pprint.pformat(response)}")
+                    # --- End Debugging ---
                     raw_text = response.get("message", {}).get("content", "")
                     response_text = _sanitize_llm_output(raw_text)
-                    # --- MODIFICATION END ---
                     input_tokens, output_tokens = response.get('prompt_eval_count', 0), response.get('eval_count', 0)
 
-                break
+                break # Exit retry loop on success
 
             elif APP_CONFIG.CURRENT_PROVIDER == "Amazon":
-                history = []
+                # --- MODIFICATION START: Use history_source consistently ---
+                current_history = []
                 if not disabled_history:
-                    history = (session_data.get('chat_object', []) if session_id else []) or (chat_history or [])
+                    current_history = history_source # Use the already prepared history_source
 
                 if APP_CONFIG.CONDENSE_SYSTEMPROMPT_HISTORY:
-                    history = _condense_and_clean_history(history)
+                    # Apply condensation if needed
+                    current_history = _condense_and_clean_history(current_history)
+                # --- MODIFICATION END ---
 
                 model_id_to_invoke = APP_CONFIG.CURRENT_MODEL
                 is_inference_profile = model_id_to_invoke.startswith("arn:aws:bedrock:")
 
                 bedrock_provider = ""
                 if is_inference_profile:
-                    profile_part = model_id_to_invoke.split('/')[-1]
-                    provider_match = re.search(r'\.(.*?)\.', profile_part)
-                    if provider_match:
-                        bedrock_provider = provider_match.group(1)
+                    # Determine provider from ARN if possible (using stored config value)
+                    bedrock_provider = APP_CONFIG.CURRENT_MODEL_PROVIDER_IN_PROFILE or "unknown"
+                    if bedrock_provider == "unknown":
+                        app_logger.warning("Could not determine Bedrock provider from Inference Profile ARN.")
                 else:
                     bedrock_provider = model_id_to_invoke.split('.')[0]
 
                 app_logger.info(f"Determined Bedrock provider for payload construction: '{bedrock_provider}'")
 
                 body = ""
+                # --- MODIFICATION START: Ensure roles are 'user' or 'assistant' for Bedrock ---
+                bedrock_messages = []
+                for msg in current_history:
+                    role = msg.get('role')
+                    content = msg.get('content')
+                    if role == 'model': role = 'assistant'
+                    if role in ['user', 'assistant'] and content is not None:
+                        bedrock_messages.append({'role': role, 'content': content})
+                    else:
+                        app_logger.warning(f"Skipping history message with invalid role ('{role}') or missing content for Bedrock.")
+                # --- MODIFICATION END ---
+
                 if bedrock_provider == "anthropic":
-                    messages = [{'role': 'assistant' if msg.get('role') == 'model' else msg.get('role'), 'content': msg.get('content')} for msg in history]
-                    messages.append({'role': 'user', 'content': prompt})
+                    # Add current prompt to messages list
+                    bedrock_messages.append({'role': 'user', 'content': prompt})
                     body = json.dumps({
                         "anthropic_version": "bedrock-2023-05-31",
                         "max_tokens": 4096,
                         "system": system_prompt,
-                        "messages": messages
+                        "messages": bedrock_messages # Use the cleaned messages
                     })
                 elif bedrock_provider == "amazon":
+                    # Amazon Titan format (handle different variants)
                     if is_inference_profile or "titan-text-express" not in model_id_to_invoke:
-                         messages = [{'role': 'assistant' if msg.get('role') == 'model' else 'user', 'content': [{'text': msg.get('content')}]} for msg in history]
-                         messages.append({"role": "user", "content": [{"text": prompt}]})
-                         body_dict = {"messages": messages, "inferenceConfig": {"maxTokens": 4096}}
+                         # Newer format (potentially for profiles or other titan models)
+                         titan_messages = []
+                         for msg in bedrock_messages:
+                              titan_messages.append({"role": msg['role'], "content": [{"text": msg['content']}]})
+                         titan_messages.append({"role": "user", "content": [{"text": prompt}]})
+                         body_dict = {"messages": titan_messages, "inferenceConfig": {"maxTokens": 4096}}
                          if system_prompt:
                              body_dict["system"] = [{"text": system_prompt}]
                          body = json.dumps(body_dict)
                     else:
-                        text_prompt = f"{system_prompt}\n\n" + "".join([f"{msg['role']}: {msg['content']}\n\n" for msg in history]) + f"user: {prompt}\n\nassistant:"
+                        # Legacy titan-text-express format
+                        text_prompt = f"{system_prompt}\n\n" + "".join([f"{msg['role']}: {msg['content']}\n\n" for msg in bedrock_messages]) + f"user: {prompt}\n\nassistant:"
                         body = json.dumps({"inputText": text_prompt, "textGenerationConfig": {"maxTokenCount": 4096}})
 
                 elif bedrock_provider in ["cohere", "meta", "ai21", "mistral"]:
-                    text_prompt = f"{system_prompt}\n\n" + "".join([f"{msg['role']}: {msg['content']}\n\n" for msg in history]) + f"user: {prompt}\n\nassistant:"
+                    # Format for providers expecting a single text prompt with history
+                    text_prompt = f"{system_prompt}\n\n" + "".join([f"{msg['role']}: {msg['content']}\n\n" for msg in bedrock_messages]) + f"user: {prompt}\n\nassistant:"
 
-                    if bedrock_provider == "cohere":
-                        body_dict = {"prompt": text_prompt, "max_tokens": 4096}
-                    elif bedrock_provider == "meta":
-                        body_dict = {"prompt": text_prompt, "max_gen_len": 2048}
-                    elif bedrock_provider == "mistral":
-                        body_dict = {"prompt": text_prompt, "max_tokens": 4096}
-                    else:
-                        body_dict = {"prompt": text_prompt, "maxTokens": 4096}
+                    if bedrock_provider == "cohere": body_dict = {"prompt": text_prompt, "max_tokens": 4096}
+                    elif bedrock_provider == "meta": body_dict = {"prompt": text_prompt, "max_gen_len": 2048}
+                    elif bedrock_provider == "mistral": body_dict = {"prompt": text_prompt, "max_tokens": 4096}
+                    else: body_dict = {"prompt": text_prompt, "maxTokens": 4096} # AI21
                     body = json.dumps(body_dict)
                 else:
                     app_logger.warning(f"Unknown Bedrock provider '{bedrock_provider}'. Defaulting to legacy 'inputText' format.")
-                    text_prompt = f"{system_prompt}\n\n" + "".join([f"{msg['role']}: {msg['content']}\n\n" for msg in history]) + f"user: {prompt}\n\nassistant:"
-                    body = json.dumps({
-                        "inputText": text_prompt,
-                        "textGenerationConfig": {"maxTokenCount": 4096}
-                    })
+                    text_prompt = f"{system_prompt}\n\n" + "".join([f"{msg['role']}: {msg['content']}\n\n" for msg in bedrock_messages]) + f"user: {prompt}\n\nassistant:"
+                    body = json.dumps({ "inputText": text_prompt, "textGenerationConfig": {"maxTokenCount": 4096} })
 
                 final_model_id_for_api = _normalize_bedrock_model_id(model_id_to_invoke)
+                app_logger.debug(f"Invoking Bedrock model: {final_model_id_for_api} with body: {body[:200]}...") # Log start of body
 
                 loop = asyncio.get_running_loop()
                 response = await loop.run_in_executor(None, lambda: llm_instance.invoke_model(body=body, modelId=final_model_id_for_api))
-                response_body = json.loads(response.get('body').read())
+                # --- Debugging: Log raw response object ---
+                response_body_raw = response.get('body').read()
+                app_logger.debug(f"RAW LLM Response Object (Bedrock Body): {response_body_raw}")
+                # --- End Debugging ---
+                response_body = json.loads(response_body_raw)
 
                 raw_text = "" # Initialize raw_text
+                # Extract text based on provider
                 if bedrock_provider == "anthropic":
                     raw_text = response_body.get('content')[0].get('text') if response_body.get('content') else ""
                 elif bedrock_provider == "amazon":
@@ -649,18 +728,16 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                     raw_text = response_body.get('outputs')[0].get('text') if response_body.get('outputs') else ""
                 elif bedrock_provider == "ai21":
                     raw_text = response_body.get('completions')[0].get('data').get('text') if response_body.get('completions') else ""
-                else:
+                else: # Default/Unknown
                     raw_text = response_body.get('results')[0].get('outputText') if response_body.get('results') else ""
 
-                # --- MODIFICATION START: Apply sanitization ---
                 response_text = _sanitize_llm_output(raw_text)
-                # --- MODIFICATION END ---
 
-                # Note: Token counts are not consistently available for all Bedrock models/providers
+                # Token counts (Anthropic specific for now)
                 input_tokens = response_body.get('usage', {}).get('input_tokens', 0) if bedrock_provider == 'anthropic' else 0
                 output_tokens = response_body.get('usage', {}).get('output_tokens', 0) if bedrock_provider == 'anthropic' else 0
 
-                break
+                break # Exit retry loop on success
             else:
                 raise NotImplementedError(f"Provider '{APP_CONFIG.CURRENT_PROVIDER}' is not yet supported.")
 
@@ -672,47 +749,28 @@ async def call_llm_api(llm_instance: any, prompt: str, session_id: str = None, c
                 continue
             else:
                 raise e
-        # --- MODIFICATION START: Catch JSONDecodeError from parse_and_coerce ---
-        except JSONDecodeError as e: # Catch the specific error from parsing
+        except JSONDecodeError as e:
             app_logger.error(f"Failed to parse JSON response from LLM after sanitization. Error: {e}")
             llm_history_logger.error(f"--- ERROR in LLM JSON parsing ---\n{e}\n" + "-"*50 + "\n")
-            # If raise_on_error is True, re-raise it so the caller knows it failed definitively
-            if raise_on_error:
-                raise # Re-raise the JSONDecodeError
-            else:
-                # If not raising, return an empty string or handle as needed
-                response_text = ""
-                break # Exit retry loop after parsing failure
-        # --- MODIFICATION END ---
+            if raise_on_error: raise
+            else: response_text = ""; break
         except Exception as e:
             app_logger.error(f"Error calling LLM API for provider {APP_CONFIG.CURRENT_PROVIDER}: {e}", exc_info=True)
             llm_history_logger.error(f"--- ERROR in LLM call ---\n{e}\n" + "-"*50 + "\n")
-            # --- MODIFICATION START: Check raise_on_error before raising ---
-            if raise_on_error:
-                raise e # Re-raise general exceptions only if requested
-            else:
-                # Log but don't crash the whole process if raise_on_error is False
-                app_logger.warning(f"LLM call failed after {attempt+1} attempts but raise_on_error=False. Continuing with empty response.")
-                response_text = ""
-                break # Exit retry loop after general failure
-            # --- MODIFICATION END ---
+            if raise_on_error: raise e
+            else: app_logger.warning(f"LLM call failed after {attempt+1} attempts but raise_on_error=False. Continuing with empty response."); response_text = ""; break
 
-
-    # --- MODIFICATION START: Handle case where retries exhausted without success ---
     if not response_text and attempt == max_retries - 1 and raise_on_error:
-        # This ensures an error is raised if all retries failed and raise_on_error is True
         raise RuntimeError(f"LLM call failed after {max_retries} retries.")
-    # --- MODIFICATION END ---
 
-
-    # --- MODIFICATION START: Use sanitized text for hallucination check ---
     response_text = _extract_final_answer_from_json(response_text)
-    # --- MODIFICATION END ---
 
     llm_logger.info(f"--- REASON FOR CALL ---\n{reason}\n--- RESPONSE ---\n{response_text}\n" + "-"*50 + "\n")
 
-    if session_id:
-        update_token_count(session_id, input_tokens, output_tokens)
+    # --- MODIFICATION START: Pass user_uuid to update_token_count ---
+    if user_uuid and session_id:
+        update_token_count(user_uuid, session_id, input_tokens, output_tokens)
+    # --- MODIFICATION END ---
 
     return response_text, input_tokens, output_tokens
 
@@ -830,3 +888,4 @@ async def list_models(provider: str, credentials: dict) -> list[dict]:
         }
         for name in model_names
     ]
+

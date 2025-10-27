@@ -71,10 +71,13 @@ class CorrectionStrategy(ABC):
             system_prompt_override=system_prompt_override,
             raise_on_error=False,
             source=self.executor.source
+            # user_uuid implicitly passed via self.executor._call_llm_and_update_tokens
         )
         events.append(self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update"))
 
-        updated_session = session_manager.get_session(self.executor.session_id)
+        # --- MODIFICATION START: Pass user_uuid to get_session ---
+        updated_session = session_manager.get_session(self.executor.user_uuid, self.executor.session_id)
+        # --- MODIFICATION END ---
         if updated_session:
             events.append(self.executor._format_sse({
                 "statement_input": input_tokens, "statement_output": output_tokens,
@@ -889,7 +892,9 @@ class PhaseExecutor:
                 for event in self.executor.events_to_yield: yield event
                 self.executor.events_to_yield = []
 
-            updated_session = session_manager.get_session(self.executor.session_id)
+            # --- MODIFICATION START: Pass user_uuid to get_session ---
+            updated_session = session_manager.get_session(self.executor.user_uuid, self.executor.session_id)
+            # --- MODIFICATION END ---
             if updated_session:
                 yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": tactical_call_id }, "token_update")
 
@@ -1117,10 +1122,13 @@ class PhaseExecutor:
             system_prompt_override="You are a JSON-only responding assistant.",
             raise_on_error=True,
             source=self.executor.source
+            # user_uuid implicitly passed
         )
 
         yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
-        updated_session = session_manager.get_session(self.executor.session_id)
+        # --- MODIFICATION START: Pass user_uuid to get_session ---
+        updated_session = session_manager.get_session(self.executor.user_uuid, self.executor.session_id)
+        # --- MODIFICATION END ---
         if updated_session:
             yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
 
@@ -1204,7 +1212,9 @@ class PhaseExecutor:
 
         if tool_name == "TDA_LLMTask" and self.executor.is_synthesis_from_history:
             app_logger.info("Preparing TDA_LLMTask for 'full_context' execution.")
-            session_data = session_manager.get_session(self.executor.session_id)
+            # --- MODIFICATION START: Pass user_uuid to get_session ---
+            session_data = session_manager.get_session(self.executor.user_uuid, self.executor.session_id)
+            # --- MODIFICATION END ---
             session_history = session_data.get("session_history", []) if session_data else []
 
             action.setdefault("arguments", {})["mode"] = "full_context"
@@ -1254,12 +1264,15 @@ class PhaseExecutor:
                 session_id=self.executor.session_id,
                 call_id=call_id_for_tool,
                 workflow_state=full_context_for_tool
+                # No user_uuid needed here, invoke_mcp_tool handles session_id for client-side LLM calls
             )
 
             yield self.executor._format_sse({"target": status_target, "state": "idle"}, "status_indicator_update")
 
             if input_tokens > 0 or output_tokens > 0:
-                updated_session = session_manager.get_session(self.executor.session_id)
+                # --- MODIFICATION START: Pass user_uuid to get_session ---
+                updated_session = session_manager.get_session(self.executor.user_uuid, self.executor.session_id)
+                # --- MODIFICATION END ---
                 if updated_session:
                     final_call_id = tool_result.get("metadata", {}).get("call_id") if isinstance(tool_result, dict) else None
                     yield self.executor._format_sse({
@@ -1523,6 +1536,7 @@ class PhaseExecutor:
             system_prompt_override=tactical_system_prompt,
             disabled_history=True,
             source=self.executor.source
+            # user_uuid implicitly passed
         )
 
         self.executor.last_failed_action_info = "None"
@@ -1635,8 +1649,11 @@ class PhaseExecutor:
             prompt=classification_prompt, reason=reason,
             system_prompt_override="You are a JSON-only responding assistant.", raise_on_error=True,
             source=self.executor.source
+            # user_uuid implicitly passed
         )
-        updated_session = session_manager.get_session(self.executor.session_id)
+        # --- MODIFICATION START: Pass user_uuid to get_session ---
+        updated_session = session_manager.get_session(self.executor.user_uuid, self.executor.session_id)
+        # --- MODIFICATION END ---
         if updated_session:
             yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
         try:
@@ -1683,10 +1700,13 @@ class PhaseExecutor:
             reason=reason,
             raise_on_error=True,
             source=self.executor.source
+            # user_uuid implicitly passed
         )
         yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
 
-        updated_session = session_manager.get_session(self.executor.session_id)
+        # --- MODIFICATION START: Pass user_uuid to get_session ---
+        updated_session = session_manager.get_session(self.executor.user_uuid, self.executor.session_id)
+        # --- MODIFICATION END ---
         if updated_session:
             yield self.executor._format_sse({"statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id}, "token_update")
 

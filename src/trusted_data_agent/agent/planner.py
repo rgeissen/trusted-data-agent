@@ -35,15 +35,15 @@ def get_prompt_text_content(prompt_obj):
         hasattr(prompt_obj[0], 'content') and
         isinstance(prompt_obj[0].content, str)):
         return prompt_obj[0].content
-    elif (isinstance(prompt_obj, dict) and 
+    elif (isinstance(prompt_obj, dict) and
         'messages' in prompt_obj and
-        isinstance(prompt_obj['messages'], list) and 
+        isinstance(prompt_obj['messages'], list) and
         len(prompt_obj['messages']) > 0 and
         'content' in prompt_obj['messages'][0] and
         isinstance(prompt_obj['messages'][0]['content'], dict) and
         'text' in prompt_obj['messages'][0]['content']):
         return prompt_obj['messages'][0]['content']['text']
-    
+
     return ""
 
 
@@ -88,12 +88,12 @@ class Planner:
         source_phase_key = first_phase.get("loop_over")
         source_phase_num_match = re.search(r'\d+', source_phase_key)
         if not source_phase_num_match:
-            return 
+            return
         source_phase_num = int(source_phase_num_match.group())
 
         if source_phase_num >= looping_phase_num:
             data_to_inject = None
-            
+
             workflow_history = self.executor.previous_turn_data.get("workflow_history", [])
             if not isinstance(workflow_history, list):
                  return
@@ -105,7 +105,7 @@ class Planner:
                     result_summary = entry.get("tool_output_summary", {})
                     if (isinstance(result_summary, dict) and
                         result_summary.get("status") == "success"):
-                        
+
                         data_to_inject = {
                             "status": "success",
                             "metadata": result_summary.get("metadata", {}),
@@ -113,20 +113,20 @@ class Planner:
                         }
                         if "results" in result_summary:
                             data_to_inject["results"] = result_summary["results"]
-                        
+
                         break
                 if data_to_inject:
                     break
-            
+
             if data_to_inject:
                 injection_key = "injected_previous_turn_data"
                 self.executor.workflow_state[injection_key] = [data_to_inject]
-                
+
                 original_loop_source = self.executor.meta_plan[0]['loop_over']
                 self.executor.meta_plan[0]['loop_over'] = injection_key
-                
+
                 app_logger.info(f"PLAN INJECTION: Hydrated plan with data from previous turn. Loop source changed from '{original_loop_source}' to '{injection_key}'.")
-                
+
                 yield self.executor._format_sse({
                     "step": "Plan Optimization",
                     "type": "plan_optimization",
@@ -163,7 +163,7 @@ class Planner:
                     phase['relevant_tools'] = [capability_name]
                     del phase['executable_prompt']
                     correction_made = True
-            
+
             if correction_made:
                 yield self.executor._format_sse({
                     "step": "System Correction",
@@ -185,9 +185,9 @@ class Planner:
         """
         if not self.executor.meta_plan or self.executor.is_conversational_plan:
             return
-            
+
         is_sub_process_without_summary = (
-            self.executor.execution_depth > 0 and 
+            self.executor.execution_depth > 0 and
             not self.executor.force_final_summary and
             not APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY
         )
@@ -204,9 +204,9 @@ class Planner:
             return
 
         app_logger.warning("PLAN CORRECTION: The generated plan is missing a final reporting step. System is adding it now.")
-        
+
         reporting_tool_name = "TDA_ComplexPromptReport" if self.executor.source == 'prompt_library' else "TDA_FinalReport"
-        
+
         new_phase_number = len(self.executor.meta_plan) + 1
         final_phase = {
             "phase": new_phase_number,
@@ -215,7 +215,7 @@ class Planner:
             "arguments": {}
         }
         self.executor.meta_plan.append(final_phase)
-        
+
         yield self.executor._format_sse({
             "step": "System Correction",
             "type": "workaround",
@@ -239,13 +239,13 @@ class Planner:
         made_change = False
         i = 0
         while i < len(self.executor.meta_plan) - 1:
-            if (self.executor.meta_plan[i].get("type") == "loop" and 
+            if (self.executor.meta_plan[i].get("type") == "loop" and
                 self.executor.meta_plan[i+1].get("type") == "loop"):
-                
+
                 loop_block_start_index = i
                 loop_block = [self.executor.meta_plan[i]]
                 base_loop_source = self.executor.meta_plan[i].get("loop_over")
-                
+
                 if not base_loop_source:
                     i += 1
                     continue
@@ -254,21 +254,21 @@ class Planner:
                 while j < len(self.executor.meta_plan) and self.executor.meta_plan[j].get("type") == "loop" and self.executor.meta_plan[j].get("loop_over") == base_loop_source:
                     loop_block.append(self.executor.meta_plan[j])
                     j += 1
-                
+
                 if len(loop_block) >= 2 and j < len(self.executor.meta_plan):
                     final_phase = self.executor.meta_plan[j]
                     is_final_summary = final_phase.get("relevant_tools") == ["TDA_LLMTask"]
-                    
+
                     if is_final_summary:
                         app_logger.warning(
                             "PLAN REWRITE: Detected inefficient multi-loop plan. "
                             "Injecting an intermediate distillation phase."
                         )
                         original_plan_snippet = copy.deepcopy(self.executor.meta_plan[loop_block_start_index : j+1])
-                        
+
                         synthesis_phase_num = j + 1
                         source_data_keys = [f"result_of_phase_{p['phase']}" for p in loop_block]
-                        
+
                         synthesis_task = {
                             "phase": synthesis_phase_num,
                             "goal": f"Distill the raw data from phases {loop_block[0]['phase']}-{loop_block[-1]['phase']} into a concise, per-item summary.",
@@ -282,18 +282,18 @@ class Planner:
                                 "source_data": source_data_keys
                             }
                         }
-                        
+
                         self.executor.meta_plan.insert(j, synthesis_task)
-                        
+
                         for phase_index in range(j + 1, len(self.executor.meta_plan)):
                             self.executor.meta_plan[phase_index]["phase"] += 1
-                        
+
                         final_summary_phase = self.executor.meta_plan[j+1]
                         new_source_key = f"result_of_phase_{synthesis_phase_num}"
                         final_summary_phase["arguments"]["source_data"] = [new_source_key]
-                        
+
                         made_change = True
-                        
+
                         yield self.executor._format_sse({
                             "step": "System Correction",
                             "type": "workaround",
@@ -305,11 +305,11 @@ class Planner:
                                 }
                             }
                         })
-                        
-                        i = j + 1 
+
+                        i = j + 1
                         continue
             i += 1
-        
+
         if made_change:
             app_logger.info(f"PLAN REWRITE (Multi-Loop): Final rewritten plan: {self.executor.meta_plan}")
 
@@ -332,31 +332,33 @@ class Planner:
 
             if is_inefficient_loop:
                 task_description = phase.get("arguments", {}).get("task_description", "")
-                
+
                 if not task_description:
                     task_type = "aggregation"
                     app_logger.warning("TDA_LLMTask loop has no task_description. Defaulting to 'aggregation' for rewrite.")
                 else:
                     classification_prompt = TASK_CLASSIFICATION_PROMPT.format(task_description=task_description)
                     reason = "Classifying TDA_LLMTask loop intent for optimization."
-                    
+
                     call_id = str(uuid.uuid4())
                     yield self.executor._format_sse({"step": "Analyzing Plan Efficiency", "type": "plan_optimization", "details": {"summary": "Checking if an iterative task can be optimized into a single batch operation.", "call_id": call_id}})
                     yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
-                    
+
                     response_text, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
-                        prompt=classification_prompt, 
+                        prompt=classification_prompt,
                         reason=reason,
-                        system_prompt_override="You are a JSON-only responding assistant.", 
+                        system_prompt_override="You are a JSON-only responding assistant.",
                         raise_on_error=False,
                         disabled_history=True,
                         source=self.executor.source
                     )
-                    
-                    updated_session = session_manager.get_session(self.executor.session_id)
+
+                    # --- MODIFICATION START: Pass user_uuid to get_session ---
+                    updated_session = session_manager.get_session(self.executor.user_uuid, self.executor.session_id)
+                    # --- MODIFICATION END ---
                     if updated_session:
                         yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
-                    
+
                     yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
 
                     try:
@@ -371,12 +373,12 @@ class Planner:
                         f"PLAN REWRITE: Detected inefficient AGGREGATION TDA_LLMTask loop in phase {phase.get('phase')}. "
                         "Transforming to a standard phase."
                     )
-                    
+
                     original_phase = copy.deepcopy(phase)
 
                     phase.pop("type", None)
                     loop_source = phase.pop("loop_over", None)
-                    
+
                     if "arguments" not in phase: phase["arguments"] = {}
                     if "source_data" not in phase["arguments"] and loop_source:
                         phase["arguments"]["source_data"] = [loop_source]
@@ -420,7 +422,7 @@ class Planner:
             is_missing_loop = (
                 next_phase.get("type") != "loop"
             )
-            
+
             uses_date_range_output = False
             if isinstance(next_phase.get("arguments"), dict):
                 for arg_value in next_phase["arguments"].values():
@@ -433,19 +435,19 @@ class Planner:
                     f"PLAN REWRITE: Detected TDA_DateRange at phase {current_phase['phase']} "
                     f"not followed by a loop. Rewriting phase {next_phase['phase']}."
                 )
-                
+
                 original_next_phase = copy.deepcopy(next_phase)
 
                 next_phase["type"] = "loop"
                 next_phase["loop_over"] = f"result_of_phase_{current_phase['phase']}"
-                
+
                 for arg_name, arg_value in next_phase["arguments"].items():
-                    if (isinstance(arg_value, str) and 
+                    if (isinstance(arg_value, str) and
                         arg_value == f"result_of_phase_{current_phase['phase']}"):
-                        
+
                         next_phase["arguments"][arg_name] = {
                             "source": "loop_item",
-                            "key": "date" 
+                            "key": "date"
                         }
                         break
 
@@ -461,7 +463,7 @@ class Planner:
                     }
                 })
                 made_change = True
-            
+
             i += 1
 
         if made_change:
@@ -474,13 +476,13 @@ class Planner:
         """
         if not self.executor.meta_plan or len(self.executor.meta_plan) < 2:
             return
-        
+
         sql_tools = set(APP_CONFIG.SQL_OPTIMIZATION_TOOLS)
-        
+
         i = 0
         while i < len(self.executor.meta_plan) - 1:
             current_phase = self.executor.meta_plan[i]
-            
+
             current_tool = (current_phase.get("relevant_tools") or [None])[0]
             if current_tool not in sql_tools:
                 i += 1
@@ -492,12 +494,12 @@ class Planner:
                 if next_tool not in sql_tools:
                     break
                 j += 1
-            
+
             sql_sequence = self.executor.meta_plan[i:j]
-            
+
             if len(sql_sequence) > 1:
                 app_logger.warning(f"PLAN REWRITE: Detected inefficient sequential SQL plan from phase {i+1} to {j}. Consolidating...")
-                
+
                 inefficient_queries = []
                 sql_arg_synonyms = ["sql", "query", "query_request"]
                 for phase in sql_sequence:
@@ -505,7 +507,7 @@ class Planner:
                     query = next((args[key] for key in sql_arg_synonyms if key in args), None)
                     if query:
                         inefficient_queries.append(f"-- Query from Phase {phase['phase']}:\n{query}")
-                
+
                 if not inefficient_queries:
                     i = j
                     continue
@@ -514,7 +516,7 @@ class Planner:
                     user_goal=self.executor.original_user_input,
                     inefficient_queries="\n\n".join(inefficient_queries)
                 )
-                
+
                 reason = "Consolidating inefficient SQL plan."
                 call_id = str(uuid.uuid4())
                 yield self.executor._format_sse({
@@ -528,40 +530,42 @@ class Planner:
                     system_prompt_override="You are a JSON-only responding SQL expert.",
                     raise_on_error=True, source=self.executor.source
                 )
-                
+
                 yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
-                
-                updated_session = session_manager.get_session(self.executor.session_id)
+
+                # --- MODIFICATION START: Pass user_uuid to get_session ---
+                updated_session = session_manager.get_session(self.executor.user_uuid, self.executor.session_id)
+                # --- MODIFICATION END ---
                 if updated_session:
                     yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
 
                 try:
                     json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
                     if not json_match: raise ValueError("No JSON object found in consolidation response.")
-                    
+
                     data = json.loads(json_match.group(0))
                     consolidated_query = data.get("consolidated_query")
                     if not consolidated_query: raise ValueError("'consolidated_query' key not found.")
 
                     original_phases = copy.deepcopy(sql_sequence)
-                    
+
                     consolidated_phase = sql_sequence[-1]
                     consolidated_phase['phase'] = sql_sequence[0]['phase']
                     consolidated_phase['goal'] = f"Execute consolidated SQL query to achieve the goal: '{self.executor.original_user_input}'"
-                    
+
                     args = consolidated_phase.get("arguments", {})
                     found_key = next((key for key in sql_arg_synonyms if key in args), "sql")
                     args[found_key] = consolidated_query
                     consolidated_phase['arguments'] = args
-                    
+
                     num_phases_to_remove = len(sql_sequence)
                     self.executor.meta_plan[i] = consolidated_phase
                     for _ in range(num_phases_to_remove - 1):
                         del self.executor.meta_plan[i+1]
-                    
+
                     for phase_idx in range(i + 1, len(self.executor.meta_plan)):
                         self.executor.meta_plan[phase_idx]['phase'] -= (num_phases_to_remove - 1)
-                    
+
                     yield self.executor._format_sse({
                         "step": "System Correction", "type": "workaround",
                         "details": {
@@ -575,7 +579,7 @@ class Planner:
 
                 except (json.JSONDecodeError, ValueError, AttributeError) as e:
                     app_logger.error(f"Failed to consolidate SQL plan: {e}. Proceeding with original inefficient plan. Response: {response_text}")
-            
+
             i += 1
 
     async def generate_and_refine_plan(self, force_disable_history: bool = False, replan_context: str = None):
@@ -588,13 +592,13 @@ class Planner:
             replan_context=replan_context
         ):
             yield event
-        
+
         # --- MODIFICATION START: Make SQL consolidation rewrite conditional ---
         if APP_CONFIG.ENABLE_SQL_CONSOLIDATION_REWRITE:
             async for event in self._rewrite_plan_for_sql_consolidation():
                 yield event
         # --- MODIFICATION END ---
-        
+
         async for event in self._rewrite_plan_for_multi_loop_synthesis():
             yield event
         async for event in self._rewrite_plan_for_corellmtask_loops():
@@ -619,19 +623,19 @@ class Planner:
         """The universal planner. It generates a meta-plan for ANY request."""
         prompt_obj = None
         explicit_parameters_section = ""
-        
+
         if self.executor.active_prompt_name:
             yield self.executor._format_sse({"step": "Loading Workflow Prompt", "type": "system_message", "details": f"Loading '{self.executor.active_prompt_name}'"})
             mcp_client = self.executor.dependencies['STATE'].get('mcp_client')
             if not mcp_client: raise RuntimeError("MCP client is not connected.")
-            
+
             prompt_def = self.executor._get_prompt_info(self.executor.active_prompt_name)
 
             if not prompt_def:
                 raise ValueError(f"Could not find a definition for prompt '{self.executor.active_prompt_name}' in the local cache.")
 
             required_args = {arg['name'] for arg in prompt_def.get('arguments', []) if arg.get('required')}
-            
+
             enriched_args = self.executor.prompt_arguments.copy()
 
             missing_args = {arg for arg in required_args if arg not in enriched_args or enriched_args.get(arg) is None}
@@ -640,7 +644,7 @@ class Planner:
                     f"Cannot execute prompt '{self.executor.active_prompt_name}' because the following required arguments "
                     f"are missing: {missing_args}"
                 )
-            
+
             self.executor.prompt_arguments = enriched_args
 
             try:
@@ -656,7 +660,7 @@ class Planner:
                 raise ValueError(f"Prompt '{self.executor.active_prompt_name}' could not be loaded from the MCP server.") from e
 
             if not prompt_obj: raise ValueError(f"Prompt '{self.executor.active_prompt_name}' could not be loaded.")
-            
+
             self.executor.workflow_goal_prompt = get_prompt_text_content(prompt_obj)
             if not self.executor.workflow_goal_prompt:
                 raise ValueError(f"Could not extract text content from rendered prompt '{self.executor.active_prompt_name}'.")
@@ -680,7 +684,7 @@ class Planner:
         yield self.executor._format_sse({"step": "Calling LLM for Planning", "type": "system_message", "details": details_payload})
 
         previous_turn_summary_str = self._create_summary_from_history(self.executor.previous_turn_data)
-        
+
         active_prompt_context_section = ""
         if self.executor.active_prompt_name:
             active_prompt_context_section = f"\n- Active Prompt: You are currently executing the '{self.executor.active_prompt_name}' prompt. Do not call it again."
@@ -695,13 +699,13 @@ class Planner:
             decision_making_process_str = (
                 "2.  **Data Gathering**: Your primary objective is to answer the user's `GOAL` by creating a plan to gather the necessary data using the available tools."
             )
-        
+
         constraints_section = self.executor.dependencies['STATE'].get("constraints_context", "")
 
         sql_consolidation_rule_str = ""
         opt_prompts = APP_CONFIG.SQL_OPTIMIZATION_PROMPTS
         opt_tools = APP_CONFIG.SQL_OPTIMIZATION_TOOLS
-        
+
         if opt_prompts or opt_tools:
             favored_capabilities = []
             if opt_prompts:
@@ -721,7 +725,7 @@ class Planner:
             reporting_tool_name_injection = "TDA_ComplexPromptReport"
         else:
             reporting_tool_name_injection = "TDA_FinalReport"
-        
+
         planning_prompt = WORKFLOW_META_PLANNING_PROMPT.format(
             workflow_goal=self.executor.workflow_goal_prompt,
             explicit_parameters_section=explicit_parameters_section,
@@ -736,14 +740,15 @@ class Planner:
             sql_consolidation_rule=sql_consolidation_rule_str,
             reporting_tool_name=reporting_tool_name_injection
         )
-        
+
         yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
         response_text, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
-            prompt=planning_prompt, 
+            prompt=planning_prompt,
             reason=f"Generating a strategic meta-plan for the goal: '{self.executor.workflow_goal_prompt[:100]}'",
             disabled_history=force_disable_history,
             active_prompt_name_for_filter=self.executor.active_prompt_name,
             source=self.executor.source
+            # No user_uuid/session_id needed here directly as _call_llm takes from self.executor
         )
         yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
 
@@ -757,10 +762,15 @@ class Planner:
             f"-------------------------"
         )
 
-        updated_session = session_manager.get_session(self.executor.session_id)
+        # --- MODIFICATION START: Pass user_uuid to get_session ---
+        # Get user_uuid and session_id from the executor instance
+        user_uuid = self.executor.user_uuid
+        session_id = self.executor.session_id
+        updated_session = session_manager.get_session(user_uuid, session_id)
+        # --- MODIFICATION END ---
         if updated_session:
             yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
-        
+
         try:
             json_str = response_text
             if response_text.strip().startswith("```json"):
@@ -769,7 +779,7 @@ class Planner:
                     json_str = match.group(1).strip()
 
             plan_object = json.loads(json_str)
-            
+
             if isinstance(plan_object, dict) and plan_object.get("plan_type") == "conversational":
                 self.executor.is_conversational_plan = True
                 self.executor.temp_data_holder = plan_object.get("response", "I'm sorry, I don't have a response for that.")
@@ -786,18 +796,18 @@ class Planner:
                     "type": "workaround",
                     "details": "Planner returned a direct action instead of a plan. System is correcting the format."
                 })
-                
+
                 phase = {
                     "phase": 1,
                     "goal": f"Execute the action for the user's request: '{self.executor.original_user_input}'",
                     "arguments": plan_object.get("arguments", {})
                 }
-                
+
                 if is_direct_tool:
                     phase["relevant_tools"] = [plan_object["tool_name"]]
                 elif is_direct_prompt:
                     phase["executable_prompt"] = plan_object.get("prompt_name") or plan_object.get("executable_prompt")
-                
+
                 self.executor.meta_plan = [phase]
             elif not isinstance(plan_object, list) or not plan_object:
                 raise ValueError("LLM response for meta-plan was not a non-empty list.")
