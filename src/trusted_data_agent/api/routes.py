@@ -373,6 +373,38 @@ async def get_session_history(session_id):
     app_logger.warning(f"Session {session_id} not found for user {user_uuid}.")
     return jsonify({"error": "Session not found"}), 404
 
+# --- MODIFICATION START: Add Session Renaming Endpoint ---
+@api_bp.route("/api/session/<session_id>/name", methods=["PUT"])
+async def update_session_name_endpoint(session_id):
+    """Updates the name of a specific session."""
+    user_uuid = _get_user_uuid_from_request() # Reuse existing helper
+    data = await request.get_json()
+    new_name = data.get("name")
+
+    # Validate the new name
+    if not new_name or not isinstance(new_name, str) or len(new_name.strip()) == 0:
+        return jsonify({"status": "error", "message": "Invalid or missing 'name' field."}), 400
+
+    # Validate session ownership/existence
+    session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
+    if not session_data:
+        app_logger.warning(f"Rename attempt failed: Session {session_id} not found for user {user_uuid}.")
+        return jsonify({"error": "Session not found"}), 404
+
+    try:
+        # Trim and limit name length (e.g., 100 characters)
+        trimmed_name = new_name.strip()[:100]
+        # Call the session manager function to update and save
+        session_manager.update_session_name(user_uuid, session_id, trimmed_name)
+        app_logger.info(f"Updated session name for {session_id} (user {user_uuid}) to '{trimmed_name}'.")
+        # Return success with the updated name
+        return jsonify({"status": "success", "session_id": session_id, "name": trimmed_name}), 200
+    except Exception as e:
+        app_logger.error(f"Failed to update session name for {session_id}: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": "Failed to update session name."}), 500
+# --- MODIFICATION END ---
+
+
 @api_bp.route("/session", methods=["POST"])
 async def new_session():
     """Creates a new chat session for the requesting user."""
@@ -420,7 +452,9 @@ async def new_session():
             system_prompt_template=system_prompt_template
         )
         app_logger.info(f"Created new session: {session_id} for user {user_uuid} provider {APP_CONFIG.CURRENT_PROVIDER}.")
+        # --- MODIFICATION START: Return the default name ("New Chat") ---
         return jsonify({"session_id": session_id, "name": "New Chat"})
+        # --- MODIFICATION END ---
     except Exception as e:
         app_logger.error(f"Failed to create new session for user {user_uuid}: {e}", exc_info=True)
         return jsonify({"error": f"Failed to initialize a new chat session: {e}"}), 500
@@ -725,4 +759,3 @@ async def cancel_stream(session_id: str):
         app_logger.warning(f"Cancellation request for user {user_uuid}, session {session_id} failed: No active task found.")
         return jsonify({"status": "error", "message": "No active task found for this session."}), 404
 # --- MODIFICATION END ---
-
