@@ -217,7 +217,6 @@ export function updateStatusWindow(eventData, isFinal = false) {
 
         const phaseContainer = document.createElement('details');
         phaseContainer.className = 'status-phase-container';
-        phaseContainer.open = false; // Start phases closed
 
         const phaseHeader = document.createElement('summary');
         phaseHeader.className = 'status-phase-header phase-start';
@@ -237,12 +236,6 @@ export function updateStatusWindow(eventData, isFinal = false) {
         const phaseContent = document.createElement('div');
         phaseContent.className = 'status-phase-content';
         phaseContainer.appendChild(phaseContent);
-
-        // Remove placeholder if it exists
-        const placeholder = DOM.statusWindowContent.querySelector('p');
-        if (placeholder && placeholder.textContent.includes('Waiting for a new request')) {
-            placeholder.remove();
-        }
 
         DOM.statusWindowContent.appendChild(phaseContainer);
         state.currentPhaseContainerEl = phaseContainer;
@@ -268,13 +261,7 @@ export function updateStatusWindow(eventData, isFinal = false) {
             }
 
             state.currentPhaseContainerEl.appendChild(phaseFooter);
-             // Collapse completed phases after a short delay
-            setTimeout(() => {
-                if (state.currentPhaseContainerEl && state.currentPhaseContainerEl.classList.contains('completed')) {
-                    state.currentPhaseContainerEl.open = false;
-                }
-                state.currentPhaseContainerEl = null; // Reset for next phase
-            }, 1000); // 1 second delay
+            state.currentPhaseContainerEl = null; // Reset for next phase
         }
         state.isInFastPath = false; // Reset fast path flag at end of phase
         if (!state.isMouseOverStatus) {
@@ -285,15 +272,6 @@ export function updateStatusWindow(eventData, isFinal = false) {
 
     // Handle standard step events
     const parentContainer = state.currentPhaseContainerEl ? state.currentPhaseContainerEl.querySelector('.status-phase-content') : DOM.statusWindowContent;
-
-    // Remove placeholder if it exists and this is the first real step outside a phase
-     if (!state.currentPhaseContainerEl) {
-        const placeholder = DOM.statusWindowContent.querySelector('p');
-        if (placeholder && placeholder.textContent.includes('Waiting for a new request')) {
-            placeholder.remove();
-        }
-    }
-
 
     // Mark previous step as completed if it was active
     const lastStep = document.getElementById(`status-step-${state.currentStatusId}`);
@@ -516,16 +494,16 @@ export function createResourceItem(resource, type) {
 
     let contentHTML = '';
     if (type === 'prompts') {
-        const runButtonDisabledAttr = resource.disabled ? 'disabled' : '';
-        const runButtonTitle = resource.disabled ? 'This prompt is disabled.' : 'Run this prompt.';
+        const runButtonDisabledAttr = ''; // Always enabled
+        const runButtonTitle = 'Run this prompt.'; // Always use this title
 
         contentHTML = `
             <div class="p-3 pt-2 text-sm text-gray-300 space-y-3">
                 <p>${resource.description}</p>
                 ${argsHTML}
                 <div class="flex justify-end items-center gap-x-2 pt-3 border-t border-gray-700/60">
-                    <button class="prompt-toggle-button p-1.5 text-gray-300 hover:text-white hover:bg-white/10 rounded-md transition-colors" title="${resource.disabled ? 'Enable Prompt' : 'Disable Prompt'}">${toggleIcon}</button>
-                    <button class="view-prompt-button px-3 py-1 bg-gray-600 text-white text-xs font-semibold rounded-md hover:bg-gray-500 transition-colors" title="View Prompt Content">Prompt</button>
+                    <button class="prompt-toggle-button p-1.5 text-gray-300 hover:text-white hover:bg-white/10 rounded-md transition-colors">${toggleIcon}</button>
+                    <button class="view-prompt-button px-3 py-1 bg-gray-600 text-white text-xs font-semibold rounded-md hover:bg-gray-500 transition-colors">Prompt</button>
                     <button class="run-prompt-button px-3 py-1 bg-teradata-orange text-white text-xs font-semibold rounded-md hover:bg-teradata-orange-dark transition-colors" ${runButtonDisabledAttr} title="${runButtonTitle}">Run</button>
                 </div>
             </div>`;
@@ -535,7 +513,7 @@ export function createResourceItem(resource, type) {
                 <p>${resource.description}</p>
                 ${argsHTML}
                 <div class="flex justify-end items-center pt-3 border-t border-gray-700/60">
-                    <button class="tool-toggle-button p-1.5 text-gray-300 hover:text-white hover:bg-white/10 rounded-md transition-colors" title="${resource.disabled ? 'Enable Tool' : 'Disable Tool'}">${toggleIcon}</button>
+                    <button class="tool-toggle-button p-1.5 text-gray-300 hover:text-white hover:bg-white/10 rounded-md transition-colors">${toggleIcon}</button>
                 </div>
             </div>`;
     } else { // For resources
@@ -621,7 +599,6 @@ export function highlightResource(resourceName, type) {
     }
 }
 
-// --- MODIFICATION START: Modify addSessionToList and add helper functions ---
 export function addSessionToList(sessionId, name, isActive = false) {
     const sessionItem = document.createElement('button');
     sessionItem.id = `session-${sessionId}`;
@@ -632,65 +609,14 @@ export function addSessionToList(sessionId, name, isActive = false) {
         sessionItem.classList.add('active');
     }
 
-    // Create container for name (allows easy swapping)
-    const nameContainer = document.createElement('div');
-    nameContainer.className = 'session-name-container'; // Add a class for targeting
-
-    // Display span (visible by default)
     const nameSpan = document.createElement('span');
-    nameSpan.className = 'session-name-display font-semibold text-sm text-white block truncate'; // Added block/truncate
+    nameSpan.className = 'font-semibold text-sm text-white';
     nameSpan.textContent = name;
-    nameContainer.appendChild(nameSpan);
+    sessionItem.appendChild(nameSpan);
 
-    // Input field (hidden by default)
-    const nameInput = document.createElement('input');
-    nameInput.type = 'text';
-    nameInput.className = 'session-name-input hidden w-full p-1 bg-gray-700 border border-gray-600 rounded-md text-sm text-white focus:ring-1 focus:ring-teradata-orange focus:border-teradata-orange outline-none';
-    nameInput.value = name;
-    nameInput.maxLength = 100; // Match backend limit
-    nameContainer.appendChild(nameInput);
-
-    sessionItem.appendChild(nameContainer); // Add the container to the button
-
-    // Event listeners for switching mode will be added in eventHandlers.js
+    // Event listener is attached in eventHandlers.js
     return sessionItem;
 }
-
-/** Switches a session item to edit mode */
-export function switchToEditMode(sessionItem) {
-    const span = sessionItem.querySelector('.session-name-display');
-    const input = sessionItem.querySelector('.session-name-input');
-    if (span && input) {
-        span.classList.add('hidden');
-        input.classList.remove('hidden');
-        input.value = span.textContent; // Ensure input has latest value
-        input.select(); // Select text for easy editing
-    }
-}
-
-/** Switches a session item back to display mode, optionally updating the name */
-export function switchToDisplayMode(sessionItem, newName = null) {
-    const span = sessionItem.querySelector('.session-name-display');
-    const input = sessionItem.querySelector('.session-name-input');
-    if (span && input) {
-        if (newName !== null) {
-            span.textContent = newName;
-            input.value = newName; // Keep input value updated too
-        }
-        input.classList.add('hidden');
-        span.classList.remove('hidden');
-    }
-}
-
-/** Updates the displayed name of a session in the list */
-export function updateSessionNameInList(sessionId, newName) {
-    const sessionItem = document.getElementById(`session-${sessionId}`);
-    if (sessionItem) {
-        switchToDisplayMode(sessionItem, newName); // Use the helper
-    }
-}
-// --- MODIFICATION END ---
-
 
 export function updateConfigButtonState() {
     const isConnected = DOM.mcpStatusDot.classList.contains('connected');
@@ -872,4 +798,3 @@ export function closeChatModal() {
     DOM.chatModalContent.classList.add('scale-95', 'opacity-0');
     setTimeout(() => DOM.chatModalOverlay.classList.add('hidden'), 300);
 }
-

@@ -84,20 +84,8 @@ def _save_session(user_uuid: str, session_id: str, session_data: dict):
         if not session_path.parent.exists():
              app_logger.warning(f"User session directory was just created (or failed silently): {session_path.parent}")
 
-        # --- MODIFICATION START: Remove non-serializable chat_object before saving ---
-        session_data_to_save = session_data.copy()
-        # Store history in a serializable format if not already done
-        if "chat_object" in session_data_to_save:
-            history_list = session_data_to_save["chat_object"]
-            # Ensure it's a list (it should be after create_session change)
-            if not isinstance(history_list, list):
-                 app_logger.warning(f"Session {session_id} chat_object was not a list during save. Type: {type(history_list)}. Storing empty list.")
-                 session_data_to_save["chat_object"] = []
-            # No need to remove chat_object, just ensure it's serializable
-            
         with open(session_path, 'w', encoding='utf-8') as f:
-            json.dump(session_data_to_save, f, indent=2) # Use indent for readability
-        # --- MODIFICATION END ---
+            json.dump(session_data, f, indent=2) # Use indent for readability
         app_logger.debug(f"Successfully saved session '{session_id}' for user '{user_uuid}'.")
         return True # Indicate success
     except OSError as e:
@@ -114,23 +102,14 @@ def create_session(user_uuid: str, provider: str, llm_instance: any, charting_in
     # Note: chat_object cannot be directly serialized to JSON.
     # We will store history as a plain list.
     chat_history_for_file = []
-    # --- MODIFICATION START: Handle Google initial history slightly differently ---
-    # Create the initial history in the generic format first
-    generic_initial_history = [
-        {'role': 'user', 'content': 'You are a helpful assistant.'},
-        {'role': 'assistant', 'content': 'Understood.'}
-    ]
     if provider == "Google":
-        # Convert to Google format IF NEEDED by the application logic right after creation.
-        # For saving, we use the generic list directly.
-        chat_history_for_file = generic_initial_history # Store generic list in file
-        # If the application NEEDS the genai ChatSession object immediately, create it here
-        # chat_object_runtime = genai.GenerativeModel(...).start_chat(history=...)
-        # But don't store chat_object_runtime in session_data dict to be saved.
-    else:
-        chat_history_for_file = generic_initial_history # Store generic list in file
-    # --- MODIFICATION END ---
-
+        # Keep initial prompt for Google compatibility if needed later, but don't store the live object.
+        initial_history_google = [
+            {"role": "user", "parts": [{"text": "You are a helpful assistant."}]},
+            {"role": "model", "parts": [{"text": "Understood."}]}
+        ]
+        # Store this initial history in the file version
+        chat_history_for_file = [{'role': m['role'], 'content': m['parts'][0]['text']} for m in initial_history_google]
 
     session_data = {
         "id": session_id, # Store ID within the data itself
@@ -139,9 +118,7 @@ def create_session(user_uuid: str, provider: str, llm_instance: any, charting_in
         "charting_intensity": charting_intensity,
         "session_history": [], # UI history (messages added via add_to_history)
         "chat_object": chat_history_for_file, # Store serializable history for LLM context
-        # --- MODIFICATION START: Set default session name ---
-        "name": "New Chat", # Default name for new sessions
-        # --- MODIFICATION END ---
+        "name": "New Chat",
         "created_at": datetime.now().isoformat(),
         "input_tokens": 0,
         "output_tokens": 0,
@@ -152,12 +129,7 @@ def create_session(user_uuid: str, provider: str, llm_instance: any, charting_in
 
     if _save_session(user_uuid, session_id, session_data):
         app_logger.info(f"Successfully created and saved session '{session_id}' for user '{user_uuid}'.")
-        # --- MODIFICATION START: Return the full session data dict, not just the ID ---
-        # This allows the caller (e.g., REST API) to return more info if needed.
-        # The caller can still just use session_data['id'] if only the ID is required.
-        # Let's actually keep returning just the ID for API consistency.
         return session_id
-        # --- MODIFICATION END ---
     else:
         app_logger.error(f"Failed to save newly created session '{session_id}' for user '{user_uuid}'.")
         # Decide how to handle this - raise error? Return None?
@@ -167,33 +139,7 @@ def create_session(user_uuid: str, provider: str, llm_instance: any, charting_in
 
 def get_session(user_uuid: str, session_id: str) -> dict | None:
     app_logger.debug(f"Getting session '{session_id}' for user '{user_uuid}'.")
-    session_data = _load_session(user_uuid, session_id)
-
-    # --- MODIFICATION START: Restore non-serializable objects if needed ---
-    # Example: If using Google ChatSession object, recreate it from history
-    if session_data and APP_CONFIG.CURRENT_PROVIDER == "Google" and 'chat_object' in session_data and isinstance(session_data['chat_object'], list):
-         try:
-             # Assuming llm_instance is available in APP_STATE (might need to pass it in or handle differently)
-             llm_instance = APP_STATE.get('llm')
-             if llm_instance and isinstance(llm_instance, genai.GenerativeModel):
-                 app_logger.debug(f"Recreating Google ChatSession object for session {session_id} from stored history.")
-                 # Convert generic history back to Google format for the object
-                 google_history = []
-                 for msg in session_data['chat_object']:
-                     role = 'model' if msg['role'] == 'assistant' else msg['role']
-                     if role in ['user', 'model']: # Filter invalid roles just in case
-                         google_history.append({'role': role, 'parts': [{'text': msg['content']}]})
-                 # Replace the list with the live object for runtime use
-                 session_data['chat_object'] = llm_instance.start_chat(history=google_history)
-             else:
-                 app_logger.warning(f"Cannot recreate Google ChatSession for {session_id}: LLM instance not available or not a GenerativeModel.")
-                 # Keep the list representation as fallback
-         except Exception as e:
-             app_logger.error(f"Error recreating Google ChatSession object for session {session_id}: {e}", exc_info=True)
-             # Keep the list representation as fallback
-    # --- MODIFICATION END ---
-
-    return session_data
+    return _load_session(user_uuid, session_id)
 
 def get_all_sessions(user_uuid: str) -> list[dict]:
     app_logger.debug(f"Getting all sessions for user '{user_uuid}'.")
@@ -232,35 +178,23 @@ def get_all_sessions(user_uuid: str) -> list[dict]:
     return session_summaries
 
 def add_to_history(user_uuid: str, session_id: str, role: str, content: str):
-    # --- MODIFICATION START: Load session *with* object recreation ---
-    session_data = get_session(user_uuid, session_id) # Use get_session to handle object loading
-    # --- MODIFICATION END ---
+    session_data = _load_session(user_uuid, session_id)
     if session_data:
-        # Add to UI history list
         session_data.setdefault('session_history', []).append({'role': role, 'content': content})
+        # Also update the 'chat_object' which holds the history for LLM context
+        # Convert role for Google ('model' instead of 'assistant') if needed based on provider
+        # --- MODIFICATION START: Use APP_CONFIG correctly ---
+        # Get provider from session if available, else fallback to current global config
+        provider_in_session = session_data.get("license_info", {}).get("provider")
+        current_provider = APP_CONFIG.CURRENT_PROVIDER
+        provider = provider_in_session or current_provider
+        if not provider:
+             app_logger.warning(f"Could not determine LLM provider for role conversion in session {session_id}. Defaulting role.")
+             provider = "Unknown" # Avoid error if APP_CONFIG isn't set somehow
 
-        # Add to LLM history representation (object or list)
-        provider = APP_CONFIG.CURRENT_PROVIDER # Assuming config is stable during session life
         llm_role = 'model' if role == 'assistant' and provider == 'Google' else role
-
-        if provider == "Google" and 'chat_object' in session_data and isinstance(session_data['chat_object'], genai.ChatSession):
-            # If we have the live ChatSession object, append directly (it handles internal state)
-            # Note: We might not *need* to explicitly update history here if send_message does it,
-            # but doing it ensures consistency if the object is used elsewhere before the next send.
-            # Check Google's API documentation if send_message updates history automatically.
-            # Let's assume we need to manage it explicitly for robustness.
-            # Convert generic role back to Google role if needed
-            if llm_role in ['user', 'model']:
-                 session_data['chat_object'].history.append({'role': llm_role, 'parts': [{'text': content}]})
-            else:
-                 app_logger.warning(f"Invalid role '{llm_role}' for Google history update in session {session_id}.")
-
-        elif 'chat_object' in session_data and isinstance(session_data['chat_object'], list):
-            # If storing history as a list (non-Google or Google fallback), append dict
-             session_data['chat_object'].append({'role': llm_role, 'content': content})
-        else:
-            app_logger.error(f"Session {session_id} has unexpected chat_object type: {type(session_data.get('chat_object'))}. Cannot update history.")
-
+        # --- MODIFICATION END ---
+        session_data.setdefault('chat_object', []).append({'role': llm_role, 'content': content})
 
         if not _save_session(user_uuid, session_id, session_data):
              app_logger.error(f"Failed to save session after adding history for {session_id}")
@@ -306,3 +240,4 @@ def update_last_turn_data(user_uuid: str, session_id: str, turn_data: dict):
             app_logger.error(f"Failed to save session after updating last turn data for {session_id}")
     else:
         app_logger.warning(f"Could not update last turn data: Session {session_id} not found for user {user_uuid}.")
+

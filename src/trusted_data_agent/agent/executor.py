@@ -432,24 +432,6 @@ class PlanExecutor:
 
         return resolved_args
 
-    # --- MODIFICATION START: Add helper method for session name generation ---
-    def _generate_short_session_name(self, source_text: str) -> str:
-        """Generates a concise session name from source text."""
-        if not source_text:
-            return ""
-        name = source_text.strip()
-        # Remove potential prompt execution prefix
-        name = name.replace("Executing prompt: ", "")
-        # Truncate
-        max_len = 50
-        if len(name) > max_len:
-            name = name[:max_len] + "..."
-        # Basic sanitization (optional, adjust as needed)
-        name = re.sub(r'\s+', ' ', name) # Consolidate whitespace
-        return name
-    # --- MODIFICATION END ---
-
-
     async def run(self):
         """The main, unified execution loop for the agent."""
         final_answer_override = None
@@ -605,34 +587,6 @@ class PlanExecutor:
 
         finally:
             # --- Cleanup Phase (Always runs) ---
-
-            # --- MODIFICATION START: Add auto-naming logic here ---
-            # Auto-name session after the FIRST successful turn, before saving history data
-            if not self.disabled_history and self.state != self.AgentState.ERROR and turn_number == 1:
-                try:
-                    # Fetch potentially updated session data (in case summarization changed it?)
-                    current_session_data = session_manager.get_session(self.user_uuid, self.session_id)
-                    # Check if name is still the default placeholder
-                    if current_session_data and current_session_data.get("name") == "New Chat":
-                        # Determine source: prompt name first, then user input
-                        source_text = self.active_prompt_name if self.active_prompt_name else self.original_user_input
-                        # Generate the short name using the new helper
-                        new_name = self._generate_short_session_name(source_text)
-                        if new_name:
-                            app_logger.info(f"Auto-naming session {self.session_id} for user {self.user_uuid} to: '{new_name}'")
-                            # Update the name in the session file
-                            session_manager.update_session_name(self.user_uuid, self.session_id, new_name)
-                            # Yield SSE event for real-time UI update
-                            yield self._format_sse({"session_id": self.session_id, "new_name": new_name}, "session_name_updated")
-                        else:
-                            app_logger.warning(f"Skipping auto-naming for session {self.session_id}: Generated name was empty.")
-                    else:
-                        app_logger.debug(f"Skipping auto-naming for session {self.session_id}: Not first turn or name is not default ('{current_session_data.get('name') if current_session_data else 'N/A'}').")
-                except Exception as auto_name_e:
-                    # Log error but don't prevent history update
-                    app_logger.error(f"Error during session auto-naming for {self.session_id}: {auto_name_e}", exc_info=True)
-            # --- MODIFICATION END ---
-
             # Update history only if the execution wasn't cancelled or errored out definitively
             if not self.disabled_history and self.state != self.AgentState.ERROR:
                 # --- MODIFICATION START: Build the detailed turn summary ---
@@ -714,16 +668,11 @@ class PlanExecutor:
                 yield self._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
 
                 try:
-                    # --- MODIFICATION START: More robust JSON extraction ---
-                    json_match = re.search(r"```json\s*\n(.*?)\n\s*```|(\{.*\})", response_text, re.DOTALL)
-                    if not json_match: raise json.JSONDecodeError("No JSON found", response_text, 0)
-                    json_str = json_match.group(1) or json_match.group(2)
-                    extracted_args = json.loads(json_str.strip())
-                    # --- MODIFICATION END ---
+                    extracted_args = json.loads(response_text)
                     prompt_args.update(extracted_args)
                     app_logger.info(f"Successfully enriched arguments: {extracted_args}")
                 except (json.JSONDecodeError, AttributeError) as e:
-                    app_logger.error(f"Failed to parse extracted arguments: {e}. The prompt may fail. Response: {response_text}") # Log response
+                    app_logger.error(f"Failed to parse extracted arguments: {e}. The prompt may fail.")
 
         self.active_prompt_name = prompt_name
         self.prompt_arguments = self._resolve_arguments(prompt_args)
@@ -897,62 +846,17 @@ class PlanExecutor:
             if not results:
                 final_content = CanonicalResponse(direct_answer="The agent has completed its work, but the final step produced no data.")
             else:
-                # --- MODIFICATION START: Handle list of results gracefully ---
-                # Check if results is a list of dicts or just a single dict wrapped in a list
-                if isinstance(results, list) and len(results) == 1 and isinstance(results[0], dict):
-                    last_result = results[0]
-                elif isinstance(results, dict): # Handle case where it might be just a dict
-                    last_result = results
-                else:
-                    # If it's a list of something else, or complex, maybe default?
-                    app_logger.warning(f"Unexpected structure in last_tool_output results: {type(results)}. Attempting to use first element if list.")
-                    last_result = results[0] if isinstance(results, list) and results else {}
-
+                last_result = results[0]
                 tool_name = self.last_tool_output.get("metadata", {}).get("tool_name")
-                # --- MODIFICATION END ---
 
                 if self.active_prompt_name and tool_name == "TDA_ComplexPromptReport":
-                    # --- MODIFICATION START: Validate structure before pydantic ---
-                    if isinstance(last_result, dict):
-                         try:
-                             final_content = PromptReportResponse.model_validate(last_result)
-                         except Exception as val_err:
-                              app_logger.error(f"Pydantic validation failed for TDA_ComplexPromptReport result: {val_err}. Result was: {last_result}")
-                              final_content = CanonicalResponse(direct_answer="Error: Could not format the final report correctly.")
-                    else:
-                         app_logger.error(f"Invalid last_result structure for TDA_ComplexPromptReport: {type(last_result)}")
-                         final_content = CanonicalResponse(direct_answer="Error: Unexpected result structure for final report.")
-                    # --- MODIFICATION END ---
+                    final_content = PromptReportResponse.model_validate(last_result)
                 elif tool_name == "TDA_FinalReport":
-                    # --- MODIFICATION START: Validate structure before pydantic ---
-                    if isinstance(last_result, dict):
-                        try:
-                            final_content = CanonicalResponse.model_validate(last_result)
-                        except Exception as val_err:
-                            app_logger.error(f"Pydantic validation failed for TDA_FinalReport result: {val_err}. Result was: {last_result}")
-                            final_content = CanonicalResponse(direct_answer="Error: Could not format the final answer correctly.")
-                    else:
-                        app_logger.error(f"Invalid last_result structure for TDA_FinalReport: {type(last_result)}")
-                        final_content = CanonicalResponse(direct_answer="Error: Unexpected result structure for final answer.")
-                    # --- MODIFICATION END ---
-
+                    final_content = CanonicalResponse.model_validate(last_result)
                 else:
-                    # --- MODIFICATION START: Handle non-report results ---
-                    # If the last step wasn't a report tool, try to extract a 'response' field
-                    if isinstance(last_result, dict) and 'response' in last_result and isinstance(last_result['response'], str):
-                        final_content = CanonicalResponse(direct_answer=last_result['response'])
-                    else:
-                        final_content = CanonicalResponse(direct_answer="The agent has completed its work, but a final report was not generated.")
-                    # --- MODIFICATION END ---
+                    final_content = CanonicalResponse(direct_answer="The agent has completed its work, but a final report was not generated.")
         else:
-             # --- MODIFICATION START: Handle error in last step ---
-             error_msg = "The agent encountered an issue in the final step."
-             if isinstance(self.last_tool_output, dict):
-                 error_data = self.last_tool_output.get('data', self.last_tool_output.get('error_message', 'No details.'))
-                 error_msg = f"The agent encountered an issue in the final step: {error_data}"
-             final_content = CanonicalResponse(direct_answer=error_msg)
-             # --- MODIFICATION END ---
-
+            final_content = CanonicalResponse(direct_answer="The agent has completed its work, but an issue occurred in the final step.")
 
         if final_content:
             async for event in self._format_and_yield_final_answer(final_content):

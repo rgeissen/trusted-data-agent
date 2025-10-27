@@ -6,9 +6,7 @@
 
 import * as DOM from './domElements.js';
 import { state } from './state.js';
-// --- MODIFICATION START: Import renameSession ---
 import * as API from './api.js';
-// --- MODIFICATION END ---
 import * as UI from './ui.js';
 import * as Utils from './utils.js';
 import { copyToClipboard, copyTableToClipboard } from './utils.js'; // Import specific functions
@@ -69,10 +67,6 @@ async function processStream(responseBody) {
                             }
                             // --- MODIFICATION END ---
                         }
-                    // --- MODIFICATION START: Handle session name update event ---
-                    } else if (eventName === 'session_name_updated') {
-                        UI.updateSessionNameInList(eventData.session_id, eventData.new_name);
-                    // --- MODIFICATION END ---
                     } else if (eventName === 'context_state_update') {
                         // Context state update logic... (no changes needed here for stop button)
                     } else if (eventName === 'token_update') {
@@ -363,12 +357,9 @@ export async function handleLoadResources(type) {
             });
         });
 
-        // Click the first category tab if it exists
-        const firstCategoryTab = categoriesContainer.querySelector('.category-tab');
-        if (firstCategoryTab) {
-            firstCategoryTab.click();
+        if (categoriesContainer.querySelector('.category-tab')) {
+            categoriesContainer.querySelector('.category-tab').click();
         }
-
 
     } catch (error) {
         console.error(`Failed to load ${type}: ${error.message}`);
@@ -391,9 +382,7 @@ export async function handleStartNewSession() {
     UI.setThinkingIndicator(false);
     try {
         const data = await API.startNewSession();
-        // --- MODIFICATION START: Use the name returned from API ---
         const sessionItem = UI.addSessionToList(data.session_id, data.name, true);
-        // --- MODIFICATION END ---
         DOM.sessionList.prepend(sessionItem);
         await handleLoadSession(data.session_id);
     } catch (error) {
@@ -546,9 +535,7 @@ async function openViewPromptModal(promptName) {
     DOM.viewPromptModalText.textContent = 'Loading...';
 
     try {
-        // --- MODIFICATION START: Use headers ---
-        const res = await fetch(`/prompt/${promptName}`, { headers: API._getHeaders(false) }); // Add headers
-        // --- MODIFICATION END ---
+        const res = await fetch(`/prompt/${promptName}`);
         const data = await res.json();
         if (res.ok) {
             DOM.viewPromptModalText.textContent = data.content;
@@ -617,7 +604,7 @@ export async function finalizeConfiguration(config) {
 
     DOM.chatModalButton.disabled = false;
     DOM.userInput.placeholder = "Ask about databases, tables, users...";
-
+    
     // --- MODIFICATION START: Use centralized UI function ---
     UI.setExecutionState(false); // This enables the input, button, and hides the spinner
     // --- MODIFICATION END ---
@@ -689,13 +676,11 @@ async function handleConfigFormSubmit(e) {
     }
 
     try {
-        // --- MODIFICATION START: Use headers ---
         const res = await fetch('/configure', {
             method: 'POST',
-            headers: API._getHeaders(), // Add headers
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(config)
         });
-        // --- MODIFICATION END ---
 
         const result = await res.json();
 
@@ -911,16 +896,14 @@ async function handleChatModalSubmit(e) {
     DOM.chatModalInput.disabled = true;
 
     try {
-        // --- MODIFICATION START: Use headers ---
         const res = await fetch('/simple_chat', {
             method: 'POST',
-            headers: API._getHeaders(), // Add headers
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 message: message,
                 history: state.simpleChatHistory
             })
         });
-        // --- MODIFICATION END ---
 
         const data = await res.json();
 
@@ -1384,60 +1367,12 @@ export function initializeEventListeners() {
         }
     });
 
-    // --- MODIFICATION START: Add session list event listeners ---
-    DOM.sessionList.addEventListener('click', async (e) => {
+    DOM.sessionList.addEventListener('click', (e) => {
         const sessionItem = e.target.closest('.session-item');
-        if (!sessionItem) return; // Clicked outside an item
-
-        const nameContainer = e.target.closest('.session-name-container');
-        const isNameClick = nameContainer && e.target.classList.contains('session-name-display');
-        const isActive = sessionItem.classList.contains('active');
-
-        if (isNameClick && isActive) {
-            // Clicked on the name of the *active* session -> switch to edit mode
-            UI.switchToEditMode(sessionItem);
-        } else if (!isActive) {
-            // Clicked anywhere else on an *inactive* session -> load it
+        if (sessionItem) {
             handleLoadSession(sessionItem.dataset.sessionId);
         }
-        // Ignore clicks on the input field itself or outside the name area of active session
     });
-
-    // Add listeners for input blur/keydown using event delegation
-    DOM.sessionList.addEventListener('focusout', async (e) => {
-        if (e.target.classList.contains('session-name-input')) {
-            const sessionItem = e.target.closest('.session-item');
-            const sessionId = sessionItem.dataset.sessionId;
-            const newName = e.target.value.trim();
-            const originalName = sessionItem.querySelector('.session-name-display').textContent;
-
-            if (newName && newName !== originalName) {
-                try {
-                    await API.renameSession(sessionId, newName);
-                    UI.switchToDisplayMode(sessionItem, newName); // Update UI on success
-                } catch (error) {
-                    console.error("Failed to rename session:", error);
-                    alert(`Failed to rename session: ${error.message}`);
-                    UI.switchToDisplayMode(sessionItem); // Revert to original name on error
-                }
-            } else {
-                UI.switchToDisplayMode(sessionItem); // Revert if name is empty or unchanged
-            }
-        }
-    });
-
-    DOM.sessionList.addEventListener('keydown', async (e) => {
-        if (e.target.classList.contains('session-name-input') && e.key === 'Enter') {
-            e.preventDefault(); // Prevent form submission if applicable
-            e.target.blur(); // Trigger the focusout event handler to save
-        } else if (e.target.classList.contains('session-name-input') && e.key === 'Escape') {
-            e.preventDefault();
-            const sessionItem = e.target.closest('.session-item');
-            UI.switchToDisplayMode(sessionItem); // Revert without saving
-        }
-    });
-    // --- MODIFICATION END ---
-
 
     // All modal listeners
     DOM.promptModalClose.addEventListener('click', UI.closePromptModal);

@@ -266,22 +266,6 @@ details.resource-selected > summary {
     border-left: 4px solid var(--teradata-orange);
 }
 
-/* --- MODIFICATION START: Add styles for session name editing --- */
-.session-name-container input.hidden {
-    display: none;
-}
-.session-name-container span.hidden {
-    display: none;
-}
-.session-name-input {
-    /* Inherit font size/weight? Or set explicitly */
-    font-size: 0.875rem; /* text-sm */
-    font-weight: 600; /* font-semibold */
-    line-height: 1.25rem; /* Ensure similar height to span */
-    /* Add any other specific styles */
-}
-/* --- MODIFICATION END --- */
-
 #tool-header {
     transition: max-height 0.4s ease-in-out, padding 0.4s ease-in-out, border-bottom-width 0.4s ease-in-out, opacity 0.3s ease-in-out;
     overflow: hidden;
@@ -600,3 +584,4 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     background-color: transparent !important; /* Prevent hover effect when disabled */
     color: var(--medium-text) !important; /* Ensure disabled text color is gray */
 }
+
