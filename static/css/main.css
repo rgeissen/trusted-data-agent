@@ -7,6 +7,9 @@
     --medium-bg: #333333;
     --light-text: #F0F0F0;
     --medium-text: #999999;
+    /* --- MODIFICATION START: Add user avatar gray color variable --- */
+    --user-avatar-bg: #4b5563; /* Tailwind gray-700 */
+    /* --- MODIFICATION END --- */
 }
 
 body {
@@ -635,7 +638,7 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
 
 #stop-execution-button {
     color: var(--teradata-orange);
-    transition-colors: 0.2s ease-in-out;
+    transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
 }
 #stop-execution-button:hover {
     color: white;
@@ -649,45 +652,19 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     color: var(--medium-text) !important;
 }
 
-/* --- MODIFICATION START: Remove styles for reload/replay buttons --- */
-/* .user-message-actions-placeholder {
-    transition: opacity 0.2s ease-in-out;
-}
-.reload-plan-button,
-.replay-query-button {
-    background-color: rgba(255, 255, 255, 0.05); 
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: opacity 0.2s ease-in-out, background-color 0.2s ease-in-out, color 0.2s ease-in-out;
-}
-.reload-plan-button:hover,
-.replay-query-button:hover {
-    background-color: rgba(255, 255, 255, 0.15);
-    color: white;
-}
-.message-bubble:not(:hover) .user-message-actions-placeholder > button {
-    opacity: 0;
-}
-.message-bubble:hover .user-message-actions-placeholder > button {
-    opacity: 1;
-}
-*/
-/* --- MODIFICATION END --- */
-
-
-/* --- MODIFICATION START: Add styles for clickable user avatar --- */
+/* --- MODIFICATION START: Styles for clickable avatar and header replay buttons --- */
 .clickable-avatar {
     cursor: pointer;
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 .clickable-avatar:hover {
     transform: scale(1.1);
-    box-shadow: 0 0 10px rgba(241, 95, 34, 0.5); /* Teradata orange glow */
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
 }
-/* --- MODIFICATION END --- */
 
-/* --- MODIFICATION START: Add styles for header replay buttons --- */
+/* Base style for header replay buttons */
 .replay-action-button {
-    color: var(--medium-text); /* gray-400 */
+    color: var(--medium-text);
     transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
 }
 .replay-action-button:hover {
@@ -700,4 +677,37 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     background-color: transparent !important;
     color: var(--medium-text) !important;
 }
+
+/* --- MODIFICATION START: Styles for turn badge --- */
+.turn-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background-color: var(--teradata-orange); /* Default for Assistant */
+    color: white;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    border: 1px solid var(--dark-bg); /* Default border matching main background */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+/* Style for User avatar badge */
+ .bg-gray-700 .turn-badge {
+     background-color: var(--user-avatar-bg); /* Use the gray variable */
+     /* --- MODIFICATION START: Change border color to mid grey --- */
+     border: 1.5px solid var(--medium-text); /* White border, slightly thicker */
+     /* --- MODIFICATION END --- */
+     /* Text color remains white (inherited) */
+     /* Adjust positioning slightly if border thickness affects it */
+     bottom: -5px;
+     right: -5px;
+}
 /* --- MODIFICATION END --- */
+
+

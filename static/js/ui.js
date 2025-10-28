@@ -14,7 +14,6 @@ import { handleSessionRenameSave, handleSessionRenameCancel } from './eventHandl
 // NOTE: This module no longer imports from eventHandlers.js, breaking a circular dependency.
 // Instead, eventHandlers.js will import these UI functions.
 
-// --- MODIFICATION START: Add renderHistoricalTrace function ---
 /**
  * Renders the historical plan and execution trace in the status window.
  * @param {Array<object>} originalPlan - The original plan array generated for the turn.
@@ -137,24 +136,16 @@ export function renderHistoricalTrace(originalPlan, executionTrace, turnId) {
         DOM.statusWindowContent.scrollTop = 0; // Scroll to top for reloaded view
     }
 }
-// --- MODIFICATION END ---
 
 
 export function addMessage(role, content, turnId = null) {
     const wrapper = document.createElement('div');
-    // --- MODIFICATION START: Add 'group' class for hover (no change here) ---
     wrapper.className = `message-bubble group flex items-start gap-4 ${role === 'user' ? 'justify-end' : ''}`;
-    // --- MODIFICATION END ---
     const icon = document.createElement('div');
-    icon.className = 'flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg relative'; // Added relative positioning
+    // Ensure relative positioning is always set for badge context
+    icon.className = 'flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg relative';
     icon.textContent = role === 'user' ? 'U' : 'A';
     icon.classList.add(role === 'user' ? 'bg-gray-700' : 'bg-[#F15F22]');
-
-    // --- MODIFICATION START: Remove placeholder for user messages ---
-    if (role === 'user') {
-        // No placeholder needed anymore
-    }
-    // --- MODIFICATION END ---
 
     const messageContainer = document.createElement('div');
     messageContainer.className = 'p-4 rounded-xl shadow-lg max-w-2xl glass-panel';
@@ -175,9 +166,15 @@ export function addMessage(role, content, turnId = null) {
 
     DOM.chatLog.appendChild(wrapper);
 
-    // --- MODIFICATION START: Substitute in-chat buttons with avatar click and header buttons ---
+    // Logic for avatar click, header buttons, and turn badges
     if (role === 'assistant' && turnId) {
-        // Find the last user message bubble (should be the one right before this assistant message)
+        // --- Add Turn Badge to Assistant Avatar ---
+        const assistantBadge = document.createElement('span');
+        assistantBadge.className = 'turn-badge';
+        assistantBadge.textContent = turnId;
+        icon.appendChild(assistantBadge); // Append badge to assistant icon
+
+        // --- Find previous User message and add badge/click handler ---
         const userBubbles = DOM.chatLog.querySelectorAll('.message-bubble:has(.bg-gray-700)');
         const lastUserBubble = userBubbles.length > 0 ? userBubbles[userBubbles.length - 1] : null;
 
@@ -188,28 +185,29 @@ export function addMessage(role, content, turnId = null) {
                 userAvatarIcon.classList.add('clickable-avatar');
                 userAvatarIcon.dataset.turnId = turnId;
                 userAvatarIcon.title = `Reload Plan & Details for Turn ${turnId}`;
+
+                // --- Add Turn Badge to User Avatar ---
+                const userBadge = document.createElement('span');
+                userBadge.className = 'turn-badge';
+                userBadge.textContent = turnId;
+                userAvatarIcon.appendChild(userBadge); // Append badge to user icon
             }
         }
 
-        // 2. Show and update the header replay buttons
+        // --- Show and update the header replay buttons ---
         if (DOM.headerReplayPlannedButton) {
             DOM.headerReplayPlannedButton.classList.remove('hidden');
             DOM.headerReplayPlannedButton.dataset.turnId = turnId;
-            // DOM.headerReplayPlannedButton.disabled = false; // Will be enabled in setExecutionState
         }
         if (DOM.headerReplayOptimizedButton) {
             DOM.headerReplayOptimizedButton.classList.remove('hidden');
             DOM.headerReplayOptimizedButton.dataset.turnId = turnId;
-            // DOM.headerReplayOptimizedButton.disabled = false;
         }
         if (DOM.headerReplayQueryButton) {
             DOM.headerReplayQueryButton.classList.remove('hidden');
             DOM.headerReplayQueryButton.dataset.turnId = turnId;
-            // DOM.headerReplayQueryButton.disabled = false;
         }
     }
-    // --- MODIFICATION END ---
-
 
     const chartContainers = messageContent.querySelectorAll('.chart-render-target');
     chartContainers.forEach(container => {
@@ -218,7 +216,7 @@ export function addMessage(role, content, turnId = null) {
         }
     });
 
-    wrapper.scrollIntoView({ behavior: 'smooth', block: 'end' }); // Changed to 'end'
+    wrapper.scrollIntoView({ behavior: 'smooth', block: 'end' });
 }
 
 
@@ -238,7 +236,6 @@ export function setExecutionState(isActive) {
         DOM.stopExecutionButton.disabled = !isActive;
     }
 
-    // --- MODIFICATION START: Show/hide and disable/enable header replay buttons ---
     if (isActive) {
         // Hide and disable buttons when execution starts
         if (DOM.headerReplayPlannedButton) {
@@ -254,7 +251,7 @@ export function setExecutionState(isActive) {
             DOM.headerReplayQueryButton.disabled = true;
         }
     } else {
-        // Enable buttons when execution ends (they will be shown by addMessage)
+        // Enable buttons when execution ends (they will be shown by addMessage if applicable)
         if (DOM.headerReplayPlannedButton) {
             DOM.headerReplayPlannedButton.disabled = false;
         }
@@ -264,8 +261,8 @@ export function setExecutionState(isActive) {
         if (DOM.headerReplayQueryButton) {
             DOM.headerReplayQueryButton.disabled = false;
         }
+        // Don't explicitly show them here, addMessage handles showing them when a turn completes
     }
-    // --- MODIFICATION END ---
 
     if (!isActive) {
         setThinkingIndicator(false);
@@ -393,9 +390,7 @@ function _renderToolIntentDetails(details) {
     `;
 }
 
-// --- MODIFICATION START: Export updateStatusWindow ---
 export function updateStatusWindow(eventData, isFinal = false) {
-// --- MODIFICATION END ---
     const { step, details, type } = eventData;
     if (!step && type !== 'phase_start' && type !== 'phase_end') {
         // Allow rendering tool results/errors even without a step title during trace replay
@@ -416,7 +411,7 @@ export function updateStatusWindow(eventData, isFinal = false) {
 
         const phaseContainer = document.createElement('details');
         phaseContainer.className = 'status-phase-container';
-        phaseContainer.open = true; // Open by default when rendering trace
+        phaseContainer.open = false; // Closed by default when rendering trace
 
         const phaseHeader = document.createElement('summary');
         phaseHeader.className = 'status-phase-header phase-start';
@@ -474,9 +469,7 @@ export function updateStatusWindow(eventData, isFinal = false) {
     const parentContainer = state.currentPhaseContainerEl ? state.currentPhaseContainerEl.querySelector('.status-phase-content') : DOM.statusWindowContent;
 
     const lastStep = document.getElementById(`status-step-${state.currentStatusId}`);
-    // --- MODIFICATION START: Ensure parentContainer check ---
     if (lastStep && lastStep.classList.contains('active') && parentContainer && parentContainer.contains(lastStep)) {
-    // --- MODIFICATION END ---
         lastStep.classList.remove('active');
         lastStep.classList.add('completed');
         if (state.isInFastPath && !lastStep.classList.contains('plan-optimization')) {
@@ -524,7 +517,6 @@ export function updateStatusWindow(eventData, isFinal = false) {
                 customRenderedHtml = _renderToolIntentDetails(details);
             } else {
                 try {
-                    // --- MODIFICATION START: Handle potential circular structures ---
                     // Use a safe stringify approach
                     const cache = new Set();
                     detailsString = JSON.stringify(details, (key, value) => {
@@ -538,7 +530,6 @@ export function updateStatusWindow(eventData, isFinal = false) {
                         }
                         return value;
                     }, 2); // Indent for readability
-                    // --- MODIFICATION END ---
                 } catch (e) {
                     detailsString = "[Could not stringify details]";
                     console.error("Error stringifying details:", e, details);
@@ -1128,3 +1119,4 @@ export function closeChatModal() {
     DOM.chatModalContent.classList.add('scale-95', 'opacity-0');
     setTimeout(() => DOM.chatModalOverlay.classList.add('hidden'), 300);
 }
+
