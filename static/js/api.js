@@ -302,6 +302,35 @@ export async function renameSession(sessionId, newName) {
 }
 // --- END NEW Function ---
 
+// --- NEW Function: deleteSession ---
+/**
+ * Deletes a specific session via the backend API.
+ * @param {string} sessionId - The ID of the session to delete.
+ * @returns {Promise<object>} A promise that resolves with the success/error response from the server.
+ * @throws {Error} If the API call fails or returns an error status.
+ */
+export async function deleteSession(sessionId) {
+    if (!sessionId) {
+        throw new Error("Session ID is required for deletion.");
+    }
+
+    const response = await fetch(`/api/session/${sessionId}`, {
+        method: 'DELETE',
+        headers: _getHeaders(false), // No Content-Type needed, but send UUID
+    });
+
+    if (response.status === 204) { // No Content
+        return { status: "success", message: "Session deleted successfully." };
+    }
+
+    const result = await response.json();
+    if (!response.ok) {
+        throw new Error(result.message || `Failed to delete session (status ${response.status}).`);
+    }
+    return result; // Should contain { status: "success", message: "..." }
+}
+// --- END NEW Function ---
+
 
 export async function fetchModels() {
     const provider = DOM.llmProviderSelect.value;

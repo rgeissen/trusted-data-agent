@@ -605,9 +605,11 @@ export function highlightResource(resourceName, type) {
 }
 
 export function addSessionToList(sessionId, name, isActive = false) {
+    // --- MODIFICATION START: Add action buttons ---
     const sessionItem = document.createElement('button');
     sessionItem.id = `session-${sessionId}`;
     sessionItem.dataset.sessionId = sessionId;
+    // The session-item class now has flex properties from main.css
     sessionItem.className = 'session-item w-full text-left p-3 rounded-lg hover:bg-white/10 transition-colors truncate';
     if (isActive) {
         document.querySelectorAll('.session-item').forEach(item => item.classList.remove('active'));
@@ -615,11 +617,34 @@ export function addSessionToList(sessionId, name, isActive = false) {
     }
 
     const nameSpan = document.createElement('span');
-    // --- MODIFICATION START: Add class for click targeting ---
-    nameSpan.className = 'session-name-span font-semibold text-sm text-white cursor-pointer hover:underline'; // Added session-name-span and cursor/hover
+    // Added 'flex-grow truncate' and removed cursor/hover styles (now in css)
+    nameSpan.className = 'session-name-span font-semibold text-sm text-white flex-grow truncate';
     // --- MODIFICATION END ---
     nameSpan.textContent = name;
     sessionItem.appendChild(nameSpan);
+
+    // --- MODIFICATION START: Create and add action buttons ---
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'session-actions'; // Style block, hidden by default, visible on hover
+
+    // Edit Button
+    const editButton = document.createElement('button');
+    editButton.type = 'button';
+    editButton.className = 'session-action-button session-edit-button';
+    editButton.title = 'Rename session';
+    editButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-11.202 11.202a.5.5 0 01-.293.146H3.5a.5.5 0 01-.5-.5v-1.414a.5.5 0 01.146-.293l11.202-11.202zM15.707 2.293a1 1 0 010 1.414L5.414 14H4v-1.414L14.293 2.293a1 1 0 011.414 0z" /></svg>`;
+    actionsDiv.appendChild(editButton);
+
+    // Delete Button
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.className = 'session-action-button session-delete-button';
+    deleteButton.title = 'Delete session';
+    deleteButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm2 3a1 1 0 11-2 0 1 1 0 012 0zm4 0a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd" /></svg>`;
+    actionsDiv.appendChild(deleteButton);
+
+    sessionItem.appendChild(actionsDiv);
+    // --- MODIFICATION END ---
 
     // Event listener is attached in eventHandlers.js
     return sessionItem;
@@ -649,43 +674,67 @@ export function updateSessionListItemName(sessionId, newName) {
 }
 // --- END NEW Function ---
 
+// --- NEW Function: removeSessionFromList ---
+/**
+ * Removes a session item from the history list in the DOM.
+ * @param {string} sessionId - The ID of the session to remove.
+ */
+export function removeSessionFromList(sessionId) {
+    const sessionItem = document.getElementById(`session-${sessionId}`);
+    if (sessionItem) {
+        sessionItem.remove();
+        console.log(`UI Updated: Removed session item ${sessionId} from list.`);
+    } else {
+        console.warn(`Could not find session item ${sessionId} in the list to remove.`);
+    }
+}
+// --- END NEW Function ---
+
+
 // --- NEW Function: enterSessionEditMode ---
 /**
  * Switches a session list item's name span to an input field for editing.
- * @param {HTMLSpanElement} spanElement - The session name span element that was clicked.
+ * @param {HTMLButtonElement} editButton - The edit button element that was clicked.
  */
-export function enterSessionEditMode(spanElement) {
-    const sessionItem = spanElement.closest('.session-item');
+export function enterSessionEditMode(editButton) {
+    // --- MODIFICATION START: Logic updated to be triggered by button ---
+    const sessionItem = editButton.closest('.session-item');
     if (!sessionItem || sessionItem.querySelector('.session-name-input')) {
         return; // Already in edit mode or element not found
     }
+
+    const spanElement = sessionItem.querySelector('.session-name-span');
+    const actionsDiv = sessionItem.querySelector('.session-actions');
+    if (!spanElement || !actionsDiv) return; // Missing required elements
 
     const currentName = spanElement.textContent;
     const inputElement = document.createElement('input');
     inputElement.type = 'text';
     inputElement.value = currentName;
     inputElement.dataset.originalName = currentName; // Store original name
-    inputElement.className = 'session-name-input w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm outline-none ring-2 ring-transparent focus:ring-teradata-orange';
+    // Use the class from main.css for styling
+    inputElement.className = 'session-edit-input';
 
     // Replace span with input
     spanElement.style.display = 'none';
-    sessionItem.insertBefore(inputElement, spanElement.nextSibling); // Insert input after the (hidden) span
+    actionsDiv.style.display = 'none'; // Hide actions div
+    sessionItem.insertBefore(inputElement, spanElement); // Insert input before the (hidden) span
 
     // Focus and select text
     inputElement.focus();
     inputElement.select();
 
-    // Attach listeners (handled in eventHandlers.js via delegation is better, but this works too)
-    // We pass the handlers from eventHandlers.js to avoid circular dependencies
+    // Attach listeners
     inputElement.addEventListener('blur', handleSessionRenameSave);
     inputElement.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
-            e.preventDefault(); // Prevent form submission if inside one
-            handleSessionRenameSave(e); // Pass event to handler
+            e.preventDefault();
+            handleSessionRenameSave(e);
         } else if (e.key === 'Escape') {
-            handleSessionRenameCancel(e); // Pass event to handler
+            handleSessionRenameCancel(e);
         }
     });
+    // --- MODIFICATION END ---
 }
 // --- END NEW Function ---
 
@@ -700,21 +749,21 @@ export function exitSessionEditMode(inputElement, finalName) {
     if (!sessionItem) return;
 
     const spanElement = sessionItem.querySelector('.session-name-span');
+    // --- MODIFICATION START: Show actions div ---
+    const actionsDiv = sessionItem.querySelector('.session-actions');
+
     if (spanElement) {
         spanElement.textContent = finalName;
         spanElement.style.display = ''; // Show the span again
     }
+    if (actionsDiv) {
+        actionsDiv.style.display = ''; // Show the actions div again
+    }
+    // --- MODIFICATION END ---
 
     // Clean up input element and its listeners
     inputElement.removeEventListener('blur', handleSessionRenameSave);
-    // --- MODIFICATION START: Correctly reference keydown handler ---
-    // Remove the specific keydown handler, not just the function name
-    // Since the handler is anonymous within enterSessionEditMode, we need a different approach
-    // Easiest is to just remove the element itself, which also removes its listeners.
-    // The blur listener removal is okay as it's a direct reference.
-    // inputElement.removeEventListener('keydown', handleSessionRenameSave); // Incorrect
-    // inputElement.removeEventListener('keydown', handleSessionRenameCancel); // Incorrect
-    // --- MODIFICATION END ---
+    // Note: Keydown listener is anonymous, but it will be removed when the element is removed.
     inputElement.remove();
 }
 // --- END NEW Function ---
@@ -900,4 +949,3 @@ export function closeChatModal() {
     DOM.chatModalContent.classList.add('scale-95', 'opacity-0');
     setTimeout(() => DOM.chatModalOverlay.classList.add('hidden'), 300);
 }
-

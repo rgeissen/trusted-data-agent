@@ -9,9 +9,9 @@ import { state } from './state.js';
 import * as API from './api.js';
 import * as UI from './ui.js';
 import * as Utils from './utils.js';
-// --- MODIFICATION START: Import specific utils and renameSession ---
+// --- MODIFICATION START: Import specific utils and rename/deleteSession ---
 import { copyToClipboard, copyTableToClipboard, classifyConfirmation } from './utils.js';
-import { renameSession } from './api.js'; // Import the rename API function
+import { renameSession, deleteSession } from './api.js'; // Import the rename/delete API functions
 // --- MODIFICATION END ---
 import { startRecognition, stopRecognition, startConfirmationRecognition } from './voice.js';
 
@@ -626,30 +626,25 @@ export async function finalizeConfiguration(config) {
         handleLoadResources('resources')
     ]);
 
-    // --- MODIFICATION START: Load all sessions on *any* successful config ---
-    console.log("DEBUG: Configuration finalized. Attempting to load previous sessions...");
+    // --- MODIFICATION START: Load all sessions *before* starting a new one ---
+    // Load existing sessions first
     try {
         const sessions = await API.loadAllSessions();
-        console.log("DEBUG: Received sessions from API:", sessions);
-        DOM.sessionList.innerHTML = ''; // Clear list before adding
+        DOM.sessionList.innerHTML = ''; // Clear list
         if (sessions && Array.isArray(sessions) && sessions.length > 0) {
-            sessions.forEach((session, index) => {
-                console.log(`DEBUG: Adding session ${index + 1}/${sessions.length} to list:`, session);
+            sessions.forEach((session) => {
                 const sessionItem = UI.addSessionToList(session.id, session.name, false); // Add inactive
-                DOM.sessionList.appendChild(sessionItem); // Append instead of prepend
+                DOM.sessionList.appendChild(sessionItem); // Append
             });
-            console.log("DEBUG: Finished adding sessions to the list.");
-        } else {
-            console.log("DEBUG: No previous sessions found or returned by API.");
         }
     } catch (sessionError) {
-        console.error("DEBUG: Error loading previous sessions:", sessionError);
-        DOM.sessionList.innerHTML = '<li class="text-red-400 p-2">Error loading sessions</li>'; // Show error in UI
+        console.error("Error loading previous sessions:", sessionError);
+        DOM.sessionList.innerHTML = '<li class="text-red-400 p-2">Error loading sessions</li>';
     }
     // --- MODIFICATION END ---
 
     // Await session start before closing modal
-    await handleStartNewSession();
+    await handleStartNewSession(); // This will prepend the new session and make it active
 
     state.pristineConfig = getCurrentCoreConfig();
     UI.updateConfigButtonState();
@@ -1361,6 +1356,41 @@ export function handleSessionRenameCancel(e) {
 }
 // --- MODIFICATION END ---
 
+// --- MODIFICATION START: Add Delete Handler ---
+/**
+ * Handles the click event for the delete session button.
+ * @param {HTMLButtonElement} deleteButton - The delete button element that was clicked.
+ */
+async function handleDeleteSessionClick(deleteButton) {
+    const sessionItem = deleteButton.closest('.session-item');
+    if (!sessionItem) return;
+
+    const sessionId = sessionItem.dataset.sessionId;
+    const sessionName = sessionItem.querySelector('.session-name-span')?.textContent || 'this session';
+
+    UI.showConfirmation(
+        'Delete Session?',
+        `Are you sure you want to permanently delete '${sessionName}'? This action cannot be undone.`,
+        async () => {
+            try {
+                await deleteSession(sessionId); // Call API
+                UI.removeSessionFromList(sessionId); // Remove from UI
+
+                // If we deleted the active session, start a new one
+                if (state.currentSessionId === sessionId) {
+                    console.log('Active session deleted. Starting a new session.');
+                    await handleStartNewSession();
+                }
+            } catch (error) {
+                console.error(`Failed to delete session ${sessionId}:`, error);
+                // Optionally show an error to the user
+                UI.addMessage('assistant', `Error: Could not delete session '${sessionName}'. ${error.message}`);
+            }
+        }
+    );
+}
+// --- MODIFICATION END ---
+
 
 // --- Initializer ---
 
@@ -1450,20 +1480,28 @@ export function initializeEventListeners() {
         }
     });
 
+    // --- MODIFICATION START: Updated session list click delegation ---
     DOM.sessionList.addEventListener('click', (e) => {
         const sessionItem = e.target.closest('.session-item');
-        // --- MODIFICATION START: Add click handler for session name span ---
-        const nameSpan = e.target.closest('.session-name-span');
+        if (!sessionItem) return; // Click was not on a session item
 
-        if (nameSpan && sessionItem) {
-            // Clicked on the name span, enter edit mode
-            UI.enterSessionEditMode(nameSpan);
-        } else if (sessionItem) {
-            // Clicked on the session item itself (but not the name span), load session
+        const editButton = e.target.closest('.session-edit-button');
+        const deleteButton = e.target.closest('.session-delete-button');
+
+        if (deleteButton) {
+            // 1. Handle Delete
+            handleDeleteSessionClick(deleteButton);
+        } else if (editButton) {
+            // 2. Handle Edit
+            UI.enterSessionEditMode(editButton);
+        } else if (!sessionItem.querySelector('.session-edit-input')) {
+            // 3. Handle Load (and not in edit mode)
+            // Clicked on the session item itself, load session
             handleLoadSession(sessionItem.dataset.sessionId);
         }
-        // --- MODIFICATION END ---
+        // If in edit mode and clicked outside buttons, do nothing (blur will handle save)
     });
+    // --- MODIFICATION END ---
 
     // All modal listeners
     DOM.promptModalClose.addEventListener('click', UI.closePromptModal);
@@ -1567,3 +1605,4 @@ export function initializeEventListeners() {
         }
     });
 }
+

@@ -1,5 +1,5 @@
 {
-  "id": "762d9e13-17a4-43ac-b928-0393c3f48edd",
+  "id": "ca3c21f4-da3e-42f6-80b0-e525d9aab1f7",
   "user_uuid": "cc208a0d-5092-4f83-a9f5-80d8b7384f13",
   "system_prompt_template": null,
   "charting_intensity": "medium",
@@ -14,8 +14,8 @@
       "content": "Understood."
     }
   ],
-  "name": "Hello",
-  "created_at": "2025-10-28T09:40:26.426557",
+  "name": "New Chat",
+  "created_at": "2025-10-28T10:39:00.745714",
   "input_tokens": 0,
   "output_tokens": 0,
   "last_turn_data": {
