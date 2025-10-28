@@ -293,11 +293,11 @@ async function handleStopExecutionClick() {
 
 // --- MODIFICATION START: Define handleReloadPlanClick ---
 /**
- * Handles clicks on the "Reload Plan" button. Fetches and displays the full turn details.
- * @param {HTMLButtonElement} buttonEl - The button element that was clicked.
+ * Handles clicks on the "Reload Plan" button or user avatar. Fetches and displays the full turn details.
+ * @param {HTMLElement} element - The element that was clicked (button or avatar div).
  */
-async function handleReloadPlanClick(buttonEl) {
-    const turnId = buttonEl.dataset.turnId;
+async function handleReloadPlanClick(element) {
+    const turnId = element.dataset.turnId; // Get turnId from data attribute
     const sessionId = state.currentSessionId;
     if (!turnId || !sessionId) {
         console.error("Missing turnId or sessionId for reloading plan details.");
@@ -340,7 +340,7 @@ async function handleReloadPlanClick(buttonEl) {
 
 // --- MODIFICATION START: Define handleReplayQueryClick ---
 /**
- * Handles clicks on the "Replay Query" button. Fetches the original query and re-submits it.
+ * Handles clicks on the "Replay Query" button (now in header). Fetches the original query and re-submits it.
  * @param {HTMLButtonElement} buttonEl - The button element that was clicked.
  */
 async function handleReplayQueryClick(buttonEl) {
@@ -466,6 +466,22 @@ export async function handleStartNewSession() {
     UI.updateTokenDisplay({ statement_input: 0, statement_output: 0, total_input: 0, total_output: 0 });
     UI.addMessage('assistant', "Starting a new conversation... Please wait.");
     UI.setThinkingIndicator(false);
+
+    // --- MODIFICATION START: Hide header buttons and clear turnId on new session ---
+    if (DOM.headerReplayPlannedButton) {
+        DOM.headerReplayPlannedButton.classList.add('hidden');
+        DOM.headerReplayPlannedButton.dataset.turnId = '';
+    }
+    if (DOM.headerReplayOptimizedButton) {
+        DOM.headerReplayOptimizedButton.classList.add('hidden');
+        DOM.headerReplayOptimizedButton.dataset.turnId = '';
+    }
+    if (DOM.headerReplayQueryButton) {
+        DOM.headerReplayQueryButton.classList.add('hidden');
+        DOM.headerReplayQueryButton.dataset.turnId = '';
+    }
+    // --- MODIFICATION END ---
+
     try {
         const data = await API.startNewSession();
         const sessionItem = UI.addSessionToList(data.session_id, data.name, true);
@@ -1473,9 +1489,8 @@ export function initializeEventListeners() {
     // Delegated event listener for copy buttons and NEW reload/replay buttons
     DOM.chatLog.addEventListener('click', (e) => {
         const copyButton = e.target.closest('.copy-button');
-        // --- MODIFICATION START: Add reload/replay button handling ---
-        const reloadButton = e.target.closest('.reload-plan-button');
-        const replayButton = e.target.closest('.replay-query-button');
+        // --- MODIFICATION START: Add avatar click handling ---
+        const clickableAvatar = e.target.closest('.clickable-avatar[data-turn-id]');
         // --- MODIFICATION END ---
 
         if (copyButton) {
@@ -1485,11 +1500,9 @@ export function initializeEventListeners() {
             } else if (copyType === 'table') {
                 copyTableToClipboard(copyButton);
             }
-        // --- MODIFICATION START: Call handlers for reload/replay ---
-        } else if (reloadButton) {
-            handleReloadPlanClick(reloadButton);
-        } else if (replayButton) {
-            handleReplayQueryClick(replayButton);
+        // --- MODIFICATION START: Call handler for avatar click ---
+        } else if (clickableAvatar) {
+            handleReloadPlanClick(clickableAvatar); // Pass the avatar element
         }
         // --- MODIFICATION END ---
     });
@@ -1499,6 +1512,26 @@ export function initializeEventListeners() {
     } else {
         console.error("Stop execution button not found in DOM elements.");
     }
+
+    // --- MODIFICATION START: Add event listeners for header replay buttons ---
+    if (DOM.headerReplayPlannedButton) {
+        DOM.headerReplayPlannedButton.addEventListener('click', (e) => {
+            alert('Replay Planned Query - Not Implemented Yet.');
+            // Placeholder: handleReplayPlannedClick(e.currentTarget);
+        });
+    }
+    if (DOM.headerReplayOptimizedButton) {
+        DOM.headerReplayOptimizedButton.addEventListener('click', (e) => {
+             alert('Replay Optimized Query - Not Implemented Yet.');
+            // Placeholder: handleReplayOptimizedClick(e.currentTarget);
+        });
+    }
+    if (DOM.headerReplayQueryButton) {
+        DOM.headerReplayQueryButton.addEventListener('click', (e) => {
+            handleReplayQueryClick(e.currentTarget); // Pass the button element
+        });
+    }
+    // --- MODIFICATION END ---
 
 
     DOM.mainContent.addEventListener('click', (e) => {
@@ -1678,4 +1711,3 @@ export function initializeEventListeners() {
         }
     });
 }
-

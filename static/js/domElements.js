@@ -45,6 +45,10 @@ export const statusExpandIcon = document.getElementById('status-expand-icon');
 export const toggleStatusCheckbox = document.getElementById('toggle-status-checkbox');
 // --- MODIFICATION START: Add stop button element ---
 export const stopExecutionButton = document.getElementById('stop-execution-button');
+// --- MODIFICATION START: Add header replay button elements ---
+export const headerReplayPlannedButton = document.getElementById('header-replay-planned-button');
+export const headerReplayOptimizedButton = document.getElementById('header-replay-optimized-button');
+export const headerReplayQueryButton = document.getElementById('header-replay-query-button');
 // --- MODIFICATION END ---
 
 // Session history panel elements
@@ -162,3 +166,4 @@ export const viewPromptModalContent = document.getElementById('view-prompt-modal
 export const viewPromptModalTitle = document.getElementById('view-prompt-modal-title');
 export const viewPromptModalText = document.getElementById('view-prompt-modal-text');
 export const viewPromptModalClose = document.getElementById('view-prompt-modal-close');
+

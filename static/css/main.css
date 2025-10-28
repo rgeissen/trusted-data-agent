@@ -649,32 +649,55 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     color: var(--medium-text) !important;
 }
 
-/* --- MODIFICATION START: Add styles for reload/replay buttons --- */
-.user-message-actions-placeholder {
+/* --- MODIFICATION START: Remove styles for reload/replay buttons --- */
+/* .user-message-actions-placeholder {
     transition: opacity 0.2s ease-in-out;
-    /* Position adjusted in ui.js */
 }
-
-/* Individual button styles (shared between reload/replay) */
 .reload-plan-button,
 .replay-query-button {
-    background-color: rgba(255, 255, 255, 0.05); /* Subtle background */
+    background-color: rgba(255, 255, 255, 0.05); 
     border: 1px solid rgba(255, 255, 255, 0.1);
     transition: opacity 0.2s ease-in-out, background-color 0.2s ease-in-out, color 0.2s ease-in-out;
 }
-
-/* Hover styles */
 .reload-plan-button:hover,
 .replay-query-button:hover {
     background-color: rgba(255, 255, 255, 0.15);
     color: white;
 }
-
-/* Initially hide buttons, show on hover of the parent message bubble (group) */
 .message-bubble:not(:hover) .user-message-actions-placeholder > button {
     opacity: 0;
 }
 .message-bubble:hover .user-message-actions-placeholder > button {
     opacity: 1;
+}
+*/
+/* --- MODIFICATION END --- */
+
+
+/* --- MODIFICATION START: Add styles for clickable user avatar --- */
+.clickable-avatar {
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+.clickable-avatar:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 10px rgba(241, 95, 34, 0.5); /* Teradata orange glow */
+}
+/* --- MODIFICATION END --- */
+
+/* --- MODIFICATION START: Add styles for header replay buttons --- */
+.replay-action-button {
+    color: var(--medium-text); /* gray-400 */
+    transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
+}
+.replay-action-button:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+.replay-action-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background-color: transparent !important;
+    color: var(--medium-text) !important;
 }
 /* --- MODIFICATION END --- */

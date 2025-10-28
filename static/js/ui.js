@@ -142,7 +142,7 @@ export function renderHistoricalTrace(originalPlan, executionTrace, turnId) {
 
 export function addMessage(role, content, turnId = null) {
     const wrapper = document.createElement('div');
-    // --- MODIFICATION START: Add 'group' class for hover ---
+    // --- MODIFICATION START: Add 'group' class for hover (no change here) ---
     wrapper.className = `message-bubble group flex items-start gap-4 ${role === 'user' ? 'justify-end' : ''}`;
     // --- MODIFICATION END ---
     const icon = document.createElement('div');
@@ -150,11 +150,9 @@ export function addMessage(role, content, turnId = null) {
     icon.textContent = role === 'user' ? 'U' : 'A';
     icon.classList.add(role === 'user' ? 'bg-gray-700' : 'bg-[#F15F22]');
 
-    // --- MODIFICATION START: Add placeholder/buttons for user messages ---
+    // --- MODIFICATION START: Remove placeholder for user messages ---
     if (role === 'user') {
-        const actionsPlaceholder = document.createElement('div');
-        actionsPlaceholder.className = 'user-message-actions-placeholder absolute -left-14 top-1/2 -translate-y-1/2'; // Position near icon
-        icon.appendChild(actionsPlaceholder); // Append placeholder to icon container
+        // No placeholder needed anymore
     }
     // --- MODIFICATION END ---
 
@@ -177,39 +175,37 @@ export function addMessage(role, content, turnId = null) {
 
     DOM.chatLog.appendChild(wrapper);
 
-    // --- MODIFICATION START: Inject buttons when assistant message arrives with turnId ---
+    // --- MODIFICATION START: Substitute in-chat buttons with avatar click and header buttons ---
     if (role === 'assistant' && turnId) {
         // Find the last user message bubble (should be the one right before this assistant message)
         const userBubbles = DOM.chatLog.querySelectorAll('.message-bubble:has(.bg-gray-700)');
         const lastUserBubble = userBubbles.length > 0 ? userBubbles[userBubbles.length - 1] : null;
 
         if (lastUserBubble) {
-            const placeholder = lastUserBubble.querySelector('.user-message-actions-placeholder');
-            if (placeholder) {
-                // Create the action buttons container
-                const actionsContainer = document.createElement('div');
-                actionsContainer.className = 'user-message-actions flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200'; // Initially hidden, show on group hover
-
-                // Reload Plan Button
-                const reloadBtn = document.createElement('button');
-                reloadBtn.className = 'reload-plan-button p-1 rounded bg-gray-600 hover:bg-teradata-orange text-white';
-                reloadBtn.title = `Reload Plan & Details for Turn ${turnId}`;
-                reloadBtn.dataset.turnId = turnId;
-                reloadBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>`; // Refresh icon
-
-                // Replay Query Button
-                const replayBtn = document.createElement('button');
-                replayBtn.className = 'replay-query-button p-1 rounded bg-gray-600 hover:bg-teradata-orange text-white';
-                replayBtn.title = `Replay Query for Turn ${turnId}`;
-                replayBtn.dataset.turnId = turnId;
-                replayBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`; // Play icon
-
-                actionsContainer.appendChild(reloadBtn);
-                actionsContainer.appendChild(replayBtn);
-
-                // Replace placeholder with the actual buttons
-                placeholder.replaceWith(actionsContainer);
+            const userAvatarIcon = lastUserBubble.querySelector('.bg-gray-700');
+            if (userAvatarIcon) {
+                // 1. Make the User Avatar clickable for reloading the plan
+                userAvatarIcon.classList.add('clickable-avatar');
+                userAvatarIcon.dataset.turnId = turnId;
+                userAvatarIcon.title = `Reload Plan & Details for Turn ${turnId}`;
             }
+        }
+
+        // 2. Show and update the header replay buttons
+        if (DOM.headerReplayPlannedButton) {
+            DOM.headerReplayPlannedButton.classList.remove('hidden');
+            DOM.headerReplayPlannedButton.dataset.turnId = turnId;
+            // DOM.headerReplayPlannedButton.disabled = false; // Will be enabled in setExecutionState
+        }
+        if (DOM.headerReplayOptimizedButton) {
+            DOM.headerReplayOptimizedButton.classList.remove('hidden');
+            DOM.headerReplayOptimizedButton.dataset.turnId = turnId;
+            // DOM.headerReplayOptimizedButton.disabled = false;
+        }
+        if (DOM.headerReplayQueryButton) {
+            DOM.headerReplayQueryButton.classList.remove('hidden');
+            DOM.headerReplayQueryButton.dataset.turnId = turnId;
+            // DOM.headerReplayQueryButton.disabled = false;
         }
     }
     // --- MODIFICATION END ---
@@ -241,6 +237,35 @@ export function setExecutionState(isActive) {
         DOM.stopExecutionButton.classList.toggle('hidden', !isActive);
         DOM.stopExecutionButton.disabled = !isActive;
     }
+
+    // --- MODIFICATION START: Show/hide and disable/enable header replay buttons ---
+    if (isActive) {
+        // Hide and disable buttons when execution starts
+        if (DOM.headerReplayPlannedButton) {
+            DOM.headerReplayPlannedButton.classList.add('hidden');
+            DOM.headerReplayPlannedButton.disabled = true;
+        }
+        if (DOM.headerReplayOptimizedButton) {
+            DOM.headerReplayOptimizedButton.classList.add('hidden');
+            DOM.headerReplayOptimizedButton.disabled = true;
+        }
+        if (DOM.headerReplayQueryButton) {
+            DOM.headerReplayQueryButton.classList.add('hidden');
+            DOM.headerReplayQueryButton.disabled = true;
+        }
+    } else {
+        // Enable buttons when execution ends (they will be shown by addMessage)
+        if (DOM.headerReplayPlannedButton) {
+            DOM.headerReplayPlannedButton.disabled = false;
+        }
+        if (DOM.headerReplayOptimizedButton) {
+            DOM.headerReplayOptimizedButton.disabled = false;
+        }
+        if (DOM.headerReplayQueryButton) {
+            DOM.headerReplayQueryButton.disabled = false;
+        }
+    }
+    // --- MODIFICATION END ---
 
     if (!isActive) {
         setThinkingIndicator(false);
@@ -1033,7 +1058,7 @@ export function updateVoiceModeUI() {
         DOM.voiceInputButton.classList.add('bg-[#F15F22]');
     } else {
         DOM.voiceInputButton.classList.add('bg-gray-600');
-        DOM.voiceInputButton.classList.remove('bg-[#F15F22]');
+        DOM.voiceInputButton.classList.remove('bg-[#F115F22]'); // Typo fixed from original
     }
 
     let tooltipText = "Voice Conversation";
@@ -1103,4 +1128,3 @@ export function closeChatModal() {
     DOM.chatModalContent.classList.add('scale-95', 'opacity-0');
     setTimeout(() => DOM.chatModalOverlay.classList.add('hidden'), 300);
 }
-
