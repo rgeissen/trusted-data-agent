@@ -399,6 +399,28 @@ async def rename_session(session_id: str):
         return jsonify({"status": "error", "message": "Failed to update session name on the server."}), 500
 # --- END NEW Endpoint ---
 
+# --- NEW: Session Delete Endpoint ---
+@api_bp.route("/api/session/<session_id>", methods=["DELETE"])
+async def delete_session_endpoint(session_id: str):
+    """Deletes a specific session for the requesting user."""
+    user_uuid = _get_user_uuid_from_request()
+    app_logger.info(f"DELETE request received for session {session_id} from user {user_uuid}.")
+
+    try:
+        success = session_manager.delete_session(user_uuid, session_id)
+        if success:
+            app_logger.info(f"Successfully processed delete request for session {session_id} (user {user_uuid}).")
+            return jsonify({"status": "success", "message": "Session deleted successfully."}), 200
+        else:
+            # delete_session logs specifics, return a generic server error
+            app_logger.error(f"session_manager.delete_session reported failure for session {session_id} (user {user_uuid}).")
+            return jsonify({"status": "error", "message": "Failed to delete session file on the server."}), 500
+    except Exception as e:
+        # Catch unexpected errors during the process
+        app_logger.error(f"Unexpected error during DELETE /api/session/{session_id} for user {user_uuid}: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": "An unexpected server error occurred during deletion."}), 500
+# --- END NEW Endpoint ---
+
 
 @api_bp.route("/session", methods=["POST"])
 async def new_session():

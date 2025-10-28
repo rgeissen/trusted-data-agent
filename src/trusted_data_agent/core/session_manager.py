@@ -177,6 +177,28 @@ def get_all_sessions(user_uuid: str) -> list[dict]:
     app_logger.debug(f"Returning {len(session_summaries)} session summaries for user '{user_uuid}'.")
     return session_summaries
 
+# --- NEW FUNCTION: delete_session ---
+def delete_session(user_uuid: str, session_id: str) -> bool:
+    """Deletes a session file from the filesystem."""
+    session_path = _get_session_path(user_uuid, session_id)
+    if not session_path:
+        app_logger.error(f"Cannot delete session '{session_id}' for user '{user_uuid}': Invalid path generated.")
+        return False # Indicate failure due to invalid path
+
+    app_logger.info(f"Attempting to delete session file: {session_path}")
+    try:
+        if session_path.is_file():
+            session_path.unlink()
+            app_logger.info(f"Successfully deleted session file: {session_path}")
+            return True # Indicate success
+        else:
+            app_logger.warning(f"Session file not found for deletion: {session_path}. Treating as success (already gone).")
+            return True # Indicate success (idempotent delete)
+    except OSError as e:
+        app_logger.error(f"Error deleting session file '{session_path}': {e}", exc_info=True)
+        return False # Indicate failure due to OS error
+# --- END NEW FUNCTION ---
+
 def add_to_history(user_uuid: str, session_id: str, role: str, content: str):
     session_data = _load_session(user_uuid, session_id)
     if session_data:
@@ -240,4 +262,3 @@ def update_last_turn_data(user_uuid: str, session_id: str, turn_data: dict):
             app_logger.error(f"Failed to save session after updating last turn data for {session_id}")
     else:
         app_logger.warning(f"Could not update last turn data: Session {session_id} not found for user {user_uuid}.")
-
