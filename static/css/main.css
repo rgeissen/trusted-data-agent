@@ -260,15 +260,13 @@ details.resource-selected > summary {
      transition: opacity 0.2s ease-in-out;
 }
 
-/* --- MODIFICATION START: Session Item Layout --- */
 .session-item {
-    /* Use flex to align name and buttons */
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 0.5rem; /* Space between name and button group */
+    gap: 0.5rem;
 }
-/* --- MODIFICATION END --- */
+
 
 .session-item.active {
     background-color: var(--teradata-orange-dark);
@@ -276,23 +274,15 @@ details.resource-selected > summary {
     border-left: 4px solid var(--teradata-orange);
 }
 
-/* --- MODIFICATION START: Styles for Session Rename/Delete --- */
 .session-item .session-name-span {
-    /* cursor: text; */ /* REMOVED: No longer the edit trigger */
     display: inline-block;
-    /* width: calc(100% - 10px); */ /* REMOVED: Flexbox will handle width */
-    flex-grow: 1; /* Allow name to take available space */
+    flex-grow: 1;
     padding: 2px 0;
     border-radius: 3px;
     transition: background-color 0.1s ease-in-out;
-    /* Add truncate styles here for the span */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-.session-item .session-name-span:hover {
-     /* background-color: rgba(255, 255, 255, 0.1); */ /* REMOVED: Hover on span is no longer needed */
 }
 
 /* Container for the buttons */
@@ -301,16 +291,13 @@ details.resource-selected > summary {
     align-items: center;
     gap: 0.25rem; /* Space between buttons */
     flex-shrink: 0; /* Prevent buttons from shrinking */
-    /* Hide buttons by default */
     opacity: 0;
     transition: opacity 0.15s ease-in-out;
 }
 
-/* Show buttons on session item hover */
 .session-item:hover .session-actions {
     opacity: 1;
 }
-/* Keep buttons visible if item is active (optional, but good UX) */
 .session-item.active .session-actions {
     opacity: 1;
 }
@@ -336,24 +323,21 @@ details.resource-selected > summary {
 
 
 .session-edit-input {
-    background-color: rgba(255, 255, 255, 0.1); /* Slightly lighter background for input */
-    border: 1px solid var(--teradata-orange); /* Highlight with border */
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--teradata-orange);
     color: white;
     font-size: 0.875rem; /* text-sm */
     font-weight: 600; /* font-semibold */
     padding: 1px 4px; /* Adjust padding to match span appearance */
     border-radius: 3px;
-    /* width: 100%; */ /* REMOVED: Let flexbox handle width */
-    flex-grow: 1; /* Take up the space of the span */
-    outline: none; /* Remove default outline */
-    box-shadow: 0 0 5px rgba(241, 95, 34, 0.5); /* Add subtle glow */
+    flex-grow: 1;
+    outline: none;
+    box-shadow: 0 0 5px rgba(241, 95, 34, 0.5);
 }
 
 .session-edit-input:focus {
-    /* Optional: Slightly enhance focus */
     box-shadow: 0 0 8px rgba(241, 95, 34, 0.7);
 }
-/* --- MODIFICATION END --- */
 
 
 #tool-header {
@@ -392,7 +376,6 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     cursor: not-allowed;
 }
 
-/* --- MODIFICATION START: Refine pulse animation with dimming --- */
 @keyframes pulse {
     0% {
         transform: scale(1);
@@ -400,22 +383,22 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
         box-shadow: 0 0 8px currentColor;
     }
     50% {
-        transform: scale(1.15); /* Slightly larger scale */
+        transform: scale(1.15);
         opacity: 1;
-        box-shadow: 0 0 14px currentColor; /* Brighter shadow */
+        box-shadow: 0 0 14px currentColor;
     }
     75% {
-        transform: scale(1); /* Back to normal size */
-        opacity: 0.6;        /* Dimmed */
-        box-shadow: 0 0 6px currentColor; /* Dimmer shadow */
+        transform: scale(1);
+        opacity: 0.6;
+        box-shadow: 0 0 6px currentColor;
     }
     100% {
         transform: scale(1);
-        opacity: 1;          /* Back to full opacity before repeating */
+        opacity: 1;
         box-shadow: 0 0 8px currentColor;
     }
 }
-/* --- MODIFICATION END --- */
+
 
 /* Connection status dot styling */
 @keyframes blink {
@@ -426,42 +409,39 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    transition: background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out, opacity 0.3s ease-in-out; /* Added opacity transition */
+    transition: background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out, opacity 0.3s ease-in-out;
 }
 .connection-dot.disconnected {
     background-color: #ef4444; /* red-500 */
-    color: #ef4444; /* Set color for pulse shadow */
+    color: #ef4444;
 }
 .connection-dot.connected {
     background-color: #10b981; /* green-500 */
     box-shadow: 0 0 8px #10b981;
-    color: #10b981; /* Set color for pulse shadow */
+    color: #10b981;
 }
 .connection-dot.idle {
     background-color: #10b981; /* green-500 */
     box-shadow: 0 0 8px #10b981;
-    color: #10b981; /* Set color for pulse shadow */
+    color: #10b981;
 }
 .connection-dot.busy {
     background-color: #facc15; /* yellow-400 */
     box-shadow: 0 0 8px #facc15;
-    /* Removed the blink animation here, pulse will handle activity */
-    /* animation: blink 1s infinite; */
-    color: #facc15; /* Set color for pulse shadow */
+    color: #facc15;
 }
 .connection-dot.context-last-turn-temp {
     background-color: #facc15; /* yellow-400 */
     box-shadow: 0 0 8px #facc15;
-    color: #facc15; /* Set color for pulse shadow */
+    color: #facc15;
 }
 .connection-dot.context-last-turn-locked {
     background-color: var(--teradata-orange);
     box-shadow: 0 0 8px var(--teradata-orange);
-    color: var(--teradata-orange); /* Set color for pulse shadow */
+    color: var(--teradata-orange);
 }
 
 .connection-dot.pulsing {
-    /* Slightly faster pulse */
     animation: pulse 1.2s infinite ease-in-out;
 }
 
@@ -653,24 +633,48 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     opacity: 0.6;
 }
 
-/* --- MODIFICATION START: Change stop button color to orange --- */
 #stop-execution-button {
-    /* Use Tailwind classes via @apply if possible, or direct CSS */
-     /* text-red-400 */
     color: var(--teradata-orange);
     transition-colors: 0.2s ease-in-out;
 }
 #stop-execution-button:hover {
-     /* hover:text-red-300 */
-    color: white; /* Or a lighter orange if preferred */
-     /* hover:bg-red-500/20 */
-    background-color: rgba(241, 95, 34, 0.2); /* Orange with 20% opacity */
+    color: white;
+    background-color: rgba(241, 95, 34, 0.2);
 }
-/* --- MODIFICATION END --- */
 
 #stop-execution-button:disabled {
     opacity: 0.4;
     cursor: not-allowed;
-    background-color: transparent !important; /* Prevent hover effect when disabled */
-    color: var(--medium-text) !important; /* Ensure disabled text color is gray */
+    background-color: transparent !important;
+    color: var(--medium-text) !important;
 }
+
+/* --- MODIFICATION START: Add styles for reload/replay buttons --- */
+.user-message-actions-placeholder {
+    transition: opacity 0.2s ease-in-out;
+    /* Position adjusted in ui.js */
+}
+
+/* Individual button styles (shared between reload/replay) */
+.reload-plan-button,
+.replay-query-button {
+    background-color: rgba(255, 255, 255, 0.05); /* Subtle background */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: opacity 0.2s ease-in-out, background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+/* Hover styles */
+.reload-plan-button:hover,
+.replay-query-button:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: white;
+}
+
+/* Initially hide buttons, show on hover of the parent message bubble (group) */
+.message-bubble:not(:hover) .user-message-actions-placeholder > button {
+    opacity: 0;
+}
+.message-bubble:hover .user-message-actions-placeholder > button {
+    opacity: 1;
+}
+/* --- MODIFICATION END --- */

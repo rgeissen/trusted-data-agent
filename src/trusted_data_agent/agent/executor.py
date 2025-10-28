@@ -63,10 +63,10 @@ class PlanExecutor:
                     return prompt
         return None
 
-    # --- MODIFICATION START: Add user_uuid parameter ---
+    # --- MODIFICATION START: Add plan_to_execute and is_replay ---
     def __init__(self, session_id: str, user_uuid: str, original_user_input: str, dependencies: dict, active_prompt_name: str = None, prompt_arguments: dict = None, execution_depth: int = 0, disabled_history: bool = False, previous_turn_data: dict = None, force_history_disable: bool = False, source: str = "text", is_delegated_task: bool = False, force_final_summary: bool = False, plan_to_execute: list = None, is_replay: bool = False):
         self.session_id = session_id
-        self.user_uuid = user_uuid # Store user_uuid
+        self.user_uuid = user_uuid
         # --- MODIFICATION END ---
         self.original_user_input = original_user_input
         self.dependencies = dependencies
@@ -117,7 +117,7 @@ class PlanExecutor:
         self.is_single_prompt_plan = False
         self.final_summary_text = ""
 
-        # --- MODIFICATION START: Add replay flags ---
+        # --- MODIFICATION START: Store replay flags ---
         self.plan_to_execute = plan_to_execute # Store the plan if provided for replay
         self.is_replay = is_replay # Flag indicating if this is a replay
         # --- MODIFICATION END ---
@@ -185,9 +185,7 @@ class PlanExecutor:
                 source=self.source
             )
 
-            # --- MODIFICATION START: Pass user_uuid to get_session ---
             updated_session = session_manager.get_session(self.user_uuid, self.session_id)
-            # --- MODIFICATION END ---
             if updated_session:
                 events.append(self._format_sse({
                     "statement_input": input_tokens,
@@ -432,7 +430,6 @@ class PlanExecutor:
 
         return resolved_args
 
-    # --- NEW METHOD: _generate_session_name ---
     async def _generate_session_name(self, query: str) -> str:
         """
         Uses the LLM to generate a concise name for the session based on the initial query.
@@ -466,18 +463,15 @@ class PlanExecutor:
         except Exception as e:
             app_logger.error(f"Failed to generate session name: {e}", exc_info=True)
             return "New Chat" # Fallback on error
-    # --- END NEW METHOD ---
 
 
     async def run(self):
         """The main, unified execution loop for the agent."""
         final_answer_override = None
         turn_number = 1
-        # --- MODIFICATION START: Get session data to determine turn number ---
         session_data = session_manager.get_session(self.user_uuid, self.session_id)
         if session_data and isinstance(session_data.get("last_turn_data", {}).get("workflow_history"), list):
             turn_number = len(session_data["last_turn_data"]["workflow_history"]) + 1
-        # --- MODIFICATION END ---
 
         try:
             # --- MODIFICATION START: Handle Replay ---
@@ -487,8 +481,16 @@ class PlanExecutor:
                 self.state = self.AgentState.EXECUTING # Skip planning
                 # Inject a status event indicating replay
                 replay_type_text = "Optimized" if "optimized" in str(self.is_replay).lower() else "Original" # Basic type check
+                # Find the turn ID where this plan originally came from
+                original_turn_id = "..." # Default if not found
+                if session_data and isinstance(session_data.get("last_turn_data", {}).get("workflow_history"), list):
+                    for idx, turn in enumerate(session_data["last_turn_data"]["workflow_history"]):
+                        if turn.get("original_plan") == self.plan_to_execute:
+                            original_turn_id = str(idx + 1)
+                            break
+
                 yield self._format_sse({
-                    "step": f"🔄 Replaying {replay_type_text} Plan (from Turn ...)", # Turn ID needs to be passed if needed
+                    "step": f"🔄 Replaying {replay_type_text} Plan (from Turn {original_turn_id})",
                     "type": "system_message",
                     "details": f"Re-executing {'optimized' if replay_type_text == 'Optimized' else 'original'} plan..."
                 })
@@ -548,6 +550,7 @@ class PlanExecutor:
                             yield event
 
                         # --- MODIFICATION START: Store original plan AFTER refinement ---
+                        # Store the plan that was actually generated and refined before any execution begins
                         self.original_plan_for_history = copy.deepcopy(self.meta_plan)
                         app_logger.info("Stored original plan (post-refinement) for history.")
                         # --- MODIFICATION END ---
@@ -568,23 +571,26 @@ class PlanExecutor:
                                 "step": "Re-planning for Efficiency", "type": "plan_optimization",
                                 "details": {
                                     "summary": "Initial plan uses a sub-prompt alongside other tools. Agent is re-planning to create a more efficient, tool-only workflow.",
-                                    "original_plan": copy.deepcopy(self.meta_plan)
+                                    "original_plan": copy.deepcopy(self.meta_plan) # Log the plan *before* this replan
                                 }
                             })
-                            continue
+                            continue # Loop back to replan
                         break # Exit planning loop
 
+                    # Handle single prompt plan expansion (if applicable)
                     self.is_single_prompt_plan = (self.meta_plan and len(self.meta_plan) == 1 and 'executable_prompt' in self.meta_plan[0] and not self.is_delegated_task)
 
                     if self.is_single_prompt_plan:
                         async for event in self._handle_single_prompt_plan(planner):
                             yield event
                         # --- MODIFICATION START: Re-capture plan if single prompt expansion happened ---
+                        # If the plan was expanded from a single prompt, update the stored original plan
                         self.original_plan_for_history = copy.deepcopy(self.meta_plan)
                         app_logger.info("Re-stored plan after single-prompt expansion for history.")
                         # --- MODIFICATION END ---
 
 
+                    # Check for conversational plan
                     if self.is_conversational_plan:
                         app_logger.info("Detected a conversational plan. Bypassing execution.")
                         self.state = self.AgentState.SUMMARIZING
@@ -599,7 +605,7 @@ class PlanExecutor:
                 app_logger.error(f"Execution halted by definitive tool error: {e.friendly_message}")
                 yield self._format_sse({"step": "Unrecoverable Error", "details": e.friendly_message, "type": "error"}, "tool_result")
                 final_answer_override = f"I could not complete the request. Reason: {e.friendly_message}"
-                self.state = self.AgentState.SUMMARIZING
+                self.state = self.AgentState.SUMMARIZING # Go to summarization even on error
 
             # --- Summarization Phase ---
             if self.state == self.AgentState.SUMMARIZING:
@@ -626,31 +632,26 @@ class PlanExecutor:
             # --- Cleanup Phase (Always runs) ---
             # Update history only if the execution wasn't cancelled or errored out definitively
             if not self.disabled_history and self.state != self.AgentState.ERROR:
-                # --- MODIFICATION START: Build the detailed turn summary ---
-                # Use the stored original plan
-                plan_summary_for_history = [{"phase": p.get("phase"), "goal": p.get("goal")} for p in self.original_plan_for_history] if self.original_plan_for_history else []
-
+                # --- MODIFICATION START: Include original_plan_for_history in turn_summary ---
                 turn_summary = {
-                    "turn": turn_number, # Capture the turn number determined at the start of run()
-                    "user_query": self.original_user_input,
-                    "original_plan": self.original_plan_for_history, # Store the actual plan
-                    "execution_trace": self.turn_action_history, # Store the detailed trace
+                    "turn": turn_number,
+                    "user_query": self.original_user_input, # Store the original query
+                    "original_plan": self.original_plan_for_history, # Store the actual plan used
+                    "execution_trace": self.turn_action_history,
                     "final_summary": self.final_summary_text,
                     "timestamp": datetime.now(timezone.utc).isoformat()
                 }
-                # Pass user_uuid to update_last_turn_data
+                # --- MODIFICATION END ---
                 session_manager.update_last_turn_data(self.user_uuid, self.session_id, turn_summary)
                 app_logger.debug(f"Saved last turn data to session {self.session_id} for user {self.user_uuid}")
 
-                # --- NEW: Session Naming Logic ---
+                # Session Naming Logic (remains unchanged)
                 if turn_number == 1 and session_data and session_data.get("name") == "New Chat":
                     app_logger.info(f"First turn detected for session {self.session_id}. Attempting to generate name.")
                     new_name = await self._generate_session_name(self.original_user_input)
                     if new_name != "New Chat":
                         try:
-                            # Update the name persistently
                             session_manager.update_session_name(self.user_uuid, self.session_id, new_name)
-                            # Emit SSE to update UI
                             yield self._format_sse({
                                 "session_id": self.session_id,
                                 "newName": new_name
@@ -658,11 +659,10 @@ class PlanExecutor:
                             app_logger.info(f"Successfully updated session {self.session_id} name to '{new_name}'.")
                         except Exception as name_e:
                             app_logger.error(f"Failed to save or emit updated session name '{new_name}': {name_e}", exc_info=True)
-                # --- END NEW Session Naming Logic ---
 
             else:
                  app_logger.info(f"Skipping history update for user {self.user_uuid}, session {self.session_id} due to disabled history or final state: {self.state.name}")
-    # --- MODIFICATION END (end of run method) ---
+    # --- END of run method ---
 
 
     async def _handle_single_prompt_plan(self, planner: Planner):
@@ -709,9 +709,7 @@ class PlanExecutor:
                     source=self.source
                 )
 
-                # --- MODIFICATION START: Pass user_uuid to get_session ---
                 updated_session = session_manager.get_session(self.user_uuid, self.session_id)
-                # --- MODIFICATION END ---
                 if updated_session:
                     yield self._format_sse({
                         "statement_input": input_tokens, "statement_output": output_tokens,
@@ -733,6 +731,7 @@ class PlanExecutor:
         self.prompt_arguments = self._resolve_arguments(prompt_args)
         self.prompt_type = prompt_info.get("prompt_type", "reporting") if prompt_info else "reporting"
 
+        # Regenerate the plan based on the expanded prompt
         async for event in planner.generate_and_refine_plan():
             yield event
 
@@ -743,6 +742,7 @@ class PlanExecutor:
 
         phase_executor = PhaseExecutor(self) # Pass self (PlanExecutor instance)
 
+        # Skip final summary check (remains unchanged)
         if not APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY and self.execution_depth > 0 and len(self.meta_plan) > 1:
             last_phase = self.meta_plan[-1]
             last_phase_tools = last_phase.get('relevant_tools', [])
@@ -761,21 +761,20 @@ class PlanExecutor:
             current_phase = self.meta_plan[self.current_phase_index]
             is_delegated_prompt_phase = 'executable_prompt' in current_phase and self.execution_depth < self.MAX_EXECUTION_DEPTH
 
-            # --- MODIFICATION START: Add replay status ---
+            # --- MODIFICATION START: Add replay status prefix ---
             replay_prefix = ""
             if self.is_replay:
                 replay_type_text = "Optimized" if "optimized" in str(self.is_replay).lower() else "Original"
-                replay_prefix = f"🔄 Replay ({replay_type_text}): "
+                # Find original turn ID (similar logic as in run method)
+                original_turn_id = "..."
+                session_data = session_manager.get_session(self.user_uuid, self.session_id)
+                if session_data and isinstance(session_data.get("last_turn_data", {}).get("workflow_history"), list):
+                    for idx, turn in enumerate(session_data["last_turn_data"]["workflow_history"]):
+                        if turn.get("original_plan") == self.plan_to_execute: # Compare against the plan being replayed
+                            original_turn_id = str(idx + 1)
+                            break
+                replay_prefix = f"🔄 Replay ({replay_type_text} from Turn {original_turn_id}): "
             # --- MODIFICATION END ---
-
-            # Add prefix to phase start messages if it's a replay
-            if not is_delegated_prompt_phase and self.is_replay:
-                # Find the existing phase_start event and modify its step message
-                # Note: This assumes phase_start is yielded BEFORE tool execution starts within the phase
-                # This might require adjusting PhaseExecutor if it yields phase_start later
-                # For now, let's assume PhaseExecutor yields phase_start first.
-                # A cleaner way might be to pass the replay_prefix to PhaseExecutor.
-                pass # Placeholder - Actual modification would be in PhaseExecutor's yield logic
 
 
             if is_delegated_prompt_phase:
@@ -784,13 +783,14 @@ class PlanExecutor:
                 async for event in self._run_sub_prompt(prompt_name, prompt_args):
                     yield event
             else:
-                # --- MODIFICATION START: Pass replay flag/prefix down (Conceptual) ---
-                # We need PhaseExecutor to know if it's a replay to prefix its own status messages.
-                # Let's add is_replay to PhaseExecutor or pass the prefix. Simpler to pass the flag.
-                async for event in phase_executor.execute_phase(current_phase): # Assuming execute_phase will handle the flag
+                # --- MODIFICATION START: Pass replay prefix conceptually ---
+                # PhaseExecutor needs modification to accept and use this prefix
+                # For now, just logging it here. Actual prefixing requires PhaseExecutor changes.
+                if replay_prefix:
+                    app_logger.debug(f"Passing replay prefix to PhaseExecutor: '{replay_prefix}'")
+                async for event in phase_executor.execute_phase(current_phase): # Assuming execute_phase will handle the prefix internally
                     yield event
                 # --- MODIFICATION END ---
-
 
             self.current_phase_index += 1
 
@@ -814,9 +814,7 @@ class PlanExecutor:
 
         sub_executor = PlanExecutor(
             session_id=self.session_id,
-            # --- MODIFICATION START: Pass user_uuid ---
             user_uuid=self.user_uuid,
-            # --- MODIFICATION END ---
             original_user_input=f"Executing prompt: {prompt_name}",
             dependencies=self.dependencies,
             active_prompt_name=prompt_name,
@@ -827,7 +825,6 @@ class PlanExecutor:
             source="prompt_library",
             is_delegated_task=is_delegated_task,
             force_final_summary=APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY
-            # No need to pass plan_to_execute or is_replay here, sub-prompts always plan anew
         )
 
         sub_executor.workflow_state = self.workflow_state
@@ -869,6 +866,7 @@ class PlanExecutor:
         async for event in planner.generate_and_refine_plan():
             yield event
         # --- MODIFICATION START: Store plan for history even in delegated ---
+        # Ensure the plan generated for the delegated task is also stored
         self.original_plan_for_history = copy.deepcopy(self.meta_plan)
         app_logger.info("Stored delegated prompt plan for history.")
         # --- MODIFICATION END ---
@@ -882,6 +880,7 @@ class PlanExecutor:
         """Orchestrates the final summarization and answer formatting."""
         final_content = None
 
+        # Summarization logic remains largely the same
         if self.is_synthesis_from_history:
             app_logger.info("Bypassing summarization. Using direct synthesized answer from planner.")
             synthesized_answer = "Could not extract synthesized answer."
@@ -937,9 +936,7 @@ class PlanExecutor:
         formatter = OutputFormatter(**formatter_kwargs)
         final_html, tts_payload = formatter.render()
 
-        # --- MODIFICATION START: Pass user_uuid to add_to_history ---
         session_manager.add_to_history(self.user_uuid, self.session_id, 'assistant', final_html)
-        # --- MODIFICATION END ---
 
         clean_summary_for_thought = "The agent has completed its work."
         if hasattr(final_content, 'direct_answer'):
@@ -950,19 +947,17 @@ class PlanExecutor:
 
         yield self._format_sse({"step": "LLM has generated the final answer", "details": clean_summary_for_thought}, "llm_thought")
 
-        # --- MODIFICATION START: Add turn_number to final_answer event ---
+        # --- MODIFICATION START: Add turn_id to final_answer event ---
         # Determine turn number
-        # --- MODIFICATION START: Pass user_uuid to get_session ---
         session_data = session_manager.get_session(self.user_uuid, self.session_id)
-        # --- MODIFICATION END ---
         current_turn_number = 1
         if session_data:
              workflow_history = session_data.get("last_turn_data", {}).get("workflow_history", [])
              # The turn number for *this* execution is the length of history *before* this turn was added.
              # Since add_to_history happens *before* this, we use the current length.
              # If update_last_turn_data hasn't happened yet, length + 1 is the *next* turn number.
-             # Let's use the length + 1 as the current turn being completed.
-             current_turn_number = len(workflow_history) + 1
+             # Use length + 1 as the current turn being completed.
+             current_turn_number = len(workflow_history) + 1 # Use +1 because update_last_turn hasn't happened yet
 
 
         yield self._format_sse({

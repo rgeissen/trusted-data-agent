@@ -122,7 +122,9 @@ def create_session(user_uuid: str, provider: str, llm_instance: any, charting_in
         "created_at": datetime.now().isoformat(),
         "input_tokens": 0,
         "output_tokens": 0,
-        "last_turn_data": {"workflow_history": []}, # Ensure workflow_history list is initialized
+        # --- MODIFICATION START: Ensure workflow_history list exists on creation ---
+        "last_turn_data": {"workflow_history": []},
+        # --- MODIFICATION END ---
         "full_context_sent": False,
         "license_info": APP_STATE.get("license_info") # Store license info at creation time
     }
@@ -132,8 +134,6 @@ def create_session(user_uuid: str, provider: str, llm_instance: any, charting_in
         return session_id
     else:
         app_logger.error(f"Failed to save newly created session '{session_id}' for user '{user_uuid}'.")
-        # Decide how to handle this - raise error? Return None?
-        # For now, let's raise to make the failure obvious during API call
         raise IOError(f"Failed to save session file for session {session_id}")
 
 
@@ -177,7 +177,6 @@ def get_all_sessions(user_uuid: str) -> list[dict]:
     app_logger.debug(f"Returning {len(session_summaries)} session summaries for user '{user_uuid}'.")
     return session_summaries
 
-# --- NEW FUNCTION: delete_session ---
 def delete_session(user_uuid: str, session_id: str) -> bool:
     """Deletes a session file from the filesystem."""
     session_path = _get_session_path(user_uuid, session_id)
@@ -197,16 +196,11 @@ def delete_session(user_uuid: str, session_id: str) -> bool:
     except OSError as e:
         app_logger.error(f"Error deleting session file '{session_path}': {e}", exc_info=True)
         return False # Indicate failure due to OS error
-# --- END NEW FUNCTION ---
 
 def add_to_history(user_uuid: str, session_id: str, role: str, content: str):
     session_data = _load_session(user_uuid, session_id)
     if session_data:
         session_data.setdefault('session_history', []).append({'role': role, 'content': content})
-        # Also update the 'chat_object' which holds the history for LLM context
-        # Convert role for Google ('model' instead of 'assistant') if needed based on provider
-        # --- MODIFICATION START: Use APP_CONFIG correctly ---
-        # Get provider from session if available, else fallback to current global config
         provider_in_session = session_data.get("license_info", {}).get("provider")
         current_provider = APP_CONFIG.CURRENT_PROVIDER
         provider = provider_in_session or current_provider
@@ -215,7 +209,6 @@ def add_to_history(user_uuid: str, session_id: str, role: str, content: str):
              provider = "Unknown" # Avoid error if APP_CONFIG isn't set somehow
 
         llm_role = 'model' if role == 'assistant' and provider == 'Google' else role
-        # --- MODIFICATION END ---
         session_data.setdefault('chat_object', []).append({'role': llm_role, 'content': content})
 
         if not _save_session(user_uuid, session_id, session_data):
@@ -249,13 +242,13 @@ def update_last_turn_data(user_uuid: str, session_id: str, turn_data: dict):
     """Saves the most recent turn's action history and plans to the session file."""
     session_data = _load_session(user_uuid, session_id)
     if session_data:
-        # Ensure the structure exists
+        # Ensure the structure exists (already done on creation, but good for robustness)
         if "last_turn_data" not in session_data:
             session_data["last_turn_data"] = {}
         if "workflow_history" not in session_data["last_turn_data"] or not isinstance(session_data["last_turn_data"]["workflow_history"], list):
             session_data["last_turn_data"]["workflow_history"] = []
 
-        # Append the new turn data
+        # Append the new turn data (contains original_plan and user_query now)
         session_data["last_turn_data"]["workflow_history"].append(turn_data)
 
         if not _save_session(user_uuid, session_id, session_data):

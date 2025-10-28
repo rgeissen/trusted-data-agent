@@ -4,18 +4,19 @@
  * It initializes the application by setting up event listeners and loading initial data.
  */
 
-// --- MODIFICATION START: Import UI functions ---
 import { initializeEventListeners, finalizeConfiguration, loadCredentialsAndModels } from './eventHandlers.js';
 import * as API from './api.js';
 import * as DOM from './domElements.js';
 import { state } from './state.js';
 import { setupPanelToggle } from './utils.js';
-// --- MODIFICATION START: Import UI functions correctly ---
 import * as UI from './ui.js';
-// --- MODIFICATION END ---
 import { initializeVoiceRecognition } from './voice.js';
 
 // --- MODIFICATION START: Add user UUID handling ---
+/**
+ * Ensures a user UUID exists in localStorage and application state.
+ * Generates a new UUID if one is not found.
+ */
 function ensureUserUUID() {
     console.log("ensureUserUUID: Checking for existing UUID...");
     let userUUID = null;
@@ -91,7 +92,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error("Could not fetch app config", e);
     }
 
-    // --- MODIFICATION START: Adjust Startup Logic ---
     try {
         console.log("DEBUG: Checking server status on startup...");
         const status = await API.checkServerStatus();
@@ -104,25 +104,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             await loadCredentialsAndModels(); // Load credentials/models based on provider
 
-            // Ensure the model from status actually exists in the dropdown before selecting
             const modelExists = Array.from(DOM.llmModelSelect.options).some(opt => opt.value === status.model);
             if (modelExists) {
                 DOM.llmModelSelect.value = status.model;
             } else {
                 console.warn(`DEBUG: Model '${status.model}' from server status not found in dropdown. Model list might be outdated or model unavailable.`);
-                // Optionally select the first available model or leave as default
             }
 
 
             const currentConfig = { provider: status.provider, model: status.model };
-            await finalizeConfiguration(currentConfig); // This sets up MCP client etc.
+            // Pass the mcp_server details from status to ensure they are used if re-finalizing
+            currentConfig.mcp_server = status.mcp_server;
+            await finalizeConfiguration(currentConfig);
 
-            // --- Load Sessions AFTER finalizeConfiguration ---
             console.log("DEBUG: Configuration finalized. Session loading is handled by finalizeConfiguration.");
-            // --- MODIFICATION START: Removed redundant session loading ---
-            // This logic is now inside finalizeConfiguration()
-            // --- MODIFICATION END ---
-             // --- END Load Sessions ---
+
 
         } else {
             console.log("DEBUG: Server is not configured. Pre-filling and showing config modal.");
@@ -152,12 +148,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     } catch (startupError) {
         console.error("DEBUG: Error during startup configuration/session loading. Showing config modal.", startupError);
-        // Attempt to pre-fill and show config modal as fallback
         try {
             const savedMcpConfig = JSON.parse(localStorage.getItem('mcpConfig'));
-             if (savedMcpConfig) { /* ... pre-fill MCP ... */ } else { /* ... default MCP ... */ }
+             if (savedMcpConfig) {
+                 DOM.mcpServerNameInput.value = savedMcpConfig.server_name || 'teradata_mcp_server';
+                 document.getElementById('mcp-host').value = savedMcpConfig.host || '127.0.0.1';
+                 document.getElementById('mcp-port').value = savedMcpConfig.port || '8001';
+                 document.getElementById('mcp-path').value = savedMcpConfig.path || '/mcp/';
+             } else {
+                 DOM.mcpServerNameInput.value = 'teradata_mcp_server';
+                 document.getElementById('mcp-host').value = '127.0.0.1';
+                 document.getElementById('mcp-port').value = '8001';
+                 document.getElementById('mcp-path').value = '/mcp/';
+             }
              const savedTtsCreds = localStorage.getItem('ttsCredentialsJson');
-             if (savedTtsCreds) { /* ... pre-fill TTS ... */ }
+             if (savedTtsCreds) { DOM.ttsCredentialsJsonTextarea.value = savedTtsCreds; }
              const lastProvider = localStorage.getItem('lastSelectedProvider');
              if (lastProvider) { DOM.llmProviderSelect.value = lastProvider; }
              await loadCredentialsAndModels();
@@ -166,7 +171,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         DOM.configMenuButton.click(); // Show config modal
     }
-    // --- MODIFICATION END ---
 
 
     DOM.toggleHistoryCheckbox.checked = !DOM.sessionHistoryPanel.classList.contains('collapsed');

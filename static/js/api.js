@@ -8,7 +8,6 @@ import * as DOM from './domElements.js';
 import { state } from './state.js';
 import { getSystemPromptForModel, isPrivilegedUser } from './utils.js';
 
-// --- MODIFICATION START: Helper to get standard headers including User UUID ---
 /**
  * Gets standard headers for API requests, including Content-Type and User UUID.
  * @param {boolean} includeContentType - Whether to include 'Content-Type: application/json'. Defaults to true.
@@ -23,19 +22,14 @@ function _getHeaders(includeContentType = true) {
         headers['X-TDA-User-UUID'] = state.userUUID;
     } else {
         console.warn("User UUID not found in state when creating headers.");
-        // Potentially throw an error or handle recovery if UUID is critical
     }
     return headers;
 }
-// --- MODIFICATION END ---
 
 
 export async function checkServerStatus() {
-    // --- MODIFICATION START: Use headers ---
-    const res = await fetch('/api/status', { headers: _getHeaders(false) }); // No content-type for GET
-    // --- MODIFICATION END ---
+    const res = await fetch('/api/status', { headers: _getHeaders(false) });
     if (!res.ok) {
-        // If the endpoint fails, it's safer to assume not configured.
         return { isConfigured: false };
     }
     return await res.json();
@@ -47,10 +41,7 @@ export async function checkServerStatus() {
  * @returns {Promise<object>} A promise that resolves to the credentials object.
  */
 export async function getApiKey(provider) {
-    // --- MODIFICATION START: Use headers ---
-    // No user-specific data needed here, but adding header for consistency
     const res = await fetch(`/api_key/${provider.toLowerCase()}`, { headers: _getHeaders(false) });
-    // --- MODIFICATION END ---
     if (!res.ok) {
         throw new Error(`Failed to fetch API key for ${provider}`);
     }
@@ -59,13 +50,11 @@ export async function getApiKey(provider) {
 
 
 export async function startStream(endpoint, body) {
-    // --- MODIFICATION START: Use headers ---
     const response = await fetch(endpoint, {
         method: 'POST',
         headers: _getHeaders(),
         body: JSON.stringify(body),
     });
-    // --- MODIFICATION END ---
     if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || `Request failed with status ${response.status}`);
@@ -82,14 +71,10 @@ export async function cancelStream(sessionId) {
     if (!sessionId) {
         throw new Error("Session ID is required to cancel a stream.");
     }
-    // --- MODIFICATION START: Use headers ---
     const response = await fetch(`/api/session/${sessionId}/cancel_stream`, {
         method: 'POST',
-        headers: _getHeaders(), // Send UUID even for cancel
-        // No body needed for this request
+        headers: _getHeaders(),
     });
-    // --- MODIFICATION END ---
-    // Don't throw error on 404 (task not found), just return the status
     if (!response.ok && response.status !== 404) {
         let errorData;
         try {
@@ -99,11 +84,9 @@ export async function cancelStream(sessionId) {
         }
         throw new Error(errorData.message || `Request failed with status ${response.status}`);
     }
-    // Return the JSON response (or potentially null/empty if 404 and no body)
     try {
         return await response.json();
     } catch(e) {
-        // Handle cases where the response might be empty (e.g., successful 200 with no body)
         return { status: response.status === 200 ? 'success' : 'info', message: response.statusText };
     }
 }
@@ -115,13 +98,11 @@ export async function synthesizeText(text) {
         console.log("AUDIO DEBUG: Voice feature is disabled in app config. Skipping synthesis.");
         return null;
     }
-    // --- MODIFICATION START: Use headers ---
     const response = await fetch('/api/synthesize-speech', {
         method: 'POST',
         headers: _getHeaders(),
         body: JSON.stringify({ text }),
     });
-    // --- MODIFICATION END ---
 
     if (response.ok) {
         console.log("AUDIO DEBUG: Synthesis API call successful.");
@@ -142,10 +123,7 @@ export async function checkAndUpdateDefaultPrompts() {
     }
 
     try {
-        // --- MODIFICATION START: Use headers ---
-        // No user-specific data needed here, but adding header for consistency
         const res = await fetch('/api/prompts-version', { headers: _getHeaders(false) });
-        // --- MODIFICATION END ---
         if (!res.ok) {
             console.error('Could not fetch prompt version from server.');
             return;
@@ -185,35 +163,29 @@ export async function checkAndUpdateDefaultPrompts() {
 }
 
 export async function togglePromptApi(promptName, isDisabled) {
-    // --- MODIFICATION START: Use headers ---
     const res = await fetch('/prompt/toggle_status', {
         method: 'POST',
         headers: _getHeaders(),
         body: JSON.stringify({ name: promptName, disabled: isDisabled })
     });
-    // --- MODIFICATION END ---
     if (!res.ok) {
         throw new Error('Server responded with an error.');
     }
 }
 
 export async function toggleToolApi(toolName, isDisabled) {
-    // --- MODIFICATION START: Use headers ---
     const res = await fetch('/tool/toggle_status', {
         method: 'POST',
         headers: _getHeaders(),
         body: JSON.stringify({ name: toolName, disabled: isDisabled })
     });
-    // --- MODIFICATION END ---
     if (!res.ok) {
         throw new Error('Server responded with an error.');
     }
 }
 
 export async function loadResources(type) {
-    // --- MODIFICATION START: Use headers ---
     const res = await fetch(`/${type}`, { headers: _getHeaders(false) });
-    // --- MODIFICATION END ---
 
     if (res.status === 404) {
         return {};
@@ -239,13 +211,11 @@ export async function startNewSession() {
         payload.system_prompt = activePrompt;
     }
 
-    // --- MODIFICATION START: Use headers ---
     const res = await fetch('/session', {
         method: 'POST',
         headers: _getHeaders(),
         body: JSON.stringify(payload)
     });
-    // --- MODIFICATION END ---
     const data = await res.json();
     if (!res.ok) {
         throw new Error(data.error || "Failed to get a session ID.");
@@ -254,9 +224,7 @@ export async function startNewSession() {
 }
 
 export async function loadSession(sessionId) {
-    // --- MODIFICATION START: Use headers ---
     const res = await fetch(`/session/${sessionId}`, { headers: _getHeaders(false) });
-    // --- MODIFICATION END ---
     const data = await res.json();
     if (!res.ok) {
         throw new Error(data.error || "Failed to load session.");
@@ -265,9 +233,7 @@ export async function loadSession(sessionId) {
 }
 
 export async function loadAllSessions() {
-    // --- MODIFICATION START: Use headers ---
     const res = await fetch('/sessions', { headers: _getHeaders(false) });
-    // --- MODIFICATION END ---
     const sessions = await res.json();
     if (!res.ok) {
         throw new Error(sessions.error || "Could not retrieve past sessions.");
@@ -275,14 +241,6 @@ export async function loadAllSessions() {
     return sessions;
 }
 
-// --- NEW Function: renameSession ---
-/**
- * Renames a specific session via the backend API.
- * @param {string} sessionId - The ID of the session to rename.
- * @param {string} newName - The desired new name for the session.
- * @returns {Promise<object>} A promise that resolves with the success/error response from the server.
- * @throws {Error} If the API call fails or returns an error status.
- */
 export async function renameSession(sessionId, newName) {
     if (!sessionId || !newName) {
         throw new Error("Session ID and new name are required for renaming.");
@@ -290,25 +248,17 @@ export async function renameSession(sessionId, newName) {
 
     const response = await fetch(`/api/session/${sessionId}/rename`, {
         method: 'POST',
-        headers: _getHeaders(), // Includes Content-Type and X-TDA-User-UUID
-        body: JSON.stringify({ newName: newName.trim() }) // Send newName in body
+        headers: _getHeaders(),
+        body: JSON.stringify({ newName: newName.trim() })
     });
 
     const result = await response.json();
     if (!response.ok) {
         throw new Error(result.message || `Failed to rename session (status ${response.status}).`);
     }
-    return result; // Should contain { status: "success", message: "..." }
+    return result;
 }
-// --- END NEW Function ---
 
-// --- NEW Function: deleteSession ---
-/**
- * Deletes a specific session via the backend API.
- * @param {string} sessionId - The ID of the session to delete.
- * @returns {Promise<object>} A promise that resolves with the success/error response from the server.
- * @throws {Error} If the API call fails or returns an error status.
- */
 export async function deleteSession(sessionId) {
     if (!sessionId) {
         throw new Error("Session ID is required for deletion.");
@@ -316,10 +266,10 @@ export async function deleteSession(sessionId) {
 
     const response = await fetch(`/api/session/${sessionId}`, {
         method: 'DELETE',
-        headers: _getHeaders(false), // No Content-Type needed, but send UUID
+        headers: _getHeaders(false),
     });
 
-    if (response.status === 204) { // No Content
+    if (response.status === 204) {
         return { status: "success", message: "Session deleted successfully." };
     }
 
@@ -327,9 +277,8 @@ export async function deleteSession(sessionId) {
     if (!response.ok) {
         throw new Error(result.message || `Failed to delete session (status ${response.status}).`);
     }
-    return result; // Should contain { status: "success", message: "..." }
+    return result;
 }
-// --- END NEW Function ---
 
 
 export async function fetchModels() {
@@ -366,14 +315,11 @@ export async function fetchModels() {
         throw new Error('API credentials or host are required to fetch models.');
     }
 
-    // --- MODIFICATION START: Use headers ---
-    // No user-specific data needed here, but adding header for consistency
     const response = await fetch('/models', {
         method: 'POST',
         headers: _getHeaders(),
         body: JSON.stringify(body)
     });
-    // --- MODIFICATION END ---
     const result = await response.json();
 
     if (!response.ok) {
@@ -381,3 +327,47 @@ export async function fetchModels() {
     }
     return result;
 }
+
+// --- MODIFICATION START: Add fetchTurnPlan function ---
+/**
+ * Fetches the original plan for a specific turn from the backend.
+ * @param {string} sessionId - The ID of the session.
+ * @param {string|number} turnId - The turn number (1-based).
+ * @returns {Promise<object>} A promise that resolves to the plan data or an error object.
+ */
+export async function fetchTurnPlan(sessionId, turnId) {
+    if (!sessionId || !turnId) {
+        throw new Error("Session ID and Turn ID are required to fetch the plan.");
+    }
+    const res = await fetch(`/api/session/${sessionId}/turn/${turnId}/plan`, {
+        headers: _getHeaders(false) // No content-type for GET
+    });
+    const data = await res.json(); // Always expect JSON, even for errors
+    if (!res.ok) {
+        throw new Error(data.error || `Failed to load plan for turn ${turnId} (status ${res.status}).`);
+    }
+    return data; // Expected format: { plan: [...] } or { error: "..." }
+}
+// --- MODIFICATION END ---
+
+// --- MODIFICATION START: Add fetchTurnQuery function ---
+/**
+ * Fetches the original user query for a specific turn from the backend.
+ * @param {string} sessionId - The ID of the session.
+ * @param {string|number} turnId - The turn number (1-based).
+ * @returns {Promise<object>} A promise that resolves to the query data or an error object.
+ */
+export async function fetchTurnQuery(sessionId, turnId) {
+    if (!sessionId || !turnId) {
+        throw new Error("Session ID and Turn ID are required to fetch the query.");
+    }
+    const res = await fetch(`/api/session/${sessionId}/turn/${turnId}/query`, {
+        headers: _getHeaders(false) // No content-type for GET
+    });
+    const data = await res.json(); // Always expect JSON, even for errors
+    if (!res.ok) {
+        throw new Error(data.error || `Failed to load query for turn ${turnId} (status ${res.status}).`);
+    }
+    return data; // Expected format: { query: "..." } or { error: "..." }
+}
+// --- MODIFICATION END ---

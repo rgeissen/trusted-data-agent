@@ -348,7 +348,6 @@ async def get_prompt_content(prompt_name):
         app_logger.error(f"Error fetching prompt content for '{prompt_name}': {root_exception}", exc_info=True)
         return jsonify({"error": "An unexpected error occurred while fetching the prompt."}), 500
 
-# --- MODIFICATION START: Add logging to /sessions GET endpoint ---
 @api_bp.route("/sessions", methods=["GET"])
 async def get_sessions():
     """Returns a list of all active chat sessions for the requesting user."""
@@ -356,7 +355,6 @@ async def get_sessions():
     app_logger.info(f"GET /sessions endpoint hit for user {user_uuid}") # Added log
     sessions = session_manager.get_all_sessions(user_uuid=user_uuid)
     return jsonify(sessions)
-# --- MODIFICATION END ---
 
 @api_bp.route("/session/<session_id>", methods=["GET"])
 async def get_session_history(session_id):
@@ -421,6 +419,75 @@ async def delete_session_endpoint(session_id: str):
         return jsonify({"status": "error", "message": "An unexpected server error occurred during deletion."}), 500
 # --- END NEW Endpoint ---
 
+# --- MODIFICATION START: Add endpoints for fetching plan and query ---
+@api_bp.route("/api/session/<session_id>/turn/<turn_id>/plan", methods=["GET"])
+async def get_turn_plan(session_id: str, turn_id: str):
+    """Retrieves the original plan for a specific turn in a session."""
+    user_uuid = _get_user_uuid_from_request()
+    app_logger.info(f"GET plan request for session {session_id}, turn {turn_id} from user {user_uuid}.")
+
+    try:
+        turn_index = int(turn_id) - 1 # Convert to 0-based index
+        if turn_index < 0:
+            raise ValueError("Turn ID must be a positive integer.")
+    except ValueError:
+        app_logger.warning(f"Invalid turn ID '{turn_id}' requested by user {user_uuid}.")
+        return jsonify({"error": "Invalid turn ID. Must be a positive integer."}), 400
+
+    session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
+    if not session_data:
+        app_logger.warning(f"Session {session_id} not found for user {user_uuid} when fetching plan.")
+        return jsonify({"error": "Session not found or access denied."}), 404
+
+    workflow_history = session_data.get("last_turn_data", {}).get("workflow_history", [])
+    if turn_index >= len(workflow_history):
+        app_logger.warning(f"Turn {turn_id} not found in session {session_id} history (user {user_uuid}).")
+        return jsonify({"error": f"Turn {turn_id} not found in session history."}), 404
+
+    turn_data = workflow_history[turn_index]
+    original_plan = turn_data.get("original_plan")
+
+    if original_plan is None: # Check explicitly for None, as empty plan [] is valid
+        app_logger.warning(f"Original plan missing for turn {turn_id}, session {session_id} (user {user_uuid}).")
+        # Return 404, or maybe 200 with an empty list/message? 404 seems appropriate if plan *should* exist.
+        return jsonify({"error": f"Original plan data not found for turn {turn_id}."}), 404
+
+    return jsonify({"plan": original_plan}), 200
+
+@api_bp.route("/api/session/<session_id>/turn/<turn_id>/query", methods=["GET"])
+async def get_turn_query(session_id: str, turn_id: str):
+    """Retrieves the original user query for a specific turn in a session."""
+    user_uuid = _get_user_uuid_from_request()
+    app_logger.info(f"GET query request for session {session_id}, turn {turn_id} from user {user_uuid}.")
+
+    try:
+        turn_index = int(turn_id) - 1
+        if turn_index < 0:
+            raise ValueError("Turn ID must be a positive integer.")
+    except ValueError:
+        app_logger.warning(f"Invalid turn ID '{turn_id}' requested by user {user_uuid}.")
+        return jsonify({"error": "Invalid turn ID. Must be a positive integer."}), 400
+
+    session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
+    if not session_data:
+        app_logger.warning(f"Session {session_id} not found for user {user_uuid} when fetching query.")
+        return jsonify({"error": "Session not found or access denied."}), 404
+
+    workflow_history = session_data.get("last_turn_data", {}).get("workflow_history", [])
+    if turn_index >= len(workflow_history):
+        app_logger.warning(f"Turn {turn_id} not found in session {session_id} history (user {user_uuid}).")
+        return jsonify({"error": f"Turn {turn_id} not found in session history."}), 404
+
+    turn_data = workflow_history[turn_index]
+    user_query = turn_data.get("user_query")
+
+    if user_query is None:
+        app_logger.warning(f"User query missing for turn {turn_id}, session {session_id} (user {user_uuid}).")
+        return jsonify({"error": f"Original query not found for turn {turn_id}."}), 404
+
+    return jsonify({"query": user_query}), 200
+# --- MODIFICATION END ---
+
 
 @api_bp.route("/session", methods=["POST"])
 async def new_session():
@@ -440,18 +507,14 @@ async def new_session():
                     handler.close()
                     logger.removeHandler(handler)
 
-                    # --- MODIFICATION START: Clear file content instead of recreating handler ---
                     try:
                         with open(log_file_path, 'w'):
                             pass
                         app_logger.info(f"Successfully purged log file: {log_file_path}")
-                        # Re-add the original handler
                         logger.addHandler(handler)
                     except Exception as clear_e:
                         app_logger.error(f"Failed to clear log file {log_file_path}: {clear_e}. Attempting to re-add handler anyway.")
-                        # Still try to re-add handler if clearing failed
                         logger.addHandler(handler)
-                    # --- MODIFICATION END ---
     except Exception as e:
         app_logger.error(f"Failed to purge log files for new session: {e}", exc_info=True)
 
@@ -502,9 +565,7 @@ async def get_models():
         models = await llm_handler.list_models(provider, credentials)
         return jsonify({"status": "success", "models": models})
     except Exception as e:
-        # --- MODIFICATION START: Log exception details ---
         app_logger.error(f"Failed to list models for provider {provider}: {e}", exc_info=True)
-        # --- MODIFICATION END ---
         return jsonify({"status": "error", "message": str(e)}), 400
 
 @api_bp.route("/system_prompt/<provider>/<model_name>", methods=["GET"])
@@ -589,7 +650,6 @@ async def ask_stream():
     # --- End Session Validation ---
 
 
-    # --- MODIFICATION START: Cancel existing task for the session ---
     active_tasks_key = f"{user_uuid}_{session_id}" # Use composite key
     active_tasks = APP_STATE.get("active_tasks", {})
     if active_tasks_key in active_tasks:
@@ -598,13 +658,11 @@ async def ask_stream():
             app_logger.warning(f"Cancelling previous active task for user {user_uuid}, session {session_id}.")
             existing_task.cancel()
             try:
-                # Give the task a moment to finish cancelling
                 await asyncio.wait_for(existing_task, timeout=0.1)
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 pass # Expected exceptions
             except Exception as e:
                 app_logger.error(f"Error during cancellation cleanup: {e}")
-    # --- MODIFICATION END ---
 
     async def stream_generator():
         queue = asyncio.Queue()
@@ -614,7 +672,6 @@ async def ask_stream():
             await queue.put(sse_event)
 
         async def run_and_signal_completion():
-            # --- MODIFICATION START: Task management ---
             task = None
             try:
                 task = asyncio.create_task(
@@ -631,22 +688,17 @@ async def ask_stream():
                 await task
             except asyncio.CancelledError:
                 app_logger.info(f"Task for user {user_uuid}, session {session_id} was cancelled.")
-                # Optionally send a specific cancellation event
                 await event_handler({"message": "Execution stopped by user."}, "cancelled")
             except Exception as e:
                  app_logger.error(f"Error during task execution for user {user_uuid}, session {session_id}: {e}", exc_info=True)
                  await event_handler({"error": str(e)}, "error")
             finally:
-                # Ensure task is removed from tracking upon completion/cancellation
                 if active_tasks_key in APP_STATE.get("active_tasks", {}):
                     del APP_STATE["active_tasks"][active_tasks_key]
                 await queue.put(None) # Signal end of stream generation
-            # --- MODIFICATION END ---
 
-        # Start the background task runner
         asyncio.create_task(run_and_signal_completion())
 
-        # Yield events from the queue until None is received
         while True:
             item = await queue.get()
             if item is None:
@@ -685,7 +737,6 @@ async def invoke_prompt_stream():
         return Response(error_gen(), mimetype="text/event-stream")
     # --- End Session Validation ---
 
-    # --- MODIFICATION START: Cancel existing task for the session ---
     active_tasks_key = f"{user_uuid}_{session_id}" # Use composite key
     active_tasks = APP_STATE.get("active_tasks", {})
     if active_tasks_key in active_tasks:
@@ -699,7 +750,6 @@ async def invoke_prompt_stream():
                 pass
             except Exception as e:
                 app_logger.error(f"Error during cancellation cleanup: {e}")
-    # --- MODIFICATION END ---
 
     async def stream_generator():
         queue = asyncio.Queue()
@@ -709,7 +759,6 @@ async def invoke_prompt_stream():
             await queue.put(sse_event)
 
         async def run_and_signal_completion():
-             # --- MODIFICATION START: Task management (same as ask_stream) ---
             task = None
             try:
                 task = asyncio.create_task(
@@ -736,7 +785,6 @@ async def invoke_prompt_stream():
                 if active_tasks_key in APP_STATE.get("active_tasks", {}):
                     del APP_STATE["active_tasks"][active_tasks_key]
                 await queue.put(None)
-            # --- MODIFICATION END ---
 
         asyncio.create_task(run_and_signal_completion())
 

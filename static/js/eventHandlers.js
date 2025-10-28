@@ -9,9 +9,9 @@ import { state } from './state.js';
 import * as API from './api.js';
 import * as UI from './ui.js';
 import * as Utils from './utils.js';
-// --- MODIFICATION START: Import specific utils and rename/deleteSession ---
+// --- MODIFICATION START: Import specific utils, rename/deleteSession, and new fetch functions ---
 import { copyToClipboard, copyTableToClipboard, classifyConfirmation } from './utils.js';
-import { renameSession, deleteSession } from './api.js'; // Import the rename/delete API functions
+import { renameSession, deleteSession, fetchTurnPlan, fetchTurnQuery } from './api.js'; // Import the rename/delete/fetch API functions
 // --- MODIFICATION END ---
 import { startRecognition, stopRecognition, startConfirmationRecognition } from './voice.js';
 
@@ -55,23 +55,20 @@ async function processStream(responseBody) {
                         let dot;
                         if (target === 'db') dot = DOM.mcpStatusDot;
                         else if (target === 'llm') dot = DOM.llmStatusDot;
-                        // Handle LLM thinking indicator separately
+
                         if (target === 'llm') UI.setThinkingIndicator(statusState === 'busy');
 
                         if (dot) {
-                            // --- MODIFICATION START: Manage pulsing based on SPECIFIC dot's busy state ---
                             if (statusState === 'busy') {
                                 dot.classList.replace('idle', 'busy') || dot.classList.replace('connected', 'busy');
-                                dot.classList.add('pulsing'); // Add pulse ONLY when this dot is busy
+                                dot.classList.add('pulsing');
                             } else {
-                                dot.classList.remove('pulsing'); // Remove pulse when this dot is NOT busy
-                                // Set the correct non-busy state (connected for db, idle for llm)
+                                dot.classList.remove('pulsing');
                                 dot.classList.replace('busy', target === 'db' ? 'connected' : 'idle');
                             }
-                            // --- MODIFICATION END ---
                         }
                     } else if (eventName === 'context_state_update') {
-                        // Context state update logic... (no changes needed here for stop button)
+                        // Context state update logic...
                     } else if (eventName === 'token_update') {
                         UI.updateTokenDisplay(eventData);
                         if (eventData.call_id && state.currentProvider !== 'Amazon') {
@@ -81,45 +78,43 @@ async function processStream(responseBody) {
                                 metricsEl.classList.remove('hidden');
                             }
                         }
-                    // --- MODIFICATION START: Add session_name_update handler ---
                     } else if (eventName === 'session_name_update') {
                         const { session_id, newName } = eventData;
                         UI.updateSessionListItemName(session_id, newName);
-                    // --- MODIFICATION END ---
                     } else if (eventName === 'request_user_input') {
                         UI.updateStatusWindow({ step: "Action Required", details: "Waiting for user to correct parameters.", type: 'workaround' });
-                        UI.setExecutionState(false); // Use centralized function
+                        UI.setExecutionState(false);
                         openCorrectionModal(eventData.details);
                     } else if (eventName === 'session_update') {
-                        // Session update logic... (no changes needed)
+                        // Session update logic...
                     } else if (eventName === 'llm_thought') {
-                        UI.updateStatusWindow({ step: "Parser has generated the final answer", ...eventData });
+                        UI.updateStatusWindow({ step: "LLM has generated the final answer", ...eventData });
                     } else if (eventName === 'prompt_selected') {
                         UI.updateStatusWindow(eventData);
                         if (eventData.prompt_name) UI.highlightResource(eventData.prompt_name, 'prompts');
-                    } else if (eventName === 'tool_result' || eventName === 'tool_error' || eventName === 'tool_intent') { // Combined similar events
+                    } else if (eventName === 'tool_result' || eventName === 'tool_error' || eventName === 'tool_intent') {
                         UI.updateStatusWindow(eventData);
                         if (eventData.tool_name) {
                             const toolType = eventData.tool_name.startsWith('generate_') ? 'charts' : 'tools';
                             UI.highlightResource(eventData.tool_name, toolType);
                         }
                     } else if (eventName === 'cancelled') {
-                        // Update the last status step visually to show cancellation
                         const lastStep = document.getElementById(`status-step-${state.currentStatusId}`);
                         if (lastStep) {
                             lastStep.classList.remove('active');
-                            lastStep.classList.add('cancelled'); // Use the new CSS class
+                            lastStep.classList.add('cancelled');
                         }
                         UI.updateStatusWindow({ step: "Execution Stopped", details: eventData.message || "Process cancelled by user.", type: 'cancelled'}, true);
-                        UI.setExecutionState(false); // Use centralized function
+                        UI.setExecutionState(false);
                     } else if (eventName === 'final_answer') {
-                        UI.addMessage('assistant', eventData.final_answer);
+                        // --- MODIFICATION START: Pass turn_id to addMessage ---
+                        UI.addMessage('assistant', eventData.final_answer, eventData.turn_id);
+                        // --- MODIFICATION END ---
                         UI.updateStatusWindow({ step: "Finished", details: "Response sent to chat." }, true);
-                        UI.setExecutionState(false); // Use centralized function
+                        UI.setExecutionState(false);
 
-                        // Voice/TTS logic (remains the same)
+                        // Voice/TTS logic
                         if (eventData.source === 'voice' && eventData.tts_payload) {
-                           // ... (existing TTS handling logic) ...
                            const { direct_answer, key_observations } = eventData.tts_payload;
 
                             if (direct_answer) {
@@ -129,8 +124,8 @@ async function processStream(responseBody) {
                                     const audio = new Audio(audioUrl);
                                     await new Promise(resolve => {
                                         audio.onended = resolve;
-                                        audio.onerror = resolve; // Also resolve on error
-                                        audio.play().catch(resolve); // Resolve if play fails
+                                        audio.onerror = resolve;
+                                        audio.play().catch(resolve);
                                     });
                                 }
                             }
@@ -174,14 +169,12 @@ async function processStream(responseBody) {
                                     // Fallthrough intentionally missing for 'off' case below
 
                                     case 'off': // Includes fallthrough from 'autoplay-on'
-                                        // Only restart if voice mode is locked
                                         if (state.isVoiceModeLocked) {
                                             setTimeout(() => startRecognition(), 100);
                                         }
                                         break;
                                 }
                             } else if (state.isVoiceModeLocked) {
-                                // If no observations but locked, restart listening
                                 setTimeout(() => startRecognition(), 100);
                             }
                         }
@@ -190,23 +183,18 @@ async function processStream(responseBody) {
                     } else if (eventName === 'error') {
                         UI.addMessage('assistant', `Sorry, an error occurred: ${eventData.error || 'Unknown error'}`);
                         UI.updateStatusWindow({ step: "Error", details: eventData.details || eventData.error, type: 'error' }, true);
-                        UI.setExecutionState(false); // Use centralized function
+                        UI.setExecutionState(false);
                     } else {
-                        // Default handler for other events
                         UI.updateStatusWindow(eventData);
                     }
                 } catch (e) {
                     console.error("Error parsing SSE data line:", dataLine, e);
-                    // Optionally show a generic error message in UI if parsing fails repeatedly
                 }
             }
         }
     }
-    // Handle any remaining data in the buffer after the stream ends
     if (buffer.trim()) {
         console.warn("Stream ended with unprocessed buffer:", buffer);
-        // Attempt to process the remaining buffer as a final message if applicable
-        // This might require similar parsing logic as inside the loop
     }
 }
 
@@ -225,25 +213,29 @@ async function handleObservationConfirmation(transcribedText) {
             });
         }
     }
-    // After handling (or not handling) observations, check if voice mode is locked
     if (state.isVoiceModeLocked) {
-        setTimeout(() => startRecognition(), 100); // Restart listening if locked
+        setTimeout(() => startRecognition(), 100);
     }
 }
 
 
 async function handleStreamRequest(endpoint, body) {
-    if (body.message) {
+    if (body.message && !body.is_replay) { // Only add user message if it's not a replay
         UI.addMessage('user', body.message);
-    } else {
+    } else if (body.prompt_name) {
         UI.addMessage('user', `Executing prompt: ${body.prompt_name}`);
+    } else if (body.is_replay && body.message) {
+         // Optionally add a system message indicating replay
+         // UI.addMessage('system', `Replaying query: "${body.message}"`);
+         console.log(`Replaying query: "${body.message}"`);
     }
+
     DOM.userInput.value = '';
-    UI.setExecutionState(true); // Use centralized function to disable input, show stop btn etc.
+    UI.setExecutionState(true);
     DOM.statusWindowContent.innerHTML = '';
     state.currentStatusId = 0;
     state.isInFastPath = false;
-    UI.setThinkingIndicator(false); // Reset thinking indicator at start
+    UI.setThinkingIndicator(false);
     state.currentPhaseContainerEl = null;
 
     const useLastTurnMode = state.isLastTurnModeLocked || state.isTempLastTurnMode;
@@ -259,11 +251,9 @@ async function handleStreamRequest(endpoint, body) {
     } catch (error) {
         UI.addMessage('assistant', `Sorry, a stream processing error occurred: ${error.message}`);
         UI.updateStatusWindow({ step: "Error", details: error.stack, type: 'error' }, true);
-        // setExecutionState(false) will be called in the finally block
     } finally {
-        // Final UI cleanup regardless of success/error/cancel
-        UI.setExecutionState(false); // Centralized cleanup: enable input, hide stop btn, remove pulse etc.
-        UI.updateHintAndIndicatorState(); // Update context hint/dot
+        UI.setExecutionState(false);
+        UI.updateHintAndIndicatorState();
     }
 }
 
@@ -287,20 +277,92 @@ async function handleStopExecutionClick() {
         console.warn("Cannot stop execution: No active session ID.");
         return;
     }
-    // Disable button immediately to prevent multiple clicks
-    if(DOM.stopExecutionButton) DOM.stopExecutionButton.disabled = true; // Directly disable
+    if(DOM.stopExecutionButton) DOM.stopExecutionButton.disabled = true;
     try {
         const result = await API.cancelStream(state.currentSessionId);
         console.log("Cancellation request result:", result);
-        // The 'cancelled' event from processStream will handle UI reset via setExecutionState(false)
     } catch (error) {
         console.error("Error sending cancellation request:", error);
         UI.addMessage('assistant', `Error trying to stop execution: ${error.message}`);
-        // Re-enable button ONLY if the API call itself failed.
-        // If cancellation succeeds, the 'cancelled' event handles UI reset.
         if(DOM.stopExecutionButton) DOM.stopExecutionButton.disabled = false;
     }
 }
+
+// --- MODIFICATION START: Add Reload Plan handler ---
+/**
+ * Handles clicks on the "Reload Plan" button.
+ * Fetches the plan for the specified turn and displays it in the status window.
+ * @param {HTMLButtonElement} button - The button element that was clicked.
+ */
+async function handleReloadPlanClick(button) {
+    const turnId = button.dataset.turnId;
+    const sessionId = state.currentSessionId;
+    if (!turnId || !sessionId) {
+        console.error("Missing turnId or sessionId for reloading plan.");
+        return;
+    }
+
+    // Indicate loading (optional)
+    DOM.statusWindowContent.innerHTML = '<p class="text-gray-400 p-4">Loading plan...</p>';
+    state.currentStatusId = 0; // Reset status ID for the loaded plan display
+
+    try {
+        const planData = await API.fetchTurnPlan(sessionId, turnId);
+        if (planData && planData.plan) {
+            // Use updateStatusWindow to render the plan
+            // We wrap it slightly differently than the live generation event
+            UI.updateStatusWindow({
+                step: `Plan Loaded (Turn ${turnId})`,
+                details: planData.plan, // Pass the plan array directly
+                type: 'system_message' // Use a neutral type
+            }, true); // Mark as final step for this display
+        } else {
+            throw new Error(planData.error || "Plan data not found.");
+        }
+    } catch (error) {
+        console.error(`Error loading plan for turn ${turnId}:`, error);
+        DOM.statusWindowContent.innerHTML = `<p class="text-red-400 p-4">Error loading plan: ${error.message}</p>`;
+    }
+}
+// --- MODIFICATION END ---
+
+// --- MODIFICATION START: Add Replay Query handler ---
+/**
+ * Handles clicks on the "Replay Query" button.
+ * Fetches the original query for the specified turn and re-submits it.
+ * @param {HTMLButtonElement} button - The button element that was clicked.
+ */
+async function handleReplayQueryClick(button) {
+    const turnId = button.dataset.turnId;
+    const sessionId = state.currentSessionId;
+    if (!turnId || !sessionId) {
+        console.error("Missing turnId or sessionId for replaying query.");
+        return;
+    }
+
+    // Indicate loading (optional)
+    UI.addMessage('system', `Attempting to replay query from Turn ${turnId}...`);
+
+    try {
+        const queryData = await API.fetchTurnQuery(sessionId, turnId);
+        if (queryData && queryData.query) {
+            // Re-submit using handleStreamRequest
+            // Pass is_replay: true so the backend knows this is a replay
+            handleStreamRequest('/ask_stream', {
+                message: queryData.query, // The original query text
+                session_id: sessionId,
+                source: 'text', // Or determine original source if stored
+                is_replay: true // Flag indicating this is a replay
+            });
+        } else {
+            throw new Error(queryData.error || "Original query not found.");
+        }
+    } catch (error) {
+        console.error(`Error replaying query for turn ${turnId}:`, error);
+        UI.addMessage('assistant', `Error replaying query: ${error.message}`);
+    }
+}
+// --- MODIFICATION END ---
 
 
 export async function handleLoadResources(type) {
@@ -334,7 +396,7 @@ export async function handleLoadResources(type) {
         categoriesContainer.innerHTML = '';
         panelsContainer.innerHTML = '';
 
-        Object.keys(data).forEach(category => {
+        Object.keys(data).sort().forEach(category => { // Sort categories alphabetically
             const categoryTab = document.createElement('button');
             categoryTab.className = 'category-tab px-4 py-2 rounded-md font-semibold text-sm transition-colors hover:bg-[#D9501A]';
             categoryTab.textContent = category;
@@ -347,7 +409,8 @@ export async function handleLoadResources(type) {
             panel.className = 'category-panel px-4 space-y-2';
             panel.dataset.category = category;
 
-            data[category].forEach(resource => {
+            // Sort resources within category alphabetically by name
+            data[category].sort((a, b) => a.name.localeCompare(b.name)).forEach(resource => {
                 const itemEl = UI.createResourceItem(resource, type);
                 panel.appendChild(itemEl);
             });
@@ -386,34 +449,30 @@ export async function handleStartNewSession() {
     DOM.statusWindowContent.innerHTML = '<p class="text-gray-400">Waiting for a new request...</p>';
     UI.updateTokenDisplay({ statement_input: 0, statement_output: 0, total_input: 0, total_output: 0 });
     UI.addMessage('assistant', "Starting a new conversation... Please wait.");
-    // UI.toggleLoading(true); // Replaced by setExecutionState if needed, but likely not needed here
     UI.setThinkingIndicator(false);
     try {
         const data = await API.startNewSession();
         const sessionItem = UI.addSessionToList(data.session_id, data.name, true);
-        DOM.sessionList.prepend(sessionItem); // Prepend so new sessions are at the top
-        await handleLoadSession(data.session_id, true); // Pass flag to indicate it's a new session load
+        DOM.sessionList.prepend(sessionItem);
+        await handleLoadSession(data.session_id, true);
     } catch (error) {
         UI.addMessage('assistant', `Failed to start a new session: ${error.message}`);
     } finally {
-        // UI.toggleLoading(false); // Replaced by setExecutionState if needed
         DOM.userInput.focus();
     }
 }
 
 
 export async function handleLoadSession(sessionId, isNewSession = false) {
-    if (state.currentSessionId === sessionId && !isNewSession) return; // Don't reload if already active, unless forced by new session creation
+    if (state.currentSessionId === sessionId && !isNewSession) return;
 
-    // UI.toggleLoading(true); // Replaced by setExecutionState if needed, but likely not needed here
     try {
         const data = await API.loadSession(sessionId);
         state.currentSessionId = sessionId;
-        DOM.chatLog.innerHTML = ''; // Clear chat log
+        DOM.chatLog.innerHTML = '';
         if (data.history && data.history.length > 0) {
             data.history.forEach(msg => UI.addMessage(msg.role, msg.content));
         } else {
-            // Only add the welcome message if the history is truly empty (e.g., brand new session)
              UI.addMessage('assistant', "I'm ready to help. How can I assist you with your Teradata system today?");
         }
         UI.updateTokenDisplay({ total_input: data.input_tokens, total_output: data.output_tokens });
@@ -426,7 +485,6 @@ export async function handleLoadSession(sessionId, isNewSession = false) {
     } catch (error) {
         UI.addMessage('assistant', `Error loading session: ${error.message}`);
     } finally {
-        // UI.toggleLoading(false); // Replaced by setExecutionState if needed
         DOM.userInput.focus();
     }
 }
@@ -588,7 +646,7 @@ export async function finalizeConfiguration(config) {
     DOM.mcpStatusDot.classList.remove('disconnected');
     DOM.mcpStatusDot.classList.add('connected');
     DOM.llmStatusDot.classList.remove('disconnected', 'busy');
-    DOM.llmStatusDot.classList.add('connected'); // Should start as connected/idle
+    DOM.llmStatusDot.classList.add('connected');
     DOM.contextStatusDot.classList.remove('disconnected');
     DOM.contextStatusDot.classList.add('idle');
 
@@ -616,9 +674,7 @@ export async function finalizeConfiguration(config) {
     DOM.chatModalButton.disabled = false;
     DOM.userInput.placeholder = "Ask about databases, tables, users...";
 
-    // --- MODIFICATION START: Use centralized UI function ---
-    UI.setExecutionState(false); // This enables the input, button, and hides the spinner
-    // --- MODIFICATION END ---
+    UI.setExecutionState(false);
 
     await Promise.all([
         handleLoadResources('tools'),
@@ -626,25 +682,21 @@ export async function finalizeConfiguration(config) {
         handleLoadResources('resources')
     ]);
 
-    // --- MODIFICATION START: Load all sessions *before* starting a new one ---
-    // Load existing sessions first
     try {
         const sessions = await API.loadAllSessions();
-        DOM.sessionList.innerHTML = ''; // Clear list
+        DOM.sessionList.innerHTML = '';
         if (sessions && Array.isArray(sessions) && sessions.length > 0) {
             sessions.forEach((session) => {
-                const sessionItem = UI.addSessionToList(session.id, session.name, false); // Add inactive
-                DOM.sessionList.appendChild(sessionItem); // Append
+                const sessionItem = UI.addSessionToList(session.id, session.name, false);
+                DOM.sessionList.appendChild(sessionItem);
             });
         }
     } catch (sessionError) {
         console.error("Error loading previous sessions:", sessionError);
         DOM.sessionList.innerHTML = '<li class="text-red-400 p-2">Error loading sessions</li>';
     }
-    // --- MODIFICATION END ---
 
-    // Await session start before closing modal
-    await handleStartNewSession(); // This will prepend the new session and make it active
+    await handleStartNewSession();
 
     state.pristineConfig = getCurrentCoreConfig();
     UI.updateConfigButtonState();
@@ -742,8 +794,8 @@ export async function loadCredentialsAndModels() {
     DOM.awsCredentialsContainer.classList.add('hidden');
     DOM.awsListingMethodContainer.classList.add('hidden');
     DOM.ollamaHostContainer.classList.add('hidden');
-    DOM.azureCredentialsContainer.classList.add('hidden'); // Hide Azure by default
-    DOM.friendliCredentialsContainer.classList.add('hidden'); // Hide Friendli by default
+    DOM.azureCredentialsContainer.classList.add('hidden');
+    DOM.friendliCredentialsContainer.classList.add('hidden');
 
     if (newProvider === 'Amazon') {
         DOM.awsCredentialsContainer.classList.remove('hidden');
@@ -777,7 +829,6 @@ export async function loadCredentialsAndModels() {
         DOM.llmApiKeyInput.value = data.apiKey || localStorage.getItem(`${newProvider.toLowerCase()}ApiKey`) || '';
     }
 
-    // Now that credentials are confirmed to be loaded, fetch the models.
     await handleRefreshModelsClick();
 }
 
@@ -1063,14 +1114,6 @@ async function handleIntensityChange() {
 
 function getSystemPromptSummaryHTML() {
     let devFlagHtml = '';
-//    if (state.appConfig.allow_synthesis_from_history) {
-//        devFlagHtml = `
-//             <div class="p-3 bg-yellow-900/50 rounded-lg mt-4">
-//                <p class="font-semibold text-yellow-300">Developer Mode Enabled</p>
-//                <p class="text-xs text-yellow-400 mt-1">The 'Answer from History' feature is active. The agent may answer questions by synthesizing from previous turns without re-running tools.</p>
-//           </div>
-//        `;
-//    }
 
     return `
         <div class="space-y-4 text-gray-300 text-sm p-2">
@@ -1266,7 +1309,7 @@ async function handleTogglePrompt(promptName, isDisabled, buttonEl) {
 
         promptItem.classList.toggle('opacity-60', isDisabled);
         promptItem.title = isDisabled ? 'This prompt is disabled and will not be used by the agent.' : '';
-        runButton.disabled = isDisabled;
+        runButton.disabled = isDisabled; // Make sure run button state matches
         runButton.title = isDisabled ? 'This prompt is disabled.' : 'Run this prompt.';
 
         buttonEl.innerHTML = isDisabled ?
@@ -1307,11 +1350,7 @@ async function handleToggleTool(toolName, isDisabled, buttonEl) {
     }
 }
 
-// --- MODIFICATION START: Add Save/Cancel Handlers ---
-/**
- * Handles the save action when editing a session name (Enter or Blur).
- * @param {Event} e - The event object (blur or keydown).
- */
+
 export async function handleSessionRenameSave(e) {
     const inputElement = e.target;
     const sessionItem = inputElement.closest('.session-item');
@@ -1321,46 +1360,31 @@ export async function handleSessionRenameSave(e) {
     const newName = inputElement.value.trim();
     const originalName = inputElement.dataset.originalName;
 
-    // If name is empty or unchanged, cancel the edit
     if (!newName || newName === originalName) {
         UI.exitSessionEditMode(inputElement, originalName);
         return;
     }
 
-    // Indicate saving (optional)
     inputElement.disabled = true;
     inputElement.style.opacity = '0.7';
 
     try {
-        await renameSession(sessionId, newName); // Call API
-        UI.exitSessionEditMode(inputElement, newName); // Update UI with new name on success
+        await renameSession(sessionId, newName);
+        UI.exitSessionEditMode(inputElement, newName);
         console.log(`Session ${sessionId} renamed to '${newName}'`);
     } catch (error) {
         console.error(`Failed to rename session ${sessionId}:`, error);
-        // Show error state on input (e.g., red border) and re-enable
         inputElement.style.borderColor = 'red';
         inputElement.disabled = false;
-        // Optionally show a more specific error message to the user
-        // Do not exit edit mode on error
     }
 }
 
-/**
- * Handles the cancel action when editing a session name (Escape).
- * @param {Event} e - The event object (keydown).
- */
 export function handleSessionRenameCancel(e) {
     const inputElement = e.target;
     const originalName = inputElement.dataset.originalName;
     UI.exitSessionEditMode(inputElement, originalName);
 }
-// --- MODIFICATION END ---
 
-// --- MODIFICATION START: Add Delete Handler ---
-/**
- * Handles the click event for the delete session button.
- * @param {HTMLButtonElement} deleteButton - The delete button element that was clicked.
- */
 async function handleDeleteSessionClick(deleteButton) {
     const sessionItem = deleteButton.closest('.session-item');
     if (!sessionItem) return;
@@ -1373,23 +1397,20 @@ async function handleDeleteSessionClick(deleteButton) {
         `Are you sure you want to permanently delete '${sessionName}'? This action cannot be undone.`,
         async () => {
             try {
-                await deleteSession(sessionId); // Call API
-                UI.removeSessionFromList(sessionId); // Remove from UI
+                await deleteSession(sessionId);
+                UI.removeSessionFromList(sessionId);
 
-                // If we deleted the active session, start a new one
                 if (state.currentSessionId === sessionId) {
                     console.log('Active session deleted. Starting a new session.');
                     await handleStartNewSession();
                 }
             } catch (error) {
                 console.error(`Failed to delete session ${sessionId}:`, error);
-                // Optionally show an error to the user
                 UI.addMessage('assistant', `Error: Could not delete session '${sessionName}'. ${error.message}`);
             }
         }
     );
 }
-// --- MODIFICATION END ---
 
 
 // --- Initializer ---
@@ -1400,9 +1421,12 @@ export function initializeEventListeners() {
     DOM.resourceTabs.addEventListener('click', handleResourceTabClick);
     DOM.keyObservationsToggleButton.addEventListener('click', handleKeyObservationsToggleClick);
 
-    // Delegated event listener for copy buttons
+    // --- MODIFICATION START: Add delegated listener for reload/replay ---
     DOM.chatLog.addEventListener('click', (e) => {
         const copyButton = e.target.closest('.copy-button');
+        const reloadButton = e.target.closest('.reload-plan-button');
+        const replayButton = e.target.closest('.replay-query-button');
+
         if (copyButton) {
             const copyType = copyButton.dataset.copyType;
             if (copyType === 'code') {
@@ -1410,10 +1434,14 @@ export function initializeEventListeners() {
             } else if (copyType === 'table') {
                 copyTableToClipboard(copyButton);
             }
+        } else if (reloadButton) {
+            handleReloadPlanClick(reloadButton);
+        } else if (replayButton) {
+            handleReplayQueryClick(replayButton);
         }
     });
+    // --- MODIFICATION END ---
 
-    // Stop button listener
     if (DOM.stopExecutionButton) {
         DOM.stopExecutionButton.addEventListener('click', handleStopExecutionClick);
     } else {
@@ -1480,30 +1508,23 @@ export function initializeEventListeners() {
         }
     });
 
-    // --- MODIFICATION START: Updated session list click delegation ---
     DOM.sessionList.addEventListener('click', (e) => {
         const sessionItem = e.target.closest('.session-item');
-        if (!sessionItem) return; // Click was not on a session item
+        if (!sessionItem) return;
 
         const editButton = e.target.closest('.session-edit-button');
         const deleteButton = e.target.closest('.session-delete-button');
 
         if (deleteButton) {
-            // 1. Handle Delete
             handleDeleteSessionClick(deleteButton);
         } else if (editButton) {
-            // 2. Handle Edit
             UI.enterSessionEditMode(editButton);
         } else if (!sessionItem.querySelector('.session-edit-input')) {
-            // 3. Handle Load (and not in edit mode)
-            // Clicked on the session item itself, load session
             handleLoadSession(sessionItem.dataset.sessionId);
         }
-        // If in edit mode and clicked outside buttons, do nothing (blur will handle save)
     });
-    // --- MODIFICATION END ---
 
-    // All modal listeners
+    // All modal listeners (unchanged)
     DOM.promptModalClose.addEventListener('click', UI.closePromptModal);
     DOM.promptModalOverlay.addEventListener('click', (e) => {
         if (e.target === DOM.promptModalOverlay) UI.closePromptModal();
@@ -1526,8 +1547,6 @@ export function initializeEventListeners() {
             DOM.infoModalClose.click();
         }
     });
-
-    // Config modal listeners
     DOM.configMenuButton.addEventListener('click', () => {
         DOM.configModalOverlay.classList.remove('hidden', 'opacity-0');
         DOM.configModalContent.classList.remove('scale-95', 'opacity-0');
@@ -1538,9 +1557,6 @@ export function initializeEventListeners() {
     DOM.configActionButton.addEventListener('click', handleConfigActionButtonClick);
     DOM.configForm.addEventListener('submit', handleConfigFormSubmit);
     DOM.configForm.addEventListener('input', UI.updateConfigButtonState);
-
-
-    // LLM config listeners
     DOM.llmProviderSelect.addEventListener('change', handleProviderChange);
     [DOM.awsAccessKeyIdInput, DOM.awsSecretAccessKeyInput, DOM.awsRegionInput].forEach(input => {
         input.addEventListener('blur', () => {
@@ -1564,24 +1580,17 @@ export function initializeEventListeners() {
     });
     DOM.refreshModelsButton.addEventListener('click', handleRefreshModelsClick);
     DOM.llmModelSelect.addEventListener('change', handleModelChange);
-
-
-    // Prompt editor listeners
     DOM.promptEditorButton.addEventListener('click', openPromptEditor);
     DOM.promptEditorClose.addEventListener('click', closePromptEditor);
     DOM.promptEditorSave.addEventListener('click', saveSystemPromptChanges);
     DOM.promptEditorReset.addEventListener('click', () => resetSystemPrompt(false));
     DOM.promptEditorTextarea.addEventListener('input', UI.updatePromptEditorState);
-
-    // Simple chat modal listeners
     DOM.chatModalButton.addEventListener('click', openChatModal);
-    DOM.chatModalClose.addEventListener('click', UI.closeChatModal); // FIXED
+    DOM.chatModalClose.addEventListener('click', UI.closeChatModal);
     DOM.chatModalOverlay.addEventListener('click', (e) => {
-        if (e.target === DOM.chatModalOverlay) UI.closeChatModal(); // FIXED
+        if (e.target === DOM.chatModalOverlay) UI.closeChatModal();
     });
     DOM.chatModalForm.addEventListener('submit', handleChatModalSubmit);
-
-    // Global listeners
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('keyup', handleKeyUp);
     DOM.statusWindowContent.addEventListener('mouseenter', () => { state.isMouseOverStatus = true; });
@@ -1605,4 +1614,3 @@ export function initializeEventListeners() {
         }
     });
 }
-

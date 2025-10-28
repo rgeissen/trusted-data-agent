@@ -7,22 +7,41 @@
 import * as DOM from './domElements.js';
 import { state } from './state.js';
 import { renderChart, isPrivilegedUser, isPromptCustomForModel, getNormalizedModelId } from './utils.js';
-// --- MODIFICATION START: Import necessary event handler functions ---
-// We need access to the functions that will handle save/cancel from the input
 import { handleSessionRenameSave, handleSessionRenameCancel } from './eventHandlers.js';
-// --- MODIFICATION END ---
-
 
 // NOTE: This module no longer imports from eventHandlers.js, breaking a circular dependency.
 // Instead, eventHandlers.js will import these UI functions.
 
-export function addMessage(role, content) {
+// --- MODIFICATION START: Add addMessage function with turnId parameter ---
+/**
+ * Adds a message bubble to the chat log.
+ * @param {string} role - 'user' or 'assistant'.
+ * @param {string} content - HTML content of the message.
+ * @param {number} [turnId] - Optional turn ID (provided for assistant messages).
+ */
+export function addMessage(role, content, turnId = null) {
+// --- MODIFICATION END ---
     const wrapper = document.createElement('div');
     wrapper.className = `message-bubble flex items-start gap-4 ${role === 'user' ? 'justify-end' : ''}`;
+
+    const iconContainer = document.createElement('div');
+    iconContainer.className = 'flex-shrink-0 relative'; // Make container relative for button positioning
+
     const icon = document.createElement('div');
-    icon.className = 'flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg';
+    icon.className = 'w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg';
     icon.textContent = role === 'user' ? 'U' : 'A';
     icon.classList.add(role === 'user' ? 'bg-gray-700' : 'bg-[#F15F22]');
+    iconContainer.appendChild(icon);
+
+    // --- MODIFICATION START: Add placeholder for user actions ---
+    if (role === 'user') {
+        const actionsPlaceholder = document.createElement('div');
+        // Add a class or ID to find this later
+        actionsPlaceholder.className = 'user-message-actions-placeholder absolute -left-12 top-1/2 -translate-y-1/2 flex items-center gap-1';
+        // Ensure it's empty initially
+        iconContainer.appendChild(actionsPlaceholder);
+    }
+    // --- MODIFICATION END ---
 
     const messageContainer = document.createElement('div');
     messageContainer.className = 'p-4 rounded-xl shadow-lg max-w-2xl glass-panel';
@@ -38,10 +57,51 @@ export function addMessage(role, content) {
     messageContent.innerHTML = content;
     messageContainer.appendChild(messageContent);
 
-    wrapper.appendChild(role === 'user' ? messageContainer : icon);
-    wrapper.appendChild(role === 'user' ? icon : messageContainer);
+    // --- MODIFICATION START: Adjust wrapper structure based on role ---
+    // User messages have iconContainer on the right, Assistant on the left
+    wrapper.appendChild(role === 'user' ? messageContainer : iconContainer);
+    wrapper.appendChild(role === 'user' ? iconContainer : messageContainer);
+    // --- MODIFICATION END ---
 
     DOM.chatLog.appendChild(wrapper);
+
+    // --- MODIFICATION START: Add action buttons if assistant message with turnId ---
+    if (role === 'assistant' && turnId) {
+        // Find the *last* user message bubble added before this assistant message
+        const userMessages = DOM.chatLog.querySelectorAll('.message-bubble .bg-gray-700'); // Find user icons
+        const lastUserMessageBubble = userMessages.length > 0 ? userMessages[userMessages.length - 1].closest('.message-bubble') : null;
+
+        if (lastUserMessageBubble) {
+            const placeholder = lastUserMessageBubble.querySelector('.user-message-actions-placeholder');
+            if (placeholder) {
+                // Create buttons
+                const reloadButton = document.createElement('button');
+                reloadButton.className = 'reload-plan-button p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100'; // Initially hidden, show on hover
+                reloadButton.title = 'Reload Plan in Status Window';
+                reloadButton.dataset.turnId = turnId;
+                reloadButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>`; // Reload icon
+
+                const replayButton = document.createElement('button');
+                replayButton.className = 'replay-query-button p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100'; // Initially hidden, show on hover
+                replayButton.title = 'Replay Query';
+                replayButton.dataset.turnId = turnId;
+                replayButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707-10.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L9.414 11H13a1 1 0 100-2H9.414l1.293-1.293z" clip-rule="evenodd" /></svg>`; // Replay/back icon
+
+                // Clear placeholder and add buttons
+                placeholder.innerHTML = ''; // Clear any potential content
+                placeholder.appendChild(reloadButton);
+                placeholder.appendChild(replayButton);
+
+                // Add group-hover class to the parent bubble to trigger button visibility
+                lastUserMessageBubble.classList.add('group');
+            } else {
+                console.warn("Could not find placeholder for user actions in the previous user message.");
+            }
+        } else {
+             console.warn("Could not find the previous user message bubble to add actions to.");
+        }
+    }
+    // --- MODIFICATION END ---
 
     const chartContainers = messageContent.querySelectorAll('.chart-render-target');
     chartContainers.forEach(container => {
@@ -53,7 +113,9 @@ export function addMessage(role, content) {
     wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// --- MODIFICATION START: Cleaned up execution state UI updates (pulsing handled in eventHandlers) ---
+
+// --- Remaining UI functions (setExecutionState, _renderPlanningDetails, etc.) ---
+// ... (No changes needed in the rest of the functions for this request) ...
 /**
  * Sets the UI state for active execution (disables input, shows stop button, etc.).
  * @param {boolean} isActive - True if execution is starting, false if ending.
@@ -90,8 +152,6 @@ export function setExecutionState(isActive) {
     // Note: Adding the pulsing class is now handled solely within the
     // 'status_indicator_update' event handler in eventHandlers.js based on the 'busy' state.
 }
-// --- MODIFICATION END ---
-
 
 function _renderPlanningDetails(details) {
     if (!details.summary || !details.full_text) return null;
@@ -208,8 +268,7 @@ export function updateStatusWindow(eventData, isFinal = false) {
     if (type === 'phase_start') {
         const { phase_num, total_phases, goal, execution_depth } = details;
 
-        // --- MODIFICATION START: Fix "fast path" step remaining active ---
-        // Correctly find the very last step, even if nested
+        // Find the very last step, even if nested
         const lastStep = Array.from(DOM.statusWindowContent.querySelectorAll('.status-step')).pop();
         if (lastStep && lastStep.classList.contains('active')) {
             lastStep.classList.remove('active');
@@ -218,10 +277,10 @@ export function updateStatusWindow(eventData, isFinal = false) {
                  lastStep.classList.add('completed');
             }
         }
-        // --- MODIFICATION END ---
 
         const phaseContainer = document.createElement('details');
         phaseContainer.className = 'status-phase-container';
+        phaseContainer.open = true; // Start phases open
 
         const phaseHeader = document.createElement('summary');
         phaseHeader.className = 'status-phase-header phase-start';
@@ -283,17 +342,15 @@ export function updateStatusWindow(eventData, isFinal = false) {
     if (lastStep && lastStep.classList.contains('active') && parentContainer.contains(lastStep)) {
         lastStep.classList.remove('active');
         lastStep.classList.add('completed');
-        // Ensure fast path optimization style persists if it was applied
         if (state.isInFastPath && !lastStep.classList.contains('plan-optimization')) {
              lastStep.classList.add('plan-optimization');
         }
     }
 
-    // Reset fast path flag if this isn't an optimization step itself
     if (type !== 'plan_optimization') {
         state.isInFastPath = false;
     } else {
-        state.isInFastPath = true; // Mark that we are currently in a fast path
+        state.isInFastPath = true;
     }
 
 
@@ -321,18 +378,19 @@ export function updateStatusWindow(eventData, isFinal = false) {
         let detailsString = '';
 
         if (typeof details === 'object' && details !== null) {
-            if (step.startsWith("Calling LLM for")) {
+            // --- MODIFICATION START: Use _renderMetaPlanDetails also for reload ---
+            if (step.startsWith("Calling LLM for") || step === "Plan Loaded") {
+            // --- MODIFICATION END ---
                 customRenderedHtml = _renderPlanningDetails(details);
             } else if (step === "Strategic Meta-Plan Generated") {
                 customRenderedHtml = _renderMetaPlanDetails(details);
             } else if (step === "Tool Execution Intent") {
                 customRenderedHtml = _renderToolIntentDetails(details);
             } else {
-                // Default JSON rendering for other object details
                 try {
                     detailsString = JSON.stringify(details, null, 2);
                 } catch (e) {
-                    detailsString = "[Could not stringify details]"; // Fallback
+                    detailsString = "[Could not stringify details]";
                 }
             }
         } else {
@@ -344,7 +402,7 @@ export function updateStatusWindow(eventData, isFinal = false) {
             detailsContainer.innerHTML = customRenderedHtml;
             stepEl.appendChild(detailsContainer);
         } else if (detailsString) {
-            const characterThreshold = 300; // Character limit before collapsing
+            const characterThreshold = 300;
             if (detailsString.length > characterThreshold) {
                 const detailsEl = document.createElement('details');
                 detailsEl.className = 'text-xs';
@@ -353,7 +411,6 @@ export function updateStatusWindow(eventData, isFinal = false) {
                 summaryEl.className = 'cursor-pointer text-gray-400 hover:text-white';
 
                 let summaryText = `Details (${detailsString.length} chars)`;
-                // Specific summary for tool results
                 if ((step.includes('Tool Execution Result') || step.includes('Tool Execution Error')) && typeof details === 'object' && details.results) {
                     const itemCount = Array.isArray(details.results) ? details.results.length : (details.results ? 1 : 0);
                     const status = details.status || 'unknown';
@@ -373,7 +430,6 @@ export function updateStatusWindow(eventData, isFinal = false) {
                 detailsEl.appendChild(pre);
                 stepEl.appendChild(detailsEl);
             } else {
-                // Render shorter details directly in a pre block
                 const pre = document.createElement('pre');
                 pre.className = 'p-2 bg-gray-900/70 rounded-md text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap';
                 pre.textContent = detailsString;
@@ -384,30 +440,25 @@ export function updateStatusWindow(eventData, isFinal = false) {
 
     parentContainer.appendChild(stepEl);
 
-    // Apply specific styling based on event type
     if (type === 'workaround') {
         stepEl.classList.add('workaround');
     } else if (type === 'error') {
         stepEl.classList.add('error');
     } else if (type === 'cancelled') {
         stepEl.classList.add('cancelled');
-    } else if (state.isInFastPath) { // Apply optimization style if currently in fast path
+    } else if (state.isInFastPath) {
         stepEl.classList.add('plan-optimization');
     }
 
-    // Mark as active unless it's explicitly final
     if (!isFinal) {
         stepEl.classList.add('active');
     } else {
-        // If final, ensure it doesn't have 'active' but retains other styles
         stepEl.classList.remove('active');
         if (!stepEl.classList.contains('error') && !stepEl.classList.contains('cancelled')) {
              stepEl.classList.add('completed');
         }
     }
 
-
-    // Auto-scroll logic
     if (!state.isMouseOverStatus) {
         DOM.statusWindowContent.scrollTop = DOM.statusWindowContent.scrollHeight;
     }
@@ -605,11 +656,9 @@ export function highlightResource(resourceName, type) {
 }
 
 export function addSessionToList(sessionId, name, isActive = false) {
-    // --- MODIFICATION START: Add action buttons ---
     const sessionItem = document.createElement('button');
     sessionItem.id = `session-${sessionId}`;
     sessionItem.dataset.sessionId = sessionId;
-    // The session-item class now has flex properties from main.css
     sessionItem.className = 'session-item w-full text-left p-3 rounded-lg hover:bg-white/10 transition-colors truncate';
     if (isActive) {
         document.querySelectorAll('.session-item').forEach(item => item.classList.remove('active'));
@@ -617,17 +666,13 @@ export function addSessionToList(sessionId, name, isActive = false) {
     }
 
     const nameSpan = document.createElement('span');
-    // Added 'flex-grow truncate' and removed cursor/hover styles (now in css)
     nameSpan.className = 'session-name-span font-semibold text-sm text-white flex-grow truncate';
-    // --- MODIFICATION END ---
     nameSpan.textContent = name;
     sessionItem.appendChild(nameSpan);
 
-    // --- MODIFICATION START: Create and add action buttons ---
     const actionsDiv = document.createElement('div');
-    actionsDiv.className = 'session-actions'; // Style block, hidden by default, visible on hover
+    actionsDiv.className = 'session-actions';
 
-    // Edit Button
     const editButton = document.createElement('button');
     editButton.type = 'button';
     editButton.className = 'session-action-button session-edit-button';
@@ -635,7 +680,6 @@ export function addSessionToList(sessionId, name, isActive = false) {
     editButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-11.202 11.202a.5.5 0 01-.293.146H3.5a.5.5 0 01-.5-.5v-1.414a.5.5 0 01.146-.293l11.202-11.202zM15.707 2.293a1 1 0 010 1.414L5.414 14H4v-1.414L14.293 2.293a1 1 0 011.414 0z" /></svg>`;
     actionsDiv.appendChild(editButton);
 
-    // Delete Button
     const deleteButton = document.createElement('button');
     deleteButton.type = 'button';
     deleteButton.className = 'session-action-button session-delete-button';
@@ -644,24 +688,14 @@ export function addSessionToList(sessionId, name, isActive = false) {
     actionsDiv.appendChild(deleteButton);
 
     sessionItem.appendChild(actionsDiv);
-    // --- MODIFICATION END ---
 
-    // Event listener is attached in eventHandlers.js
     return sessionItem;
 }
 
-// --- NEW Function: updateSessionListItemName ---
-/**
- * Updates the displayed name of a session item in the history list.
- * @param {string} sessionId - The ID of the session to update.
- * @param {string} newName - The new name for the session.
- */
 export function updateSessionListItemName(sessionId, newName) {
     const sessionItem = document.getElementById(`session-${sessionId}`);
     if (sessionItem) {
-        // --- MODIFICATION START: Target the specific span ---
         const nameSpan = sessionItem.querySelector('.session-name-span');
-        // --- MODIFICATION END ---
         if (nameSpan) {
             nameSpan.textContent = newName;
             console.log(`UI Updated: Session item ${sessionId} name changed to '${newName}'`);
@@ -672,13 +706,7 @@ export function updateSessionListItemName(sessionId, newName) {
         console.warn(`Could not find session item ${sessionId} in the list to update name.`);
     }
 }
-// --- END NEW Function ---
 
-// --- NEW Function: removeSessionFromList ---
-/**
- * Removes a session item from the history list in the DOM.
- * @param {string} sessionId - The ID of the session to remove.
- */
 export function removeSessionFromList(sessionId) {
     const sessionItem = document.getElementById(`session-${sessionId}`);
     if (sessionItem) {
@@ -688,43 +716,31 @@ export function removeSessionFromList(sessionId) {
         console.warn(`Could not find session item ${sessionId} in the list to remove.`);
     }
 }
-// --- END NEW Function ---
 
-
-// --- NEW Function: enterSessionEditMode ---
-/**
- * Switches a session list item's name span to an input field for editing.
- * @param {HTMLButtonElement} editButton - The edit button element that was clicked.
- */
 export function enterSessionEditMode(editButton) {
-    // --- MODIFICATION START: Logic updated to be triggered by button ---
     const sessionItem = editButton.closest('.session-item');
-    if (!sessionItem || sessionItem.querySelector('.session-name-input')) {
-        return; // Already in edit mode or element not found
+    if (!sessionItem || sessionItem.querySelector('.session-edit-input')) {
+        return;
     }
 
     const spanElement = sessionItem.querySelector('.session-name-span');
     const actionsDiv = sessionItem.querySelector('.session-actions');
-    if (!spanElement || !actionsDiv) return; // Missing required elements
+    if (!spanElement || !actionsDiv) return;
 
     const currentName = spanElement.textContent;
     const inputElement = document.createElement('input');
     inputElement.type = 'text';
     inputElement.value = currentName;
-    inputElement.dataset.originalName = currentName; // Store original name
-    // Use the class from main.css for styling
+    inputElement.dataset.originalName = currentName;
     inputElement.className = 'session-edit-input';
 
-    // Replace span with input
     spanElement.style.display = 'none';
-    actionsDiv.style.display = 'none'; // Hide actions div
-    sessionItem.insertBefore(inputElement, spanElement); // Insert input before the (hidden) span
+    actionsDiv.style.display = 'none';
+    sessionItem.insertBefore(inputElement, spanElement);
 
-    // Focus and select text
     inputElement.focus();
     inputElement.select();
 
-    // Attach listeners
     inputElement.addEventListener('blur', handleSessionRenameSave);
     inputElement.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
@@ -734,39 +750,26 @@ export function enterSessionEditMode(editButton) {
             handleSessionRenameCancel(e);
         }
     });
-    // --- MODIFICATION END ---
 }
-// --- END NEW Function ---
 
-// --- NEW Function: exitSessionEditMode ---
-/**
- * Switches a session list item back from input mode to display mode.
- * @param {HTMLInputElement} inputElement - The input element currently being edited.
- * @param {string} finalName - The name to display in the span (either original or new).
- */
 export function exitSessionEditMode(inputElement, finalName) {
     const sessionItem = inputElement.closest('.session-item');
     if (!sessionItem) return;
 
     const spanElement = sessionItem.querySelector('.session-name-span');
-    // --- MODIFICATION START: Show actions div ---
     const actionsDiv = sessionItem.querySelector('.session-actions');
 
     if (spanElement) {
         spanElement.textContent = finalName;
-        spanElement.style.display = ''; // Show the span again
+        spanElement.style.display = '';
     }
     if (actionsDiv) {
-        actionsDiv.style.display = ''; // Show the actions div again
+        actionsDiv.style.display = '';
     }
-    // --- MODIFICATION END ---
 
-    // Clean up input element and its listeners
     inputElement.removeEventListener('blur', handleSessionRenameSave);
-    // Note: Keydown listener is anonymous, but it will be removed when the element is removed.
     inputElement.remove();
 }
-// --- END NEW Function ---
 
 
 export function updateConfigButtonState() {

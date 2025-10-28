@@ -3,15 +3,9 @@ import logging
 import json
 import re
 
-# --- MODIFICATION START: Remove Quart import ---
-# from quart import current_app # No longer needed
-# --- MODIFICATION END ---
-
 from trusted_data_agent.agent.executor import PlanExecutor
 from trusted_data_agent.core.config import APP_STATE
-# --- MODIFICATION START: Import add_to_history ---
 from trusted_data_agent.core import session_manager
-# --- MODIFICATION END ---
 
 app_logger = logging.getLogger("quart.app")
 
@@ -32,17 +26,18 @@ def _parse_sse_event(event_str: str) -> tuple[dict, str]:
             event_type = line[6:].strip()
     return data, event_type
 
-# --- MODIFICATION START: Add user_uuid parameter ---
+# --- MODIFICATION START: Add plan_to_execute and is_replay parameters ---
 async def run_agent_execution(
-    user_uuid: str, # Added user_uuid
+    user_uuid: str,
     session_id: str,
     user_input: str,
     event_handler,
     active_prompt_name: str = None,
     prompt_arguments: dict = None,
     disabled_history: bool = False,
-    source: str = "text"
-    # replay parameters will be added later
+    source: str = "text",
+    plan_to_execute: list = None, # Added optional plan
+    is_replay: bool = False # Added replay flag
 ):
 # --- MODIFICATION END ---
     """
@@ -50,30 +45,26 @@ async def run_agent_execution(
     """
     final_result_payload = None
     try:
-        # --- MODIFICATION START: Pass user_uuid to get_session ---
         session_data = session_manager.get_session(user_uuid, session_id)
-        # --- MODIFICATION END ---
 
-        # Check if session exists *after* trying to load it
         if not session_data:
              app_logger.error(f"Execution service: Session {session_id} not found for user {user_uuid}.")
-             # Raise an error that the caller (routes/rest_routes) can catch
-             # Or handle the error by sending an SSE event and returning
              await event_handler({"error": f"Session '{session_id}' not found."}, "error")
              return None # Indicate failure
 
-        # --- MODIFICATION START: Add user input to session_history ---
         # Save the user's message to the history used for UI rendering.
-        if user_input: # Only save if there's actual input
+        # --- MODIFICATION START: Only add user input if not a replay ---
+        # Don't add user input again if we are replaying a previous query
+        if user_input and not is_replay:
             session_manager.add_to_history(user_uuid, session_id, 'user', user_input)
             app_logger.debug(f"Added user input to session_history for {session_id}")
         # --- MODIFICATION END ---
 
         previous_turn_data = session_data.get("last_turn_data", {})
 
-        # --- MODIFICATION START: Pass user_uuid to PlanExecutor ---
+        # --- MODIFICATION START: Pass new parameters to PlanExecutor ---
         executor = PlanExecutor(
-            user_uuid=user_uuid, # Pass the user UUID
+            user_uuid=user_uuid,
             session_id=session_id,
             original_user_input=user_input,
             dependencies={'STATE': APP_STATE},
@@ -81,7 +72,9 @@ async def run_agent_execution(
             prompt_arguments=prompt_arguments,
             disabled_history=disabled_history,
             previous_turn_data=previous_turn_data,
-            source=source
+            source=source,
+            plan_to_execute=plan_to_execute, # Pass the plan
+            is_replay=is_replay # Pass the flag
         )
         # --- MODIFICATION END ---
 
@@ -94,9 +87,7 @@ async def run_agent_execution(
 
     except Exception as e:
         app_logger.error(f"An unhandled error occurred in the agent execution service for user {user_uuid}, session {session_id}: {e}", exc_info=True)
-        # Ensure the handler is called with the error information
         await event_handler({"error": str(e)}, "error")
-        # Re-raise the exception so the caller (e.g., REST background task) knows it failed
         raise
 
     return final_result_payload
