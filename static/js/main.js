@@ -118,28 +118,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             await finalizeConfiguration(currentConfig); // This sets up MCP client etc.
 
             // --- Load Sessions AFTER finalizeConfiguration ---
-            console.log("DEBUG: Configuration finalized. Attempting to load previous sessions...");
-            try {
-                const sessions = await API.loadAllSessions();
-                // --- ADDED LOGGING ---
-                console.log("DEBUG: Received sessions from API:", sessions);
-                DOM.sessionList.innerHTML = ''; // Clear list before adding
-                if (sessions && Array.isArray(sessions) && sessions.length > 0) {
-                    sessions.forEach((session, index) => {
-                        // --- ADDED LOGGING ---
-                        console.log(`DEBUG: Adding session ${index + 1}/${sessions.length} to list:`, session);
-                        const sessionItem = UI.addSessionToList(session.id, session.name, false); // Add inactive
-                        DOM.sessionList.appendChild(sessionItem); // Append instead of prepend
-                    });
-                    console.log("DEBUG: Finished adding sessions to the list.");
-                } else {
-                    console.log("DEBUG: No previous sessions found or returned by API.");
-                }
-                 // --- END ADDED LOGGING ---
-            } catch (sessionError) {
-                console.error("DEBUG: Error loading previous sessions:", sessionError);
-                DOM.sessionList.innerHTML = '<li class="text-red-400 p-2">Error loading sessions</li>'; // Show error in UI
-            }
+            console.log("DEBUG: Configuration finalized. Session loading is handled by finalizeConfiguration.");
+            // --- MODIFICATION START: Removed redundant session loading ---
+            // This logic is now inside finalizeConfiguration()
+            // --- MODIFICATION END ---
              // --- END Load Sessions ---
 
         } else {
@@ -205,4 +187,3 @@ document.addEventListener('DOMContentLoaded', async () => {
     UI.updateVoiceModeUI();
     UI.updateKeyObservationsModeUI();
 });
-
