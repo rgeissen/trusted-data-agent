@@ -9,10 +9,8 @@ import { state } from './state.js';
 import * as API from './api.js';
 import * as UI from './ui.js';
 import * as Utils from './utils.js';
-// --- MODIFICATION START: Import specific utils, rename/deleteSession, and new fetch functions ---
 import { copyToClipboard, copyTableToClipboard, classifyConfirmation } from './utils.js';
-import { renameSession, deleteSession, fetchTurnPlan, fetchTurnQuery } from './api.js'; // Import the rename/delete/fetch API functions
-// --- MODIFICATION END ---
+import { renameSession, deleteSession } from './api.js'; // Import the rename/delete API functions
 import { startRecognition, stopRecognition, startConfirmationRecognition } from './voice.js';
 
 // --- Stream Processing ---
@@ -46,7 +44,7 @@ async function processStream(responseBody) {
             }
 
             if (dataLine) {
-                try { // Add try-catch for JSON parsing
+                try {
                     const eventData = JSON.parse(dataLine);
 
                     // --- Event Handling Logic ---
@@ -55,7 +53,7 @@ async function processStream(responseBody) {
                         let dot;
                         if (target === 'db') dot = DOM.mcpStatusDot;
                         else if (target === 'llm') dot = DOM.llmStatusDot;
-
+                        // Handle LLM thinking indicator separately
                         if (target === 'llm') UI.setThinkingIndicator(statusState === 'busy');
 
                         if (dot) {
@@ -68,7 +66,8 @@ async function processStream(responseBody) {
                             }
                         }
                     } else if (eventName === 'context_state_update') {
-                        // Context state update logic...
+                         // Currently no specific UI update needed, but could add visual feedback here
+                        console.log("Context state update:", eventData);
                     } else if (eventName === 'token_update') {
                         UI.updateTokenDisplay(eventData);
                         if (eventData.call_id && state.currentProvider !== 'Amazon') {
@@ -86,9 +85,9 @@ async function processStream(responseBody) {
                         UI.setExecutionState(false);
                         openCorrectionModal(eventData.details);
                     } else if (eventName === 'session_update') {
-                        // Session update logic...
+                        // Logic to potentially update session list if needed
                     } else if (eventName === 'llm_thought') {
-                        UI.updateStatusWindow({ step: "LLM has generated the final answer", ...eventData });
+                        UI.updateStatusWindow({ step: "Parser has generated the final answer", ...eventData });
                     } else if (eventName === 'prompt_selected') {
                         UI.updateStatusWindow(eventData);
                         if (eventData.prompt_name) UI.highlightResource(eventData.prompt_name, 'prompts');
@@ -108,12 +107,11 @@ async function processStream(responseBody) {
                         UI.setExecutionState(false);
                     } else if (eventName === 'final_answer') {
                         // --- MODIFICATION START: Pass turn_id to addMessage ---
-                        UI.addMessage('assistant', eventData.final_answer, eventData.turn_id);
+                        UI.addMessage('assistant', eventData.final_answer, eventData.turn_id); // Pass turn_id here
                         // --- MODIFICATION END ---
                         UI.updateStatusWindow({ step: "Finished", details: "Response sent to chat." }, true);
                         UI.setExecutionState(false);
 
-                        // Voice/TTS logic
                         if (eventData.source === 'voice' && eventData.tts_payload) {
                            const { direct_answer, key_observations } = eventData.tts_payload;
 
@@ -166,9 +164,8 @@ async function processStream(responseBody) {
                                                 audio.play().catch(resolve);
                                             });
                                         }
-                                    // Fallthrough intentionally missing for 'off' case below
 
-                                    case 'off': // Includes fallthrough from 'autoplay-on'
+                                    case 'off':
                                         if (state.isVoiceModeLocked) {
                                             setTimeout(() => startRecognition(), 100);
                                         }
@@ -220,16 +217,18 @@ async function handleObservationConfirmation(transcribedText) {
 
 
 async function handleStreamRequest(endpoint, body) {
-    if (body.message && !body.is_replay) { // Only add user message if it's not a replay
-        UI.addMessage('user', body.message);
-    } else if (body.prompt_name) {
+    if (body.message) {
+        // --- MODIFICATION START: Do not add user message again during replay ---
+        // Only add user message if it's NOT a replay initiated by the replay button
+        if (!body.is_replay) {
+            UI.addMessage('user', body.message);
+        } else {
+             console.log("Replay initiated, skipping adding user message again.");
+        }
+        // --- MODIFICATION END ---
+    } else {
         UI.addMessage('user', `Executing prompt: ${body.prompt_name}`);
-    } else if (body.is_replay && body.message) {
-         // Optionally add a system message indicating replay
-         // UI.addMessage('system', `Replaying query: "${body.message}"`);
-         console.log(`Replaying query: "${body.message}"`);
     }
-
     DOM.userInput.value = '';
     UI.setExecutionState(true);
     DOM.statusWindowContent.innerHTML = '';
@@ -239,7 +238,10 @@ async function handleStreamRequest(endpoint, body) {
     state.currentPhaseContainerEl = null;
 
     const useLastTurnMode = state.isLastTurnModeLocked || state.isTempLastTurnMode;
-    body.disabled_history = useLastTurnMode;
+    // --- MODIFICATION START: Also disable history if it's a replay ---
+    body.disabled_history = useLastTurnMode || body.is_replay; // Disable if last turn mode OR replay
+    // --- MODIFICATION END ---
+
 
     DOM.contextStatusDot.classList.remove('history-disabled-preview');
 
@@ -268,6 +270,7 @@ export async function handleChatSubmit(e, source = 'text') {
         message,
         session_id: state.currentSessionId,
         source: source
+        // is_replay is implicitly false here
     });
 }
 
@@ -288,78 +291,92 @@ async function handleStopExecutionClick() {
     }
 }
 
-// --- MODIFICATION START: Add Reload Plan handler ---
+// --- MODIFICATION START: Define handleReloadPlanClick ---
 /**
- * Handles clicks on the "Reload Plan" button.
- * Fetches the plan for the specified turn and displays it in the status window.
- * @param {HTMLButtonElement} button - The button element that was clicked.
+ * Handles clicks on the "Reload Plan" button. Fetches and displays the full turn details.
+ * @param {HTMLButtonElement} buttonEl - The button element that was clicked.
  */
-async function handleReloadPlanClick(button) {
-    const turnId = button.dataset.turnId;
+async function handleReloadPlanClick(buttonEl) {
+    const turnId = buttonEl.dataset.turnId;
     const sessionId = state.currentSessionId;
     if (!turnId || !sessionId) {
-        console.error("Missing turnId or sessionId for reloading plan.");
+        console.error("Missing turnId or sessionId for reloading plan details.");
         return;
     }
 
-    // Indicate loading (optional)
-    DOM.statusWindowContent.innerHTML = '<p class="text-gray-400 p-4">Loading plan...</p>';
-    state.currentStatusId = 0; // Reset status ID for the loaded plan display
+    // Indicate loading in the status window
+    DOM.statusWindowContent.innerHTML = `<p class="p-4 text-gray-400">Loading details for Turn ${turnId}...</p>`;
+    // Scroll to top of status window
+    DOM.statusWindowContent.scrollTop = 0;
+    // Ensure status panel is open
+    const statusCheckbox = document.getElementById('toggle-status-checkbox');
+    if (statusCheckbox && !statusCheckbox.checked) {
+        statusCheckbox.checked = true;
+        // Manually trigger the toggle logic if checkbox change doesn't automatically do it
+        const event = new Event('change');
+        statusCheckbox.dispatchEvent(event);
+    }
+
 
     try {
-        const planData = await API.fetchTurnPlan(sessionId, turnId);
-        if (planData && planData.plan) {
-            // Use updateStatusWindow to render the plan
-            // We wrap it slightly differently than the live generation event
-            UI.updateStatusWindow({
-                step: `Plan Loaded (Turn ${turnId})`,
-                details: planData.plan, // Pass the plan array directly
-                type: 'system_message' // Use a neutral type
-            }, true); // Mark as final step for this display
-        } else {
-            throw new Error(planData.error || "Plan data not found.");
+        // Fetch the full turn details (plan + trace)
+        const turnData = await API.fetchTurnDetails(sessionId, turnId);
+        console.log("Fetched Turn Details:", turnData);
+
+        // Check if data is valid
+        if (!turnData || (!turnData.original_plan && !turnData.execution_trace)) {
+            throw new Error("Received empty or invalid turn details from the server.");
         }
+
+        // Render the historical trace using the new UI function
+        UI.renderHistoricalTrace(turnData.original_plan || [], turnData.execution_trace || [], turnId);
+
     } catch (error) {
-        console.error(`Error loading plan for turn ${turnId}:`, error);
-        DOM.statusWindowContent.innerHTML = `<p class="text-red-400 p-4">Error loading plan: ${error.message}</p>`;
+        console.error(`Error loading details for turn ${turnId}:`, error);
+        DOM.statusWindowContent.innerHTML = `<div class="p-4 status-step error"><h4 class="font-bold text-sm text-white mb-2">Error Loading Details</h4><p class="text-xs">${error.message}</p></div>`;
     }
 }
 // --- MODIFICATION END ---
 
-// --- MODIFICATION START: Add Replay Query handler ---
+// --- MODIFICATION START: Define handleReplayQueryClick ---
 /**
- * Handles clicks on the "Replay Query" button.
- * Fetches the original query for the specified turn and re-submits it.
- * @param {HTMLButtonElement} button - The button element that was clicked.
+ * Handles clicks on the "Replay Query" button. Fetches the original query and re-submits it.
+ * @param {HTMLButtonElement} buttonEl - The button element that was clicked.
  */
-async function handleReplayQueryClick(button) {
-    const turnId = button.dataset.turnId;
+async function handleReplayQueryClick(buttonEl) {
+    const turnId = buttonEl.dataset.turnId;
     const sessionId = state.currentSessionId;
     if (!turnId || !sessionId) {
         console.error("Missing turnId or sessionId for replaying query.");
         return;
     }
 
-    // Indicate loading (optional)
-    UI.addMessage('system', `Attempting to replay query from Turn ${turnId}...`);
-
     try {
+        // Fetch the original query
         const queryData = await API.fetchTurnQuery(sessionId, turnId);
-        if (queryData && queryData.query) {
-            // Re-submit using handleStreamRequest
-            // Pass is_replay: true so the backend knows this is a replay
-            handleStreamRequest('/ask_stream', {
-                message: queryData.query, // The original query text
-                session_id: sessionId,
-                source: 'text', // Or determine original source if stored
-                is_replay: true // Flag indicating this is a replay
-            });
-        } else {
-            throw new Error(queryData.error || "Original query not found.");
+        const originalQuery = queryData.query;
+
+        if (!originalQuery) {
+            throw new Error("Could not retrieve the original query for this turn.");
         }
+
+        console.log(`Replaying query from Turn ${turnId}: "${originalQuery}"`);
+
+        // Add a message indicating replay
+        UI.addMessage('user', `🔄 Replaying query from Turn ${turnId}: ${originalQuery}`);
+
+        // Re-submit the query using handleStreamRequest
+        // Pass is_replay=true to prevent adding user message again and disable history
+        handleStreamRequest('/ask_stream', {
+            message: originalQuery, // Use the fetched original query
+            session_id: sessionId,
+            source: 'text', // Assuming original source was text
+            is_replay: true // Mark this as a replay
+        });
+
     } catch (error) {
         console.error(`Error replaying query for turn ${turnId}:`, error);
-        UI.addMessage('assistant', `Error replaying query: ${error.message}`);
+        UI.addMessage('assistant', `Sorry, could not replay the query from Turn ${turnId}. Error: ${error.message}`);
     }
 }
 // --- MODIFICATION END ---
@@ -396,7 +413,7 @@ export async function handleLoadResources(type) {
         categoriesContainer.innerHTML = '';
         panelsContainer.innerHTML = '';
 
-        Object.keys(data).sort().forEach(category => { // Sort categories alphabetically
+        Object.keys(data).forEach(category => {
             const categoryTab = document.createElement('button');
             categoryTab.className = 'category-tab px-4 py-2 rounded-md font-semibold text-sm transition-colors hover:bg-[#D9501A]';
             categoryTab.textContent = category;
@@ -409,8 +426,7 @@ export async function handleLoadResources(type) {
             panel.className = 'category-panel px-4 space-y-2';
             panel.dataset.category = category;
 
-            // Sort resources within category alphabetically by name
-            data[category].sort((a, b) => a.name.localeCompare(b.name)).forEach(resource => {
+            data[category].forEach(resource => {
                 const itemEl = UI.createResourceItem(resource, type);
                 panel.appendChild(itemEl);
             });
@@ -471,7 +487,21 @@ export async function handleLoadSession(sessionId, isNewSession = false) {
         state.currentSessionId = sessionId;
         DOM.chatLog.innerHTML = '';
         if (data.history && data.history.length > 0) {
-            data.history.forEach(msg => UI.addMessage(msg.role, msg.content));
+            // --- MODIFICATION START: Pass turn_id during history load ---
+            // Simulate turn IDs based on message pairs for existing sessions
+            let currentTurnId = 1;
+            for (let i = 0; i < data.history.length; i++) {
+                const msg = data.history[i];
+                if (msg.role === 'assistant') {
+                    // Pass the calculated turn ID for assistant messages
+                    UI.addMessage(msg.role, msg.content, currentTurnId);
+                    currentTurnId++; // Increment turn ID after an assistant message
+                } else {
+                    // User messages don't need a turn ID passed to addMessage
+                    UI.addMessage(msg.role, msg.content);
+                }
+            }
+            // --- MODIFICATION END ---
         } else {
              UI.addMessage('assistant', "I'm ready to help. How can I assist you with your Teradata system today?");
         }
@@ -646,7 +676,7 @@ export async function finalizeConfiguration(config) {
     DOM.mcpStatusDot.classList.remove('disconnected');
     DOM.mcpStatusDot.classList.add('connected');
     DOM.llmStatusDot.classList.remove('disconnected', 'busy');
-    DOM.llmStatusDot.classList.add('connected');
+    DOM.llmStatusDot.classList.add('idle'); // Start as idle
     DOM.contextStatusDot.classList.remove('disconnected');
     DOM.contextStatusDot.classList.add('idle');
 
@@ -1114,6 +1144,14 @@ async function handleIntensityChange() {
 
 function getSystemPromptSummaryHTML() {
     let devFlagHtml = '';
+//    if (state.appConfig.allow_synthesis_from_history) {
+//        devFlagHtml = `
+//             <div class="p-3 bg-yellow-900/50 rounded-lg mt-4">
+//                <p class="font-semibold text-yellow-300">Developer Mode Enabled</p>
+//                <p class="text-xs text-yellow-400 mt-1">The 'Answer from History' feature is active. The agent may answer questions by synthesizing from previous turns without re-running tools.</p>
+//           </div>
+//        `;
+//    }
 
     return `
         <div class="space-y-4 text-gray-300 text-sm p-2">
@@ -1309,7 +1347,7 @@ async function handleTogglePrompt(promptName, isDisabled, buttonEl) {
 
         promptItem.classList.toggle('opacity-60', isDisabled);
         promptItem.title = isDisabled ? 'This prompt is disabled and will not be used by the agent.' : '';
-        runButton.disabled = isDisabled; // Make sure run button state matches
+        runButton.disabled = isDisabled;
         runButton.title = isDisabled ? 'This prompt is disabled.' : 'Run this prompt.';
 
         buttonEl.innerHTML = isDisabled ?
@@ -1350,7 +1388,10 @@ async function handleToggleTool(toolName, isDisabled, buttonEl) {
     }
 }
 
-
+/**
+ * Handles the save action when editing a session name (Enter or Blur).
+ * @param {Event} e - The event object (blur or keydown).
+ */
 export async function handleSessionRenameSave(e) {
     const inputElement = e.target;
     const sessionItem = inputElement.closest('.session-item');
@@ -1379,12 +1420,20 @@ export async function handleSessionRenameSave(e) {
     }
 }
 
+/**
+ * Handles the cancel action when editing a session name (Escape).
+ * @param {Event} e - The event object (keydown).
+ */
 export function handleSessionRenameCancel(e) {
     const inputElement = e.target;
     const originalName = inputElement.dataset.originalName;
     UI.exitSessionEditMode(inputElement, originalName);
 }
 
+/**
+ * Handles the click event for the delete session button.
+ * @param {HTMLButtonElement} deleteButton - The delete button element that was clicked.
+ */
 async function handleDeleteSessionClick(deleteButton) {
     const sessionItem = deleteButton.closest('.session-item');
     if (!sessionItem) return;
@@ -1421,11 +1470,13 @@ export function initializeEventListeners() {
     DOM.resourceTabs.addEventListener('click', handleResourceTabClick);
     DOM.keyObservationsToggleButton.addEventListener('click', handleKeyObservationsToggleClick);
 
-    // --- MODIFICATION START: Add delegated listener for reload/replay ---
+    // Delegated event listener for copy buttons and NEW reload/replay buttons
     DOM.chatLog.addEventListener('click', (e) => {
         const copyButton = e.target.closest('.copy-button');
+        // --- MODIFICATION START: Add reload/replay button handling ---
         const reloadButton = e.target.closest('.reload-plan-button');
         const replayButton = e.target.closest('.replay-query-button');
+        // --- MODIFICATION END ---
 
         if (copyButton) {
             const copyType = copyButton.dataset.copyType;
@@ -1434,13 +1485,14 @@ export function initializeEventListeners() {
             } else if (copyType === 'table') {
                 copyTableToClipboard(copyButton);
             }
+        // --- MODIFICATION START: Call handlers for reload/replay ---
         } else if (reloadButton) {
             handleReloadPlanClick(reloadButton);
         } else if (replayButton) {
             handleReplayQueryClick(replayButton);
         }
+        // --- MODIFICATION END ---
     });
-    // --- MODIFICATION END ---
 
     if (DOM.stopExecutionButton) {
         DOM.stopExecutionButton.addEventListener('click', handleStopExecutionClick);
@@ -1524,7 +1576,7 @@ export function initializeEventListeners() {
         }
     });
 
-    // All modal listeners (unchanged)
+    // All modal listeners
     DOM.promptModalClose.addEventListener('click', UI.closePromptModal);
     DOM.promptModalOverlay.addEventListener('click', (e) => {
         if (e.target === DOM.promptModalOverlay) UI.closePromptModal();
@@ -1547,6 +1599,8 @@ export function initializeEventListeners() {
             DOM.infoModalClose.click();
         }
     });
+
+    // Config modal listeners
     DOM.configMenuButton.addEventListener('click', () => {
         DOM.configModalOverlay.classList.remove('hidden', 'opacity-0');
         DOM.configModalContent.classList.remove('scale-95', 'opacity-0');
@@ -1557,6 +1611,9 @@ export function initializeEventListeners() {
     DOM.configActionButton.addEventListener('click', handleConfigActionButtonClick);
     DOM.configForm.addEventListener('submit', handleConfigFormSubmit);
     DOM.configForm.addEventListener('input', UI.updateConfigButtonState);
+
+
+    // LLM config listeners
     DOM.llmProviderSelect.addEventListener('change', handleProviderChange);
     [DOM.awsAccessKeyIdInput, DOM.awsSecretAccessKeyInput, DOM.awsRegionInput].forEach(input => {
         input.addEventListener('blur', () => {
@@ -1580,17 +1637,24 @@ export function initializeEventListeners() {
     });
     DOM.refreshModelsButton.addEventListener('click', handleRefreshModelsClick);
     DOM.llmModelSelect.addEventListener('change', handleModelChange);
+
+
+    // Prompt editor listeners
     DOM.promptEditorButton.addEventListener('click', openPromptEditor);
     DOM.promptEditorClose.addEventListener('click', closePromptEditor);
     DOM.promptEditorSave.addEventListener('click', saveSystemPromptChanges);
     DOM.promptEditorReset.addEventListener('click', () => resetSystemPrompt(false));
     DOM.promptEditorTextarea.addEventListener('input', UI.updatePromptEditorState);
+
+    // Simple chat modal listeners
     DOM.chatModalButton.addEventListener('click', openChatModal);
-    DOM.chatModalClose.addEventListener('click', UI.closeChatModal);
+    DOM.chatModalClose.addEventListener('click', UI.closeChatModal); // FIXED
     DOM.chatModalOverlay.addEventListener('click', (e) => {
-        if (e.target === DOM.chatModalOverlay) UI.closeChatModal();
+        if (e.target === DOM.chatModalOverlay) UI.closeChatModal(); // FIXED
     });
     DOM.chatModalForm.addEventListener('submit', handleChatModalSubmit);
+
+    // Global listeners
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('keyup', handleKeyUp);
     DOM.statusWindowContent.addEventListener('mouseenter', () => { state.isMouseOverStatus = true; });
@@ -1614,3 +1678,4 @@ export function initializeEventListeners() {
         }
     });
 }
+

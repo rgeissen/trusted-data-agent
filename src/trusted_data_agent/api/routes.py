@@ -8,9 +8,7 @@ import copy
 import hashlib
 import httpx
 
-# --- MODIFICATION START: Import abort ---
 from quart import Blueprint, request, jsonify, render_template, Response, abort
-# --- MODIFICATION END ---
 from langchain_mcp_adapters.prompts import load_mcp_prompt
 
 from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
@@ -32,7 +30,6 @@ from trusted_data_agent.core.utils import (
 api_bp = Blueprint('api', __name__)
 app_logger = logging.getLogger("quart.app")
 
-# --- MODIFICATION START: Add helper to get user UUID ---
 def _get_user_uuid_from_request():
     """Extracts User UUID from request header or aborts."""
     user_uuid = request.headers.get("X-TDA-User-UUID")
@@ -40,7 +37,6 @@ def _get_user_uuid_from_request():
         app_logger.error("Missing X-TDA-User-UUID header in request.")
         abort(400, description="X-TDA-User-UUID header is required.")
     return user_uuid
-# --- MODIFICATION END ---
 
 
 @api_bp.route("/")
@@ -55,13 +51,9 @@ async def get_application_status():
     This is used by the front end on startup to synchronize its state.
     It now respects the CONFIGURATION_PERSISTENCE flag.
     """
-    # --- MODIFICATION START: Add Configuration Persistence Check ---
-    # If persistence is disabled via the environment variable, always force
-    # the user to re-configure by reporting the status as unconfigured.
     if not APP_CONFIG.CONFIGURATION_PERSISTENCE:
         app_logger.info("Configuration persistence is disabled by environment setting. Forcing re-configuration.")
         return jsonify({"isConfigured": False})
-    # --- MODIFICATION END ---
 
     is_configured = APP_CONFIG.SERVICES_CONFIGURED
     app_logger.debug(f"API endpoint /api/status checked. Current configured status: {is_configured}")
@@ -96,8 +88,6 @@ async def simple_chat():
     if not message:
         return jsonify({"error": "No message provided."}), 400
 
-    # Note: Simple chat doesn't use user UUID scoping currently.
-    # If needed, it could be added here, but typically simple chat is stateless.
     try:
         response_text, _, _ = await llm_handler.call_llm_api(
             llm_instance=APP_STATE.get('llm'),
@@ -106,8 +96,6 @@ async def simple_chat():
             system_prompt_override="You are a helpful assistant.",
             dependencies={'STATE': APP_STATE},
             reason="Simple, tool-less chat."
-            # user_uuid=user_uuid, # Add if simple chat needs session context
-            # session_id=session_id # Add if simple chat needs session context
         )
 
         final_response = response_text.replace("FINAL_ANSWER:", "").strip()
@@ -352,7 +340,7 @@ async def get_prompt_content(prompt_name):
 async def get_sessions():
     """Returns a list of all active chat sessions for the requesting user."""
     user_uuid = _get_user_uuid_from_request()
-    app_logger.info(f"GET /sessions endpoint hit for user {user_uuid}") # Added log
+    app_logger.info(f"GET /sessions endpoint hit for user {user_uuid}")
     sessions = session_manager.get_all_sessions(user_uuid=user_uuid)
     return jsonify(sessions)
 
@@ -371,7 +359,6 @@ async def get_session_history(session_id):
     app_logger.warning(f"Session {session_id} not found for user {user_uuid}.")
     return jsonify({"error": "Session not found"}), 404
 
-# --- NEW: Session Rename Endpoint ---
 @api_bp.route("/api/session/<session_id>/rename", methods=["POST"])
 async def rename_session(session_id: str):
     """Renames a specific session for the requesting user."""
@@ -382,7 +369,6 @@ async def rename_session(session_id: str):
     if not new_name or not isinstance(new_name, str) or len(new_name.strip()) == 0:
         return jsonify({"status": "error", "message": "Invalid or empty 'newName' provided."}), 400
 
-    # Verify user owns the session
     session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
     if not session_data:
         app_logger.warning(f"Rename failed: Session {session_id} not found for user {user_uuid}.")
@@ -395,9 +381,7 @@ async def rename_session(session_id: str):
     except Exception as e:
         app_logger.error(f"Error renaming session {session_id} for user {user_uuid}: {e}", exc_info=True)
         return jsonify({"status": "error", "message": "Failed to update session name on the server."}), 500
-# --- END NEW Endpoint ---
 
-# --- NEW: Session Delete Endpoint ---
 @api_bp.route("/api/session/<session_id>", methods=["DELETE"])
 async def delete_session_endpoint(session_id: str):
     """Deletes a specific session for the requesting user."""
@@ -410,84 +394,77 @@ async def delete_session_endpoint(session_id: str):
             app_logger.info(f"Successfully processed delete request for session {session_id} (user {user_uuid}).")
             return jsonify({"status": "success", "message": "Session deleted successfully."}), 200
         else:
-            # delete_session logs specifics, return a generic server error
             app_logger.error(f"session_manager.delete_session reported failure for session {session_id} (user {user_uuid}).")
             return jsonify({"status": "error", "message": "Failed to delete session file on the server."}), 500
     except Exception as e:
-        # Catch unexpected errors during the process
         app_logger.error(f"Unexpected error during DELETE /api/session/{session_id} for user {user_uuid}: {e}", exc_info=True)
         return jsonify({"status": "error", "message": "An unexpected server error occurred during deletion."}), 500
-# --- END NEW Endpoint ---
 
-# --- MODIFICATION START: Add endpoints for fetching plan and query ---
-@api_bp.route("/api/session/<session_id>/turn/<turn_id>/plan", methods=["GET"])
-async def get_turn_plan(session_id: str, turn_id: str):
+# --- MODIFICATION START: Add endpoints for /plan and /details ---
+@api_bp.route("/api/session/<session_id>/turn/<int:turn_id>/plan", methods=["GET"])
+async def get_turn_plan(session_id: str, turn_id: int):
     """Retrieves the original plan for a specific turn in a session."""
     user_uuid = _get_user_uuid_from_request()
-    app_logger.info(f"GET plan request for session {session_id}, turn {turn_id} from user {user_uuid}.")
-
-    try:
-        turn_index = int(turn_id) - 1 # Convert to 0-based index
-        if turn_index < 0:
-            raise ValueError("Turn ID must be a positive integer.")
-    except ValueError:
-        app_logger.warning(f"Invalid turn ID '{turn_id}' requested by user {user_uuid}.")
-        return jsonify({"error": "Invalid turn ID. Must be a positive integer."}), 400
-
+    app_logger.info(f"GET /plan request for session {session_id}, turn {turn_id}, user {user_uuid}")
     session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
     if not session_data:
-        app_logger.warning(f"Session {session_id} not found for user {user_uuid} when fetching plan.")
-        return jsonify({"error": "Session not found or access denied."}), 404
+        return jsonify({"error": "Session not found"}), 404
 
     workflow_history = session_data.get("last_turn_data", {}).get("workflow_history", [])
-    if turn_index >= len(workflow_history):
-        app_logger.warning(f"Turn {turn_id} not found in session {session_id} history (user {user_uuid}).")
+    if not isinstance(workflow_history, list) or turn_id <= 0 or turn_id > len(workflow_history):
         return jsonify({"error": f"Turn {turn_id} not found in session history."}), 404
 
-    turn_data = workflow_history[turn_index]
+    # Turns are 1-based for the user, but list index is 0-based
+    turn_data = workflow_history[turn_id - 1]
     original_plan = turn_data.get("original_plan")
 
-    if original_plan is None: # Check explicitly for None, as empty plan [] is valid
-        app_logger.warning(f"Original plan missing for turn {turn_id}, session {session_id} (user {user_uuid}).")
-        # Return 404, or maybe 200 with an empty list/message? 404 seems appropriate if plan *should* exist.
-        return jsonify({"error": f"Original plan data not found for turn {turn_id}."}), 404
+    if original_plan:
+        return jsonify({"plan": original_plan})
+    else:
+        return jsonify({"error": f"Original plan not found for turn {turn_id}."}), 404
 
-    return jsonify({"plan": original_plan}), 200
-
-@api_bp.route("/api/session/<session_id>/turn/<turn_id>/query", methods=["GET"])
-async def get_turn_query(session_id: str, turn_id: str):
-    """Retrieves the original user query for a specific turn in a session."""
+@api_bp.route("/api/session/<session_id>/turn/<int:turn_id>/details", methods=["GET"])
+async def get_turn_details(session_id: str, turn_id: int):
+    """Retrieves the full details (plan and trace) for a specific turn."""
     user_uuid = _get_user_uuid_from_request()
-    app_logger.info(f"GET query request for session {session_id}, turn {turn_id} from user {user_uuid}.")
-
-    try:
-        turn_index = int(turn_id) - 1
-        if turn_index < 0:
-            raise ValueError("Turn ID must be a positive integer.")
-    except ValueError:
-        app_logger.warning(f"Invalid turn ID '{turn_id}' requested by user {user_uuid}.")
-        return jsonify({"error": "Invalid turn ID. Must be a positive integer."}), 400
-
+    app_logger.info(f"GET /details request for session {session_id}, turn {turn_id}, user {user_uuid}")
     session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
     if not session_data:
-        app_logger.warning(f"Session {session_id} not found for user {user_uuid} when fetching query.")
-        return jsonify({"error": "Session not found or access denied."}), 404
+        return jsonify({"error": "Session not found"}), 404
 
     workflow_history = session_data.get("last_turn_data", {}).get("workflow_history", [])
-    if turn_index >= len(workflow_history):
-        app_logger.warning(f"Turn {turn_id} not found in session {session_id} history (user {user_uuid}).")
+    if not isinstance(workflow_history, list) or turn_id <= 0 or turn_id > len(workflow_history):
         return jsonify({"error": f"Turn {turn_id} not found in session history."}), 404
 
-    turn_data = workflow_history[turn_index]
-    user_query = turn_data.get("user_query")
-
-    if user_query is None:
-        app_logger.warning(f"User query missing for turn {turn_id}, session {session_id} (user {user_uuid}).")
-        return jsonify({"error": f"Original query not found for turn {turn_id}."}), 404
-
-    return jsonify({"query": user_query}), 200
+    # Return the entire turn data object
+    turn_data = workflow_history[turn_id - 1]
+    # Optionally filter/clean the data before sending if needed, but for now send all
+    return jsonify(turn_data)
 # --- MODIFICATION END ---
 
+
+@api_bp.route("/api/session/<session_id>/turn/<int:turn_id>/query", methods=["GET"])
+async def get_turn_query(session_id: str, turn_id: int):
+    """Retrieves the original user query for a specific turn in a session."""
+    user_uuid = _get_user_uuid_from_request()
+    app_logger.info(f"GET /query request for session {session_id}, turn {turn_id}, user {user_uuid}")
+    session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
+    if not session_data:
+        return jsonify({"error": "Session not found"}), 404
+
+    workflow_history = session_data.get("last_turn_data", {}).get("workflow_history", [])
+    if not isinstance(workflow_history, list) or turn_id <= 0 or turn_id > len(workflow_history):
+        return jsonify({"error": f"Turn {turn_id} not found in session history."}), 404
+
+    # Turns are 1-based for the user, but list index is 0-based
+    turn_data = workflow_history[turn_id - 1]
+    original_query = turn_data.get("user_query")
+
+    if original_query:
+        return jsonify({"query": original_query})
+    else:
+        # Should ideally always be present, but handle gracefully
+        return jsonify({"error": f"Original query not found for turn {turn_id}."}), 404
 
 @api_bp.route("/session", methods=["POST"])
 async def new_session():
@@ -506,7 +483,6 @@ async def new_session():
                     log_file_path = handler.baseFilename
                     handler.close()
                     logger.removeHandler(handler)
-
                     try:
                         with open(log_file_path, 'w'):
                             pass
@@ -525,7 +501,7 @@ async def new_session():
 
     try:
         session_id = session_manager.create_session(
-            user_uuid=user_uuid, # Pass user_uuid
+            user_uuid=user_uuid,
             provider=APP_CONFIG.CURRENT_PROVIDER,
             llm_instance=APP_STATE.get('llm'),
             charting_intensity=charting_intensity,
@@ -619,7 +595,6 @@ async def configure_services():
     if result.get("status") == "success":
         return jsonify(result), 200
     else:
-        # Return 500 for server-side config errors, 400 might be appropriate too
         return jsonify(result), 500
 
 @api_bp.route("/ask_stream", methods=["POST"])
@@ -639,18 +614,21 @@ async def ask_stream():
     session_id = data.get("session_id")
     disabled_history = data.get("disabled_history", False)
     source = data.get("source", "text")
+    # --- MODIFICATION START: Receive optional plan and replay flag ---
+    plan_to_execute = data.get("plan_to_execute") # Plan object or null
+    is_replay = data.get("is_replay", False) # Boolean flag
+    # --- MODIFICATION END ---
 
-    # --- Session Validation ---
+
     session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
     if not session_data:
         app_logger.error(f"ask_stream denied: Session {session_id} not found for user {user_uuid}.")
         async def error_gen():
             yield PlanExecutor._format_sse({"error": "Session not found or invalid."}, "error")
         return Response(error_gen(), mimetype="text/event-stream")
-    # --- End Session Validation ---
 
 
-    active_tasks_key = f"{user_uuid}_{session_id}" # Use composite key
+    active_tasks_key = f"{user_uuid}_{session_id}"
     active_tasks = APP_STATE.get("active_tasks", {})
     if active_tasks_key in active_tasks:
         existing_task = active_tasks.pop(active_tasks_key)
@@ -660,7 +638,7 @@ async def ask_stream():
             try:
                 await asyncio.wait_for(existing_task, timeout=0.1)
             except (asyncio.CancelledError, asyncio.TimeoutError):
-                pass # Expected exceptions
+                pass
             except Exception as e:
                 app_logger.error(f"Error during cancellation cleanup: {e}")
 
@@ -674,17 +652,21 @@ async def ask_stream():
         async def run_and_signal_completion():
             task = None
             try:
+                # --- MODIFICATION START: Pass plan and replay flag to execution service ---
                 task = asyncio.create_task(
                     execution_service.run_agent_execution(
-                        user_uuid=user_uuid, # Pass user_uuid
+                        user_uuid=user_uuid,
                         session_id=session_id,
                         user_input=user_input,
                         event_handler=event_handler,
                         disabled_history=disabled_history,
-                        source=source
+                        source=source,
+                        plan_to_execute=plan_to_execute, # Pass the plan
+                        is_replay=is_replay # Pass the flag
                     )
                 )
-                APP_STATE.setdefault("active_tasks", {})[active_tasks_key] = task # Use composite key
+                # --- MODIFICATION END ---
+                APP_STATE.setdefault("active_tasks", {})[active_tasks_key] = task
                 await task
             except asyncio.CancelledError:
                 app_logger.info(f"Task for user {user_uuid}, session {session_id} was cancelled.")
@@ -695,7 +677,7 @@ async def ask_stream():
             finally:
                 if active_tasks_key in APP_STATE.get("active_tasks", {}):
                     del APP_STATE["active_tasks"][active_tasks_key]
-                await queue.put(None) # Signal end of stream generation
+                await queue.put(None)
 
         asyncio.create_task(run_and_signal_completion())
 
@@ -728,16 +710,14 @@ async def invoke_prompt_stream():
     disabled_history = data.get("disabled_history", False)
     source = data.get("source", "prompt_library")
 
-    # --- Session Validation ---
     session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
     if not session_data:
         app_logger.error(f"invoke_prompt_stream denied: Session {session_id} not found for user {user_uuid}.")
         async def error_gen():
             yield PlanExecutor._format_sse({"error": "Session not found or invalid."}, "error")
         return Response(error_gen(), mimetype="text/event-stream")
-    # --- End Session Validation ---
 
-    active_tasks_key = f"{user_uuid}_{session_id}" # Use composite key
+    active_tasks_key = f"{user_uuid}_{session_id}"
     active_tasks = APP_STATE.get("active_tasks", {})
     if active_tasks_key in active_tasks:
         existing_task = active_tasks.pop(active_tasks_key)
@@ -761,19 +741,21 @@ async def invoke_prompt_stream():
         async def run_and_signal_completion():
             task = None
             try:
+                # Prompt invocation doesn't support replay currently
                 task = asyncio.create_task(
                     execution_service.run_agent_execution(
-                        user_uuid=user_uuid, # Pass user_uuid
+                        user_uuid=user_uuid,
                         session_id=session_id,
-                        user_input="Executing prompt...", # User input is less relevant here
+                        user_input="Executing prompt...",
                         event_handler=event_handler,
                         active_prompt_name=prompt_name,
                         prompt_arguments=arguments,
                         disabled_history=disabled_history,
                         source=source
+                        # plan_to_execute=None, is_replay=False
                     )
                 )
-                APP_STATE.setdefault("active_tasks", {})[active_tasks_key] = task # Use composite key
+                APP_STATE.setdefault("active_tasks", {})[active_tasks_key] = task
                 await task
             except asyncio.CancelledError:
                 app_logger.info(f"Prompt task for user {user_uuid}, session {session_id} was cancelled.")
@@ -796,29 +778,26 @@ async def invoke_prompt_stream():
 
     return Response(stream_generator(), mimetype="text/event-stream")
 
-# --- MODIFICATION START: Add cancellation endpoint ---
 @api_bp.route("/api/session/<session_id>/cancel_stream", methods=["POST"])
 async def cancel_stream(session_id: str):
     """Cancels the active execution task for a given session."""
     user_uuid = _get_user_uuid_from_request()
-    active_tasks_key = f"{user_uuid}_{session_id}" # Use composite key
+    active_tasks_key = f"{user_uuid}_{session_id}"
     active_tasks = APP_STATE.get("active_tasks", {})
     task = active_tasks.get(active_tasks_key)
 
     if task and not task.done():
         app_logger.info(f"Received request to cancel task for user {user_uuid}, session {session_id}.")
         task.cancel()
-        # Remove immediately, the finally block in the task handles actual removal later
         if active_tasks_key in active_tasks:
              del active_tasks[active_tasks_key]
         return jsonify({"status": "success", "message": "Cancellation request sent."}), 200
     elif task and task.done():
         app_logger.info(f"Cancellation request for user {user_uuid}, session {session_id} ignored: task already completed.")
-        # Clean up if the finally block somehow missed it
         if active_tasks_key in active_tasks:
              del active_tasks[active_tasks_key]
         return jsonify({"status": "info", "message": "Task already completed."}), 200
     else:
         app_logger.warning(f"Cancellation request for user {user_uuid}, session {session_id} failed: No active task found.")
         return jsonify({"status": "error", "message": "No active task found for this session."}), 404
-# --- MODIFICATION END ---
+

@@ -7,39 +7,154 @@
 import * as DOM from './domElements.js';
 import { state } from './state.js';
 import { renderChart, isPrivilegedUser, isPromptCustomForModel, getNormalizedModelId } from './utils.js';
+// We need access to the functions that will handle save/cancel from the input
 import { handleSessionRenameSave, handleSessionRenameCancel } from './eventHandlers.js';
+
 
 // NOTE: This module no longer imports from eventHandlers.js, breaking a circular dependency.
 // Instead, eventHandlers.js will import these UI functions.
 
-// --- MODIFICATION START: Add addMessage function with turnId parameter ---
+// --- MODIFICATION START: Add renderHistoricalTrace function ---
 /**
- * Adds a message bubble to the chat log.
- * @param {string} role - 'user' or 'assistant'.
- * @param {string} content - HTML content of the message.
- * @param {number} [turnId] - Optional turn ID (provided for assistant messages).
+ * Renders the historical plan and execution trace in the status window.
+ * @param {Array<object>} originalPlan - The original plan array generated for the turn.
+ * @param {Array<object>} executionTrace - The execution trace array (action/result pairs).
+ * @param {string|number} turnId - The ID of the turn being displayed.
  */
-export function addMessage(role, content, turnId = null) {
+export function renderHistoricalTrace(originalPlan, executionTrace, turnId) {
+    DOM.statusWindowContent.innerHTML = ''; // Clear previous content
+    state.currentStatusId = 0; // Reset status ID counter for this rendering
+    state.isInFastPath = false; // Reset fast path flag
+    state.currentPhaseContainerEl = null; // Reset phase container reference
+
+    // 1. Add a title indicating which turn is being viewed
+    const titleEl = document.createElement('h3');
+    titleEl.className = 'text-lg font-bold text-white mb-4 p-3 bg-gray-900/50 rounded-md';
+    titleEl.textContent = `Reloaded Details for Turn ${turnId}`;
+    DOM.statusWindowContent.appendChild(titleEl);
+
+    // 2. Optionally, render the original plan first (using the existing helper)
+    if (originalPlan && originalPlan.length > 0) {
+        // Use updateStatusWindow to render the plan structure consistently
+        updateStatusWindow({
+            step: "Original Strategic Meta-Plan",
+            details: originalPlan,
+            type: "plan_generated" // Use a type that triggers _renderMetaPlanDetails
+        }, false); // isFinal = false initially, might be marked completed later
+    } else {
+         updateStatusWindow({
+            step: "Original Plan",
+            details: "No original plan was recorded for this turn.",
+            type: "system_message"
+        }, false);
+    }
+
+    // 3. Render the execution trace
+    if (executionTrace && executionTrace.length > 0) {
+        const traceTitle = document.createElement('h4');
+        traceTitle.className = 'text-md font-semibold text-white mt-6 mb-3 border-t border-white/10 pt-3';
+        traceTitle.textContent = 'Execution Trace:';
+        DOM.statusWindowContent.appendChild(traceTitle);
+
+        executionTrace.forEach((traceEntry, index) => {
+            const isLastEntry = index === executionTrace.length - 1;
+
+            // Render the Action/Intent
+            let actionStep = "Tool Execution Intent";
+            let actionDetails = traceEntry.action;
+            let actionType = "tool_intent"; // Default type
+
+            // Handle special cases like replanning or non-standard actions
+            if (typeof traceEntry.action === 'string') {
+                actionStep = traceEntry.action; // e.g., "RECOVERY_REPLAN"
+                actionDetails = traceEntry.result; // Often status is in result for simple actions
+                actionType = "system_message"; // Treat simple strings as system messages
+            } else if (traceEntry.action && (traceEntry.action.tool_name || traceEntry.action.prompt_name)) {
+                // Standard tool/prompt intent
+                actionStep = `Step ${index + 1}: ${traceEntry.action.tool_name || traceEntry.action.prompt_name}`;
+                actionType = "tool_intent";
+            }
+             // Add more specific handling if other action structures exist in history
+
+            updateStatusWindow({
+                step: actionStep,
+                details: actionDetails,
+                type: actionType,
+                // Add tool_name if available for potential highlighting
+                tool_name: (typeof traceEntry.action === 'object' && traceEntry.action) ? traceEntry.action.tool_name : null
+            }, false); // Render as intermediate step initially
+
+
+            // Render the Result
+            let resultStep = "Tool Execution Result";
+            let resultDetails = traceEntry.result;
+            let resultType = "tool_result"; // Default type
+
+            if (resultDetails && resultDetails.status === 'error') {
+                resultStep = "Tool Execution Error";
+                resultType = "error";
+            } else if (resultDetails && resultDetails.status === 'skipped') {
+                 resultStep = "Step Skipped";
+                 resultType = "workaround"; // Or a dedicated 'skipped' type if CSS exists
+            }
+            // Add more specific handling if other result structures exist
+
+            // Call updateStatusWindow for the result, mark as final only if it's the last item
+            updateStatusWindow({
+                step: resultStep,
+                details: resultDetails,
+                type: resultType,
+                 // Add tool_name if available for potential highlighting
+                tool_name: (typeof traceEntry.action === 'object' && traceEntry.action) ? traceEntry.action.tool_name : null
+            }, isLastEntry);
+        });
+    } else {
+        const noTraceEl = document.createElement('p');
+        noTraceEl.className = 'text-gray-400 italic mt-4';
+        noTraceEl.textContent = 'No detailed execution trace was recorded for this turn.';
+        DOM.statusWindowContent.appendChild(noTraceEl);
+
+        // Mark the plan step as completed if there's no trace
+         const planStep = document.getElementById(`status-step-${state.currentStatusId}`);
+         if (planStep && planStep.classList.contains('active')) {
+             planStep.classList.remove('active');
+             planStep.classList.add('completed');
+         }
+    }
+
+    // Ensure the last step is marked as completed/final visually
+    const finalStepElement = document.getElementById(`status-step-${state.currentStatusId}`);
+    if (finalStepElement && finalStepElement.classList.contains('active')) {
+        finalStepElement.classList.remove('active');
+         // Add appropriate final class (completed, error, cancelled - though cancelled unlikely here)
+         if (!finalStepElement.classList.contains('error')) {
+              finalStepElement.classList.add('completed');
+         }
+    }
+
+     // Auto-scroll logic (optional, could scroll to top instead)
+    if (!state.isMouseOverStatus) {
+        DOM.statusWindowContent.scrollTop = 0; // Scroll to top for reloaded view
+    }
+}
 // --- MODIFICATION END ---
+
+
+export function addMessage(role, content, turnId = null) {
     const wrapper = document.createElement('div');
-    wrapper.className = `message-bubble flex items-start gap-4 ${role === 'user' ? 'justify-end' : ''}`;
-
-    const iconContainer = document.createElement('div');
-    iconContainer.className = 'flex-shrink-0 relative'; // Make container relative for button positioning
-
+    // --- MODIFICATION START: Add 'group' class for hover ---
+    wrapper.className = `message-bubble group flex items-start gap-4 ${role === 'user' ? 'justify-end' : ''}`;
+    // --- MODIFICATION END ---
     const icon = document.createElement('div');
-    icon.className = 'w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg';
+    icon.className = 'flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg relative'; // Added relative positioning
     icon.textContent = role === 'user' ? 'U' : 'A';
     icon.classList.add(role === 'user' ? 'bg-gray-700' : 'bg-[#F15F22]');
-    iconContainer.appendChild(icon);
 
-    // --- MODIFICATION START: Add placeholder for user actions ---
+    // --- MODIFICATION START: Add placeholder/buttons for user messages ---
     if (role === 'user') {
         const actionsPlaceholder = document.createElement('div');
-        // Add a class or ID to find this later
-        actionsPlaceholder.className = 'user-message-actions-placeholder absolute -left-12 top-1/2 -translate-y-1/2 flex items-center gap-1';
-        // Ensure it's empty initially
-        iconContainer.appendChild(actionsPlaceholder);
+        actionsPlaceholder.className = 'user-message-actions-placeholder absolute -left-14 top-1/2 -translate-y-1/2'; // Position near icon
+        icon.appendChild(actionsPlaceholder); // Append placeholder to icon container
     }
     // --- MODIFICATION END ---
 
@@ -57,51 +172,48 @@ export function addMessage(role, content, turnId = null) {
     messageContent.innerHTML = content;
     messageContainer.appendChild(messageContent);
 
-    // --- MODIFICATION START: Adjust wrapper structure based on role ---
-    // User messages have iconContainer on the right, Assistant on the left
-    wrapper.appendChild(role === 'user' ? messageContainer : iconContainer);
-    wrapper.appendChild(role === 'user' ? iconContainer : messageContainer);
-    // --- MODIFICATION END ---
+    wrapper.appendChild(role === 'user' ? messageContainer : icon);
+    wrapper.appendChild(role === 'user' ? icon : messageContainer);
 
     DOM.chatLog.appendChild(wrapper);
 
-    // --- MODIFICATION START: Add action buttons if assistant message with turnId ---
+    // --- MODIFICATION START: Inject buttons when assistant message arrives with turnId ---
     if (role === 'assistant' && turnId) {
-        // Find the *last* user message bubble added before this assistant message
-        const userMessages = DOM.chatLog.querySelectorAll('.message-bubble .bg-gray-700'); // Find user icons
-        const lastUserMessageBubble = userMessages.length > 0 ? userMessages[userMessages.length - 1].closest('.message-bubble') : null;
+        // Find the last user message bubble (should be the one right before this assistant message)
+        const userBubbles = DOM.chatLog.querySelectorAll('.message-bubble:has(.bg-gray-700)');
+        const lastUserBubble = userBubbles.length > 0 ? userBubbles[userBubbles.length - 1] : null;
 
-        if (lastUserMessageBubble) {
-            const placeholder = lastUserMessageBubble.querySelector('.user-message-actions-placeholder');
+        if (lastUserBubble) {
+            const placeholder = lastUserBubble.querySelector('.user-message-actions-placeholder');
             if (placeholder) {
-                // Create buttons
-                const reloadButton = document.createElement('button');
-                reloadButton.className = 'reload-plan-button p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100'; // Initially hidden, show on hover
-                reloadButton.title = 'Reload Plan in Status Window';
-                reloadButton.dataset.turnId = turnId;
-                reloadButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>`; // Reload icon
+                // Create the action buttons container
+                const actionsContainer = document.createElement('div');
+                actionsContainer.className = 'user-message-actions flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200'; // Initially hidden, show on group hover
 
-                const replayButton = document.createElement('button');
-                replayButton.className = 'replay-query-button p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100'; // Initially hidden, show on hover
-                replayButton.title = 'Replay Query';
-                replayButton.dataset.turnId = turnId;
-                replayButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707-10.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L9.414 11H13a1 1 0 100-2H9.414l1.293-1.293z" clip-rule="evenodd" /></svg>`; // Replay/back icon
+                // Reload Plan Button
+                const reloadBtn = document.createElement('button');
+                reloadBtn.className = 'reload-plan-button p-1 rounded bg-gray-600 hover:bg-teradata-orange text-white';
+                reloadBtn.title = `Reload Plan & Details for Turn ${turnId}`;
+                reloadBtn.dataset.turnId = turnId;
+                reloadBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>`; // Refresh icon
 
-                // Clear placeholder and add buttons
-                placeholder.innerHTML = ''; // Clear any potential content
-                placeholder.appendChild(reloadButton);
-                placeholder.appendChild(replayButton);
+                // Replay Query Button
+                const replayBtn = document.createElement('button');
+                replayBtn.className = 'replay-query-button p-1 rounded bg-gray-600 hover:bg-teradata-orange text-white';
+                replayBtn.title = `Replay Query for Turn ${turnId}`;
+                replayBtn.dataset.turnId = turnId;
+                replayBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`; // Play icon
 
-                // Add group-hover class to the parent bubble to trigger button visibility
-                lastUserMessageBubble.classList.add('group');
-            } else {
-                console.warn("Could not find placeholder for user actions in the previous user message.");
+                actionsContainer.appendChild(reloadBtn);
+                actionsContainer.appendChild(replayBtn);
+
+                // Replace placeholder with the actual buttons
+                placeholder.replaceWith(actionsContainer);
             }
-        } else {
-             console.warn("Could not find the previous user message bubble to add actions to.");
         }
     }
     // --- MODIFICATION END ---
+
 
     const chartContainers = messageContent.querySelectorAll('.chart-render-target');
     chartContainers.forEach(container => {
@@ -110,12 +222,10 @@ export function addMessage(role, content, turnId = null) {
         }
     });
 
-    wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    wrapper.scrollIntoView({ behavior: 'smooth', block: 'end' }); // Changed to 'end'
 }
 
 
-// --- Remaining UI functions (setExecutionState, _renderPlanningDetails, etc.) ---
-// ... (No changes needed in the rest of the functions for this request) ...
 /**
  * Sets the UI state for active execution (disables input, shows stop button, etc.).
  * @param {boolean} isActive - True if execution is starting, false if ending.
@@ -123,35 +233,29 @@ export function addMessage(role, content, turnId = null) {
 export function setExecutionState(isActive) {
     DOM.userInput.disabled = isActive;
     DOM.submitButton.disabled = isActive;
-    DOM.newChatButton.disabled = isActive; // Disable new chat during execution
+    DOM.newChatButton.disabled = isActive;
     DOM.sendIcon.classList.toggle('hidden', isActive);
     DOM.loadingSpinner.classList.toggle('hidden', !isActive);
 
     if (DOM.stopExecutionButton) {
         DOM.stopExecutionButton.classList.toggle('hidden', !isActive);
-        // Ensure the stop button is enabled when shown, disabled when hidden
         DOM.stopExecutionButton.disabled = !isActive;
     }
 
     if (!isActive) {
-        // --- Cleanup on Stop ---
-        // Ensure pulsing and busy states are removed as a final cleanup,
-        // regardless of whether the final status update event arrived.
-        setThinkingIndicator(false); // Make sure LLM thinking stops visually
+        setThinkingIndicator(false);
         DOM.mcpStatusDot.classList.remove('pulsing', 'busy');
         DOM.llmStatusDot.classList.remove('pulsing', 'busy');
 
-        // Reset to default connected/idle state if they aren't disconnected
         if (!DOM.mcpStatusDot.classList.contains('disconnected')) {
             DOM.mcpStatusDot.classList.add('connected');
         }
         if (!DOM.llmStatusDot.classList.contains('disconnected')) {
-            DOM.llmStatusDot.classList.add('idle'); // LLM defaults to idle when connected
+            DOM.llmStatusDot.classList.add('idle');
         }
     }
-    // Note: Adding the pulsing class is now handled solely within the
-    // 'status_indicator_update' event handler in eventHandlers.js based on the 'busy' state.
 }
+
 
 function _renderPlanningDetails(details) {
     if (!details.summary || !details.full_text) return null;
@@ -232,25 +336,30 @@ function _renderMetaPlanDetails(details) {
 }
 
 function _renderToolIntentDetails(details) {
-    if (!details.tool_name && !details.prompt_name) return null;
+    if (!details || (!details.tool_name && !details.prompt_name)) return null;
 
     const name = details.tool_name || details.prompt_name;
     const type = details.tool_name ? 'Tool' : 'Prompt';
 
     let argsHtml = '';
     if (details.arguments) {
-        const argsString = JSON.stringify(details.arguments, null, 2);
-        argsHtml = `
-            <div class="status-kv-item">
-                <div class="status-kv-key">Args</div>
-                <div class="status-kv-value">
-                    <details class="text-xs">
-                        <summary class="cursor-pointer text-gray-400 hover:text-white">View Arguments</summary>
-                        <div class="mt-2 p-2 status-text-block whitespace-pre-wrap">${argsString}</div>
-                    </details>
+        try {
+             const argsString = JSON.stringify(details.arguments, null, 2);
+             argsHtml = `
+                <div class="status-kv-item">
+                    <div class="status-kv-key">Args</div>
+                    <div class="status-kv-value">
+                        <details class="text-xs">
+                            <summary class="cursor-pointer text-gray-400 hover:text-white">View Arguments</summary>
+                            <div class="mt-2 p-2 status-text-block whitespace-pre-wrap">${argsString}</div>
+                        </details>
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+        } catch (e) {
+            console.warn("Could not stringify arguments for tool intent:", details.arguments);
+            argsHtml = `<div class="status-kv-item"><div class="status-kv-key">Args</div><div class="status-kv-value text-red-400">[Error displaying arguments]</div></div>`;
+        }
     }
 
     return `
@@ -259,20 +368,22 @@ function _renderToolIntentDetails(details) {
     `;
 }
 
+// --- MODIFICATION START: Export updateStatusWindow ---
 export function updateStatusWindow(eventData, isFinal = false) {
+// --- MODIFICATION END ---
     const { step, details, type } = eventData;
     if (!step && type !== 'phase_start' && type !== 'phase_end') {
-        return;
+        // Allow rendering tool results/errors even without a step title during trace replay
+        if (type !== 'tool_result' && type !== 'tool_error') {
+            return;
+        }
     }
 
     if (type === 'phase_start') {
         const { phase_num, total_phases, goal, execution_depth } = details;
-
-        // Find the very last step, even if nested
         const lastStep = Array.from(DOM.statusWindowContent.querySelectorAll('.status-step')).pop();
         if (lastStep && lastStep.classList.contains('active')) {
             lastStep.classList.remove('active');
-            // Apply fast-path-aware logic: only add 'completed' if it's not a 'plan-optimization' step
             if (!lastStep.classList.contains('plan-optimization')) {
                  lastStep.classList.add('completed');
             }
@@ -280,7 +391,7 @@ export function updateStatusWindow(eventData, isFinal = false) {
 
         const phaseContainer = document.createElement('details');
         phaseContainer.className = 'status-phase-container';
-        phaseContainer.open = true; // Start phases open
+        phaseContainer.open = true; // Open by default when rendering trace
 
         const phaseHeader = document.createElement('summary');
         phaseHeader.className = 'status-phase-header phase-start';
@@ -325,9 +436,9 @@ export function updateStatusWindow(eventData, isFinal = false) {
             }
 
             state.currentPhaseContainerEl.appendChild(phaseFooter);
-            state.currentPhaseContainerEl = null; // Reset for next phase
+            state.currentPhaseContainerEl = null;
         }
-        state.isInFastPath = false; // Reset fast path flag at end of phase
+        state.isInFastPath = false;
         if (!state.isMouseOverStatus) {
             DOM.statusWindowContent.scrollTop = DOM.statusWindowContent.scrollHeight;
         }
@@ -337,9 +448,10 @@ export function updateStatusWindow(eventData, isFinal = false) {
     // Handle standard step events
     const parentContainer = state.currentPhaseContainerEl ? state.currentPhaseContainerEl.querySelector('.status-phase-content') : DOM.statusWindowContent;
 
-    // Mark previous step as completed if it was active
     const lastStep = document.getElementById(`status-step-${state.currentStatusId}`);
-    if (lastStep && lastStep.classList.contains('active') && parentContainer.contains(lastStep)) {
+    // --- MODIFICATION START: Ensure parentContainer check ---
+    if (lastStep && lastStep.classList.contains('active') && parentContainer && parentContainer.contains(lastStep)) {
+    // --- MODIFICATION END ---
         lastStep.classList.remove('active');
         lastStep.classList.add('completed');
         if (state.isInFastPath && !lastStep.classList.contains('plan-optimization')) {
@@ -357,11 +469,12 @@ export function updateStatusWindow(eventData, isFinal = false) {
     state.currentStatusId++;
     const stepEl = document.createElement('div');
     stepEl.id = `status-step-${state.currentStatusId}`;
-    stepEl.className = 'status-step p-3 rounded-md';
+    stepEl.className = 'status-step p-3 rounded-md mb-2'; // Added mb-2 for spacing
 
     const stepTitle = document.createElement('h4');
     stepTitle.className = 'font-bold text-sm text-white mb-2';
-    stepTitle.textContent = step;
+    // Use step title if provided, otherwise infer from type for trace replay
+    stepTitle.textContent = step || (type === 'tool_result' ? 'Result' : (type === 'tool_error' ? 'Error' : 'Details'));
     stepEl.appendChild(stepTitle);
 
     const metricsEl = document.createElement('div');
@@ -378,19 +491,32 @@ export function updateStatusWindow(eventData, isFinal = false) {
         let detailsString = '';
 
         if (typeof details === 'object' && details !== null) {
-            // --- MODIFICATION START: Use _renderMetaPlanDetails also for reload ---
-            if (step.startsWith("Calling LLM for") || step === "Plan Loaded") {
-            // --- MODIFICATION END ---
+            if (step && step.startsWith("Calling LLM for")) { // Check step exists
                 customRenderedHtml = _renderPlanningDetails(details);
-            } else if (step === "Strategic Meta-Plan Generated") {
+            } else if ((step && step === "Strategic Meta-Plan Generated") || type === "plan_generated") { // Use type as well
                 customRenderedHtml = _renderMetaPlanDetails(details);
-            } else if (step === "Tool Execution Intent") {
+            } else if ((step && step === "Tool Execution Intent") || type === "tool_intent") { // Use type as well
                 customRenderedHtml = _renderToolIntentDetails(details);
             } else {
                 try {
-                    detailsString = JSON.stringify(details, null, 2);
+                    // --- MODIFICATION START: Handle potential circular structures ---
+                    // Use a safe stringify approach
+                    const cache = new Set();
+                    detailsString = JSON.stringify(details, (key, value) => {
+                        if (typeof value === 'object' && value !== null) {
+                            if (cache.has(value)) {
+                                // Circular reference found, discard key
+                                return '[Circular Reference]';
+                            }
+                            // Store value in our collection
+                            cache.add(value);
+                        }
+                        return value;
+                    }, 2); // Indent for readability
+                    // --- MODIFICATION END ---
                 } catch (e) {
                     detailsString = "[Could not stringify details]";
+                    console.error("Error stringifying details:", e, details);
                 }
             }
         } else {
@@ -411,14 +537,21 @@ export function updateStatusWindow(eventData, isFinal = false) {
                 summaryEl.className = 'cursor-pointer text-gray-400 hover:text-white';
 
                 let summaryText = `Details (${detailsString.length} chars)`;
-                if ((step.includes('Tool Execution Result') || step.includes('Tool Execution Error')) && typeof details === 'object' && details.results) {
-                    const itemCount = Array.isArray(details.results) ? details.results.length : (details.results ? 1 : 0);
-                    const status = details.status || 'unknown';
-                    summaryText = `Tool Result (${status}, ${itemCount} items)`;
-                } else if (step.includes('Final Answer')) {
+                if (step && (step.includes('Tool Execution Result') || step.includes('Tool Execution Error')) && typeof details === 'object' && details !== null) {
+                    // Check for standard results structure first
+                    if (details.results) {
+                        const itemCount = Array.isArray(details.results) ? details.results.length : (details.results ? 1 : 0);
+                        const status = details.status || 'unknown';
+                        summaryText = `Tool Result (${status}, ${itemCount} items)`;
+                    } else if (details.type === 'chart') { // Handle chart spec
+                         summaryText = `Chart Specification`;
+                    }
+                } else if (step && step.includes('Final Answer')) {
                     summaryText = `Final Answer Summary`;
                 } else if (type === 'cancelled') {
                     summaryText = 'Cancellation Details';
+                } else if (type === 'error') {
+                     summaryText = 'Error Details';
                 }
 
                 summaryEl.textContent = `${summaryText} - Click to expand`;
@@ -622,7 +755,7 @@ export function highlightResource(resourceName, type) {
     }
 
     let resourceCategory = null;
-    if (state.resourceData[type]) { // Check if data exists
+    if (state.resourceData[type]) {
         for (const category in state.resourceData[type]) {
             if (state.resourceData[type][category].some(r => r.name === resourceName)) {
                 resourceCategory = category;
@@ -634,18 +767,17 @@ export function highlightResource(resourceName, type) {
 
     if (resourceCategory) {
         const resourceTab = document.querySelector(`.resource-tab[data-type="${type}"]`);
-        if (resourceTab) resourceTab.click(); // Select the main type tab (Tools/Prompts)
+        if (resourceTab) resourceTab.click();
 
         const categoryTab = document.querySelector(`.category-tab[data-type="${type}"][data-category="${resourceCategory}"]`);
-        if(categoryTab) categoryTab.click(); // Select the specific category tab
+        if(categoryTab) categoryTab.click();
 
         const resourceElement = document.getElementById(`resource-${type}-${resourceName}`);
         if (resourceElement) {
-            resourceElement.open = true; // Ensure the details are open
+            resourceElement.open = true;
             resourceElement.classList.add('resource-selected');
             state.currentlySelectedResource = resourceElement;
 
-            // Scroll into view after a short delay to allow tab switching/opening animation
             setTimeout(() => {
                 resourceElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 350);
@@ -692,6 +824,11 @@ export function addSessionToList(sessionId, name, isActive = false) {
     return sessionItem;
 }
 
+/**
+ * Updates the displayed name of a session item in the history list.
+ * @param {string} sessionId - The ID of the session to update.
+ * @param {string} newName - The new name for the session.
+ */
 export function updateSessionListItemName(sessionId, newName) {
     const sessionItem = document.getElementById(`session-${sessionId}`);
     if (sessionItem) {
@@ -707,6 +844,10 @@ export function updateSessionListItemName(sessionId, newName) {
     }
 }
 
+/**
+ * Removes a session item from the history list in the DOM.
+ * @param {string} sessionId - The ID of the session to remove.
+ */
 export function removeSessionFromList(sessionId) {
     const sessionItem = document.getElementById(`session-${sessionId}`);
     if (sessionItem) {
@@ -717,6 +858,11 @@ export function removeSessionFromList(sessionId) {
     }
 }
 
+
+/**
+ * Switches a session list item's name span to an input field for editing.
+ * @param {HTMLButtonElement} editButton - The edit button element that was clicked.
+ */
 export function enterSessionEditMode(editButton) {
     const sessionItem = editButton.closest('.session-item');
     if (!sessionItem || sessionItem.querySelector('.session-edit-input')) {
@@ -752,6 +898,11 @@ export function enterSessionEditMode(editButton) {
     });
 }
 
+/**
+ * Switches a session list item back from input mode to display mode.
+ * @param {HTMLInputElement} inputElement - The input element currently being edited.
+ * @param {string} finalName - The name to display in the span (either original or new).
+ */
 export function exitSessionEditMode(inputElement, finalName) {
     const sessionItem = inputElement.closest('.session-item');
     if (!sessionItem) return;
@@ -952,3 +1103,4 @@ export function closeChatModal() {
     DOM.chatModalContent.classList.add('scale-95', 'opacity-0');
     setTimeout(() => DOM.chatModalOverlay.classList.add('hidden'), 300);
 }
+

@@ -328,46 +328,54 @@ export async function fetchModels() {
     return result;
 }
 
-// --- MODIFICATION START: Add fetchTurnPlan function ---
-/**
- * Fetches the original plan for a specific turn from the backend.
- * @param {string} sessionId - The ID of the session.
- * @param {string|number} turnId - The turn number (1-based).
- * @returns {Promise<object>} A promise that resolves to the plan data or an error object.
- */
 export async function fetchTurnPlan(sessionId, turnId) {
     if (!sessionId || !turnId) {
         throw new Error("Session ID and Turn ID are required to fetch the plan.");
     }
     const res = await fetch(`/api/session/${sessionId}/turn/${turnId}/plan`, {
-        headers: _getHeaders(false) // No content-type for GET
+        headers: _getHeaders(false)
     });
-    const data = await res.json(); // Always expect JSON, even for errors
+    const data = await res.json();
     if (!res.ok) {
         throw new Error(data.error || `Failed to load plan for turn ${turnId} (status ${res.status}).`);
     }
-    return data; // Expected format: { plan: [...] } or { error: "..." }
+    return data;
 }
-// --- MODIFICATION END ---
 
-// --- MODIFICATION START: Add fetchTurnQuery function ---
-/**
- * Fetches the original user query for a specific turn from the backend.
- * @param {string} sessionId - The ID of the session.
- * @param {string|number} turnId - The turn number (1-based).
- * @returns {Promise<object>} A promise that resolves to the query data or an error object.
- */
 export async function fetchTurnQuery(sessionId, turnId) {
     if (!sessionId || !turnId) {
         throw new Error("Session ID and Turn ID are required to fetch the query.");
     }
     const res = await fetch(`/api/session/${sessionId}/turn/${turnId}/query`, {
+        headers: _getHeaders(false)
+    });
+    const data = await res.json();
+    if (!res.ok) {
+        throw new Error(data.error || `Failed to load query for turn ${turnId} (status ${res.status}).`);
+    }
+    return data;
+}
+
+// --- MODIFICATION START: Add fetchTurnDetails function ---
+/**
+ * Fetches the full details (plan, trace, etc.) for a specific turn from the backend.
+ * @param {string} sessionId - The ID of the session.
+ * @param {string|number} turnId - The turn number (1-based).
+ * @returns {Promise<object>} A promise that resolves to the full turn data object or throws an error.
+ */
+export async function fetchTurnDetails(sessionId, turnId) {
+    if (!sessionId || !turnId) {
+        throw new Error("Session ID and Turn ID are required to fetch turn details.");
+    }
+    const res = await fetch(`/api/session/${sessionId}/turn/${turnId}/details`, {
         headers: _getHeaders(false) // No content-type for GET
     });
     const data = await res.json(); // Always expect JSON, even for errors
     if (!res.ok) {
-        throw new Error(data.error || `Failed to load query for turn ${turnId} (status ${res.status}).`);
+        throw new Error(data.error || `Failed to load details for turn ${turnId} (status ${res.status}).`);
     }
-    return data; // Expected format: { query: "..." } or { error: "..." }
+    // Expected format is the full turn_data object: { turn: ..., user_query: ..., original_plan: ..., execution_trace: ..., final_summary: ..., timestamp: ... }
+    return data;
 }
 // --- MODIFICATION END ---
+
