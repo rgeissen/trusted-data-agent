@@ -9,7 +9,9 @@ import re
 
 from trusted_data_agent.agent.executor import PlanExecutor
 from trusted_data_agent.core.config import APP_STATE
+# --- MODIFICATION START: Import add_to_history ---
 from trusted_data_agent.core import session_manager
+# --- MODIFICATION END ---
 
 app_logger = logging.getLogger("quart.app")
 
@@ -59,6 +61,13 @@ async def run_agent_execution(
              # Or handle the error by sending an SSE event and returning
              await event_handler({"error": f"Session '{session_id}' not found."}, "error")
              return None # Indicate failure
+
+        # --- MODIFICATION START: Add user input to session_history ---
+        # Save the user's message to the history used for UI rendering.
+        if user_input: # Only save if there's actual input
+            session_manager.add_to_history(user_uuid, session_id, 'user', user_input)
+            app_logger.debug(f"Added user input to session_history for {session_id}")
+        # --- MODIFICATION END ---
 
         previous_turn_data = session_data.get("last_turn_data", {})
 
