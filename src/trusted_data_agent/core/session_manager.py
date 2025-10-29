@@ -71,7 +71,7 @@ def _load_session(user_uuid: str, session_id: str) -> dict | None:
         app_logger.error(f"Error loading session file '{session_path}': {e}", exc_info=True)
         return None # Return None on error
 
-def _save_session(user_uuid: str, session_id: str, session_data: dict):
+def _save_session(user_uuid: str, session_id: str, session_data: dict) -> bool:
     """Saves session data to a file, creating directories if needed."""
     session_path = _get_session_path(user_uuid, session_id)
     if not session_path:
@@ -100,16 +100,16 @@ def create_session(user_uuid: str, provider: str, llm_instance: any, charting_in
     app_logger.info(f"Attempting to create session '{session_id}' for user '{user_uuid}'.")
 
     # Note: chat_object cannot be directly serialized to JSON.
-    # We will store history as a plain list.
+    # We will store history as a plain list or Google's initial structure.
     chat_history_for_file = []
     if provider == "Google":
-        # Keep initial prompt for Google compatibility if needed later, but don't store the live object.
+        # Store the initial history structure expected by the Google LLM handler
         initial_history_google = [
             {"role": "user", "parts": [{"text": "You are a helpful assistant."}]},
             {"role": "model", "parts": [{"text": "Understood."}]}
         ]
-        # Store this initial history in the file version
-        chat_history_for_file = [{'role': m['role'], 'content': m['parts'][0]['text']} for m in initial_history_google]
+        chat_history_for_file = initial_history_google
+    # For other providers, an empty list is fine initially.
 
     session_data = {
         "id": session_id, # Store ID within the data itself
@@ -122,9 +122,7 @@ def create_session(user_uuid: str, provider: str, llm_instance: any, charting_in
         "created_at": datetime.now().isoformat(),
         "input_tokens": 0,
         "output_tokens": 0,
-        # --- MODIFICATION START: Ensure workflow_history list exists on creation ---
         "last_turn_data": {"workflow_history": []},
-        # --- MODIFICATION END ---
         "full_context_sent": False,
         "license_info": APP_STATE.get("license_info") # Store license info at creation time
     }
@@ -198,23 +196,41 @@ def delete_session(user_uuid: str, session_id: str) -> bool:
         return False # Indicate failure due to OS error
 
 def add_to_history(user_uuid: str, session_id: str, role: str, content: str):
+    """Adds a message to both UI history (session_history) and LLM history (chat_object)."""
     session_data = _load_session(user_uuid, session_id)
     if session_data:
+        # Add to UI history (simple role/content)
         session_data.setdefault('session_history', []).append({'role': role, 'content': content})
-        provider_in_session = session_data.get("license_info", {}).get("provider")
-        current_provider = APP_CONFIG.CURRENT_PROVIDER
-        provider = provider_in_session or current_provider
-        if not provider:
-             app_logger.warning(f"Could not determine LLM provider for role conversion in session {session_id}. Defaulting role.")
-             provider = "Unknown" # Avoid error if APP_CONFIG isn't set somehow
 
-        llm_role = 'model' if role == 'assistant' and provider == 'Google' else role
-        session_data.setdefault('chat_object', []).append({'role': llm_role, 'content': content})
+        # Add to LLM history (provider-specific format)
+        provider = APP_CONFIG.CURRENT_PROVIDER # Use currently configured provider
+        if not provider:
+            app_logger.error(f"Cannot add LLM history for session {session_id}: Provider not configured.")
+            return
+
+        # Ensure chat_object exists and is a list
+        if 'chat_object' not in session_data or not isinstance(session_data['chat_object'], list):
+            session_data['chat_object'] = [] # Initialize or reset if malformed
+
+        # Convert and append based on provider
+        if provider == "Google":
+            google_role = 'model' if role == 'assistant' else role
+            if google_role in ['user', 'model']:
+                session_data['chat_object'].append({'role': google_role, 'parts': [{'text': str(content)}]})
+            else:
+                app_logger.warning(f"Skipping LLM history append: Invalid role '{role}' for Google in session {session_id}.")
+        else: # Other providers (OpenAI, Anthropic, etc.)
+            api_role = 'assistant' if role == 'assistant' else 'user' # Only user/assistant expected here
+            if role in ['user', 'assistant']:
+                session_data['chat_object'].append({'role': api_role, 'content': str(content)})
+            else:
+                 app_logger.warning(f"Skipping LLM history append: Invalid role '{role}' for {provider} in session {session_id}.")
 
         if not _save_session(user_uuid, session_id, session_data):
              app_logger.error(f"Failed to save session after adding history for {session_id}")
     else:
         app_logger.warning(f"Could not add history: Session {session_id} not found for user {user_uuid}.")
+
 
 def update_session_name(user_uuid: str, session_id: str, new_name: str):
     session_data = _load_session(user_uuid, session_id)
@@ -255,3 +271,38 @@ def update_last_turn_data(user_uuid: str, session_id: str, turn_data: dict):
             app_logger.error(f"Failed to save session after updating last turn data for {session_id}")
     else:
         app_logger.warning(f"Could not update last turn data: Session {session_id} not found for user {user_uuid}.")
+
+# --- MODIFICATION START: Add clear_llm_history function ---
+def clear_llm_history(user_uuid: str, session_id: str) -> bool:
+    """Clears the LLM-specific conversation history ('chat_object') for a session."""
+    session_data = _load_session(user_uuid, session_id)
+    if session_data:
+        provider = APP_CONFIG.CURRENT_PROVIDER # Use currently configured provider
+        app_logger.info(f"Clearing LLM history ('chat_object') for session {session_id} (Provider: {provider}).")
+
+        # Reset based on provider
+        if provider == "Google":
+            # Reset to Google's initial required history structure
+            initial_history_google = [
+                {"role": "user", "parts": [{"text": "You are a helpful assistant."}]},
+                {"role": "model", "parts": [{"text": "Understood."}]}
+            ]
+            session_data['chat_object'] = initial_history_google
+        else:
+            # For other providers, clear the list
+            session_data['chat_object'] = []
+
+        # Reset the flag to ensure full system prompt is sent next time
+        session_data['full_context_sent'] = False
+        app_logger.info(f"Reset 'full_context_sent' flag for session {session_id}.")
+
+        if _save_session(user_uuid, session_id, session_data):
+            app_logger.info(f"Successfully cleared LLM history and saved session {session_id}.")
+            return True
+        else:
+            app_logger.error(f"Failed to save session after clearing LLM history for {session_id}.")
+            return False
+    else:
+        app_logger.warning(f"Could not clear LLM history: Session {session_id} not found for user {user_uuid}.")
+        return False
+# --- MODIFICATION END ---

@@ -411,7 +411,7 @@ export function updateStatusWindow(eventData, isFinal = false) {
 
         const phaseContainer = document.createElement('details');
         phaseContainer.className = 'status-phase-container';
-        phaseContainer.open = false; // Closed by default when rendering trace
+        phaseContainer.open = true; // Open by default for live status
 
         const phaseHeader = document.createElement('summary');
         phaseHeader.className = 'status-phase-header phase-start';
@@ -453,6 +453,7 @@ export function updateStatusWindow(eventData, isFinal = false) {
                 phaseFooter.innerHTML = `<span class="font-bold">Plan Phase ${phase_num}/${total_phases} Skipped</span>`;
             } else {
                 state.currentPhaseContainerEl.classList.add('completed');
+                state.currentPhaseContainerEl.open = false; // Collapse completed phase
             }
 
             state.currentPhaseContainerEl.appendChild(phaseFooter);
@@ -1119,4 +1120,34 @@ export function closeChatModal() {
     DOM.chatModalContent.classList.add('scale-95', 'opacity-0');
     setTimeout(() => DOM.chatModalOverlay.classList.add('hidden'), 300);
 }
+
+// --- MODIFICATION START: Add context cleared feedback function ---
+/**
+ * Provides visual feedback when the LLM context has been cleared.
+ */
+export function showContextClearedFeedback() {
+    console.log("UI: Showing context cleared feedback.");
+
+    // 1. Flash the dot
+    if (DOM.contextStatusDot) {
+        DOM.contextStatusDot.classList.add('context-cleared-pulse'); // Add pulse class
+        // Remove the class after the animation completes (e.g., 1 second)
+        setTimeout(() => {
+            DOM.contextStatusDot.classList.remove('context-cleared-pulse');
+            // Ensure dot returns to correct idle/locked state
+             updateHintAndIndicatorState();
+        }, 1200); // Match animation duration + a little buffer
+    }
+
+    // 2. Show message in status window
+    updateStatusWindow({
+        step: "Context Cleared",
+        details: "LLM conversational memory for this session has been reset.",
+        type: "system_message" // Or use 'workaround' for yellow highlight
+    }, true); // Mark as final step for this action
+
+    // 3. Optional: Brief message in chat log
+    // addMessage('system', 'LLM context memory cleared.'); // Uncomment if desired
+}
+// --- MODIFICATION END ---
 

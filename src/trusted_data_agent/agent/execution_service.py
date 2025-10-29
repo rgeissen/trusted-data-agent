@@ -26,7 +26,7 @@ def _parse_sse_event(event_str: str) -> tuple[dict, str]:
             event_type = line[6:].strip()
     return data, event_type
 
-# --- MODIFICATION START: Add plan_to_execute and is_replay parameters ---
+# --- MODIFICATION START: Add replay_turn_id parameter ---
 async def run_agent_execution(
     user_uuid: str,
     session_id: str,
@@ -37,7 +37,8 @@ async def run_agent_execution(
     disabled_history: bool = False,
     source: str = "text",
     plan_to_execute: list = None, # Added optional plan
-    is_replay: bool = False # Added replay flag
+    is_replay: bool = False, # Added replay flag
+    replay_turn_id: int = None # Added replay turn ID
 ):
 # --- MODIFICATION END ---
     """
@@ -53,16 +54,14 @@ async def run_agent_execution(
              return None # Indicate failure
 
         # Save the user's message to the history used for UI rendering.
-        # --- MODIFICATION START: Only add user input if not a replay ---
         # Don't add user input again if we are replaying a previous query
         if user_input and not is_replay:
             session_manager.add_to_history(user_uuid, session_id, 'user', user_input)
             app_logger.debug(f"Added user input to session_history for {session_id}")
-        # --- MODIFICATION END ---
 
         previous_turn_data = session_data.get("last_turn_data", {})
 
-        # --- MODIFICATION START: Pass new parameters to PlanExecutor ---
+        # --- MODIFICATION START: Pass replay_turn_id to PlanExecutor ---
         executor = PlanExecutor(
             user_uuid=user_uuid,
             session_id=session_id,
@@ -74,7 +73,8 @@ async def run_agent_execution(
             previous_turn_data=previous_turn_data,
             source=source,
             plan_to_execute=plan_to_execute, # Pass the plan
-            is_replay=is_replay # Pass the flag
+            is_replay=is_replay, # Pass the flag
+            replay_turn_id=replay_turn_id # Pass the turn ID
         )
         # --- MODIFICATION END ---
 

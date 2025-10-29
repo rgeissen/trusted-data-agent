@@ -106,9 +106,7 @@ async function processStream(responseBody) {
                         UI.updateStatusWindow({ step: "Execution Stopped", details: eventData.message || "Process cancelled by user.", type: 'cancelled'}, true);
                         UI.setExecutionState(false);
                     } else if (eventName === 'final_answer') {
-                        // --- MODIFICATION START: Pass turn_id to addMessage ---
                         UI.addMessage('assistant', eventData.final_answer, eventData.turn_id); // Pass turn_id here
-                        // --- MODIFICATION END ---
                         UI.updateStatusWindow({ step: "Finished", details: "Response sent to chat." }, true);
                         UI.setExecutionState(false);
 
@@ -218,14 +216,12 @@ async function handleObservationConfirmation(transcribedText) {
 
 async function handleStreamRequest(endpoint, body) {
     if (body.message) {
-        // --- MODIFICATION START: Do not add user message again during replay ---
         // Only add user message if it's NOT a replay initiated by the replay button
         if (!body.is_replay) {
             UI.addMessage('user', body.message);
         } else {
              console.log("Replay initiated, skipping adding user message again.");
         }
-        // --- MODIFICATION END ---
     } else {
         UI.addMessage('user', `Executing prompt: ${body.prompt_name}`);
     }
@@ -238,10 +234,9 @@ async function handleStreamRequest(endpoint, body) {
     state.currentPhaseContainerEl = null;
 
     const useLastTurnMode = state.isLastTurnModeLocked || state.isTempLastTurnMode;
-    // --- MODIFICATION START: Also disable history if it's a replay ---
-    body.disabled_history = useLastTurnMode || body.is_replay; // Disable if last turn mode OR replay
+    // --- MODIFICATION START: Only disable history based on user's context mode ---
+    body.disabled_history = useLastTurnMode; // History disabled ONLY if user chose "Last Turn Context"
     // --- MODIFICATION END ---
-
 
     DOM.contextStatusDot.classList.remove('history-disabled-preview');
 
@@ -271,6 +266,7 @@ export async function handleChatSubmit(e, source = 'text') {
         session_id: state.currentSessionId,
         source: source
         // is_replay is implicitly false here
+        // replay_turn_id is implicitly null here
     });
 }
 
@@ -291,7 +287,6 @@ async function handleStopExecutionClick() {
     }
 }
 
-// --- MODIFICATION START: Define handleReloadPlanClick ---
 /**
  * Handles clicks on the "Reload Plan" button or user avatar. Fetches and displays the full turn details.
  * @param {HTMLElement} element - The element that was clicked (button or avatar div).
@@ -336,15 +331,13 @@ async function handleReloadPlanClick(element) {
         DOM.statusWindowContent.innerHTML = `<div class="p-4 status-step error"><h4 class="font-bold text-sm text-white mb-2">Error Loading Details</h4><p class="text-xs">${error.message}</p></div>`;
     }
 }
-// --- MODIFICATION END ---
 
-// --- MODIFICATION START: Define handleReplayQueryClick ---
 /**
  * Handles clicks on the "Replay Query" button (now in header). Fetches the original query and re-submits it.
  * @param {HTMLButtonElement} buttonEl - The button element that was clicked.
  */
 async function handleReplayQueryClick(buttonEl) {
-    const turnId = buttonEl.dataset.turnId;
+    const turnId = buttonEl.dataset.turnId; // <-- Get turnId
     const sessionId = state.currentSessionId;
     if (!turnId || !sessionId) {
         console.error("Missing turnId or sessionId for replaying query.");
@@ -365,21 +358,21 @@ async function handleReplayQueryClick(buttonEl) {
         // Add a message indicating replay
         UI.addMessage('user', `🔄 Replaying query from Turn ${turnId}: ${originalQuery}`);
 
-        // Re-submit the query using handleStreamRequest
-        // Pass is_replay=true to prevent adding user message again and disable history
+        // --- MODIFICATION START: Pass replay_turn_id to handleStreamRequest ---
         handleStreamRequest('/ask_stream', {
             message: originalQuery, // Use the fetched original query
             session_id: sessionId,
             source: 'text', // Assuming original source was text
-            is_replay: true // Mark this as a replay
+            is_replay: true, // Mark this as a replay
+            replay_turn_id: parseInt(turnId, 10) // Pass the original turn ID
         });
+        // --- MODIFICATION END ---
 
     } catch (error) {
         console.error(`Error replaying query for turn ${turnId}:`, error);
         UI.addMessage('assistant', `Sorry, could not replay the query from Turn ${turnId}. Error: ${error.message}`);
     }
 }
-// --- MODIFICATION END ---
 
 
 export async function handleLoadResources(type) {
@@ -467,7 +460,6 @@ export async function handleStartNewSession() {
     UI.addMessage('assistant', "Starting a new conversation... Please wait.");
     UI.setThinkingIndicator(false);
 
-    // --- MODIFICATION START: Hide header buttons and clear turnId on new session ---
     if (DOM.headerReplayPlannedButton) {
         DOM.headerReplayPlannedButton.classList.add('hidden');
         DOM.headerReplayPlannedButton.dataset.turnId = '';
@@ -480,7 +472,6 @@ export async function handleStartNewSession() {
         DOM.headerReplayQueryButton.classList.add('hidden');
         DOM.headerReplayQueryButton.dataset.turnId = '';
     }
-    // --- MODIFICATION END ---
 
     try {
         const data = await API.startNewSession();
@@ -503,21 +494,16 @@ export async function handleLoadSession(sessionId, isNewSession = false) {
         state.currentSessionId = sessionId;
         DOM.chatLog.innerHTML = '';
         if (data.history && data.history.length > 0) {
-            // --- MODIFICATION START: Pass turn_id during history load ---
-            // Simulate turn IDs based on message pairs for existing sessions
             let currentTurnId = 1;
             for (let i = 0; i < data.history.length; i++) {
                 const msg = data.history[i];
                 if (msg.role === 'assistant') {
-                    // Pass the calculated turn ID for assistant messages
                     UI.addMessage(msg.role, msg.content, currentTurnId);
                     currentTurnId++; // Increment turn ID after an assistant message
                 } else {
-                    // User messages don't need a turn ID passed to addMessage
                     UI.addMessage(msg.role, msg.content);
                 }
             }
-            // --- MODIFICATION END ---
         } else {
              UI.addMessage('assistant', "I'm ready to help. How can I assist you with your Teradata system today?");
         }
@@ -1477,6 +1463,34 @@ async function handleDeleteSessionClick(deleteButton) {
     );
 }
 
+// --- MODIFICATION START: Add handler for context clear click ---
+/**
+ * Handles the click event for the context status indicator (clear context button).
+ */
+async function handleClearContextClick() {
+    if (!state.currentSessionId) {
+        console.warn("Cannot clear context: No active session ID.");
+        UI.updateStatusWindow({ step: "Action Failed", details: "No active session to clear context for.", type: 'error' });
+        return;
+    }
+
+    UI.showConfirmation(
+        'Clear LLM Context?',
+        'This will erase the language model\'s memory of the current conversation. The chat history on screen will remain, but the LLM will start fresh. Are you sure?',
+        async () => {
+            try {
+                const result = await API.clearSessionContext(state.currentSessionId);
+                console.log("Context clear result:", result);
+                UI.showContextClearedFeedback(); // Trigger visual feedback
+            } catch (error) {
+                console.error("Error sending context clear request:", error);
+                UI.addMessage('assistant', `Error trying to clear context: ${error.message}`);
+            }
+        }
+    );
+}
+// --- MODIFICATION END ---
+
 
 // --- Initializer ---
 
@@ -1489,9 +1503,7 @@ export function initializeEventListeners() {
     // Delegated event listener for copy buttons and NEW reload/replay buttons
     DOM.chatLog.addEventListener('click', (e) => {
         const copyButton = e.target.closest('.copy-button');
-        // --- MODIFICATION START: Add avatar click handling ---
         const clickableAvatar = e.target.closest('.clickable-avatar[data-turn-id]');
-        // --- MODIFICATION END ---
 
         if (copyButton) {
             const copyType = copyButton.dataset.copyType;
@@ -1500,11 +1512,9 @@ export function initializeEventListeners() {
             } else if (copyType === 'table') {
                 copyTableToClipboard(copyButton);
             }
-        // --- MODIFICATION START: Call handler for avatar click ---
         } else if (clickableAvatar) {
             handleReloadPlanClick(clickableAvatar); // Pass the avatar element
         }
-        // --- MODIFICATION END ---
     });
 
     if (DOM.stopExecutionButton) {
@@ -1513,7 +1523,6 @@ export function initializeEventListeners() {
         console.error("Stop execution button not found in DOM elements.");
     }
 
-    // --- MODIFICATION START: Add event listeners for header replay buttons ---
     if (DOM.headerReplayPlannedButton) {
         DOM.headerReplayPlannedButton.addEventListener('click', (e) => {
             alert('Replay Planned Query - Not Implemented Yet.');
@@ -1530,6 +1539,13 @@ export function initializeEventListeners() {
         DOM.headerReplayQueryButton.addEventListener('click', (e) => {
             handleReplayQueryClick(e.currentTarget); // Pass the button element
         });
+    }
+
+    // --- MODIFICATION START: Add listener for context status dot ---
+    if (DOM.contextStatusDot) {
+        DOM.contextStatusDot.addEventListener('click', handleClearContextClick);
+    } else {
+        console.error("Context status dot not found in DOM elements.");
     }
     // --- MODIFICATION END ---
 

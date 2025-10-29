@@ -89,9 +89,17 @@ async def simple_chat():
         return jsonify({"error": "No message provided."}), 400
 
     try:
+        # --- MODIFICATION START: Need user_uuid for session lookup in handler ---
+        user_uuid = _get_user_uuid_from_request() # Get user UUID
+        # Simple chat doesn't have a persistent session_id, pass None
+        # --- MODIFICATION END ---
         response_text, _, _ = await llm_handler.call_llm_api(
             llm_instance=APP_STATE.get('llm'),
             prompt=message,
+            # --- MODIFICATION START: Pass user_uuid ---
+            user_uuid=user_uuid,
+            session_id=None, # Explicitly None for simple chat
+            # --- MODIFICATION END ---
             chat_history=history,
             system_prompt_override="You are a helpful assistant.",
             dependencies={'STATE': APP_STATE},
@@ -400,7 +408,7 @@ async def delete_session_endpoint(session_id: str):
         app_logger.error(f"Unexpected error during DELETE /api/session/{session_id} for user {user_uuid}: {e}", exc_info=True)
         return jsonify({"status": "error", "message": "An unexpected server error occurred during deletion."}), 500
 
-# --- MODIFICATION START: Add endpoints for /plan and /details ---
+
 @api_bp.route("/api/session/<session_id>/turn/<int:turn_id>/plan", methods=["GET"])
 async def get_turn_plan(session_id: str, turn_id: int):
     """Retrieves the original plan for a specific turn in a session."""
@@ -440,7 +448,6 @@ async def get_turn_details(session_id: str, turn_id: int):
     turn_data = workflow_history[turn_id - 1]
     # Optionally filter/clean the data before sending if needed, but for now send all
     return jsonify(turn_data)
-# --- MODIFICATION END ---
 
 
 @api_bp.route("/api/session/<session_id>/turn/<int:turn_id>/query", methods=["GET"])
@@ -614,9 +621,10 @@ async def ask_stream():
     session_id = data.get("session_id")
     disabled_history = data.get("disabled_history", False)
     source = data.get("source", "text")
-    # --- MODIFICATION START: Receive optional plan and replay flag ---
     plan_to_execute = data.get("plan_to_execute") # Plan object or null
     is_replay = data.get("is_replay", False) # Boolean flag
+    # --- MODIFICATION START: Get replay_turn_id from request ---
+    replay_turn_id = data.get("replay_turn_id") # Integer turn ID or None
     # --- MODIFICATION END ---
 
 
@@ -652,7 +660,7 @@ async def ask_stream():
         async def run_and_signal_completion():
             task = None
             try:
-                # --- MODIFICATION START: Pass plan and replay flag to execution service ---
+                # --- MODIFICATION START: Pass replay_turn_id to execution service ---
                 task = asyncio.create_task(
                     execution_service.run_agent_execution(
                         user_uuid=user_uuid,
@@ -662,7 +670,8 @@ async def ask_stream():
                         disabled_history=disabled_history,
                         source=source,
                         plan_to_execute=plan_to_execute, # Pass the plan
-                        is_replay=is_replay # Pass the flag
+                        is_replay=is_replay, # Pass the flag
+                        replay_turn_id=replay_turn_id # Pass the turn ID
                     )
                 )
                 # --- MODIFICATION END ---
@@ -752,7 +761,7 @@ async def invoke_prompt_stream():
                         prompt_arguments=arguments,
                         disabled_history=disabled_history,
                         source=source
-                        # plan_to_execute=None, is_replay=False
+                        # plan_to_execute=None, is_replay=False, replay_turn_id=None
                     )
                 )
                 APP_STATE.setdefault("active_tasks", {})[active_tasks_key] = task
@@ -801,3 +810,29 @@ async def cancel_stream(session_id: str):
         app_logger.warning(f"Cancellation request for user {user_uuid}, session {session_id} failed: No active task found.")
         return jsonify({"status": "error", "message": "No active task found for this session."}), 404
 
+# --- MODIFICATION START: Add route for clearing context ---
+@api_bp.route("/api/session/<session_id>/clear_context", methods=["POST"])
+async def clear_session_context(session_id: str):
+    """Clears the LLM conversation history (chat_object) for a specific session."""
+    user_uuid = _get_user_uuid_from_request()
+    app_logger.info(f"POST /clear_context request for session {session_id} from user {user_uuid}.")
+
+    # Validate session exists for the user
+    session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
+    if not session_data:
+        app_logger.warning(f"Clear context failed: Session {session_id} not found for user {user_uuid}.")
+        return jsonify({"status": "error", "message": "Session not found or access denied."}), 404
+
+    try:
+        success = session_manager.clear_llm_history(user_uuid, session_id)
+        if success:
+            app_logger.info(f"Successfully cleared LLM context for session {session_id} (user {user_uuid}).")
+            return jsonify({"status": "success", "message": "LLM context cleared successfully."}), 200
+        else:
+            # This might happen if saving fails after clearing in memory
+            app_logger.error(f"session_manager.clear_llm_history reported failure for session {session_id} (user {user_uuid}).")
+            return jsonify({"status": "error", "message": "Failed to clear context or save session."}), 500
+    except Exception as e:
+        app_logger.error(f"Unexpected error during POST /clear_context for session {session_id} (user {user_uuid}): {e}", exc_info=True)
+        return jsonify({"status": "error", "message": "An unexpected server error occurred."}), 500
+# --- MODIFICATION END ---

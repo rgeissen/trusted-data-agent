@@ -710,4 +710,30 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
 }
 /* --- MODIFICATION END --- */
 
+/* --- MODIFICATION START: Styles for context clear --- */
+#context-status-dot {
+    cursor: pointer;
+}
 
+@keyframes context-clear-pulse {
+    0% {
+        background-color: #10b981; /* green-500 */
+        box-shadow: 0 0 8px #10b981;
+        transform: scale(1);
+    }
+    50% {
+        background-color: #ffffff; /* white */
+        box-shadow: 0 0 16px #ffffff;
+        transform: scale(1.5);
+    }
+    100% {
+        background-color: #10b981; /* green-500 */
+        box-shadow: 0 0 8px #10b981;
+        transform: scale(1);
+    }
+}
+
+.connection-dot.context-cleared-pulse {
+    animation: context-clear-pulse 0.6s ease-in-out 2; /* Run animation twice */
+}
+/* --- MODIFICATION END --- */

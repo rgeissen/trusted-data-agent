@@ -24,10 +24,12 @@
                     <div id="llm-status-dot" class="connection-dot disconnected"></div>
                     <span class="text-sm text-gray-300">LLM</span>
                 </div>
-                <div class="flex items-center gap-x-2" title="Context Engine Status">
+                <!-- MODIFICATION START: Add cursor-pointer and title -->
+                <div class="flex items-center gap-x-2 cursor-pointer" title="Click to clear LLM context memory">
                     <div id="context-status-dot" class="connection-dot disconnected"></div>
                     <span class="text-sm text-gray-300">Context</span>
                 </div>
+                <!-- MODIFICATION END -->
             </div>
 
             <div class="flex items-center gap-x-1">
@@ -197,7 +199,7 @@
             <header class="p-4 border-b border-white/10 flex flex-col justify-center items-center relative">
                 <div class="flex justify-center items-center w-full relative">
                     <h2 id="status-title" class="header-title text-lg font-bold text-white">Live Status</h2>
-                    
+
                     <div id="status-action-buttons" class="absolute right-0 flex items-center gap-x-1">
                         <!-- Button 3: Replay Planned Query (Dummy) -->
                         <button id="header-replay-planned-button" title="Replay Planned Query (Not Implemented)" class="replay-action-button p-2 text-gray-300 hover:text-white transition-colors rounded-md hover:bg-white/10 hidden">
@@ -220,7 +222,7 @@
                               <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </button>
-                        
+
                         <!-- Stop Button (Moved from absolute to flow) -->
                         <button id="stop-execution-button" title="Stop Current Execution" class="p-2 text-red-400 hover:text-red-300 transition-colors rounded-md hover:bg-red-500/20 hidden">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -610,3 +612,4 @@
     <script type="module" src="{{ url_for('static', filename='js/main.js') }}?v=2.6"></script>
 </body>
 </html>
+

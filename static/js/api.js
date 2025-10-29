@@ -48,13 +48,34 @@ export async function getApiKey(provider) {
     return await res.json();
 }
 
-
+// --- MODIFICATION START: Add replay_turn_id to startStream body ---
+/**
+ * Initiates a stream request to the backend.
+ * @param {string} endpoint - The API endpoint to call (e.g., '/ask_stream').
+ * @param {object} body - The request body, including message/prompt, session_id, and optional flags like is_replay and replay_turn_id.
+ * @returns {Promise<Response>} A promise resolving to the Fetch API Response object.
+ */
 export async function startStream(endpoint, body) {
+    // Ensure replay_turn_id is included if present in the body object
+    const payload = {
+        message: body.message,
+        session_id: body.session_id,
+        disabled_history: body.disabled_history,
+        source: body.source,
+        plan_to_execute: body.plan_to_execute,
+        is_replay: body.is_replay,
+        replay_turn_id: body.replay_turn_id // Include replay_turn_id
+    };
+
+    // Remove keys with undefined values to keep payload clean
+    Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
+
     const response = await fetch(endpoint, {
         method: 'POST',
         headers: _getHeaders(),
-        body: JSON.stringify(body),
+        body: JSON.stringify(payload), // Send the constructed payload
     });
+    // --- MODIFICATION END ---
     if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || `Request failed with status ${response.status}`);
@@ -87,6 +108,7 @@ export async function cancelStream(sessionId) {
     try {
         return await response.json();
     } catch(e) {
+        // Handle cases where server might return 200 OK with no body
         return { status: response.status === 200 ? 'success' : 'info', message: response.statusText };
     }
 }
@@ -141,7 +163,7 @@ export async function checkAndUpdateDefaultPrompts() {
         if (serverVersion !== localVersion) {
             console.log('New master system prompts detected on server. Flushing non-custom local prompts.');
 
-            const allPrompts = getSystemPrompts();
+            const allPrompts = Utils.getSystemPrompts(); // Use Utils function
             const updatedPrompts = {};
 
             for (const key in allPrompts) {
@@ -187,8 +209,10 @@ export async function toggleToolApi(toolName, isDisabled) {
 export async function loadResources(type) {
     const res = await fetch(`/${type}`, { headers: _getHeaders(false) });
 
+    // Handle 404 gracefully if endpoint doesn't exist (e.g., /resources)
     if (res.status === 404) {
-        return {};
+        console.warn(`Resource type '${type}' not found on server (404).`);
+        return {}; // Return empty object
     }
 
     const data = await res.json();
@@ -206,9 +230,14 @@ export async function startNewSession() {
     if (isPrivilegedUser()) {
         const activePrompt = getSystemPromptForModel(state.currentProvider, state.currentModel);
         if (!activePrompt) {
-            throw new Error('Cannot start a new session. The system prompt is not loaded for the current model. Please re-configure.');
+            // It's better to let the backend handle default prompt logic if none is set client-side
+            console.warn('Cannot determine active system prompt client-side. Backend will use its default.');
+            // throw new Error('Cannot start a new session. The system prompt is not loaded for the current model. Please re-configure.');
         }
-        payload.system_prompt = activePrompt;
+        // Only send if we have a specific one (custom or default loaded)
+        if (activePrompt) {
+            payload.system_prompt = activePrompt;
+        }
     }
 
     const res = await fetch('/session', {
@@ -266,18 +295,29 @@ export async function deleteSession(sessionId) {
 
     const response = await fetch(`/api/session/${sessionId}`, {
         method: 'DELETE',
-        headers: _getHeaders(false),
+        headers: _getHeaders(false), // No body, so no Content-Type needed
     });
 
+    // Check for 204 No Content which might not have a JSON body
     if (response.status === 204) {
         return { status: "success", message: "Session deleted successfully." };
     }
 
-    const result = await response.json();
-    if (!response.ok) {
-        throw new Error(result.message || `Failed to delete session (status ${response.status}).`);
+    // Try parsing JSON for other statuses (like 200 OK or errors)
+    try {
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.message || `Failed to delete session (status ${response.status}).`);
+        }
+        return result; // Return success JSON if present
+    } catch (e) {
+        // Handle cases where response might be OK but body is empty or not JSON
+        if (response.ok) {
+            return { status: "success", message: "Session deleted successfully." };
+        } else {
+             throw new Error(`Failed to delete session (status ${response.status}). Response not valid JSON.`);
+        }
     }
-    return result;
 }
 
 
@@ -356,7 +396,6 @@ export async function fetchTurnQuery(sessionId, turnId) {
     return data;
 }
 
-// --- MODIFICATION START: Add fetchTurnDetails function ---
 /**
  * Fetches the full details (plan, trace, etc.) for a specific turn from the backend.
  * @param {string} sessionId - The ID of the session.
@@ -377,5 +416,35 @@ export async function fetchTurnDetails(sessionId, turnId) {
     // Expected format is the full turn_data object: { turn: ..., user_query: ..., original_plan: ..., execution_trace: ..., final_summary: ..., timestamp: ... }
     return data;
 }
-// --- MODIFICATION END ---
 
+// --- MODIFICATION START: Add clearSessionContext function ---
+/**
+ * Sends a request to the backend to clear the LLM context for the current session.
+ * @param {string} sessionId - The ID of the session to clear context for.
+ * @returns {Promise<object>} A promise resolving to the server's response JSON.
+ */
+export async function clearSessionContext(sessionId) {
+    if (!sessionId) {
+        throw new Error("Session ID is required to clear context.");
+    }
+    console.log(`API: Requesting context clear for session ${sessionId}`);
+    const response = await fetch(`/api/session/${sessionId}/clear_context`, {
+        method: 'POST',
+        headers: _getHeaders(false), // No body, so Content-Type not strictly needed but keep for consistency potentially
+    });
+
+    // Try parsing JSON regardless of status for error messages
+    let resultJson = {};
+    try {
+        resultJson = await response.json();
+    } catch (e) {
+        // If parsing fails (e.g., 204 No Content, or unexpected non-JSON), create a basic result
+        resultJson = { status: response.ok ? 'success' : 'error', message: response.statusText };
+    }
+
+    if (!response.ok) {
+        throw new Error(resultJson.message || `Failed to clear context (status ${response.status}).`);
+    }
+    return resultJson;
+}
+// --- MODIFICATION END ---
