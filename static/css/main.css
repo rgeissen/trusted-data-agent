@@ -710,4 +710,18 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
 }
 /* --- MODIFICATION END --- */
 
+/* --- MODIFICATION START: Remove .turn-invalid and add .context-invalid --- */
+/* This class will be added *directly to the badge* */
+.turn-badge.context-invalid {
+    background-color: #FFFFFF; /* White background */
+    color: var(--medium-text); /* Muted gray text for 'n' */
+    border-color: var(--medium-text); /* Muted gray border */
+    box-shadow: none;
+}
 
+/* Ensure avatar hover effects still work even if context is invalid */
+.clickable-avatar:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+/* --- MODIFICATION END --- */

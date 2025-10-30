@@ -138,7 +138,9 @@ export function renderHistoricalTrace(originalPlan, executionTrace, turnId) {
 }
 
 
-export function addMessage(role, content, turnId = null) {
+// --- MODIFICATION START: Add 'isValid' parameter to apply context styles ---
+export function addMessage(role, content, turnId = null, isValid = true) {
+// --- MODIFICATION END ---
     const wrapper = document.createElement('div');
     wrapper.className = `message-bubble group flex items-start gap-4 ${role === 'user' ? 'justify-end' : ''}`;
     const icon = document.createElement('div');
@@ -146,6 +148,10 @@ export function addMessage(role, content, turnId = null) {
     icon.className = 'flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg relative';
     icon.textContent = role === 'user' ? 'U' : 'A';
     icon.classList.add(role === 'user' ? 'bg-gray-700' : 'bg-[#F15F22]');
+
+    // --- MODIFICATION START: Remove .turn-invalid from avatar ---
+    // This logic is now handled by the badge.
+    // --- MODIFICATION END ---
 
     const messageContainer = document.createElement('div');
     messageContainer.className = 'p-4 rounded-xl shadow-lg max-w-2xl glass-panel';
@@ -174,6 +180,13 @@ export function addMessage(role, content, turnId = null) {
         assistantBadge.textContent = turnId;
         icon.appendChild(assistantBadge); // Append badge to assistant icon
 
+        // --- MODIFICATION START: Apply context style to assistant badge ---
+        if (isValid === false) {
+            assistantBadge.classList.add('context-invalid');
+        }
+        // --- MODIFICATION END ---
+
+
         // --- Find previous User message and add badge/click handler ---
         const userBubbles = DOM.chatLog.querySelectorAll('.message-bubble:has(.bg-gray-700)');
         const lastUserBubble = userBubbles.length > 0 ? userBubbles[userBubbles.length - 1] : null;
@@ -181,16 +194,24 @@ export function addMessage(role, content, turnId = null) {
         if (lastUserBubble) {
             const userAvatarIcon = lastUserBubble.querySelector('.bg-gray-700');
             if (userAvatarIcon) {
-                // 1. Make the User Avatar clickable for reloading the plan
+                // 1. Make the User Avatar clickable (REGARDLESS of context)
                 userAvatarIcon.classList.add('clickable-avatar');
                 userAvatarIcon.dataset.turnId = turnId;
-                userAvatarIcon.title = `Reload Plan & Details for Turn ${turnId}`;
 
                 // --- Add Turn Badge to User Avatar ---
                 const userBadge = document.createElement('span');
                 userBadge.className = 'turn-badge';
                 userBadge.textContent = turnId;
                 userAvatarIcon.appendChild(userBadge); // Append badge to user icon
+                
+                // --- MODIFICATION START: Style badge and update title based on context ---
+                if (isValid === false) {
+                    userBadge.classList.add('context-invalid');
+                    userAvatarIcon.title = `Reload Details for Turn ${turnId} (Archived Context)`;
+                } else {
+                    userAvatarIcon.title = `Reload Plan & Details for Turn ${turnId}`;
+                }
+                // --- MODIFICATION END ---
             }
         }
 
@@ -411,7 +432,7 @@ export function updateStatusWindow(eventData, isFinal = false) {
 
         const phaseContainer = document.createElement('details');
         phaseContainer.className = 'status-phase-container';
-        phaseContainer.open = false; // Closed by default when rendering trace
+        phaseContainer.open = true; // --- MODIFICATION: Default to open ---
 
         const phaseHeader = document.createElement('summary');
         phaseHeader.className = 'status-phase-header phase-start';

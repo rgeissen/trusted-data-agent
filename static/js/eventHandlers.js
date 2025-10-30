@@ -107,6 +107,7 @@ async function processStream(responseBody) {
                         UI.setExecutionState(false);
                     } else if (eventName === 'final_answer') {
                         // --- MODIFICATION START: Pass turn_id to addMessage ---
+                        // All new messages are valid by default, so we don't need to pass `true`
                         UI.addMessage('assistant', eventData.final_answer, eventData.turn_id); // Pass turn_id here
                         // --- MODIFICATION END ---
                         UI.updateStatusWindow({ step: "Finished", details: "Response sent to chat." }, true);
@@ -464,7 +465,7 @@ async function handleContextPurgeClick() {
     // Use the existing UI.showConfirmation
     UI.showConfirmation(
         'Purge Agent Memory?',
-        "Are you sure you want to purge the agent's internal memory (`chat_object`) for this session? This will force the agent to re-evaluate the next query from scratch, but will not affect your visible chat log or turn history.",
+        "Are you sure you want to archive the context of all past turns? This will force the agent to re-evaluate the next query from scratch. Your chat log and replay ability will be preserved.",
         async () => {
             try {
                 // Call the new API endpoint
@@ -472,6 +473,24 @@ async function handleContextPurgeClick() {
                 // Flash the dot on success
                 UI.flashContextDot();
                 console.log(`Agent memory purged for session ${state.currentSessionId}`);
+                
+                // --- START NEW LOGIC ---
+                // Visually invalidate all existing turns in the DOM
+                const allBadges = DOM.chatLog.querySelectorAll('.turn-badge');
+                allBadges.forEach(badge => {
+                    badge.classList.add('context-invalid');
+                });
+        
+                // Update avatar titles to reflect archived state
+                const allClickableAvatars = DOM.chatLog.querySelectorAll('.clickable-avatar');
+                allClickableAvatars.forEach(avatar => {
+                    // Remove old title text if present and add the new one
+                    avatar.title = avatar.title.replace(' (Archived Context)', '') + ' (Archived Context)';
+                });
+                
+                console.log(`Applied .context-invalid style to ${allBadges.length} existing turn badges.`);
+                // --- END NEW LOGIC ---
+
             } catch (error) {
                 console.error(`Failed to purge agent memory:`, error);
                 // Optionally show an error to the user
@@ -604,18 +623,21 @@ export async function handleLoadSession(sessionId, isNewSession = false) {
         state.currentSessionId = sessionId;
         DOM.chatLog.innerHTML = '';
         if (data.history && data.history.length > 0) {
-            // --- MODIFICATION START: Pass turn_id during history load ---
+            // --- MODIFICATION START: Pass turn_id and isValid during history load ---
             // Simulate turn IDs based on message pairs for existing sessions
             let currentTurnId = 1;
             for (let i = 0; i < data.history.length; i++) {
                 const msg = data.history[i];
+                // Default to true if isValid flag is missing (for older sessions)
+                const isValid = msg.isValid === undefined ? true : msg.isValid;
+
                 if (msg.role === 'assistant') {
-                    // Pass the calculated turn ID for assistant messages
-                    UI.addMessage(msg.role, msg.content, currentTurnId);
+                    // Pass the calculated turn ID and validity for assistant messages
+                    UI.addMessage(msg.role, msg.content, currentTurnId, isValid);
                     currentTurnId++; // Increment turn ID after an assistant message
                 } else {
-                    // User messages don't need a turn ID passed to addMessage
-                    UI.addMessage(msg.role, msg.content);
+                    // User messages don't need a turn ID, but pass validity
+                    UI.addMessage(msg.role, msg.content, null, isValid);
                 }
             }
             // --- MODIFICATION END ---
@@ -1479,7 +1501,30 @@ async function handleTogglePrompt(promptName, isDisabled, buttonEl) {
 }
 
 async function handleToggleTool(toolName, isDisabled, buttonEl) {
-// ... existingcode ...
+    try {
+        await API.toggleToolApi(toolName, isDisabled);
+
+        for (const category in state.resourceData.tools) {
+            const tool = state.resourceData.tools[category].find(t => t.name === toolName);
+            if (tool) {
+                tool.disabled = isDisabled;
+                break;
+            }
+        }
+
+        const toolItem = document.getElementById(`resource-tools-${toolName}`);
+        toolItem.classList.toggle('opacity-60', isDisabled);
+        toolItem.title = isDisabled ? 'This tool is disabled and will not be used by the agent.' : '';
+
+        buttonEl.innerHTML = isDisabled ?
+            `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074L3.707 2.293zM10 12a2 2 0 110-4 2 2 0 010 4z" clip-rule="evenodd" /><path d="M2 10s3.939 4 8 4 8-4 8-4-3.939-4-8-4-8 4-8 4zm13.707 4.293a1 1 0 00-1.414-1.414L12.586 14.6A8.007 8.007 0 0110 16c-4.478 0-8.268-2.943-9.542-7 .946-2.317 2.83-4.224 5.166-5.447L2.293 1.293A1 1 0 00.879 2.707l14 14a1 1 0 001.414 0z" /></svg>` :
+            `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" /></svg>`;
+
+        UI.updateToolsTabCounter();
+
+    } catch (error) {
+        console.error(`Failed to toggle tool ${toolName}:`, error);
+    }
 }
 
 /**

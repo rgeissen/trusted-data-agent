@@ -56,14 +56,38 @@ class Planner:
     def __init__(self, executor: 'PlanExecutor'):
         self.executor = executor
 
+    # --- MODIFICATION START: Update history creation to filter by context validity ---
     def _create_summary_from_history(self, history: dict) -> str:
         """
         Creates a token-efficient, high-signal summary of a history dictionary
         by formatting it into a canonical JSON structure for the planner.
+        This function now filters out any turns marked with 'isValid': false.
         """
         if not history or not isinstance(history, dict) or "workflow_history" not in history:
             return json.dumps({"workflow_history": []}, indent=2)
-        return json.dumps(history, indent=2)
+
+        # 1. Get the full workflow history
+        full_workflow_history = history.get("workflow_history", [])
+        if not isinstance(full_workflow_history, list):
+             return json.dumps({"workflow_history": []}, indent=2)
+
+        # 2. Filter for valid turns only
+        # A turn is valid if 'isValid' is missing (defaults to true) or is explicitly true.
+        valid_workflow_history = [
+            turn for turn in full_workflow_history
+            if isinstance(turn, dict) and turn.get("isValid", True) is not False
+        ]
+        
+        # 3. Create the final history object with only valid turns
+        valid_history_summary = {
+            # We only pass the filtered list to the planner
+            "workflow_history": valid_workflow_history 
+        }
+
+        app_logger.debug(f"Planner context created. Original turns: {len(full_workflow_history)}, Valid (active) turns: {len(valid_workflow_history)}")
+
+        return json.dumps(valid_history_summary, indent=2)
+    # --- MODIFICATION END ---
 
     def _hydrate_plan_from_previous_turn(self):
         """
@@ -821,4 +845,3 @@ class Planner:
             if len(self.executor.meta_plan) > 1 or any(phase.get("type") == "loop" for phase in self.executor.meta_plan):
                 self.executor.is_complex_prompt_workflow = True
                 app_logger.info(f"'{self.executor.active_prompt_name}' has been qualified as a complex prompt workflow based on the generated plan.")
-

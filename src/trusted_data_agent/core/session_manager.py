@@ -200,7 +200,10 @@ def delete_session(user_uuid: str, session_id: str) -> bool:
 def add_to_history(user_uuid: str, session_id: str, role: str, content: str):
     session_data = _load_session(user_uuid, session_id)
     if session_data:
-        session_data.setdefault('session_history', []).append({'role': role, 'content': content})
+        # --- MODIFICATION START: Add isValid=True for new messages ---
+        # By default, all new messages are valid.
+        session_data.setdefault('session_history', []).append({'role': role, 'content': content, 'isValid': True})
+        # --- MODIFICATION END ---
         provider_in_session = session_data.get("license_info", {}).get("provider")
         current_provider = APP_CONFIG.CURRENT_PROVIDER
         provider = provider_in_session or current_provider
@@ -209,7 +212,10 @@ def add_to_history(user_uuid: str, session_id: str, role: str, content: str):
              provider = "Unknown" # Avoid error if APP_CONFIG isn't set somehow
 
         llm_role = 'model' if role == 'assistant' and provider == 'Google' else role
-        session_data.setdefault('chat_object', []).append({'role': llm_role, 'content': content})
+        # --- MODIFICATION START: Add isValid=True for new messages ---
+        # (This history is for the LLM, which gets reset anyway, but good for consistency)
+        session_data.setdefault('chat_object', []).append({'role': llm_role, 'content': content, 'isValid': True})
+        # --- MODIFICATION END ---
 
         if not _save_session(user_uuid, session_id, session_data):
              app_logger.error(f"Failed to save session after adding history for {session_id}")
@@ -247,6 +253,12 @@ def update_last_turn_data(user_uuid: str, session_id: str, turn_data: dict):
             session_data["last_turn_data"] = {}
         if "workflow_history" not in session_data["last_turn_data"] or not isinstance(session_data["last_turn_data"]["workflow_history"], list):
             session_data["last_turn_data"]["workflow_history"] = []
+        
+        # --- MODIFICATION START: Add isValid=True for new turns ---
+        # By default, all new turns are valid.
+        if isinstance(turn_data, dict):
+            turn_data["isValid"] = True
+        # --- MODIFICATION END ---
 
         # Append the new turn data (contains original_plan and user_query now)
         session_data["last_turn_data"]["workflow_history"].append(turn_data)
@@ -270,7 +282,31 @@ def purge_session_memory(user_uuid: str, session_id: str) -> bool:
         return False # Session not found
 
     try:
-        # Determine the correct initial state for chat_object based on the provider
+        # --- MODIFICATION START: Mark all existing history as invalid ---
+        # This makes the "purge" a persistent archival event.
+
+        # 1. Mark UI history (session_history) as invalid
+        session_history = session_data.get('session_history', [])
+        history_count = 0
+        if isinstance(session_history, list):
+            for msg in session_history:
+                if isinstance(msg, dict):
+                    msg["isValid"] = False
+                    history_count += 1
+        
+        # 2. Mark backend turn data (workflow_history) as invalid
+        workflow_history = session_data.get("last_turn_data", {}).get("workflow_history", [])
+        turn_count = 0
+        if isinstance(workflow_history, list):
+            for turn in workflow_history:
+                if isinstance(turn, dict):
+                    turn["isValid"] = False
+                    turn_count += 1
+        
+        app_logger.info(f"Marked {history_count} UI messages and {turn_count} turns as invalid for session '{session_id}'.")
+        # --- MODIFICATION END ---
+
+        # Determine the correct initial state for chat_object
         # This mirrors the logic in create_session
         chat_history_for_file = []
         provider_in_session = session_data.get("license_info", {}).get("provider")
@@ -290,7 +326,7 @@ def purge_session_memory(user_uuid: str, session_id: str) -> bool:
         # Also reset the full_context_sent flag so the agent sends the full system prompt next time
         session_data['full_context_sent'] = False
 
-        app_logger.info(f"Successfully reset chat_object for session '{session_id}'. Preserving session_history and last_turn_data.")
+        app_logger.info(f"Successfully reset chat_object for session '{session_id}'. Invalidated existing history.")
 
         if not _save_session(user_uuid, session_id, session_data):
             app_logger.error(f"Failed to save session after purging memory for {session_id}")
