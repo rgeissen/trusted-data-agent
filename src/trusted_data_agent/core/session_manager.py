@@ -255,3 +255,50 @@ def update_last_turn_data(user_uuid: str, session_id: str, turn_data: dict):
             app_logger.error(f"Failed to save session after updating last turn data for {session_id}")
     else:
         app_logger.warning(f"Could not update last turn data: Session {session_id} not found for user {user_uuid}.")
+
+# --- MODIFICATION START: Add function to purge only the agent's memory ---
+def purge_session_memory(user_uuid: str, session_id: str) -> bool:
+    """
+    Resets the agent's LLM context memory (`chat_object`) for a session,
+    but leaves the UI history (`session_history`) and plan/trace history
+    (`last_turn_data`) intact.
+    """
+    app_logger.info(f"Attempting to purge agent memory (chat_object) for session '{session_id}', user '{user_uuid}'.")
+    session_data = _load_session(user_uuid, session_id)
+    if not session_data:
+        app_logger.warning(f"Could not purge memory: Session {session_id} not found for user {user_uuid}.")
+        return False # Session not found
+
+    try:
+        # Determine the correct initial state for chat_object based on the provider
+        # This mirrors the logic in create_session
+        chat_history_for_file = []
+        provider_in_session = session_data.get("license_info", {}).get("provider")
+        current_provider = APP_CONFIG.CURRENT_PROVIDER
+        provider = provider_in_session or current_provider or "Google" # Default to Google logic if unknown
+
+        if provider == "Google":
+            initial_history_google = [
+                {"role": "user", "parts": [{"text": "You are a helpful assistant."}]},
+                {"role": "model", "parts": [{"text": "Understood."}]}
+            ]
+            chat_history_for_file = [{'role': m['role'], 'content': m['parts'][0]['text']} for m in initial_history_google]
+        
+        # Reset *only* the chat_object
+        session_data['chat_object'] = chat_history_for_file
+        
+        # Also reset the full_context_sent flag so the agent sends the full system prompt next time
+        session_data['full_context_sent'] = False
+
+        app_logger.info(f"Successfully reset chat_object for session '{session_id}'. Preserving session_history and last_turn_data.")
+
+        if not _save_session(user_uuid, session_id, session_data):
+            app_logger.error(f"Failed to save session after purging memory for {session_id}")
+            return False # Save failed
+        
+        return True # Success
+
+    except Exception as e:
+        app_logger.error(f"An unexpected error occurred during memory purge for session '{session_id}': {e}", exc_info=True)
+        return False
+# --- MODIFICATION END ---

@@ -1114,9 +1114,25 @@ export function closeViewPromptModal() {
     setTimeout(() => DOM.viewPromptModalOverlay.classList.add('hidden'), 300);
 }
 
+// --- MODIFICATION START: Add flashContextDot function ---
+/**
+ * Provides brief visual feedback on the context status dot by making it pulse.
+ */
+export function flashContextDot() {
+    if (!DOM.contextStatusDot) return;
+
+    // Add the pulsing class
+    DOM.contextStatusDot.classList.add('pulsing');
+
+    // Set a timeout to remove the class after the animation duration (1.2s)
+    setTimeout(() => {
+        DOM.contextStatusDot.classList.remove('pulsing');
+    }, 1200); // 1200ms matches the 'pulse' animation in main.css
+}
+// --- MODIFICATION END ---
+
 export function closeChatModal() {
     DOM.chatModalOverlay.classList.add('opacity-0');
     DOM.chatModalContent.classList.add('scale-95', 'opacity-0');
     setTimeout(() => DOM.chatModalOverlay.classList.add('hidden'), 300);
 }
-

@@ -400,6 +400,24 @@ async def delete_session_endpoint(session_id: str):
         app_logger.error(f"Unexpected error during DELETE /api/session/{session_id} for user {user_uuid}: {e}", exc_info=True)
         return jsonify({"status": "error", "message": "An unexpected server error occurred during deletion."}), 500
 
+# --- MODIFICATION START: Add new endpoint for purging session memory ---
+@api_bp.route("/api/session/<session_id>/purge_memory", methods=["POST"])
+async def purge_memory(session_id: str):
+    """Purges the agent's LLM context memory (`chat_object`) for a session."""
+    user_uuid = _get_user_uuid_from_request()
+    app_logger.info(f"Purge memory request for session {session_id}, user {user_uuid}")
+
+    success = session_manager.purge_session_memory(user_uuid, session_id)
+
+    if success:
+        app_logger.info(f"Agent memory purged successfully for session {session_id}, user {user_uuid}.")
+        return jsonify({"status": "success", "message": "Agent memory purged."}), 200
+    else:
+        # This could be 404 (session not found) or 500 (save error), 404 is safer
+        app_logger.warning(f"Failed to purge memory for session {session_id}, user {user_uuid}. Session may not exist or save failed.")
+        return jsonify({"status": "error", "message": "Failed to purge session memory. Session not found or save error."}), 404
+# --- MODIFICATION END ---
+
 # --- MODIFICATION START: Add endpoints for /plan and /details ---
 @api_bp.route("/api/session/<session_id>/turn/<int:turn_id>/plan", methods=["GET"])
 async def get_turn_plan(session_id: str, turn_id: int):
@@ -800,4 +818,3 @@ async def cancel_stream(session_id: str):
     else:
         app_logger.warning(f"Cancellation request for user {user_uuid}, session {session_id} failed: No active task found.")
         return jsonify({"status": "error", "message": "No active task found for this session."}), 404
-

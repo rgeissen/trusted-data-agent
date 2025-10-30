@@ -331,6 +331,25 @@ async function handleReloadPlanClick(element) {
         // Render the historical trace using the new UI function
         UI.renderHistoricalTrace(turnData.original_plan || [], turnData.execution_trace || [], turnId);
 
+        // --- MODIFICATION START: Synchronize header buttons ---
+        // After successfully rendering the trace, update the header buttons
+        if (DOM.headerReplayPlannedButton) {
+            DOM.headerReplayPlannedButton.classList.remove('hidden');
+            DOM.headerReplayPlannedButton.disabled = false;
+            DOM.headerReplayPlannedButton.dataset.turnId = turnId;
+        }
+        if (DOM.headerReplayOptimizedButton) {
+            DOM.headerReplayOptimizedButton.classList.remove('hidden');
+            DOM.headerReplayOptimizedButton.disabled = false;
+            DOM.headerReplayOptimizedButton.dataset.turnId = turnId;
+        }
+        if (DOM.headerReplayQueryButton) {
+            DOM.headerReplayQueryButton.classList.remove('hidden');
+            DOM.headerReplayQueryButton.disabled = false;
+            DOM.headerReplayQueryButton.dataset.turnId = turnId;
+        }
+        // --- MODIFICATION END ---
+
     } catch (error) {
         console.error(`Error loading details for turn ${turnId}:`, error);
         DOM.statusWindowContent.innerHTML = `<div class="p-4 status-step error"><h4 class="font-bold text-sm text-white mb-2">Error Loading Details</h4><p class="text-xs">${error.message}</p></div>`;
@@ -338,9 +357,10 @@ async function handleReloadPlanClick(element) {
 }
 // --- MODIFICATION END ---
 
-// --- MODIFICATION START: Define handleReplayQueryClick ---
+// --- MODIFICATION START: This function is now for REPLAYING THE QUERY ---
 /**
- * Handles clicks on the "Replay Query" button (now in header). Fetches the original query and re-submits it.
+ * Handles clicks on the "Replay Original Query" button. Fetches the original query
+ * text for that turn and re-submits it, triggering a NEW PLAN.
  * @param {HTMLButtonElement} buttonEl - The button element that was clicked.
  */
 async function handleReplayQueryClick(buttonEl) {
@@ -352,7 +372,7 @@ async function handleReplayQueryClick(buttonEl) {
     }
 
     try {
-        // Fetch the original query
+        // 1. Fetch ONLY the original query text
         const queryData = await API.fetchTurnQuery(sessionId, turnId);
         const originalQuery = queryData.query;
 
@@ -360,24 +380,105 @@ async function handleReplayQueryClick(buttonEl) {
             throw new Error("Could not retrieve the original query for this turn.");
         }
 
-        console.log(`Replaying query from Turn ${turnId}: "${originalQuery}"`);
+        console.log(`Replaying QUERY from Turn ${turnId}: "${originalQuery}"`);
+        // Add a message indicating a *query* replay
+        UI.addMessage('user', `🔄 Replaying **query** from Turn ${turnId}: ${originalQuery}`);
 
-        // Add a message indicating replay
-        UI.addMessage('user', `🔄 Replaying query from Turn ${turnId}: ${originalQuery}`);
-
-        // Re-submit the query using handleStreamRequest
-        // Pass is_replay=true to prevent adding user message again and disable history
+        // 2. Re-submit using handleStreamRequest, *without* a plan
         handleStreamRequest('/ask_stream', {
-            message: originalQuery, // Use the fetched original query
+            message: originalQuery,      // Used for original_user_input on backend
             session_id: sessionId,
-            source: 'text', // Assuming original source was text
-            is_replay: true // Mark this as a replay
+            source: 'text',
+            is_replay: true,             // Ensures logging and disables history for planning
+            plan_to_execute: null        // Explicitly null. This forces a new plan.
         });
 
     } catch (error) {
         console.error(`Error replaying query for turn ${turnId}:`, error);
         UI.addMessage('assistant', `Sorry, could not replay the query from Turn ${turnId}. Error: ${error.message}`);
     }
+}
+// --- MODIFICATION END ---
+
+// --- MODIFICATION START: Add new handler for REPLAYING THE PLAN ---
+/**
+ * Handles clicks on the "Replay Planned Query" button. Fetches the original query *and*
+ * the original plan for that turn, then re-submits *the plan* for execution.
+ * @param {HTMLButtonElement} buttonEl - The button element that was clicked.
+ */
+async function handleReplayPlanClick(buttonEl) {
+    const turnId = buttonEl.dataset.turnId;
+    const sessionId = state.currentSessionId;
+    if (!turnId || !sessionId) {
+        console.error("Missing turnId or sessionId for replaying plan.");
+        return;
+    }
+
+    try {
+        // 1. Fetch BOTH the original query (for context) and the original plan
+        const [queryData, planData] = await Promise.all([
+            API.fetchTurnQuery(sessionId, turnId),
+            API.fetchTurnPlan(sessionId, turnId)
+        ]);
+
+        const originalQuery = queryData.query;
+        const originalPlan = planData.plan;
+
+        if (!originalQuery) {
+            throw new Error("Could not retrieve the original query for this turn.");
+        }
+        if (!originalPlan) {
+            throw new Error("Could not retrieve the original plan for this turn.");
+        }
+
+        console.log(`Replaying PLAN from Turn ${turnId} (Query: "${originalQuery}")`);
+        // Add a message indicating a *plan* replay
+        UI.addMessage('user', `🔄 Replaying **plan** from Turn ${turnId}: ${originalQuery}`);
+
+        // 2. Re-submit using handleStreamRequest, passing the plan_to_execute
+        handleStreamRequest('/ask_stream', {
+            message: originalQuery,      // Used for original_user_input on backend
+            session_id: sessionId,
+            source: 'text',
+            is_replay: true,             // Ensures logging and disables history for planning (which is skipped anyway)
+            plan_to_execute: originalPlan  // This tells the backend to skip planning and execute this plan
+        });
+
+    } catch (error) {
+        console.error(`Error replaying plan for turn ${turnId}:`, error);
+        UI.addMessage('assistant', `Sorry, could not replay the plan from Turn ${turnId}. Error: ${error.message}`);
+    }
+}
+// --- MODIFICATION END ---
+
+// --- MODIFICATION START: Add handler for context purge click ---
+/**
+ * Handles clicks on the "Context" status dot to purge agent memory.
+ */
+async function handleContextPurgeClick() {
+    if (!state.currentSessionId) {
+        console.warn("Context purge click ignored: No active session ID.");
+        return;
+    }
+
+    // Use the existing UI.showConfirmation
+    UI.showConfirmation(
+        'Purge Agent Memory?',
+        "Are you sure you want to purge the agent's internal memory (`chat_object`) for this session? This will force the agent to re-evaluate the next query from scratch, but will not affect your visible chat log or turn history.",
+        async () => {
+            try {
+                // Call the new API endpoint
+                await API.purgeSessionMemory(state.currentSessionId);
+                // Flash the dot on success
+                UI.flashContextDot();
+                console.log(`Agent memory purged for session ${state.currentSessionId}`);
+            } catch (error) {
+                console.error(`Failed to purge agent memory:`, error);
+                // Optionally show an error to the user
+                alert(`Error: Could not purge agent memory. ${error.message}`);
+            }
+        }
+    );
 }
 // --- MODIFICATION END ---
 
@@ -1378,30 +1479,7 @@ async function handleTogglePrompt(promptName, isDisabled, buttonEl) {
 }
 
 async function handleToggleTool(toolName, isDisabled, buttonEl) {
-    try {
-        await API.toggleToolApi(toolName, isDisabled);
-
-        for (const category in state.resourceData.tools) {
-            const tool = state.resourceData.tools[category].find(t => t.name === toolName);
-            if (tool) {
-                tool.disabled = isDisabled;
-                break;
-            }
-        }
-
-        const toolItem = document.getElementById(`resource-tools-${toolName}`);
-        toolItem.classList.toggle('opacity-60', isDisabled);
-        toolItem.title = isDisabled ? 'This tool is disabled and will not be used by the agent.' : '';
-
-        buttonEl.innerHTML = isDisabled ?
-            `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074L3.707 2.293zM10 12a2 2 0 110-4 2 2 0 010 4z" clip-rule="evenodd" /><path d="M2 10s3.939 4 8 4 8-4 8-4-3.939-4-8-4-8 4-8 4zm13.707 4.293a1 1 0 00-1.414-1.414L12.586 14.6A8.007 8.007 0 0110 16c-4.478 0-8.268-2.943-9.542-7 .946-2.317 2.83-4.224 5.166-5.447L2.293 1.293A1 1 0 00.879 2.707l14 14a1 1 0 001.414 0z" /></svg>` :
-            `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" /></svg>`;
-
-        UI.updateToolsTabCounter();
-
-    } catch (error) {
-        console.error(`Failed to toggle tool ${toolName}:`, error);
-    }
+// ... existingcode ...
 }
 
 /**
@@ -1516,8 +1594,8 @@ export function initializeEventListeners() {
     // --- MODIFICATION START: Add event listeners for header replay buttons ---
     if (DOM.headerReplayPlannedButton) {
         DOM.headerReplayPlannedButton.addEventListener('click', (e) => {
-            alert('Replay Planned Query - Not Implemented Yet.');
-            // Placeholder: handleReplayPlannedClick(e.currentTarget);
+            // --- MODIFICATION: Wire to the new handleReplayPlanClick ---
+            handleReplayPlanClick(e.currentTarget);
         });
     }
     if (DOM.headerReplayOptimizedButton) {
@@ -1710,4 +1788,9 @@ export function initializeEventListeners() {
             DOM.windowDropdownMenu.classList.remove('open');
         }
     });
+
+    // --- MODIFICATION START: Add context dot click listener ---
+    DOM.contextStatusDot.addEventListener('click', handleContextPurgeClick);
+    // --- MODIFICATION END ---
 }
+

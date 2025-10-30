@@ -630,8 +630,10 @@ class PlanExecutor:
 
         finally:
             # --- Cleanup Phase (Always runs) ---
+            # --- MODIFICATION START: Remove 'disabled_history' check ---
             # Update history only if the execution wasn't cancelled or errored out definitively
-            if not self.disabled_history and self.state != self.AgentState.ERROR:
+            if self.state != self.AgentState.ERROR:
+            # --- MODIFICATION END ---
                 # --- MODIFICATION START: Include original_plan_for_history in turn_summary ---
                 turn_summary = {
                     "turn": turn_number,
@@ -661,7 +663,7 @@ class PlanExecutor:
                             app_logger.error(f"Failed to save or emit updated session name '{new_name}': {name_e}", exc_info=True)
 
             else:
-                 app_logger.info(f"Skipping history update for user {self.user_uuid}, session {self.session_id} due to disabled history or final state: {self.state.name}")
+                 app_logger.info(f"Skipping history update for user {self.user_uuid}, session {self.session_id} due to final state: {self.state.name}")
     # --- END of run method ---
 
 

@@ -379,3 +379,26 @@ export async function fetchTurnDetails(sessionId, turnId) {
 }
 // --- MODIFICATION END ---
 
+// --- MODIFICATION START: Add purgeSessionMemory function ---
+/**
+ * Sends a request to the backend to purge the agent's memory (`chat_object`)
+ * for the current session.
+ * @param {string} sessionId The ID of the session to purge.
+ * @returns {Promise<object>} A promise that resolves with the server's response.
+ */
+export async function purgeSessionMemory(sessionId) {
+    if (!sessionId) {
+        throw new Error("Session ID is required to purge memory.");
+    }
+    const response = await fetch(`/api/session/${sessionId}/purge_memory`, {
+        method: 'POST',
+        headers: _getHeaders(),
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+        throw new Error(result.message || `Failed to purge memory (status ${response.status}).`);
+    }
+    return result;
+}
+// --- MODIFICATION END ---
