@@ -1302,6 +1302,7 @@ function getSystemPromptSummaryHTML() {
                 <div class="whats-new-container">
                     <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
                        <li><strong>31-Oct-2025:</strong> Fully configurable Context Management (Turn & Session)</li>
+                       <li><strong>28-Oct-2025:</strong> Turn Replay & Turn Reload Plan</li>
                        <li><strong>24-Oct-2025:</strong> Stop Button Added - Ability to immediately Stop Workflows</li>
                        <li><strong>23-Oct-2025:</strong> Robust Multi-Tool Phase Handling</li>
                        <li><strong>11-Oct-2025:</strong> Friendly.AI Integration</li>
