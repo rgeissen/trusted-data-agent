@@ -22,7 +22,7 @@ This solution provides unparalleled, real-time insight into the complete convers
 9. [Application REST API](#-application-rest-api)
 10. [Troubleshooting](#-troubleshooting)
 11. [License](#-license)
-12. [Author & Contributions](#-author--contributions)
+12. [Author & Contributions](#✍️-author--contributions)
 13. [Appendix: Feature Update List](#appendix-feature-update-list)
 
 ---
@@ -426,7 +426,7 @@ To test the raw intelligence of a model without the agent's tool-using logic, yo
 
 2. A modal will appear, allowing you to have a direct, tool-less conversation with the currently configured LLM. This is useful for evaluating a model's baseline knowledge or creative capabilities.
 
-## Context Maintenance
+## 🧠 Context Maintenance
 
 The Trusted Data Agent provides several advanced features for managing the context that is sent to the Large Language Model (LLM). Understanding and using these features can help you refine the agent's behavior, save costs by reducing token count, and get more accurate results.
 
@@ -576,7 +576,7 @@ Under the AGPLv3, you are free to use, modify, and distribute this software. How
 
 * **Git Repository:** <https://github.com/rgeissen/trusted-data-agent.git>
 
-## Appendix: Feature Update List
+## 📋 Appendix: Feature Update List
 
 This list reflects the recent enhancements and updates to the Trusted Data Agent, as shown on the application's welcome screen.
 
