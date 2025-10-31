@@ -205,7 +205,12 @@ export function addMessage(role, content, turnId = null, isValid = true) {
     if (role === 'assistant' && turnId) {
         // --- Add Turn Badge to Assistant Avatar ---
         const assistantBadge = document.createElement('span');
-        assistantBadge.className = 'turn-badge';
+        assistantBadge.className = 'turn-badge clickable-badge';
+        assistantBadge.dataset.turnId = turnId;
+        if (state.showTooltips) {
+            assistantBadge.title = 'Click to toggle context validity';
+        }
+        assistantBadge.addEventListener('mousedown', (e) => e.stopPropagation());
         assistantBadge.textContent = turnId;
         icon.appendChild(assistantBadge); // Append badge to assistant icon
 
@@ -229,7 +234,12 @@ export function addMessage(role, content, turnId = null, isValid = true) {
 
                 // --- Add Turn Badge to User Avatar ---
                 const userBadge = document.createElement('span');
-                userBadge.className = 'turn-badge';
+                userBadge.className = 'turn-badge clickable-badge';
+                userBadge.dataset.turnId = turnId;
+                if (state.showTooltips) {
+                    userBadge.title = 'Click to toggle context validity';
+                }
+                userBadge.addEventListener('mousedown', (e) => e.stopPropagation());
                 userBadge.textContent = turnId;
                 userAvatarIcon.appendChild(userBadge); // Append badge to user icon
                 

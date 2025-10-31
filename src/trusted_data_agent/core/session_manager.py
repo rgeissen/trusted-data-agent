@@ -336,5 +336,60 @@ def purge_session_memory(user_uuid: str, session_id: str) -> bool:
 
     except Exception as e:
         app_logger.error(f"An unexpected error occurred during memory purge for session '{session_id}': {e}", exc_info=True)
+# --- MODIFICATION END ---
+
+# --- MODIFICATION START: Add function to toggle turn validity ---
+def toggle_turn_validity(user_uuid: str, session_id: str, turn_id: int) -> bool:
+    """
+    Toggles the 'isValid' status of a specific turn and its corresponding
+    UI messages in the session history.
+    """
+    app_logger.info(f"Toggling validity for turn {turn_id} in session '{session_id}' for user '{user_uuid}'.")
+    session_data = _load_session(user_uuid, session_id)
+    if not session_data:
+        app_logger.warning(f"Could not toggle validity: Session {session_id} not found.")
+        return False
+
+    try:
+        # 1. Toggle validity in workflow_history
+        workflow_history = session_data.get("last_turn_data", {}).get("workflow_history", [])
+        turn_found = False
+        new_status = None
+        if isinstance(workflow_history, list):
+            for turn in workflow_history:
+                if isinstance(turn, dict) and turn.get("turn") == turn_id:
+                    current_status = turn.get("isValid", True)
+                    new_status = not current_status
+                    turn["isValid"] = new_status
+                    turn_found = True
+                    app_logger.info(f"Found turn {turn_id} in workflow_history. Set isValid to {new_status}.")
+                    break
+        
+        if not turn_found:
+            app_logger.warning(f"Turn {turn_id} not found in workflow_history for session {session_id}.")
+            return False # If the planner's source of truth can't be updated, fail fast
+
+        # 2. Toggle validity in session_history (for the UI)
+        session_history = session_data.get('session_history', [])
+        if isinstance(session_history, list):
+            assistant_message_count = 0
+            for i, msg in enumerate(session_history):
+                if isinstance(msg, dict) and msg.get('role') == 'assistant':
+                    assistant_message_count += 1
+                    if assistant_message_count == turn_id:
+                        msg['isValid'] = new_status
+                        if i > 0 and session_history[i-1].get('role') == 'user':
+                            session_history[i-1]['isValid'] = new_status
+                        app_logger.info(f"Updated messages in session_history for turn {turn_id} to isValid={new_status}.")
+                        break
+
+        if not _save_session(user_uuid, session_id, session_data):
+            app_logger.error(f"Failed to save session after toggling validity for turn {turn_id}")
+            return False
+
+        return True
+
+    except Exception as e:
+        app_logger.error(f"An unexpected error occurred during validity toggle for turn {turn_id}: {e}", exc_info=True)
         return False
 # --- MODIFICATION END ---

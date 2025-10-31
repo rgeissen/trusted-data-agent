@@ -818,3 +818,18 @@ async def cancel_stream(session_id: str):
     else:
         app_logger.warning(f"Cancellation request for user {user_uuid}, session {session_id} failed: No active task found.")
         return jsonify({"status": "error", "message": "No active task found for this session."}), 404
+
+# --- MODIFICATION START: Add endpoint to toggle turn validity ---
+@api_bp.route("/api/session/<session_id>/turn/<int:turn_id>/toggle_validity", methods=["POST"])
+async def toggle_turn_validity_route(session_id: str, turn_id: int):
+    """Toggles the validity of a specific turn."""
+    user_uuid = _get_user_uuid_from_request()
+    app_logger.info(f"Toggle validity request for session {session_id}, turn {turn_id}, user {user_uuid}")
+
+    success = session_manager.toggle_turn_validity(user_uuid, session_id, turn_id)
+
+    if success:
+        return jsonify({"status": "success", "message": f"Turn {turn_id} validity toggled."}), 200
+    else:
+        return jsonify({"status": "error", "message": "Failed to toggle turn validity."}), 500
+# --- MODIFICATION END ---

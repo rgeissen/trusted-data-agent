@@ -776,3 +776,9 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
 }
 /* --- MODIFICATION END --- */
 
+/* --- MODIFICATION START: Add cursor pointer to clickable badge --- */
+.clickable-badge {
+    cursor: pointer;
+}
+/* --- MODIFICATION END --- */
+

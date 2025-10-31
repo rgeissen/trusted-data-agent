@@ -1591,6 +1591,41 @@ async function handleDeleteSessionClick(deleteButton) {
     );
 }
 
+// --- MODIFICATION START: Add handler for toggling turn validity ---
+async function handleToggleTurnValidity(badgeEl) {
+    const turnId = badgeEl.dataset.turnId;
+    const sessionId = state.currentSessionId;
+    if (!turnId || !sessionId) {
+        console.error("Missing turnId or sessionId for toggling validity.");
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/session/${sessionId}/turn/${turnId}/toggle_validity`, {
+            method: 'POST',
+            headers: {
+                'X-TDA-User-UUID': state.userUUID
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to toggle turn validity.');
+        }
+
+        // On success, toggle the UI
+        const allBadgesForTurn = document.querySelectorAll(`.turn-badge[data-turn-id="${turnId}"]`);
+        allBadgesForTurn.forEach(badge => {
+            badge.classList.toggle('context-invalid');
+        });
+
+    } catch (error) {
+        console.error(`Error toggling validity for turn ${turnId}:`, error);
+        alert(`Error: Could not update turn status. ${error.message}`);
+    }
+}
+// --- MODIFICATION END ---
+
 
 // --- Initializer ---
 
@@ -1603,22 +1638,22 @@ export function initializeEventListeners() {
     // Delegated event listener for copy buttons and NEW reload/replay buttons
     DOM.chatLog.addEventListener('click', (e) => {
         const copyButton = e.target.closest('.copy-button');
-        // --- MODIFICATION START: Add avatar click handling ---
         const clickableAvatar = e.target.closest('.clickable-avatar[data-turn-id]');
-        // --- MODIFICATION END ---
+        const clickableBadge = e.target.closest('.clickable-badge[data-turn-id]');
 
-        if (copyButton) {
+        if (clickableBadge) {
+            e.stopPropagation();
+            handleToggleTurnValidity(clickableBadge);
+        } else if (copyButton) {
             const copyType = copyButton.dataset.copyType;
             if (copyType === 'code') {
                 copyToClipboard(copyButton);
             } else if (copyType === 'table') {
                 copyTableToClipboard(copyButton);
             }
-        // --- MODIFICATION START: Call handler for avatar click ---
         } else if (clickableAvatar) {
-            handleReloadPlanClick(clickableAvatar); // Pass the avatar element
+            handleReloadPlanClick(clickableAvatar);
         }
-        // --- MODIFICATION END ---
     });
 
     if (DOM.stopExecutionButton) {
