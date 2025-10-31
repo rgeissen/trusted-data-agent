@@ -11,19 +11,19 @@ This solution provides unparalleled, real-time insight into the complete convers
 
 ### 📋 Table Of Contents
 
-1. [Overview: A Superior Approach](#overview-a-superior-approach)
-2. [Key Features](#key-features)
-3. [The Heart of the Application - The Optimizer](#the-heart-of-the-application---the-engine--its-fusion-optimizer)
-4. [How It Works: Architecture](#how-it-works-architecture)
-5. [Installation and Setup Guide](#installation-and-setup-guide)
-6. [Developer Mode: Unlocking Models](#developer-mode-unlocking-models)
-7. [User Guide](#user-guide)
-8. [Context Maintenance](#context-maintenance)
-9. [Application REST API](#application-rest-api)
-10. [Troubleshooting](#troubleshooting)
-11. [License](#license)
-12. [Author & Contributions](#author--contributions)
-13. [Appendix: Feature Update List](#appendix-feature-update-list)
+1. [Overview: A Superior Approach](#-overview-a-superior-approach)
+2. [Key Features](#-key-features)
+3. [The Heart of the Application - The Optimizer](#-the-heart-of-the-application---the-engine--its-fusion-optimizer)
+4. [How It Works: Architecture](#-how-it-works-architecture)
+5. [Installation and Setup Guide](#-installation-and-setup-guide)
+6. [Developer Mode: Unlocking Models](#-developer-mode-unlocking-models)
+7. [User Guide](#-user-guide)
+8. [Context Maintenance](#-context-maintenance)
+9. [Application REST API](#-application-rest-api)
+10. [Troubleshooting](#-troubleshooting)
+11. [License](#-license)
+12. [Author & Contributions](#-author--contributions)
+13. [Appendix: Feature Update List](#-appendix-feature-update-list)
 
 ---
 
@@ -145,7 +145,7 @@ The Optimizer is built with enterprise-grade reliability in mind.
 
 * **Definitive Error Handling**: The agent recognizes unrecoverable errors (e.g., database permission denied) and halts execution immediately, providing a clear explanation to the user instead of wasting resources on futile retry attempts.
 
-## ⚙️ How It Works: Architecture
+## How It Works: Architecture
 
 The application operates on a sophisticated client-server model, ensuring a clean separation of concerns and robust performance.
 
@@ -321,7 +321,7 @@ python -m trusted_data_agent.main
 
 ```
 
-## 👨‍💻 Developer Mode: Unlocking Models
+## Developer Mode: Unlocking Models
 
 To enable all discovered models for testing and development purposes, start the server with the `--all-models` flag.
 
@@ -426,7 +426,7 @@ To test the raw intelligence of a model without the agent's tool-using logic, yo
 
 2. A modal will appear, allowing you to have a direct, tool-less conversation with the currently configured LLM. This is useful for evaluating a model's baseline knowledge or creative capabilities.
 
-## 🧠 Context Maintenance
+## Context Maintenance
 
 The Trusted Data Agent provides several advanced features for managing the context that is sent to the Large Language Model (LLM). Understanding and using these features can help you refine the agent's behavior, save costs by reducing token count, and get more accurate results.
 
@@ -508,7 +508,7 @@ This API exposes the core functionalities of the agent, allowing developers to b
 For complete technical details, endpoint definitions, and cURL examples, please see the full documentation:
 [**REST API Documentation (docs/RestAPI/restAPI.md)**](https://github.com/rgeissen/trusted-data-agent/blob/main/docs/RestAPI/restAPI.md)
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 * **`ModuleNotFoundError`:** This error almost always means you are either (1) not in the project's root directory, or (2) you have not run `pip install -e .` successfully in your active virtual environment.
 
@@ -568,7 +568,7 @@ Under the AGPLv3, you are free to use, modify, and distribute this software. How
 
 * **Description:** This is the premium commercial tier and the only one that **uplifts the software license to the permissive MIT License**. This allows organizations to modify the code, integrate it into proprietary applications, and deploy it without any obligation to share their source code. Crucially, this is also is the **only tier that enables full prompt editing capabilities (including the licensing system for prompts)**, giving businesses complete control to customize and protect their unique analytical workflows and intellectual property. This license is designed for commercial entities that need to maintain a competitive advantage.
 
-## ✍️ Author & Contributions
+## Author & Contributions
 
 * **Author/Initiator:** Rainer Geissendoerfer, rainer.geissendoerfer@teradata.com , teradata.com.
 
@@ -576,7 +576,7 @@ Under the AGPLv3, you are free to use, modify, and distribute this software. How
 
 * **Git Repository:** <https://github.com/rgeissen/trusted-data-agent.git>
 
-## 📋 Appendix: Feature Update List
+## Appendix: Feature Update List
 
 This list reflects the recent enhancements and updates to the Trusted Data Agent, as shown on the application's welcome screen.
 
