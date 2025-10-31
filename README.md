@@ -18,12 +18,12 @@ This solution provides unparalleled, real-time insight into the complete convers
 5. [Installation and Setup Guide](#-installation-and-setup-guide)
 6. [Developer Mode: Unlocking Models](#-developer-mode-unlocking-models)
 7. [User Guide](#-user-guide)
-8. [Context Maintenance](#context-maintenance)
+8. [Context Maintenance](#-context-maintenance)
 9. [Application REST API](#-application-rest-api)
 10. [Troubleshooting](#-troubleshooting)
 11. [License](#-license)
-12. [Author & Contributions](#✍️-author--contributions)
-13. [Appendix: Feature Update List](#appendix-feature-update-list)
+12. [Author & Contributions](#-author--contributions)
+13. [Appendix: Feature Update List](#-appendix-feature-update-list)
 
 ---
 
