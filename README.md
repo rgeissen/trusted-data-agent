@@ -23,6 +23,7 @@ This solution provides unparalleled, real-time insight into the complete convers
 10. [Troubleshooting](#-troubleshooting)
 11. [License](#-license)
 12. [Author & Contributions](#-author--contributions)
+13. [Appendix: Feature Update List](#appendix-feature-update-list)
 
 ---
 
@@ -574,3 +575,18 @@ Under the AGPLv3, you are free to use, modify, and distribute this software. How
 * **Source Code & Contributions:** The Trusted Data Agent is licensed under the GNU Affero General Public License v3.0. Contributions are highly welcome. Please visit the main Git repository to report issues or submit pull requests.
 
 * **Git Repository:** <https://github.com/rgeissen/trusted-data-agent.git>
+
+## Appendix: Feature Update List
+
+This list reflects the recent enhancements and updates to the Trusted Data Agent, as shown on the application's welcome screen.
+
+*   **31-Oct-2025:** Fully configurable Context Management (Turn & Session)
+*   **24-Oct-2025:** Turn Replay & Turn Reload Plan
+*   **24-Oct-2025:** Stop Button Added - Ability to immediately Stop Workflows
+*   **23-Oct-2025:** Robust Multi-Tool Phase Handling
+*   **11-Oct-2025:** Friendly.AI Integration
+*   **10-Oct-2025:** Context Aware Rendering of the Collateral Report
+*   **19-SEP-2025:** Microsoft Azure Integration
+*   **18-SEP-2025:** REST Interface for Engine Configuration, Execution & Monitoring
+*   **12-SEP-2025:** Significant Formatting Upgrade (Canonical Baseline Model for LLM Provider Rendering)
+*   **05-SEP-2025:** Conversation Mode (Google Cloud Credentials required)
