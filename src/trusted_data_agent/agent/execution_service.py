@@ -56,7 +56,15 @@ async def run_agent_execution(
         # --- MODIFICATION START: Only add user input if not a replay ---
         # Don't add user input again if we are replaying a previous query
         if user_input and not is_replay:
-            session_manager.add_to_history(user_uuid, session_id, 'user', user_input)
+            # --- MODIFICATION START: Use add_message_to_histories ---
+            session_manager.add_message_to_histories(
+                user_uuid,
+                session_id,
+                'user',
+                user_input,
+                html_content=None # User input is plain text for both
+            )
+            # --- MODIFICATION END ---
             app_logger.debug(f"Added user input to session_history for {session_id}")
         # --- MODIFICATION END ---
 

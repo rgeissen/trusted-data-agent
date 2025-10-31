@@ -118,7 +118,7 @@ def create_session(user_uuid: str, provider: str, llm_instance: any, charting_in
         "charting_intensity": charting_intensity,
         "provider": provider, # --- Store the provider used for this session
         "model": APP_CONFIG.CURRENT_MODEL, # --- Store the model used for this session
-        "session_history": [], # UI history (messages added via add_to_history)
+        "session_history": [], # UI history (messages added via add_message_to_histories)
         "chat_object": chat_history_for_file, # Store serializable history for LLM context
         "name": "New Chat",
         "created_at": datetime.now().isoformat(),
@@ -199,13 +199,23 @@ def delete_session(user_uuid: str, session_id: str) -> bool:
         app_logger.error(f"Error deleting session file '{session_path}': {e}", exc_info=True)
         return False # Indicate failure due to OS error
 
-def add_to_history(user_uuid: str, session_id: str, role: str, content: str):
+# --- MODIFICATION START: Rename and refactor add_to_history ---
+def add_message_to_histories(user_uuid: str, session_id: str, role: str, content: str, html_content: str | None = None):
+    """
+    Adds a message to the appropriate histories, decoupling UI from LLM context.
+    - `content` (plain text) is *always* added to the LLM's chat_object.
+    - `html_content` (if provided) is added to the UI's session_history.
+    - If `html_content` is not provided, `content` is used for the UI.
+    """
     session_data = _load_session(user_uuid, session_id)
     if session_data:
-        # --- MODIFICATION START: Add isValid=True for new messages ---
-        # By default, all new messages are valid.
-        session_data.setdefault('session_history', []).append({'role': role, 'content': content, 'isValid': True})
-        # --- MODIFICATION END ---
+        # --- 1. Add to UI History (session_history) ---
+        # Use the rich HTML content if provided, otherwise fall back to plain text.
+        ui_content = html_content if html_content is not None else content
+        session_data.setdefault('session_history', []).append({'role': role, 'content': ui_content, 'isValid': True})
+
+        # --- 2. Add to LLM History (chat_object) ---
+        # Determine the correct role for the LLM provider
         provider_in_session = session_data.get("license_info", {}).get("provider")
         current_provider = APP_CONFIG.CURRENT_PROVIDER
         provider = provider_in_session or current_provider
@@ -214,8 +224,8 @@ def add_to_history(user_uuid: str, session_id: str, role: str, content: str):
              provider = "Unknown" # Avoid error if APP_CONFIG isn't set somehow
 
         llm_role = 'model' if role == 'assistant' and provider == 'Google' else role
-        # --- MODIFICATION START: Add isValid=True for new messages ---
-        # (This history is for the LLM, which gets reset anyway, but good for consistency)
+        
+        # *Always* add the clean, plain text `content` to the LLM's history.
         session_data.setdefault('chat_object', []).append({'role': llm_role, 'content': content, 'isValid': True})
         # --- MODIFICATION END ---
 

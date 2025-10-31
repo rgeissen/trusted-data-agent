@@ -941,16 +941,29 @@ class PlanExecutor:
         formatter = OutputFormatter(**formatter_kwargs)
         final_html, tts_payload = formatter.render()
 
-        session_manager.add_to_history(self.user_uuid, self.session_id, 'assistant', final_html)
-
-        clean_summary_for_thought = "The agent has completed its work."
+        # --- MODIFICATION START: Decouple UI and LLM history ---
+        # First, determine the clean text summary for the LLM
+        clean_summary_for_llm = "The agent has completed its work."
         if hasattr(final_content, 'direct_answer'):
-            clean_summary_for_thought = final_content.direct_answer
+            clean_summary_for_llm = final_content.direct_answer
         elif hasattr(final_content, 'executive_summary'):
-            clean_summary_for_thought = final_content.executive_summary
-        self.final_summary_text = clean_summary_for_thought
+            clean_summary_for_llm = final_content.executive_summary
+        
+        # Store this clean summary in self.final_summary_text *before* saving
+        self.final_summary_text = clean_summary_for_llm
 
-        yield self._format_sse({"step": "LLM has generated the final answer", "details": clean_summary_for_thought}, "llm_thought")
+        # Now, save both versions to their respective histories
+        session_manager.add_message_to_histories(
+            self.user_uuid,
+            self.session_id,
+            'assistant',
+            content=self.final_summary_text, # Clean text for LLM's chat_object
+            html_content=final_html          # Rich HTML for UI's session_history
+        )
+        # --- MODIFICATION END ---
+
+        # The clean summary is already in self.final_summary_text
+        yield self._format_sse({"step": "LLM has generated the final answer", "details": self.final_summary_text}, "llm_thought")
 
         # --- MODIFICATION START: Add turn_id to final_answer event ---
         # Determine turn number
@@ -959,10 +972,10 @@ class PlanExecutor:
         if session_data:
              workflow_history = session_data.get("last_turn_data", {}).get("workflow_history", [])
              # The turn number for *this* execution is the length of history *before* this turn was added.
-             # Since add_to_history happens *before* this, we use the current length.
+             # Since add_message_to_histories happens *before* this, we use the current length.
              # If update_last_turn_data hasn't happened yet, length + 1 is the *next* turn number.
              # Use length + 1 as the current turn being completed.
-             current_turn_number = len(workflow_history) + 1 # Use +1 because update_last_turn hasn't happened yet
+             current_turn_number = len(session_data.get("last_turn_data", {}).get("workflow_history", [])) + 1 # Use +1 because update_last_turn hasn't happened yet
 
 
         yield self._format_sse({
@@ -972,4 +985,3 @@ class PlanExecutor:
             "turn_id": current_turn_number # Add the turn number here
         }, "final_answer")
         # --- MODIFICATION END ---
-
