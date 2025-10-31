@@ -468,20 +468,22 @@ You can re-execute the original query for any turn by **clicking and holding** t
 
 The agent provides two primary modes for handling conversational history, allowing you to control the context sent to the LLM for each query. You can see the current mode in the hint text below the chat input bar.
 
+**Important Note:** In both modes, only turns that are currently **active** (`isValid = true`) are included in the context. Deactivated turns are completely ignored by the LLM and the planner.
+
 #### Full Session Context Mode (Default)
 
-In this mode, the agent maintains a complete conversational memory. It sends the **LLM Conversation History (`chat_object`)** with each new request.
+In this mode, the agent maintains a complete conversational memory. It sends the **LLM Conversation History (`chat_object`)** from all active turns with each new request.
 
 *   **Best for:** Conversational queries, follow-up questions, and tasks that require the agent to remember the back-and-forth of the dialogue.
-*   **Impact:** Uses more tokens, as the full conversation history is included in the context.
+*   **Impact:** Uses more tokens, as the conversation history from all active turns is included in the context.
 
 #### Turn Summaries Mode
 
-When activated, this mode disables the **LLM Conversation History**. The agent becomes conversationally "stateless" but still operates with full knowledge of its past actions.
+When activated, this mode disables the **LLM Conversation History**. The agent becomes conversationally "stateless" but still operates with full knowledge of its past actions from active turns.
 
 *   **What it sends:**
     1.  The Current User Prompt.
-    2.  The **Turn Summaries (`workflow_history`)**.
+    2.  The **Turn Summaries (`workflow_history`)** from all active turns.
     3.  The full System Prompt (including all available tools).
 *   **Best for:** "One-shot" commands, saving tokens, or preventing a long, complex conversation from confusing the planner.
 *   **How to activate:**
