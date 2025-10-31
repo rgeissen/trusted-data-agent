@@ -454,8 +454,10 @@ async def get_turn_details(session_id: str, turn_id: int):
     if not isinstance(workflow_history, list) or turn_id <= 0 or turn_id > len(workflow_history):
         return jsonify({"error": f"Turn {turn_id} not found in session history."}), 404
 
-    # Return the entire turn data object
+    # Return the entire turn_data object, but first add the session's provider and model
     turn_data = workflow_history[turn_id - 1]
+    turn_data["provider"] = session_data.get("provider")
+    turn_data["model"] = session_data.get("model")
     # Optionally filter/clean the data before sending if needed, but for now send all
     return jsonify(turn_data)
 # --- MODIFICATION END ---

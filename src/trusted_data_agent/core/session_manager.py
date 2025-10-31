@@ -116,6 +116,8 @@ def create_session(user_uuid: str, provider: str, llm_instance: any, charting_in
         "user_uuid": user_uuid, # Store user UUID for potential later use/verification
         "system_prompt_template": system_prompt_template,
         "charting_intensity": charting_intensity,
+        "provider": provider, # --- Store the provider used for this session
+        "model": APP_CONFIG.CURRENT_MODEL, # --- Store the model used for this session
         "session_history": [], # UI history (messages added via add_to_history)
         "chat_object": chat_history_for_file, # Store serializable history for LLM context
         "name": "New Chat",

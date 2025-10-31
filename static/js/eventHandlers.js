@@ -332,6 +332,15 @@ async function handleReloadPlanClick(element) {
         // Render the historical trace using the new UI function
         UI.renderHistoricalTrace(turnData.original_plan || [], turnData.execution_trace || [], turnId);
 
+        // --- MODIFICATION START: Update model display for reloaded turn ---
+        // After rendering, update the model display to reflect the turn's actual model
+        if (turnData.provider && turnData.model) {
+            state.currentProvider = turnData.provider;
+            state.currentModel = turnData.model;
+            UI.updateStatusPromptName(); // Refresh the UI display
+        }
+        // --- MODIFICATION END ---
+
         // --- MODIFICATION START: Synchronize header buttons ---
         // After successfully rendering the trace, update the header buttons
         if (DOM.headerReplayPlannedButton) {
