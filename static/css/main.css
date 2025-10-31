@@ -755,3 +755,24 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
 }
 /* --- MODIFICATION END --- */
 
+/* --- MODIFICATION START: Styles for clickable indicator and blinking animation --- */
+#context-status-dot {
+    cursor: pointer;
+}
+
+#context-status-dot:hover {
+    background-color: white !important;
+}
+
+.blinking-white {
+    animation: blink-white 0.5s 3;
+}
+
+@keyframes blink-white {
+  50% {
+    background-color: white;
+    box-shadow: 0 0 12px white;
+  }
+}
+/* --- MODIFICATION END --- */
+

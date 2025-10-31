@@ -1157,20 +1157,18 @@ export function closeViewPromptModal() {
     setTimeout(() => DOM.viewPromptModalOverlay.classList.add('hidden'), 300);
 }
 
-// --- MODIFICATION START: Add flashContextDot function ---
+// --- MODIFICATION START: Add blinkContextDot function ---
 /**
- * Provides brief visual feedback on the context status dot by making it pulse.
+ * Provides brief visual feedback on the context status dot by making it blink.
  */
-export function flashContextDot() {
+export function blinkContextDot() {
     if (!DOM.contextStatusDot) return;
 
-    // Add the pulsing class
-    DOM.contextStatusDot.classList.add('pulsing');
+    DOM.contextStatusDot.classList.add('blinking-white');
 
-    // Set a timeout to remove the class after the animation duration (1.2s)
     setTimeout(() => {
-        DOM.contextStatusDot.classList.remove('pulsing');
-    }, 1200); // 1200ms matches the 'pulse' animation in main.css
+        DOM.contextStatusDot.classList.remove('blinking-white');
+    }, 1500); // 0.5s animation * 3 iterations
 }
 // --- MODIFICATION END ---
 

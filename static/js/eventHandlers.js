@@ -465,8 +465,8 @@ async function handleContextPurgeClick() {
             try {
                 // Call the new API endpoint
                 await API.purgeSessionMemory(state.currentSessionId);
-                // Flash the dot on success
-                UI.flashContextDot();
+                // Blink the dot on success
+                UI.blinkContextDot();
                 console.log(`Agent memory purged for session ${state.currentSessionId}`);
                 
                 // --- START NEW LOGIC ---
