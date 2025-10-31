@@ -121,6 +121,9 @@ class PlanExecutor:
         self.plan_to_execute = plan_to_execute # Store the plan if provided for replay
         self.is_replay = is_replay # Flag indicating if this is a replay
         # --- MODIFICATION END ---
+        # --- MODIFICATION START: Add instance variable for turn number ---
+        self.current_turn_number = 0 # Will be calculated once in run()
+        # --- MODIFICATION END ---
 
 
     @staticmethod
@@ -471,10 +474,13 @@ class PlanExecutor:
     async def run(self):
         """The main, unified execution loop for the agent."""
         final_answer_override = None
-        turn_number = 1
+        # --- MODIFICATION START: Calculate turn number once and store on self ---
+        self.current_turn_number = 1
         session_data = session_manager.get_session(self.user_uuid, self.session_id)
         if session_data and isinstance(session_data.get("last_turn_data", {}).get("workflow_history"), list):
-            turn_number = len(session_data["last_turn_data"]["workflow_history"]) + 1
+            self.current_turn_number = len(session_data["last_turn_data"]["workflow_history"]) + 1
+        app_logger.info(f"PlanExecutor initialized for turn: {self.current_turn_number}")
+        # --- MODIFICATION END ---
 
         try:
             # --- MODIFICATION START: Handle Replay ---
@@ -637,9 +643,9 @@ class PlanExecutor:
             # Update history only if the execution wasn't cancelled or errored out definitively
             if self.state != self.AgentState.ERROR:
             # --- MODIFICATION END ---
-                # --- MODIFICATION START: Include original_plan_for_history in turn_summary ---
+                # --- MODIFICATION START: Include original_plan_for_history and use self.current_turn_number ---
                 turn_summary = {
-                    "turn": turn_number,
+                    "turn": self.current_turn_number, # Use the authoritative instance variable
                     "user_query": self.original_user_input, # Store the original query
                     "original_plan": self.original_plan_for_history, # Store the actual plan used
                     "execution_trace": self.turn_action_history,
@@ -651,7 +657,9 @@ class PlanExecutor:
                 app_logger.debug(f"Saved last turn data to session {self.session_id} for user {self.user_uuid}")
 
                 # Session Naming Logic (remains unchanged)
-                if turn_number == 1 and session_data and session_data.get("name") == "New Chat":
+                # --- MODIFICATION START: Use self.current_turn_number for check ---
+                if self.current_turn_number == 1 and session_data and session_data.get("name") == "New Chat":
+                # --- MODIFICATION END ---
                     app_logger.info(f"First turn detected for session {self.session_id}. Attempting to generate name.")
                     new_name = await self._generate_session_name(self.original_user_input)
                     if new_name != "New Chat":
@@ -965,23 +973,12 @@ class PlanExecutor:
         # The clean summary is already in self.final_summary_text
         yield self._format_sse({"step": "LLM has generated the final answer", "details": self.final_summary_text}, "llm_thought")
 
-        # --- MODIFICATION START: Add turn_id to final_answer event ---
-        # Determine turn number
-        session_data = session_manager.get_session(self.user_uuid, self.session_id)
-        current_turn_number = 1
-        if session_data:
-             workflow_history = session_data.get("last_turn_data", {}).get("workflow_history", [])
-             # The turn number for *this* execution is the length of history *before* this turn was added.
-             # Since add_message_to_histories happens *before* this, we use the current length.
-             # If update_last_turn_data hasn't happened yet, length + 1 is the *next* turn number.
-             # Use length + 1 as the current turn being completed.
-             current_turn_number = len(session_data.get("last_turn_data", {}).get("workflow_history", [])) + 1 # Use +1 because update_last_turn hasn't happened yet
-
-
+        # --- MODIFICATION START: Use self.current_turn_number ---
+        # Remove the separate, buggy calculation and use the instance variable
         yield self._format_sse({
             "final_answer": final_html,
             "tts_payload": tts_payload,
             "source": self.source,
-            "turn_id": current_turn_number # Add the turn number here
+            "turn_id": self.current_turn_number # Use the authoritative instance variable
         }, "final_answer")
         # --- MODIFICATION END ---
