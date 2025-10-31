@@ -219,6 +219,7 @@ def _extract_final_answer_from_json(text: str) -> str:
 def _condense_and_clean_history(history: list) -> list:
     """
     Sanitizes conversation history to save tokens by being abstract and provider-agnostic.
+    0. Filters out turns where 'isValid' is False.
     1. Normalizes history from different provider formats by checking for object attributes.
     2. Aggressively removes ALL old capability definitions from the history.
     3. Replaces duplicate tool outputs with a placeholder.
@@ -226,6 +227,12 @@ def _condense_and_clean_history(history: list) -> list:
     """
     if not history:
         return []
+
+    # --- MODIFICATION START: Filter out invalid messages ---
+    # A message is valid if 'isValid' is missing (defaults to true) or is explicitly true.
+    valid_history = [msg for msg in history if isinstance(msg, dict) and msg.get("isValid", True) is not False]
+    app_logger.debug(f"History Condensation: Started with {len(history)} messages, {len(valid_history)} are valid.")
+    # --- MODIFICATION END ---
 
     def _normalize_history(provider_history: list) -> list:
         """Converts provider-specific history to a generic internal format using type-aware checks."""
@@ -267,7 +274,7 @@ def _condense_and_clean_history(history: list) -> list:
         # For other providers, assume list of dicts is fine
         return generic_history
 
-    normalized_history = _normalize_history(history)
+    normalized_history = _normalize_history(valid_history)
 
     cleaned_history = []
     seen_tool_outputs = set()
