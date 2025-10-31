@@ -464,6 +464,30 @@ You can re-execute the original query for any turn by **clicking and holding** t
 *   **Press and hold for 1.5 seconds.** A circular animation will appear to indicate the action.
 *   Upon completion, the agent will re-run the original user query for that turn, generating a brand new plan. This is useful for retrying a failed turn or exploring an alternative approach.
 
+### Context Modes
+
+The agent provides two primary modes for handling conversational history, allowing you to control the context sent to the LLM for each query. You can see the current mode in the hint text below the chat input bar.
+
+#### Full Session Context Mode (Default)
+
+In this mode, the agent maintains a complete conversational memory. It sends the **LLM Conversation History (`chat_object`)** with each new request.
+
+*   **Best for:** Conversational queries, follow-up questions, and tasks that require the agent to remember the back-and-forth of the dialogue.
+*   **Impact:** Uses more tokens, as the full conversation history is included in the context.
+
+#### Turn Summaries Mode
+
+When activated, this mode disables the **LLM Conversation History**. The agent becomes conversationally "stateless" but still operates with full knowledge of its past actions.
+
+*   **What it sends:**
+    1.  The Current User Prompt.
+    2.  The **Turn Summaries (`workflow_history`)**.
+    3.  The full System Prompt (including all available tools).
+*   **Best for:** "One-shot" commands, saving tokens, or preventing a long, complex conversation from confusing the planner.
+*   **How to activate:**
+    *   **Hold `Alt`** while sending a message to use it for a single query.
+    *   **Press `Shift` + `Alt`** to lock the mode on for subsequent queries.
+
 ## 🔌 Application REST API
 
 The Trusted Data Agent includes a powerful, asynchronous REST API to enable programmatic control, automation, and integration into larger enterprise workflows.
