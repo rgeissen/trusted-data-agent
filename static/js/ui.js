@@ -698,20 +698,32 @@ export function setThinkingIndicator(isThinking) {
     }
 }
 
-export function updateStatusPromptName() {
+// --- MODIFICATION START: Refactor function to accept optional args ---
+export function updateStatusPromptName(provider = null, model = null) {
     const promptNameDiv = document.getElementById('prompt-name-display');
-    if (state.currentProvider && state.currentModel) {
-        const isCustom = isPromptCustomForModel(state.currentProvider, state.currentModel);
+
+    // Use the provided args, or fall back to the global state
+    const providerToShow = provider || state.currentProvider;
+    const modelToShow = model || state.currentModel;
+
+    if (providerToShow && modelToShow) {
+        const isCustom = isPromptCustomForModel(providerToShow, modelToShow);
         const promptType = isPrivilegedUser() ? (isCustom ? 'Custom' : 'Default') : 'Default (Server-Side)';
+        
+        // Add a visual indicator if we are showing a *historical* turn's model
+        const historicalIndicator = (provider || model) ? ' (History)' : '';
+
         promptNameDiv.innerHTML = `
-            <span class="font-semibold text-gray-300">${promptType} Prompt</span>
+            <span class="font-semibold text-gray-300">${promptType} Prompt${historicalIndicator}</span>
             <span class="text-gray-500">/</span>
-            <span class="font-mono text-teradata-orange text-xs">${getNormalizedModelId(state.currentModel)}</span>
+            <span class="font-mono text-teradata-orange text-xs">${getNormalizedModelId(modelToShow)}</span>
         `;
     } else {
         promptNameDiv.innerHTML = '<span>No Model/Prompt Loaded</span>';
     }
 }
+// --- MODIFICATION END ---
+
 
 export function createResourceItem(resource, type) {
     const detailsEl = document.createElement('details');
@@ -1187,3 +1199,4 @@ export function closeChatModal() {
     DOM.chatModalContent.classList.add('scale-95', 'opacity-0');
     setTimeout(() => DOM.chatModalOverlay.classList.add('hidden'), 300);
 }
+

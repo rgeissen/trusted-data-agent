@@ -454,13 +454,22 @@ async def get_turn_details(session_id: str, turn_id: int):
     if not isinstance(workflow_history, list) or turn_id <= 0 or turn_id > len(workflow_history):
         return jsonify({"error": f"Turn {turn_id} not found in session history."}), 404
 
-    # Return the entire turn_data object, but first add the session's provider and model
+    # --- MODIFICATION START: Prioritize turn-level data over session-level ---
     turn_data = workflow_history[turn_id - 1]
-    turn_data["provider"] = session_data.get("provider")
-    turn_data["model"] = session_data.get("model")
-    # Optionally filter/clean the data before sending if needed, but for now send all
-    return jsonify(turn_data)
-# --- MODIFICATION END ---
+    # Create a copy to send, ensuring we don't modify the session data in memory
+    turn_data_copy = copy.deepcopy(turn_data)
+
+    # Fallback for provider: use turn-specific, otherwise session-specific
+    if "provider" not in turn_data_copy:
+        turn_data_copy["provider"] = session_data.get("provider")
+
+    # Fallback for model: use turn-specific, otherwise session-specific
+    if "model" not in turn_data_copy:
+        turn_data_copy["model"] = session_data.get("model")
+    
+    # Return the copy with ensured model/provider info
+    return jsonify(turn_data_copy)
+    # --- MODIFICATION END ---
 
 
 @api_bp.route("/api/session/<session_id>/turn/<int:turn_id>/query", methods=["GET"])

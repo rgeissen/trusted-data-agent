@@ -238,6 +238,13 @@ async function handleStreamRequest(endpoint, body) {
     UI.setThinkingIndicator(false);
     state.currentPhaseContainerEl = null;
 
+    // --- MODIFICATION START: Reset Status Prompt Name to global config ---
+    // This fixes the bug where a reloaded plan's model name ("Gemini")
+    // would incorrectly persist in the header during a new execution.
+    // This call resets it to the globally configured model ("Anthropic").
+    UI.updateStatusPromptName();
+    // --- MODIFICATION END ---
+
     const useLastTurnMode = state.isLastTurnModeLocked || state.isTempLastTurnMode;
     // --- MODIFICATION START: Also disable history if it's a replay ---
     body.disabled_history = useLastTurnMode || body.is_replay; // Disable if last turn mode OR replay
@@ -333,11 +340,10 @@ async function handleReloadPlanClick(element) {
         UI.renderHistoricalTrace(turnData.original_plan || [], turnData.execution_trace || [], turnId);
 
         // --- MODIFICATION START: Update model display for reloaded turn ---
-        // After rendering, update the global state and UI to reflect the turn's actual model
+        // After rendering, update the model display to reflect the turn's actual model
         if (turnData.provider && turnData.model) {
-            state.currentProvider = turnData.provider;
-            state.currentModel = turnData.model;
-            UI.updateStatusPromptName(); // Refresh the UI display
+            // --- MODIFICATION: Pass historical data directly to UI function ---
+            UI.updateStatusPromptName(turnData.provider, turnData.model);
         }
         // --- MODIFICATION END ---
 
@@ -650,7 +656,10 @@ export async function handleLoadSession(sessionId, isNewSession = false) {
             item.classList.toggle('active', item.dataset.sessionId === sessionId);
         });
 
+        // --- MODIFICATION START: Call updateStatusPromptName with no args ---
+        // This will reset the status display to the globally configured model
         UI.updateStatusPromptName();
+        // --- MODIFICATION END ---
     } catch (error) {
         UI.addMessage('assistant', `Error loading session: ${error.message}`);
     } finally {
@@ -1867,3 +1876,4 @@ export function initializeEventListeners() {
     }
     // --- MODIFICATION END ---
 }
+
