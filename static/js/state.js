@@ -36,6 +36,9 @@ export const state = {
     // --- MODIFICATION START: Add state for key observations mode ---
     keyObservationsMode: 'autoplay-off', // 'autoplay-off', 'autoplay-on', 'off'
     // --- MODIFICATION END ---
+    // --- MODIFICATION START: Add state for tooltip visibility ---
+    showTooltips: true,
+    // --- MODIFICATION END ---
 };
 
 // Functions to modify state can be added here if needed, e.g.:

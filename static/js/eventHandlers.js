@@ -364,7 +364,7 @@ async function handleReloadPlanClick(element) {
  * text for that turn and re-submits it, triggering a NEW PLAN.
  * @param {HTMLButtonElement} buttonEl - The button element that was clicked.
  */
-async function handleReplayQueryClick(buttonEl) {
+export async function handleReplayQueryClick(buttonEl) {
     const turnId = buttonEl.dataset.turnId;
     const sessionId = state.currentSessionId;
     if (!turnId || !sessionId) {
@@ -1836,6 +1836,21 @@ export function initializeEventListeners() {
 
     // --- MODIFICATION START: Add context dot click listener ---
     DOM.contextStatusDot.addEventListener('click', handleContextPurgeClick);
+    // --- MODIFICATION END ---
+
+    // --- MODIFICATION START: Add tooltips toggle listener ---
+    const toggleTooltipsCheckbox = document.getElementById('toggle-tooltips-checkbox');
+    if (toggleTooltipsCheckbox) {
+        // Set initial state from localStorage
+        const savedTooltipPref = localStorage.getItem('showTooltips');
+        state.showTooltips = savedTooltipPref === null ? true : savedTooltipPref === 'true';
+        toggleTooltipsCheckbox.checked = state.showTooltips;
+
+        toggleTooltipsCheckbox.addEventListener('change', (e) => {
+            state.showTooltips = e.target.checked;
+            localStorage.setItem('showTooltips', state.showTooltips);
+        });
+    }
     // --- MODIFICATION END ---
 }
 

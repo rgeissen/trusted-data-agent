@@ -8,7 +8,7 @@ import * as DOM from './domElements.js';
 import { state } from './state.js';
 import { renderChart, isPrivilegedUser, isPromptCustomForModel, getNormalizedModelId } from './utils.js';
 // We need access to the functions that will handle save/cancel from the input
-import { handleSessionRenameSave, handleSessionRenameCancel } from './eventHandlers.js';
+import { handleSessionRenameSave, handleSessionRenameCancel, handleReplayQueryClick } from './eventHandlers.js';
 
 
 // NOTE: This module no longer imports from eventHandlers.js, breaking a circular dependency.
@@ -149,6 +149,35 @@ export function addMessage(role, content, turnId = null, isValid = true) {
     icon.textContent = role === 'user' ? 'U' : 'A';
     icon.classList.add(role === 'user' ? 'bg-gray-700' : 'bg-[#F15F22]');
 
+    if (role === 'assistant' && turnId) {
+        icon.classList.add('assistant-avatar');
+        icon.classList.add('clickable-avatar');
+        if (state.showTooltips) {
+            icon.title = 'Long-press to replay original query';
+        }
+        let pressTimer;
+
+        const startPress = (e) => {
+            e.preventDefault();
+            icon.classList.add('long-press');
+            pressTimer = setTimeout(() => {
+                icon.classList.remove('long-press');
+                handleReplayQueryClick({ dataset: { turnId } });
+            }, 1500);
+        };
+
+        const cancelPress = () => {
+            clearTimeout(pressTimer);
+            icon.classList.remove('long-press');
+        };
+
+        icon.addEventListener('mousedown', startPress);
+        icon.addEventListener('mouseup', cancelPress);
+        icon.addEventListener('mouseleave', cancelPress);
+        icon.addEventListener('touchstart', startPress);
+        icon.addEventListener('touchend', cancelPress);
+    }
+
     // --- MODIFICATION START: Remove .turn-invalid from avatar ---
     // This logic is now handled by the badge.
     // --- MODIFICATION END ---
@@ -207,9 +236,13 @@ export function addMessage(role, content, turnId = null, isValid = true) {
                 // --- MODIFICATION START: Style badge and update title based on context ---
                 if (isValid === false) {
                     userBadge.classList.add('context-invalid');
-                    userAvatarIcon.title = `Reload Details for Turn ${turnId} (Archived Context)`;
-                } else {
-                    userAvatarIcon.title = `Reload Plan & Details for Turn ${turnId}`;
+                }
+                if (state.showTooltips) {
+                    if (isValid === false) {
+                        userAvatarIcon.title = `Reload Details for Turn ${turnId} (Archived Context)`;
+                    } else {
+                        userAvatarIcon.title = `Reload Plan & Details for Turn ${turnId}`;
+                    }
                 }
                 // --- MODIFICATION END ---
             }
