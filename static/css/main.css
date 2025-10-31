@@ -793,3 +793,14 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
 }
 /* --- MODIFICATION END --- */
 
+/* -------------------------------------------------------------------------- */
+/* TEMPORARY CHANGE (Hide replay buttons in the live status update window)    */
+/* -------------------------------------------------------------------------- */
+/* These buttons are hidden temporarily per request. Remove this rule to show */
+/* the buttons again.                                                         */
+#header-replay-planned-button,
+#header-replay-optimized-button {
+    display: none !important;
+}
+
+
