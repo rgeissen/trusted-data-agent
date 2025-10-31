@@ -1067,18 +1067,18 @@ export function updateHintAndIndicatorState() {
     const hintTooltipSpan = DOM.inputHint.querySelector('.tooltip');
 
     if (state.isLastTurnModeLocked) {
-        hintTextSpan.innerHTML = `<strong>Last Turn Context:</strong> <span class="text-orange-400 font-semibold">Locked</span>`;
-        hintTooltipSpan.innerHTML = `'Last Turn' context is locked on. Press <kbd>Shift</kbd> + <kbd>Alt</kbd> to switch back to the default 'Full Session Context'.`;
+        hintTextSpan.innerHTML = `<strong>Turn Summaries Context:</strong> <span class="text-orange-400 font-semibold">Locked</span>`;
+        hintTooltipSpan.innerHTML = `'Turn Summaries' context is locked on. Press <kbd>Shift</kbd> + <kbd>Alt</kbd> to switch back to the default 'Full Session Context'.`;
         DOM.contextStatusDot.className = 'connection-dot context-last-turn-locked';
         DOM.sendIcon.classList.remove('flipped');
     } else if (state.isTempLastTurnMode) {
-        hintTextSpan.innerHTML = `<strong>Context:</strong> <span class="text-yellow-400 font-semibold">Last Turn</span>`;
-        hintTooltipSpan.innerHTML = `Temporarily using 'Last Turn' context for this query.`;
+        hintTextSpan.innerHTML = `<strong>Context:</strong> <span class="text-yellow-400 font-semibold">Turn Summaries</span>`;
+        hintTooltipSpan.innerHTML = `Temporarily using 'Turn Summaries' context for this query.`;
         DOM.contextStatusDot.className = 'connection-dot context-last-turn-temp';
         DOM.sendIcon.classList.remove('flipped');
     } else {
         hintTextSpan.innerHTML = `<strong>Full Session Context:</strong> <span class="text-green-400 font-semibold">On</span>`;
-        hintTooltipSpan.innerHTML = `Full session context is the default. Hold <kbd>Alt</kbd> to temporarily use 'Last Turn' context. Press <kbd>Shift</kbd> + <kbd>Alt</kbd> to lock 'Last Turn' context on.`;
+        hintTooltipSpan.innerHTML = `Full session context is the default. Hold <kbd>Alt</kbd> to temporarily use 'Turn Summaries' context. Press <kbd>Shift</kbd> + <kbd>Alt</kbd> to lock 'Turn Summaries' context on.`;
         DOM.contextStatusDot.className = 'connection-dot idle';
         DOM.sendIcon.classList.add('flipped');
     }
