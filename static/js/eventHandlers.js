@@ -1299,36 +1299,19 @@ function getSystemPromptSummaryHTML() {
             <div class="border-t border-white/10 pt-4 mt-4">
                 <h4 class="text-md font-bold text-yellow-300 mb-2">New features available</h4>
                 <p class="text-xs text-gray-400 mb-3">Latest enhancements and updates to the Trusted Data Agent.</p>
-                <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
-                   <li><strong>05-SEP-2025:</strong> Conversation Mode (Google Cloud Credentials required)</li>
-                </ul>
-                <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
-                   <li><strong>12-SEP-2025:</strong> Significant Formatting Upgrade (Canonical Baseline Model for LLM Provider Rendering)</li>
-                </ul>
-                <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
-                   <li><strong>18-SEP-2025:</strong> REST Interface for Engine Configuration, Execution & Monitoring </li>
-                </ul>
-                </ul>
-                <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
-                   <li><strong>19-SEP-2025:</strong> Microsoft Azure Integration</li>
-                </ul>
-                </ul>
-                <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
-                   <li><strong>10-Oct-2025:</strong> Context Aware Rendering of the Collateral Report</li>
-                </ul>
-                </ul>
-                <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
-                   <li><strong>11-Oct-2025:</strong> Friendly.AI Integration</li>
-                </ul>
-                </ul>
-                <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
-                   <li><strong>23-Oct-2025:</strong> Robust Multi-Tool Phase Handling</li>
-                </ul>
-                </ul>
-                </ul>
-                <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
-                   <li><strong>24-Oct-2025:</strong> Stop Button Added - Ability to immediately Stop Workflows</li>
-                </ul>
+                <div class="whats-new-container">
+                    <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
+                       <li><strong>31-Oct-2025:</strong> Fully configurable Context Management (Turn & Session)</li>
+                       <li><strong>24-Oct-2025:</strong> Stop Button Added - Ability to immediately Stop Workflows</li>
+                       <li><strong>23-Oct-2025:</strong> Robust Multi-Tool Phase Handling</li>
+                       <li><strong>11-Oct-2025:</strong> Friendly.AI Integration</li>
+                       <li><strong>10-Oct-2025:</strong> Context Aware Rendering of the Collateral Report</li>
+                       <li><strong>19-SEP-2025:</strong> Microsoft Azure Integration</li>
+                       <li><strong>18-SEP-2025:</strong> REST Interface for Engine Configuration, Execution & Monitoring </li>
+                       <li><strong>12-SEP-2025:</strong> Significant Formatting Upgrade (Canonical Baseline Model for LLM Provider Rendering)</li>
+                       <li><strong>05-SEP-2025:</strong> Conversation Mode (Google Cloud Credentials required)</li>
+                    </ul>
+                </div>
             </div>
             <div class="border-t border-white/10 pt-4 mt-4">
                  <h4 class="text-md font-bold text-yellow-300 mb-2">Model Price/Performance Leadership Board</h4>
