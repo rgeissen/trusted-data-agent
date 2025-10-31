@@ -11,19 +11,19 @@ This solution provides unparalleled, real-time insight into the complete convers
 
 ### 📋 Table Of Contents
 
-1. [Overview: A Superior Approach](#-overview-a-superior-approach)
-2. [Key Features](#-key-features)
-3. [The Heart of the Application - The Optimizer](#-the-heart-of-the-application---the-engine--its-fusion-optimizer)
-4. [How It Works: Architecture](#-how-it-works-architecture)
-5. [Installation and Setup Guide](#-installation-and-setup-guide)
-6. [Developer Mode: Unlocking Models](#-developer-mode-unlocking-models)
-7. [User Guide](#-user-guide)
-8. [Context Maintenance](#-context-maintenance)
-9. [Application REST API](#-application-rest-api)
-10. [Troubleshooting](#-troubleshooting)
-11. [License](#-license)
-12. [Author & Contributions](#-author--contributions)
-13. [Appendix: Feature Update List](#-appendix-feature-update-list)
+1. [Overview: A Superior Approach](#overview-a-superior-approach)
+2. [Key Features](#key-features)
+3. [The Heart of the Application - The Optimizer](#the-heart-of-the-application---the-engine--its-fusion-optimizer)
+4. [How It Works: Architecture](#how-it-works-architecture)
+5. [Installation and Setup Guide](#installation-and-setup-guide)
+6. [Developer Mode: Unlocking Models](#developer-mode-unlocking-models)
+7. [User Guide](#user-guide)
+8. [Context Maintenance](#context-maintenance)
+9. [Application REST API](#application-rest-api)
+10. [Troubleshooting](#troubleshooting)
+11. [License](#license)
+12. [Author & Contributions](#author--contributions)
+13. [Appendix: Feature Update List](#appendix-feature-update-list)
 
 ---
 
