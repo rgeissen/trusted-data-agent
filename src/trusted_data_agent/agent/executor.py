@@ -72,6 +72,11 @@ class PlanExecutor:
         self.dependencies = dependencies
         self.state = self.AgentState.PLANNING
 
+        # --- MODIFICATION START: Snapshot model and provider for this turn ---
+        self.current_model = APP_CONFIG.CURRENT_MODEL
+        self.current_provider = APP_CONFIG.CURRENT_PROVIDER
+        # --- MODIFICATION END ---
+
         self.structured_collected_data = {}
         self.workflow_state = {}
         self.turn_action_history = []
@@ -643,14 +648,16 @@ class PlanExecutor:
             # Update history only if the execution wasn't cancelled or errored out definitively
             if self.state != self.AgentState.ERROR:
             # --- MODIFICATION END ---
-                # --- MODIFICATION START: Include original_plan_for_history and use self.current_turn_number ---
+                # --- MODIFICATION START: Include model/provider and use self.current_turn_number ---
                 turn_summary = {
                     "turn": self.current_turn_number, # Use the authoritative instance variable
                     "user_query": self.original_user_input, # Store the original query
                     "original_plan": self.original_plan_for_history, # Store the actual plan used
                     "execution_trace": self.turn_action_history,
                     "final_summary": self.final_summary_text,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "provider": self.current_provider, # Add snapshot of provider
+                    "model": self.current_model       # Add snapshot of model
                 }
                 # --- MODIFICATION END ---
                 session_manager.update_last_turn_data(self.user_uuid, self.session_id, turn_summary)
@@ -982,3 +989,4 @@ class PlanExecutor:
             "turn_id": self.current_turn_number # Use the authoritative instance variable
         }, "final_answer")
         # --- MODIFICATION END ---
+

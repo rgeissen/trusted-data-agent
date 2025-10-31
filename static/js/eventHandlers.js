@@ -333,7 +333,7 @@ async function handleReloadPlanClick(element) {
         UI.renderHistoricalTrace(turnData.original_plan || [], turnData.execution_trace || [], turnId);
 
         // --- MODIFICATION START: Update model display for reloaded turn ---
-        // After rendering, update the model display to reflect the turn's actual model
+        // After rendering, update the global state and UI to reflect the turn's actual model
         if (turnData.provider && turnData.model) {
             state.currentProvider = turnData.provider;
             state.currentModel = turnData.model;
@@ -1867,4 +1867,3 @@ export function initializeEventListeners() {
     }
     // --- MODIFICATION END ---
 }
-
