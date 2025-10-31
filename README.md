@@ -18,10 +18,11 @@ This solution provides unparalleled, real-time insight into the complete convers
 5. [Installation and Setup Guide](#-installation-and-setup-guide)
 6. [Developer Mode: Unlocking Models](#-developer-mode-unlocking-models)
 7. [User Guide](#-user-guide)
-8. [Application REST API](#-application-rest-api)
-9. [Troubleshooting](#-troubleshooting)
-10. [License](#-license)
-11. [Author & Contributions](#-author--contributions)
+8. [Context Maintenance](#context-maintenance)
+9. [Application REST API](#-application-rest-api)
+10. [Troubleshooting](#-troubleshooting)
+11. [License](#-license)
+12. [Author & Contributions](#-author--contributions)
 
 ---
 
@@ -423,6 +424,45 @@ To test the raw intelligence of a model without the agent's tool-using logic, yo
 1. Click the **"Chat"** button in the top navigation bar.
 
 2. A modal will appear, allowing you to have a direct, tool-less conversation with the currently configured LLM. This is useful for evaluating a model's baseline knowledge or creative capabilities.
+
+## Context Maintenance
+
+The Trusted Data Agent provides several advanced features for managing the context that is sent to the Large Language Model (LLM). Understanding and using these features can help you refine the agent's behavior, save costs by reducing token count, and get more accurate results.
+
+### Understanding Context Elements
+
+The agent's "memory" is composed of three distinct context elements:
+
+1.  **LLM Conversation History (`chat_object`):** This is the raw, turn-by-turn dialogue between you and the agent. It provides the immediate conversational context, allowing the agent to understand follow-up questions and references to previous messages.
+
+2.  **Chat History (`session_history`):** This history is used exclusively for rendering the conversation in the user interface. It is **not** sent to the LLM for context.
+
+3.  **Turn Summaries (`workflow_history`):** This is a structured summary of the agent's actions. For each turn, it includes the plan that was generated, the tools that were executed, and a summary of the results. This history is sent to the agent's **planner** to help it make better decisions and learn from past actions.
+
+### Context Management Features
+
+You have several ways to control the agent's context directly from the UI:
+
+#### Activate/Deactivate Turn Context
+
+You can activate or deactivate the context of any individual turn by clicking on the small numbered badge that appears on the user ("U") and assistant ("A") avatars.
+
+*   **Clicking a badge** will toggle the `isValid` status for that entire turn.
+*   **Inactive turns** are visually dimmed and their conversational history is **completely excluded** from the context sent to the LLM. This is a powerful way to surgically remove parts of the conversation that might be confusing the agent.
+
+#### Purge Context
+
+You can deactivate all previous turns at once by clicking the **Context Indicator** dot in the main header (next to the "MCP" and "LLM" indicators).
+
+*   **Clicking the dot** will prompt you for confirmation.
+*   **Upon confirmation,** all past turns in the session will be marked as inactive (`isValid = false`), and the indicator will blink white three times. This effectively resets the agent's conversational and planning memory, forcing it to start fresh from your next query.
+
+#### Replay Original Query
+
+You can re-execute the original query for any turn by **clicking and holding** the assistant ("A") avatar for that turn.
+
+*   **Press and hold for 1.5 seconds.** A circular animation will appear to indicate the action.
+*   Upon completion, the agent will re-run the original user query for that turn, generating a brand new plan. This is useful for retrying a failed turn or exploring an alternative approach.
 
 ## 🔌 Application REST API
 
