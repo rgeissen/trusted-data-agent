@@ -346,7 +346,10 @@ class PlanExecutor:
 
             if isinstance(value, dict) and value.get("source") == "loop_item" and loop_item:
                 loop_key = value.get("key")
-                resolved_args[key] = loop_item.get(loop_key)
+                # --- MODIFICATION START ---
+                # If a key is specified, get that value. If no key is specified, pass the entire loop_item.
+                resolved_args[key] = loop_item.get(loop_key) if loop_key else loop_item
+                # --- MODIFICATION END ---
                 continue
 
             if isinstance(value, str):
@@ -969,3 +972,4 @@ class PlanExecutor:
             "turn_id": current_turn_number # Add the turn number here
         }, "final_answer")
         # --- MODIFICATION END ---
+

@@ -19,7 +19,9 @@ def _format_sse(data: dict, event: str = None) -> str:
         msg += f"event: {event}\n"
     return f"{msg}\n"
 
+# --- MODIFICATION START: Add user_uuid ---
 async def execute_date_range_orchestrator(executor, command: dict, date_param_name: str, date_phrase: str, phase: dict):
+# --- MODIFICATION END ---
     """
     Executes a tool over a calculated date range when the tool itself
     only supports a single date parameter. It is now "plan-aware" and will use
@@ -29,6 +31,9 @@ async def execute_date_range_orchestrator(executor, command: dict, date_param_na
     tool_name = command.get("tool_name")
     args = command.get("arguments", {})
     date_list = []
+    # --- MODIFICATION START: Get user_uuid from executor ---
+    user_uuid = executor.user_uuid
+    # --- MODIFICATION END ---
 
     # --- MODIFICATION START: Plan-Aware and Resilient Date Handling ---
     is_pre_calculated = False
@@ -54,7 +59,11 @@ async def execute_date_range_orchestrator(executor, command: dict, date_param_na
             "details": "Orchestrator called with a single date; executing directly to prevent recursion."
         })
         yield _format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
-        single_result, _, _ = await mcp_adapter.invoke_mcp_tool(executor.dependencies['STATE'], command)
+        # --- MODIFICATION START: Pass user_uuid ---
+        single_result, _, _ = await mcp_adapter.invoke_mcp_tool(
+            executor.dependencies['STATE'], command, user_uuid=user_uuid, session_id=executor.session_id
+        )
+        # --- MODIFICATION END ---
         yield _format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
         
         executor._add_to_structured_data(single_result)
@@ -74,7 +83,11 @@ async def execute_date_range_orchestrator(executor, command: dict, date_param_na
         })
 
         date_command = {"tool_name": "TDA_CurrentDate"}
-        date_result, _, _ = await mcp_adapter.invoke_mcp_tool(executor.dependencies['STATE'], date_command)
+        # --- MODIFICATION START: Pass user_uuid ---
+        date_result, _, _ = await mcp_adapter.invoke_mcp_tool(
+            executor.dependencies['STATE'], date_command, user_uuid=user_uuid, session_id=executor.session_id
+        )
+        # --- MODIFICATION END ---
         if not (date_result and date_result.get("status") == "success" and date_result.get("results")):
             raise RuntimeError("Date Range Orchestrator failed to fetch current date.")
         current_date_str = date_result["results"][0].get("current_date")
@@ -125,7 +138,11 @@ async def execute_date_range_orchestrator(executor, command: dict, date_param_na
         yield _format_sse({"step": f"Processing data for: {date_str}"})
         
         day_command = {**cleaned_command, 'arguments': {**cleaned_command['arguments'], date_param_name: date_str}}
-        day_result, _, _ = await mcp_adapter.invoke_mcp_tool(executor.dependencies['STATE'], day_command)
+        # --- MODIFICATION START: Pass user_uuid ---
+        day_result, _, _ = await mcp_adapter.invoke_mcp_tool(
+            executor.dependencies['STATE'], day_command, user_uuid=user_uuid, session_id=executor.session_id
+        )
+        # --- MODIFICATION END ---
         
         if isinstance(day_result, dict) and day_result.get("status") == "success" and day_result.get("results"):
             all_results.extend(day_result["results"])
@@ -145,13 +162,18 @@ async def execute_date_range_orchestrator(executor, command: dict, date_param_na
     executor._add_to_structured_data(final_tool_output)
     executor.last_tool_output = final_tool_output
 
+# --- MODIFICATION START: Add user_uuid ---
 async def execute_column_iteration(executor, command: dict):
+# --- MODIFICATION END ---
     """
     Executes a tool over multiple columns of a table, including checks for
     data type compatibility.
     """
     tool_name = command.get("tool_name")
     base_args = command.get("arguments", {})
+    # --- MODIFICATION START: Get user_uuid from executor ---
+    user_uuid = executor.user_uuid
+    # --- MODIFICATION END ---
 
     # --- MODIFICATION START: Use synonym-aware helper to get arguments ---
     db_name = get_argument_by_canonical_name(base_args, 'database_name')
@@ -160,7 +182,11 @@ async def execute_column_iteration(executor, command: dict):
 
     cols_command = {"tool_name": "base_columnDescription", "arguments": {"database_name": db_name, "object_name": table_name}}
     yield _format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
-    cols_result, _, _ = await mcp_adapter.invoke_mcp_tool(executor.dependencies['STATE'], cols_command, session_id=executor.session_id)
+    # --- MODIFICATION START: Pass user_uuid ---
+    cols_result, _, _ = await mcp_adapter.invoke_mcp_tool(
+        executor.dependencies['STATE'], cols_command, user_uuid=user_uuid, session_id=executor.session_id
+    )
+    # --- MODIFICATION END ---
     yield _format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
     
     if not (cols_result and isinstance(cols_result, dict) and cols_result.get('status') == 'success' and cols_result.get('results')):
@@ -207,7 +233,11 @@ async def execute_column_iteration(executor, command: dict):
         
         iter_command = {"tool_name": tool_name, "arguments": iter_args}
         # --- MODIFICATION END ---
-        col_result, _, _ = await mcp_adapter.invoke_mcp_tool(executor.dependencies['STATE'], iter_command, session_id=executor.session_id)
+        # --- MODIFICATION START: Pass user_uuid ---
+        col_result, _, _ = await mcp_adapter.invoke_mcp_tool(
+            executor.dependencies['STATE'], iter_command, user_uuid=user_uuid, session_id=executor.session_id
+        )
+        # --- MODIFICATION END ---
         all_column_results.append(col_result)
     yield _format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
 
@@ -263,7 +293,11 @@ async def execute_hallucinated_loop(executor, phase: dict):
     for item in hallucinated_items:
         yield _format_sse({"step": f"Processing item: {item}"})
         command = {"tool_name": tool_name, "arguments": {argument_name: item}}
-        result, _, _ = await mcp_adapter.invoke_mcp_tool(executor.dependencies['STATE'], command)
+        # --- MODIFICATION START: Pass user_uuid ---
+        result, _, _ = await mcp_adapter.invoke_mcp_tool(
+            executor.dependencies['STATE'], command, user_uuid=executor.user_uuid, session_id=executor.session_id
+        )
+        # --- MODIFICATION END ---
         all_results.append(result)
     yield _format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
 

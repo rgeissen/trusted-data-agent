@@ -467,7 +467,14 @@ class PhaseExecutor:
 
 
                     cols_command = {"tool_name": "base_columnDescription", "arguments": args_for_col_tool}
-                    cols_result, _, _ = await mcp_adapter.invoke_mcp_tool(self.executor.dependencies['STATE'], cols_command, session_id=self.executor.session_id)
+                    # --- MODIFICATION START: Pass user_uuid ---
+                    cols_result, _, _ = await mcp_adapter.invoke_mcp_tool(
+                        self.executor.dependencies['STATE'], 
+                        cols_command, 
+                        user_uuid=self.executor.user_uuid, 
+                        session_id=self.executor.session_id
+                    )
+                    # --- MODIFICATION END ---
 
                     if cols_result and isinstance(cols_result, dict) and cols_result.get('status') == 'success' and cols_result.get('results'):
                         columns_metadata = cols_result.get('results', [])
@@ -1258,14 +1265,16 @@ class PhaseExecutor:
                 **self.executor.workflow_state
             }
 
+            # --- MODIFICATION START: Pass user_uuid and remove incorrect comment ---
             tool_result, input_tokens, output_tokens = await mcp_adapter.invoke_mcp_tool(
                 self.executor.dependencies['STATE'],
                 action,
+                user_uuid=self.executor.user_uuid,
                 session_id=self.executor.session_id,
                 call_id=call_id_for_tool,
                 workflow_state=full_context_for_tool
-                # No user_uuid needed here, invoke_mcp_tool handles session_id for client-side LLM calls
             )
+            # --- MODIFICATION END ---
 
             yield self.executor._format_sse({"target": status_target, "state": "idle"}, "status_indicator_update")
 
@@ -1753,3 +1762,4 @@ class PhaseExecutor:
         """
         correction_handler = CorrectionHandler(self.executor)
         return await correction_handler.attempt_correction(failed_action, error_result)
+

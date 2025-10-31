@@ -402,7 +402,7 @@ async def load_and_categorize_mcp_resources(STATE: dict):
         if loaded_prompts:
             for prompt_obj in loaded_prompts:
                 classification = classified_data.get(prompt_obj.name, {})
-                category = classification.get("category", "Uncategorized")
+                category = classification.get("category", "UncategorDized")
 
                 if category not in STATE['structured_prompts']:
                     STATE['structured_prompts'][category] = []
@@ -598,12 +598,15 @@ def _build_g2plot_spec(args: dict, data: list[dict]) -> dict:
 
     return {"type": g2plot_type, "options": options}
 
-async def _invoke_llm_filter_task(STATE: dict, command: dict, session_id: str = None, call_id: str | None = None) -> tuple[dict, int, int]:
+# --- MODIFICATION START: Add user_uuid and update docstring ---
+async def _invoke_llm_filter_task(STATE: dict, command: dict, user_uuid: str = None, session_id: str = None, call_id: str | None = None) -> tuple[dict, int, int]:
     """
     Executes a specialized LLM-based filtering task. It takes a list of data
     and a natural language goal, and is strictly prompted to return only a
     single, clean, machine-readable string value.
+    This now robustly handles being passed a single dict from a loop.
     """
+    # --- MODIFICATION END ---
     args = command.get("arguments", {})
     goal = args.get("goal")
     data_to_filter = args.get("data_to_filter")
@@ -613,6 +616,16 @@ async def _invoke_llm_filter_task(STATE: dict, command: dict, session_id: str = 
 
     if not goal or not data_to_filter:
         return {"status": "error", "error_message": "TDA_LLMFilter requires 'goal' and 'data_to_filter' arguments."}, 0, 0
+
+    # --- MODIFICATION START: Make context-sensitive to loop execution ---
+    # If data_to_filter is a single dictionary (from a loop), wrap it in a list.
+    if isinstance(data_to_filter, dict):
+        app_logger.debug("TDA_LLMFilter received a single dict, wrapping in a list for processing.")
+        data_to_filter = [data_to_filter]
+    elif not isinstance(data_to_filter, list):
+        app_logger.error(f"TDA_LLMFilter received invalid data_to_filter type: {type(data_to_filter)}")
+        return {"status": "error", "error_message": f"TDA_LLMFilter 'data_to_filter' must be a list or a dict, but got {type(data_to_filter)}."}, 0, 0
+    # --- MODIFICATION END ---
 
     filtering_prompt = (
         "You are an expert data extraction assistant. Your task is to find a single, specific item within a list of JSON objects that matches a given goal.\n\n"
@@ -629,14 +642,17 @@ async def _invoke_llm_filter_task(STATE: dict, command: dict, session_id: str = 
 
     reason = f"Client-Side Tool Call: TDA_LLMFilter\nGoal: {goal}"
 
+    # --- MODIFICATION START: Pass user_uuid ---
     response_text, input_tokens, output_tokens = await llm_handler.call_llm_api(
         llm_instance=llm_instance,
         prompt=filtering_prompt,
         reason=reason,
         system_prompt_override="You are a data extraction assistant that only responds with clean, single values.",
         raise_on_error=True,
+        user_uuid=user_uuid,
         session_id=session_id
     )
+    # --- MODIFICATION END ---
 
     cleaned_response_text = response_text.strip().strip('.,:;')
 
@@ -650,8 +666,8 @@ async def _invoke_llm_filter_task(STATE: dict, command: dict, session_id: str = 
 
     return result, input_tokens, output_tokens
 
-# --- MODIFICATION START: Correct data fetching and refine prompt ---
-async def _invoke_core_llm_task(STATE: dict, command: dict, workflow_state: dict, session_history: list = None, mode: str = "standard", session_id: str = None, call_id: str | None = None) -> tuple[dict, int, int]:
+# --- MODIFICATION START: Add user_uuid and correct data fetching/prompt ---
+async def _invoke_core_llm_task(STATE: dict, command: dict, workflow_state: dict, user_uuid: str = None, session_history: list = None, mode: str = "standard", session_id: str = None, call_id: str | None = None) -> tuple[dict, int, int]:
     args = command.get("arguments", {})
     user_question = args.get("user_question", "No user question provided.")
     llm_instance = STATE.get('llm')
@@ -793,14 +809,17 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, workflow_state: dict
     # --- MODIFICATION END ---
 
 
+    # --- MODIFICATION START: Pass user_uuid ---
     response_text, input_tokens, output_tokens = await llm_handler.call_llm_api(
         llm_instance=llm_instance,
         prompt=final_prompt,
         reason=reason,
         system_prompt_override="You are a text processing and synthesis assistant.",
         raise_on_error=True,
+        user_uuid=user_uuid,
         session_id=session_id
     )
+    # --- MODIFICATION END ---
 
     refusal_phrases = [
         "i'm unable to", "i cannot", "unable to generate", "no specific task",
@@ -825,7 +844,9 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, workflow_state: dict
 
     return result, input_tokens, output_tokens
 
-async def _invoke_final_report_task(STATE: dict, command: dict, workflow_state: dict, session_id: str = None, call_id: str | None = None) -> tuple[dict, int, int]:
+# --- MODIFICATION START: Add user_uuid ---
+async def _invoke_final_report_task(STATE: dict, command: dict, workflow_state: dict, user_uuid: str = None, session_id: str = None, call_id: str | None = None) -> tuple[dict, int, int]:
+# --- MODIFICATION END ---
     llm_instance = STATE.get('llm')
     user_question = command.get("arguments", {}).get("user_question", "No user question provided.")
     final_call_id = call_id or str(uuid.uuid4())
@@ -845,14 +866,17 @@ async def _invoke_final_report_task(STATE: dict, command: dict, workflow_state: 
 
     reason = f"Client-Side Tool Call: TDA_FinalReport\nGoal: {user_question}"
 
+    # --- MODIFICATION START: Pass user_uuid ---
     response_text, input_tokens, output_tokens = await llm_handler.call_llm_api(
         llm_instance=llm_instance,
         prompt=final_summary_prompt_text,
         reason=reason,
         system_prompt_override="You are a JSON-only reporting assistant.",
         raise_on_error=True,
+        user_uuid=user_uuid,
         session_id=session_id
     )
+    # --- MODIFICATION END ---
 
     try:
         report_data, correction_descriptions = llm_handler.parse_and_coerce_llm_response(response_text, CanonicalResponse)
@@ -868,7 +892,9 @@ async def _invoke_final_report_task(STATE: dict, command: dict, workflow_state: 
         app_logger.error(f"Failed to parse/validate TDA_FinalReport: {e}. Response: {response_text}")
         return {"status": "error", "error_message": "Failed to generate valid report JSON.", "data": str(e)}, input_tokens, output_tokens
 
-async def _invoke_complex_prompt_report_task(STATE: dict, command: dict, workflow_state: dict, session_id: str = None, call_id: str | None = None) -> tuple[dict, int, int]:
+# --- MODIFICATION START: Add user_uuid ---
+async def _invoke_complex_prompt_report_task(STATE: dict, command: dict, workflow_state: dict, user_uuid: str = None, session_id: str = None, call_id: str | None = None) -> tuple[dict, int, int]:
+# --- MODIFICATION END ---
     llm_instance = STATE.get('llm')
     prompt_goal = command.get("arguments", {}).get("prompt_goal", "No prompt goal provided.")
     final_call_id = call_id or str(uuid.uuid4())
@@ -889,14 +915,17 @@ async def _invoke_complex_prompt_report_task(STATE: dict, command: dict, workflo
 
     reason = f"Client-Side Tool Call: TDA_ComplexPromptReport\nGoal: {prompt_goal}"
 
+    # --- MODIFICATION START: Pass user_uuid ---
     response_text, input_tokens, output_tokens = await llm_handler.call_llm_api(
         llm_instance=llm_instance,
         prompt=final_summary_prompt_text,
         reason=reason,
         system_prompt_override="You are a JSON-only reporting assistant.",
         raise_on_error=True,
+        user_uuid=user_uuid,
         session_id=session_id
     )
+    # --- MODIFICATION END ---
 
     try:
         report_data, correction_descriptions = llm_handler.parse_and_coerce_llm_response(response_text, PromptReportResponse)
@@ -912,8 +941,9 @@ async def _invoke_complex_prompt_report_task(STATE: dict, command: dict, workflo
         app_logger.error(f"Failed to parse/validate TDA_ComplexPromptReport: {e}. Response: {response_text}")
         return {"status": "error", "error_message": "Failed to generate valid report JSON.", "data": str(e)}, input_tokens, output_tokens
 
-
-async def _invoke_util_calculate_date_range(STATE: dict, command: dict, session_id: str = None) -> dict:
+# --- MODIFICATION START: Add user_uuid ---
+async def _invoke_util_calculate_date_range(STATE: dict, command: dict, user_uuid: str = None, session_id: str = None) -> dict:
+# --- MODIFICATION END ---
     args = command.get("arguments", {})
     start_date_str = args.get("start_date")
     date_phrase = args.get("date_phrase", "").lower().strip()
@@ -992,14 +1022,17 @@ async def _invoke_util_calculate_date_range(STATE: dict, command: dict, session_
             "Your response MUST be ONLY a single, valid JSON object with two keys: 'start_date' and 'end_date', both in 'YYYY-MM-DD' format."
         )
 
+        # --- MODIFICATION START: Pass user_uuid ---
         response_text, _, _ = await llm_handler.call_llm_api(
             llm_instance=STATE.get('llm'),
             prompt=llm_prompt,
             reason=f"LLM fallback for complex date phrase: {date_phrase}",
             system_prompt_override="You are a helpful assistant that only responds with valid JSON.",
             raise_on_error=True,
+            user_uuid=user_uuid,
             session_id=session_id
         )
+        # --- MODIFICATION END ---
 
         try:
             # Added extraction logic for robustness
@@ -1028,7 +1061,9 @@ async def _invoke_util_calculate_date_range(STATE: dict, command: dict, session_
         "results": date_list
     }
 
-async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, call_id: str | None = None, workflow_state: dict = None) -> tuple[any, int, int]:
+# --- MODIFICATION START: Add user_uuid ---
+async def invoke_mcp_tool(STATE: dict, command: dict, user_uuid: str = None, session_id: str = None, call_id: str | None = None, workflow_state: dict = None) -> tuple[any, int, int]:
+# --- MODIFICATION END ---
     mcp_client = STATE.get('mcp_client')
     tool_name = command.get("tool_name")
 
@@ -1045,18 +1080,20 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
     # --- MODIFICATION END ---
 
     if tool_name == "TDA_LLMFilter":
-        return await _invoke_llm_filter_task(STATE, command, session_id=session_id, call_id=call_id)
+        # --- MODIFICATION START: Pass user_uuid ---
+        return await _invoke_llm_filter_task(STATE, command, user_uuid=user_uuid, session_id=session_id, call_id=call_id)
+        # --- MODIFICATION END ---
 
     if tool_name == "TDA_FinalReport":
         command.setdefault("arguments", {})["user_question"] = workflow_state.get("original_user_input", "N/A")
-        # --- MODIFICATION START: Pass workflow_state correctly ---
-        return await _invoke_final_report_task(STATE, command, workflow_state, session_id=session_id, call_id=call_id)
+        # --- MODIFICATION START: Pass user_uuid and workflow_state correctly ---
+        return await _invoke_final_report_task(STATE, command, workflow_state, user_uuid=user_uuid, session_id=session_id, call_id=call_id)
         # --- MODIFICATION END ---
 
     if tool_name == "TDA_ComplexPromptReport":
         command.setdefault("arguments", {})["prompt_goal"] = workflow_state.get("workflow_goal_prompt", "N/A")
-        # --- MODIFICATION START: Pass workflow_state correctly ---
-        return await _invoke_complex_prompt_report_task(STATE, command, workflow_state, session_id=session_id, call_id=call_id)
+        # --- MODIFICATION START: Pass user_uuid and workflow_state correctly ---
+        return await _invoke_complex_prompt_report_task(STATE, command, workflow_state, user_uuid=user_uuid, session_id=session_id, call_id=call_id)
         # --- MODIFICATION END ---
 
     if tool_name == "TDA_LLMTask":
@@ -1066,10 +1103,10 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
         session_history = args.pop("session_history", None)
         # Reconstruct the command with the remaining args for the core task function
         command_for_core = {"tool_name": "TDA_LLMTask", "arguments": args}
-        # --- MODIFICATION START: Pass workflow_state correctly ---
+        # --- MODIFICATION START: Pass user_uuid and workflow_state correctly ---
         # Note: workflow_state contains the *entire* state, including results from previous phases.
         # _invoke_core_llm_task will handle extracting the relevant parts based on 'source_data' or using 'data' if present.
-        return await _invoke_core_llm_task(STATE, command_for_core, workflow_state=workflow_state, session_history=session_history, mode=mode, session_id=session_id, call_id=call_id)
+        return await _invoke_core_llm_task(STATE, command_for_core, workflow_state=workflow_state, user_uuid=user_uuid, session_history=session_history, mode=mode, session_id=session_id, call_id=call_id)
         # --- MODIFICATION END ---
 
 
@@ -1084,7 +1121,9 @@ async def invoke_mcp_tool(STATE: dict, command: dict, session_id: str = None, ca
         return result, 0, 0
 
     if tool_name == "TDA_DateRange":
-        result = await _invoke_util_calculate_date_range(STATE, command, session_id=session_id)
+        # --- MODIFICATION START: Pass user_uuid ---
+        result = await _invoke_util_calculate_date_range(STATE, command, user_uuid=user_uuid, session_id=session_id)
+        # --- MODIFICATION END ---
         return result, 0, 0
 
     if tool_name == "TDA_Charting":
