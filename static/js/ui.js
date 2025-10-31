@@ -257,10 +257,6 @@ export function addMessage(role, content, turnId = null, isValid = true) {
             DOM.headerReplayOptimizedButton.classList.remove('hidden');
             DOM.headerReplayOptimizedButton.dataset.turnId = turnId;
         }
-        if (DOM.headerReplayQueryButton) {
-            DOM.headerReplayQueryButton.classList.remove('hidden');
-            DOM.headerReplayQueryButton.dataset.turnId = turnId;
-        }
     }
 
     const chartContainers = messageContent.querySelectorAll('.chart-render-target');
@@ -300,10 +296,6 @@ export function setExecutionState(isActive) {
             DOM.headerReplayOptimizedButton.classList.add('hidden');
             DOM.headerReplayOptimizedButton.disabled = true;
         }
-        if (DOM.headerReplayQueryButton) {
-            DOM.headerReplayQueryButton.classList.add('hidden');
-            DOM.headerReplayQueryButton.disabled = true;
-        }
     } else {
         // Enable buttons when execution ends (they will be shown by addMessage if applicable)
         if (DOM.headerReplayPlannedButton) {
@@ -311,9 +303,6 @@ export function setExecutionState(isActive) {
         }
         if (DOM.headerReplayOptimizedButton) {
             DOM.headerReplayOptimizedButton.disabled = false;
-        }
-        if (DOM.headerReplayQueryButton) {
-            DOM.headerReplayQueryButton.disabled = false;
         }
         // Don't explicitly show them here, addMessage handles showing them when a turn completes
     }
@@ -465,7 +454,7 @@ export function updateStatusWindow(eventData, isFinal = false) {
 
         const phaseContainer = document.createElement('details');
         phaseContainer.className = 'status-phase-container';
-        phaseContainer.open = true; // --- MODIFICATION: Default to open ---
+        phaseContainer.open = false; // --- MODIFICATION: Default to closed ---
 
         const phaseHeader = document.createElement('summary');
         phaseHeader.className = 'status-phase-header phase-start';

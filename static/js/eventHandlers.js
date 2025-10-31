@@ -344,11 +344,6 @@ async function handleReloadPlanClick(element) {
             DOM.headerReplayOptimizedButton.disabled = false;
             DOM.headerReplayOptimizedButton.dataset.turnId = turnId;
         }
-        if (DOM.headerReplayQueryButton) {
-            DOM.headerReplayQueryButton.classList.remove('hidden');
-            DOM.headerReplayQueryButton.disabled = false;
-            DOM.headerReplayQueryButton.dataset.turnId = turnId;
-        }
         // --- MODIFICATION END ---
 
     } catch (error) {
@@ -595,10 +590,6 @@ export async function handleStartNewSession() {
     if (DOM.headerReplayOptimizedButton) {
         DOM.headerReplayOptimizedButton.classList.add('hidden');
         DOM.headerReplayOptimizedButton.dataset.turnId = '';
-    }
-    if (DOM.headerReplayQueryButton) {
-        DOM.headerReplayQueryButton.classList.add('hidden');
-        DOM.headerReplayQueryButton.dataset.turnId = '';
     }
     // --- MODIFICATION END ---
 
@@ -1647,11 +1638,6 @@ export function initializeEventListeners() {
         DOM.headerReplayOptimizedButton.addEventListener('click', (e) => {
              alert('Replay Optimized Query - Not Implemented Yet.');
             // Placeholder: handleReplayOptimizedClick(e.currentTarget);
-        });
-    }
-    if (DOM.headerReplayQueryButton) {
-        DOM.headerReplayQueryButton.addEventListener('click', (e) => {
-            handleReplayQueryClick(e.currentTarget); // Pass the button element
         });
     }
     // --- MODIFICATION END ---
