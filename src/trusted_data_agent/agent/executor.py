@@ -654,9 +654,10 @@ class PlanExecutor:
 
         finally:
             # --- Cleanup Phase (Always runs) ---
-            # --- MODIFICATION START: Remove 'disabled_history' check ---
-            # Update history only if the execution wasn't cancelled or errored out definitively
-            if self.state != self.AgentState.ERROR:
+            # --- MODIFICATION START: Only top-level executor (depth 0) saves history ---
+            # Update history only if the execution wasn't cancelled, errored,
+            # AND this is the top-level executor instance.
+            if self.state != self.AgentState.ERROR and self.execution_depth == 0:
             # --- MODIFICATION END ---
                 # --- MODIFICATION START: Include model/provider and use self.current_turn_number ---
                 turn_summary = {
@@ -691,7 +692,12 @@ class PlanExecutor:
                             app_logger.error(f"Failed to save or emit updated session name '{new_name}': {name_e}", exc_info=True)
 
             else:
-                 app_logger.info(f"Skipping history update for user {self.user_uuid}, session {self.session_id} due to final state: {self.state.name}")
+                 # --- MODIFICATION START: Update log message to include depth ---
+                 app_logger.info(
+                     f"Skipping history save for user {self.user_uuid}, session {self.session_id}. "
+                     f"Final state: {self.state.name}, Execution Depth: {self.execution_depth}"
+                 )
+                 # --- MODIFICATION END ---
     # --- END of run method ---
 
 
@@ -860,16 +866,47 @@ class PlanExecutor:
         sub_executor.workflow_state = self.workflow_state
         sub_executor.structured_collected_data = self.structured_collected_data
 
-        if not is_delegated_task:
-            sub_executor.turn_action_history = self.turn_action_history
+        # --- MODIFICATION START: Add start marker for sub-plan ---
+        self.turn_action_history.append({
+            "action": {
+                "tool_name": "TDA_SystemLog",
+                "arguments": {
+                    "message": f"Sub-plan initiated: Delegating to prompt '{prompt_name}'.",
+                    "details": f"Triggering prompt with arguments: {prompt_args}"
+                }
+            },
+            "result": {"status": "info", "metadata": {"tool_name": "TDA_SystemLog"}}
+        })
+        # --- MODIFICATION END ---
 
         async for event in sub_executor.run():
             yield event
 
         self.structured_collected_data = sub_executor.structured_collected_data
         self.workflow_state = sub_executor.workflow_state
-        self.turn_action_history = sub_executor.turn_action_history
+        
+        # --- MODIFICATION START: Append sub-trace, don't overwrite ---
+        if sub_executor.turn_action_history:
+            self.turn_action_history.extend(sub_executor.turn_action_history)
+        # --- MODIFICATION END ---
+            
         self.last_tool_output = sub_executor.last_tool_output
+        
+        # --- MODIFICATION START: Add end marker for sub-plan ---
+        sub_plan_status = "successfully"
+        if sub_executor.state == self.AgentState.ERROR:
+            sub_plan_status = "with an error"
+            
+        self.turn_action_history.append({
+            "action": {
+                "tool_name": "TDA_SystemLog",
+                "arguments": {
+                    "message": f"Sub-plan for '{prompt_name}' completed {sub_plan_status}. Resuming main plan."
+                }
+            },
+            "result": {"status": "info", "metadata": {"tool_name": "TDA_SystemLog"}}
+        })
+        # --- MODIFICATION END ---
 
         if sub_executor.state == self.AgentState.ERROR:
             app_logger.error(f"Sub-executor for prompt '{prompt_name}' failed.")

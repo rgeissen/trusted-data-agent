@@ -554,8 +554,13 @@ class PhaseExecutor:
                                 for key, value in item.items():
                                     if key not in result_row:
                                         result_row[key] = value
-
-                self.executor.turn_action_history.append({"action": command, "result": enriched_tool_output})
+                
+                # --- MODIFICATION START: Log fast-path actions to history ---
+                # Ensure fast-path tool calls are logged just like slow-path
+                action_for_history = copy.deepcopy(command)
+                action_for_history.setdefault("metadata", {})["phase_number"] = phase_num
+                self.executor.turn_action_history.append({"action": action_for_history, "result": enriched_tool_output})
+                # --- MODIFICATION END ---
                 all_loop_results.append(enriched_tool_output)
 
             yield self.executor._format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
@@ -1211,6 +1216,13 @@ class PhaseExecutor:
 
         tool_name = action.get("tool_name")
         arguments = action.get("arguments", {})
+        
+        # --- MODIFICATION START: Add phase number to action for history ---
+        phase_num = phase.get("phase", self.executor.current_phase_index + 1)
+        action_for_history = copy.deepcopy(action)
+        action_for_history.setdefault("metadata", {})["phase_number"] = phase_num
+        # --- MODIFICATION END ---
+
 
         if tool_name == "TDA_ContextReport" or (tool_name == "TDA_LLMTask" and "synthesized_answer" in arguments):
             if tool_name == "TDA_ContextReport":
@@ -1228,8 +1240,9 @@ class PhaseExecutor:
                 "results": [{"response": arguments.get(answer_key)}]
             }
             yield self.executor._format_sse({"step": "Tool Execution Result", "details": self.executor.last_tool_output, "tool_name": tool_name}, "tool_result")
-            self.executor.turn_action_history.append({"action": action, "result": self.executor.last_tool_output})
-            phase_num = phase.get("phase", self.executor.current_phase_index + 1)
+            # --- MODIFICATION START: Use action_for_history ---
+            self.executor.turn_action_history.append({"action": action_for_history, "result": self.executor.last_tool_output})
+            # --- MODIFICATION END ---
             phase_result_key = f"result_of_phase_{phase_num}"
             self.executor.workflow_state.setdefault(phase_result_key, []).append(self.executor.last_tool_output)
             self.executor._add_to_structured_data(self.executor.last_tool_output)
@@ -1313,6 +1326,14 @@ class PhaseExecutor:
                     }, "token_update")
 
             self.executor.last_tool_output = tool_result
+            
+            # --- MODIFICATION START: Log action and result *inside* the loop ---
+            # Log every attempt, whether success or failure, unless it's a fast-path call
+            # (Fast-path loops log their own history)
+            if not is_fast_path:
+                self.executor.turn_action_history.append({"action": action_for_history, "result": self.executor.last_tool_output})
+            # --- MODIFICATION END ---
+
 
             if isinstance(tool_result, dict) and tool_result.get("status") == "error":
                 yield self.executor._format_sse({"details": tool_result, "tool_name": tool_name}, "tool_error")
@@ -1361,6 +1382,10 @@ class PhaseExecutor:
                                 break # Prompt succeeded, break retry loop
 
                         action = corrected_action
+                        # --- MODIFICATION START: Update action_for_history for the next attempt ---
+                        action_for_history = copy.deepcopy(action)
+                        action_for_history.setdefault("metadata", {})["phase_number"] = phase_num
+                        # --- MODIFICATION END ---
                         continue
                     else:
                         correction_failed_details = {
@@ -1379,21 +1404,23 @@ class PhaseExecutor:
                 if not is_fast_path:
                      yield self.executor._format_sse({"step": "Tool Execution Result", "details": tool_result, "tool_name": tool_name}, "tool_result")
                 break
-
+        
+        # --- MODIFICATION START: Move logging out of the loop ---
+        # The logging is now done *inside* the loop for all non-fast-path attempts.
+        # This section is no longer needed here.
+        # --- MODIFICATION END ---
+        
+        # --- MODIFICATION START: This logic is now outside the loop ---
+        # Add to workflow state and structured data *after* the loop finishes
+        # (whether it succeeded or ended in error)
         if not is_fast_path:
-             phase_num = phase.get("phase", self.executor.current_phase_index + 1)
-             # Ensure the action saved to history has the phase number for correct replay rendering
-             action_for_history = copy.deepcopy(action)
-             action_for_history.setdefault("metadata", {})["phase_number"] = phase_num
-
-             self.executor.turn_action_history.append({"action": action_for_history, "result": self.executor.last_tool_output})
-
-             phase_result_key = f"result_of_phase_{phase_num}"
-             if phase_result_key not in self.executor.workflow_state:
-                 self.executor.workflow_state[phase_result_key] = []
-             if self.executor.last_tool_output not in self.executor.workflow_state[phase_result_key]:
-                  self.executor.workflow_state[phase_result_key].append(self.executor.last_tool_output)
-             self.executor._add_to_structured_data(self.executor.last_tool_output)
+            phase_result_key = f"result_of_phase_{phase_num}"
+            if phase_result_key not in self.executor.workflow_state:
+                self.executor.workflow_state[phase_result_key] = []
+            if self.executor.last_tool_output not in self.executor.workflow_state[phase_result_key]:
+                self.executor.workflow_state[phase_result_key].append(self.executor.last_tool_output)
+            self.executor._add_to_structured_data(self.executor.last_tool_output)
+        # --- MODIFICATION END ---
 
 
     def _enrich_arguments_from_history(self, relevant_tools: list[str], current_args: dict = None) -> tuple[dict, list, bool]:
