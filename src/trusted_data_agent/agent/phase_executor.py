@@ -62,8 +62,8 @@ class CorrectionStrategy(ABC):
         """
         events = []
         call_id = str(uuid.uuid4())
-        events.append(self.executor._format_sse({"step": "Calling LLM for Self-Correction", "type": "system_message", "details": {"summary": reason, "call_id": call_id}}))
-        events.append(self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update"))
+        events.append( ({"step": "Calling LLM for Self-Correction", "type": "system_message", "details": {"summary": reason, "call_id": call_id}}, None) )
+        events.append( ({"target": "llm", "state": "busy"}, "status_indicator_update") )
 
         response_str, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
             prompt=prompt,
@@ -73,17 +73,17 @@ class CorrectionStrategy(ABC):
             source=self.executor.source
             # user_uuid implicitly passed via self.executor._call_llm_and_update_tokens
         )
-        events.append(self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update"))
+        events.append( ({"target": "llm", "state": "idle"}, "status_indicator_update") )
 
         # --- MODIFICATION START: Pass user_uuid to get_session ---
         updated_session = session_manager.get_session(self.executor.user_uuid, self.executor.session_id)
         # --- MODIFICATION END ---
         if updated_session:
-            events.append(self.executor._format_sse({
+            events.append( ({
                 "statement_input": input_tokens, "statement_output": output_tokens,
                 "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0),
                 "call_id": call_id
-            }, "token_update"))
+            }, "token_update") )
 
         if "FINAL_ANSWER:" in response_str:
             app_logger.info("Self-correction resulted in a FINAL_ANSWER. Halting retries.")
@@ -103,24 +103,24 @@ class CorrectionStrategy(ABC):
                 if "arguments" not in corrected_data:
                     corrected_data["arguments"] = {}
                 corrected_data["arguments"].update(extra_args_for_llm_task)
-                events.append(self.executor._format_sse({"step": "System Self-Correction", "type": "workaround", "details": {"summary": f"LLM proposed TDA_LLMTask. Injecting required context.", "details": extra_args_for_llm_task}}))
+                events.append( ({"step": "System Self-Correction", "type": "workaround", "details": {"summary": f"LLM proposed TDA_LLMTask. Injecting required context.", "details": extra_args_for_llm_task}}, None) )
 
             if "prompt_name" in corrected_data and "arguments" in corrected_data:
-                events.append(self.executor._format_sse({"step": "System Self-Correction", "type": "workaround", "details": {"summary": f"LLM proposed switching to prompt '{corrected_data['prompt_name']}'.", "details": corrected_data}}))
+                events.append( ({"step": "System Self-Correction", "type": "workaround", "details": {"summary": f"LLM proposed switching to prompt '{corrected_data['prompt_name']}'.", "details": corrected_data}}, None) )
                 return corrected_data, events
 
             if "tool_name" in corrected_data and "arguments" in corrected_data:
-                events.append(self.executor._format_sse({"step": "System Self-Correction", "type": "workaround", "details": {"summary": f"LLM proposed retrying with tool '{corrected_data['tool_name']}'.", "details": corrected_data}}))
+                events.append( ({"step": "System Self-Correction", "type": "workaround", "details": {"summary": f"LLM proposed retrying with tool '{corrected_data['tool_name']}'.", "details": corrected_data}}, None) )
                 return corrected_data, events
 
             new_args = corrected_data.get("arguments", corrected_data)
             if isinstance(new_args, dict):
                 corrected_action = {**failed_action, "arguments": new_args}
-                events.append(self.executor._format_sse({"step": "System Self-Correction", "type": "workaround", "details": {"summary": "LLM proposed new arguments.", "details": new_args}}))
+                events.append( ({"step": "System Self-Correction", "type": "workaround", "details": {"summary": "LLM proposed new arguments.", "details": new_args}}, None) )
                 return corrected_action, events
 
         except (json.JSONDecodeError, TypeError):
-            events.append(self.executor._format_sse({"step": "System Self-Correction", "type": "error", "details": {"summary": "LLM failed to provide a valid JSON correction.", "details": response_str}}))
+            events.append( ({"step": "System Self-Correction", "type": "error", "details": {"summary": "LLM failed to provide a valid JSON correction.", "details": response_str}}, None) )
 
         return None, events
 
@@ -382,7 +382,7 @@ class PhaseExecutor:
         loop_over_key = phase.get("loop_over")
         relevant_tools = phase.get("relevant_tools", [])
 
-        yield self.executor._format_sse({
+        event_data = {
             "step": f"Starting Plan Phase {phase_num}/{len(self.executor.meta_plan)}",
             "type": "phase_start",
             "details": {
@@ -392,17 +392,23 @@ class PhaseExecutor:
                 "phase_details": phase,
                 "execution_depth": self.executor.execution_depth
             }
-        })
+        }
+        self.executor._log_system_event(event_data)
+        yield self.executor._format_sse(event_data)
 
         self.executor.current_loop_items = self._extract_loop_items(loop_over_key)
 
         if not self.executor.current_loop_items:
-            yield self.executor._format_sse({"step": "Skipping Empty Loop", "type": "system_message", "details": f"No items found from '{loop_over_key}' to loop over."})
-            yield self.executor._format_sse({
+            event_data = {"step": "Skipping Empty Loop", "type": "system_message", "details": f"No items found from '{loop_over_key}' to loop over."}
+            self.executor._log_system_event(event_data)
+            yield self.executor._format_sse(event_data)
+            event_data = {
                 "step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}",
                 "type": "phase_end",
                 "details": {"phase_num": phase_num, "total_phases": len(self.executor.meta_plan), "status": "skipped"}
-            })
+            }
+            self.executor._log_system_event(event_data)
+            yield self.executor._format_sse(event_data)
             return
 
         is_fast_path_candidate = (
@@ -426,7 +432,7 @@ class PhaseExecutor:
 
                 phase['arguments'] = modified_args
 
-                yield self.executor._format_sse({
+                event_data = {
                     "step": "System Correction",
                     "type": "workaround",
                     "details": {
@@ -434,12 +440,16 @@ class PhaseExecutor:
                         "correction_type": "redundant_argument_pruning",
                         "pruned_arguments": args_to_prune
                     }
-                })
+                }
+                self.executor._log_system_event(event_data)
+                yield self.executor._format_sse(event_data)
 
             tool_scope = self.executor.dependencies['STATE'].get('tool_scopes', {}).get(tool_name)
 
             if tool_scope == 'column':
-                yield self.executor._format_sse({"step": "Plan Optimization", "type": "plan_optimization", "details": f"FASTPATH Data Expansion: Preparing column-level iteration for '{tool_name}'."})
+                event_data = {"step": "Plan Optimization", "type": "plan_optimization", "details": f"FASTPATH Data Expansion: Preparing column-level iteration for '{tool_name}'."}
+                self.executor._log_system_event(event_data)
+                yield self.executor._format_sse(event_data)
 
                 yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
                 tool_constraints, constraint_events = await self.executor._get_tool_constraints(tool_name)
@@ -488,7 +498,9 @@ class PhaseExecutor:
                                 is_char = any(t in col_type for t in ["CHAR", "VARCHAR", "TEXT", "DATE", "TIMESTAMP"])
                                 if (required_type == "numeric" and not is_numeric) or (required_type == "character" and not is_char):
                                     skip_details = f"Tool '{tool_name}' requires a {required_type} column, but '{col_name}' is '{col_type}'. Skipping."
-                                    yield self.executor._format_sse({"step": "Skipping Incompatible Column", "type": "plan_optimization", "details": skip_details})
+                                    event_data = {"step": "Skipping Incompatible Column", "type": "plan_optimization", "details": skip_details}
+                                    self.executor._log_system_event(event_data)
+                                    yield self.executor._format_sse(event_data)
                                     continue
                             expanded_loop_items.append({**table_item, "column_name": col_name})
                     else:
@@ -498,15 +510,21 @@ class PhaseExecutor:
                 self.executor.current_loop_items = expanded_loop_items
 
                 if not self.executor.current_loop_items:
-                    yield self.executor._format_sse({"step": "Skipping Empty Loop", "type": "system_message", "details": f"No compatible columns found for '{tool_name}'."})
-                    yield self.executor._format_sse({"step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}", "type": "phase_end", "details": {"phase_num": phase_num, "total_phases": len(self.executor.meta_plan), "status": "skipped"}})
+                    event_data = {"step": "Skipping Empty Loop", "type": "system_message", "details": f"No compatible columns found for '{tool_name}'."}
+                    self.executor._log_system_event(event_data)
+                    yield self.executor._format_sse(event_data)
+                    event_data = {"step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}", "type": "phase_end", "details": {"phase_num": phase_num, "total_phases": len(self.executor.meta_plan), "status": "skipped"}}
+                    self.executor._log_system_event(event_data)
+                    yield self.executor._format_sse(event_data)
                     return
 
-            yield self.executor._format_sse({
+            event_data = {
                 "step": "Plan Optimization",
                 "type": "plan_optimization",
                 "details": f"FASTPATH enabled for tool loop: '{tool_name}'"
-            })
+            }
+            self.executor._log_system_event(event_data)
+            yield self.executor._format_sse(event_data)
 
             static_phase_args = phase.get("arguments", {})
 
@@ -526,7 +544,9 @@ class PhaseExecutor:
             all_loop_results = []
             yield self.executor._format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
             for i, item in enumerate(self.executor.current_loop_items):
-                yield self.executor._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.executor.current_loop_items)}", "type": "system_message", "details": item})
+                event_data = {"step": f"Processing Loop Item {i+1}/{len(self.executor.current_loop_items)}", "type": "system_message", "details": item}
+                self.executor._log_system_event(event_data)
+                yield self.executor._format_sse(event_data)
 
                 item_data = item if isinstance(item, dict) else {}
                 resolved_item_args = self.executor._resolve_arguments(static_phase_args, loop_item=item_data)
@@ -559,6 +579,7 @@ class PhaseExecutor:
                 # Ensure fast-path tool calls are logged just like slow-path
                 action_for_history = copy.deepcopy(command)
                 action_for_history.setdefault("metadata", {})["phase_number"] = phase_num
+                action_for_history.setdefault("metadata", {})["execution_depth"] = self.executor.execution_depth
                 self.executor.turn_action_history.append({"action": action_for_history, "result": enriched_tool_output})
                 # --- MODIFICATION END ---
                 all_loop_results.append(enriched_tool_output)
@@ -576,7 +597,9 @@ class PhaseExecutor:
             all_loop_item_results_aggregate = []
 
             for i, item in enumerate(self.executor.current_loop_items):
-                yield self.executor._format_sse({"step": f"Processing Loop Item {i+1}/{len(self.executor.current_loop_items)}", "type": "system_message", "details": item})
+                event_data = {"step": f"Processing Loop Item {i+1}/{len(self.executor.current_loop_items)}", "type": "system_message", "details": item}
+                self.executor._log_system_event(event_data)
+                yield self.executor._format_sse(event_data)
 
                 try:
                     async for event in self._execute_standard_phase(phase, is_loop_iteration=True, loop_item=item):
@@ -599,7 +622,9 @@ class PhaseExecutor:
                     }
                     all_loop_item_results_aggregate.append(error_result)
                     self.executor._add_to_structured_data(error_result)
-                    yield self.executor._format_sse({"step": "Loop Item Failed", "details": error_result, "type": "error"}, "tool_result")
+                    event_data = {"step": "Loop Item Failed", "details": error_result, "type": "error"}
+                    self.executor._log_system_event(event_data, "tool_result")
+                    yield self.executor._format_sse(event_data, "tool_result")
 
                 self.executor.processed_loop_items.append(item)
 
@@ -612,11 +637,13 @@ class PhaseExecutor:
             self.executor.processed_loop_items = []
 
 
-        yield self.executor._format_sse({
+        event_data = {
             "step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}",
             "type": "phase_end",
             "details": {"phase_num": phase_num, "total_phases": len(self.executor.meta_plan), "status": "completed"}
-        })
+        }
+        self.executor._log_system_event(event_data)
+        yield self.executor._format_sse(event_data)
 
     def _is_numeric(self, value: any) -> bool:
         """Checks if a value can be reliably converted to a number."""
@@ -704,16 +731,26 @@ class PhaseExecutor:
             if is_loop_iteration:
                  self.executor.last_tool_output = all_phase_results
                  self.executor._add_to_structured_data(all_phase_results)
+                 action_for_history = {
+                     "tool_name": "TDA_SystemLog",
+                     "arguments": {"message": f"Multi-Tool Phase Item: {loop_item}"},
+                     "metadata": {"execution_depth": self.executor.execution_depth}
+                 }
                  self.executor.turn_action_history.append({
-                     "action": f"Multi-Tool Phase Item: {loop_item}",
+                     "action": action_for_history,
                      "result": all_phase_results
                  })
             else:
                  self.executor.workflow_state[phase_result_key] = all_phase_results
                  self.executor.last_tool_output = all_phase_results
                  self.executor._add_to_structured_data(all_phase_results)
+                 action_for_history = {
+                     "tool_name": "TDA_SystemLog",
+                     "arguments": {"message": f"Multi-Tool Phase: {phase_goal}"},
+                     "metadata": {"execution_depth": self.executor.execution_depth}
+                 }
                  self.executor.turn_action_history.append({
-                     "action": f"Multi-Tool Phase: {phase_goal}",
+                     "action": action_for_history,
                      "result": all_phase_results
                  })
 
@@ -1007,7 +1044,9 @@ class PhaseExecutor:
                 ):
                     yield event
                 # --- MODIFICATION START: Manually log orchestrator action to history ---
-                self.executor.turn_action_history.append({"action": action, "result": self.executor.last_tool_output})
+                action_for_history = copy.deepcopy(action)
+                action_for_history.setdefault("metadata", {})["execution_depth"] = self.executor.execution_depth
+                self.executor.turn_action_history.append({"action": action_for_history, "result": self.executor.last_tool_output})
                 phase_num = phase.get("phase", self.executor.current_phase_index + 1)
                 phase_result_key = f"result_of_phase_{phase_num}"
                 if phase_result_key not in self.executor.workflow_state:
@@ -1023,7 +1062,12 @@ class PhaseExecutor:
              async for event in orchestrators.execute_hallucinated_loop(self.executor, phase):
                  yield event
              # --- MODIFICATION START: Manually log orchestrator action to history ---
-             self.executor.turn_action_history.append({"action": f"Hallucinated Loop: {phase.get('goal')}", "result": self.executor.last_tool_output})
+             action_for_history = {
+                 "tool_name": "TDA_SystemLog",
+                 "arguments": {"message": f"Hallucinated Loop: {phase.get('goal')}"},
+                 "metadata": {"execution_depth": self.executor.execution_depth}
+             }
+             self.executor.turn_action_history.append({"action": action_for_history, "result": self.executor.last_tool_output})
              phase_num = phase.get("phase", self.executor.current_phase_index + 1)
              phase_result_key = f"result_of_phase_{phase_num}"
              if phase_result_key not in self.executor.workflow_state:
@@ -1217,10 +1261,11 @@ class PhaseExecutor:
         tool_name = action.get("tool_name")
         arguments = action.get("arguments", {})
         
-        # --- MODIFICATION START: Add phase number to action for history ---
+        # --- MODIFICATION START: Add phase number and execution depth to action for history ---
         phase_num = phase.get("phase", self.executor.current_phase_index + 1)
         action_for_history = copy.deepcopy(action)
         action_for_history.setdefault("metadata", {})["phase_number"] = phase_num
+        action_for_history.setdefault("metadata", {})["execution_depth"] = self.executor.execution_depth
         # --- MODIFICATION END ---
 
 
@@ -1352,12 +1397,15 @@ class PhaseExecutor:
                         "summary": f"Tool failed. Attempting self-correction ({attempt + 1}/{max_retries - 1}).",
                         "details": tool_result
                     }
-                    yield self.executor._format_sse({"step": "System Self-Correction", "type": "workaround", "details": correction_details})
+                    event_data = {"step": "System Self-Correction", "type": "workaround", "details": correction_details}
+                    self.executor._log_system_event(event_data)
+                    yield self.executor._format_sse(event_data)
 
                     corrected_action, correction_events = await self._attempt_tool_self_correction(action, tool_result)
 
-                    for event in correction_events:
-                        yield event
+                    for event_data, event_name in correction_events:
+                        self.executor._log_system_event(event_data, event_name=event_name)
+                        yield self.executor._format_sse(event_data, event=event_name)
 
                     if corrected_action:
                         if "FINAL_ANSWER" in corrected_action:

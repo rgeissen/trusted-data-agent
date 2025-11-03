@@ -131,6 +131,34 @@ class PlanExecutor:
         # --- MODIFICATION END ---
 
 
+    def _log_system_event(self, event_data: dict, event_name: str = None):
+        """Logs a system-level event to the turn action history for replay and debugging."""
+        # Avoid logging token updates or status indicators
+        if event_name in ["token_update", "status_indicator_update"] or "state" in event_data:
+            return
+
+        # Avoid logging the final answer event as it's not a step in the process
+        if event_name == "final_answer":
+            return
+
+        action_for_history = {
+            "tool_name": "TDA_SystemLog",
+            "arguments": {
+                "message": event_data.get("step"),
+                "details": event_data.get("details")
+            },
+            "metadata": {
+                "execution_depth": self.execution_depth,
+                "type": event_data.get("type")
+            }
+        }
+        result = {"status": "info"}
+        if event_data.get("type") in ["error", "cancelled"]:
+            result["status"] = event_data.get("type")
+
+        self.turn_action_history.append({"action": action_for_history, "result": result})
+
+
     @staticmethod
     def _format_sse(data: dict, event: str = None) -> str:
         msg = f"data: {json.dumps(data)}\n"
@@ -503,11 +531,13 @@ class PlanExecutor:
                             original_turn_id = str(idx + 1)
                             break
 
-                yield self._format_sse({
+                event_data = {
                     "step": f"🔄 Replaying {replay_type_text} Plan (from Turn {original_turn_id})",
                     "type": "system_message",
                     "details": f"Re-executing {'optimized' if replay_type_text == 'Optimized' else 'original'} plan..."
-                })
+                }
+                self._log_system_event(event_data)
+                yield self._format_sse(event_data)
             # --- MODIFICATION END ---
             else:
                 if self.is_delegated_task:
@@ -591,13 +621,15 @@ class PlanExecutor:
 
                         if self.execution_depth == 0 and replan_triggered and replan_attempt < max_replans:
                             replan_attempt += 1
-                            yield self._format_sse({
+                            event_data = {
                                 "step": "Re-planning for Efficiency", "type": "plan_optimization",
                                 "details": {
                                     "summary": "Initial plan uses a sub-prompt alongside other tools. Agent is re-planning to create a more efficient, tool-only workflow.",
                                     "original_plan": copy.deepcopy(self.meta_plan) # Log the plan *before* this replan
                                 }
-                            })
+                            }
+                            self._log_system_event(event_data)
+                            yield self._format_sse(event_data)
                             continue # Loop back to replan
                         break # Exit planning loop
 
@@ -627,7 +659,9 @@ class PlanExecutor:
                     async for event in self._run_plan(): yield event
             except DefinitiveToolError as e:
                 app_logger.error(f"Execution halted by definitive tool error: {e.friendly_message}")
-                yield self._format_sse({"step": "Unrecoverable Error", "details": e.friendly_message, "type": "error"}, "tool_result")
+                event_data = {"step": "Unrecoverable Error", "details": e.friendly_message, "type": "error"}
+                self._log_system_event(event_data, "tool_result")
+                yield self._format_sse(event_data, "tool_result")
                 final_answer_override = f"I could not complete the request. Reason: {e.friendly_message}"
                 self.state = self.AgentState.SUMMARIZING # Go to summarization even on error
 
@@ -641,7 +675,9 @@ class PlanExecutor:
             app_logger.info(f"PlanExecutor execution cancelled for user {self.user_uuid}, session {self.session_id}.")
             self.state = self.AgentState.ERROR # Mark as error to prevent history update
             # Yield a specific event to the frontend
-            yield self._format_sse({"step": "Execution Stopped", "details": "The process was stopped by the user.", "type": "cancelled"}, "cancelled")
+            event_data = {"step": "Execution Stopped", "details": "The process was stopped by the user.", "type": "cancelled"}
+            self._log_system_event(event_data, "cancelled")
+            yield self._format_sse(event_data, "cancelled")
             # Re-raise so the caller (routes.py) knows it was cancelled
             raise
 
@@ -650,7 +686,9 @@ class PlanExecutor:
             root_exception = unwrap_exception(e)
             app_logger.error(f"Error in state {self.state.name} for user {self.user_uuid}, session {self.session_id}: {root_exception}", exc_info=True)
             self.state = self.AgentState.ERROR
-            yield self._format_sse({"error": "Execution stopped due to an unrecoverable error.", "details": str(root_exception)}, "error")
+            event_data = {"error": "Execution stopped due to an unrecoverable error.", "details": str(root_exception), "step": "Unrecoverable Error", "type": "error"}
+            self._log_system_event(event_data, "error")
+            yield self._format_sse(event_data, "error")
 
         finally:
             # --- Cleanup Phase (Always runs) ---
@@ -707,10 +745,12 @@ class PlanExecutor:
         prompt_name = single_phase.get('executable_prompt')
         prompt_args = single_phase.get('arguments', {})
 
-        yield self._format_sse({
+        event_data = {
             "step": "System Correction", "type": "workaround",
             "details": f"Single Prompt('{prompt_name}') identified. Expanding plan in-process to improve efficiency."
-        })
+        }
+        self._log_system_event(event_data)
+        yield self._format_sse(event_data)
 
         prompt_info = self._get_prompt_info(prompt_name)
         if prompt_info:
@@ -718,10 +758,12 @@ class PlanExecutor:
             missing_args = required_args - set(prompt_args.keys())
 
             if missing_args:
-                yield self._format_sse({
+                event_data = {
                     "step": "System Correction", "type": "workaround",
                     "details": f"Prompt '{prompt_name}' is missing required arguments: {missing_args}. Attempting to extract from user query."
-                })
+                }
+                self._log_system_event(event_data)
+                yield self._format_sse(event_data)
 
                 enrichment_prompt = (
                     f"You are an expert argument extractor. From the user's query, extract the values for the following missing arguments: {list(missing_args)}. "
@@ -731,11 +773,13 @@ class PlanExecutor:
                 reason = f"Extracting missing arguments for prompt '{prompt_name}'"
 
                 call_id = str(uuid.uuid4())
-                yield self._format_sse({
+                event_data = {
                     "step": "Calling LLM for Argument Enrichment",
                     "type": "system_message",
                     "details": {"summary": reason, "call_id": call_id}
-                })
+                }
+                self._log_system_event(event_data)
+                yield self._format_sse(event_data)
                 yield self._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
 
                 response_text, input_tokens, output_tokens = await self._call_llm_and_update_tokens(
@@ -786,10 +830,12 @@ class PlanExecutor:
 
             if is_final_report_phase:
                 app_logger.info(f"Sub-process (depth {self.execution_depth}) is skipping its final summary phase.")
-                yield self._format_sse({
+                event_data = {
                     "step": "Plan Optimization", "type": "plan_optimization",
                     "details": "Sub-process is skipping its final summary task to prevent redundant work. The main process will generate the final report."
-                })
+                }
+                self._log_system_event(event_data)
+                yield self._format_sse(event_data)
                 self.meta_plan = self.meta_plan[:-1]
 
 
@@ -838,11 +884,13 @@ class PlanExecutor:
         Creates and runs a sub-executor for a delegated prompt, adopting its
         final state upon completion to ensure a continuous and complete workflow.
         """
-        yield self._format_sse({
+        event_data = {
             "step": "Prompt Execution Granted",
             "details": f"Executing prompt '{prompt_name}' as part of the plan.",
             "type": "workaround"
-        })
+        }
+        self._log_system_event(event_data)
+        yield self._format_sse(event_data)
 
         force_disable_sub_history = is_delegated_task
         if force_disable_sub_history:
@@ -866,18 +914,7 @@ class PlanExecutor:
         sub_executor.workflow_state = self.workflow_state
         sub_executor.structured_collected_data = self.structured_collected_data
 
-        # --- MODIFICATION START: Add start marker for sub-plan ---
-        self.turn_action_history.append({
-            "action": {
-                "tool_name": "TDA_SystemLog",
-                "arguments": {
-                    "message": f"Sub-plan initiated: Delegating to prompt '{prompt_name}'.",
-                    "details": f"Triggering prompt with arguments: {prompt_args}"
-                }
-            },
-            "result": {"status": "info", "metadata": {"tool_name": "TDA_SystemLog"}}
-        })
-        # --- MODIFICATION END ---
+
 
         async for event in sub_executor.run():
             yield event
@@ -892,21 +929,7 @@ class PlanExecutor:
             
         self.last_tool_output = sub_executor.last_tool_output
         
-        # --- MODIFICATION START: Add end marker for sub-plan ---
-        sub_plan_status = "successfully"
-        if sub_executor.state == self.AgentState.ERROR:
-            sub_plan_status = "with an error"
-            
-        self.turn_action_history.append({
-            "action": {
-                "tool_name": "TDA_SystemLog",
-                "arguments": {
-                    "message": f"Sub-plan for '{prompt_name}' completed {sub_plan_status}. Resuming main plan."
-                }
-            },
-            "result": {"status": "info", "metadata": {"tool_name": "TDA_SystemLog"}}
-        })
-        # --- MODIFICATION END ---
+
 
         if sub_executor.state == self.AgentState.ERROR:
             app_logger.error(f"Sub-executor for prompt '{prompt_name}' failed.")
@@ -1025,7 +1048,9 @@ class PlanExecutor:
         # --- MODIFICATION END ---
 
         # The clean summary is already in self.final_summary_text
-        yield self._format_sse({"step": "LLM has generated the final answer", "details": self.final_summary_text}, "llm_thought")
+        event_data = {"step": "LLM has generated the final answer", "details": self.final_summary_text}
+        self._log_system_event(event_data, "llm_thought")
+        yield self._format_sse(event_data, "llm_thought")
 
         # --- MODIFICATION START: Use self.current_turn_number ---
         # Remove the separate, buggy calculation and use the instance variable

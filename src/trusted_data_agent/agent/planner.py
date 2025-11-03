@@ -151,11 +151,13 @@ class Planner:
 
                 app_logger.info(f"PLAN INJECTION: Hydrated plan with data from previous turn. Loop source changed from '{original_loop_source}' to '{injection_key}'.")
 
-                yield self.executor._format_sse({
+                event_data = {
                     "step": "Plan Optimization",
                     "type": "plan_optimization",
                     "details": f"PLAN HYDRATION: Injected data from the previous turn to fulfill the request: '{self.executor.original_user_input}'."
-                })
+                }
+                self.executor._log_system_event(event_data)
+                yield self.executor._format_sse(event_data)
 
     def _validate_and_correct_plan(self):
         """
@@ -189,7 +191,7 @@ class Planner:
                     correction_made = True
 
             if correction_made:
-                yield self.executor._format_sse({
+                event_data = {
                     "step": "System Correction",
                     "type": "workaround",
                     "details": {
@@ -199,7 +201,9 @@ class Planner:
                             "to": phase
                         }
                     }
-                })
+                }
+                self.executor._log_system_event(event_data)
+                yield self.executor._format_sse(event_data)
 
     def _ensure_final_report_phase(self):
         """
@@ -240,14 +244,16 @@ class Planner:
         }
         self.executor.meta_plan.append(final_phase)
 
-        yield self.executor._format_sse({
+        event_data = {
             "step": "System Correction",
             "type": "workaround",
             "details": {
                 "summary": "The agent's plan was missing a final reporting step. The system has automatically added it to ensure a complete response.",
                 "correction": { "added_phase": final_phase }
             }
-        })
+        }
+        self.executor._log_system_event(event_data)
+        yield self.executor._format_sse(event_data)
 
 
     async def _rewrite_plan_for_multi_loop_synthesis(self):
@@ -318,7 +324,7 @@ class Planner:
 
                         made_change = True
 
-                        yield self.executor._format_sse({
+                        event_data = {
                             "step": "System Correction",
                             "type": "workaround",
                             "details": {
@@ -328,7 +334,9 @@ class Planner:
                                     "to": copy.deepcopy(self.executor.meta_plan[loop_block_start_index : j+2])
                                 }
                             }
-                        })
+                        }
+                        self.executor._log_system_event(event_data)
+                        yield self.executor._format_sse(event_data)
 
                         i = j + 1
                         continue
@@ -365,7 +373,9 @@ class Planner:
                     reason = "Classifying TDA_LLMTask loop intent for optimization."
 
                     call_id = str(uuid.uuid4())
-                    yield self.executor._format_sse({"step": "Analyzing Plan Efficiency", "type": "plan_optimization", "details": {"summary": "Checking if an iterative task can be optimized into a single batch operation.", "call_id": call_id}})
+                    event_data = {"step": "Analyzing Plan Efficiency", "type": "plan_optimization", "details": {"summary": "Checking if an iterative task can be optimized into a single batch operation.", "call_id": call_id}}
+                    self.executor._log_system_event(event_data)
+                    yield self.executor._format_sse(event_data)
                     yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
 
                     response_text, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
@@ -409,14 +419,16 @@ class Planner:
                     if "task_description" not in phase["arguments"]:
                          phase["arguments"]["task_description"] = phase.get("goal", "Perform the required task.")
 
-                    yield self.executor._format_sse({
+                    event_data = {
                         "step": "System Correction",
                         "type": "workaround",
                         "details": {
                             "summary": "The agent's plan was inefficient. The system has automatically rewritten it to perform the analysis in a single, efficient step.",
                             "correction": {"from": original_phase, "to": phase}
                         }
-                    })
+                    }
+                    self.executor._log_system_event(event_data)
+                    yield self.executor._format_sse(event_data)
                     made_change = True
                 else:
                     app_logger.info(f"PLAN REWRITE SKIPPED: Task classified as 'synthesis'. Preserving loop for phase {phase.get('phase')}.")
@@ -475,7 +487,7 @@ class Planner:
                         }
                         break
 
-                yield self.executor._format_sse({
+                event_data = {
                     "step": "System Correction",
                     "type": "workaround",
                     "details": {
@@ -485,7 +497,9 @@ class Planner:
                             "to": next_phase
                         }
                     }
-                })
+                }
+                self.executor._log_system_event(event_data)
+                yield self.executor._format_sse(event_data)
                 made_change = True
 
             i += 1
@@ -543,10 +557,12 @@ class Planner:
 
                 reason = "Consolidating inefficient SQL plan."
                 call_id = str(uuid.uuid4())
-                yield self.executor._format_sse({
+                event_data = {
                     "step": "Optimizing SQL Plan", "type": "plan_optimization",
                     "details": {"summary": "Detected an inefficient multi-step SQL plan. The agent is consolidating it into a single, optimized query.", "call_id": call_id}
-                })
+                }
+                self.executor._log_system_event(event_data)
+                yield self.executor._format_sse(event_data)
                 yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
 
                 response_text, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
@@ -590,13 +606,15 @@ class Planner:
                     for phase_idx in range(i + 1, len(self.executor.meta_plan)):
                         self.executor.meta_plan[phase_idx]['phase'] -= (num_phases_to_remove - 1)
 
-                    yield self.executor._format_sse({
+                    event_data = {
                         "step": "System Correction", "type": "workaround",
                         "details": {
                             "summary": "The agent's SQL plan was inefficient. The system has automatically consolidated it into a single query.",
                             "correction": {"from": original_phases, "to": consolidated_phase}
                         }
-                    })
+                    }
+                    self.executor._log_system_event(event_data)
+                    yield self.executor._format_sse(event_data)
                     app_logger.info(f"PLAN REWRITE (SQL Consolidation): Final rewritten plan: {self.executor.meta_plan}")
                     i = 0
                     continue
@@ -637,14 +655,16 @@ class Planner:
             yield event
 
 
-        yield self.executor._format_sse({
+        event_data = {
             "step": "Strategic Meta-Plan Generated",
             "type": "plan_generated",
             "details": self.executor.meta_plan,
             "metadata": {
                 "execution_depth": self.executor.execution_depth
             }
-        })
+        }
+        self.executor._log_system_event(event_data)
+        yield self.executor._format_sse(event_data)
 
     async def _generate_meta_plan(self, force_disable_history: bool = False, replan_context: str = None):
         """The universal planner. It generates a meta-plan for ANY request."""
@@ -652,7 +672,9 @@ class Planner:
         explicit_parameters_section = ""
 
         if self.executor.active_prompt_name:
-            yield self.executor._format_sse({"step": "Loading Workflow Prompt", "type": "system_message", "details": f"Loading '{self.executor.active_prompt_name}'"})
+            event_data = {"step": "Loading Workflow Prompt", "type": "system_message", "details": f"Loading '{self.executor.active_prompt_name}'"}
+            self.executor._log_system_event(event_data)
+            yield self.executor._format_sse(event_data)
             mcp_client = self.executor.dependencies['STATE'].get('mcp_client')
             if not mcp_client: raise RuntimeError("MCP client is not connected.")
 
@@ -709,7 +731,9 @@ class Planner:
             "call_id": call_id,
             "execution_depth": self.executor.execution_depth
         }
-        yield self.executor._format_sse({"step": "Calling LLM for Planning", "type": "system_message", "details": details_payload})
+        event_data = {"step": "Calling LLM for Planning", "type": "system_message", "details": details_payload}
+        self.executor._log_system_event(event_data)
+        yield self.executor._format_sse(event_data)
 
         previous_turn_summary_str = self._create_summary_from_history(self.executor.previous_turn_data)
 
@@ -811,7 +835,9 @@ class Planner:
             if isinstance(plan_object, dict) and plan_object.get("plan_type") == "conversational":
                 self.executor.is_conversational_plan = True
                 self.executor.temp_data_holder = plan_object.get("response", "I'm sorry, I don't have a response for that.")
-                yield self.executor._format_sse({"step": "Conversational Response Identified", "type": "system_message", "details": self.executor.temp_data_holder})
+                event_data = {"step": "Conversational Response Identified", "type": "system_message", "details": self.executor.temp_data_holder}
+                self.executor._log_system_event(event_data)
+                yield self.executor._format_sse(event_data)
                 return
 
             plan_object_is_dict = isinstance(plan_object, dict)
@@ -819,11 +845,13 @@ class Planner:
             is_direct_prompt = plan_object_is_dict and ("prompt_name" in plan_object or "executable_prompt" in plan_object)
 
             if is_direct_tool or is_direct_prompt:
-                yield self.executor._format_sse({
+                event_data = {
                     "step": "System Correction",
                     "type": "workaround",
                     "details": "Planner returned a direct action instead of a plan. System is correcting the format."
-                })
+                }
+                self.executor._log_system_event(event_data)
+                yield self.executor._format_sse(event_data)
 
                 phase = {
                     "phase": 1,
