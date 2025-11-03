@@ -1001,12 +1001,32 @@ class PhaseExecutor:
                     self.executor, action, date_param_name, self.executor.temp_data_holder.get('phrase'), phase
                 ):
                     yield event
+                # --- MODIFICATION START: Manually log orchestrator action to history ---
+                self.executor.turn_action_history.append({"action": action, "result": self.executor.last_tool_output})
+                phase_num = phase.get("phase", self.executor.current_phase_index + 1)
+                phase_result_key = f"result_of_phase_{phase_num}"
+                if phase_result_key not in self.executor.workflow_state:
+                    self.executor.workflow_state[phase_result_key] = []
+                if self.executor.last_tool_output not in self.executor.workflow_state[phase_result_key]:
+                    self.executor.workflow_state[phase_result_key].append(self.executor.last_tool_output)
+                self.executor._add_to_structured_data(self.executor.last_tool_output)
+                # --- MODIFICATION END ---
                 return
 
         if phase.get("type") == "loop" and isinstance(phase.get("loop_over"), list) and all(isinstance(i, str) for i in phase["loop_over"]):
              app_logger.warning("Detected hallucinated loop over strings. Invoking orchestrator.")
              async for event in orchestrators.execute_hallucinated_loop(self.executor, phase):
                  yield event
+             # --- MODIFICATION START: Manually log orchestrator action to history ---
+             self.executor.turn_action_history.append({"action": f"Hallucinated Loop: {phase.get('goal')}", "result": self.executor.last_tool_output})
+             phase_num = phase.get("phase", self.executor.current_phase_index + 1)
+             phase_result_key = f"result_of_phase_{phase_num}"
+             if phase_result_key not in self.executor.workflow_state:
+                 self.executor.workflow_state[phase_result_key] = []
+             if self.executor.last_tool_output not in self.executor.workflow_state[phase_result_key]:
+                 self.executor.workflow_state[phase_result_key].append(self.executor.last_tool_output)
+             self.executor._add_to_structured_data(self.executor.last_tool_output)
+             # --- MODIFICATION END ---
              return
 
 
@@ -1361,8 +1381,13 @@ class PhaseExecutor:
                 break
 
         if not is_fast_path:
-             self.executor.turn_action_history.append({"action": action, "result": self.executor.last_tool_output})
              phase_num = phase.get("phase", self.executor.current_phase_index + 1)
+             # Ensure the action saved to history has the phase number for correct replay rendering
+             action_for_history = copy.deepcopy(action)
+             action_for_history.setdefault("metadata", {})["phase_number"] = phase_num
+
+             self.executor.turn_action_history.append({"action": action_for_history, "result": self.executor.last_tool_output})
+
              phase_result_key = f"result_of_phase_{phase_num}"
              if phase_result_key not in self.executor.workflow_state:
                  self.executor.workflow_state[phase_result_key] = []
@@ -1762,4 +1787,3 @@ class PhaseExecutor:
         """
         correction_handler = CorrectionHandler(self.executor)
         return await correction_handler.attempt_correction(failed_action, error_result)
-

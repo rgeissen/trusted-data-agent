@@ -141,7 +141,41 @@ def create_session(user_uuid: str, provider: str, llm_instance: any, charting_in
 
 def get_session(user_uuid: str, session_id: str) -> dict | None:
     app_logger.debug(f"Getting session '{session_id}' for user '{user_uuid}'.")
-    return _load_session(user_uuid, session_id)
+    session_data = _load_session(user_uuid, session_id)
+    if session_data:
+        history_modified = False
+        # --- MODIFICATION START: Update backfill logic for turn numbers ---
+        if "session_history" in session_data and session_data["session_history"]:
+            if session_data["session_history"] and "turn_number" not in session_data["session_history"][0]:
+                app_logger.info(f"Session {session_id} history is outdated. Adding turn numbers.")
+                history_modified = True
+                turn_counter = 0
+                for msg in session_data["session_history"]:
+                    if msg.get("role") == "user":
+                        turn_counter += 1
+                    msg["turn_number"] = turn_counter
+
+        if "chat_object" in session_data and session_data["chat_object"]:
+            if session_data["chat_object"] and "turn_number" not in session_data["chat_object"][0]:
+                if not history_modified:
+                    app_logger.info(f"Session {session_id} chat_object is outdated. Adding turn numbers.")
+                history_modified = True
+                turn_counter = 0
+                # Skip the initial system message which doesn't have a turn
+                for i, msg in enumerate(session_data["chat_object"]):
+                    # The first two messages are the system prompt and should not be part of a turn
+                    if i < 2:
+                        msg["turn_number"] = 0
+                        continue
+                    if msg.get("role") == "user":
+                        turn_counter += 1
+                    msg["turn_number"] = turn_counter
+
+        if history_modified:
+            app_logger.info(f"Saving session {session_id} after migrating to include turn numbers.")
+            _save_session(user_uuid, session_id, session_data)
+
+    return session_data
 
 def get_all_sessions(user_uuid: str) -> list[dict]:
     app_logger.debug(f"Getting all sessions for user '{user_uuid}'.")
@@ -212,7 +246,28 @@ def add_message_to_histories(user_uuid: str, session_id: str, role: str, content
         # --- 1. Add to UI History (session_history) ---
         # Use the rich HTML content if provided, otherwise fall back to plain text.
         ui_content = html_content if html_content is not None else content
-        session_data.setdefault('session_history', []).append({'role': role, 'content': ui_content, 'isValid': True})
+        
+        # --- MODIFICATION START: Explicitly manage turn_number ---
+        session_history = session_data.setdefault('session_history', [])
+        
+        # Determine the next turn number
+        next_turn_number = 1
+        if session_history:
+            last_message = session_history[-1]
+            last_turn_number = last_message.get('turn_number', 0) # Default to 0 if not found
+            # Increment turn number only when a new user message is added
+            if role == 'user':
+                next_turn_number = last_turn_number + 1
+            else: # Assistant's turn
+                next_turn_number = last_turn_number
+        
+        session_history.append({
+            'role': role,
+            'content': ui_content,
+            'isValid': True,
+            'turn_number': next_turn_number
+        })
+        # --- MODIFICATION END ---
 
         # --- 2. Add to LLM History (chat_object) ---
         # Determine the correct role for the LLM provider
@@ -225,8 +280,28 @@ def add_message_to_histories(user_uuid: str, session_id: str, role: str, content
 
         llm_role = 'model' if role == 'assistant' and provider == 'Google' else role
         
+        # --- MODIFICATION START: Explicitly manage turn_number for chat_object ---
+        chat_object_history = session_data.setdefault('chat_object', [])
+
+        # Determine the next turn number for the LLM history
+        llm_turn_number = 1
+        if chat_object_history:
+            last_llm_message = chat_object_history[-1]
+            last_llm_turn = last_llm_message.get('turn_number', 0) # Default to 0
+            # Increment only on the user's turn for the next cycle
+            if llm_role == 'user':
+                llm_turn_number = last_llm_turn + 1
+            else: # Model's turn
+                llm_turn_number = last_llm_turn
+
         # *Always* add the clean, plain text `content` to the LLM's history.
-        session_data.setdefault('chat_object', []).append({'role': llm_role, 'content': content, 'isValid': True})
+        chat_object_history.append({
+            'role': llm_role,
+            'content': content,
+            'isValid': True,
+            'turn_number': llm_turn_number
+        })
+        # --- MODIFICATION END ---
         # --- MODIFICATION END ---
 
         if not _save_session(user_uuid, session_id, session_data):

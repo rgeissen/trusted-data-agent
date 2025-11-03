@@ -142,6 +142,7 @@ async def execute_date_range_orchestrator(executor, command: dict, date_param_na
         day_result, _, _ = await mcp_adapter.invoke_mcp_tool(
             executor.dependencies['STATE'], day_command, user_uuid=user_uuid, session_id=executor.session_id
         )
+        executor.turn_action_history.append({"action": day_command, "result": day_result})
         # --- MODIFICATION END ---
         
         if isinstance(day_result, dict) and day_result.get("status") == "success" and day_result.get("results"):

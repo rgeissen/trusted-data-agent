@@ -19,117 +19,130 @@ import { handleSessionRenameSave, handleSessionRenameCancel, handleReplayQueryCl
  * @param {Array<object>} originalPlan - The original plan array generated for the turn.
  * @param {Array<object>} executionTrace - The execution trace array (action/result pairs).
  * @param {string|number} turnId - The ID of the turn being displayed.
+ * @param {string} userQuery - The original user query for this turn.
  */
-export function renderHistoricalTrace(originalPlan, executionTrace, turnId) {
+export function renderHistoricalTrace(originalPlan = [], executionTrace = [], turnId, userQuery = 'N/A') {
     DOM.statusWindowContent.innerHTML = ''; // Clear previous content
     state.currentStatusId = 0; // Reset status ID counter for this rendering
     state.isInFastPath = false; // Reset fast path flag
     state.currentPhaseContainerEl = null; // Reset phase container reference
 
-    // 1. Add a title indicating which turn is being viewed
+    // --- Main Rendering Logic ---
+
+    // 1. Add a title
     const titleEl = document.createElement('h3');
     titleEl.className = 'text-lg font-bold text-white mb-4 p-3 bg-gray-900/50 rounded-md';
     titleEl.textContent = `Reloaded Details for Turn ${turnId}`;
     DOM.statusWindowContent.appendChild(titleEl);
 
-    // 2. Optionally, render the original plan first (using the existing helper)
+    // --- MODIFICATION START: Manually render the planning steps for historical view ---
+    // 1a. Render the "Calling LLM for Planning" step
+    updateStatusWindow({
+        step: "Calling LLM for Planning",
+        type: "system_message",
+        details: {
+            summary: "Generating a strategic meta-plan for the goal.",
+            full_text: userQuery
+        }
+    }, false);
+
+    // 1b. Render the "Strategic Meta-Plan Generated" step, which displays the plan itself.
     if (originalPlan && originalPlan.length > 0) {
-        // Use updateStatusWindow to render the plan structure consistently
         updateStatusWindow({
-            step: "Original Strategic Meta-Plan",
-            details: originalPlan,
-            type: "plan_generated" // Use a type that triggers _renderMetaPlanDetails
-        }, false); // isFinal = false initially, might be marked completed later
-    } else {
-         updateStatusWindow({
-            step: "Original Plan",
-            details: "No original plan was recorded for this turn.",
-            type: "system_message"
+            step: "Strategic Meta-Plan Generated",
+            type: "plan_generated",
+            details: originalPlan
         }, false);
     }
+    // --- MODIFICATION END ---
 
-    // 3. Render the execution trace
-    if (executionTrace && executionTrace.length > 0) {
-        const traceTitle = document.createElement('h4');
-        traceTitle.className = 'text-md font-semibold text-white mt-6 mb-3 border-t border-white/10 pt-3';
-        traceTitle.textContent = 'Execution Trace:';
-        DOM.statusWindowContent.appendChild(traceTitle);
+    // --- MODIFICATION START: Render pre-phase system corrections ---
+    // Find and render any system corrections that happened before phase execution,
+    // like adding a final report step. These don't have a phase number.
+    executionTrace.forEach(traceEntry => {
+        if (traceEntry.action === 'system_correction') {
+            // The 'result' field of a correction entry holds the original event data.
+            // We can pass it directly to updateStatusWindow.
+            updateStatusWindow(traceEntry.result, false);
+        }
+    });
+    // --- MODIFICATION END ---
 
-        executionTrace.forEach((traceEntry, index) => {
-            const isLastEntry = index === executionTrace.length - 1;
+    // 2. Group execution trace entries by their phase number for efficient lookup.
+    const traceByPhase = executionTrace.reduce((acc, entry) => {
+        // The phase number is stored in the action's metadata.
+        let phaseNum = entry.action?.metadata?.phase_number;
 
-            // Render the Action/Intent
-            let actionStep = "Tool Execution Intent";
-            let actionDetails = traceEntry.action;
-            let actionType = "tool_intent"; // Default type
+        // --- FALLBACK for older data that didn't store phase_number in the trace ---
+        if (!phaseNum && entry.action?.tool_name && originalPlan.length > 0) {
+            const planPhase = originalPlan.find(p => p.relevant_tools?.includes(entry.action.tool_name));
+            if (planPhase) phaseNum = planPhase.phase;
+        }
 
-            // Handle special cases like replanning or non-standard actions
-            if (typeof traceEntry.action === 'string') {
-                actionStep = traceEntry.action; // e.g., "RECOVERY_REPLAN"
-                actionDetails = traceEntry.result; // Often status is in result for simple actions
-                actionType = "system_message"; // Treat simple strings as system messages
-            } else if (traceEntry.action && (traceEntry.action.tool_name || traceEntry.action.prompt_name)) {
-                // Standard tool/prompt intent
-                actionStep = `Step ${index + 1}: ${traceEntry.action.tool_name || traceEntry.action.prompt_name}`;
-                actionType = "tool_intent";
+        // --- MODIFICATION START: Exclude pre-phase corrections from phase grouping ---
+        // We've already rendered them, so don't process them again.
+        if (entry.action === 'system_correction') return acc;
+        // --- MODIFICATION END ---
+
+        if (phaseNum) {
+            if (!acc[phaseNum]) {
+                acc[phaseNum] = [];
             }
-             // Add more specific handling if other action structures exist in history
+            acc[phaseNum].push(entry);
+        }
+        return acc;
+    }, {});
 
-            updateStatusWindow({
-                step: actionStep,
-                details: actionDetails,
-                type: actionType,
-                // Add tool_name if available for potential highlighting
-                tool_name: (typeof traceEntry.action === 'object' && traceEntry.action) ? traceEntry.action.tool_name : null
-            }, false); // Render as intermediate step initially
+    // 3. Iterate through the original plan (plan-centric rendering).
+    originalPlan.forEach((phase, index) => {
+        const phaseNum = phase.phase;
 
-
-            // Render the Result
-            let resultStep = "Tool Execution Result";
-            let resultDetails = traceEntry.result;
-            let resultType = "tool_result"; // Default type
-
-            if (resultDetails && resultDetails.status === 'error') {
-                resultStep = "Tool Execution Error";
-                resultType = "error";
-            } else if (resultDetails && resultDetails.status === 'skipped') {
-                 resultStep = "Step Skipped";
-                 resultType = "workaround"; // Or a dedicated 'skipped' type if CSS exists
+        // Create and render the phase container using the existing UI function.
+        updateStatusWindow({
+            type: 'phase_start',
+            details: {
+                phase_num: phaseNum,
+                total_phases: originalPlan.length,
+                goal: phase.goal,
+                execution_depth: 0 // Not relevant for historical view, but good to have
             }
-            // Add more specific handling if other result structures exist
-
-            // Call updateStatusWindow for the result, mark as final only if it's the last item
-            updateStatusWindow({
-                step: resultStep,
-                details: resultDetails,
-                type: resultType,
-                 // Add tool_name if available for potential highlighting
-                tool_name: (typeof traceEntry.action === 'object' && traceEntry.action) ? traceEntry.action.tool_name : null
-            }, isLastEntry);
         });
-    } else {
-        const noTraceEl = document.createElement('p');
-        noTraceEl.className = 'text-gray-400 italic mt-4';
-        noTraceEl.textContent = 'No detailed execution trace was recorded for this turn.';
-        DOM.statusWindowContent.appendChild(noTraceEl);
 
-        // Mark the plan step as completed if there's no trace
-         const planStep = document.getElementById(`status-step-${state.currentStatusId}`);
-         if (planStep && planStep.classList.contains('active')) {
-             planStep.classList.remove('active');
-             planStep.classList.add('completed');
-         }
-    }
+        // Find and render all execution trace entries for this phase.
+        const phaseTrace = traceByPhase[phaseNum] || [];
+        if (phaseTrace.length > 0) {
+            phaseTrace.forEach(traceEntry => {
+                // Render the action (intent)
+                updateStatusWindow({
+                    step: `Action: ${traceEntry.action.tool_name || 'Unknown'}`,
+                    details: traceEntry.action,
+                    type: 'tool_intent'
+                }, false); // Not the final step
 
-    // Ensure the last step is marked as completed/final visually
+                // Render the result
+                updateStatusWindow({
+                    step: `Result: ${traceEntry.result.status}`,
+                    details: traceEntry.result,
+                    type: traceEntry.result.status === 'error' ? 'error' : 'tool_result'
+                }, false); // Not the final step
+            });
+        }
+
+        // Close the phase container.
+        updateStatusWindow({ type: 'phase_end', details: { phase_num: phaseNum, total_phases: originalPlan.length, status: 'completed' } });
+    });
+
+    // --- MODIFICATION START: Ensure the very last step is marked as completed ---
+    // The rendering loop marks previous steps as complete, but the last one remains 'active'.
+    // This finalizes the state of the last rendered element.
     const finalStepElement = document.getElementById(`status-step-${state.currentStatusId}`);
     if (finalStepElement && finalStepElement.classList.contains('active')) {
         finalStepElement.classList.remove('active');
-         // Add appropriate final class (completed, error, cancelled - though cancelled unlikely here)
-         if (!finalStepElement.classList.contains('error')) {
-              finalStepElement.classList.add('completed');
-         }
+        if (!finalStepElement.classList.contains('error') && !finalStepElement.classList.contains('cancelled')) {
+            finalStepElement.classList.add('completed');
+        }
     }
+    // --- MODIFICATION END ---
 
      // Auto-scroll logic (optional, could scroll to top instead)
     if (!state.isMouseOverStatus) {
@@ -139,7 +152,7 @@ export function renderHistoricalTrace(originalPlan, executionTrace, turnId) {
 
 
 // --- MODIFICATION START: Add 'isValid' parameter to apply context styles ---
-export function addMessage(role, content, turnId = null, isValid = true) {
+export function addMessage(role, content, turnId = null, isValid = true) { // eslint-disable-line no-unused-vars
 // --- MODIFICATION END ---
     const wrapper = document.createElement('div');
     wrapper.className = `message-bubble group flex items-start gap-4 ${role === 'user' ? 'justify-end' : ''}`;
@@ -364,7 +377,7 @@ function _renderMetaPlanDetails(details) {
     if (!Array.isArray(details)) return null;
 
     let html = `<details class="text-xs" open>
-                    <summary class="cursor-pointer text-gray-400 hover:text-white">Generated Plan (${details.length} phases)</summary>
+                    <summary class="cursor-pointer text-gray-400 hover:text-white">Generated Plan (${details.length} steps)</summary>
                     <div class="space-y-3 mt-2">`;
 
     details.forEach(phase => {
@@ -393,7 +406,7 @@ function _renderMetaPlanDetails(details) {
         }
 
         html += `<div class="status-phase-card">
-                    <div class="font-bold text-gray-300 mb-2">Phase ${phase.phase}</div>
+                    <div class="font-bold text-gray-300 mb-2">Step ${phase.phase}</div>
                     <div class="status-kv-item"><div class="status-kv-key">Goal</div><div class="status-kv-value">${phase.goal}</div></div>`;
 
         html += structuralKeysHtml;
@@ -470,12 +483,12 @@ export function updateStatusWindow(eventData, isFinal = false) {
         phaseHeader.className = 'status-phase-header phase-start';
 
         let depthIndicator = '';
-        if (execution_depth && execution_depth > 0) {
+        if (execution_depth > 0) {
             depthIndicator = '↳ '.repeat(execution_depth);
         }
 
         phaseHeader.innerHTML = `
-            <span class="font-bold flex-shrink-0">${depthIndicator}Starting Plan Phase ${phase_num}/${total_phases}</span>
+            <span class="font-bold flex-shrink-0">${depthIndicator}Plan Step ${phase_num}/${total_phases}</span>
             <span class="text-gray-400 text-xs truncate ml-2">${goal}</span>
         `;
 
@@ -499,11 +512,11 @@ export function updateStatusWindow(eventData, isFinal = false) {
             const { phase_num, total_phases, status } = details;
             const phaseFooter = document.createElement('div');
             phaseFooter.className = 'status-phase-header phase-end';
-            phaseFooter.innerHTML = `<span class="font-bold">Plan Phase ${phase_num}/${total_phases} Completed</span>`;
+            phaseFooter.innerHTML = `<span class="font-bold">Plan Step ${phase_num}/${total_phases} Completed</span>`;
 
             if (status === 'skipped') {
                 phaseFooter.classList.add('skipped');
-                phaseFooter.innerHTML = `<span class="font-bold">Plan Phase ${phase_num}/${total_phases} Skipped</span>`;
+                phaseFooter.innerHTML = `<span class="font-bold">Plan Step ${phase_num}/${total_phases} Skipped</span>`;
             } else {
                 state.currentPhaseContainerEl.classList.add('completed');
             }
@@ -545,7 +558,7 @@ export function updateStatusWindow(eventData, isFinal = false) {
     const stepTitle = document.createElement('h4');
     stepTitle.className = 'font-bold text-sm text-white mb-2';
     // Use step title if provided, otherwise infer from type for trace replay
-    stepTitle.textContent = step || (type === 'tool_result' ? 'Result' : (type === 'tool_error' ? 'Error' : 'Details'));
+    stepTitle.textContent = step || (type === 'tool_result' ? 'Result' : (type === 'error' ? 'Error' : 'Details'));
     stepEl.appendChild(stepTitle);
 
     const metricsEl = document.createElement('div');
@@ -562,11 +575,11 @@ export function updateStatusWindow(eventData, isFinal = false) {
         let detailsString = '';
 
         if (typeof details === 'object' && details !== null) {
-            if (step && step.startsWith("Calling LLM for")) { // Check step exists
+            if (step?.startsWith("Calling LLM for")) { // Check step exists
                 customRenderedHtml = _renderPlanningDetails(details);
-            } else if ((step && step === "Strategic Meta-Plan Generated") || type === "plan_generated") { // Use type as well
+            } else if ((step === "Strategic Meta-Plan Generated") || type === "plan_generated") { // Use type as well
                 customRenderedHtml = _renderMetaPlanDetails(details);
-            } else if ((step && step === "Tool Execution Intent") || type === "tool_intent") { // Use type as well
+            } else if (type === "tool_intent") { // Use type as well
                 customRenderedHtml = _renderToolIntentDetails(details);
             } else {
                 try {
@@ -606,16 +619,16 @@ export function updateStatusWindow(eventData, isFinal = false) {
                 summaryEl.className = 'cursor-pointer text-gray-400 hover:text-white';
 
                 let summaryText = `Details (${detailsString.length} chars)`;
-                if (step && (step.includes('Tool Execution Result') || step.includes('Tool Execution Error')) && typeof details === 'object' && details !== null) {
+                if ((step?.includes('Tool Execution Result') || step?.includes('Tool Execution Error')) && typeof details === 'object' && details !== null) {
                     // Check for standard results structure first
                     if (details.results) {
                         const itemCount = Array.isArray(details.results) ? details.results.length : (details.results ? 1 : 0);
                         const status = details.status || 'unknown';
                         summaryText = `Tool Result (${status}, ${itemCount} items)`;
                     } else if (details.type === 'chart') { // Handle chart spec
-                         summaryText = `Chart Specification`;
+                         summaryText = 'Chart Specification';
                     }
-                } else if (step && step.includes('Final Answer')) {
+                } else if (step?.includes('Final Answer')) {
                     summaryText = `Final Answer Summary`;
                 } else if (type === 'cancelled') {
                     summaryText = 'Cancellation Details';
@@ -1199,4 +1212,3 @@ export function closeChatModal() {
     DOM.chatModalContent.classList.add('scale-95', 'opacity-0');
     setTimeout(() => DOM.chatModalOverlay.classList.add('hidden'), 300);
 }
-
