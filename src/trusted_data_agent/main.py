@@ -37,16 +37,16 @@ handler.addFilter(SseConnectionFilter())
 root_logger = logging.getLogger()
 root_logger.handlers.clear()
 root_logger.addHandler(handler)
-# --- MODIFICATION START: Set Root Logger Level to DEBUG ---
-# root_logger.setLevel(logging.INFO)
-root_logger.setLevel(logging.DEBUG)
+# --- MODIFICATION START: Set Root Logger Level to INFO ---
+root_logger.setLevel(logging.INFO)
+# root_logger.setLevel(logging.DEBUG)
 # --- MODIFICATION END ---
 
 
 app_logger = logging.getLogger("quart.app")
-# --- MODIFICATION START: Set Quart App Logger Level to DEBUG ---
-# app_logger.setLevel(logging.INFO)
-app_logger.setLevel(logging.DEBUG) # Ensures quart.app messages (like ours) are shown
+# --- MODIFICATION START: Set Quart App Logger Level to INFO ---
+app_logger.setLevel(logging.INFO) # Ensures quart.app messages (like ours) are shown
+# app_logger.setLevel(logging.DEBUG)
 # --- MODIFICATION END ---
 app_logger.addHandler(handler)
 app_logger.propagate = False # Prevent duplicate messages in the root logger
