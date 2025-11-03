@@ -26,8 +26,7 @@ export function renderHistoricalTrace(originalPlan = [], executionTrace = [], tu
     state.currentStatusId = 0; // Reset status ID counter for this rendering
     state.isInFastPath = false; // Reset fast path flag
     state.currentPhaseContainerEl = null; // Reset phase container reference
-
-    // --- Main Rendering Logic ---
+    state.pendingSubtaskPlanningEvents = []; // Clear any pending events
 
     // 1. Add a title
     const titleEl = document.createElement('h3');
@@ -35,106 +34,59 @@ export function renderHistoricalTrace(originalPlan = [], executionTrace = [], tu
     titleEl.textContent = `Reloaded Details for Turn ${turnId}`;
     DOM.statusWindowContent.appendChild(titleEl);
 
-    // --- MODIFICATION START: Manually render the planning steps for historical view ---
-    // 1a. Render the "Calling LLM for Planning" step
-    updateStatusWindow({
-        step: "Calling LLM for Planning",
-        type: "system_message",
-        details: {
-            summary: "Generating a strategic meta-plan for the goal.",
-            full_text: userQuery
-        }
-    }, false);
-
-    // 1b. Render the "Strategic Meta-Plan Generated" step, which displays the plan itself.
-    if (originalPlan && originalPlan.length > 0) {
-        updateStatusWindow({
-            step: "Strategic Meta-Plan Generated",
-            type: "plan_generated",
-            details: originalPlan
-        }, false);
-    }
-    // --- MODIFICATION END ---
-
-    // --- MODIFICATION START: Render pre-phase system corrections ---
-    // Find and render any system corrections that happened before phase execution,
-    // like adding a final report step. These don't have a phase number.
+    // 2. Iterate through the new, rich execution trace
     executionTrace.forEach(traceEntry => {
-        if (traceEntry.action === 'system_correction') {
-            // The 'result' field of a correction entry holds the original event data.
-            // We can pass it directly to updateStatusWindow.
-            updateStatusWindow(traceEntry.result, false);
-        }
-    });
-    // --- MODIFICATION END ---
+        let eventData = {};
+        let eventName = null;
 
-    // 2. Group execution trace entries by their phase number for efficient lookup.
-    const traceByPhase = executionTrace.reduce((acc, entry) => {
-        // The phase number is stored in the action's metadata.
-        let phaseNum = entry.action?.metadata?.phase_number;
+        if (traceEntry.action && traceEntry.action.tool_name === 'TDA_SystemLog') {
+            // This is a system event
+            const metadata = traceEntry.action.metadata || {};
+            eventData = {
+                step: traceEntry.action.arguments.message,
+                details: traceEntry.action.arguments.details,
+                type: metadata.type,
+                metadata: {
+                    execution_depth: metadata.execution_depth
+                }
+            };
+        } else if (traceEntry.action && traceEntry.result) {
+            // This is a regular tool call, render as two steps
+            const metadata = traceEntry.action.metadata || {};
 
-        // --- FALLBACK for older data that didn't store phase_number in the trace ---
-        if (!phaseNum && entry.action?.tool_name && originalPlan.length > 0) {
-            const planPhase = originalPlan.find(p => p.relevant_tools?.includes(entry.action.tool_name));
-            if (planPhase) phaseNum = planPhase.phase;
-        }
+            // Render intent
+            const intentEventData = {
+                step: `Tool Execution Intent`,
+                details: traceEntry.action,
+                type: 'tool_intent',
+                metadata: {
+                    execution_depth: metadata.execution_depth
+                }
+            };
+            updateStatusWindow(intentEventData, false);
 
-        // --- MODIFICATION START: Exclude pre-phase corrections from phase grouping ---
-        // We've already rendered them, so don't process them again.
-        if (entry.action === 'system_correction') return acc;
-        // --- MODIFICATION END ---
-
-        if (phaseNum) {
-            if (!acc[phaseNum]) {
-                acc[phaseNum] = [];
-            }
-            acc[phaseNum].push(entry);
-        }
-        return acc;
-    }, {});
-
-    // 3. Iterate through the original plan (plan-centric rendering).
-    originalPlan.forEach((phase, index) => {
-        const phaseNum = phase.phase;
-
-        // Create and render the phase container using the existing UI function.
-        updateStatusWindow({
-            type: 'phase_start',
-            details: {
-                phase_num: phaseNum,
-                total_phases: originalPlan.length,
-                goal: phase.goal,
-                execution_depth: 0 // Not relevant for historical view, but good to have
-            }
-        });
-
-        // Find and render all execution trace entries for this phase.
-        const phaseTrace = traceByPhase[phaseNum] || [];
-        if (phaseTrace.length > 0) {
-            phaseTrace.forEach(traceEntry => {
-                // Render the action (intent)
-                updateStatusWindow({
-                    step: `Action: ${traceEntry.action.tool_name || 'Unknown'}`,
-                    details: traceEntry.action,
-                    type: 'tool_intent'
-                }, false); // Not the final step
-
-                // Render the result
-                updateStatusWindow({
-                    step: `Result: ${traceEntry.result.status}`,
-                    details: traceEntry.result,
-                    type: traceEntry.result.status === 'error' ? 'error' : 'tool_result'
-                }, false); // Not the final step
-            });
+            // Render result
+            const resultEventData = {
+                step: `Tool Execution Result`,
+                details: traceEntry.result,
+                type: traceEntry.result.status === 'error' ? 'tool_error' : 'tool_result',
+                metadata: {
+                    execution_depth: metadata.execution_depth
+                }
+            };
+            // For tool results, the event name is important
+            eventName = resultEventData.type === 'tool_error' ? 'tool_error' : 'tool_result';
+            updateStatusWindow(resultEventData, false, eventName);
+            return; // We've handled this entry completely
+        } else {
+            // Skip unknown trace entry formats
+            return;
         }
 
-        // Close the phase container.
-        updateStatusWindow({ type: 'phase_end', details: { phase_num: phaseNum, total_phases: originalPlan.length, status: 'completed' } });
+        updateStatusWindow(eventData, false);
     });
 
-    // --- MODIFICATION START: Ensure the very last step is marked as completed ---
-    // The rendering loop marks previous steps as complete, but the last one remains 'active'.
-    // This finalizes the state of the last rendered element.
+    // Finalize the last step
     const finalStepElement = document.getElementById(`status-step-${state.currentStatusId}`);
     if (finalStepElement && finalStepElement.classList.contains('active')) {
         finalStepElement.classList.remove('active');
@@ -142,9 +94,8 @@ export function renderHistoricalTrace(originalPlan = [], executionTrace = [], tu
             finalStepElement.classList.add('completed');
         }
     }
-    // --- MODIFICATION END ---
 
-     // Auto-scroll logic (optional, could scroll to top instead)
+    // Auto-scroll logic
     if (!state.isMouseOverStatus) {
         DOM.statusWindowContent.scrollTop = 0; // Scroll to top for reloaded view
     }
@@ -606,29 +557,36 @@ function _renderStandardStep(eventData, parentContainer, isFinal = false) {
 export function updateStatusWindow(eventData, isFinal = false) {
     const { step, details, type, metadata } = eventData;
 
-    // --- MODIFICATION START: Buffer sub-task planning events ---
     const execution_depth_from_details = details?.execution_depth ?? 0;
     const execution_depth_from_metadata = metadata?.execution_depth ?? 0;
     const execution_depth = Math.max(execution_depth_from_details, execution_depth_from_metadata);
 
     const isPlanningEvent = step?.startsWith("Calling LLM for") || type === "plan_generated";
 
-    if (isPlanningEvent && execution_depth > 0) {
+    if (isPlanningEvent && execution_depth > 0 && type !== 'phase_start') {
         state.pendingSubtaskPlanningEvents.push(eventData);
-        return; // Don't render now, wait for the phase_start event
+        return;
     }
-    // --- MODIFICATION END ---
 
     if (!step && type !== 'phase_start' && type !== 'phase_end') {
-        // Allow rendering tool results/errors even without a step title during trace replay
         if (type !== 'tool_result' && type !== 'tool_error') {
             return;
         }
     }
 
     if (type === 'phase_start') {
-        const { phase_num, total_phases, goal, execution_depth } = details;
-        const lastStep = Array.from(DOM.statusWindowContent.querySelectorAll('.status-step')).pop();
+        const { phase_num, total_phases, goal } = details;
+
+        while (state.phaseContainerStack.length > execution_depth) {
+            const oldContainer = state.phaseContainerStack.pop();
+            if (oldContainer) {
+                oldContainer.classList.add('completed');
+            }
+        }
+
+        const parentContainer = state.phaseContainerStack.length > 0 ? state.phaseContainerStack[state.phaseContainerStack.length - 1].querySelector('.status-phase-content') : DOM.statusWindowContent;
+
+        const lastStep = Array.from(parentContainer.querySelectorAll(':scope > .status-step')).pop();
         if (lastStep && lastStep.classList.contains('active')) {
             lastStep.classList.remove('active');
             if (!lastStep.classList.contains('plan-optimization')) {
@@ -638,7 +596,7 @@ export function updateStatusWindow(eventData, isFinal = false) {
 
         const phaseContainer = document.createElement('details');
         phaseContainer.className = 'status-phase-container';
-        phaseContainer.open = false; // --- MODIFICATION: Default to closed ---
+        phaseContainer.open = false; 
 
         const phaseHeader = document.createElement('summary');
         phaseHeader.className = 'status-phase-header phase-start';
@@ -659,16 +617,15 @@ export function updateStatusWindow(eventData, isFinal = false) {
         phaseContent.className = 'status-phase-content';
         phaseContainer.appendChild(phaseContent);
 
-        // --- MODIFICATION START: Render pending planning events ---
         if (execution_depth > 0 && state.pendingSubtaskPlanningEvents.length > 0) {
             state.pendingSubtaskPlanningEvents.forEach(event => {
                 _renderStandardStep(event, phaseContent, false);
             });
-            state.pendingSubtaskPlanningEvents = []; // Clear the buffer
+            state.pendingSubtaskPlanningEvents = [];
         }
-        // --- MODIFICATION END ---
 
-        DOM.statusWindowContent.appendChild(phaseContainer);
+        parentContainer.appendChild(phaseContainer);
+        state.phaseContainerStack.push(phaseContainer);
         state.currentPhaseContainerEl = phaseContainer;
 
         if (!state.isMouseOverStatus) {
@@ -678,7 +635,17 @@ export function updateStatusWindow(eventData, isFinal = false) {
     }
 
     if (type === 'phase_end') {
-        if (state.currentPhaseContainerEl) {
+        const containerToEnd = state.phaseContainerStack.pop();
+        if (containerToEnd) {
+            const phaseContent = containerToEnd.querySelector('.status-phase-content');
+            if (phaseContent) {
+                const lastStepInPhase = Array.from(phaseContent.childNodes).filter(node => node.classList && node.classList.contains('status-step')).pop();
+                if (lastStepInPhase && lastStepInPhase.classList.contains('active')) {
+                    lastStepInPhase.classList.remove('active');
+                    lastStepInPhase.classList.add('completed');
+                }
+            }
+
             const { phase_num, total_phases, status } = details;
             const phaseFooter = document.createElement('div');
             phaseFooter.className = 'status-phase-header phase-end';
@@ -688,12 +655,12 @@ export function updateStatusWindow(eventData, isFinal = false) {
                 phaseFooter.classList.add('skipped');
                 phaseFooter.innerHTML = `<span class="font-bold">Plan Step ${phase_num}/${total_phases} Skipped</span>`;
             } else {
-                state.currentPhaseContainerEl.classList.add('completed');
+                containerToEnd.classList.add('completed');
             }
 
-            state.currentPhaseContainerEl.appendChild(phaseFooter);
-            state.currentPhaseContainerEl = null;
+            containerToEnd.appendChild(phaseFooter);
         }
+        state.currentPhaseContainerEl = state.phaseContainerStack.length > 0 ? state.phaseContainerStack[state.phaseContainerStack.length - 1] : null;
         state.isInFastPath = false;
         if (!state.isMouseOverStatus) {
             DOM.statusWindowContent.scrollTop = DOM.statusWindowContent.scrollHeight;
@@ -701,9 +668,8 @@ export function updateStatusWindow(eventData, isFinal = false) {
         return;
     }
 
-    // Handle standard step events
-    const parentContainer = state.currentPhaseContainerEl ? state.currentPhaseContainerEl.querySelector('.status-phase-content') : DOM.statusWindowContent;
-    _renderStandardStep(eventData, parentContainer, isFinal);
+    const parentEl = state.currentPhaseContainerEl ? state.currentPhaseContainerEl.querySelector('.status-phase-content') : DOM.statusWindowContent;
+    _renderStandardStep(eventData, parentEl, isFinal);
 
     if (!state.isMouseOverStatus) {
         DOM.statusWindowContent.scrollTop = DOM.statusWindowContent.scrollHeight;

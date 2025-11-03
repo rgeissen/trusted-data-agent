@@ -666,7 +666,7 @@ class PhaseExecutor:
         executable_prompt = phase.get("executable_prompt")
 
         if not is_loop_iteration:
-            yield self.executor._format_sse({
+            event_data = {
                 "step": f"Starting Plan Phase {phase_num}/{len(self.executor.meta_plan)}",
                 "type": "phase_start",
                 "details": {
@@ -676,14 +676,18 @@ class PhaseExecutor:
                     "phase_details": phase,
                     "execution_depth": self.executor.execution_depth
                 }
-            })
+            }
+            self.executor._log_system_event(event_data)
+            yield self.executor._format_sse(event_data)
 
         if len(relevant_tools) > 1:
-            yield self.executor._format_sse({
+            event_data = {
                 "step": "Scope-Aware Dispatcher Active",
                 "type": "workaround",
                 "details": f"Multi-tool phase detected. Agent will dispatch {len(relevant_tools)} tools based on scope."
-            })
+            }
+            self.executor._log_system_event(event_data)
+            yield self.executor._format_sse(event_data)
 
             all_phase_results = []
             for tool_name in relevant_tools:
@@ -703,11 +707,13 @@ class PhaseExecutor:
 
                 if tool_scope == 'column' and not has_column_arg:
                     app_logger.info(f"Dispatcher: Tool '{tool_name}' is column-scoped but missing column_name. Calling column iteration orchestrator.")
-                    yield self.executor._format_sse({
+                    event_data = {
                         "step": "Scope-Aware Dispatcher Action",
                         "type": "plan_optimization",
                         "details": f"Dispatcher is invoking column iteration for '{tool_name}' because 'column_name' was missing."
-                    })
+                    }
+                    self.executor._log_system_event(event_data)
+                    yield self.executor._format_sse(event_data)
 
                     action_for_orchestrator = {"tool_name": tool_name, "arguments": current_args}
                     try:
@@ -756,11 +762,13 @@ class PhaseExecutor:
 
 
             if not is_loop_iteration:
-                yield self.executor._format_sse({
+                event_data = {
                     "step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}",
                     "type": "phase_end",
                     "details": {"phase_num": phase_num, "total_phases": len(self.executor.meta_plan), "status": "completed"}
-                })
+                }
+                self.executor._log_system_event(event_data)
+                yield self.executor._format_sse(event_data)
             return
 
 
@@ -796,11 +804,13 @@ class PhaseExecutor:
 
 
         if is_fast_path_candidate:
-            yield self.executor._format_sse({
+            event_data = {
                 "step": "Plan Optimization",
                 "type": "plan_optimization",
                 "details": f"FASTPATH initiated for '{tool_name}'."
-            })
+            }
+            self.executor._log_system_event(event_data)
+            yield self.executor._format_sse(event_data)
 
             fast_path_action = {"tool_name": tool_name, "arguments": strategic_args}
 
@@ -894,11 +904,13 @@ class PhaseExecutor:
             yield self.executor._format_sse(completion_event_payload, "context_state_update")
 
             if not is_loop_iteration:
-                yield self.executor._format_sse({
+                event_data = {
                     "step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}",
                     "type": "phase_end",
                     "details": {"phase_num": phase_num, "total_phases": len(self.executor.meta_plan), "status": "completed"}
-                })
+                }
+                self.executor._log_system_event(event_data)
+                yield self.executor._format_sse(event_data)
             return
 
         # --- Tactical LLM Path (Slow Path) ---

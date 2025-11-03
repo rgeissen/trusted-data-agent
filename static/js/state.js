@@ -42,6 +42,7 @@ export const state = {
     // --- MODIFICATION START: Add state for pending sub-task planning events ---
     pendingSubtaskPlanningEvents: [],
     // --- MODIFICATION END ---
+    phaseContainerStack: [],
 };
 
 // Functions to modify state can be added here if needed, e.g.:
