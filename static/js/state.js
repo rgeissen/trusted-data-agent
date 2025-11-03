@@ -39,6 +39,9 @@ export const state = {
     // --- MODIFICATION START: Add state for tooltip visibility ---
     showTooltips: true,
     // --- MODIFICATION END ---
+    // --- MODIFICATION START: Add state for pending sub-task planning events ---
+    pendingSubtaskPlanningEvents: [],
+    // --- MODIFICATION END ---
 };
 
 // Functions to modify state can be added here if needed, e.g.:

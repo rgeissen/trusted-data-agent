@@ -456,8 +456,169 @@ function _renderToolIntentDetails(details) {
     `;
 }
 
-export function updateStatusWindow(eventData, isFinal = false) {
+function _renderStandardStep(eventData, parentContainer, isFinal = false) {
     const { step, details, type } = eventData;
+
+    // --- UX ENHANCEMENT ---
+    // The "Calling LLM" step is transient; it shouldn't stay active.
+    // We mark it as 'final' so it renders as completed immediately.
+    // The subsequent "Plan Generated" step will become the active one.
+    if (step?.startsWith("Calling LLM for")) {
+        isFinal = true;
+    }
+    // --- END ENHANCEMENT ---
+
+    const lastStep = document.getElementById(`status-step-${state.currentStatusId}`);
+    if (lastStep && lastStep.classList.contains('active') && parentContainer && parentContainer.contains(lastStep)) {
+        lastStep.classList.remove('active');
+        lastStep.classList.add('completed');
+        if (state.isInFastPath && !lastStep.classList.contains('plan-optimization')) {
+            lastStep.classList.add('plan-optimization');
+        }
+    }
+
+    if (type !== 'plan_optimization') {
+        state.isInFastPath = false;
+    } else {
+        state.isInFastPath = true;
+    }
+
+    state.currentStatusId++;
+    const stepEl = document.createElement('div');
+    stepEl.id = `status-step-${state.currentStatusId}`;
+    stepEl.className = 'status-step p-3 rounded-md mb-2'; // Added mb-2 for spacing
+
+    const stepTitle = document.createElement('h4');
+    stepTitle.className = 'font-bold text-sm text-white mb-2';
+    stepTitle.textContent = step || (type === 'tool_result' ? 'Result' : (type === 'error' ? 'Error' : 'Details'));
+    stepEl.appendChild(stepTitle);
+
+    const metricsEl = document.createElement('div');
+    metricsEl.className = 'per-call-metrics text-xs text-gray-400 mb-2 hidden';
+
+    if (typeof details === 'object' && details !== null && details.call_id) {
+        metricsEl.dataset.callId = details.call_id;
+    }
+
+    stepEl.appendChild(metricsEl);
+
+    if (details) {
+        let customRenderedHtml = null;
+        let detailsString = '';
+
+        if (typeof details === 'object' && details !== null) {
+            if (step?.startsWith("Calling LLM for")) {
+                customRenderedHtml = _renderPlanningDetails(details);
+            } else if (type === "plan_generated") {
+                customRenderedHtml = _renderMetaPlanDetails(details);
+            } else if (type === "tool_intent") {
+                customRenderedHtml = _renderToolIntentDetails(details);
+            } else {
+                try {
+                    const cache = new Set();
+                    detailsString = JSON.stringify(details, (key, value) => {
+                        if (typeof value === 'object' && value !== null) {
+                            if (cache.has(value)) {
+                                return '[Circular Reference]';
+                            }
+                            cache.add(value);
+                        }
+                        return value;
+                    }, 2);
+                } catch (e) {
+                    detailsString = "[Could not stringify details]";
+                    console.error("Error stringifying details:", e, details);
+                }
+            }
+        } else {
+            detailsString = String(details);
+        }
+
+        if (customRenderedHtml) {
+            const detailsContainer = document.createElement('div');
+            detailsContainer.innerHTML = customRenderedHtml;
+            stepEl.appendChild(detailsContainer);
+        } else if (detailsString) {
+            const characterThreshold = 300;
+            if (detailsString.length > characterThreshold) {
+                const detailsEl = document.createElement('details');
+                detailsEl.className = 'text-xs';
+
+                const summaryEl = document.createElement('summary');
+                summaryEl.className = 'cursor-pointer text-gray-400 hover:text-white';
+
+                let summaryText = `Details (${detailsString.length} chars)`;
+                if ((step?.includes('Tool Execution Result') || step?.includes('Tool Execution Error')) && typeof details === 'object' && details !== null) {
+                    if (details.results) {
+                        const itemCount = Array.isArray(details.results) ? details.results.length : (details.results ? 1 : 0);
+                        const status = details.status || 'unknown';
+                        summaryText = `Tool Result (${status}, ${itemCount} items)`;
+                    } else if (details.type === 'chart') {
+                        summaryText = 'Chart Specification';
+                    }
+                } else if (step?.includes('Final Answer')) {
+                    summaryText = `Final Answer Summary`;
+                } else if (type === 'cancelled') {
+                    summaryText = 'Cancellation Details';
+                } else if (type === 'error') {
+                    summaryText = 'Error Details';
+                }
+
+                summaryEl.textContent = `${summaryText} - Click to expand`;
+                detailsEl.appendChild(summaryEl);
+
+                const pre = document.createElement('pre');
+                pre.className = 'mt-2 p-2 bg-gray-900/70 rounded-md text-gray-300 overflow-x-auto whitespace-pre-wrap';
+                pre.textContent = detailsString;
+                detailsEl.appendChild(pre);
+                stepEl.appendChild(detailsEl);
+            } else {
+                const pre = document.createElement('pre');
+                pre.className = 'p-2 bg-gray-900/70 rounded-md text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap';
+                pre.textContent = detailsString;
+                stepEl.appendChild(pre);
+            }
+        }
+    }
+
+    parentContainer.appendChild(stepEl);
+
+    if (type === 'workaround') {
+        stepEl.classList.add('workaround');
+    } else if (type === 'error') {
+        stepEl.classList.add('error');
+    } else if (type === 'cancelled') {
+        stepEl.classList.add('cancelled');
+    } else if (state.isInFastPath) {
+        stepEl.classList.add('plan-optimization');
+    }
+
+    if (!isFinal) {
+        stepEl.classList.add('active');
+    } else {
+        stepEl.classList.remove('active');
+        if (!stepEl.classList.contains('error') && !stepEl.classList.contains('cancelled')) {
+            stepEl.classList.add('completed');
+        }
+    }
+}
+
+export function updateStatusWindow(eventData, isFinal = false) {
+    const { step, details, type, metadata } = eventData;
+
+    // --- MODIFICATION START: Buffer sub-task planning events ---
+    const execution_depth_from_details = details?.execution_depth ?? 0;
+    const execution_depth_from_metadata = metadata?.execution_depth ?? 0;
+    const execution_depth = Math.max(execution_depth_from_details, execution_depth_from_metadata);
+
+    const isPlanningEvent = step?.startsWith("Calling LLM for") || type === "plan_generated";
+
+    if (isPlanningEvent && execution_depth > 0) {
+        state.pendingSubtaskPlanningEvents.push(eventData);
+        return; // Don't render now, wait for the phase_start event
+    }
+    // --- MODIFICATION END ---
+
     if (!step && type !== 'phase_start' && type !== 'phase_end') {
         // Allow rendering tool results/errors even without a step title during trace replay
         if (type !== 'tool_result' && type !== 'tool_error') {
@@ -498,6 +659,15 @@ export function updateStatusWindow(eventData, isFinal = false) {
         phaseContent.className = 'status-phase-content';
         phaseContainer.appendChild(phaseContent);
 
+        // --- MODIFICATION START: Render pending planning events ---
+        if (execution_depth > 0 && state.pendingSubtaskPlanningEvents.length > 0) {
+            state.pendingSubtaskPlanningEvents.forEach(event => {
+                _renderStandardStep(event, phaseContent, false);
+            });
+            state.pendingSubtaskPlanningEvents = []; // Clear the buffer
+        }
+        // --- MODIFICATION END ---
+
         DOM.statusWindowContent.appendChild(phaseContainer);
         state.currentPhaseContainerEl = phaseContainer;
 
@@ -533,146 +703,7 @@ export function updateStatusWindow(eventData, isFinal = false) {
 
     // Handle standard step events
     const parentContainer = state.currentPhaseContainerEl ? state.currentPhaseContainerEl.querySelector('.status-phase-content') : DOM.statusWindowContent;
-
-    const lastStep = document.getElementById(`status-step-${state.currentStatusId}`);
-    if (lastStep && lastStep.classList.contains('active') && parentContainer && parentContainer.contains(lastStep)) {
-        lastStep.classList.remove('active');
-        lastStep.classList.add('completed');
-        if (state.isInFastPath && !lastStep.classList.contains('plan-optimization')) {
-             lastStep.classList.add('plan-optimization');
-        }
-    }
-
-    if (type !== 'plan_optimization') {
-        state.isInFastPath = false;
-    } else {
-        state.isInFastPath = true;
-    }
-
-
-    state.currentStatusId++;
-    const stepEl = document.createElement('div');
-    stepEl.id = `status-step-${state.currentStatusId}`;
-    stepEl.className = 'status-step p-3 rounded-md mb-2'; // Added mb-2 for spacing
-
-    const stepTitle = document.createElement('h4');
-    stepTitle.className = 'font-bold text-sm text-white mb-2';
-    // Use step title if provided, otherwise infer from type for trace replay
-    stepTitle.textContent = step || (type === 'tool_result' ? 'Result' : (type === 'error' ? 'Error' : 'Details'));
-    stepEl.appendChild(stepTitle);
-
-    const metricsEl = document.createElement('div');
-    metricsEl.className = 'per-call-metrics text-xs text-gray-400 mb-2 hidden';
-
-    if (typeof details === 'object' && details !== null && details.call_id) {
-        metricsEl.dataset.callId = details.call_id;
-    }
-
-    stepEl.appendChild(metricsEl);
-
-    if (details) {
-        let customRenderedHtml = null;
-        let detailsString = '';
-
-        if (typeof details === 'object' && details !== null) {
-            if (step?.startsWith("Calling LLM for")) { // Check step exists
-                customRenderedHtml = _renderPlanningDetails(details);
-            } else if ((step === "Strategic Meta-Plan Generated") || type === "plan_generated") { // Use type as well
-                customRenderedHtml = _renderMetaPlanDetails(details);
-            } else if (type === "tool_intent") { // Use type as well
-                customRenderedHtml = _renderToolIntentDetails(details);
-            } else {
-                try {
-                    // Use a safe stringify approach
-                    const cache = new Set();
-                    detailsString = JSON.stringify(details, (key, value) => {
-                        if (typeof value === 'object' && value !== null) {
-                            if (cache.has(value)) {
-                                // Circular reference found, discard key
-                                return '[Circular Reference]';
-                            }
-                            // Store value in our collection
-                            cache.add(value);
-                        }
-                        return value;
-                    }, 2); // Indent for readability
-                } catch (e) {
-                    detailsString = "[Could not stringify details]";
-                    console.error("Error stringifying details:", e, details);
-                }
-            }
-        } else {
-            detailsString = String(details);
-        }
-
-        if (customRenderedHtml) {
-            const detailsContainer = document.createElement('div');
-            detailsContainer.innerHTML = customRenderedHtml;
-            stepEl.appendChild(detailsContainer);
-        } else if (detailsString) {
-            const characterThreshold = 300;
-            if (detailsString.length > characterThreshold) {
-                const detailsEl = document.createElement('details');
-                detailsEl.className = 'text-xs';
-
-                const summaryEl = document.createElement('summary');
-                summaryEl.className = 'cursor-pointer text-gray-400 hover:text-white';
-
-                let summaryText = `Details (${detailsString.length} chars)`;
-                if ((step?.includes('Tool Execution Result') || step?.includes('Tool Execution Error')) && typeof details === 'object' && details !== null) {
-                    // Check for standard results structure first
-                    if (details.results) {
-                        const itemCount = Array.isArray(details.results) ? details.results.length : (details.results ? 1 : 0);
-                        const status = details.status || 'unknown';
-                        summaryText = `Tool Result (${status}, ${itemCount} items)`;
-                    } else if (details.type === 'chart') { // Handle chart spec
-                         summaryText = 'Chart Specification';
-                    }
-                } else if (step?.includes('Final Answer')) {
-                    summaryText = `Final Answer Summary`;
-                } else if (type === 'cancelled') {
-                    summaryText = 'Cancellation Details';
-                } else if (type === 'error') {
-                     summaryText = 'Error Details';
-                }
-
-                summaryEl.textContent = `${summaryText} - Click to expand`;
-                detailsEl.appendChild(summaryEl);
-
-                const pre = document.createElement('pre');
-                pre.className = 'mt-2 p-2 bg-gray-900/70 rounded-md text-gray-300 overflow-x-auto whitespace-pre-wrap';
-                pre.textContent = detailsString;
-                detailsEl.appendChild(pre);
-                stepEl.appendChild(detailsEl);
-            } else {
-                const pre = document.createElement('pre');
-                pre.className = 'p-2 bg-gray-900/70 rounded-md text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap';
-                pre.textContent = detailsString;
-                stepEl.appendChild(pre);
-            }
-        }
-    }
-
-    parentContainer.appendChild(stepEl);
-
-    if (type === 'workaround') {
-        stepEl.classList.add('workaround');
-    } else if (type === 'error') {
-        stepEl.classList.add('error');
-    } else if (type === 'cancelled') {
-        stepEl.classList.add('cancelled');
-    } else if (state.isInFastPath) {
-        stepEl.classList.add('plan-optimization');
-    }
-
-    if (!isFinal) {
-        stepEl.classList.add('active');
-    } else {
-        stepEl.classList.remove('active');
-        if (!stepEl.classList.contains('error') && !stepEl.classList.contains('cancelled')) {
-             stepEl.classList.add('completed');
-        }
-    }
+    _renderStandardStep(eventData, parentContainer, isFinal);
 
     if (!state.isMouseOverStatus) {
         DOM.statusWindowContent.scrollTop = DOM.statusWindowContent.scrollHeight;

@@ -640,7 +640,10 @@ class Planner:
         yield self.executor._format_sse({
             "step": "Strategic Meta-Plan Generated",
             "type": "plan_generated",
-            "details": self.executor.meta_plan
+            "details": self.executor.meta_plan,
+            "metadata": {
+                "execution_depth": self.executor.execution_depth
+            }
         })
 
     async def _generate_meta_plan(self, force_disable_history: bool = False, replan_context: str = None):
@@ -703,7 +706,8 @@ class Planner:
         details_payload = {
             "summary": summary,
             "full_text": self.executor.workflow_goal_prompt,
-            "call_id": call_id
+            "call_id": call_id,
+            "execution_depth": self.executor.execution_depth
         }
         yield self.executor._format_sse({"step": "Calling LLM for Planning", "type": "system_message", "details": details_payload})
 
