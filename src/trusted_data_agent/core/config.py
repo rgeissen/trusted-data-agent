@@ -62,7 +62,7 @@ class AppConfig:
         "dba_tableDropImpact",
         "_testMyServer"
     ]
-    INITIALLY_DISABLED_TOOLS = ["sales_top_customers"] # A list of tool names to be disabled by default on application startup.
+    INITIALLY_DISABLED_TOOLS = ["sales_top_customers", "plot_line_chart","plot_pie_chart", "plot_polar_chart", "plot_radar_chart"] # A list of tool names to be disabled by default on application startup.
 
     # --- Tool & Argument Parsing Logic ---
     TOOL_SCOPE_HIERARCHY = [
