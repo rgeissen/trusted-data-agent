@@ -1,14 +1,25 @@
 {
-  "id": "ca313b5a-a8a5-44a0-9fc1-33ed61b3a1be",
+  "id": "4e5edbe4-eca1-471b-a4ed-dc50607b9b74",
   "user_uuid": "f214fe9f-3049-4b51-a195-1b7280bcc8d7",
   "system_prompt_template": null,
   "charting_intensity": "medium",
-  "provider": "Friendli",
-  "model": "google/gemma-3-27b-it",
+  "provider": "Google",
+  "model": "gemini-2.0-flash",
   "session_history": [],
-  "chat_object": [],
+  "chat_object": [
+    {
+      "role": "user",
+      "content": "You are a helpful assistant.",
+      "turn_number": 0
+    },
+    {
+      "role": "model",
+      "content": "Understood.",
+      "turn_number": 0
+    }
+  ],
   "name": "New Chat",
-  "created_at": "2025-11-04T10:21:54.336911",
+  "created_at": "2025-11-04T12:59:33.079478",
   "input_tokens": 0,
   "output_tokens": 0,
   "last_turn_data": {

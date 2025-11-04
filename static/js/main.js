@@ -11,6 +11,7 @@ import { state } from './state.js';
 import { setupPanelToggle } from './utils.js';
 import * as UI from './ui.js';
 import { initializeVoiceRecognition } from './voice.js';
+import { subscribeToNotifications } from './notifications.js';
 
 // --- MODIFICATION START: Add user UUID handling ---
 /**
@@ -60,6 +61,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- MODIFICATION START: Ensure UUID is set first ---
     ensureUserUUID(); // Get/Set the User UUID right away
     console.log("DOMContentLoaded: User UUID ensured:", state.userUUID);
+    subscribeToNotifications();
+
+    // --- MODIFICATION START: Populate and handle UUID copy ---
+    const uuidInput = document.getElementById('tda-user-uuid');
+    const copyButton = document.getElementById('copy-uuid-button');
+
+    if (uuidInput) {
+        uuidInput.value = state.userUUID;
+    }
+
+    if (copyButton) {
+        copyButton.addEventListener('click', () => {
+            uuidInput.select();
+            document.execCommand('copy');
+            const originalTitle = copyButton.title;
+            copyButton.title = 'Copied!';
+            setTimeout(() => {
+                copyButton.title = originalTitle;
+            }, 2000);
+        });
+    }
     // --- MODIFICATION END ---
 
     // Initialize all event listeners first to ensure they are ready.

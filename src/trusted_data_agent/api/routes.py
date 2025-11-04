@@ -336,6 +336,37 @@ async def get_prompt_content(prompt_name):
         app_logger.error(f"Error fetching prompt content for '{prompt_name}': {root_exception}", exc_info=True)
         return jsonify({"error": "An unexpected error occurred while fetching the prompt."}), 500
 
+@api_bp.route("/api/notifications/subscribe", methods=["GET"])
+async def subscribe_notifications():
+    """
+    SSE endpoint for clients to receive real-time notifications.
+    """
+    user_uuid = request.args.get("user_uuid")
+    if not user_uuid:
+        app_logger.error("Missing user_uuid query parameter in notification subscription request.")
+        abort(400, description="user_uuid query parameter is required.")
+
+    app_logger.info(f"User {user_uuid} subscribed to notifications.")
+
+    async def notification_generator():
+        queue = asyncio.Queue()
+        # Use a set for faster lookups
+        queues_for_user = APP_STATE.setdefault("notification_queues", {}).setdefault(user_uuid, set())
+        queues_for_user.add(queue)
+        try:
+            while True:
+                notification = await queue.get()
+                yield PlanExecutor._format_sse(notification, "notification")
+        except asyncio.CancelledError:
+            app_logger.info(f"Notification subscription cancelled for user {user_uuid}.")
+        finally:
+            queues_for_user.remove(queue)
+            # Clean up user entry if no more queues
+            if not queues_for_user:
+                del APP_STATE["notification_queues"][user_uuid]
+
+    return Response(notification_generator(), mimetype="text/event-stream")
+
 @api_bp.route("/sessions", methods=["GET"])
 async def get_sessions():
     """Returns a list of all active chat sessions for the requesting user."""

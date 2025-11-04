@@ -3,16 +3,7 @@ import requests
 import sys
 import os
 
-def get_user_uuid(uuid_file_path: str) -> str:
-    """
-    Reads the user UUID from a file. Exits if the file is not found or empty.
-    """
-    if not os.path.exists(uuid_file_path) or os.stat(uuid_file_path).st_size == 0:
-        print(f"Error: User UUID file not found or is empty: {uuid_file_path}")
-        print("Please run rest_run_query.sh first to generate a UUID.")
-        sys.exit(1)
-    with open(uuid_file_path, 'r') as f:
-        return f.read().strip()
+
 
 def cancel_task(base_url: str, task_id: str, user_uuid: str):
     """
@@ -76,14 +67,12 @@ if __name__ == "__main__":
 
     parser.add_argument("task_id",
                         help="The unique ID of the task to be cancelled.")
+    parser.add_argument("user_uuid",
+                        help="The user UUID to authenticate the request.")
     parser.add_argument("--base-url",
                         default="http://127.0.0.1:5000",
                         help="The base URL of the Trusted Data Agent server (default: http://127.0.0.1:5000)")
-    parser.add_argument("--uuid-file",
-                        default=".tda_user_uuid",
-                        help="Path to the file storing the user UUID (default: .tda_user_uuid)")
 
     args = parser.parse_args()
 
-    user_uuid = get_user_uuid(args.uuid_file)
-    cancel_task(args.base_url, args.task_id, user_uuid)
+    cancel_task(args.base_url, args.task_id, args.user_uuid)

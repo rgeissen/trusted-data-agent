@@ -294,14 +294,14 @@ Send a `POST` request to the `/api/v1/configure` endpoint with the appropriate c
 
 ## 6. Full Workflow Example (cURL)
 
-**Note on `X-TDA-User-UUID`**: Most API calls require an `X-TDA-User-UUID` header. The provided example scripts (`rest_run_query.sh`, `rest_check_status.sh`, `rest_stop_task.sh`) automatically generate and persist a UUID in a local file (`.tda_user_uuid`) for you. When using `curl` directly, you will need to manually include this header with a generated UUID (e.g., `curl -H "X-TDA-User-UUID: <your-generated-uuid>" ...`).
+**Note on `X-TDA-User-UUID`**: Most API calls require an `X-TDA-User-UUID` header. The provided example scripts (`rest_run_query.sh`, `rest_check_status.sh`, `rest_stop_task.sh`) now require you to provide the User UUID as a command-line argument. You can get your User UUID from the application's configuration screen. When using `curl` directly, you will need to manually include this header with a generated UUID (e.g., `curl -H "X-TDA-User-UUID: <your-user-uuid>" ...`).
 
 **Note on `--verbose` mode**: The `rest_run_query.sh` and `rest_check_status.sh` scripts support a `--verbose` flag. By default (without `--verbose`), these scripts will output only the final JSON result to `stdout`, redirecting all informational and progress messages to `stderr`. If you wish to see all messages on `stdout`, include the `--verbose` flag when running the scripts.
 
 **1. Configure the Application (Run this first!)**
 
 ```bash
-curl -X POST [http://127.0.0.1:5000/api/v1/configure](http://127.0.0.1:5000/api/v1/configure) \
+curl -X POST http://127.0.0.1:5000/api/v1/configure \
      -H "Content-Type: application/json" \
      -d '{
            "provider": "YOUR_PROVIDER",
@@ -316,20 +316,23 @@ curl -X POST [http://127.0.0.1:5000/api/v1/configure](http://127.0.0.1:5000/api/
          }'
 ```
 
-**2. Create a Session**
+**2. Get your User UUID**
+
+Before creating a session, you need your User UUID. You can find this in the application's web UI under **Config -> Optional Services -> REST UserID**.
+
+**3. Create a Session**
 
 ```bash
-# Replace <YOUR_USER_UUID> with a client-generated UUID (e.g., from `uuidgen` or Python's `uuid.uuid4()`)
-SESSION_ID=$(curl -s -X POST -H "X-TDA-User-UUID: <YOUR_USER_UUID>" [http://127.0.0.1:5000/api/v1/sessions](http://127.0.0.1:5000/api/v1/sessions) | jq -r .session_id)
+# Replace <YOUR_USER_UUID> with the UUID from the UI
+SESSION_ID=$(curl -s -X POST -H "X-TDA-User-UUID: <YOUR_USER_UUID>" http://127.0.0.1:5000/api/v1/sessions | jq -r .session_id)
 echo "Created Session: $SESSION_ID"
 ```
 
-**3. Submit a Query**
+**4. Submit a Query**
 
 ```bash
-# Capture both task_id and status_url
 # Replace <YOUR_USER_UUID> with the same UUID used for session creation
-RESPONSE_JSON=$(curl -s -X POST [http://127.0.0.1:5000/api/v1/sessions/$SESSION_ID/query](http://127.0.0.1:5000/api/v1/sessions/$SESSION_ID/query) \
+RESPONSE_JSON=$(curl -s -X POST http://127.0.0.1:5000/api/v1/sessions/$SESSION_ID/query \
      -H "Content-Type: application/json" \
      -H "X-TDA-User-UUID: <YOUR_USER_UUID>" \
      -d '{"prompt": "What is the business description for the DEMO_DB database?"}')
@@ -340,100 +343,20 @@ echo "Task ID: $TASK_ID"
 echo "Task Status URL: $TASK_URL"
 ```
 
-**4. Poll for the Result with Intermediate Events**
+**5. Poll for the Result**
 
-**Note:** Save the script below as `check_status.sh`. It is designed to be a reusable utility.
+Use the `rest_check_status.sh` script, providing the `TASK_URL` and your `USER_UUID`.
 
 ```bash
-#!/bin/bash
-# check_status.sh
-#
-# This script polls a task status URL until the task is complete,
-# printing new events as they arrive.
-
-# --- 1. Argument Validation ---
-# Check if a task URL path and user UUID were provided as arguments.
-if [ -z "$1" ] || [ -z "$2" ]; then
-  echo "Usage: ./check_status.sh <task_url_path> <user_uuid>"
-  echo "Example: ./check_status.sh /api/v1/tasks/some-task-id a1b2c3d4-e5f6-7890-1234-567890abcdef"
-  exit 1
-fi
-
-# --- 2. Initialization ---
-TASK_URL_PATH=$1
-USER_UUID=$2 # The user UUID passed as an argument
-BASE_URL="[http://127.0.0.1:5000](http://127.0.0.1:5000)"
-FULL_URL="$BASE_URL$TASK_URL_PATH"
-EVENTS_SEEN=0
-
-echo "Polling status for task at: $FULL_URL"
-echo "-------------------------------------"
-
-# --- 3. Polling Loop ---
-while true; do
-  # Fetch the latest task status, including the User UUID header
-  RESPONSE=$(curl -s -H "X-TDA-User-UUID: $USER_UUID" "$FULL_URL")
-
-  # Gracefully handle cases where the server response is empty
-  if [ -z "$RESPONSE" ]; then
-    echo "Warning: Received empty response from server. Retrying..."
-    sleep 2
-    continue
-  fi
-
-  # --- Print NEW events ---
-  # Safely get the total number of events, providing a default of 0
-  TOTAL_EVENTS=$(echo "$RESPONSE" | jq '(.events | length) // 0')
-
-  # Add a final check to ensure TOTAL_EVENTS is a number before comparison
-  if ! [[ "$TOTAL_EVENTS" =~ ^[0-9]+$ ]]; then
-    echo "Warning: Could not parse event count from response. The response may not be valid JSON."
-    TOTAL_EVENTS=$EVENTS_SEEN # Avoid breaking the loop; use the last known good count
-  fi
-
-  # Check if there are more events now than we've seen before
-  if [ "$TOTAL_EVENTS" -gt "$EVENTS_SEEN" ]; then
-    # If so, get only the new events
-    NEW_EVENTS=$(echo "$RESPONSE" | jq -c ".events[$EVENTS_SEEN:] | .[]")
-
-    # Print each new event, formatting with jq for readability
-    echo "$NEW_EVENTS" | jq
-
-    # Update the count of events we've seen
-    EVENTS_SEEN=$TOTAL_EVENTS
-  fi
-
-  # --- Check for completion ---
-  STATUS=$(echo "$RESPONSE" | jq -r .status)
-  if [[ "$STATUS" == "complete" || "$STATUS" == "error" || "$STATUS" == "cancelled" ]]; then # Added cancelled status check
-    echo "-------------------------------------"
-    echo "--- FINAL STATUS: $STATUS ---"
-    echo "--- FINAL RESULT ---"
-    echo "$RESPONSE" | jq '.result'
-    break
-  fi
-
-  sleep 1
-done
+./rest_check_status.sh "$TASK_URL" "<YOUR_USER_UUID>"
 ```
 
-**5. Make the Script Executable and Run It**
+**(Optional) 6. Cancel the Task**
+
+Use the `rest_stop_task.sh` script with the `TASK_ID` and your `USER_UUID`.
 
 ```bash
-# Make the script executable
-chmod +x check_status.sh
-
-# Run the script, passing the TASK_URL and YOUR_USER_UUID from previous steps as arguments
-./check_status.sh "$TASK_URL" "<YOUR_USER_UUID>"
-```
-
-**(Optional) 6. Cancel the Task (if needed)**
-
-If the task is taking too long or you no longer need the result, you can cancel it using the `TASK_ID` obtained in Step 3.
-
-```bash
-# Replace <YOUR_USER_UUID> with the same UUID used for session creation
-curl -X POST -H "X-TDA-User-UUID: <YOUR_USER_UUID>" [http://127.0.0.1:5000/api/v1/tasks/$TASK_ID/cancel](http://127.0.0.1:5000/api/v1/tasks/$TASK_ID/cancel)
+./rest_stop_task.sh "$TASK_ID" "<YOUR_USER_UUID>"
 ```
 
 ## 7. Troubleshooting

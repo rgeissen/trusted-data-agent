@@ -10,6 +10,7 @@
 # --- 1. Argument Parsing and Validation ---
 VERBOSE=false
 USER_QUESTION=""
+USER_UUID=""
 
 # Check for --verbose flag
 if [[ "$1" == "--verbose" ]]; then
@@ -17,16 +18,16 @@ if [[ "$1" == "--verbose" ]]; then
   shift # Remove --verbose from arguments
 fi
 
-# Now, the first argument should be the user question
-if [ -z "$1" ]; then
-  echo "Usage: ./rest_run_query.sh [--verbose] \"<your_question>\"" >&2
-  echo "Example: ./rest_run_query.sh \"What is the business description for the DEMO_DB database?\"" >&2
+# Now, the first argument should be the user UUID, and the second should be the user question
+if [ -z "$1" ] || [ -z "$2" ]; then
+  echo "Usage: ./rest_run_query.sh [--verbose] <user_uuid> \"<your_question>\"" >&2
+  echo "Example: ./rest_run_query.sh --verbose a1b2c3d4-e5f6-7890-1234-567890abcdef \"What is the business description for the DEMO_DB database?\"" >&2
   exit 1
 fi
 
-USER_QUESTION="$1"
+USER_UUID="$1"
+USER_QUESTION="$2"
 BASE_URL="http://127.0.0.1:5000"
-UUID_FILE=".tda_user_uuid"
 
 # Function to print messages, redirecting to stderr if not verbose
 log_message() {
@@ -51,25 +52,7 @@ if [ ! -x "./rest_check_status.sh" ]; then
     exit 1
 fi
 
-# --- 3. Get or Create User UUID ---
-get_or_create_user_uuid() {
-  if [ -f "$UUID_FILE" ] && [ -s "$UUID_FILE" ]; then
-    USER_UUID=$(cat "$UUID_FILE")
-    log_message "--> Found existing User UUID: $USER_UUID"
-  else
-    log_message "--> No User UUID found, generating a new one..."
-    if command -v uuidgen &> /dev/null; then
-      USER_UUID=$(uuidgen)
-    else
-      USER_UUID=$(python3 -c 'import uuid; print(uuid.uuid4())')
-    fi
-    echo "$USER_UUID" > "$UUID_FILE"
-    log_message "    New User UUID: $USER_UUID (saved to $UUID_FILE)"
-  fi
-  log_message ""
-}
 
-get_or_create_user_uuid
 
 # --- 4. Create a New Session ---
 log_message "--> Step 1: Creating a new session..."

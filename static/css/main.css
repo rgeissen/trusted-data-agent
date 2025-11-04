@@ -804,3 +804,37 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
 }
 
 
+.notification-banner {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: white;
+    padding: 15px 20px;
+    border-radius: 8px;
+    z-index: 1000;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.notification-banner p {
+    margin: 0;
+    margin-right: 20px;
+}
+
+.notification-banner button {
+    background-color: #F15F22;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-left: 10px;
+}
+
+.notification-banner button:hover {
+    background-color: #D9501A;
+}

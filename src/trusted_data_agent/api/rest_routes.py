@@ -197,6 +197,19 @@ async def execute_query(session_id: str):
     APP_STATE.setdefault("active_tasks", {})[task_id] = task_object
 
     status_url = f"/api/v1/tasks/{task_id}"
+
+    # --- MODIFICATION START: Notify UI clients ---
+    notification_queues = APP_STATE.get("notification_queues", {}).get(user_uuid, set())
+    if notification_queues:
+        app_logger.info(f"Notifying {len(notification_queues)} UI client(s) for user {user_uuid} about REST query.")
+        notification = {
+            "message": "A REST session has been executed.",
+            "type": "info"
+        }
+        for queue in notification_queues:
+            asyncio.create_task(queue.put(notification))
+    # --- MODIFICATION END ---
+
     return jsonify({"task_id": task_id, "status_url": status_url}), 202
 
 @rest_api_bp.route("/v1/tasks/<task_id>", methods=["GET"])

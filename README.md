@@ -499,7 +499,7 @@ The Trusted Data Agent includes a powerful, asynchronous REST API to enable prog
 This API exposes the core functionalities of the agent, allowing developers to build custom applications, automate complex analytical tasks, and manage the agent's configuration without using the web interface.
 
 **Important Notes for REST API Usage:**
-*   Most API calls now require an `X-TDA-User-UUID` header for user identification and session management. Example scripts handle this automatically.
+*   Most API calls now require an `X-TDA-User-UUID` header for user identification and session management. The example scripts (`rest_run_query.sh`, `rest_check_status.sh`, `rest_stop_task.sh`) require you to provide this UUID as a command-line argument. You can find your User UUID in the application's configuration screen.
 *   Example scripts (e.g., `rest_run_query.sh`) support a `--verbose` flag. By default, they output only the final JSON result to `stdout`, redirecting informational messages to `stderr`.
 
 ### Key Capabilities
