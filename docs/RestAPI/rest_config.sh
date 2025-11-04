@@ -15,12 +15,12 @@ fi
 
 # Display the configuration (without apiKey)
 echo "--- Configuration to be sent (excluding apiKey) ---"
-jq 'del(.apiKey)' "$CONFIG_FILE"
+jq 'del(.credentials.apiKey) | del(.tts_credentials_json)' "$CONFIG_FILE"
 echo "-------------------------------------------------"
 
 # Send the configuration to the server
 echo "Sending configuration to the server..."
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://127.0.0.1:5000/configure \
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://127.0.0.1:5000/api/v1/configure \
 -H "Content-Type: application/json" \
 -d @"$CONFIG_FILE")
 

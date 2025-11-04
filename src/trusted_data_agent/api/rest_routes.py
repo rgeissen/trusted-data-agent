@@ -59,6 +59,30 @@ async def configure_services_rest():
     result = await configuration_service.setup_and_categorize_services(config_data)
 
     if result.get("status") == "success":
+        # --- MODIFICATION START: Broadcast reconfiguration notification ---
+        # Create a copy of the config to sanitize it for notification
+        safe_config = config_data.copy()
+        if "credentials" in safe_config:
+            safe_config["credentials"] = {k: v for k, v in safe_config["credentials"].items() if "key" not in k.lower() and "token" not in k.lower()}
+        if "tts_credentials_json" in safe_config:
+            del safe_config["tts_credentials_json"]
+
+        notification = {
+            "type": "reconfiguration",
+            "payload": {
+                "message": "Application has been reconfigured via REST API. A refresh is required.",
+                "config": safe_config
+            }
+        }
+
+        # Broadcast to all active notification queues
+        all_queues = [q for user_queues in APP_STATE.get("notification_queues", {}).values() for q in user_queues]
+        app_logger.info(f"Found {len(all_queues)} active notification queues.")
+        if all_queues:
+            app_logger.info(f"Broadcasting reconfiguration notification to {len(all_queues)} client(s).")
+            for queue in all_queues:
+                asyncio.create_task(queue.put(notification))
+        # --- MODIFICATION END ---
         return jsonify(result), 200
     else:
         # Configuration errors are client-side problems (bad keys, wrong host, etc.)
