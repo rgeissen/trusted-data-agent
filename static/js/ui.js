@@ -726,7 +726,7 @@ export function updateStatusPromptName(provider = null, model = null, isHistoric
         promptNameDiv.innerHTML = `
             <span class="font-semibold text-gray-300">${promptType} Prompt${historicalIndicator}</span>
             <span class="text-gray-500">/</span>
-            <span class="font-mono text-teradata-orange text-xs">${getNormalizedModelId(modelToShow)}</span>
+            <span class="font-mono text-teradata-orange text-xs">${providerToShow}/${getNormalizedModelId(modelToShow)}</span>
         `;
     } else {
         promptNameDiv.innerHTML = '<span>No Model/Prompt Loaded</span>';
