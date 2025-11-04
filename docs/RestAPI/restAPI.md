@@ -330,17 +330,16 @@ echo "Created Session: $SESSION_ID"
 
 **4. Submit a Query**
 
-```bash
-# Replace <YOUR_USER_UUID> with the same UUID used for session creation
-RESPONSE_JSON=$(curl -s -X POST http://127.0.0.1:5000/api/v1/sessions/$SESSION_ID/query \
-     -H "Content-Type: application/json" \
-     -H "X-TDA-User-UUID: <YOUR_USER_UUID>" \
-     -d '{"prompt": "What is the business description for the DEMO_DB database?"}')
+Use the `rest_run_query.sh` script. You can either create a new session or use an existing one.
 
-TASK_ID=$(echo "$RESPONSE_JSON" | jq -r .task_id)
-TASK_URL=$(echo "$RESPONSE_JSON" | jq -r .status_url)
-echo "Task ID: $TASK_ID"
-echo "Task Status URL: $TASK_URL"
+**To create a new session:**
+```bash
+./rest_run_query.sh <YOUR_USER_UUID> "What is the business description for the DEMO_DB database?"
+```
+
+**To use an existing session:**
+```bash
+./rest_run_query.sh <YOUR_USER_UUID> "What is the business description for the DEMO_DB database?" --session-id <YOUR_SESSION_ID>
 ```
 
 **5. Poll for the Result**

@@ -11,22 +11,49 @@
 VERBOSE=false
 USER_QUESTION=""
 USER_UUID=""
+SESSION_ID=""
 
-# Check for --verbose flag
-if [[ "$1" == "--verbose" ]]; then
-  VERBOSE=true
-  shift # Remove --verbose from arguments
-fi
+# Parse arguments
+while (( "$#" )); do
+  case "$1" in
+    --verbose)
+      VERBOSE=true
+      shift
+      ;;
+    --session-id)
+      if [ -n "$2" ]; then
+        SESSION_ID=$2
+        shift 2
+      else
+        echo "Error: --session-id requires a non-empty argument." >&2
+        exit 1
+      fi
+      ;;
+    -*)
+      echo "Unsupported flag $1" >&2
+      exit 1
+      ;;
+    *)
+      if [ -z "$USER_UUID" ]; then
+        USER_UUID=$1
+        shift
+      elif [ -z "$USER_QUESTION" ]; then
+        USER_QUESTION=$1
+        shift
+      else
+        echo "Too many arguments provided." >&2
+        exit 1
+      fi
+      ;;
+  esac
+done
 
-# Now, the first argument should be the user UUID, and the second should be the user question
-if [ -z "$1" ] || [ -z "$2" ]; then
-  echo "Usage: ./rest_run_query.sh [--verbose] <user_uuid> \"<your_question>\"" >&2
-  echo "Example: ./rest_run_query.sh --verbose a1b2c3d4-e5f6-7890-1234-567890abcdef \"What is the business description for the DEMO_DB database?\"" >&2
+# Check if required arguments are present
+if [ -z "$USER_UUID" ] || [ -z "$USER_QUESTION" ]; then
+  echo "Usage: ./rest_run_query.sh <user_uuid> \"<your_question>\" [--session-id <session_id>] [--verbose]" >&2
+  echo "Example: ./rest_run_query.sh a1b2c3d4-e5f6-7890-1234-567890abcdef \"What is the business description for the DEMO_DB database?\" --session-id x-y-z --verbose" >&2
   exit 1
 fi
-
-USER_UUID="$1"
-USER_QUESTION="$2"
 BASE_URL="http://127.0.0.1:5000"
 
 # Function to print messages, redirecting to stderr if not verbose
@@ -54,16 +81,21 @@ fi
 
 
 
-# --- 4. Create a New Session ---
-log_message "--> Step 1: Creating a new session..."
-SESSION_ID=$(curl -s -X POST -H "X-TDA-User-UUID: $USER_UUID" "$BASE_URL/api/v1/sessions" | jq -r .session_id)
+if [ -z "$SESSION_ID" ]; then
+  # --- 4. Create a New Session ---
+  log_message "--> Step 1: Creating a new session..."
+  SESSION_ID=$(curl -s -X POST -H "X-TDA-User-UUID: $USER_UUID" "$BASE_URL/api/v1/sessions" | jq -r .session_id)
 
-if [ -z "$SESSION_ID" ] || [ "$SESSION_ID" = "null" ]; then
-  log_message "Error: Failed to create a session. Is the server running and configured?"
-  exit 1
+  if [ -z "$SESSION_ID" ] || [ "$SESSION_ID" = "null" ]; then
+    log_message "Error: Failed to create a session. Is the server running and configured?"
+    exit 1
+  fi
+  log_message "    Session created successfully: $SESSION_ID"
+  log_message ""
+else
+  log_message "--> Step 1: Using existing session: $SESSION_ID"
+  log_message ""
 fi
-log_message "    Session created successfully: $SESSION_ID"
-log_message ""
 
 # --- 5. Submit the Query ---
 log_message "--> Step 2: Submitting your query..."

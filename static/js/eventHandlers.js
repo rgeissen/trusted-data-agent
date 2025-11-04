@@ -849,11 +849,6 @@ export async function finalizeConfiguration(config) {
         DOM.promptEditorButton.disabled = true;
     }
 
-    DOM.chatModalButton.disabled = false;
-    DOM.userInput.placeholder = "Ask about databases, tables, users...";
-
-    UI.setExecutionState(false);
-
     await Promise.all([
         handleLoadResources('tools'),
         handleLoadResources('prompts'),
@@ -881,9 +876,15 @@ export async function finalizeConfiguration(config) {
         await handleStartNewSession();
     }
 
+    DOM.chatModalButton.disabled = false;
+    DOM.userInput.placeholder = "Ask about databases, tables, users...";
+    UI.setExecutionState(false);
+
     state.pristineConfig = getCurrentCoreConfig();
     UI.updateConfigButtonState();
-    openSystemPromptPopup();
+    if (state.showWelcomeScreenAtStartup) {
+        openSystemPromptPopup();
+    }
 
     setTimeout(UI.closeConfigModal, 1000);
 }
@@ -1878,6 +1879,26 @@ export function initializeEventListeners() {
             state.showTooltips = e.target.checked;
             localStorage.setItem('showTooltips', state.showTooltips);
         });
+    }
+    // --- MODIFICATION END ---
+
+    // --- MODIFICATION START: Add welcome screen toggle listeners ---
+    const welcomeScreenCheckbox = document.getElementById('toggle-welcome-screen-checkbox');
+    const welcomeScreenPopupCheckbox = document.getElementById('welcome-screen-show-at-startup-checkbox');
+
+    const handleWelcomeScreenToggle = (e) => {
+        const isChecked = e.target.checked;
+        state.showWelcomeScreenAtStartup = isChecked;
+        localStorage.setItem('showWelcomeScreenAtStartup', isChecked);
+        if (welcomeScreenCheckbox) welcomeScreenCheckbox.checked = isChecked;
+        if (welcomeScreenPopupCheckbox) welcomeScreenPopupCheckbox.checked = isChecked;
+    };
+
+    if (welcomeScreenCheckbox) {
+        welcomeScreenCheckbox.addEventListener('change', handleWelcomeScreenToggle);
+    }
+    if (welcomeScreenPopupCheckbox) {
+        welcomeScreenPopupCheckbox.addEventListener('change', handleWelcomeScreenToggle);
     }
     // --- MODIFICATION END ---
 }

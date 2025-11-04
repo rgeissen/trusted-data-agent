@@ -5,6 +5,8 @@
  */
 
 export const state = {
+    userUUID: null,
+    showWelcomeScreenAtStartup: true,
     simpleChatHistory: [],
     currentProvider: 'Google',
     currentModel: '',

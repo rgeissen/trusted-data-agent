@@ -58,6 +58,19 @@ function ensureUserUUID() {
 
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // --- MODIFICATION START: Load welcome screen preference ---
+    const savedShowWelcomeScreen = localStorage.getItem('showWelcomeScreenAtStartup');
+    state.showWelcomeScreenAtStartup = savedShowWelcomeScreen === null ? true : savedShowWelcomeScreen === 'true';
+    const welcomeScreenCheckbox = document.getElementById('toggle-welcome-screen-checkbox');
+    const welcomeScreenPopupCheckbox = document.getElementById('welcome-screen-show-at-startup-checkbox');
+    if (welcomeScreenCheckbox) {
+        welcomeScreenCheckbox.checked = state.showWelcomeScreenAtStartup;
+    }
+    if (welcomeScreenPopupCheckbox) {
+        welcomeScreenPopupCheckbox.checked = state.showWelcomeScreenAtStartup;
+    }
+    // --- MODIFICATION END ---
+
     // --- MODIFICATION START: Ensure UUID is set first ---
     ensureUserUUID(); // Get/Set the User UUID right away
     console.log("DOMContentLoaded: User UUID ensured:", state.userUUID);

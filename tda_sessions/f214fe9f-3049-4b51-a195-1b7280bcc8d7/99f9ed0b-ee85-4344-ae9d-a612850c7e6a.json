@@ -1,0 +1,144 @@
+{
+  "id": "99f9ed0b-ee85-4344-ae9d-a612850c7e6a",
+  "user_uuid": "f214fe9f-3049-4b51-a195-1b7280bcc8d7",
+  "system_prompt_template": null,
+  "charting_intensity": "medium",
+  "provider": "Google",
+  "model": "gemini-2.0-flash",
+  "session_history": [
+    {
+      "role": "user",
+      "content": "how are you?",
+      "isValid": true,
+      "turn_number": 1
+    },
+    {
+      "role": "assistant",
+      "content": "<div class=\"response-card summary-card mb-4\"><p class=\"text-gray-300 mb-4\">I'm doing well, thank you for asking! How can I help you with your Teradata database system today?</p></div>",
+      "isValid": true,
+      "turn_number": 1
+    }
+  ],
+  "chat_object": [
+    {
+      "role": "user",
+      "content": "You are a helpful assistant.",
+      "turn_number": 0
+    },
+    {
+      "role": "model",
+      "content": "Understood.",
+      "turn_number": 0
+    },
+    {
+      "role": "user",
+      "content": "how are you?",
+      "isValid": true,
+      "turn_number": 1
+    },
+    {
+      "role": "model",
+      "content": "I'm doing well, thank you for asking! How can I help you with your Teradata database system today?",
+      "isValid": true,
+      "turn_number": 1
+    }
+  ],
+  "name": "Initial Contact",
+  "created_at": "2025-11-04T13:31:04.497467",
+  "input_tokens": 11019,
+  "output_tokens": 46,
+  "last_turn_data": {
+    "workflow_history": [
+      {
+        "turn": 1,
+        "user_query": "how are you?",
+        "original_plan": null,
+        "execution_trace": [
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Calling LLM for Planning",
+                "details": {
+                  "summary": "Generating a strategic meta-plan for the goal",
+                  "full_text": "how are you?",
+                  "call_id": "e3409f90-79e6-454f-9852-46dfbda5e8ff",
+                  "execution_depth": 0
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "system_message"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Conversational Response Identified",
+                "details": "I'm doing well, thank you for asking! How can I help you with your Teradata database system today?"
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "system_message"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Strategic Meta-Plan Generated",
+                "details": null
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_generated"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "LLM has generated the final answer",
+                "details": "I'm doing well, thank you for asking! How can I help you with your Teradata database system today?"
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": null
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          }
+        ],
+        "final_summary": "I'm doing well, thank you for asking! How can I help you with your Teradata database system today?",
+        "timestamp": "2025-11-04T12:31:05.506890+00:00",
+        "provider": "Google",
+        "model": "gemini-2.0-flash",
+        "isValid": true
+      }
+    ]
+  },
+  "full_context_sent": false,
+  "license_info": {
+    "holder": "TDA App Develpper license",
+    "issued_at": "2025-09-01T11:27:01.266255+00:00",
+    "expires_at": "2026-09-01T11:27:01.266255+00:00",
+    "version": "1.5-tiered",
+    "tier": "App Developer",
+    "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
+  }
+}
