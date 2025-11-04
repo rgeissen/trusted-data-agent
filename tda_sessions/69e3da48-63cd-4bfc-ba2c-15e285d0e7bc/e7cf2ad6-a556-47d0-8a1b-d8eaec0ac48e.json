@@ -1,0 +1,30 @@
+{
+  "id": "e7cf2ad6-a556-47d0-8a1b-d8eaec0ac48e",
+  "user_uuid": "69e3da48-63cd-4bfc-ba2c-15e285d0e7bc",
+  "system_prompt_template": null,
+  "charting_intensity": "medium",
+  "provider": "Amazon",
+  "model": "arn:aws:bedrock:eu-central-1:960887920495:inference-profile/eu.amazon.nova-lite-v1:0",
+  "models_used": [
+    "Amazon/arn:aws:bedrock:eu-central-1:960887920495:inference-profile/eu.amazon.nova-lite-v1:0"
+  ],
+  "session_history": [],
+  "chat_object": [],
+  "name": "New Chat",
+  "created_at": "2025-11-04T18:13:04.944735",
+  "last_updated": "2025-11-04T18:13:04.944750",
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "last_turn_data": {
+    "workflow_history": []
+  },
+  "full_context_sent": false,
+  "license_info": {
+    "holder": "TDA App Develpper license",
+    "issued_at": "2025-09-01T11:27:01.266255+00:00",
+    "expires_at": "2026-09-01T11:27:01.266255+00:00",
+    "version": "1.5-tiered",
+    "tier": "App Developer",
+    "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
+  }
+}

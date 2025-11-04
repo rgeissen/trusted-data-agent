@@ -1,12 +1,12 @@
 {
-  "id": "d32ca39b-aedd-407e-9916-8e713b6debb2",
+  "id": "b16cfa81-4f82-42bd-b615-c9a81ae8efcd",
   "user_uuid": "69e3da48-63cd-4bfc-ba2c-15e285d0e7bc",
   "system_prompt_template": null,
   "charting_intensity": "medium",
-  "provider": "Google",
-  "model": "gemini-2.0-flash",
+  "provider": "Friendli",
+  "model": "google/gemma-3-27b-it",
   "models_used": [
-    "Google/gemini-2.0-flash"
+    "Friendli/google/gemma-3-27b-it"
   ],
   "session_history": [
     {
@@ -17,7 +17,7 @@
     },
     {
       "role": "assistant",
-      "content": "<div class=\"response-card summary-card mb-4\">\n<div class=\"key-metric-card bg-gray-900/50 p-4 rounded-lg mb-4 text-center\">\n    <div class=\"text-4xl font-bold text-white\">20.00.22.31</div>\n    <div class=\"text-base text-gray-400 mt-1\">System Version</div>\n</div>\n<h3 class=\"text-lg font-bold text-white mb-3 border-b border-gray-700 pb-2\">Key Observations</h3><ul class=\"list-disc list-outside space-y-2 text-gray-300 mb-4 pl-5\"><li>The system version and release are both reported as 20.00.22.31.</li><li>The system's language support mode is set to Standard.</li></ul></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>base_readQuery</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"InfoKey\": \"VERSION\", \"InfoData\": \"20.00.22.31\"}, {\"InfoKey\": \"RELEASE\", \"InfoData\": \"20.00.22.31\"}, {\"InfoKey\": \"LANGUAGE SUPPORT MODE\", \"InfoData\": \"Standard\"}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>InfoKey</th><th>InfoData</th></tr></thead>\n                    <tbody>\n        <tr><td>VERSION</td><td>20.00.22.31</td></tr><tr><td>RELEASE</td><td>20.00.22.31</td></tr><tr><td>LANGUAGE SUPPORT MODE</td><td>Standard</td></tr></tbody></table></div></div>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>TDA_FinalReport</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"direct_answer\": \"The system version is 20.00.22.31.\", \"key_metric\": {\"value\": \"20.00.22.31\", \"label\": \"System Version\"}, \"key_observations\": [{\"text\": \"The system version and release are both reported as 20.00.22.31.\"}, {\"text\": \"The system&apos;s language support mode is set to Standard.\"}], \"synthesis\": []}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>direct_answer</th><th>key_metric</th><th>key_observations</th><th>synthesis</th></tr></thead>\n                    <tbody>\n        <tr><td>The system version is 20.00.22.31.</td><td>{'value': '20.00.22.31', 'label': 'System Version'}</td><td>[{'text': 'The system version and release are both reported as 20.00.22.31.'}, {'text': \"The system's language support mode is set to Standard.\"}]</td><td>[]</td></tr></tbody></table></div></div></div></details>",
+      "content": "<div class=\"response-card summary-card mb-4\">\n<div class=\"key-metric-card bg-gray-900/50 p-4 rounded-lg mb-4 text-center\">\n    <div class=\"text-4xl font-bold text-white\">20.00.22.31</div>\n    <div class=\"text-base text-gray-400 mt-1\">System Version</div>\n</div>\n<h3 class=\"text-lg font-bold text-white mb-3 border-b border-gray-700 pb-2\">Key Observations</h3><ul class=\"list-disc list-outside space-y-2 text-gray-300 mb-4 pl-5\"><li>The system's release version also corresponds to 20.00.22.31.</li><li>The system's language support mode is set to Standard.</li></ul></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>base_readQuery</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"InfoKey\": \"VERSION\", \"InfoData\": \"20.00.22.31\"}, {\"InfoKey\": \"RELEASE\", \"InfoData\": \"20.00.22.31\"}, {\"InfoKey\": \"LANGUAGE SUPPORT MODE\", \"InfoData\": \"Standard\"}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>InfoKey</th><th>InfoData</th></tr></thead>\n                    <tbody>\n        <tr><td>VERSION</td><td>20.00.22.31</td></tr><tr><td>RELEASE</td><td>20.00.22.31</td></tr><tr><td>LANGUAGE SUPPORT MODE</td><td>Standard</td></tr></tbody></table></div></div>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>TDA_FinalReport</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"direct_answer\": \"The system version is 20.00.22.31.\", \"key_metric\": {\"value\": \"20.00.22.31\", \"label\": \"System Version\"}, \"key_observations\": [{\"text\": \"The system&apos;s release version also corresponds to 20.00.22.31.\"}, {\"text\": \"The system&apos;s language support mode is set to Standard.\"}], \"synthesis\": []}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>direct_answer</th><th>key_metric</th><th>key_observations</th><th>synthesis</th></tr></thead>\n                    <tbody>\n        <tr><td>The system version is 20.00.22.31.</td><td>{'value': '20.00.22.31', 'label': 'System Version'}</td><td>[{'text': \"The system's release version also corresponds to 20.00.22.31.\"}, {'text': \"The system's language support mode is set to Standard.\"}]</td><td>[]</td></tr></tbody></table></div></div></div></details>",
       "isValid": true,
       "turn_number": 1
     }
@@ -25,32 +25,22 @@
   "chat_object": [
     {
       "role": "user",
-      "content": "You are a helpful assistant.",
-      "turn_number": 0
-    },
-    {
-      "role": "model",
-      "content": "Understood.",
-      "turn_number": 0
-    },
-    {
-      "role": "user",
       "content": "what is the system version?",
       "isValid": true,
       "turn_number": 1
     },
     {
-      "role": "model",
+      "role": "assistant",
       "content": "The system version is 20.00.22.31.",
       "isValid": true,
       "turn_number": 1
     }
   ],
-  "name": "System Version Inquiry",
-  "created_at": "2025-11-04T17:47:52.402846",
-  "last_updated": "2025-11-04T17:48:09.716800",
-  "input_tokens": 11533,
-  "output_tokens": 261,
+  "name": "System Version Check",
+  "created_at": "2025-11-04T18:11:07.502654",
+  "last_updated": "2025-11-04T18:11:20.334017",
+  "input_tokens": 11151,
+  "output_tokens": 251,
   "last_turn_data": {
     "workflow_history": [
       {
@@ -83,7 +73,7 @@
                 "details": {
                   "summary": "Generating a strategic meta-plan for the goal",
                   "full_text": "what is the system version?",
-                  "call_id": "daa84324-f0d5-4dba-a38e-2cef1759b96e",
+                  "call_id": "daf5df10-79f5-4a8c-ad24-0c5cfdc5d91b",
                   "execution_depth": 0
                 }
               },
@@ -293,7 +283,7 @@
             "result": {
               "status": "success",
               "metadata": {
-                "call_id": "d26e11e5-447a-4ad8-ac67-ca4890bde4ff",
+                "call_id": "878282d9-ffba-4098-a282-7f26afb04706",
                 "tool_name": "TDA_FinalReport"
               },
               "results": [
@@ -305,7 +295,7 @@
                   },
                   "key_observations": [
                     {
-                      "text": "The system version and release are both reported as 20.00.22.31."
+                      "text": "The system's release version also corresponds to 20.00.22.31."
                     },
                     {
                       "text": "The system's language support mode is set to Standard."
@@ -355,9 +345,9 @@
           }
         ],
         "final_summary": "The system version is 20.00.22.31.",
-        "timestamp": "2025-11-04T16:48:09.102329+00:00",
-        "provider": "Google",
-        "model": "gemini-2.0-flash",
+        "timestamp": "2025-11-04T17:11:20.089685+00:00",
+        "provider": "Friendli",
+        "model": "google/gemma-3-27b-it",
         "isValid": true
       }
     ]

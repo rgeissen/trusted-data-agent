@@ -664,7 +664,9 @@ export async function handleLoadSession(sessionId, isNewSession = false) {
             item.classList.toggle('active', item.dataset.sessionId === sessionId);
         });
 
-        // --- MODIFICATION START: Call updateStatusPromptName with no args ---
+        // --- MODIFICATION START ---
+        // Explicitly update the models for the loaded session in the UI
+        UI.updateSessionModels(sessionId, data.models_used);
         // This will reset the status display to the globally configured model
         UI.updateStatusPromptName();
         // --- MODIFICATION END ---
