@@ -1,0 +1,10 @@
+{
+    "provider": "<LLMProvider>",
+    "model": "<LLMProviderModel>",
+    "apiKey": "<AccessKey>",
+    "server_name": "<MCPServer Descriptive Name>",
+    "host": "<MCPServer Hostname>",
+    "port": "<MCPServer Port>",
+    "path": "/mcp",
+    "tts_credentials_json": "<Google Cloud TTS Credentials>"
+}
