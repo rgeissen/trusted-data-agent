@@ -709,7 +709,7 @@ export function setThinkingIndicator(isThinking) {
 }
 
 // --- MODIFICATION START: Refactor function to accept optional args ---
-export function updateStatusPromptName(provider = null, model = null) {
+export function updateStatusPromptName(provider = null, model = null, isHistorical = false) {
     const promptNameDiv = document.getElementById('prompt-name-display');
 
     // Use the provided args, or fall back to the global state
@@ -721,7 +721,7 @@ export function updateStatusPromptName(provider = null, model = null) {
         const promptType = isPrivilegedUser() ? (isCustom ? 'Custom' : 'Default') : 'Default (Server-Side)';
         
         // Add a visual indicator if we are showing a *historical* turn's model
-        const historicalIndicator = (provider || model) ? ' (History)' : '';
+        const historicalIndicator = isHistorical ? ' (History)' : '';
 
         promptNameDiv.innerHTML = `
             <span class="font-semibold text-gray-300">${promptType} Prompt${historicalIndicator}</span>
@@ -1060,7 +1060,7 @@ export function enterSessionEditMode(editButton) {
 
     // Ensure the topRow is a flex container that allows the input to grow
     topRow.classList.add('flex', 'items-center'); // Ensure flex properties are present
-    topRow.insertBefore(inputElement, spanElement);
+    spanElement.replaceWith(inputElement);
 
     inputElement.focus();
     inputElement.select();

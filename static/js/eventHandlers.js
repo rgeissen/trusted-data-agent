@@ -347,7 +347,7 @@ async function handleReloadPlanClick(element) {
         // After rendering, update the model display to reflect the turn's actual model
         if (turnData.provider && turnData.model) {
             // --- MODIFICATION: Pass historical data directly to UI function ---
-            UI.updateStatusPromptName(turnData.provider, turnData.model);
+            UI.updateStatusPromptName(turnData.provider, turnData.model, true);
         }
         // --- MODIFICATION END ---
 
@@ -631,8 +631,8 @@ export async function handleLoadSession(sessionId, isNewSession = false) {
     try {
         const data = await API.loadSession(sessionId);
         state.currentSessionId = sessionId;
-        state.currentProvider = data.provider;
-        state.currentModel = data.model;
+        state.currentProvider = data.provider || state.currentProvider;
+        state.currentModel = data.model || state.currentModel;
         DOM.chatLog.innerHTML = '';
         if (data.history && data.history.length > 0) {
             // --- MODIFICATION START: Pass turn_id and isValid during history load ---
@@ -666,7 +666,7 @@ export async function handleLoadSession(sessionId, isNewSession = false) {
         // Explicitly update the models for the loaded session in the UI
         UI.updateSessionModels(sessionId, data.models_used);
         // This will reset the status display to the globally configured model
-        UI.updateStatusPromptName();
+        UI.updateStatusPromptName(data.provider, data.model);
         // --- MODIFICATION END ---
     } catch (error) {
         UI.addMessage('assistant', `Error loading session: ${error.message}`);
@@ -840,6 +840,8 @@ export async function finalizeConfiguration(config) {
 
     state.currentProvider = config.provider;
     state.currentModel = config.model;
+
+    UI.updateStatusPromptName(config.provider, config.model);
 
     if (Utils.isPrivilegedUser()) {
         const activePrompt = Utils.getSystemPromptForModel(state.currentProvider, state.currentModel);
