@@ -1588,8 +1588,24 @@ async function handleDeleteSessionClick(deleteButton) {
                 UI.removeSessionFromList(sessionId);
 
                 if (state.currentSessionId === sessionId) {
-                    console.log('Active session deleted. Starting a new session.');
-                    await handleStartNewSession();
+                    console.log('Active session deleted. Checking for remaining sessions.');
+                    try {
+                        const remainingSessions = await API.loadAllSessions();
+                        if (remainingSessions && remainingSessions.length > 0) {
+                            // The API returns sessions sorted by most recent first.
+                            const nextSessionId = remainingSessions[0].id;
+                            console.log(`Switching to most recent session: ${nextSessionId}`);
+                            await handleLoadSession(nextSessionId);
+                        } else {
+                            console.log('No remaining sessions. Starting a new session.');
+                            await handleStartNewSession();
+                        }
+                    } catch (error) {
+                        console.error('Error handling session switch after deletion:', error);
+                        UI.addMessage('assistant', `Could not switch to another session. Please select one manually or start a new one. ${error.message}`);
+                        // As a fallback, create a new session if the session loading fails
+                        await handleStartNewSession();
+                    }
                 }
             } catch (error) {
                 console.error(`Failed to delete session ${sessionId}:`, error);
