@@ -1,0 +1,2832 @@
+2025-11-04 13:13:22,362 - --- FULL CONTEXT (User: None, Session: one-off) ---
+--- REASON FOR CALL ---
+No reason provided.
+
+--- History (History Disabled for LLM Call: False) ---
+No history available.
+
+--- Current User Prompt (with System Prompt) ---
+SYSTEM PROMPT:
+You are an expert assistant that only responds with valid JSON.
+
+USER PROMPT:
+You are a helpful assistant that analyzes a list of technical capabilities (tools and prompts) and classifies them. For each capability, you must determine a single user-friendly 'category' for a UI. Example categories might be 'Data Quality', 'Table Management', 'Performance', 'Utilities', 'Database Information', etc. Be concise and consistent.
+
+Your response MUST be a single, valid JSON object. The keys of this object must be the capability names, and the value for each key must be another JSON object containing only the 'category' you determined.
+
+Example format:
+{
+  "capability_name_1": {"category": "Some Category"},
+  "capability_name_2": {"category": "Another Category"}
+}
+
+--- Capability List ---
+- plot_line_chart (tool): 
+Function to generate a line plot for labels and columns.
+Columns mentioned in labels are used for x-axis and columns are used for y-axis.
+
+PARAMETERS:
+    table_name:
+        Required Argument.
+        Specifies the name of the table to generate the donut plot.
+        Types: str
+
+    labels:
+        Required Argument.
+        Specifies the labels to be used for the line plot.
+        Types: str
+
+    columns:
+        Required Argument.
+        Specifies the column to be used for generating the line plot.
+        Types: List[str]
+
+RETURNS:
+    dict
+
+- plot_pie_chart (tool): 
+Function to generate a pie chart plot for labels and columns.
+Columns mentioned in labels are used as labels and column is used to plot.
+
+PARAMETERS:
+    table_name:
+        Required Argument.
+        Specifies the name of the table to generate the donut plot.
+        Types: str
+
+    labels:
+        Required Argument.
+        Specifies the labels to be used for the line plot.
+        Types: str
+
+    column:
+        Required Argument.
+        Specifies the column to be used for generating the line plot.
+        Types: str
+
+RETURNS:
+    dict
+
+- plot_polar_chart (tool): 
+Function to generate a polar area plot for labels and columns.
+Columns mentioned in labels are used as labels and column is used to plot.
+
+PARAMETERS:
+    table_name:
+        Required Argument.
+        Specifies the name of the table to generate the donut plot.
+        Types: str
+
+    labels:
+        Required Argument.
+        Specifies the labels to be used for the line plot.
+        Types: str
+
+    column:
+        Required Argument.
+        Specifies the column to be used for generating the line plot.
+        Types: str
+
+RETURNS:
+    dict
+
+- plot_radar_chart (tool): 
+Function to generate a radar plot for labels and columns.
+Columns mentioned in labels are used as labels and column is used to plot.
+
+PARAMETERS:
+    table_name:
+        Required Argument.
+        Specifies the name of the table to generate the donut plot.
+        Types: str
+
+    labels:
+        Required Argument.
+        Specifies the labels to be used for the line plot.
+        Types: str
+
+    columns:
+        Required Argument.
+        Specifies the column to be used for generating the line plot.
+        Types: str
+
+RETURNS:
+    dict
+
+- sec_rolePermissions (tool): Get permissions for a role.
+- sec_userDbPermissions (tool): Get permissions for a user.
+- sec_userRoles (tool): Get roles assigned to a user.
+- tmpl_nameOfTool (tool): <description of what the tool is for>
+- base_columnDescription (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+- base_databaseList (tool): 
+Lists all databases in the Teradata System.
+
+Returns:
+  ResponseType: formatted response with query results + metadata
+
+- base_readQuery (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+- base_tableAffinity (tool): Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+- base_tableDDL (tool): Displays the DDL definition of a table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+- base_tableList (tool): Lists all tables in a database.
+- base_tablePreview (tool): This function returns data sample and inferred structure from a database table or view via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+- base_tableUsage (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+- rag_Execute_Workflow (tool): 
+Execute complete RAG workflow to answer user questions based on document context.
+This tool handles the entire RAG pipeline in a single step when a user query is tagged with /rag.
+
+WORKFLOW STEPS (executed automatically):
+1. Configuration setup using configurable values from rag_config.yml
+2. Store user query with '/rag ' prefix stripping  
+3. Generate query embeddings using either BYOM (ONNXEmbeddings) or IVSM functions based on config
+4. Perform semantic search against precomputed chunk embeddings
+5. Return context chunks for answer generation
+
+CONFIGURATION VALUES (from rag_config.yml):
+- version: 'ivsm' or 'byom' to select embedding approach
+- All database names, table names, and model settings are configurable
+- Vector store metadata fields are dynamically detected
+- Embedding parameters are configurable
+- Default chunk retrieval count is configurable
+- Default values are provided as fallback
+
+TECHNICAL DETAILS:
+- Strips the '/rag ' prefix if present from user questions
+- Creates query table if it does not exist (columns: id, txt, created_ts)
+- BYOM approach: Uses mldb.ONNXEmbeddings UDF for tokenization and embedding
+- IVSM approach: Uses ivsm.tokenizer_encode and ivsm.IVSM_score functions
+- Both approaches store embeddings in configured output table
+- Uses cosine similarity via TD_VECTORDISTANCE for semantic search
+- Returns the top-k matching chunks from the configured vector store
+- Each result includes chunk text, similarity score, and metadata fields
+
+CRITICAL ANSWERING RULES:
+- Answer ONLY using retrieved chunks - no external knowledge, speculation, or inference
+- Quote source content directly without paraphrasing, summarizing, or rewriting
+- If no relevant context found: "Not enough information found in the provided context"
+- If partial context: "The available context does not fully answer the question"
+- Include document/page references when available (e.g., "On page 2 of 'demo_policy.pdf'...")
+- Execute entire workflow silently without showing function calls to user - only show final answer
+
+LANGUAGE RESTRICTIONS:
+- Do not say "According to the context" or "The context says" - just quote directly
+- Do not say "It can be inferred that..." - no inference allowed
+- Use exact or near-verbatim quotes only
+- No paraphrasing, summarizing, or adding transitions between quotes
+- Copy content precisely - no expansion or interpretation
+
+BEHAVIORAL REQUIREMENTS:
+- Execute all RAG workflow steps silently without showing tool calls to users
+- Only display final answers based strictly on retrieved context chunks
+- Do not use external knowledge or speculation - only quote retrieved content directly
+- RAG mode only triggers with explicit /rag prefix - do not enter RAG mode implicitly
+- Hide all tool execution steps from user
+- Provide clean, direct response with only the answer based on retrieved chunks
+- This is a complete end-to-end RAG workflow - no additional tools needed
+
+EXECUTION: Run completely silently - user only sees their question and the final context-grounded answer.
+
+- qlty_columnSummary (tool): Get the column summary statistics for a table.
+- qlty_distinctCategories (tool): Get the destinct categories from column in a table.
+- qlty_missingValues (tool): Get the column names that having missing values in a table.
+- qlty_negativeValues (tool): Get the column names that having negative values in a table.
+- qlty_rowsWithMissingValues (tool): Get the rows with missing values in a table.
+- qlty_standardDeviation (tool): Get the standard deviation from column in a table.
+- qlty_univariateStatistics (tool): Get the univariate statistics for a table.
+- dba_databaseSpace (tool): Get database space if database name is provided, otherwise get all databases space allocations.
+- dba_resusageSummary (tool): Get the Teradata system usage summary metrics by weekday and hour for each workload type and query complexity bucket.
+- dba_tableSpace (tool): Get table space used for a table if table name is provided or get table space for all tables in a database if a database name is provided."
+- dba_tableSqlList (tool): Get a list of SQL run against a table in the last number of days.
+- dba_tableUsageImpact (tool): Measure the usage of a table and views by users, this is helpful to understand what user and tables are driving most resource usage at any point in time.
+- dba_userSqlList (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
+- sql_Analyze_Cluster_Stats (tool): 
+**ANALYZE SQL QUERY CLUSTER PERFORMANCE STATISTICS**
+
+This tool analyzes pre-computed cluster statistics to identify optimization opportunities without re-running the clustering pipeline. Perfect for iterative analysis and decision-making on which query clusters to focus optimization efforts.
+
+**ANALYSIS CAPABILITIES:**
+- **Performance Ranking**: Sort clusters by any performance metric to identify top resource consumers
+- **Resource Impact Assessment**: Compare clusters by CPU usage, I/O volume, and execution complexity
+- **Skew Problem Detection**: Identify clusters with CPU or I/O distribution issues
+- **Workload Characterization**: Understand query patterns by user, application, and workload type
+- **Optimization Prioritization**: Focus on clusters with highest impact potential
+
+**AVAILABLE SORTING METRICS:**
+- **avg_cpu**: Average CPU seconds per cluster (primary optimization target)
+- **avg_io**: Average logical I/O operations (scan intensity indicator)
+- **avg_cpuskw**: Average CPU skew (distribution problem indicator)
+- **avg_ioskw**: Average I/O skew (hot spot indicator)
+- **avg_pji**: Average Physical-to-Logical I/O ratio (compute intensity)
+- **avg_uii**: Average Unit I/O Intensity (I/O efficiency)
+- **avg_numsteps**: Average query plan complexity
+- **queries**: Number of queries in cluster (frequency indicator)
+- **cluster_silhouette_score**: Clustering quality measure
+
+**PERFORMANCE CATEGORIZATION:**
+Automatically categorizes clusters using configurable thresholds (from sql_opt_config.yml):
+- **HIGH_CPU_USAGE**: Average CPU > config.performance_thresholds.cpu.high
+- **HIGH_IO_USAGE**: Average I/O > config.performance_thresholds.io.high
+- **HIGH_CPU_SKEW**: CPU skew > config.performance_thresholds.skew.high
+- **HIGH_IO_SKEW**: I/O skew > config.performance_thresholds.skew.high
+- **NORMAL**: Clusters within configured normal performance ranges
+
+**TYPICAL ANALYSIS WORKFLOW:**
+1. Sort by 'avg_cpu' or 'avg_io' to find highest resource consumers
+2. Sort by 'avg_cpuskw' or 'avg_ioskw' to find distribution problems
+4. Use limit_results to focus on top problematic clusters
+
+**OPTIMIZATION DECISION FRAMEWORK:**
+- **High CPU + High Query Count**: Maximum impact optimization candidates
+- **High Skew + Moderate CPU**: Distribution/statistics problems
+- **High I/O + Low PJI**: Potential indexing opportunities
+- **High NumSteps**: Complex query rewriting candidates
+
+**OUTPUT FORMAT:**
+Returns detailed cluster statistics with performance rankings, categories, and metadata for LLM analysis and optimization recommendations.
+
+- sql_Execute_Full_Pipeline (tool): 
+**COMPLETE SQL QUERY CLUSTERING PIPELINE FOR HIGH-USAGE QUERY OPTIMIZATION**
+
+This tool executes the entire SQL query clustering workflow to identify and analyze high CPU usage queries for optimization opportunities. It's designed for database performance analysts and DBAs who need to systematically identify query optimization candidates.
+
+**FULL PIPELINE WORKFLOW:**
+1. **Query Log Extraction**: Extracts SQL queries from DBC.DBQLSqlTbl with comprehensive performance metrics
+2. **Performance Metrics Calculation**: Computes CPU skew, I/O skew, PJI (Physical to Logical I/O ratio), UII (Unit I/O Intensity)
+3. **Query Tokenization**: Tokenizes SQL text using {sql_clustering_config.get('model', {}).get('model_id', 'bge-small-en-v1.5')} tokenizer via ivsm.tokenizer_encode
+4. **Embedding Generation**: Creates semantic embeddings using ivsm.IVSM_score with ONNX models
+5. **Vector Store Creation**: Converts embeddings to vector columns via ivsm.vector_to_columns
+6. **K-Means Clustering**: Groups similar queries using TD_KMeans with optimal K from configuration
+7. **Silhouette Analysis**: Calculates clustering quality scores using TD_Silhouette
+8. **Statistics Generation**: Creates comprehensive cluster statistics with performance aggregations
+
+**PERFORMANCE METRICS EXPLAINED:**
+- **AMPCPUTIME**: Total CPU seconds across all AMPs (primary optimization target)
+- **CPUSKW/IOSKW**: CPU/I/O skew ratios (>2.0 indicates distribution problems)
+- **PJI**: Physical-to-Logical I/O ratio (higher = more CPU-intensive)
+- **UII**: Unit I/O Intensity (higher = more I/O-intensive relative to CPU)
+- **LogicalIO**: Total logical I/O operations (indicates scan intensity)
+- **NumSteps**: Query plan complexity (higher = more complex plans)
+
+**CONFIGURATION (from sql_opt_config.yml):**
+- Uses top {default_max_queries} queries by CPU time (configurable)
+- Creates {default_optimal_k} clusters by default (configurable via optimal_k parameter)
+- Embedding model: {sql_clustering_config.get('model', {}).get('model_id', 'bge-small-en-v1.5')}
+- Vector dimensions: {sql_clustering_config.get('embedding', {}).get('vector_length', 384)}
+- All database and table names are configurable
+
+**OPTIMIZATION WORKFLOW:**
+After running this tool, use:
+1. sql_Analyze_Cluster_Stats to identify problematic clusters
+2. sql_Retrieve_Cluster_Queries to get actual SQL from target clusters
+3. LLM analysis to identify patterns and propose specific optimizations
+
+**USE CASES:**
+- Identify query families consuming the most system resources
+- Find queries with similar patterns but different performance
+- Discover optimization opportunities through clustering analysis
+- Prioritize DBA effort on highest-impact query improvements
+- Understand workload composition and resource distribution
+
+**PREREQUISITES:**
+- DBC.DBQLSqlTbl and DBC.DBQLOgTbl must be accessible
+- Embedding models and tokenizers must be installed in feature_ext_db
+- Sufficient space in feature_ext_db for intermediate and final tables
+
+- sql_Retrieve_Cluster_Queries (tool): 
+**RETRIEVE ACTUAL SQL QUERIES FROM SPECIFIC CLUSTERS FOR PATTERN ANALYSIS**
+
+This tool extracts the actual SQL query text and performance metrics from selected clusters, enabling detailed pattern analysis and specific optimization recommendations. Essential for moving from cluster-level analysis to actual query optimization.
+
+**DETAILED ANALYSIS CAPABILITIES:**
+- **SQL Pattern Recognition**: Analyze actual query structures, joins, predicates, and functions
+- **Performance Correlation**: Connect query patterns to specific performance characteristics
+- **Optimization Identification**: Identify common anti-patterns, missing indexes, inefficient joins
+- **Code Quality Assessment**: Evaluate query construction, complexity, and best practices
+- **Workload Understanding**: See actual business logic and data access patterns
+
+**QUERY SELECTION STRATEGIES:**
+- **By CPU Impact**: Sort by 'ampcputime' to focus on highest CPU consumers
+- **By I/O Volume**: Sort by 'logicalio' to find scan-intensive queries
+- **By Skew Problems**: Sort by 'cpuskw' or 'ioskw' for distribution issues
+- **By Complexity**: Sort by 'numsteps' for complex execution plans
+- **By Response Time**: Sort by 'response_secs' for user experience impact
+
+**AVAILABLE METRICS FOR SORTING:**
+- **ampcputime**: Total CPU seconds (primary optimization target)
+- **logicalio**: Total logical I/O operations (scan indicator)
+- **cpuskw**: CPU skew ratio (distribution problems)
+- **ioskw**: I/O skew ratio (hot spot indicators)
+- **pji**: Physical-to-Logical I/O ratio (compute intensity)
+- **uii**: Unit I/O Intensity (I/O efficiency)
+- **numsteps**: Query execution plan steps (complexity)
+- **response_secs**: Wall-clock execution time (user impact)
+- **delaytime**: Time spent in queue (concurrency issues)
+
+**AUTOMATIC PERFORMANCE CATEGORIZATION:**
+Each query is categorized using configurable thresholds (from sql_opt_config.yml):
+- **CPU Categories**: VERY_HIGH_CPU (>config.very_high), HIGH_CPU (>config.high), MEDIUM_CPU (>10s), LOW_CPU
+- **CPU Skew**: SEVERE_CPU_SKEW (>config.severe), HIGH_CPU_SKEW (>config.high), MODERATE_CPU_SKEW (>config.moderate), NORMAL
+- **I/O Skew**: SEVERE_IO_SKEW (>config.severe), HIGH_IO_SKEW (>config.high), MODERATE_IO_SKEW (>config.moderate), NORMAL
+
+Use thresholds set in config file for, CPU - high, very_high, Skew moderate, high, severe
+
+**TYPICAL OPTIMIZATION WORKFLOW:**
+1. Start with clusters identified from sql_Analyze_Cluster_Stats
+2. Retrieve top queries by impact metric (usually 'ampcputime')
+3. Analyze SQL patterns for common issues:
+   - Missing WHERE clauses or inefficient predicates
+   - Cartesian products or missing JOIN conditions
+   - Inefficient GROUP BY or ORDER BY operations
+   - Suboptimal table access patterns
+   - Missing or outdated statistics
+4. Develop specific optimization recommendations
+
+**QUERY LIMIT STRATEGY:**
+- Use the query limit set in config file for  pattern recognition and analysis, unless user specifies a different limit
+
+**OUTPUT INCLUDES:**
+- Complete SQL query text for each query
+- All performance metrics, user, application, and workload context, cluster membership and rankings
+- Performance categories for quick filtering        
+
+- dba_databaseVersion (tool):  Get Teradata database version information.
+- dba_flowControl (tool): Get the Teradata flow control metrics for a specified date range.
+- dba_featureUsage (tool): Get the user feature usage metrics for a specified date range.
+- dba_userDelay (tool): Get the Teradata user delay metrics for a specified date range.
+- dba_sessionInfo (tool): Get the Teradata session information for user.
+- dba_systemSpace (tool): Get the Teradata total system database space usage.
+- TDA_Charting (tool): Generates a data visualization based on provided data. You must specify the chart type and map the data fields to the appropriate visual roles.
+- TDA_CurrentDate (tool): Returns the current system date in YYYY-MM-DD format. Use this as the first step for any user query involving relative dates like 'today', 'yesterday', or 'this week'.
+- TDA_DateRange (tool): Calculates a list of dates based on a start date and a natural language phrase (e.g., 'past 3 days', 'last week'). This is a necessary second step for multi-day queries.
+- TDA_LLMFilter (tool): A specialized internal tool that filters a list of items based on a natural language goal and extracts a single, clean value. This is used as an intermediate step to pass a specific, machine-readable value from one tool to another.
+- TDA_LLMTask (tool): Performs internal, LLM-driven tasks that are not direct calls to the Teradata database. This tool is used for text synthesis, summarization, and formatting based on a specific 'task_description' provided by the LLM itself.
+- TDA_ContextReport (tool): The History First Shortcut. This tool MUST be used for a single-phase plan if, and only if, the user's question can be answered entirely from the existing Workflow History. It bypasses all data gathering. Do NOT use this tool if you need to gather new data.
+- TDA_FinalReport (tool): The Data Summarization Tool. This tool MUST be the final phase of a multi-step plan to synthesize the results from all previous data-gathering phases into a final report. Do NOT use this tool in a single-phase plan or as a first step.
+- TDA_ComplexPromptReport (tool): A special internal tool used to format and deliver the final, structured report for a pre-defined UI prompt. This tool MUST be called when all data gathering phases for the prompt are complete.
+- dba_tableArchive (prompt): The following prompt is used to guide the Teradata DBA in finding opportunities for archiving data. (prompt_type: reporting)
+- dba_databaseLineage (prompt): You are a Teradata DBA who is an expert in finding the lineage of tables in a database. (prompt_type: context)
+  - Arguments:
+    - `database_name`
+    - `number_days`
+- dba_tableDropImpact (prompt): You are a Teradata DBA who is an expert in finding the impact of dropping a table. (prompt_type: reporting)
+  - Arguments:
+    - `table_name`
+    - `database_name`
+    - `number_days`
+- dba_databaseHealthAssessment (prompt): You are a Teradata DBA who is an expert in assessing the health of a database. (prompt_type: reporting)
+- dba_userActivityAnalysis (prompt): Analyze Teradata user activity patterns for the past 7 days (prompt_type: reporting)
+- dba_systemVoice (prompt): Analyze Teradata user activity patterns for the past 7 days (prompt_type: reporting)
+- _testMyServer (prompt): Test all the MCP tools, prompts and resources. (prompt_type: reporting)
+  - Arguments:
+    - `domain`
+- base_teradataQuery (prompt): A Teradata SQL expert that effectively solves problems understanding teradata specific SQL syntax.
+  - Arguments:
+    - `query`
+- base_query (prompt): Help users interact with  Teradata databases effectively.
+  - Arguments:
+    - `query`
+- base_tableBusinessDesc (prompt): You are a Teradata DBA who is an expert in describing the business use of tables in a database.
+  - Arguments:
+    - `database_name`
+    - `table_name`
+- base_databaseBusinessDesc (prompt): You are a Teradata DBA who is an expert in describing the business use of databases.
+  - Arguments:
+    - `database_name`
+- qlty_databaseQuality (prompt): Database data quality assessment. (prompt_type: reporting)
+  - Arguments:
+    - `database_name`
+- tdvs_tools_prompt (prompt): Main prompt for Teradata Enterprise Vector Store operations.
+- tdvs_rag_prompt (prompt): Prompt for Teradata Enterprise Vector Store and RAG (Retrieval Augmented Generation) based operations.
+
+2025-11-04 13:13:59,442 - --- FULL CONTEXT (User: f214fe9f-3049-4b51-a195-1b7280bcc8d7, Session: a64d6604-0e8a-4ade-8ac6-2f632d623375) ---
+--- REASON FOR CALL ---
+Generating a strategic meta-plan for the goal: 'what is the current date?'
+
+--- History (History Disabled for LLM Call: True) ---
+{
+  "chat_history": []
+}
+
+--- Current User Prompt (with System Prompt) ---
+SYSTEM PROMPT:
+
+# Core Directives
+You are a specialized assistant for a Teradata database system. Your primary goal is to fulfill user requests by selecting the best capability (a tool or a prompt) from the categorized lists provided and supplying all necessary arguments.
+
+# Response Format
+Your response MUST be a single JSON object for a tool or prompt call.
+
+-   If the capability is a prompt, you MUST use the key `"prompt_name"`.
+-   If the capability is a tool, you MUST use the key `"tool_name"`.
+-   Provide all required arguments. Infer values from the conversation history if necessary.
+-   Example (Prompt): `{{"prompt_name": "some_prompt", "arguments": {{"arg": "value"}}}}`
+-   Example (Tool): `{{"tool_name": "some_tool", "arguments": {{"arg": "value"}}}}`
+
+# Decision Process
+To select the correct capability, you MUST follow this two-step process, governed by one critical rule:
+
+**CRITICAL RULE: Follow this strict hierarchy for capability selection:**
+1.  **Prioritize Pre-defined Analysis/Reports (Prompts):** If the user's request is for an **analysis, description, or summary** that is a strong semantic match for an available `prompt`, you **MUST** select that `prompt_name`. Prompts are the preferred method for generating these pre-defined analytical outputs.
+2.  **Default to Direct Actions (Tools):** If no analytical prompt is a direct match, or if the user's request is a direct command (e.g., "list...", "count...", "show me..."), you **MUST** treat the request as a direct action. Select the most specific `tool_name` that fulfills this action.
+
+**CRITICAL RULE (Planner Efficiency):** You **MUST NOT** create a multi-phase plan using tools if the user's goal can be fully achieved by a single, available prompt. If a prompt exists that matches the user's request for an analysis or report, you **MUST** call that prompt directly. Do not create a plan that manually replicates the function of an existing prompt.
+
+# Few-Shot Examples
+Here are examples of the correct thinking process:
+
+**Example 1: Direct Action Request**
+- **User Query:** "what is the quality of table 'online' in database 'DEMO_Customer360_db'?"
+- **Thought Process:**
+    1. The user's request is about "quality," but it's a direct question, not a request for a broad "description" or "summary." No prompt for a pre-defined analysis is a perfect match.
+    2. Therefore, I move to step 2 of my critical rule: treat this as a direct action.
+    3. The user's query is about a **table**. I must choose a table-level tool.
+    4. The `qlty_columnSummary` tool takes a `table_name` and is the most specific, correct choice for this direct action.
+- **Correct Response:** `{{"tool_name": "qlty_columnSummary", "arguments": {{"database_name": "DEMO_Customer360_db", "table_name": "online"}}}}`
+
+**Example 2: Pre-defined Analysis Request**
+- **User Query:** "describe the business purpose of the 'DEMO_Customer360_db' database"
+- **Thought Process:**
+    1. The user's request is for a "business purpose" description, which is a pre-defined analysis. I will check for a matching prompt first.
+    2. The `generic_database_analysis_prompt` is described as being for this exact purpose. It is a strong semantic match.
+    3. According to my critical rule, I **MUST** select this prompt. I am forbidden from creating a multi-step plan to get the DDL and then summarize it.
+- **Correct Response:** `{{"prompt_name": "generic_database_analysis_prompt", "arguments": {{"database_name": "DEMO_Customer360_db"}}}}`
+
+# Best Practices
+- **Context is Key:** Always use information from previous turns to fill in arguments like `database_name` or `table_name`.
+- **Error Recovery:** If a tool fails, analyze the error message and attempt to call the tool again with corrected parameters. Only ask the user for clarification if you cannot recover.
+- **SQL Generation:** When using the `base_readQuery` tool, you MUST use fully qualified table names in your SQL (e.g., `SELECT ... FROM my_database.my_table`).
+- **Time-Sensitive Queries:** For queries involving relative dates (e.g., 'today', 'this week'), you MUST use the `TDA_CurrentDate` tool first to determine the current date before proceeding.
+- **Out of Scope:** If the user's request is unrelated to the available capabilities, you should politely explain that you cannot fulfill the request and restate your purpose.
+- **CRITICAL: Avoid Repetitive Behavior.** You are a highly intelligent agent. Do not get stuck in a loop by repeating the same tool calls or by cycling through the same set of tools. Once a tool has returned a successful result with data that is relevant to the user's request, do not call that same tool again unless there is a new and compelling reason to do so.
+
+- **Charting Guidelines:** After gathering data that is suitable for visualization, you **MUST IMMEDIATELY** use the `TDA_Charting` tool as your **NEXT AND ONLY** action. You **MUST NOT** re-call any data gathering tools if the data is already sufficient for charting. To use it, you must select the best `chart_type` and provide the correct data `mapping`. The `data` argument for `TDA_Charting` **MUST BE THE EXACT `results` ARRAY** from the immediately preceding successful data retrieval tool call. First, analyze the data and the user's goal. Then, choose a chart type from the guidelines below that best represents the information. Do not generate charts for simple data retrievals that are easily readable in a table. When you use a chart tool, tell the user in your final answer what the chart represents.\n
+- **Core Concept**: You create charts by mapping columns from the data you have received to visual roles.
+- **CRITICAL CHARTING RULE**: When you call the `TDA_Charting` tool, you **MUST** provide the `data` argument. The value for this argument **MUST BE THE EXACT `results` ARRAY** from the previous successful tool call. Do not modify or re-create it.
+- **Your Task**: You must provide the `chart_type`, a `title`, the `data` from the previous step, and the `mapping` argument.
+- **The `mapping` Argument**: This is the most important part. It tells the system how to draw the chart.
+  - The `mapping` dictionary keys **MUST be one of the following visual roles**: `x_axis`, `y_axis`, `color`, `angle`, `size`.
+  - The `mapping` dictionary values **MUST BE THE EXACT COLUMN NAMES** from the data you are passing.
+
+- **Example Interaction (Single Series)**:
+  1. You receive data: `{"results": [{"Category": "A", "Value": 20}, {"Category": "B", "Value": 30}]}`
+  2. Your call to `TDA_Charting` **MUST** look like this:
+     ```json
+     {
+       "tool_name": "TDA_Charting",
+       "arguments": {
+         "chart_type": "bar",
+         "title": "Category Values",
+         "data": [{"Category": "A", "Value": 20}, {"Category": "B", "Value": 30}],
+         "mapping": {"x_axis": "Category", "y_axis": "Value"}
+       }
+     }
+     ```
+
+- **Example Interaction (Multi-Series Line Chart)**:
+  1. You receive data with a categorical column to group by (e.g., `workloadType`).
+  2. To create a line chart with a separate colored line for each `workloadType`, you **MUST** include the `color` key in your mapping.
+  3. Your call to `TDA_Charting` **MUST** look like this:
+     ```json
+     {
+       "tool_name": "TDA_Charting",
+       "arguments": {
+         "chart_type": "line",
+         "title": "Usage by Workload",
+         "data": [],
+         "mapping": {
+           "x_axis": "LogDate",
+           "y_axis": "Request Count",
+           "color": "workloadType"
+         }
+       }
+     }
+     ```
+
+- **Common Chart Types & Their Mappings**:
+  - **`bar` or `column`**: Best for comparing numerical values across different categories.
+    - Required `mapping` keys: `x_axis`, `y_axis`.
+    - Use `color` to create grouped or stacked bars.
+  - **`line` or `area`**: Best for showing trends over a continuous variable, like time.
+    - Required `mapping` keys: `x_axis`, `y_axis`.
+    - Use `color` to plot multiple lines on the same chart.
+  - **`pie`**: Best for showing the proportion of parts to a whole.
+    - Required `mapping` keys: `angle` (the numerical value), `color` (the category).
+  - **`scatter`**: Best for showing the relationship between two numerical variables.
+    - Required `mapping` keys: `x_axis`, `y_axis`.
+    - Use `color` to group points by category.
+    - Use `size` to represent a third numerical variable.
+
+# Capabilities
+--- Available Tools ---
+--- Category: Data Quality ---
+- `qlty_columnSummary` (tool): Get the column summary statistics for a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+- `qlty_distinctCategories` (tool): Get the destinct categories from column in a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+    - `column_name` (string, required): column name to analyze
+- `qlty_missingValues` (tool): Get the column names that having missing values in a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+- `qlty_negativeValues` (tool): Get the column names that having negative values in a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+- `qlty_rowsWithMissingValues` (tool): Get the rows with missing values in a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+    - `column_name` (string, required): column name to analyze
+- `qlty_standardDeviation` (tool): Get the standard deviation from column in a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+    - `column_name` (string, required): column name to analyze
+- `qlty_univariateStatistics` (tool): Get the univariate statistics for a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+    - `column_name` (string, required): column name to analyze
+--- Category: Data Visualization ---
+- `TDA_Charting` (tool): Generates a data visualization based on provided data. You must specify the chart type and map the data fields to the appropriate visual roles.
+  - Arguments:
+    - `chart_type` (string, required): The type of chart to generate (e.g., 'bar', 'pie', 'line', 'scatter'). This MUST be one of the types listed in the 'Charting Guidelines'.
+    - `data` (list[dict], required): The data to be visualized, passed directly from the output of another tool.
+    - `title` (string, required): A descriptive title for the chart.
+    - `mapping` (dict, required): A dictionary that maps data keys to chart axes or roles (e.g., {'x_axis': 'product_name', 'y_axis': 'sales_total'}). The required keys for this mapping depend on the selected chart_type.
+--- Category: Database Administration ---
+- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
+  - Arguments:
+    - `database_name` (string, required): database name
+- `dba_resusageSummary` (tool): Get the Teradata system usage summary metrics by weekday and hour for each workload type and query complexity bucket.
+  - Arguments:
+    - `dimensions` (array, optional): list of dimensions to aggregate the resource usage summary. All dimensions are: ["LogDate", "hourOfDay", "dayOfWeek", "workloadType", "workloadComplexity", "UserName", "AppId"]
+    - `user_name` (string, optional): user name
+    - `date` (string, optional): Date to analyze, formatted as `YYYY-MM-DD`
+    - `dayOfWeek` (string, optional): day of the week to analyze
+    - `hourOfDay` (string, optional): hour of day to analyze
+    - `workloadType` (string, optional): workload type to analyze, example: 'LOAD', 'ETL/ELT', 'EXPORT', 'QUERY', 'ADMIN', 'OTHER'
+    - `workloadComplexity` (string, optional): workload complexity to analyze, example: 'Ingest & Prep', 'Answers', 'System/Procedural'
+    - `AppId` (string, optional): Application ID to analyze, example: 'TPTLOAD%', 'TPTUPD%', 'FASTLOAD%', 'MULTLOAD%', 'EXECUTOR%', 'JDBC%'
+- `dba_tableSpace` (tool): Get table space used for a table if table name is provided or get table space for all tables in a database if a database name is provided."
+  - Arguments:
+    - `database_name` (string, optional): database name
+    - `table_name` (string, optional): table name
+- `dba_tableSqlList` (tool): Get a list of SQL run against a table in the last number of days.
+  - Arguments:
+    - `table_name` (string, required): table name
+    - `no_days` (integer, optional): number of days
+- `dba_tableUsageImpact` (tool): Measure the usage of a table and views by users, this is helpful to understand what user and tables are driving most resource usage at any point in time.
+  - Arguments:
+    - `database_name` (string, optional): database name to analyze
+    - `user_name` (string, optional): user name to analyze
+- `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
+  - Arguments:
+    - `user_name` (string, required): user name
+    - `no_days` (integer, optional): number of days
+- `dba_databaseVersion` (tool):  Get Teradata database version information.
+- `dba_flowControl` (tool): Get the Teradata flow control metrics for a specified date range.
+  - Arguments:
+    - `start_date` (string, required): No description.
+    - `end_date` (string, required): No description.
+- `dba_featureUsage` (tool): Get the user feature usage metrics for a specified date range.
+  - Arguments:
+    - `start_date` (string, required): No description.
+    - `end_date` (string, required): No description.
+- `dba_userDelay` (tool): Get the Teradata user delay metrics for a specified date range.
+  - Arguments:
+    - `start_date` (string, required): No description.
+    - `end_date` (string, required): No description.
+- `dba_sessionInfo` (tool): Get the Teradata session information for user.
+  - Arguments:
+    - `user_name` (string, required): No description.
+- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
+--- Category: Database Information ---
+- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `database_name` (string, required): Database name
+    - `obj_name` (string, required): table or view name
+- `base_databaseList` (tool): 
+Lists all databases in the Teradata System.
+
+Returns:
+  ResponseType: formatted response with query results + metadata
+
+- `base_tableAffinity` (tool): Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `database_name` (string, required): Database name
+    - `obj_name` (string, required): No description.
+- `base_tableDDL` (tool): Displays the DDL definition of a table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `database_name` (string, required): Database name
+    - `table_name` (string, required): table name
+- `base_tableList` (tool): Lists all tables in a database.
+  - Arguments:
+    - `database_name` (string, optional): Database name
+- `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `database_name` (string, optional): Database name
+--- Category: Performance ---
+- `sql_Analyze_Cluster_Stats` (tool): 
+**ANALYZE SQL QUERY CLUSTER PERFORMANCE STATISTICS**
+
+This tool analyzes pre-computed cluster statistics to identify optimization opportunities without re-running the clustering pipeline. Perfect for iterative analysis and decision-making on which query clusters to focus optimization efforts.
+
+**ANALYSIS CAPABILITIES:**
+- **Performance Ranking**: Sort clusters by any performance metric to identify top resource consumers
+- **Resource Impact Assessment**: Compare clusters by CPU usage, I/O volume, and execution complexity
+- **Skew Problem Detection**: Identify clusters with CPU or I/O distribution issues
+- **Workload Characterization**: Understand query patterns by user, application, and workload type
+- **Optimization Prioritization**: Focus on clusters with highest impact potential
+
+**AVAILABLE SORTING METRICS:**
+- **avg_cpu**: Average CPU seconds per cluster (primary optimization target)
+- **avg_io**: Average logical I/O operations (scan intensity indicator)
+- **avg_cpuskw**: Average CPU skew (distribution problem indicator)
+- **avg_ioskw**: Average I/O skew (hot spot indicator)
+- **avg_pji**: Average Physical-to-Logical I/O ratio (compute intensity)
+- **avg_uii**: Average Unit I/O Intensity (I/O efficiency)
+- **avg_numsteps**: Average query plan complexity
+- **queries**: Number of queries in cluster (frequency indicator)
+- **cluster_silhouette_score**: Clustering quality measure
+
+**PERFORMANCE CATEGORIZATION:**
+Automatically categorizes clusters using configurable thresholds (from sql_opt_config.yml):
+- **HIGH_CPU_USAGE**: Average CPU > config.performance_thresholds.cpu.high
+- **HIGH_IO_USAGE**: Average I/O > config.performance_thresholds.io.high
+- **HIGH_CPU_SKEW**: CPU skew > config.performance_thresholds.skew.high
+- **HIGH_IO_SKEW**: I/O skew > config.performance_thresholds.skew.high
+- **NORMAL**: Clusters within configured normal performance ranges
+
+**TYPICAL ANALYSIS WORKFLOW:**
+1. Sort by 'avg_cpu' or 'avg_io' to find highest resource consumers
+2. Sort by 'avg_cpuskw' or 'avg_ioskw' to find distribution problems
+4. Use limit_results to focus on top problematic clusters
+
+**OPTIMIZATION DECISION FRAMEWORK:**
+- **High CPU + High Query Count**: Maximum impact optimization candidates
+- **High Skew + Moderate CPU**: Distribution/statistics problems
+- **High I/O + Low PJI**: Potential indexing opportunities
+- **High NumSteps**: Complex query rewriting candidates
+
+**OUTPUT FORMAT:**
+Returns detailed cluster statistics with performance rankings, categories, and metadata for LLM analysis and optimization recommendations.
+
+  - Arguments:
+    - `sort_by_metric` (string, optional): No description.
+    - `limit_results` (integer, optional): No description.
+- `sql_Execute_Full_Pipeline` (tool): 
+**COMPLETE SQL QUERY CLUSTERING PIPELINE FOR HIGH-USAGE QUERY OPTIMIZATION**
+
+This tool executes the entire SQL query clustering workflow to identify and analyze high CPU usage queries for optimization opportunities. It's designed for database performance analysts and DBAs who need to systematically identify query optimization candidates.
+
+**FULL PIPELINE WORKFLOW:**
+1. **Query Log Extraction**: Extracts SQL queries from DBC.DBQLSqlTbl with comprehensive performance metrics
+2. **Performance Metrics Calculation**: Computes CPU skew, I/O skew, PJI (Physical to Logical I/O ratio), UII (Unit I/O Intensity)
+3. **Query Tokenization**: Tokenizes SQL text using {sql_clustering_config.get('model', {}).get('model_id', 'bge-small-en-v1.5')} tokenizer via ivsm.tokenizer_encode
+4. **Embedding Generation**: Creates semantic embeddings using ivsm.IVSM_score with ONNX models
+5. **Vector Store Creation**: Converts embeddings to vector columns via ivsm.vector_to_columns
+6. **K-Means Clustering**: Groups similar queries using TD_KMeans with optimal K from configuration
+7. **Silhouette Analysis**: Calculates clustering quality scores using TD_Silhouette
+8. **Statistics Generation**: Creates comprehensive cluster statistics with performance aggregations
+
+**PERFORMANCE METRICS EXPLAINED:**
+- **AMPCPUTIME**: Total CPU seconds across all AMPs (primary optimization target)
+- **CPUSKW/IOSKW**: CPU/I/O skew ratios (>2.0 indicates distribution problems)
+- **PJI**: Physical-to-Logical I/O ratio (higher = more CPU-intensive)
+- **UII**: Unit I/O Intensity (higher = more I/O-intensive relative to CPU)
+- **LogicalIO**: Total logical I/O operations (indicates scan intensity)
+- **NumSteps**: Query plan complexity (higher = more complex plans)
+
+**CONFIGURATION (from sql_opt_config.yml):**
+- Uses top {default_max_queries} queries by CPU time (configurable)
+- Creates {default_optimal_k} clusters by default (configurable via optimal_k parameter)
+- Embedding model: {sql_clustering_config.get('model', {}).get('model_id', 'bge-small-en-v1.5')}
+- Vector dimensions: {sql_clustering_config.get('embedding', {}).get('vector_length', 384)}
+- All database and table names are configurable
+
+**OPTIMIZATION WORKFLOW:**
+After running this tool, use:
+1. sql_Analyze_Cluster_Stats to identify problematic clusters
+2. sql_Retrieve_Cluster_Queries to get actual SQL from target clusters
+3. LLM analysis to identify patterns and propose specific optimizations
+
+**USE CASES:**
+- Identify query families consuming the most system resources
+- Find queries with similar patterns but different performance
+- Discover optimization opportunities through clustering analysis
+- Prioritize DBA effort on highest-impact query improvements
+- Understand workload composition and resource distribution
+
+**PREREQUISITES:**
+- DBC.DBQLSqlTbl and DBC.DBQLOgTbl must be accessible
+- Embedding models and tokenizers must be installed in feature_ext_db
+- Sufficient space in feature_ext_db for intermediate and final tables
+
+  - Arguments:
+    - `optimal_k` (integer, optional): No description.
+    - `max_queries` (integer, optional): No description.
+- `sql_Retrieve_Cluster_Queries` (tool): 
+**RETRIEVE ACTUAL SQL QUERIES FROM SPECIFIC CLUSTERS FOR PATTERN ANALYSIS**
+
+This tool extracts the actual SQL query text and performance metrics from selected clusters, enabling detailed pattern analysis and specific optimization recommendations. Essential for moving from cluster-level analysis to actual query optimization.
+
+**DETAILED ANALYSIS CAPABILITIES:**
+- **SQL Pattern Recognition**: Analyze actual query structures, joins, predicates, and functions
+- **Performance Correlation**: Connect query patterns to specific performance characteristics
+- **Optimization Identification**: Identify common anti-patterns, missing indexes, inefficient joins
+- **Code Quality Assessment**: Evaluate query construction, complexity, and best practices
+- **Workload Understanding**: See actual business logic and data access patterns
+
+**QUERY SELECTION STRATEGIES:**
+- **By CPU Impact**: Sort by 'ampcputime' to focus on highest CPU consumers
+- **By I/O Volume**: Sort by 'logicalio' to find scan-intensive queries
+- **By Skew Problems**: Sort by 'cpuskw' or 'ioskw' for distribution issues
+- **By Complexity**: Sort by 'numsteps' for complex execution plans
+- **By Response Time**: Sort by 'response_secs' for user experience impact
+
+**AVAILABLE METRICS FOR SORTING:**
+- **ampcputime**: Total CPU seconds (primary optimization target)
+- **logicalio**: Total logical I/O operations (scan indicator)
+- **cpuskw**: CPU skew ratio (distribution problems)
+- **ioskw**: I/O skew ratio (hot spot indicators)
+- **pji**: Physical-to-Logical I/O ratio (compute intensity)
+- **uii**: Unit I/O Intensity (I/O efficiency)
+- **numsteps**: Query execution plan steps (complexity)
+- **response_secs**: Wall-clock execution time (user impact)
+- **delaytime**: Time spent in queue (concurrency issues)
+
+**AUTOMATIC PERFORMANCE CATEGORIZATION:**
+Each query is categorized using configurable thresholds (from sql_opt_config.yml):
+- **CPU Categories**: VERY_HIGH_CPU (>config.very_high), HIGH_CPU (>config.high), MEDIUM_CPU (>10s), LOW_CPU
+- **CPU Skew**: SEVERE_CPU_SKEW (>config.severe), HIGH_CPU_SKEW (>config.high), MODERATE_CPU_SKEW (>config.moderate), NORMAL
+- **I/O Skew**: SEVERE_IO_SKEW (>config.severe), HIGH_IO_SKEW (>config.high), MODERATE_IO_SKEW (>config.moderate), NORMAL
+
+Use thresholds set in config file for, CPU - high, very_high, Skew moderate, high, severe
+
+**TYPICAL OPTIMIZATION WORKFLOW:**
+1. Start with clusters identified from sql_Analyze_Cluster_Stats
+2. Retrieve top queries by impact metric (usually 'ampcputime')
+3. Analyze SQL patterns for common issues:
+   - Missing WHERE clauses or inefficient predicates
+   - Cartesian products or missing JOIN conditions
+   - Inefficient GROUP BY or ORDER BY operations
+   - Suboptimal table access patterns
+   - Missing or outdated statistics
+4. Develop specific optimization recommendations
+
+**QUERY LIMIT STRATEGY:**
+- Use the query limit set in config file for  pattern recognition and analysis, unless user specifies a different limit
+
+**OUTPUT INCLUDES:**
+- Complete SQL query text for each query
+- All performance metrics, user, application, and workload context, cluster membership and rankings
+- Performance categories for quick filtering        
+
+  - Arguments:
+    - `cluster_ids` (array, required): No description.
+    - `metric` (string, optional): No description.
+    - `limit_per_cluster` (integer, optional): No description.
+--- Category: Query Execution ---
+- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
+--- Category: RAG ---
+- `rag_Execute_Workflow` (tool): 
+Execute complete RAG workflow to answer user questions based on document context.
+This tool handles the entire RAG pipeline in a single step when a user query is tagged with /rag.
+
+WORKFLOW STEPS (executed automatically):
+1. Configuration setup using configurable values from rag_config.yml
+2. Store user query with '/rag ' prefix stripping  
+3. Generate query embeddings using either BYOM (ONNXEmbeddings) or IVSM functions based on config
+4. Perform semantic search against precomputed chunk embeddings
+5. Return context chunks for answer generation
+
+CONFIGURATION VALUES (from rag_config.yml):
+- version: 'ivsm' or 'byom' to select embedding approach
+- All database names, table names, and model settings are configurable
+- Vector store metadata fields are dynamically detected
+- Embedding parameters are configurable
+- Default chunk retrieval count is configurable
+- Default values are provided as fallback
+
+TECHNICAL DETAILS:
+- Strips the '/rag ' prefix if present from user questions
+- Creates query table if it does not exist (columns: id, txt, created_ts)
+- BYOM approach: Uses mldb.ONNXEmbeddings UDF for tokenization and embedding
+- IVSM approach: Uses ivsm.tokenizer_encode and ivsm.IVSM_score functions
+- Both approaches store embeddings in configured output table
+- Uses cosine similarity via TD_VECTORDISTANCE for semantic search
+- Returns the top-k matching chunks from the configured vector store
+- Each result includes chunk text, similarity score, and metadata fields
+
+CRITICAL ANSWERING RULES:
+- Answer ONLY using retrieved chunks - no external knowledge, speculation, or inference
+- Quote source content directly without paraphrasing, summarizing, or rewriting
+- If no relevant context found: "Not enough information found in the provided context"
+- If partial context: "The available context does not fully answer the question"
+- Include document/page references when available (e.g., "On page 2 of 'demo_policy.pdf'...")
+- Execute entire workflow silently without showing function calls to user - only show final answer
+
+LANGUAGE RESTRICTIONS:
+- Do not say "According to the context" or "The context says" - just quote directly
+- Do not say "It can be inferred that..." - no inference allowed
+- Use exact or near-verbatim quotes only
+- No paraphrasing, summarizing, or adding transitions between quotes
+- Copy content precisely - no expansion or interpretation
+
+BEHAVIORAL REQUIREMENTS:
+- Execute all RAG workflow steps silently without showing tool calls to users
+- Only display final answers based strictly on retrieved context chunks
+- Do not use external knowledge or speculation - only quote retrieved content directly
+- RAG mode only triggers with explicit /rag prefix - do not enter RAG mode implicitly
+- Hide all tool execution steps from user
+- Provide clean, direct response with only the answer based on retrieved chunks
+- This is a complete end-to-end RAG workflow - no additional tools needed
+
+EXECUTION: Run completely silently - user only sees their question and the final context-grounded answer.
+
+  - Arguments:
+    - `question` (string, required): No description.
+    - `k` (integer, optional): No description.
+--- Category: Reporting ---
+- `TDA_ContextReport` (tool): The History First Shortcut. This tool MUST be used for a single-phase plan if, and only if, the user's question can be answered entirely from the existing Workflow History. It bypasses all data gathering. Do NOT use this tool if you need to gather new data.
+  - Arguments:
+    - `answer_from_context` (string, required): The final, synthesized natural language answer, provided directly by the planner when it has confidently answered the user's question from the conversation history.
+- `TDA_FinalReport` (tool): The Data Summarization Tool. This tool MUST be the final phase of a multi-step plan to synthesize the results from all previous data-gathering phases into a final report. Do NOT use this tool in a single-phase plan or as a first step.
+--- Category: Security ---
+- `sec_rolePermissions` (tool): Get permissions for a role.
+  - Arguments:
+    - `role_name` (string, required): role name to analyze
+- `sec_userDbPermissions` (tool): Get permissions for a user.
+  - Arguments:
+    - `user_name` (string, required): user name to analyze
+- `sec_userRoles` (tool): Get roles assigned to a user.
+  - Arguments:
+    - `user_name` (string, required): user name to analyze
+--- Category: Table Management ---
+- `base_tablePreview` (tool): This function returns data sample and inferred structure from a database table or view via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `table_name` (string, required): table or view name
+    - `database_name` (string, optional): Database name
+--- Category: Uncategorized ---
+- `tmpl_nameOfTool` (tool): <description of what the tool is for>
+  - Arguments:
+    - `argument` (string, required): No description.
+--- Category: Utilities ---
+- `TDA_CurrentDate` (tool): Returns the current system date in YYYY-MM-DD format. Use this as the first step for any user query involving relative dates like 'today', 'yesterday', or 'this week'.
+- `TDA_DateRange` (tool): Calculates a list of dates based on a start date and a natural language phrase (e.g., 'past 3 days', 'last week'). This is a necessary second step for multi-day queries.
+  - Arguments:
+    - `start_date` (string, required): The anchor date for the calculation, usually today's date from `TDA_CurrentDate`. Must be in YYYY-MM-DD format.
+    - `date_phrase` (string, required): The natural language phrase describing the desired range (e.g., 'past 3 days', 'last 2 weeks').
+- `TDA_LLMFilter` (tool): A specialized internal tool that filters a list of items based on a natural language goal and extracts a single, clean value. This is used as an intermediate step to pass a specific, machine-readable value from one tool to another.
+  - Arguments:
+    - `goal` (string, required): A clear, natural language description of the item to find and extract (e.g., 'Find the database related to fitness', 'Extract the name of the sales summary table').
+    - `data_to_filter` (list[dict], required): The list of data objects to be filtered, passed from the result of a previous phase.
+- `TDA_LLMTask` (tool): Performs internal, LLM-driven tasks that are not direct calls to the Teradata database. This tool is used for text synthesis, summarization, and formatting based on a specific 'task_description' provided by the LLM itself.
+  - Arguments:
+    - `task_description` (string, required): A natural language description of the internal task to be executed (e.g., 'describe the table in a business context', 'format final output'). The LLM infers this from the workflow plan.
+    - `source_data` (list[string], required): A list of keys (e.g., 'result_of_phase_1') identifying which data from the workflow history is relevant for this task. This is critical for providing the correct context.
+    - `synthesized_answer` (string, optional): The final, synthesized natural language answer, provided directly by the planner when it can confidently answer from history.
+--- Available Prompts ---
+--- Category: Query Generation ---
+- `base_teradataQuery` (prompt): A Teradata SQL expert that effectively solves problems understanding teradata specific SQL syntax.
+  - Arguments:
+    - `query` (str, required): The problem or question that needs to be solved using Teradata SQL syntax.
+--- Category: RAG ---
+- `tdvs_rag_prompt` (prompt): Prompt for Teradata Enterprise Vector Store and RAG (Retrieval Augmented Generation) based operations.
+--- Category: Vector Store ---
+- `tdvs_tools_prompt` (prompt): Main prompt for Teradata Enterprise Vector Store operations.
+
+
+USER PROMPT:
+
+You are an expert strategic planning assistant. Your task is to analyze a user's request or a complex workflow goal and decompose it into a high-level, phased meta-plan. This plan will serve as a state machine executor.
+
+---
+### Critical Directives
+You MUST follow these directives in order to create a valid and efficient plan.
+
+
+--- CONSTRAINTS ---
+You are explicitly forbidden from using the following capabilities in your plan under any circumstances:
+- `sales_top_customers` (tool)
+- `plot_line_chart` (tool)
+- `plot_pie_chart` (tool)
+- `plot_polar_chart` (tool)
+- `plot_radar_chart` (tool)
+- `base_query` (prompt)
+- `qlty_databaseQuality` (prompt)
+- `dba_databaseLineage` (prompt)
+- `base_tableBusinessDesc` (prompt)
+- `base_databaseBusinessDesc` (prompt)
+- `dba_databaseHealthAssessment` (prompt)
+- `dba_userActivityAnalysis` (prompt)
+- `dba_systemVoice` (prompt)
+- `dba_tableArchive` (prompt)
+- `dba_tableDropImpact` (prompt)
+- `_testMyServer` (prompt)
+
+
+
+
+CRITICAL RULE (Analytical Prompt Expansion): When you are creating a new plan to fulfill the goal of an analytical prompt (e.g., a prompt that provides a 'description' or 'summary'), the new plan MUST follow a 'gather-then-synthesize' structure. The initial phase(s) must gather the necessary data, and the final phase MUST be a call to TDA_LLMTask to analyze the gathered data and produce the final report.
+
+1.  **Analyze Goal and Context**: First, carefully read the user's `GOAL` and review the `CONTEXT` section to understand the full intent and what actions have already been taken.
+
+2.  **Check History First**: If the `Workflow History` contains enough information to fully answer the user's `GOAL`, your response **MUST be a single JSON object** for a one-phase plan. This plan **MUST** call the `TDA_ContextReport` tool. You **MUST** write the complete, final answer text inside the `answer_from_context` argument within that tool call. **You are acting as a planner; DO NOT use the `FINAL_ANSWER:` format.**
+
+3.  **Default to Data Gathering**: If the history is insufficient, you **MUST** create a new plan to gather the necessary data using the available tools. Your primary objective is to answer the user's `GOAL` using data from these tools.
+
+2.  **Identify Conversational Turns**: If the user's `GOAL` is purely conversational (e.g., a greeting like "hello") and does not require any data or action, your response **MUST be a single JSON object**: `{"plan_type": "conversational", "response": "I'm doing well, thank you for asking! How can I help you with your Teradata database system today?"}`.
+
+3.  **Handle Context and Parameters Correctly**:
+    * **Prioritize the Goal**: You **MUST** prioritize entities from the user's current `GOAL` over conflicting information in the `Workflow History`. The history is for supplementing missing information, not for overriding the current request.
+    * **Extract Parameters**: You **MUST** meticulously scan the `GOAL` for entities that correspond to tool arguments (e.g., table names) and populate the `"arguments"` block in your plan phase with these key-value pairs.
+
+4.  **Follow the Plan Architecture**:
+    * Your plan **MUST** follow a strict "data-gathering first, synthesis last" architecture.
+    * **CRITICAL RULE (Final Reporting):** After all data gathering and synthesis is complete, your plan **MUST** conclude with a final phase that calls the `TDA_FinalReport` tool. You **MUST NOT** provide arguments for this tool; its purpose is to trigger the final, structured summarization.
+    * **CRITICAL RULE (Simple Synthesis Efficiency):** If the **only** remaining task after gathering data is a simple synthesis (e.g., counting items, listing names from results, summarizing findings, assessing quality), you **MUST** proceed directly to the final reporting phase by calling the `TDA_FinalReport` tool. Do **NOT** create an intermediate `TDA_LLMTask` phase for these simple operations.
+    * **CRITICAL RULE (SQL Consolidation):** You MUST NOT create a plan where a `SQL` phase is followed by another `SQL` phase. All related analysis and synthesis MUST be consolidated into a single `SQL` phase to ensure efficiency.
+    * **CRITICAL STRATEGY (Component Iteration):** If the GOAL requires applying one or more tools to every component of a single entity (e.g., checking the quality of "every column" in a table), your plan MUST be structured to iterate over those components. The first phase MUST retrieve the list of components (e.g., using `base_columnDescription`). All subsequent analytical phases that operate on these components MUST be defined with `"type": "loop"` and a corresponding `"loop_over"` key.
+    * **CRITICAL RULE (Loop Argument Referencing):** When a phase has `"type": "loop"`, to use a value from the item being iterated over, you **MUST** use a specific JSON object as the argument's value. This object MUST have two keys: `"source": "loop_item"` and `"key": "..."`, where the key is the name of the field from the loop item's data (e.g., `"TableName"`).
+
+5.  **Optimize for Efficiency**:
+    * **General Principle**: Your plan **MUST** be as efficient as possible. You should always try to combine multiple logical steps into a single phase if one tool can perform the combined operation.
+    * **CRITICAL STRATEGY (Query Pushdown Efficiency)**: Always prefer a single action that filters data at the source over multiple steps that retrieve unfiltered data and then filter it.
+        * **HIGHLY PREFERRED:** Use a tool that accepts a filter (e.g., a `sql` parameter with a `WHERE` clause) to request *only the specific data you need*.
+        * **AVOID IF POSSIBLE:** Do not use a general-purpose "list" tool and then follow it with a second phase to find a specific item.
+        * **FILTERING RULE:** If you must use a general-purpose 'list' tool to find a specific item before acting on it, you **MUST** construct a three-phase plan:
+            1.  **Phase 1 (List):** Call the appropriate 'list' tool (e.g., `base_databaseList`).
+            2.  **Phase 2 (Filter):** Call the specialized `TDA_LLMFilter` tool. The goal of this phase is *only* to find and extract the specific item's name from the results of Phase 1. You MUST pass the goal to the `goal` argument and the results of the previous phase to the `data_to_filter` argument.
+            3.  **Phase 3 (Act):** Call the final tool (e.g., `base_tableList`), using the single, extracted item name from Phase 2 as its argument.
+            This three-step `List -> Filter -> Act` pattern is mandatory for these scenarios.
+    
+    **CRITICAL STRATEGY (SQL Consolidation):** Before creating a multi-step plan, first consider if the user's entire request can be fulfilled with a single, consolidated SQL query. If the goal involves a sequence of filtering, joining, or looking up data (e.g., "find all tables in a database that contains X"), you **MUST** favor using one of the following capabilities to write a single statement that performs the entire operation: `base_teradataQuery` (prompt), `base_readQuery` (tool). Avoid creating multiple `base_...List` steps if a single query would be more efficient.
+
+6.  **Maintain Simplicity and Focus**:
+    * If the `GOAL` can be answered with a single tool call, your plan **MUST** consist of only that single phase. Do not add unnecessary synthesis phases for simple data retrieval.
+    * Every phase **MUST** correspond to a concrete, executable action. Do **NOT** create phases for simple verification or acknowledgement.
+
+7.  **Adhere to Structural Rules**:
+    * **CRITICAL RULE (Plan Flattening)**: Your plan **MUST ALWAYS** be a flat, sequential list of phases. You **MUST NOT** create nested structures. Decompose tasks with nested logic into multiple, sequential looping phases.
+    * **CRITICAL RULE (Capability Type Enforcement)**: Your selection **MUST** strictly adhere to the capability type. You are **forbidden** from placing a `(prompt)` in the `"relevant_tools"` list or a `(tool)` in the `"executable_prompt"` field.
+
+8.  **Ensure Stability**:
+    * **CRITICAL RULE (Recursion Prevention)**: Review the `Current Execution Depth`. You **MUST NOT** create a plan that calls an `executable_prompt` if the depth is approaching the maximum of 5. If you are already inside an `Active Prompt`, you **MUST NOT** create a plan that calls that same prompt again.
+
+---
+### EXAMPLE (Looping with Canonical Format)
+- **User Goal**: "Give me the DDLs of all tables in the 'fitness_db' database."
+- **Correct Plan**:
+  ```json
+  [
+    {
+      "phase": 1,
+      "goal": "Get a list of all tables in the 'fitness_db' database.",
+      "relevant_tools": ["base_tableList"],
+      "arguments": {"database_name": "fitness_db"}
+    },
+    {
+      "phase": 2,
+      "goal": "Loop through the list of tables and retrieve the DDL for each one.",
+      "type": "loop",
+      "loop_over": "result_of_phase_1",
+      "relevant_tools": ["base_tableDDL"],
+      "arguments": {
+        "database_name": "fitness_db",
+        "table_name": {
+          "source": "loop_item",
+          "key": "TableName"
+        }
+      }
+    },
+    {
+      "phase": 3,
+      "goal": "Generate the final report based on the data gathered.",
+      "relevant_tools": ["TDA_FinalReport"],
+      "arguments": {}
+    }
+  ]
+  ```
+
+---
+### Plan JSON Structure
+Your output **MUST** be a single, valid JSON array of phase objects. Each object must follow this structure:
+
+-   `"phase"`: An integer, starting from 1.
+-   `"goal"`: A concise string describing what this phase will accomplish. You MUST embed any relevant parameters from the user's goal directly into this string.
+-   `"type"`: (Optional) Use `"loop"` if the phase needs to iterate over the results of a previous phase.
+-   `"loop_over"`: (Required if `type` is `"loop"`) A string identifying the source of items to loop over (e.g., `"result_of_phase_1"`).
+-   `"relevant_tools"`: A JSON array containing the single string name of the `(tool)` to be used in this phase.
+-   `"executable_prompt"`: A string name of the `(prompt)` to be used in this phase.
+-   `"arguments"`: (Optional) A JSON object of key-value pairs for the selected capability. You can use placeholders like `"result_of_phase_1"` to pass data between phases.
+
+---
+### Context for this Plan
+-   Overall Goal: `what is the current date?`
+-   Explicit Parameters: 
+-   User's Original Input: `what is the current date?`
+-   Workflow History: `{
+  "workflow_history": [
+    {
+      "turn": 1,
+      "user_query": "what is the system version?",
+      "original_plan": [
+        {
+          "phase": 1,
+          "goal": "Get the Teradata database version information.",
+          "relevant_tools": [
+            "dba_databaseVersion"
+          ],
+          "arguments": {}
+        },
+        {
+          "phase": 2,
+          "goal": "Generate the final report based on the Teradata database version.",
+          "relevant_tools": [
+            "TDA_FinalReport"
+          ],
+          "arguments": {}
+        }
+      ],
+      "execution_trace": [
+        {
+          "action": {
+            "tool_name": "TDA_SystemLog",
+            "arguments": {
+              "message": "Calling LLM for Planning",
+              "details": {
+                "summary": "Generating a strategic meta-plan for the goal",
+                "full_text": "what is the system version?",
+                "call_id": "70b1fc64-bfdf-40ab-a1c6-b317ca50a319",
+                "execution_depth": 0
+              }
+            },
+            "metadata": {
+              "execution_depth": 0,
+              "type": "system_message"
+            }
+          },
+          "result": {
+            "status": "info"
+          }
+        },
+        {
+          "action": {
+            "tool_name": "TDA_SystemLog",
+            "arguments": {
+              "message": "Strategic Meta-Plan Generated",
+              "details": [
+                {
+                  "phase": 1,
+                  "goal": "Get the Teradata database version information.",
+                  "relevant_tools": [
+                    "dba_databaseVersion"
+                  ],
+                  "arguments": {}
+                },
+                {
+                  "phase": 2,
+                  "goal": "Generate the final report based on the Teradata database version.",
+                  "relevant_tools": [
+                    "TDA_FinalReport"
+                  ],
+                  "arguments": {}
+                }
+              ]
+            },
+            "metadata": {
+              "execution_depth": 0,
+              "type": "plan_generated"
+            }
+          },
+          "result": {
+            "status": "info"
+          }
+        },
+        {
+          "action": {
+            "tool_name": "TDA_SystemLog",
+            "arguments": {
+              "message": "Starting Plan Phase 1/2",
+              "details": {
+                "phase_num": 1,
+                "total_phases": 2,
+                "goal": "Get the Teradata database version information.",
+                "phase_details": {
+                  "phase": 1,
+                  "goal": "Get the Teradata database version information.",
+                  "relevant_tools": [
+                    "dba_databaseVersion"
+                  ],
+                  "arguments": {}
+                },
+                "execution_depth": 0
+              }
+            },
+            "metadata": {
+              "execution_depth": 0,
+              "type": "phase_start"
+            }
+          },
+          "result": {
+            "status": "info"
+          }
+        },
+        {
+          "action": {
+            "tool_name": "TDA_SystemLog",
+            "arguments": {
+              "message": "Plan Optimization",
+              "details": "FASTPATH initiated for 'dba_databaseVersion'."
+            },
+            "metadata": {
+              "execution_depth": 0,
+              "type": "plan_optimization"
+            }
+          },
+          "result": {
+            "status": "info"
+          }
+        },
+        {
+          "action": {
+            "tool_name": "dba_databaseVersion",
+            "arguments": {},
+            "metadata": {
+              "phase_number": 1,
+              "execution_depth": 0
+            }
+          },
+          "result": {
+            "status": "success",
+            "results": [
+              {
+                "InfoKey": "VERSION",
+                "InfoData": "20.00.22.31"
+              },
+              {
+                "InfoKey": "RELEASE",
+                "InfoData": "20.00.22.31"
+              },
+              {
+                "InfoKey": "LANGUAGE SUPPORT MODE",
+                "InfoData": "Standard"
+              }
+            ],
+            "metadata": {
+              "tool_name": "base_readQuery",
+              "sql": "select InfoKey, InfoData FROM DBC.DBCInfoV;\n",
+              "columns": [
+                {
+                  "name": "InfoKey",
+                  "type": "str"
+                },
+                {
+                  "name": "InfoData",
+                  "type": "str"
+                }
+              ],
+              "row_count": 3
+            }
+          }
+        },
+        {
+          "action": {
+            "tool_name": "TDA_SystemLog",
+            "arguments": {
+              "message": "Ending Plan Phase 1/2",
+              "details": {
+                "phase_num": 1,
+                "total_phases": 2,
+                "status": "completed"
+              }
+            },
+            "metadata": {
+              "execution_depth": 0,
+              "type": "phase_end"
+            }
+          },
+          "result": {
+            "status": "info"
+          }
+        },
+        {
+          "action": {
+            "tool_name": "TDA_SystemLog",
+            "arguments": {
+              "message": "Starting Plan Phase 2/2",
+              "details": {
+                "phase_num": 2,
+                "total_phases": 2,
+                "goal": "Generate the final report based on the Teradata database version.",
+                "phase_details": {
+                  "phase": 2,
+                  "goal": "Generate the final report based on the Teradata database version.",
+                  "relevant_tools": [
+                    "TDA_FinalReport"
+                  ],
+                  "arguments": {}
+                },
+                "execution_depth": 0
+              }
+            },
+            "metadata": {
+              "execution_depth": 0,
+              "type": "phase_start"
+            }
+          },
+          "result": {
+            "status": "info"
+          }
+        },
+        {
+          "action": {
+            "tool_name": "TDA_SystemLog",
+            "arguments": {
+              "message": "Plan Optimization",
+              "details": "FASTPATH initiated for 'TDA_FinalReport'."
+            },
+            "metadata": {
+              "execution_depth": 0,
+              "type": "plan_optimization"
+            }
+          },
+          "result": {
+            "status": "info"
+          }
+        },
+        {
+          "action": {
+            "tool_name": "TDA_FinalReport",
+            "arguments": {},
+            "metadata": {
+              "phase_number": 2,
+              "execution_depth": 0
+            }
+          },
+          "result": {
+            "status": "success",
+            "metadata": {
+              "call_id": "91457bef-252b-448f-8359-8c0952d724e0",
+              "tool_name": "TDA_FinalReport"
+            },
+            "results": [
+              {
+                "direct_answer": "The system version is 20.00.22.31.",
+                "key_metric": {
+                  "value": "20.00.22.31",
+                  "label": "System Version"
+                },
+                "key_observations": [
+                  {
+                    "text": "The VERSION and RELEASE keys both indicate the same version number: 20.00.22.31."
+                  },
+                  {
+                    "text": "The LANGUAGE SUPPORT MODE is set to Standard."
+                  }
+                ],
+                "synthesis": []
+              }
+            ],
+            "corrections": []
+          }
+        },
+        {
+          "action": {
+            "tool_name": "TDA_SystemLog",
+            "arguments": {
+              "message": "Ending Plan Phase 2/2",
+              "details": {
+                "phase_num": 2,
+                "total_phases": 2,
+                "status": "completed"
+              }
+            },
+            "metadata": {
+              "execution_depth": 0,
+              "type": "phase_end"
+            }
+          },
+          "result": {
+            "status": "info"
+          }
+        },
+        {
+          "action": {
+            "tool_name": "TDA_SystemLog",
+            "arguments": {
+              "message": "LLM has generated the final answer",
+              "details": "The system version is 20.00.22.31."
+            },
+            "metadata": {
+              "execution_depth": 0,
+              "type": null
+            }
+          },
+          "result": {
+            "status": "info"
+          }
+        }
+      ],
+      "final_summary": "The system version is 20.00.22.31.",
+      "timestamp": "2025-11-04T11:59:26.817390+00:00",
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "isValid": true
+    },
+    {
+      "turn": 2,
+      "user_query": "what is the current date?",
+      "original_plan": [
+        {
+          "phase": 1,
+          "goal": "Get the current system date.",
+          "relevant_tools": [
+            "TDA_CurrentDate"
+          ],
+          "arguments": {}
+        },
+        {
+          "phase": 2,
+          "goal": "Generate the final report based on the current date.",
+          "relevant_tools": [
+            "TDA_FinalReport"
+          ],
+          "arguments": {}
+        }
+      ],
+      "execution_trace": [
+        {
+          "action": {
+            "tool_name": "TDA_SystemLog",
+            "arguments": {
+              "message": "Calling LLM for Planning",
+              "details": {
+                "summary": "Generating a strategic meta-plan for the goal",
+                "full_text": "what is the current date?",
+                "call_id": "f8e6c6e1-8a2e-428b-b639-cb4e8ba1ab67",
+                "execution_depth": 0
+              }
+            },
+            "metadata": {
+              "execution_depth": 0,
+              "type": "system_message"
+            }
+          },
+          "result": {
+            "status": "info"
+          }
+        },
+        {
+          "action": {
+            "tool_name": "TDA_SystemLog",
+            "arguments": {
+              "message": "Strategic Meta-Plan Generated",
+              "details": [
+                {
+                  "phase": 1,
+                  "goal": "Get the current system date.",
+                  "relevant_tools": [
+                    "TDA_CurrentDate"
+                  ],
+                  "arguments": {}
+                },
+                {
+                  "phase": 2,
+                  "goal": "Generate the final report based on the current date.",
+                  "relevant_tools": [
+                    "TDA_FinalReport"
+                  ],
+                  "arguments": {}
+                }
+              ]
+            },
+            "metadata": {
+              "execution_depth": 0,
+              "type": "plan_generated"
+            }
+          },
+          "result": {
+            "status": "info"
+          }
+        },
+        {
+          "action": {
+            "tool_name": "TDA_SystemLog",
+            "arguments": {
+              "message": "Starting Plan Phase 1/2",
+              "details": {
+                "phase_num": 1,
+                "total_phases": 2,
+                "goal": "Get the current system date.",
+                "phase_details": {
+                  "phase": 1,
+                  "goal": "Get the current system date.",
+                  "relevant_tools": [
+                    "TDA_CurrentDate"
+                  ],
+                  "arguments": {}
+                },
+                "execution_depth": 0
+              }
+            },
+            "metadata": {
+              "execution_depth": 0,
+              "type": "phase_start"
+            }
+          },
+          "result": {
+            "status": "info"
+          }
+        },
+        {
+          "action": {
+            "tool_name": "TDA_SystemLog",
+            "arguments": {
+              "message": "Plan Optimization",
+              "details": "FASTPATH initiated for 'TDA_CurrentDate'."
+            },
+            "metadata": {
+              "execution_depth": 0,
+              "type": "plan_optimization"
+            }
+          },
+          "result": {
+            "status": "info"
+          }
+        },
+        {
+          "action": {
+            "tool_name": "TDA_CurrentDate",
+            "arguments": {},
+            "metadata": {
+              "phase_number": 1,
+              "execution_depth": 0
+            }
+          },
+          "result": {
+            "status": "success",
+            "metadata": {
+              "tool_name": "TDA_CurrentDate"
+            },
+            "results": [
+              {
+                "current_date": "2025-11-04"
+              }
+            ]
+          }
+        },
+        {
+          "action": {
+            "tool_name": "TDA_SystemLog",
+            "arguments": {
+              "message": "Ending Plan Phase 1/2",
+              "details": {
+                "phase_num": 1,
+                "total_phases": 2,
+                "status": "completed"
+              }
+            },
+            "metadata": {
+              "execution_depth": 0,
+              "type": "phase_end"
+            }
+          },
+          "result": {
+            "status": "info"
+          }
+        },
+        {
+          "action": {
+            "tool_name": "TDA_SystemLog",
+            "arguments": {
+              "message": "Starting Plan Phase 2/2",
+              "details": {
+                "phase_num": 2,
+                "total_phases": 2,
+                "goal": "Generate the final report based on the current date.",
+                "phase_details": {
+                  "phase": 2,
+                  "goal": "Generate the final report based on the current date.",
+                  "relevant_tools": [
+                    "TDA_FinalReport"
+                  ],
+                  "arguments": {}
+                },
+                "execution_depth": 0
+              }
+            },
+            "metadata": {
+              "execution_depth": 0,
+              "type": "phase_start"
+            }
+          },
+          "result": {
+            "status": "info"
+          }
+        },
+        {
+          "action": {
+            "tool_name": "TDA_SystemLog",
+            "arguments": {
+              "message": "Plan Optimization",
+              "details": "FASTPATH initiated for 'TDA_FinalReport'."
+            },
+            "metadata": {
+              "execution_depth": 0,
+              "type": "plan_optimization"
+            }
+          },
+          "result": {
+            "status": "info"
+          }
+        },
+        {
+          "action": {
+            "tool_name": "TDA_FinalReport",
+            "arguments": {},
+            "metadata": {
+              "phase_number": 2,
+              "execution_depth": 0
+            }
+          },
+          "result": {
+            "status": "success",
+            "metadata": {
+              "call_id": "0b5fe5c2-603b-4cc0-b2ec-6be3fba6201c",
+              "tool_name": "TDA_FinalReport"
+            },
+            "results": [
+              {
+                "direct_answer": "The current date is 2025-11-04.",
+                "key_metric": {
+                  "value": "2025-11-04",
+                  "label": "Current Date"
+                },
+                "key_observations": [],
+                "synthesis": []
+              }
+            ],
+            "corrections": []
+          }
+        },
+        {
+          "action": {
+            "tool_name": "TDA_SystemLog",
+            "arguments": {
+              "message": "Ending Plan Phase 2/2",
+              "details": {
+                "phase_num": 2,
+                "total_phases": 2,
+                "status": "completed"
+              }
+            },
+            "metadata": {
+              "execution_depth": 0,
+              "type": "phase_end"
+            }
+          },
+          "result": {
+            "status": "info"
+          }
+        },
+        {
+          "action": {
+            "tool_name": "TDA_SystemLog",
+            "arguments": {
+              "message": "LLM has generated the final answer",
+              "details": "The current date is 2025-11-04."
+            },
+            "metadata": {
+              "execution_depth": 0,
+              "type": null
+            }
+          },
+          "result": {
+            "status": "info"
+          }
+        }
+      ],
+      "final_summary": "The current date is 2025-11-04.",
+      "timestamp": "2025-11-04T12:10:51.537867+00:00",
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "isValid": true
+    }
+  ]
+}`
+-   Execution Depth: This is recursive call number `0`. Avoid creating identical plans.
+
+
+Your response MUST be a single, valid JSON list of phase objects. Do NOT add any extra text, conversation, or markdown.
+
+
+2025-11-04 13:14:01,275 - --- FULL CONTEXT (User: f214fe9f-3049-4b51-a195-1b7280bcc8d7, Session: a64d6604-0e8a-4ade-8ac6-2f632d623375) ---
+--- REASON FOR CALL ---
+Client-Side Tool Call: TDA_FinalReport
+Goal: what is the current date?
+
+--- History (History Disabled for LLM Call: False) ---
+{
+  "chat_history": [
+    {
+      "role": "user",
+      "content": "You are a helpful assistant.",
+      "turn_number": 0
+    },
+    {
+      "role": "model",
+      "content": "Understood.",
+      "turn_number": 0
+    },
+    {
+      "role": "user",
+      "content": "what is the system version?",
+      "isValid": true,
+      "turn_number": 1
+    },
+    {
+      "role": "model",
+      "content": "The system version is 20.00.22.31.",
+      "isValid": true,
+      "turn_number": 1
+    },
+    {
+      "role": "user",
+      "content": "what is the current date?",
+      "isValid": true,
+      "turn_number": 2
+    },
+    {
+      "role": "model",
+      "content": "The current date is 2025-11-04.",
+      "isValid": true,
+      "turn_number": 2
+    }
+  ]
+}
+
+--- Current User Prompt (with System Prompt) ---
+SYSTEM PROMPT:
+You are a JSON-only reporting assistant.
+
+USER PROMPT:
+You are an expert data analyst. Your task is to create a final report for the user by analyzing the provided data and their original question.
+
+--- USER'S ORIGINAL QUESTION ---
+what is the current date?
+
+--- DATA FOR ANALYSIS ---
+{
+  "original_user_input": "what is the current date?",
+  "workflow_goal_prompt": "what is the current date?",
+  "result_of_phase_1": [
+    {
+      "status": "success",
+      "metadata": {
+        "tool_name": "TDA_CurrentDate"
+      },
+      "results": [
+        {
+          "current_date": "2025-11-04"
+        }
+      ]
+    }
+  ]
+}
+
+--- INSTRUCTIONS ---
+Your response MUST be a single JSON object that strictly follows the schema for a `CanonicalResponse`.
+You are required to populate its fields based on your analysis of the data provided above.
+
+--- FIELD GUIDELINES ---
+1.  `direct_answer`: REQUIRED. A single, concise sentence that directly and factually answers the user's primary question.
+2.  `key_metric`: OPTIONAL. Use ONLY if the answer can be summarized by a single, primary value (e.g., a total count, a status). Requires `value` (string) and `label` (string). Omit the entire field if not applicable.
+3.  `key_observations`: OPTIONAL. A list of objects, each with a `text` field containing a single, narrative bullet point of supporting detail or context. Do NOT include raw data or code.
+
+2025-11-04 13:14:51,236 - --- FULL CONTEXT (User: f214fe9f-3049-4b51-a195-1b7280bcc8d7, Session: 27bf96ba-a855-4080-b379-70c5c360c229) ---
+--- REASON FOR CALL ---
+Generating a strategic meta-plan for the goal: 'how many databases are on the system?'
+
+--- History (History Disabled for LLM Call: False) ---
+{
+  "chat_history": [
+    {
+      "role": "user",
+      "content": "You are a helpful assistant.",
+      "turn_number": 0
+    },
+    {
+      "role": "model",
+      "content": "Understood.",
+      "turn_number": 0
+    },
+    {
+      "role": "user",
+      "content": "how many databases are on the system?",
+      "isValid": true,
+      "turn_number": 1
+    }
+  ]
+}
+
+--- Current User Prompt (with System Prompt) ---
+SYSTEM PROMPT:
+
+# Core Directives
+You are a specialized assistant for a Teradata database system. Your primary goal is to fulfill user requests by selecting the best capability (a tool or a prompt) from the categorized lists provided and supplying all necessary arguments.
+
+# Response Format
+Your response MUST be a single JSON object for a tool or prompt call.
+
+-   If the capability is a prompt, you MUST use the key `"prompt_name"`.
+-   If the capability is a tool, you MUST use the key `"tool_name"`.
+-   Provide all required arguments. Infer values from the conversation history if necessary.
+-   Example (Prompt): `{{"prompt_name": "some_prompt", "arguments": {{"arg": "value"}}}}`
+-   Example (Tool): `{{"tool_name": "some_tool", "arguments": {{"arg": "value"}}}}`
+
+# Decision Process
+To select the correct capability, you MUST follow this two-step process, governed by one critical rule:
+
+**CRITICAL RULE: Follow this strict hierarchy for capability selection:**
+1.  **Prioritize Pre-defined Analysis/Reports (Prompts):** If the user's request is for an **analysis, description, or summary** that is a strong semantic match for an available `prompt`, you **MUST** select that `prompt_name`. Prompts are the preferred method for generating these pre-defined analytical outputs.
+2.  **Default to Direct Actions (Tools):** If no analytical prompt is a direct match, or if the user's request is a direct command (e.g., "list...", "count...", "show me..."), you **MUST** treat the request as a direct action. Select the most specific `tool_name` that fulfills this action.
+
+**CRITICAL RULE (Planner Efficiency):** You **MUST NOT** create a multi-phase plan using tools if the user's goal can be fully achieved by a single, available prompt. If a prompt exists that matches the user's request for an analysis or report, you **MUST** call that prompt directly. Do not create a plan that manually replicates the function of an existing prompt.
+
+# Few-Shot Examples
+Here are examples of the correct thinking process:
+
+**Example 1: Direct Action Request**
+- **User Query:** "what is the quality of table 'online' in database 'DEMO_Customer360_db'?"
+- **Thought Process:**
+    1. The user's request is about "quality," but it's a direct question, not a request for a broad "description" or "summary." No prompt for a pre-defined analysis is a perfect match.
+    2. Therefore, I move to step 2 of my critical rule: treat this as a direct action.
+    3. The user's query is about a **table**. I must choose a table-level tool.
+    4. The `qlty_columnSummary` tool takes a `table_name` and is the most specific, correct choice for this direct action.
+- **Correct Response:** `{{"tool_name": "qlty_columnSummary", "arguments": {{"database_name": "DEMO_Customer360_db", "table_name": "online"}}}}`
+
+**Example 2: Pre-defined Analysis Request**
+- **User Query:** "describe the business purpose of the 'DEMO_Customer360_db' database"
+- **Thought Process:**
+    1. The user's request is for a "business purpose" description, which is a pre-defined analysis. I will check for a matching prompt first.
+    2. The `generic_database_analysis_prompt` is described as being for this exact purpose. It is a strong semantic match.
+    3. According to my critical rule, I **MUST** select this prompt. I am forbidden from creating a multi-step plan to get the DDL and then summarize it.
+- **Correct Response:** `{{"prompt_name": "generic_database_analysis_prompt", "arguments": {{"database_name": "DEMO_Customer360_db"}}}}`
+
+# Best Practices
+- **Context is Key:** Always use information from previous turns to fill in arguments like `database_name` or `table_name`.
+- **Error Recovery:** If a tool fails, analyze the error message and attempt to call the tool again with corrected parameters. Only ask the user for clarification if you cannot recover.
+- **SQL Generation:** When using the `base_readQuery` tool, you MUST use fully qualified table names in your SQL (e.g., `SELECT ... FROM my_database.my_table`).
+- **Time-Sensitive Queries:** For queries involving relative dates (e.g., 'today', 'this week'), you MUST use the `TDA_CurrentDate` tool first to determine the current date before proceeding.
+- **Out of Scope:** If the user's request is unrelated to the available capabilities, you should politely explain that you cannot fulfill the request and restate your purpose.
+- **CRITICAL: Avoid Repetitive Behavior.** You are a highly intelligent agent. Do not get stuck in a loop by repeating the same tool calls or by cycling through the same set of tools. Once a tool has returned a successful result with data that is relevant to the user's request, do not call that same tool again unless there is a new and compelling reason to do so.
+
+- **Charting Guidelines:** After gathering data that is suitable for visualization, you **MUST IMMEDIATELY** use the `TDA_Charting` tool as your **NEXT AND ONLY** action. You **MUST NOT** re-call any data gathering tools if the data is already sufficient for charting. To use it, you must select the best `chart_type` and provide the correct data `mapping`. The `data` argument for `TDA_Charting` **MUST BE THE EXACT `results` ARRAY** from the immediately preceding successful data retrieval tool call. First, analyze the data and the user's goal. Then, choose a chart type from the guidelines below that best represents the information. Do not generate charts for simple data retrievals that are easily readable in a table. When you use a chart tool, tell the user in your final answer what the chart represents.\n
+- **Core Concept**: You create charts by mapping columns from the data you have received to visual roles.
+- **CRITICAL CHARTING RULE**: When you call the `TDA_Charting` tool, you **MUST** provide the `data` argument. The value for this argument **MUST BE THE EXACT `results` ARRAY** from the previous successful tool call. Do not modify or re-create it.
+- **Your Task**: You must provide the `chart_type`, a `title`, the `data` from the previous step, and the `mapping` argument.
+- **The `mapping` Argument**: This is the most important part. It tells the system how to draw the chart.
+  - The `mapping` dictionary keys **MUST be one of the following visual roles**: `x_axis`, `y_axis`, `color`, `angle`, `size`.
+  - The `mapping` dictionary values **MUST BE THE EXACT COLUMN NAMES** from the data you are passing.
+
+- **Example Interaction (Single Series)**:
+  1. You receive data: `{"results": [{"Category": "A", "Value": 20}, {"Category": "B", "Value": 30}]}`
+  2. Your call to `TDA_Charting` **MUST** look like this:
+     ```json
+     {
+       "tool_name": "TDA_Charting",
+       "arguments": {
+         "chart_type": "bar",
+         "title": "Category Values",
+         "data": [{"Category": "A", "Value": 20}, {"Category": "B", "Value": 30}],
+         "mapping": {"x_axis": "Category", "y_axis": "Value"}
+       }
+     }
+     ```
+
+- **Example Interaction (Multi-Series Line Chart)**:
+  1. You receive data with a categorical column to group by (e.g., `workloadType`).
+  2. To create a line chart with a separate colored line for each `workloadType`, you **MUST** include the `color` key in your mapping.
+  3. Your call to `TDA_Charting` **MUST** look like this:
+     ```json
+     {
+       "tool_name": "TDA_Charting",
+       "arguments": {
+         "chart_type": "line",
+         "title": "Usage by Workload",
+         "data": [],
+         "mapping": {
+           "x_axis": "LogDate",
+           "y_axis": "Request Count",
+           "color": "workloadType"
+         }
+       }
+     }
+     ```
+
+- **Common Chart Types & Their Mappings**:
+  - **`bar` or `column`**: Best for comparing numerical values across different categories.
+    - Required `mapping` keys: `x_axis`, `y_axis`.
+    - Use `color` to create grouped or stacked bars.
+  - **`line` or `area`**: Best for showing trends over a continuous variable, like time.
+    - Required `mapping` keys: `x_axis`, `y_axis`.
+    - Use `color` to plot multiple lines on the same chart.
+  - **`pie`**: Best for showing the proportion of parts to a whole.
+    - Required `mapping` keys: `angle` (the numerical value), `color` (the category).
+  - **`scatter`**: Best for showing the relationship between two numerical variables.
+    - Required `mapping` keys: `x_axis`, `y_axis`.
+    - Use `color` to group points by category.
+    - Use `size` to represent a third numerical variable.
+
+# Capabilities
+--- Available Tools ---
+--- Category: Data Quality ---
+- `qlty_columnSummary` (tool): Get the column summary statistics for a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+- `qlty_distinctCategories` (tool): Get the destinct categories from column in a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+    - `column_name` (string, required): column name to analyze
+- `qlty_missingValues` (tool): Get the column names that having missing values in a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+- `qlty_negativeValues` (tool): Get the column names that having negative values in a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+- `qlty_rowsWithMissingValues` (tool): Get the rows with missing values in a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+    - `column_name` (string, required): column name to analyze
+- `qlty_standardDeviation` (tool): Get the standard deviation from column in a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+    - `column_name` (string, required): column name to analyze
+- `qlty_univariateStatistics` (tool): Get the univariate statistics for a table.
+  - Arguments:
+    - `database_name` (string, required): name of the database
+    - `table_name` (string, required): table name to analyze
+    - `column_name` (string, required): column name to analyze
+--- Category: Data Visualization ---
+- `TDA_Charting` (tool): Generates a data visualization based on provided data. You must specify the chart type and map the data fields to the appropriate visual roles.
+  - Arguments:
+    - `chart_type` (string, required): The type of chart to generate (e.g., 'bar', 'pie', 'line', 'scatter'). This MUST be one of the types listed in the 'Charting Guidelines'.
+    - `data` (list[dict], required): The data to be visualized, passed directly from the output of another tool.
+    - `title` (string, required): A descriptive title for the chart.
+    - `mapping` (dict, required): A dictionary that maps data keys to chart axes or roles (e.g., {'x_axis': 'product_name', 'y_axis': 'sales_total'}). The required keys for this mapping depend on the selected chart_type.
+--- Category: Database Administration ---
+- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
+  - Arguments:
+    - `database_name` (string, required): database name
+- `dba_resusageSummary` (tool): Get the Teradata system usage summary metrics by weekday and hour for each workload type and query complexity bucket.
+  - Arguments:
+    - `dimensions` (array, optional): list of dimensions to aggregate the resource usage summary. All dimensions are: ["LogDate", "hourOfDay", "dayOfWeek", "workloadType", "workloadComplexity", "UserName", "AppId"]
+    - `user_name` (string, optional): user name
+    - `date` (string, optional): Date to analyze, formatted as `YYYY-MM-DD`
+    - `dayOfWeek` (string, optional): day of the week to analyze
+    - `hourOfDay` (string, optional): hour of day to analyze
+    - `workloadType` (string, optional): workload type to analyze, example: 'LOAD', 'ETL/ELT', 'EXPORT', 'QUERY', 'ADMIN', 'OTHER'
+    - `workloadComplexity` (string, optional): workload complexity to analyze, example: 'Ingest & Prep', 'Answers', 'System/Procedural'
+    - `AppId` (string, optional): Application ID to analyze, example: 'TPTLOAD%', 'TPTUPD%', 'FASTLOAD%', 'MULTLOAD%', 'EXECUTOR%', 'JDBC%'
+- `dba_tableSpace` (tool): Get table space used for a table if table name is provided or get table space for all tables in a database if a database name is provided."
+  - Arguments:
+    - `database_name` (string, optional): database name
+    - `table_name` (string, optional): table name
+- `dba_tableSqlList` (tool): Get a list of SQL run against a table in the last number of days.
+  - Arguments:
+    - `table_name` (string, required): table name
+    - `no_days` (integer, optional): number of days
+- `dba_tableUsageImpact` (tool): Measure the usage of a table and views by users, this is helpful to understand what user and tables are driving most resource usage at any point in time.
+  - Arguments:
+    - `database_name` (string, optional): database name to analyze
+    - `user_name` (string, optional): user name to analyze
+- `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
+  - Arguments:
+    - `user_name` (string, required): user name
+    - `no_days` (integer, optional): number of days
+- `dba_databaseVersion` (tool):  Get Teradata database version information.
+- `dba_flowControl` (tool): Get the Teradata flow control metrics for a specified date range.
+  - Arguments:
+    - `start_date` (string, required): No description.
+    - `end_date` (string, required): No description.
+- `dba_featureUsage` (tool): Get the user feature usage metrics for a specified date range.
+  - Arguments:
+    - `start_date` (string, required): No description.
+    - `end_date` (string, required): No description.
+- `dba_userDelay` (tool): Get the Teradata user delay metrics for a specified date range.
+  - Arguments:
+    - `start_date` (string, required): No description.
+    - `end_date` (string, required): No description.
+- `dba_sessionInfo` (tool): Get the Teradata session information for user.
+  - Arguments:
+    - `user_name` (string, required): No description.
+- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
+--- Category: Database Information ---
+- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `database_name` (string, required): Database name
+    - `obj_name` (string, required): table or view name
+- `base_databaseList` (tool): 
+Lists all databases in the Teradata System.
+
+Returns:
+  ResponseType: formatted response with query results + metadata
+
+- `base_tableAffinity` (tool): Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `database_name` (string, required): Database name
+    - `obj_name` (string, required): No description.
+- `base_tableDDL` (tool): Displays the DDL definition of a table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `database_name` (string, required): Database name
+    - `table_name` (string, required): table name
+- `base_tableList` (tool): Lists all tables in a database.
+  - Arguments:
+    - `database_name` (string, optional): Database name
+- `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `database_name` (string, optional): Database name
+--- Category: Performance ---
+- `sql_Analyze_Cluster_Stats` (tool): 
+**ANALYZE SQL QUERY CLUSTER PERFORMANCE STATISTICS**
+
+This tool analyzes pre-computed cluster statistics to identify optimization opportunities without re-running the clustering pipeline. Perfect for iterative analysis and decision-making on which query clusters to focus optimization efforts.
+
+**ANALYSIS CAPABILITIES:**
+- **Performance Ranking**: Sort clusters by any performance metric to identify top resource consumers
+- **Resource Impact Assessment**: Compare clusters by CPU usage, I/O volume, and execution complexity
+- **Skew Problem Detection**: Identify clusters with CPU or I/O distribution issues
+- **Workload Characterization**: Understand query patterns by user, application, and workload type
+- **Optimization Prioritization**: Focus on clusters with highest impact potential
+
+**AVAILABLE SORTING METRICS:**
+- **avg_cpu**: Average CPU seconds per cluster (primary optimization target)
+- **avg_io**: Average logical I/O operations (scan intensity indicator)
+- **avg_cpuskw**: Average CPU skew (distribution problem indicator)
+- **avg_ioskw**: Average I/O skew (hot spot indicator)
+- **avg_pji**: Average Physical-to-Logical I/O ratio (compute intensity)
+- **avg_uii**: Average Unit I/O Intensity (I/O efficiency)
+- **avg_numsteps**: Average query plan complexity
+- **queries**: Number of queries in cluster (frequency indicator)
+- **cluster_silhouette_score**: Clustering quality measure
+
+**PERFORMANCE CATEGORIZATION:**
+Automatically categorizes clusters using configurable thresholds (from sql_opt_config.yml):
+- **HIGH_CPU_USAGE**: Average CPU > config.performance_thresholds.cpu.high
+- **HIGH_IO_USAGE**: Average I/O > config.performance_thresholds.io.high
+- **HIGH_CPU_SKEW**: CPU skew > config.performance_thresholds.skew.high
+- **HIGH_IO_SKEW**: I/O skew > config.performance_thresholds.skew.high
+- **NORMAL**: Clusters within configured normal performance ranges
+
+**TYPICAL ANALYSIS WORKFLOW:**
+1. Sort by 'avg_cpu' or 'avg_io' to find highest resource consumers
+2. Sort by 'avg_cpuskw' or 'avg_ioskw' to find distribution problems
+4. Use limit_results to focus on top problematic clusters
+
+**OPTIMIZATION DECISION FRAMEWORK:**
+- **High CPU + High Query Count**: Maximum impact optimization candidates
+- **High Skew + Moderate CPU**: Distribution/statistics problems
+- **High I/O + Low PJI**: Potential indexing opportunities
+- **High NumSteps**: Complex query rewriting candidates
+
+**OUTPUT FORMAT:**
+Returns detailed cluster statistics with performance rankings, categories, and metadata for LLM analysis and optimization recommendations.
+
+  - Arguments:
+    - `sort_by_metric` (string, optional): No description.
+    - `limit_results` (integer, optional): No description.
+- `sql_Execute_Full_Pipeline` (tool): 
+**COMPLETE SQL QUERY CLUSTERING PIPELINE FOR HIGH-USAGE QUERY OPTIMIZATION**
+
+This tool executes the entire SQL query clustering workflow to identify and analyze high CPU usage queries for optimization opportunities. It's designed for database performance analysts and DBAs who need to systematically identify query optimization candidates.
+
+**FULL PIPELINE WORKFLOW:**
+1. **Query Log Extraction**: Extracts SQL queries from DBC.DBQLSqlTbl with comprehensive performance metrics
+2. **Performance Metrics Calculation**: Computes CPU skew, I/O skew, PJI (Physical to Logical I/O ratio), UII (Unit I/O Intensity)
+3. **Query Tokenization**: Tokenizes SQL text using {sql_clustering_config.get('model', {}).get('model_id', 'bge-small-en-v1.5')} tokenizer via ivsm.tokenizer_encode
+4. **Embedding Generation**: Creates semantic embeddings using ivsm.IVSM_score with ONNX models
+5. **Vector Store Creation**: Converts embeddings to vector columns via ivsm.vector_to_columns
+6. **K-Means Clustering**: Groups similar queries using TD_KMeans with optimal K from configuration
+7. **Silhouette Analysis**: Calculates clustering quality scores using TD_Silhouette
+8. **Statistics Generation**: Creates comprehensive cluster statistics with performance aggregations
+
+**PERFORMANCE METRICS EXPLAINED:**
+- **AMPCPUTIME**: Total CPU seconds across all AMPs (primary optimization target)
+- **CPUSKW/IOSKW**: CPU/I/O skew ratios (>2.0 indicates distribution problems)
+- **PJI**: Physical-to-Logical I/O ratio (higher = more CPU-intensive)
+- **UII**: Unit I/O Intensity (higher = more I/O-intensive relative to CPU)
+- **LogicalIO**: Total logical I/O operations (indicates scan intensity)
+- **NumSteps**: Query plan complexity (higher = more complex plans)
+
+**CONFIGURATION (from sql_opt_config.yml):**
+- Uses top {default_max_queries} queries by CPU time (configurable)
+- Creates {default_optimal_k} clusters by default (configurable via optimal_k parameter)
+- Embedding model: {sql_clustering_config.get('model', {}).get('model_id', 'bge-small-en-v1.5')}
+- Vector dimensions: {sql_clustering_config.get('embedding', {}).get('vector_length', 384)}
+- All database and table names are configurable
+
+**OPTIMIZATION WORKFLOW:**
+After running this tool, use:
+1. sql_Analyze_Cluster_Stats to identify problematic clusters
+2. sql_Retrieve_Cluster_Queries to get actual SQL from target clusters
+3. LLM analysis to identify patterns and propose specific optimizations
+
+**USE CASES:**
+- Identify query families consuming the most system resources
+- Find queries with similar patterns but different performance
+- Discover optimization opportunities through clustering analysis
+- Prioritize DBA effort on highest-impact query improvements
+- Understand workload composition and resource distribution
+
+**PREREQUISITES:**
+- DBC.DBQLSqlTbl and DBC.DBQLOgTbl must be accessible
+- Embedding models and tokenizers must be installed in feature_ext_db
+- Sufficient space in feature_ext_db for intermediate and final tables
+
+  - Arguments:
+    - `optimal_k` (integer, optional): No description.
+    - `max_queries` (integer, optional): No description.
+- `sql_Retrieve_Cluster_Queries` (tool): 
+**RETRIEVE ACTUAL SQL QUERIES FROM SPECIFIC CLUSTERS FOR PATTERN ANALYSIS**
+
+This tool extracts the actual SQL query text and performance metrics from selected clusters, enabling detailed pattern analysis and specific optimization recommendations. Essential for moving from cluster-level analysis to actual query optimization.
+
+**DETAILED ANALYSIS CAPABILITIES:**
+- **SQL Pattern Recognition**: Analyze actual query structures, joins, predicates, and functions
+- **Performance Correlation**: Connect query patterns to specific performance characteristics
+- **Optimization Identification**: Identify common anti-patterns, missing indexes, inefficient joins
+- **Code Quality Assessment**: Evaluate query construction, complexity, and best practices
+- **Workload Understanding**: See actual business logic and data access patterns
+
+**QUERY SELECTION STRATEGIES:**
+- **By CPU Impact**: Sort by 'ampcputime' to focus on highest CPU consumers
+- **By I/O Volume**: Sort by 'logicalio' to find scan-intensive queries
+- **By Skew Problems**: Sort by 'cpuskw' or 'ioskw' for distribution issues
+- **By Complexity**: Sort by 'numsteps' for complex execution plans
+- **By Response Time**: Sort by 'response_secs' for user experience impact
+
+**AVAILABLE METRICS FOR SORTING:**
+- **ampcputime**: Total CPU seconds (primary optimization target)
+- **logicalio**: Total logical I/O operations (scan indicator)
+- **cpuskw**: CPU skew ratio (distribution problems)
+- **ioskw**: I/O skew ratio (hot spot indicators)
+- **pji**: Physical-to-Logical I/O ratio (compute intensity)
+- **uii**: Unit I/O Intensity (I/O efficiency)
+- **numsteps**: Query execution plan steps (complexity)
+- **response_secs**: Wall-clock execution time (user impact)
+- **delaytime**: Time spent in queue (concurrency issues)
+
+**AUTOMATIC PERFORMANCE CATEGORIZATION:**
+Each query is categorized using configurable thresholds (from sql_opt_config.yml):
+- **CPU Categories**: VERY_HIGH_CPU (>config.very_high), HIGH_CPU (>config.high), MEDIUM_CPU (>10s), LOW_CPU
+- **CPU Skew**: SEVERE_CPU_SKEW (>config.severe), HIGH_CPU_SKEW (>config.high), MODERATE_CPU_SKEW (>config.moderate), NORMAL
+- **I/O Skew**: SEVERE_IO_SKEW (>config.severe), HIGH_IO_SKEW (>config.high), MODERATE_IO_SKEW (>config.moderate), NORMAL
+
+Use thresholds set in config file for, CPU - high, very_high, Skew moderate, high, severe
+
+**TYPICAL OPTIMIZATION WORKFLOW:**
+1. Start with clusters identified from sql_Analyze_Cluster_Stats
+2. Retrieve top queries by impact metric (usually 'ampcputime')
+3. Analyze SQL patterns for common issues:
+   - Missing WHERE clauses or inefficient predicates
+   - Cartesian products or missing JOIN conditions
+   - Inefficient GROUP BY or ORDER BY operations
+   - Suboptimal table access patterns
+   - Missing or outdated statistics
+4. Develop specific optimization recommendations
+
+**QUERY LIMIT STRATEGY:**
+- Use the query limit set in config file for  pattern recognition and analysis, unless user specifies a different limit
+
+**OUTPUT INCLUDES:**
+- Complete SQL query text for each query
+- All performance metrics, user, application, and workload context, cluster membership and rankings
+- Performance categories for quick filtering        
+
+  - Arguments:
+    - `cluster_ids` (array, required): No description.
+    - `metric` (string, optional): No description.
+    - `limit_per_cluster` (integer, optional): No description.
+--- Category: Query Execution ---
+- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
+--- Category: RAG ---
+- `rag_Execute_Workflow` (tool): 
+Execute complete RAG workflow to answer user questions based on document context.
+This tool handles the entire RAG pipeline in a single step when a user query is tagged with /rag.
+
+WORKFLOW STEPS (executed automatically):
+1. Configuration setup using configurable values from rag_config.yml
+2. Store user query with '/rag ' prefix stripping  
+3. Generate query embeddings using either BYOM (ONNXEmbeddings) or IVSM functions based on config
+4. Perform semantic search against precomputed chunk embeddings
+5. Return context chunks for answer generation
+
+CONFIGURATION VALUES (from rag_config.yml):
+- version: 'ivsm' or 'byom' to select embedding approach
+- All database names, table names, and model settings are configurable
+- Vector store metadata fields are dynamically detected
+- Embedding parameters are configurable
+- Default chunk retrieval count is configurable
+- Default values are provided as fallback
+
+TECHNICAL DETAILS:
+- Strips the '/rag ' prefix if present from user questions
+- Creates query table if it does not exist (columns: id, txt, created_ts)
+- BYOM approach: Uses mldb.ONNXEmbeddings UDF for tokenization and embedding
+- IVSM approach: Uses ivsm.tokenizer_encode and ivsm.IVSM_score functions
+- Both approaches store embeddings in configured output table
+- Uses cosine similarity via TD_VECTORDISTANCE for semantic search
+- Returns the top-k matching chunks from the configured vector store
+- Each result includes chunk text, similarity score, and metadata fields
+
+CRITICAL ANSWERING RULES:
+- Answer ONLY using retrieved chunks - no external knowledge, speculation, or inference
+- Quote source content directly without paraphrasing, summarizing, or rewriting
+- If no relevant context found: "Not enough information found in the provided context"
+- If partial context: "The available context does not fully answer the question"
+- Include document/page references when available (e.g., "On page 2 of 'demo_policy.pdf'...")
+- Execute entire workflow silently without showing function calls to user - only show final answer
+
+LANGUAGE RESTRICTIONS:
+- Do not say "According to the context" or "The context says" - just quote directly
+- Do not say "It can be inferred that..." - no inference allowed
+- Use exact or near-verbatim quotes only
+- No paraphrasing, summarizing, or adding transitions between quotes
+- Copy content precisely - no expansion or interpretation
+
+BEHAVIORAL REQUIREMENTS:
+- Execute all RAG workflow steps silently without showing tool calls to users
+- Only display final answers based strictly on retrieved context chunks
+- Do not use external knowledge or speculation - only quote retrieved content directly
+- RAG mode only triggers with explicit /rag prefix - do not enter RAG mode implicitly
+- Hide all tool execution steps from user
+- Provide clean, direct response with only the answer based on retrieved chunks
+- This is a complete end-to-end RAG workflow - no additional tools needed
+
+EXECUTION: Run completely silently - user only sees their question and the final context-grounded answer.
+
+  - Arguments:
+    - `question` (string, required): No description.
+    - `k` (integer, optional): No description.
+--- Category: Reporting ---
+- `TDA_ContextReport` (tool): The History First Shortcut. This tool MUST be used for a single-phase plan if, and only if, the user's question can be answered entirely from the existing Workflow History. It bypasses all data gathering. Do NOT use this tool if you need to gather new data.
+  - Arguments:
+    - `answer_from_context` (string, required): The final, synthesized natural language answer, provided directly by the planner when it has confidently answered the user's question from the conversation history.
+- `TDA_FinalReport` (tool): The Data Summarization Tool. This tool MUST be the final phase of a multi-step plan to synthesize the results from all previous data-gathering phases into a final report. Do NOT use this tool in a single-phase plan or as a first step.
+--- Category: Security ---
+- `sec_rolePermissions` (tool): Get permissions for a role.
+  - Arguments:
+    - `role_name` (string, required): role name to analyze
+- `sec_userDbPermissions` (tool): Get permissions for a user.
+  - Arguments:
+    - `user_name` (string, required): user name to analyze
+- `sec_userRoles` (tool): Get roles assigned to a user.
+  - Arguments:
+    - `user_name` (string, required): user name to analyze
+--- Category: Table Management ---
+- `base_tablePreview` (tool): This function returns data sample and inferred structure from a database table or view via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `table_name` (string, required): table or view name
+    - `database_name` (string, optional): Database name
+--- Category: Uncategorized ---
+- `tmpl_nameOfTool` (tool): <description of what the tool is for>
+  - Arguments:
+    - `argument` (string, required): No description.
+--- Category: Utilities ---
+- `TDA_CurrentDate` (tool): Returns the current system date in YYYY-MM-DD format. Use this as the first step for any user query involving relative dates like 'today', 'yesterday', or 'this week'.
+- `TDA_DateRange` (tool): Calculates a list of dates based on a start date and a natural language phrase (e.g., 'past 3 days', 'last week'). This is a necessary second step for multi-day queries.
+  - Arguments:
+    - `start_date` (string, required): The anchor date for the calculation, usually today's date from `TDA_CurrentDate`. Must be in YYYY-MM-DD format.
+    - `date_phrase` (string, required): The natural language phrase describing the desired range (e.g., 'past 3 days', 'last 2 weeks').
+- `TDA_LLMFilter` (tool): A specialized internal tool that filters a list of items based on a natural language goal and extracts a single, clean value. This is used as an intermediate step to pass a specific, machine-readable value from one tool to another.
+  - Arguments:
+    - `goal` (string, required): A clear, natural language description of the item to find and extract (e.g., 'Find the database related to fitness', 'Extract the name of the sales summary table').
+    - `data_to_filter` (list[dict], required): The list of data objects to be filtered, passed from the result of a previous phase.
+- `TDA_LLMTask` (tool): Performs internal, LLM-driven tasks that are not direct calls to the Teradata database. This tool is used for text synthesis, summarization, and formatting based on a specific 'task_description' provided by the LLM itself.
+  - Arguments:
+    - `task_description` (string, required): A natural language description of the internal task to be executed (e.g., 'describe the table in a business context', 'format final output'). The LLM infers this from the workflow plan.
+    - `source_data` (list[string], required): A list of keys (e.g., 'result_of_phase_1') identifying which data from the workflow history is relevant for this task. This is critical for providing the correct context.
+    - `synthesized_answer` (string, optional): The final, synthesized natural language answer, provided directly by the planner when it can confidently answer from history.
+--- Available Prompts ---
+--- Category: Query Generation ---
+- `base_teradataQuery` (prompt): A Teradata SQL expert that effectively solves problems understanding teradata specific SQL syntax.
+  - Arguments:
+    - `query` (str, required): The problem or question that needs to be solved using Teradata SQL syntax.
+--- Category: RAG ---
+- `tdvs_rag_prompt` (prompt): Prompt for Teradata Enterprise Vector Store and RAG (Retrieval Augmented Generation) based operations.
+--- Category: Vector Store ---
+- `tdvs_tools_prompt` (prompt): Main prompt for Teradata Enterprise Vector Store operations.
+
+
+USER PROMPT:
+
+You are an expert strategic planning assistant. Your task is to analyze a user's request or a complex workflow goal and decompose it into a high-level, phased meta-plan. This plan will serve as a state machine executor.
+
+---
+### Critical Directives
+You MUST follow these directives in order to create a valid and efficient plan.
+
+
+--- CONSTRAINTS ---
+You are explicitly forbidden from using the following capabilities in your plan under any circumstances:
+- `sales_top_customers` (tool)
+- `plot_line_chart` (tool)
+- `plot_pie_chart` (tool)
+- `plot_polar_chart` (tool)
+- `plot_radar_chart` (tool)
+- `base_query` (prompt)
+- `qlty_databaseQuality` (prompt)
+- `dba_databaseLineage` (prompt)
+- `base_tableBusinessDesc` (prompt)
+- `base_databaseBusinessDesc` (prompt)
+- `dba_databaseHealthAssessment` (prompt)
+- `dba_userActivityAnalysis` (prompt)
+- `dba_systemVoice` (prompt)
+- `dba_tableArchive` (prompt)
+- `dba_tableDropImpact` (prompt)
+- `_testMyServer` (prompt)
+
+
+
+
+CRITICAL RULE (Analytical Prompt Expansion): When you are creating a new plan to fulfill the goal of an analytical prompt (e.g., a prompt that provides a 'description' or 'summary'), the new plan MUST follow a 'gather-then-synthesize' structure. The initial phase(s) must gather the necessary data, and the final phase MUST be a call to TDA_LLMTask to analyze the gathered data and produce the final report.
+
+1.  **Analyze Goal and Context**: First, carefully read the user's `GOAL` and review the `CONTEXT` section to understand the full intent and what actions have already been taken.
+
+2.  **Check History First**: If the `Workflow History` contains enough information to fully answer the user's `GOAL`, your response **MUST be a single JSON object** for a one-phase plan. This plan **MUST** call the `TDA_ContextReport` tool. You **MUST** write the complete, final answer text inside the `answer_from_context` argument within that tool call. **You are acting as a planner; DO NOT use the `FINAL_ANSWER:` format.**
+
+3.  **Default to Data Gathering**: If the history is insufficient, you **MUST** create a new plan to gather the necessary data using the available tools. Your primary objective is to answer the user's `GOAL` using data from these tools.
+
+2.  **Identify Conversational Turns**: If the user's `GOAL` is purely conversational (e.g., a greeting like "hello") and does not require any data or action, your response **MUST be a single JSON object**: `{"plan_type": "conversational", "response": "I'm doing well, thank you for asking! How can I help you with your Teradata database system today?"}`.
+
+3.  **Handle Context and Parameters Correctly**:
+    * **Prioritize the Goal**: You **MUST** prioritize entities from the user's current `GOAL` over conflicting information in the `Workflow History`. The history is for supplementing missing information, not for overriding the current request.
+    * **Extract Parameters**: You **MUST** meticulously scan the `GOAL` for entities that correspond to tool arguments (e.g., table names) and populate the `"arguments"` block in your plan phase with these key-value pairs.
+
+4.  **Follow the Plan Architecture**:
+    * Your plan **MUST** follow a strict "data-gathering first, synthesis last" architecture.
+    * **CRITICAL RULE (Final Reporting):** After all data gathering and synthesis is complete, your plan **MUST** conclude with a final phase that calls the `TDA_FinalReport` tool. You **MUST NOT** provide arguments for this tool; its purpose is to trigger the final, structured summarization.
+    * **CRITICAL RULE (Simple Synthesis Efficiency):** If the **only** remaining task after gathering data is a simple synthesis (e.g., counting items, listing names from results, summarizing findings, assessing quality), you **MUST** proceed directly to the final reporting phase by calling the `TDA_FinalReport` tool. Do **NOT** create an intermediate `TDA_LLMTask` phase for these simple operations.
+    * **CRITICAL RULE (SQL Consolidation):** You MUST NOT create a plan where a `SQL` phase is followed by another `SQL` phase. All related analysis and synthesis MUST be consolidated into a single `SQL` phase to ensure efficiency.
+    * **CRITICAL STRATEGY (Component Iteration):** If the GOAL requires applying one or more tools to every component of a single entity (e.g., checking the quality of "every column" in a table), your plan MUST be structured to iterate over those components. The first phase MUST retrieve the list of components (e.g., using `base_columnDescription`). All subsequent analytical phases that operate on these components MUST be defined with `"type": "loop"` and a corresponding `"loop_over"` key.
+    * **CRITICAL RULE (Loop Argument Referencing):** When a phase has `"type": "loop"`, to use a value from the item being iterated over, you **MUST** use a specific JSON object as the argument's value. This object MUST have two keys: `"source": "loop_item"` and `"key": "..."`, where the key is the name of the field from the loop item's data (e.g., `"TableName"`).
+
+5.  **Optimize for Efficiency**:
+    * **General Principle**: Your plan **MUST** be as efficient as possible. You should always try to combine multiple logical steps into a single phase if one tool can perform the combined operation.
+    * **CRITICAL STRATEGY (Query Pushdown Efficiency)**: Always prefer a single action that filters data at the source over multiple steps that retrieve unfiltered data and then filter it.
+        * **HIGHLY PREFERRED:** Use a tool that accepts a filter (e.g., a `sql` parameter with a `WHERE` clause) to request *only the specific data you need*.
+        * **AVOID IF POSSIBLE:** Do not use a general-purpose "list" tool and then follow it with a second phase to find a specific item.
+        * **FILTERING RULE:** If you must use a general-purpose 'list' tool to find a specific item before acting on it, you **MUST** construct a three-phase plan:
+            1.  **Phase 1 (List):** Call the appropriate 'list' tool (e.g., `base_databaseList`).
+            2.  **Phase 2 (Filter):** Call the specialized `TDA_LLMFilter` tool. The goal of this phase is *only* to find and extract the specific item's name from the results of Phase 1. You MUST pass the goal to the `goal` argument and the results of the previous phase to the `data_to_filter` argument.
+            3.  **Phase 3 (Act):** Call the final tool (e.g., `base_tableList`), using the single, extracted item name from Phase 2 as its argument.
+            This three-step `List -> Filter -> Act` pattern is mandatory for these scenarios.
+    
+    **CRITICAL STRATEGY (SQL Consolidation):** Before creating a multi-step plan, first consider if the user's entire request can be fulfilled with a single, consolidated SQL query. If the goal involves a sequence of filtering, joining, or looking up data (e.g., "find all tables in a database that contains X"), you **MUST** favor using one of the following capabilities to write a single statement that performs the entire operation: `base_teradataQuery` (prompt), `base_readQuery` (tool). Avoid creating multiple `base_...List` steps if a single query would be more efficient.
+
+6.  **Maintain Simplicity and Focus**:
+    * If the `GOAL` can be answered with a single tool call, your plan **MUST** consist of only that single phase. Do not add unnecessary synthesis phases for simple data retrieval.
+    * Every phase **MUST** correspond to a concrete, executable action. Do **NOT** create phases for simple verification or acknowledgement.
+
+7.  **Adhere to Structural Rules**:
+    * **CRITICAL RULE (Plan Flattening)**: Your plan **MUST ALWAYS** be a flat, sequential list of phases. You **MUST NOT** create nested structures. Decompose tasks with nested logic into multiple, sequential looping phases.
+    * **CRITICAL RULE (Capability Type Enforcement)**: Your selection **MUST** strictly adhere to the capability type. You are **forbidden** from placing a `(prompt)` in the `"relevant_tools"` list or a `(tool)` in the `"executable_prompt"` field.
+
+8.  **Ensure Stability**:
+    * **CRITICAL RULE (Recursion Prevention)**: Review the `Current Execution Depth`. You **MUST NOT** create a plan that calls an `executable_prompt` if the depth is approaching the maximum of 5. If you are already inside an `Active Prompt`, you **MUST NOT** create a plan that calls that same prompt again.
+
+---
+### EXAMPLE (Looping with Canonical Format)
+- **User Goal**: "Give me the DDLs of all tables in the 'fitness_db' database."
+- **Correct Plan**:
+  ```json
+  [
+    {
+      "phase": 1,
+      "goal": "Get a list of all tables in the 'fitness_db' database.",
+      "relevant_tools": ["base_tableList"],
+      "arguments": {"database_name": "fitness_db"}
+    },
+    {
+      "phase": 2,
+      "goal": "Loop through the list of tables and retrieve the DDL for each one.",
+      "type": "loop",
+      "loop_over": "result_of_phase_1",
+      "relevant_tools": ["base_tableDDL"],
+      "arguments": {
+        "database_name": "fitness_db",
+        "table_name": {
+          "source": "loop_item",
+          "key": "TableName"
+        }
+      }
+    },
+    {
+      "phase": 3,
+      "goal": "Generate the final report based on the data gathered.",
+      "relevant_tools": ["TDA_FinalReport"],
+      "arguments": {}
+    }
+  ]
+  ```
+
+---
+### Plan JSON Structure
+Your output **MUST** be a single, valid JSON array of phase objects. Each object must follow this structure:
+
+-   `"phase"`: An integer, starting from 1.
+-   `"goal"`: A concise string describing what this phase will accomplish. You MUST embed any relevant parameters from the user's goal directly into this string.
+-   `"type"`: (Optional) Use `"loop"` if the phase needs to iterate over the results of a previous phase.
+-   `"loop_over"`: (Required if `type` is `"loop"`) A string identifying the source of items to loop over (e.g., `"result_of_phase_1"`).
+-   `"relevant_tools"`: A JSON array containing the single string name of the `(tool)` to be used in this phase.
+-   `"executable_prompt"`: A string name of the `(prompt)` to be used in this phase.
+-   `"arguments"`: (Optional) A JSON object of key-value pairs for the selected capability. You can use placeholders like `"result_of_phase_1"` to pass data between phases.
+
+---
+### Context for this Plan
+-   Overall Goal: `how many databases are on the system?`
+-   Explicit Parameters: 
+-   User's Original Input: `how many databases are on the system?`
+-   Workflow History: `{
+  "workflow_history": []
+}`
+-   Execution Depth: This is recursive call number `0`. Avoid creating identical plans.
+
+
+Your response MUST be a single, valid JSON list of phase objects. Do NOT add any extra text, conversation, or markdown.
+
+
+2025-11-04 13:14:53,158 - --- FULL CONTEXT (User: f214fe9f-3049-4b51-a195-1b7280bcc8d7, Session: 27bf96ba-a855-4080-b379-70c5c360c229) ---
+--- REASON FOR CALL ---
+Client-Side Tool Call: TDA_FinalReport
+Goal: how many databases are on the system?
+
+--- History (History Disabled for LLM Call: False) ---
+{
+  "chat_history": [
+    {
+      "role": "user",
+      "content": "You are a helpful assistant.",
+      "turn_number": 0
+    },
+    {
+      "role": "model",
+      "content": "Understood.",
+      "turn_number": 0
+    },
+    {
+      "role": "user",
+      "content": "how many databases are on the system?",
+      "isValid": true,
+      "turn_number": 1
+    }
+  ]
+}
+
+--- Current User Prompt (with System Prompt) ---
+SYSTEM PROMPT:
+You are a JSON-only reporting assistant.
+
+USER PROMPT:
+You are an expert data analyst. Your task is to create a final report for the user by analyzing the provided data and their original question.
+
+--- USER'S ORIGINAL QUESTION ---
+how many databases are on the system?
+
+--- DATA FOR ANALYSIS ---
+{
+  "original_user_input": "how many databases are on the system?",
+  "workflow_goal_prompt": "how many databases are on the system?",
+  "result_of_phase_1": [
+    {
+      "status": "success",
+      "results": [
+        {
+          "DatabaseName": "dbcmngr",
+          "DBType": "DataBase",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TD_SYSFNLIB",
+          "DBType": "DataBase",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TDBCMgmt",
+          "DBType": "DataBase",
+          "CommentString": "POG/COG router management database"
+        },
+        {
+          "DatabaseName": "viewpoint",
+          "DBType": "User",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TDaaS_FLOW1",
+          "DBType": "User",
+          "CommentString": "As-A-Service : Flow Service user"
+        },
+        {
+          "DatabaseName": "fitness_db",
+          "DBType": "DataBase",
+          "CommentString": "Demo Database"
+        },
+        {
+          "DatabaseName": "TDaaS_CloudAvailabilityS1",
+          "DBType": "User",
+          "CommentString": "As-A-Service : Cloud Availability management user"
+        },
+        {
+          "DatabaseName": "TDaaS_Upgrade",
+          "DBType": "User",
+          "CommentString": "As-A-Service : Upgrade Service user"
+        },
+        {
+          "DatabaseName": "TDSYSFLOW",
+          "DBType": "DataBase",
+          "CommentString": "Flow Service Repository"
+        },
+        {
+          "DatabaseName": "PDCRADM",
+          "DBType": "DataBase",
+          "CommentString": "Performance Management Administration Database -- PDCR 20.00"
+        },
+        {
+          "DatabaseName": "TDStats",
+          "DBType": "DataBase",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "SQLJ",
+          "DBType": "DataBase",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "val",
+          "DBType": "User",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TDaaS_CloudRouterManaged1",
+          "DBType": "User",
+          "CommentString": "As-A-Service : QueryFabric COG management user"
+        },
+        {
+          "DatabaseName": "TD_METRIC_SVC",
+          "DBType": "DataBase",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TDaaS_CloudInstallS2",
+          "DBType": "User",
+          "CommentString": "As-A-Service : UDF Installer management user"
+        },
+        {
+          "DatabaseName": "TD_SERVER_DB",
+          "DBType": "DataBase",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "External_AP",
+          "DBType": "User",
+          "CommentString": "The ID 'External_AP' is reserved for use by LDAP Auto Provisioning"
+        },
+        {
+          "DatabaseName": "TDaaS_Maint",
+          "DBType": "User",
+          "CommentString": "As-A-Service Maintenance : Patching and Configuration "
+        },
+        {
+          "DatabaseName": "TDaaS_DB",
+          "DBType": "DataBase",
+          "CommentString": "As-A-Service : APIs DB "
+        },
+        {
+          "DatabaseName": "SYSUDTLIB",
+          "DBType": "DataBase",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TDaaS_AutoDB1",
+          "DBType": "User",
+          "CommentString": "As-a-Service : Autonomous database user"
+        },
+        {
+          "DatabaseName": "TDaaS_CloudFederator2",
+          "DBType": "User",
+          "CommentString": "As-A-Service : PMFederator database monitoring user"
+        },
+        {
+          "DatabaseName": "PUBLIC",
+          "DBType": "User",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TDaaS_TDBCSync2",
+          "DBType": "User",
+          "CommentString": "As-A-Service : POG router sync user"
+        },
+        {
+          "DatabaseName": "TDaaS_CloudMonitor2",
+          "DBType": "User",
+          "CommentString": "As-A-Service : Autoscaler management user"
+        },
+        {
+          "DatabaseName": "SYSBAR",
+          "DBType": "DataBase",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TDaaS_Monitor",
+          "DBType": "User",
+          "CommentString": "As-A-Service Monitor : Monitor Resource Usage "
+        },
+        {
+          "DatabaseName": "SYSSPATIAL",
+          "DBType": "DataBase",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TDaaS_AutoDB2",
+          "DBType": "User",
+          "CommentString": "As-a-Service : Autonomous database user"
+        },
+        {
+          "DatabaseName": "TDaaS_IAM",
+          "DBType": "User",
+          "CommentString": "As-A-Service : Database authentication user"
+        },
+        {
+          "DatabaseName": "All",
+          "DBType": "User",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TDPUSER",
+          "DBType": "User",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TDaaS_DSS2",
+          "DBType": "User",
+          "CommentString": "As-A-Service : Data Sharing Service user"
+        },
+        {
+          "DatabaseName": "TD_DATASHARING_REPO",
+          "DBType": "DataBase",
+          "CommentString": "Data Sharing Service repository"
+        },
+        {
+          "DatabaseName": "DBC",
+          "DBType": "User",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "console",
+          "DBType": "User",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TDaaS_CloudMonitor1",
+          "DBType": "User",
+          "CommentString": "As-A-Service : Autoscaler management user"
+        },
+        {
+          "DatabaseName": "TDaaS_CloudInstallS1",
+          "DBType": "User",
+          "CommentString": "As-A-Service : UDF Installer management user"
+        },
+        {
+          "DatabaseName": "SystemFe",
+          "DBType": "User",
+          "CommentString": "The ID 'SystemFe' is reserved for use by System Field Engineers"
+        },
+        {
+          "DatabaseName": "SYSUIF",
+          "DBType": "DataBase",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TDQCD",
+          "DBType": "DataBase",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TD_ANALYTICS_DB",
+          "DBType": "DataBase",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "Sys_Calendar",
+          "DBType": "User",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TDaaS_AppOpsS2",
+          "DBType": "User",
+          "CommentString": "As-A-Service : Third Party Applications User"
+        },
+        {
+          "DatabaseName": "TDaaS_CloudMSS1",
+          "DBType": "User",
+          "CommentString": "As-A-Service : Metric Services data management user"
+        },
+        {
+          "DatabaseName": "TDMaps",
+          "DBType": "User",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TDaaS_CloudAvailabilityS2",
+          "DBType": "User",
+          "CommentString": "As-A-Service : Cloud Availability management user"
+        },
+        {
+          "DatabaseName": "TDaaS_TDBCMgmt2",
+          "DBType": "User",
+          "CommentString": "As-A-Service : POG/COG router management user"
+        },
+        {
+          "DatabaseName": "SysAdmin",
+          "DBType": "User",
+          "CommentString": "The ID 'SysAdmin' is reserved for use by the System Administrators"
+        },
+        {
+          "DatabaseName": "SYSJDBC",
+          "DBType": "DataBase",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "Default",
+          "DBType": "User",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "mldb",
+          "DBType": "User",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "SAS_SYSFNLIB",
+          "DBType": "DataBase",
+          "CommentString": "SAS_SYSFNLIB Repository"
+        },
+        {
+          "DatabaseName": "TDaaS_AppOpsS1",
+          "DBType": "User",
+          "CommentString": "As-A-Service : Third Party Applications User"
+        },
+        {
+          "DatabaseName": "TDaaS_TDBCSync1",
+          "DBType": "User",
+          "CommentString": "As-A-Service : POG router sync user"
+        },
+        {
+          "DatabaseName": "TDaaS_CloudRouterManaged2",
+          "DBType": "User",
+          "CommentString": "As-A-Service : QueryFabric COG management user"
+        },
+        {
+          "DatabaseName": "TDaaS_TDBCMgmt1",
+          "DBType": "User",
+          "CommentString": "As-A-Service : POG/COG router management user"
+        },
+        {
+          "DatabaseName": "TD_SYSXML",
+          "DBType": "DataBase",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "Crashdumps",
+          "DBType": "User",
+          "CommentString": "The ID 'Crashdumps' is reserved for use by Crashdumps Processing Software"
+        },
+        {
+          "DatabaseName": "LockLogShredder",
+          "DBType": "User",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "EXTUSER",
+          "DBType": "User",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TDaaS_Support",
+          "DBType": "User",
+          "CommentString": "As-A-Service Support : Problem and Error Investigation "
+        },
+        {
+          "DatabaseName": "TD_SYSGPL",
+          "DBType": "DataBase",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TDaaS_CloudMSS2",
+          "DBType": "User",
+          "CommentString": "As-A-Service : Metric Services data management user"
+        },
+        {
+          "DatabaseName": "TDaaS_CloudFederator1",
+          "DBType": "User",
+          "CommentString": "As-A-Service : PMFederator database monitoring user"
+        },
+        {
+          "DatabaseName": "TDaaS_BAR",
+          "DBType": "User",
+          "CommentString": "As-A-Service : Backup and Restore "
+        },
+        {
+          "DatabaseName": "tdwm",
+          "DBType": "User",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "SYSLIB",
+          "DBType": "DataBase",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TDaaS_DSS1",
+          "DBType": "User",
+          "CommentString": "As-A-Service : Data Sharing Service user"
+        },
+        {
+          "DatabaseName": "fitness_manager",
+          "DBType": "User",
+          "CommentString": "None"
+        },
+        {
+          "DatabaseName": "TDaaS_FLOW2",
+          "DBType": "User",
+          "CommentString": "As-A-Service : Flow Service user"
+        }
+      ],
+      "metadata": {
+        "tool_name": "base_databaseList",
+        "sql": "select DataBaseName, DECODE(DBKind, 'U', 'User', 'D','DataBase') as DBType, CommentString from dbc.DatabasesV dv where OwnerName <> 'PDCRADM'",
+        "columns": [
+          {
+            "name": "DatabaseName",
+            "type": "str"
+          },
+          {
+            "name": "DBType",
+            "type": "str"
+          },
+          {
+            "name": "CommentString",
+            "type": "str"
+          }
+        ],
+        "row_count": 72
+      }
+    }
+  ]
+}
+
+--- INSTRUCTIONS ---
+Your response MUST be a single JSON object that strictly follows the schema for a `CanonicalResponse`.
+You are required to populate its fields based on your analysis of the data provided above.
+
+--- FIELD GUIDELINES ---
+1.  `direct_answer`: REQUIRED. A single, concise sentence that directly and factually answers the user's primary question.
+2.  `key_metric`: OPTIONAL. Use ONLY if the answer can be summarized by a single, primary value (e.g., a total count, a status). Requires `value` (string) and `label` (string). Omit the entire field if not applicable.
+3.  `key_observations`: OPTIONAL. A list of objects, each with a `text` field containing a single, narrative bullet point of supporting detail or context. Do NOT include raw data or code.
+
+2025-11-04 13:14:54,484 - --- FULL CONTEXT (User: f214fe9f-3049-4b51-a195-1b7280bcc8d7, Session: 27bf96ba-a855-4080-b379-70c5c360c229) ---
+--- REASON FOR CALL ---
+Generating session name from initial query.
+
+--- History (History Disabled for LLM Call: True) ---
+{
+  "chat_history": []
+}
+
+--- Current User Prompt (with System Prompt) ---
+SYSTEM PROMPT:
+You generate short, descriptive titles. Only respond with the title text.
+
+USER PROMPT:
+Based on the following user query, generate a concise and descriptive name (3-5 words) suitable for a chat session history list. Do not include any punctuation or extra text.
+
+User Query: "how many databases are on the system?"
+
+Session Name:
+

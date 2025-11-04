@@ -868,13 +868,18 @@ export async function finalizeConfiguration(config) {
                 const sessionItem = UI.addSessionToList(session.id, session.name, false);
                 DOM.sessionList.appendChild(sessionItem);
             });
+            // Load the most recent session instead of starting a new one
+            await handleLoadSession(sessions[0].id);
+        } else {
+            // No sessions exist, create a new one
+            await handleStartNewSession();
         }
     } catch (sessionError) {
         console.error("Error loading previous sessions:", sessionError);
         DOM.sessionList.innerHTML = '<li class="text-red-400 p-2">Error loading sessions</li>';
+        // Fallback to creating a new session if loading fails
+        await handleStartNewSession();
     }
-
-    await handleStartNewSession();
 
     state.pristineConfig = getCurrentCoreConfig();
     UI.updateConfigButtonState();
