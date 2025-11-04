@@ -52,6 +52,13 @@ async def run_agent_execution(
              await event_handler({"error": f"Session '{session_id}' not found."}, "error")
              return None # Indicate failure
 
+        # Send an event with the latest model usage
+        await event_handler({
+            "session_id": session_id,
+            "models_used": session_data.get("models_used", []),
+            "last_updated": session_data.get("last_updated", session_data.get("created_at"))
+        }, "session_model_update")
+
         # Save the user's message to the history used for UI rendering.
         # --- MODIFICATION START: Only add user input if not a replay ---
         # Don't add user input again if we are replaying a previous query

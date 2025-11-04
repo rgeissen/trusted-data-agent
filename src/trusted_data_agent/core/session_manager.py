@@ -73,6 +73,7 @@ def _load_session(user_uuid: str, session_id: str) -> dict | None:
 
 def _save_session(user_uuid: str, session_id: str, session_data: dict):
     """Saves session data to a file, creating directories if needed."""
+    session_data['last_updated'] = datetime.now().isoformat()
     session_path = _get_session_path(user_uuid, session_id)
     if not session_path:
         app_logger.error(f"Cannot save session '{session_id}' for user '{user_uuid}': Invalid path.")
@@ -118,10 +119,12 @@ def create_session(user_uuid: str, provider: str, llm_instance: any, charting_in
         "charting_intensity": charting_intensity,
         "provider": provider, # --- Store the provider used for this session
         "model": APP_CONFIG.CURRENT_MODEL, # --- Store the model used for this session
+        "models_used": [f"{provider}/{APP_CONFIG.CURRENT_MODEL}"], # --- Store all models used in the session
         "session_history": [], # UI history (messages added via add_message_to_histories)
         "chat_object": chat_history_for_file, # Store serializable history for LLM context
         "name": "New Chat",
         "created_at": datetime.now().isoformat(),
+        "last_updated": datetime.now().isoformat(),
         "input_tokens": 0,
         "output_tokens": 0,
         # --- MODIFICATION START: Ensure workflow_history list exists on creation ---
@@ -193,9 +196,11 @@ def get_all_sessions(user_uuid: str) -> list[dict]:
                 # Load only necessary fields for summary to improve performance
                 data = json.load(f)
                 summary = {
-                    "id": data.get("id", session_file.stem), # Use filename stem as fallback ID
+                    "id": data.get("id", session_file.stem),
                     "name": data.get("name", "Unnamed Session"),
-                    "created_at": data.get("created_at", "Unknown")
+                    "created_at": data.get("created_at", "Unknown"),
+                    "models_used": data.get("models_used", []),
+                    "last_updated": data.get("last_updated", data.get("created_at", "Unknown"))
                 }
                 session_summaries.append(summary)
                 app_logger.debug(f"Successfully loaded summary for {session_file.name}.")
@@ -209,7 +214,13 @@ def get_all_sessions(user_uuid: str) -> list[dict]:
             })
 
 
-    session_summaries.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    def sort_key(session):
+        created_at = session.get("created_at", "")
+        if created_at == "Unknown" or not created_at:
+            return datetime.min.isoformat()
+        return created_at
+
+    session_summaries.sort(key=sort_key, reverse=True)
     app_logger.debug(f"Returning {len(session_summaries)} session summaries for user '{user_uuid}'.")
     return session_summaries
 
@@ -329,6 +340,21 @@ def update_token_count(user_uuid: str, session_id: str, input_tokens: int, outpu
             app_logger.error(f"Failed to save session after updating tokens for {session_id}")
     else:
         app_logger.warning(f"Could not update tokens: Session {session_id} not found for user {user_uuid}.")
+
+
+def update_models_used(user_uuid: str, session_id: str, provider: str, model: str):
+    """Adds the current model to the list of models used in the session."""
+    session_data = _load_session(user_uuid, session_id)
+    if session_data:
+        models_used = session_data.get('models_used', [])
+        model_string = f"{provider}/{model}"
+        if model_string not in models_used:
+            models_used.append(model_string)
+            session_data['models_used'] = models_used
+            if not _save_session(user_uuid, session_id, session_data):
+                app_logger.error(f"Failed to save session after updating models used for {session_id}")
+    else:
+        app_logger.warning(f"Could not update models used: Session {session_id} not found for user {user_uuid}.")
 
 
 def update_last_turn_data(user_uuid: str, session_id: str, turn_data: dict):

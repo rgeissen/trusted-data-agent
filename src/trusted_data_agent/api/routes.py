@@ -568,7 +568,11 @@ async def new_session():
             system_prompt_template=system_prompt_template
         )
         app_logger.info(f"Created new session: {session_id} for user {user_uuid} provider {APP_CONFIG.CURRENT_PROVIDER}.")
-        return jsonify({"session_id": session_id, "name": "New Chat"})
+        return jsonify({
+            "id": session_id, 
+            "name": "New Chat", 
+            "models_used": [f"{APP_CONFIG.CURRENT_PROVIDER}/{APP_CONFIG.CURRENT_MODEL}"]
+        })
     except Exception as e:
         app_logger.error(f"Failed to create new session for user {user_uuid}: {e}", exc_info=True)
         return jsonify({"error": f"Failed to initialize a new chat session: {e}"}), 500
@@ -686,6 +690,8 @@ async def ask_stream():
         async def error_gen():
             yield PlanExecutor._format_sse({"error": "Session not found or invalid."}, "error")
         return Response(error_gen(), mimetype="text/event-stream")
+
+    session_manager.update_models_used(user_uuid=user_uuid, session_id=session_id, provider=APP_CONFIG.CURRENT_PROVIDER, model=APP_CONFIG.CURRENT_MODEL)
 
 
     active_tasks_key = f"{user_uuid}_{session_id}"

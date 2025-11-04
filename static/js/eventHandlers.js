@@ -80,6 +80,10 @@ async function processStream(responseBody) {
                     } else if (eventName === 'session_name_update') {
                         const { session_id, newName } = eventData;
                         UI.updateSessionListItemName(session_id, newName);
+                    } else if (eventName === 'session_model_update') {
+                        const { session_id, models_used, last_updated } = eventData;
+                        UI.updateSessionModels(session_id, models_used);
+                        UI.updateSessionTimestamp(session_id, last_updated);
                     } else if (eventName === 'request_user_input') {
                         UI.updateStatusWindow({ step: "Action Required", details: "Waiting for user to correct parameters.", type: 'workaround' });
                         UI.setExecutionState(false);
@@ -610,9 +614,9 @@ export async function handleStartNewSession() {
 
     try {
         const data = await API.startNewSession();
-        const sessionItem = UI.addSessionToList(data.session_id, data.name, true);
+        const sessionItem = UI.addSessionToList(data, true);
         DOM.sessionList.prepend(sessionItem);
-        await handleLoadSession(data.session_id, true);
+        await handleLoadSession(data.id, true);
     } catch (error) {
         UI.addMessage('assistant', `Failed to start a new session: ${error.message}`);
     } finally {
@@ -855,16 +859,21 @@ export async function finalizeConfiguration(config) {
         handleLoadResources('resources')
     ]);
 
+    const currentSessionId = state.currentSessionId;
+
     try {
         const sessions = await API.loadAllSessions();
         DOM.sessionList.innerHTML = '';
         if (sessions && Array.isArray(sessions) && sessions.length > 0) {
             sessions.forEach((session) => {
-                const sessionItem = UI.addSessionToList(session.id, session.name, false);
+                const isActive = session.id === currentSessionId;
+                const sessionItem = UI.addSessionToList(session, isActive);
                 DOM.sessionList.appendChild(sessionItem);
             });
-            // Load the most recent session instead of starting a new one
-            await handleLoadSession(sessions[0].id);
+            // If the previously active session still exists, ensure it is loaded.
+            // Otherwise, load the most recent session.
+            const sessionToLoad = sessions.find(s => s.id === currentSessionId) ? currentSessionId : sessions[0].id;
+            await handleLoadSession(sessionToLoad);
         } else {
             // No sessions exist, create a new one
             await handleStartNewSession();

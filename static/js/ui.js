@@ -878,23 +878,30 @@ export function highlightResource(resourceName, type) {
     }
 }
 
-export function addSessionToList(sessionId, name, isActive = false) {
-    const sessionItem = document.createElement('button');
-    sessionItem.id = `session-${sessionId}`;
-    sessionItem.dataset.sessionId = sessionId;
-    sessionItem.className = 'session-item w-full text-left p-3 rounded-lg hover:bg-white/10 transition-colors truncate';
+export function addSessionToList(session, isActive = false) {
+    const sessionItem = document.createElement('div');
+    sessionItem.id = `session-${session.id}`;
+    sessionItem.dataset.sessionId = session.id;
+    sessionItem.className = 'session-item w-full text-left p-3 rounded-lg hover:bg-white/10 transition-colors cursor-pointer';
+
     if (isActive) {
         document.querySelectorAll('.session-item').forEach(item => item.classList.remove('active'));
         sessionItem.classList.add('active');
     }
 
+    const contentWrapper = document.createElement('div');
+    contentWrapper.className = 'w-full flex flex-col';
+
+    const topRow = document.createElement('div');
+    topRow.className = 'flex justify-between items-center';
+
     const nameSpan = document.createElement('span');
-    nameSpan.className = 'session-name-span font-semibold text-sm text-white flex-grow truncate';
-    nameSpan.textContent = name;
-    sessionItem.appendChild(nameSpan);
+    nameSpan.className = 'session-name-span font-semibold text-sm text-white truncate';
+    nameSpan.textContent = session.name;
+    topRow.appendChild(nameSpan);
 
     const actionsDiv = document.createElement('div');
-    actionsDiv.className = 'session-actions';
+    actionsDiv.className = 'session-actions flex-shrink-0 flex items-center';
 
     const editButton = document.createElement('button');
     editButton.type = 'button';
@@ -910,7 +917,31 @@ export function addSessionToList(sessionId, name, isActive = false) {
     deleteButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm2 3a1 1 0 11-2 0 1 1 0 012 0zm4 0a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd" /></svg>`;
     actionsDiv.appendChild(deleteButton);
 
-    sessionItem.appendChild(actionsDiv);
+    topRow.appendChild(actionsDiv);
+    contentWrapper.appendChild(topRow);
+
+    const lastUpdatedSpan = document.createElement('span');
+    lastUpdatedSpan.className = 'session-last-updated text-xs text-gray-300 mt-1';
+    if (session.last_updated && session.last_updated !== "Unknown") {
+        lastUpdatedSpan.textContent = `Updated: ${new Date(session.last_updated).toLocaleString()}`;
+    } else {
+        lastUpdatedSpan.textContent = 'Updated: Unknown';
+    }
+    contentWrapper.appendChild(lastUpdatedSpan);
+
+    const modelsDiv = document.createElement('div');
+    modelsDiv.className = 'session-models text-xs text-gray-400 mt-1 flex flex-wrap gap-1';
+    if (session.models_used && Array.isArray(session.models_used)) {
+        session.models_used.forEach(modelString => {
+            const modelSpan = document.createElement('span');
+            modelSpan.className = 'inline-block bg-gray-700 rounded-full px-2 py-0.5 text-xs font-medium text-gray-300';
+            modelSpan.textContent = modelString;
+            modelsDiv.appendChild(modelSpan);
+        });
+    }
+    contentWrapper.appendChild(modelsDiv);
+
+    sessionItem.appendChild(contentWrapper);
 
     return sessionItem;
 }
@@ -932,6 +963,56 @@ export function updateSessionListItemName(sessionId, newName) {
         }
     } else {
         console.warn(`Could not find session item ${sessionId} in the list to update name.`);
+    }
+}
+
+export function updateSessionModels(sessionId, models_used) {
+    const sessionItem = document.getElementById(`session-${sessionId}`);
+    if (sessionItem) {
+        let modelsDiv = sessionItem.querySelector('.session-models');
+        if (!modelsDiv) {
+            modelsDiv = document.createElement('div');
+            modelsDiv.className = 'session-models text-xs text-gray-400 mt-1 flex flex-wrap gap-1';
+            const contentWrapper = sessionItem.querySelector('.w-full');
+            if(contentWrapper) {
+                contentWrapper.appendChild(modelsDiv);
+            }
+        }
+        modelsDiv.innerHTML = ''; // Clear existing models
+        if (models_used && Array.isArray(models_used)) {
+            models_used.forEach(modelString => {
+                const modelSpan = document.createElement('span');
+                modelSpan.className = 'inline-block bg-gray-700 rounded-full px-2 py-0.5 text-xs font-medium text-gray-300';
+                modelSpan.textContent = modelString;
+                modelsDiv.appendChild(modelSpan);
+            });
+        }
+
+        if (state.currentSessionId === sessionId) {
+            document.querySelectorAll('.session-item').forEach(item => item.classList.remove('active'));
+            sessionItem.classList.add('active');
+        }
+    }
+}
+
+export function updateSessionTimestamp(sessionId, last_updated) {
+    const sessionItem = document.getElementById(`session-${sessionId}`);
+    if (sessionItem) {
+        let lastUpdatedSpan = sessionItem.querySelector('.session-last-updated');
+        if (!lastUpdatedSpan) {
+            lastUpdatedSpan = document.createElement('span');
+            lastUpdatedSpan.className = 'session-last-updated text-xs text-gray-300';
+            const infoDiv = sessionItem.querySelector('.flex-col');
+            if (infoDiv) {
+                const nameSpan = infoDiv.querySelector('.session-name-span');
+                if (nameSpan) {
+                    nameSpan.after(lastUpdatedSpan);
+                } else {
+                    infoDiv.prepend(lastUpdatedSpan);
+                }
+            }
+        }
+        lastUpdatedSpan.textContent = `Updated: ${new Date(last_updated).toLocaleString()}`;
     }
 }
 
