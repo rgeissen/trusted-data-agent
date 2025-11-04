@@ -614,6 +614,10 @@ export async function handleStartNewSession() {
 
     try {
         const data = await API.startNewSession();
+        // --- MODIFICATION START ---
+        // Clear models_used for a new session to prevent inheriting from previous session
+        data.models_used = [];
+        // --- MODIFICATION END ---
         const sessionItem = UI.addSessionToList(data, true);
         DOM.sessionList.prepend(sessionItem);
         await handleLoadSession(data.id, true);
