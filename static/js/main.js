@@ -57,6 +57,60 @@ function ensureUserUUID() {
 // --- MODIFICATION END ---
 
 
+// --- MODIFICATION START: Add function to load initial config from localStorage ---
+/**
+ * Loads initial configuration from localStorage and populates the form fields.
+ * This function specifically handles the MCP server configuration.
+ */
+function loadInitialConfig() {
+    console.log("loadInitialConfig: Loading initial MCP configuration from localStorage...");
+    try {
+        const savedMcpConfig = JSON.parse(localStorage.getItem('mcpConfig'));
+        if (savedMcpConfig) {
+            console.log("loadInitialConfig: Found saved MCP config:", savedMcpConfig);
+            // Use DOM elements from domElements.js, assuming they are correctly imported and available
+            if (DOM.mcpServerNameInput) {
+                DOM.mcpServerNameInput.value = savedMcpConfig.server_name || 'teradata_mcp_server';
+            }
+            const mcpHostInput = document.getElementById('mcp-host');
+            if (mcpHostInput) {
+                mcpHostInput.value = savedMcpConfig.host || '127.0.0.1';
+            }
+            const mcpPortInput = document.getElementById('mcp-port');
+            if (mcpPortInput) {
+                mcpPortInput.value = savedMcpConfig.port || '8001';
+            }
+            const mcpPathInput = document.getElementById('mcp-path');
+            if (mcpPathInput) {
+                mcpPathInput.value = savedMcpConfig.path || '/mcp/';
+            }
+            console.log("loadInitialConfig: Successfully populated MCP config fields.");
+        } else {
+            console.log("loadInitialConfig: No saved MCP config found. Using default values.");
+            // Set default values if nothing is in localStorage
+            if (DOM.mcpServerNameInput) {
+                DOM.mcpServerNameInput.value = 'teradata_mcp_server';
+            }
+            const mcpHostInput = document.getElementById('mcp-host');
+            if (mcpHostInput) {
+                mcpHostInput.value = '127.0.0.1';
+            }
+            const mcpPortInput = document.getElementById('mcp-port');
+            if (mcpPortInput) {
+                mcpPortInput.value = '8001';
+            }
+            const mcpPathInput = document.getElementById('mcp-path');
+            if (mcpPathInput) {
+                mcpPathInput.value = '/mcp/';
+            }
+        }
+    } catch (e) {
+        console.error("loadInitialConfig: Error loading or parsing MCP config from localStorage:", e);
+    }
+}
+// --- MODIFICATION END ---
+
+
 document.addEventListener('DOMContentLoaded', async () => {
     // --- MODIFICATION START: Load welcome screen preference ---
     const savedShowWelcomeScreen = localStorage.getItem('showWelcomeScreenAtStartup');
@@ -95,6 +149,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }, 2000);
         });
     }
+    // --- MODIFICATION END ---
+
+    // --- MODIFICATION START: Call loadInitialConfig ---
+    // Load MCP config from localStorage into the modal fields before initializing event listeners
+    loadInitialConfig();
     // --- MODIFICATION END ---
 
     // Initialize all event listeners first to ensure they are ready.
@@ -156,20 +215,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
         } else {
-            console.log("DEBUG: Server is not configured. Pre-filling and showing config modal.");
-            // Pre-fill config modal (remains the same)
-            const savedMcpConfig = JSON.parse(localStorage.getItem('mcpConfig'));
-            if (savedMcpConfig) {
-                DOM.mcpServerNameInput.value = savedMcpConfig.server_name || 'teradata_mcp_server';
-                document.getElementById('mcp-host').value = savedMcpConfig.host || '127.0.0.1';
-                document.getElementById('mcp-port').value = savedMcpConfig.port || '8001';
-                document.getElementById('mcp-path').value = savedMcpConfig.path || '/mcp/';
-            } else {
-                DOM.mcpServerNameInput.value = 'teradata_mcp_server';
-                document.getElementById('mcp-host').value = '127.0.0.1';
-                document.getElementById('mcp-port').value = '8001';
-                document.getElementById('mcp-path').value = '/mcp/';
-            }
+            console.log("DEBUG: Server is not configured. Showing config modal.");
+            // The new loadInitialConfig() function handles pre-filling the MCP fields.
+            // We still need to handle the TTS credentials and last provider.
             const savedTtsCreds = localStorage.getItem('ttsCredentialsJson');
             if (savedTtsCreds) {
                 DOM.ttsCredentialsJsonTextarea.value = savedTtsCreds;
@@ -183,19 +231,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     } catch (startupError) {
         console.error("DEBUG: Error during startup configuration/session loading. Showing config modal.", startupError);
+        // Fallback to pre-filling and showing the modal on any error.
+        // The new loadInitialConfig() function handles pre-filling the MCP fields.
         try {
-            const savedMcpConfig = JSON.parse(localStorage.getItem('mcpConfig'));
-             if (savedMcpConfig) {
-                 DOM.mcpServerNameInput.value = savedMcpConfig.server_name || 'teradata_mcp_server';
-                 document.getElementById('mcp-host').value = savedMcpConfig.host || '127.0.0.1';
-                 document.getElementById('mcp-port').value = savedMcpConfig.port || '8001';
-                 document.getElementById('mcp-path').value = savedMcpConfig.path || '/mcp/';
-             } else {
-                 DOM.mcpServerNameInput.value = 'teradata_mcp_server';
-                 document.getElementById('mcp-host').value = '127.0.0.1';
-                 document.getElementById('mcp-port').value = '8001';
-                 document.getElementById('mcp-path').value = '/mcp/';
-             }
              const savedTtsCreds = localStorage.getItem('ttsCredentialsJson');
              if (savedTtsCreds) { DOM.ttsCredentialsJsonTextarea.value = savedTtsCreds; }
              const lastProvider = localStorage.getItem('lastSelectedProvider');
