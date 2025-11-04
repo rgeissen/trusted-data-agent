@@ -1050,11 +1050,17 @@ export function enterSessionEditMode(editButton) {
     inputElement.type = 'text';
     inputElement.value = currentName;
     inputElement.dataset.originalName = currentName;
-    inputElement.className = 'session-edit-input';
+    inputElement.className = 'session-edit-input flex-grow min-w-0 w-full p-1 bg-gray-800 border border-gray-600 rounded-md text-sm text-white'; // Added flex-grow and adjusted colors
 
     spanElement.style.display = 'none';
     actionsDiv.style.display = 'none';
-    sessionItem.insertBefore(inputElement, spanElement);
+
+    const topRow = sessionItem.querySelector('.flex.justify-between.items-center');
+    if (!topRow) return; // Should not happen if addSessionToList creates it correctly
+
+    // Ensure the topRow is a flex container that allows the input to grow
+    topRow.classList.add('flex', 'items-center'); // Ensure flex properties are present
+    topRow.insertBefore(inputElement, spanElement);
 
     inputElement.focus();
     inputElement.select();
