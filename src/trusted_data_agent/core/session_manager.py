@@ -119,7 +119,7 @@ def create_session(user_uuid: str, provider: str, llm_instance: any, charting_in
         "charting_intensity": charting_intensity,
         "provider": provider, # --- Store the provider used for this session
         "model": APP_CONFIG.CURRENT_MODEL, # --- Store the model used for this session
-        "models_used": [f"{provider}/{APP_CONFIG.CURRENT_MODEL}"], # --- Store all models used in the session
+        "models_used": [], # --- Initialize as empty for a new session
         "session_history": [], # UI history (messages added via add_message_to_histories)
         "chat_object": chat_history_for_file, # Store serializable history for LLM context
         "name": "New Chat",
@@ -202,6 +202,7 @@ def get_all_sessions(user_uuid: str) -> list[dict]:
                     "models_used": data.get("models_used", []),
                     "last_updated": data.get("last_updated", data.get("created_at", "Unknown"))
                 }
+                app_logger.debug(f"Loaded summary for {session_file.name}: models_used={summary['models_used']}")
                 session_summaries.append(summary)
                 app_logger.debug(f"Successfully loaded summary for {session_file.name}.")
         except (json.JSONDecodeError, OSError, KeyError) as e:

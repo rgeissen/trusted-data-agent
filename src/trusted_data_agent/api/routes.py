@@ -384,7 +384,8 @@ async def get_session_history(session_id):
         response_data = {
             "history": session_data.get("session_history", []),
             "input_tokens": session_data.get("input_tokens", 0),
-            "output_tokens": session_data.get("output_tokens", 0)
+            "output_tokens": session_data.get("output_tokens", 0),
+            "models_used": session_data.get("models_used", [])
         }
         return jsonify(response_data)
     app_logger.warning(f"Session {session_id} not found for user {user_uuid}.")
@@ -571,7 +572,7 @@ async def new_session():
         return jsonify({
             "id": session_id, 
             "name": "New Chat", 
-            "models_used": [f"{APP_CONFIG.CURRENT_PROVIDER}/{APP_CONFIG.CURRENT_MODEL}"]
+            "models_used": []
         })
     except Exception as e:
         app_logger.error(f"Failed to create new session for user {user_uuid}: {e}", exc_info=True)

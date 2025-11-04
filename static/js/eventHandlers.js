@@ -614,10 +614,6 @@ export async function handleStartNewSession() {
 
     try {
         const data = await API.startNewSession();
-        // --- MODIFICATION START ---
-        // Clear models_used for a new session to prevent inheriting from previous session
-        data.models_used = [];
-        // --- MODIFICATION END ---
         const sessionItem = UI.addSessionToList(data, true);
         DOM.sessionList.prepend(sessionItem);
         await handleLoadSession(data.id, true);
@@ -635,6 +631,8 @@ export async function handleLoadSession(sessionId, isNewSession = false) {
     try {
         const data = await API.loadSession(sessionId);
         state.currentSessionId = sessionId;
+        state.currentProvider = data.provider;
+        state.currentModel = data.model;
         DOM.chatLog.innerHTML = '';
         if (data.history && data.history.length > 0) {
             // --- MODIFICATION START: Pass turn_id and isValid during history load ---
