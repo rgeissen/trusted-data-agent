@@ -108,11 +108,23 @@ export function subscribeToNotifications() {
                 break;
             }
             case 'session_model_update': {
-                const { session_id, models_used, last_updated } = data.payload;
+                const { session_id, models_used, last_updated, provider, model } = data.payload;
                 console.log(`[notifications.js] Received session_model_update for session_id=${session_id}`);
+                console.log(`[notifications.js] Payload: provider=${provider}, model=${model}, models_used=`, models_used);
                 UI.updateSessionModels(session_id, models_used);
                 UI.updateSessionTimestamp(session_id, last_updated);
                 UI.moveSessionToTop(session_id);
+
+                if (session_id === state.currentSessionId) {
+                    console.log(`[notifications.js] Session ${session_id} is current session. Updating state.currentProvider from ${state.currentProvider} to ${provider}`);
+                    console.log(`[notifications.js] Updating state.currentModel from ${state.currentModel} to ${model}`);
+                    state.currentProvider = provider;
+                    state.currentModel = model;
+                    UI.updateStatusPromptName();
+                    console.log(`[notifications.js] UI.updateStatusPromptName() called.`);
+                } else {
+                    console.log(`[notifications.js] Session ${session_id} is NOT current session. State not updated.`);
+                }
                 break;
             }
             // --- MODIFICATION START: Add handlers for REST task events ---

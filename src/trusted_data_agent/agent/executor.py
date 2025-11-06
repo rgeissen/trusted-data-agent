@@ -170,7 +170,7 @@ class PlanExecutor:
         """A centralized wrapper for calling the LLM that handles token updates."""
         final_disabled_history = disabled_history or self.disabled_history
 
-        response_text, statement_input_tokens, statement_output_tokens = await llm_handler.call_llm_api(
+        response_text, statement_input_tokens, statement_output_tokens, actual_provider, actual_model = await llm_handler.call_llm_api(
             self.dependencies['STATE']['llm'], prompt,
             # --- MODIFICATION START: Pass user_uuid and session_id ---
             user_uuid=self.user_uuid, session_id=self.session_id,
@@ -183,6 +183,11 @@ class PlanExecutor:
         )
         self.llm_debug_history.append({"reason": reason, "response": response_text})
         app_logger.debug(f"LLM RESPONSE (DEBUG): Reason='{reason}', Response='{response_text}'")
+
+        # --- MODIFICATION START: Update session_manager with actual provider/model ---
+        session_manager.update_models_used(self.user_uuid, self.session_id, actual_provider, actual_model)
+        # --- MODIFICATION END ---
+
         return response_text, statement_input_tokens, statement_output_tokens
 
     async def _get_tool_constraints(self, tool_name: str) -> Tuple[dict, list]:

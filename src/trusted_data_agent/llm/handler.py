@@ -453,18 +453,19 @@ def _normalize_bedrock_model_id(model_id: str) -> str:
     # Safely split by the version delimiter ':' and take the base model ID
     return model_id.split(':')[0]
 
-# --- MODIFICATION START: Add user_uuid parameter ---
-async def call_llm_api(llm_instance: any, prompt: str, user_uuid: str = None, session_id: str = None, chat_history=None, raise_on_error: bool = False, system_prompt_override: str = None, dependencies: dict = None, reason: str = "No reason provided.", disabled_history: bool = False, active_prompt_name_for_filter: str = None, source: str = "text") -> tuple[str, int, int]:
+    # --- MODIFICATION START: Add user_uuid parameter ---
+async def call_llm_api(llm_instance: any, prompt: str, user_uuid: str = None, session_id: str = None, chat_history=None, raise_on_error: bool = False, system_prompt_override: str = None, dependencies: dict = None, reason: str = "No reason provided.", disabled_history: bool = False, active_prompt_name_for_filter: str = None, source: str = "text") -> tuple[str, int, int, str, str]: # Added provider and model to return type
 # --- MODIFICATION END ---
     if not llm_instance:
         raise RuntimeError("LLM is not initialized.")
 
     response_text = ""
     input_tokens, output_tokens = 0, 0
+    actual_provider = APP_CONFIG.CURRENT_PROVIDER # Capture current provider
+    actual_model = APP_CONFIG.CURRENT_MODEL     # Capture current model
 
     max_retries = APP_CONFIG.LLM_API_MAX_RETRIES
     base_delay = APP_CONFIG.LLM_API_BASE_DELAY
-
     # --- MODIFICATION START: Pass user_uuid to get_session ---
     session_data = get_session(user_uuid, session_id) if user_uuid and session_id else None
     # --- MODIFICATION END ---
@@ -779,7 +780,7 @@ async def call_llm_api(llm_instance: any, prompt: str, user_uuid: str = None, se
         update_token_count(user_uuid, session_id, input_tokens, output_tokens)
     # --- MODIFICATION END ---
 
-    return response_text, input_tokens, output_tokens
+    return response_text, input_tokens, output_tokens, actual_provider, actual_model
 
 def _is_model_certified(model_name: str, certified_list: list[str]) -> bool:
     """

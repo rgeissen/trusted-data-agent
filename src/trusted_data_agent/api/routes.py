@@ -89,7 +89,7 @@ async def simple_chat():
         return jsonify({"error": "No message provided."}), 400
 
     try:
-        response_text, _, _ = await llm_handler.call_llm_api(
+        response_text, _, _, _, _ = await llm_handler.call_llm_api(
             llm_instance=APP_STATE.get('llm'),
             prompt=message,
             chat_history=history,

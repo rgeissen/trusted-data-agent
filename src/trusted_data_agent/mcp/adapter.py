@@ -331,7 +331,7 @@ async def load_and_categorize_mcp_resources(STATE: dict):
         )
         categorization_system_prompt = "You are an expert assistant that only responds with valid JSON."
 
-        classified_capabilities_str, _, _ = await llm_handler.call_llm_api(
+        classified_capabilities_str, _, _, _, _ = await llm_handler.call_llm_api(
             llm_instance, classification_prompt, raise_on_error=True,
             system_prompt_override=categorization_system_prompt
         )
@@ -643,7 +643,7 @@ async def _invoke_llm_filter_task(STATE: dict, command: dict, user_uuid: str = N
     reason = f"Client-Side Tool Call: TDA_LLMFilter\nGoal: {goal}"
 
     # --- MODIFICATION START: Pass user_uuid ---
-    response_text, input_tokens, output_tokens = await llm_handler.call_llm_api(
+    response_text, input_tokens, output_tokens, _, _ = await llm_handler.call_llm_api(
         llm_instance=llm_instance,
         prompt=filtering_prompt,
         reason=reason,
@@ -867,7 +867,7 @@ async def _invoke_final_report_task(STATE: dict, command: dict, workflow_state: 
     reason = f"Client-Side Tool Call: TDA_FinalReport\nGoal: {user_question}"
 
     # --- MODIFICATION START: Pass user_uuid ---
-    response_text, input_tokens, output_tokens = await llm_handler.call_llm_api(
+    response_text, input_tokens, output_tokens, _, _ = await llm_handler.call_llm_api(
         llm_instance=llm_instance,
         prompt=final_summary_prompt_text,
         reason=reason,
@@ -916,7 +916,7 @@ async def _invoke_complex_prompt_report_task(STATE: dict, command: dict, workflo
     reason = f"Client-Side Tool Call: TDA_ComplexPromptReport\nGoal: {prompt_goal}"
 
     # --- MODIFICATION START: Pass user_uuid ---
-    response_text, input_tokens, output_tokens = await llm_handler.call_llm_api(
+    response_text, input_tokens, output_tokens, _, _ = await llm_handler.call_llm_api(
         llm_instance=llm_instance,
         prompt=final_summary_prompt_text,
         reason=reason,
@@ -1023,7 +1023,7 @@ async def _invoke_util_calculate_date_range(STATE: dict, command: dict, user_uui
         )
 
         # --- MODIFICATION START: Pass user_uuid ---
-        response_text, _, _ = await llm_handler.call_llm_api(
+        response_text, _, _, _, _ = await llm_handler.call_llm_api(
             llm_instance=STATE.get('llm'),
             prompt=llm_prompt,
             reason=f"LLM fallback for complex date phrase: {date_phrase}",

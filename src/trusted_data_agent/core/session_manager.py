@@ -93,13 +93,17 @@ def _save_session(user_uuid: str, session_id: str, session_data: dict):
         # --- MODIFICATION START: Send session_model_update notification ---
         notification_queues = APP_STATE.get("notification_queues", {}).get(user_uuid, set())
         if notification_queues:
+            notification_payload = {
+                "session_id": session_id,
+                "models_used": session_data.get("models_used", []),
+                "last_updated": session_data.get("last_updated"),
+                "provider": session_data.get("provider"),
+                "model": session_data.get("model"),
+            }
+            app_logger.info(f"[DEBUG] _save_session sending notification for session {session_id}: provider={notification_payload['provider']}, model={notification_payload['model']}")
             notification = {
                 "type": "session_model_update",
-                "payload": {
-                    "session_id": session_id,
-                    "models_used": session_data.get("models_used", []),
-                    "last_updated": session_data.get("last_updated", datetime.now().isoformat())
-                }
+                "payload": notification_payload
             }
             for queue in notification_queues:
                 asyncio.create_task(queue.put(notification))
@@ -362,6 +366,7 @@ def update_token_count(user_uuid: str, session_id: str, input_tokens: int, outpu
 
 def update_models_used(user_uuid: str, session_id: str, provider: str, model: str):
     """Adds the current model to the list of models used in the session."""
+    app_logger.info(f"[DEBUG] update_models_used called for session {session_id} with provider={provider}, model={model}")
     session_data = _load_session(user_uuid, session_id)
     if session_data:
         models_used = session_data.get('models_used', [])
@@ -369,8 +374,16 @@ def update_models_used(user_uuid: str, session_id: str, provider: str, model: st
         if model_string not in models_used:
             models_used.append(model_string)
             session_data['models_used'] = models_used
-            if not _save_session(user_uuid, session_id, session_data):
-                app_logger.error(f"Failed to save session after updating models used for {session_id}")
+
+        # --- MODIFICATION START: Update top-level provider and model ---
+        app_logger.info(f"[DEBUG] Updating session_data provider from {session_data.get('provider')} to {provider}")
+        app_logger.info(f"[DEBUG] Updating session_data model from {session_data.get('model')} to {model}")
+        session_data['provider'] = provider
+        session_data['model'] = model
+        # --- MODIFICATION END ---
+
+        if not _save_session(user_uuid, session_id, session_data):
+            app_logger.error(f"Failed to save session after updating models used for {session_id}")
     else:
         app_logger.warning(f"Could not update models used: Session {session_id} not found for user {user_uuid}.")
 
