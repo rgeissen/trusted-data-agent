@@ -1032,17 +1032,19 @@ export function addSessionToList(session, isActive = false) {
  * @param {string} newName - The new name for the session.
  */
 export function updateSessionListItemName(sessionId, newName) {
+    console.log(`[ui.js] updateSessionListItemName called with sessionId=${sessionId}, newName=${newName}`);
     const sessionItem = document.getElementById(`session-${sessionId}`);
     if (sessionItem) {
+        console.log(`[ui.js] Found sessionItem for sessionId=${sessionId}`);
         const nameSpan = sessionItem.querySelector('.session-name-span');
         if (nameSpan) {
             nameSpan.textContent = newName;
-            console.log(`UI Updated: Session item ${sessionId} name changed to '${newName}'`);
+            console.log(`[ui.js] UI Updated: Session item ${sessionId} name changed to '${newName}'`);
         } else {
-            console.warn(`Could not find name span within session item ${sessionId}`);
+            console.warn(`[ui.js] Could not find name span within session item ${sessionId}`);
         }
     } else {
-        console.warn(`Could not find session item ${sessionId} in the list to update name.`);
+        console.warn(`[ui.js] Could not find session item ${sessionId} in the list to update name.`);
     }
 }
 

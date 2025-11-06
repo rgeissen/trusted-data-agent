@@ -1,5 +1,7 @@
 import { state } from './state.js';
 import * as UI from './ui.js';
+import * as DOM from './domElements.js';
+import { handleLoadSession } from './eventHandlers.js';
 
 function showRestQueryNotification(message) {
     const notificationContainer = document.createElement('div');
@@ -90,6 +92,20 @@ export function subscribeToNotifications() {
             case 'info':
                 showRestQueryNotification(data.message);
                 break;
+            case 'new_session_created': {
+                const newSession = data.payload;
+                console.log("New session created via REST API:", newSession);
+                // Add the new session to the UI list, but do not make it active
+                const sessionItem = UI.addSessionToList(newSession, false);
+                DOM.sessionList.prepend(sessionItem);
+                break;
+            }
+            case 'session_name_update': {
+                const { session_id, newName } = data.payload;
+                console.log(`[notifications.js] Received session_name_update: session_id=${session_id}, newName=${newName}`);
+                UI.updateSessionListItemName(session_id, newName);
+                break;
+            }
             // --- MODIFICATION START: Add handlers for REST task events ---
             case 'rest_task_update': {
                 const { task_id, session_id, event } = data.payload;

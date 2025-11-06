@@ -115,7 +115,31 @@ async def create_session():
             # system_prompt_template is not typically passed via REST API for creation
         )
         app_logger.info(f"REST API: Created new session: {session_id} for user {user_uuid}")
-        # --- MODIFICATION END ---
+
+        # Retrieve the newly created session's full data
+        new_session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
+        if new_session_data:
+            # Prepare notification payload
+            notification_payload = {
+                "id": new_session_data["id"],
+                "name": new_session_data.get("name", "New Chat"), # Default name if not present
+                "models_used": new_session_data.get("models_used", []),
+                "last_updated": new_session_data.get("last_updated", datetime.now(timezone.utc).isoformat())
+            }
+
+            # Broadcast to all active notification queues for this user
+            notification_queues = APP_STATE.get("notification_queues", {}).get(user_uuid, set())
+            if notification_queues:
+                app_logger.info(f"Broadcasting new_session_created notification to {len(notification_queues)} client(s) for user {user_uuid}.")
+                notification = {
+                    "type": "new_session_created",
+                    "payload": notification_payload
+                }
+                for queue in notification_queues:
+                    asyncio.create_task(queue.put(notification))
+        else:
+            app_logger.warning(f"REST API: Could not retrieve full session data for new session {session_id} for user {user_uuid}.")
+
         return jsonify({"session_id": session_id}), 201
     except Exception as e:
         app_logger.error(f"Failed to create REST session for user {user_uuid}: {e}", exc_info=True)
@@ -192,14 +216,22 @@ async def execute_query(session_id: str):
                     # The extracted part is a JSON string, so we load it into a Python dict
                     canonical_event = json.loads(json_payload_str)
                     
-                    notification = {
-                        "type": "rest_task_update",
-                        "payload": {
-                            "task_id": task_id,
-                            "session_id": session_id,
-                            "event": canonical_event
+                    # --- MODIFICATION START: Handle session_name_update as a top-level event ---
+                    if event_type == "session_name_update":
+                        notification = {
+                            "type": "session_name_update",
+                            "payload": canonical_event # Payload already contains session_id and newName
                         }
-                    }
+                    else:
+                        notification = {
+                            "type": "rest_task_update",
+                            "payload": {
+                                "task_id": task_id,
+                                "session_id": session_id,
+                                "event": canonical_event
+                            }
+                        }
+                    # --- MODIFICATION END ---
                     for queue in notification_queues:
                         asyncio.create_task(queue.put(notification))
                 else:
