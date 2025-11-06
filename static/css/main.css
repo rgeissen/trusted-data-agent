@@ -324,6 +324,12 @@ details.resource-selected > summary {
     color: #f87171; /* red-400 */
 }
 
+/* Specific hover color for copy */
+.session-copy-button:hover {
+    background-color: rgba(59, 130, 246, 0.2); /* blue-500 @ 20% */
+    color: #93c5fd; /* blue-300 */
+}
+
 
 .session-edit-input {
     background-color: rgba(255, 255, 255, 0.1);
