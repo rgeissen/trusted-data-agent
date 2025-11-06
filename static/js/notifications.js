@@ -146,6 +146,14 @@ export function subscribeToNotifications() {
                         UI.addMessage('user', user_input, turn_id, true);
                         UI.addMessage('assistant', final_answer, turn_id, true);
                         UI.moveSessionToTop(session_id);
+                        UI.setExecutionState(false); // Reset UI execution state
+
+                        // Explicitly mark the last active status step as completed
+                        const lastStep = DOM.statusWindowContent.querySelector('.status-step.active');
+                        if (lastStep) {
+                            lastStep.classList.remove('active');
+                            lastStep.classList.add('completed');
+                        }
                     } else {
                         // If not the current session, provide a visual cue
                         UI.highlightSession(session_id);
