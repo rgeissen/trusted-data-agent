@@ -104,6 +104,15 @@ export function subscribeToNotifications() {
                 const { session_id, newName } = data.payload;
                 console.log(`[notifications.js] Received session_name_update: session_id=${session_id}, newName=${newName}`);
                 UI.updateSessionListItemName(session_id, newName);
+                UI.moveSessionToTop(session_id);
+                break;
+            }
+            case 'session_model_update': {
+                const { session_id, models_used, last_updated } = data.payload;
+                console.log(`[notifications.js] Received session_model_update for session_id=${session_id}`);
+                UI.updateSessionModels(session_id, models_used);
+                UI.updateSessionTimestamp(session_id, last_updated);
+                UI.moveSessionToTop(session_id);
                 break;
             }
             // --- MODIFICATION START: Add handlers for REST task events ---
@@ -124,6 +133,7 @@ export function subscribeToNotifications() {
                         // Add the Q&A to the main chat log
                         UI.addMessage('user', user_input, turn_id, true);
                         UI.addMessage('assistant', final_answer, turn_id, true);
+                        UI.moveSessionToTop(session_id);
                     } else {
                         // If not the current session, provide a visual cue
                         UI.highlightSession(session_id);

@@ -6,6 +6,7 @@ import logging
 from datetime import datetime
 from pathlib import Path # Use pathlib for better path handling
 import shutil # For potential cleanup later if needed
+import asyncio # For sending notifications asynchronously
 
 import google.generativeai as genai
 from trusted_data_agent.agent.prompts import PROVIDER_SYSTEM_PROMPTS
@@ -88,6 +89,22 @@ def _save_session(user_uuid: str, session_id: str, session_data: dict):
         with open(session_path, 'w', encoding='utf-8') as f:
             json.dump(session_data, f, indent=2) # Use indent for readability
         app_logger.debug(f"Successfully saved session '{session_id}' for user '{user_uuid}'.")
+
+        # --- MODIFICATION START: Send session_model_update notification ---
+        notification_queues = APP_STATE.get("notification_queues", {}).get(user_uuid, set())
+        if notification_queues:
+            notification = {
+                "type": "session_model_update",
+                "payload": {
+                    "session_id": session_id,
+                    "models_used": session_data.get("models_used", []),
+                    "last_updated": session_data.get("last_updated", datetime.now().isoformat())
+                }
+            }
+            for queue in notification_queues:
+                asyncio.create_task(queue.put(notification))
+        # --- MODIFICATION END ---
+
         return True # Indicate success
     except OSError as e:
         app_logger.error(f"Error saving session file '{session_path}': {e}", exc_info=True)

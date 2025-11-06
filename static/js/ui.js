@@ -735,6 +735,21 @@ export function highlightSession(sessionId) {
         }
     }
 }
+
+/**
+ * Moves a session item to the top of the session list.
+ * @param {string} sessionId - The ID of the session to move.
+ */
+export function moveSessionToTop(sessionId) {
+    const sessionItem = document.getElementById(`session-${sessionId}`);
+    if (sessionItem && DOM.sessionList) {
+        // Remove the item from its current position
+        sessionItem.remove();
+        // Prepend it to the session list
+        DOM.sessionList.prepend(sessionItem);
+        console.log(`UI Updated: Session ${sessionId} moved to top.`);
+    }
+}
 // --- MODIFICATION END ---
 
 

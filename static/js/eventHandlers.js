@@ -1568,6 +1568,7 @@ export async function handleSessionRenameSave(e) {
         await renameSession(sessionId, newName);
         UI.exitSessionEditMode(inputElement, newName);
         console.log(`Session ${sessionId} renamed to '${newName}'`);
+        UI.moveSessionToTop(sessionId);
     } catch (error) {
         console.error(`Failed to rename session ${sessionId}:`, error);
         inputElement.style.borderColor = 'red';
