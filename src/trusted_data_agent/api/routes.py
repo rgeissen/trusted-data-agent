@@ -682,6 +682,7 @@ async def ask_stream():
     # --- MODIFICATION START: Receive optional plan and replay flag ---
     plan_to_execute = data.get("plan_to_execute") # Plan object or null
     is_replay = data.get("is_replay", False) # Boolean flag
+    display_message = data.get("display_message") # Optional message for history
     # --- MODIFICATION END ---
 
 
@@ -729,7 +730,8 @@ async def ask_stream():
                         disabled_history=disabled_history,
                         source=source,
                         plan_to_execute=plan_to_execute, # Pass the plan
-                        is_replay=is_replay # Pass the flag
+                        is_replay=is_replay, # Pass the flag
+                        display_message=display_message # Pass the display message
                     )
                 )
                 # --- MODIFICATION END ---

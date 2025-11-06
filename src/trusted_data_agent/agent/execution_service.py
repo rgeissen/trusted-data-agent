@@ -37,7 +37,8 @@ async def run_agent_execution(
     disabled_history: bool = False,
     source: str = "text",
     plan_to_execute: list = None, # Added optional plan
-    is_replay: bool = False # Added replay flag
+    is_replay: bool = False, # Added replay flag
+    display_message: str = None # Added optional display message for replays
 ):
 # --- MODIFICATION END ---
     """
@@ -59,20 +60,20 @@ async def run_agent_execution(
             "last_updated": session_data.get("last_updated", session_data.get("created_at"))
         }, "session_model_update")
 
-        # Save the user's message to the history used for UI rendering.
-        # --- MODIFICATION START: Only add user input if not a replay ---
-        # Don't add user input again if we are replaying a previous query
-        if user_input and not is_replay:
-            # --- MODIFICATION START: Use add_message_to_histories ---
+        # --- MODIFICATION START: Save the correct user message to history ---
+        # For a replay, we save the "Replaying..." message for UI persistence.
+        # For a normal query, we save the actual user input.
+        message_to_save = display_message if is_replay and display_message else user_input
+
+        if message_to_save:
             session_manager.add_message_to_histories(
                 user_uuid,
                 session_id,
                 'user',
-                user_input,
-                html_content=None # User input is plain text for both
+                message_to_save,
+                html_content=None # User input is plain text
             )
-            # --- MODIFICATION END ---
-            app_logger.debug(f"Added user input to session_history for {session_id}")
+            app_logger.debug(f"Added user message to session_history for {session_id}: '{message_to_save}'")
         # --- MODIFICATION END ---
 
         previous_turn_data = session_data.get("last_turn_data", {})

@@ -395,13 +395,15 @@ export async function handleReplayQueryClick(buttonEl) {
             throw new Error("Could not retrieve the original query for this turn.");
         }
 
+        const displayMessage = `🔄 Replaying **query** from Turn ${turnId}: ${originalQuery}`;
         console.log(`Replaying QUERY from Turn ${turnId}: "${originalQuery}"`);
         // Add a message indicating a *query* replay
-        UI.addMessage('user', `🔄 Replaying **query** from Turn ${turnId}: ${originalQuery}`);
+        UI.addMessage('user', displayMessage);
 
         // 2. Re-submit using handleStreamRequest, *without* a plan
         handleStreamRequest('/ask_stream', {
             message: originalQuery,      // Used for original_user_input on backend
+            display_message: displayMessage, // The message to be saved in history
             session_id: sessionId,
             source: 'text',
             is_replay: true,             // Ensures logging and disables history for planning
@@ -446,13 +448,15 @@ async function handleReplayPlanClick(buttonEl) {
             throw new Error("Could not retrieve the original plan for this turn.");
         }
 
+        const displayMessage = `🔄 Replaying **plan** from Turn ${turnId}: ${originalQuery}`;
         console.log(`Replaying PLAN from Turn ${turnId} (Query: "${originalQuery}")`);
         // Add a message indicating a *plan* replay
-        UI.addMessage('user', `🔄 Replaying **plan** from Turn ${turnId}: ${originalQuery}`);
+        UI.addMessage('user', displayMessage);
 
         // 2. Re-submit using handleStreamRequest, passing the plan_to_execute
         handleStreamRequest('/ask_stream', {
             message: originalQuery,      // Used for original_user_input on backend
+            display_message: displayMessage, // The message to be saved in history
             session_id: sessionId,
             source: 'text',
             is_replay: true,             // Ensures logging and disables history for planning (which is skipped anyway)
