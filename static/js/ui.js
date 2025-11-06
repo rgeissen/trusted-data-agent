@@ -1182,19 +1182,20 @@ export function exitSessionEditMode(inputElement, finalName) {
     const sessionItem = inputElement.closest('.session-item');
     if (!sessionItem) return;
 
-    const spanElement = sessionItem.querySelector('.session-name-span');
-    const actionsDiv = sessionItem.querySelector('.session-actions');
+    // Create a new span element to replace the input field
+    const newSpanElement = document.createElement('span');
+    newSpanElement.className = 'session-name-span text-white text-sm font-semibold truncate'; // Ensure original classes are applied
+    newSpanElement.textContent = finalName;
 
-    if (spanElement) {
-        spanElement.textContent = finalName;
-        spanElement.style.display = '';
-    }
+    // Replace the input element with the new span element
+    inputElement.replaceWith(newSpanElement);
+
+    const actionsDiv = sessionItem.querySelector('.session-actions');
     if (actionsDiv) {
-        actionsDiv.style.display = '';
+        actionsDiv.style.display = ''; // Show actions div again
     }
 
     inputElement.removeEventListener('blur', handleSessionRenameSave);
-    inputElement.remove();
 }
 
 

@@ -99,6 +99,7 @@ def _save_session(user_uuid: str, session_id: str, session_data: dict):
                 "last_updated": session_data.get("last_updated"),
                 "provider": session_data.get("provider"),
                 "model": session_data.get("model"),
+                "name": session_data.get("name", "Unnamed Session"),
             }
             app_logger.info(f"[DEBUG] _save_session sending notification for session {session_id}: provider={notification_payload['provider']}, model={notification_payload['model']}")
             notification = {
@@ -348,6 +349,22 @@ def update_session_name(user_uuid: str, session_id: str, new_name: str):
         session_data['name'] = new_name
         if not _save_session(user_uuid, session_id, session_data):
              app_logger.error(f"Failed to save session after updating name for {session_id}")
+        else:
+            # --- MODIFICATION START: Send session_name_update notification ---
+            notification_queues = APP_STATE.get("notification_queues", {}).get(user_uuid, set())
+            if notification_queues:
+                notification_payload = {
+                    "session_id": session_id,
+                    "newName": new_name,
+                }
+                app_logger.info(f"[DEBUG] update_session_name sending notification for session {session_id}: newName={new_name}")
+                notification = {
+                    "type": "session_name_update",
+                    "payload": notification_payload
+                }
+                for queue in notification_queues:
+                    asyncio.create_task(queue.put(notification))
+            # --- MODIFICATION END ---
     else:
          app_logger.warning(f"Could not update name: Session {session_id} not found for user {user_uuid}.")
 

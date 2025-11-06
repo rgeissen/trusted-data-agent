@@ -1,4 +1,4 @@
-2025-11-06 16:09:20,205 - --- REASON FOR CALL ---
+2025-11-06 16:22:14,270 - --- REASON FOR CALL ---
 No reason provided.
 --- RESPONSE ---
 ```json
@@ -36,7 +36,7 @@ No reason provided.
   "sql_Analyze_Cluster_Stats": {"category": "Performance"},
   "sql_Execute_Full_Pipeline": {"category": "Performance"},
   "sql_Retrieve_Cluster_Queries": {"category": "Performance"},
-  "dba_databaseVersion": {"category": "Database Administration"},
+  "dba_databaseVersion": {"category": "Database Information"},
   "dba_flowControl": {"category": "Database Administration"},
   "dba_featureUsage": {"category": "Database Administration"},
   "dba_userDelay": {"category": "Database Administration"},
@@ -49,26 +49,26 @@ No reason provided.
   "TDA_LLMTask": {"category": "Utilities"},
   "TDA_ContextReport": {"category": "RAG"},
   "TDA_FinalReport": {"category": "RAG"},
-  "TDA_ComplexPromptReport": {"category": "RAG"},
+  "TDA_ComplexPromptReport": {"category": "Utilities"},
   "dba_tableArchive": {"category": "Database Administration"},
-  "dba_databaseLineage": {"category": "Database Administration"},
+  "dba_databaseLineage": {"category": "Database Information"},
   "dba_tableDropImpact": {"category": "Database Administration"},
   "dba_databaseHealthAssessment": {"category": "Database Administration"},
   "dba_userActivityAnalysis": {"category": "Database Administration"},
   "dba_systemVoice": {"category": "Database Administration"},
   "_testMyServer": {"category": "Utilities"},
-  "base_teradataQuery": {"category": "Querying"},
-  "base_query": {"category": "Querying"},
+  "base_teradataQuery": {"category": "SQL Assistance"},
+  "base_query": {"category": "SQL Assistance"},
   "base_tableBusinessDesc": {"category": "Database Information"},
   "base_databaseBusinessDesc": {"category": "Database Information"},
   "qlty_databaseQuality": {"category": "Data Quality"},
-  "tdvs_tools_prompt": {"category": "Vector Search"},
-  "tdvs_rag_prompt": {"category": "Vector Search"}
+  "tdvs_tools_prompt": {"category": "Vector Store"},
+  "tdvs_rag_prompt": {"category": "RAG"}
 }
 ```
 --------------------------------------------------
 
-2025-11-06 16:09:32,876 - --- REASON FOR CALL ---
+2025-11-06 16:22:34,918 - --- REASON FOR CALL ---
 Generating a strategic meta-plan for the goal: 'what is the current date?'
 --- RESPONSE ---
 ```json
@@ -76,24 +76,14 @@ Generating a strategic meta-plan for the goal: 'what is the current date?'
   {
     "phase": 1,
     "goal": "Get the current date.",
-    "relevant_tools": [
-      "TDA_CurrentDate"
-    ],
-    "arguments": {}
-  },
-  {
-    "phase": 2,
-    "goal": "Generate the final report based on the data gathered.",
-    "relevant_tools": [
-      "TDA_FinalReport"
-    ],
+    "relevant_tools": ["TDA_CurrentDate"],
     "arguments": {}
   }
 ]
 ```
 --------------------------------------------------
 
-2025-11-06 16:09:34,443 - --- REASON FOR CALL ---
+2025-11-06 16:22:35,958 - --- REASON FOR CALL ---
 Client-Side Tool Call: TDA_FinalReport
 Goal: what is the current date?
 --- RESPONSE ---
@@ -104,11 +94,7 @@ Goal: what is the current date?
     "value": "2025-11-06",
     "label": "Current Date"
   },
-  "key_observations": [
-    {
-      "text": "The current date was determined using the TDA_CurrentDate tool."
-    }
-  ]
+  "key_observations": []
 }
 ```
 --------------------------------------------------

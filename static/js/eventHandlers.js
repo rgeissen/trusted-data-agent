@@ -1573,6 +1573,8 @@ export async function handleSessionRenameSave(e) {
         console.error(`Failed to rename session ${sessionId}:`, error);
         inputElement.style.borderColor = 'red';
         inputElement.disabled = false;
+        // Revert to original name and exit edit mode on API error
+        UI.exitSessionEditMode(inputElement, originalName);
     }
 }
 

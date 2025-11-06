@@ -108,11 +108,14 @@ export function subscribeToNotifications() {
                 break;
             }
             case 'session_model_update': {
-                const { session_id, models_used, last_updated, provider, model } = data.payload;
+                const { session_id, models_used, last_updated, provider, model, name } = data.payload;
                 console.log(`[notifications.js] Received session_model_update for session_id=${session_id}`);
                 console.log(`[notifications.js] Payload: provider=${provider}, model=${model}, models_used=`, models_used);
                 UI.updateSessionModels(session_id, models_used);
                 UI.updateSessionTimestamp(session_id, last_updated);
+                if (name) {
+                    UI.updateSessionListItemName(session_id, name);
+                }
                 UI.moveSessionToTop(session_id);
 
                 if (session_id === state.currentSessionId) {
