@@ -77,17 +77,17 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
                     await temp_llm_instance.chat.completions.create(model=model, messages=[{"role": "user", "content": "test"}], max_tokens=1)
                 
                 elif provider == "Friendli":
-                    friendli_token = credentials.get("friendli_token")
+                    friendli_api_key = credentials.get("apiKey")
                     endpoint_url = credentials.get("friendli_endpoint_url")
                     
                     if endpoint_url: # Dedicated Endpoint: Validate by listing models
                         app_logger.info("Validating Friendli.ai Dedicated Endpoint by listing models.")
                         validation_url = f"{endpoint_url.rstrip('/')}/v1/models"
-                        headers = {"Authorization": f"Bearer {friendli_token}"}
+                        headers = {"Authorization": f"Bearer {friendli_api_key}"}
                         async with httpx.AsyncClient() as client:
                             response = await client.get(validation_url, headers=headers)
                             response.raise_for_status()
-                        temp_llm_instance = AsyncOpenAI(api_key=friendli_token, base_url=endpoint_url)
+                        temp_llm_instance = AsyncOpenAI(api_key=friendli_api_key, base_url=endpoint_url)
                         app_logger.info("Friendli.ai Dedicated Endpoint connection validated successfully.")
                     else: # Serverless Endpoint: Validate with a test completion call
                         app_logger.info(f"Validating Friendli.ai Serverless Endpoint with model '{model}'.")
@@ -95,7 +95,7 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
                             raise ValueError("A Model ID is required for Friendli.ai Serverless Endpoint configuration.")
                         
                         # --- MODIFICATION START: Correct the base_url for serverless endpoints ---
-                        temp_llm_instance = AsyncOpenAI(api_key=friendli_token, base_url="https://api.friendli.ai/serverless/v1")
+                        temp_llm_instance = AsyncOpenAI(api_key=friendli_api_key, base_url="https://api.friendli.ai/serverless/v1")
                         # --- MODIFICATION END ---
                         await temp_llm_instance.chat.completions.create(
                             model=model,
@@ -148,7 +148,7 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             if provider == "Friendli":
                 is_dedicated = bool(credentials.get("friendli_endpoint_url"))
                 APP_CONFIG.CURRENT_FRIENDLI_DETAILS = {
-                    "token": credentials.get("friendli_token"),
+                    "token": credentials.get("apiKey"),
                     "endpoint_url": credentials.get("friendli_endpoint_url"),
                     "models_path": "/v1/models" if is_dedicated else None # No path for serverless
                 }

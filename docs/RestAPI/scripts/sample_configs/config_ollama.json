@@ -1,0 +1,13 @@
+{
+    "provider": "Ollama",
+    "model": "gemma-3-27b-it",
+    "credentials": {},
+    "ollama_base_url": "http://localhost:11434",
+    "mcp_server": {
+        "name": "Default MCP Server",
+        "host": "localhost",
+        "port": "8080",
+        "path": "/mcp"
+    },
+    "tts_credentials_json": ""
+}

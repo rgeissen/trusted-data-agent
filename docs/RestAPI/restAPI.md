@@ -22,6 +22,8 @@ The base URL for all endpoints is `/api`.
 
 ### 3.1. Configure Application
 
+**Note:** Exemplary configuration files for all supported providers can be found in the `docs/RestAPI/scripts/sample_configs` directory. These files can be used as a starting point for your own configurations.
+
 Initializes and validates the agent's core services, including the LLM provider and the MCP server connection. This is the first step required before creating sessions or submitting queries.
 
 * **Endpoint**: `POST /v1/configure`
@@ -43,6 +45,19 @@ Initializes and validates the agent's core services, including the LLM provider 
         "port": 8001,
         "path": "/mcp"
       }
+    }
+    ```
+
+    **For Friendli:**
+    ```json
+    {
+      "provider": "Friendli",
+      "model": "google/gemma-3-27b-it",
+      "credentials": {
+        "apiKey": "YOUR_FRIENDLI_API_KEY",
+        "friendli_endpoint_url": "YOUR_FRIENDLI_ENDPOINT_URL" 
+      },
+      "mcp_server": { ... }
     }
     ```
 
@@ -300,6 +315,14 @@ Send a `POST` request to the `/api/v1/configure` endpoint with the appropriate c
 
 **1. Configure the Application (Run this first!)**
 
+Use the `rest_config.sh` script with one of the sample configuration files from `docs/RestAPI/scripts/sample_configs/`.
+
+For example, to configure with Google:
+```bash
+./rest_config.sh scripts/sample_configs/config_google.json
+```
+
+Alternatively, you can use `curl` directly with your custom configuration:
 ```bash
 curl -X POST http://127.0.0.1:5000/api/v1/configure \
      -H "Content-Type: application/json" \
