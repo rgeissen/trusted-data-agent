@@ -554,8 +554,39 @@ function _renderStandardStep(eventData, parentContainer, isFinal = false) {
     }
 }
 
-export function updateStatusWindow(eventData, isFinal = false) {
+export function updateStatusWindow(eventData, isFinal = false, source = 'interactive', taskId = null) {
     const { step, details, type, metadata } = eventData;
+
+    // --- MODIFICATION START: Update status title for REST tasks ---
+    const statusTitle = DOM.statusTitle || document.getElementById('status-title');
+    if (source === 'rest' && taskId) {
+        if (!state.isRestTaskActive) {
+            // Clear window only on the first event for a REST task
+            DOM.statusWindowContent.innerHTML = '';
+            state.currentStatusId = 0;
+            state.isRestTaskActive = true;
+            state.activeRestTaskId = taskId;
+        }
+        statusTitle.textContent = `Live Status - REST: ${taskId.substring(0, 8)}...`;
+    } else if (source === 'interactive') {
+        if (state.isRestTaskActive) {
+            // Clear window when switching back to interactive
+            DOM.statusWindowContent.innerHTML = '';
+            state.currentStatusId = 0;
+            state.isRestTaskActive = false;
+            state.activeRestTaskId = null;
+        }
+        statusTitle.textContent = 'Live Status';
+    }
+    // If the task ID changes, reset the view
+    if (source === 'rest' && taskId !== state.activeRestTaskId) {
+        DOM.statusWindowContent.innerHTML = '';
+        state.currentStatusId = 0;
+        state.isRestTaskActive = true;
+        state.activeRestTaskId = taskId;
+    }
+    // --- MODIFICATION END ---
+
 
     const execution_depth_from_details = details?.execution_depth ?? 0;
     const execution_depth_from_metadata = metadata?.execution_depth ?? 0;
@@ -675,6 +706,29 @@ export function updateStatusWindow(eventData, isFinal = false) {
         DOM.statusWindowContent.scrollTop = DOM.statusWindowContent.scrollHeight;
     }
 }
+
+// --- MODIFICATION START: Add highlightSession function ---
+/**
+ * Provides a visual cue on a session in the list to show it has new, unseen activity.
+ * @param {string} sessionId The ID of the session to highlight.
+ */
+export function highlightSession(sessionId) {
+    const sessionItem = document.getElementById(`session-${sessionId}`);
+    if (sessionItem && !sessionItem.classList.contains('active')) {
+        const nameSpan = sessionItem.querySelector('.session-name-span');
+        if (nameSpan) {
+            nameSpan.classList.add('font-bold', 'text-teradata-orange');
+        }
+        // Add a blinking dot or similar indicator
+        let indicator = sessionItem.querySelector('.new-activity-indicator');
+        if (!indicator) {
+            indicator = document.createElement('span');
+            indicator.className = 'new-activity-indicator';
+            sessionItem.querySelector('.flex').prepend(indicator);
+        }
+    }
+}
+// --- MODIFICATION END ---
 
 
 export function updateTokenDisplay(data) {
@@ -1315,3 +1369,23 @@ export function closeChatModal() {
     DOM.chatModalContent.classList.add('scale-95', 'opacity-0');
     setTimeout(() => DOM.chatModalOverlay.classList.add('hidden'), 300);
 }
+
+// --- MODIFICATION START: Add removeHighlight function ---
+/**
+ * Removes the visual highlight from a session item.
+ * @param {string} sessionId The ID of the session to un-highlight.
+ */
+export function removeHighlight(sessionId) {
+    const sessionItem = document.getElementById(`session-${sessionId}`);
+    if (sessionItem) {
+        const nameSpan = sessionItem.querySelector('.session-name-span');
+        if (nameSpan) {
+            nameSpan.classList.remove('font-bold', 'text-teradata-orange');
+        }
+        const indicator = sessionItem.querySelector('.new-activity-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    }
+}
+// --- MODIFICATION END ---

@@ -1,4 +1,5 @@
 import { state } from './state.js';
+import * as UI from './ui.js';
 
 function showRestQueryNotification(message) {
     const notificationContainer = document.createElement('div');
@@ -89,6 +90,32 @@ export function subscribeToNotifications() {
             case 'info':
                 showRestQueryNotification(data.message);
                 break;
+            // --- MODIFICATION START: Add handlers for REST task events ---
+            case 'rest_task_update':
+                {
+                    const { task_id, session_id, event_type, event_data } = data.payload;
+                    // Only update the main status window if the session matches
+                    // or if no session is active (or some other sensible default)
+                    if (session_id === state.currentSessionId) {
+                        const isFinal = (event_type === 'final_answer' || event_type === 'error' || event_type === 'cancelled');
+                        UI.updateStatusWindow({ ...event_data, type: event_type }, isFinal, 'rest', task_id);
+                    }
+                    break;
+                }
+            case 'rest_task_complete':
+                {
+                    const { session_id, turn_id, user_input, final_answer } = data.payload;
+                    if (session_id === state.currentSessionId) {
+                        // Add the Q&A to the main chat log
+                        UI.addMessage('user', user_input, turn_id, true);
+                        UI.addMessage('assistant', final_answer, turn_id, true);
+                    } else {
+                        // If not the current session, provide a visual cue
+                        UI.highlightSession(session_id);
+                    }
+                    break;
+                }
+            // --- MODIFICATION END ---
             default:
                 console.warn("Unknown notification type:", data.type);
         }

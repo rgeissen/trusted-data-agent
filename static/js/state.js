@@ -45,6 +45,8 @@ export const state = {
     pendingSubtaskPlanningEvents: [],
     // --- MODIFICATION END ---
     phaseContainerStack: [],
+    isRestTaskActive: false,
+    activeRestTaskId: null,
 };
 
 // Functions to modify state can be added here if needed, e.g.:

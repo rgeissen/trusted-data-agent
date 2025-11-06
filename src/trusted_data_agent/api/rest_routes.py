@@ -152,17 +152,20 @@ async def execute_query(session_id: str):
     }
 
     async def event_handler(event_data, event_type):
-        """This handler is called by the execution service for each event."""
+        """
+        This handler is called by the execution service for each event.
+        It now also pushes live events to the UI via the notification system.
+        """
         task_status_dict = APP_STATE["background_tasks"].get(task_id)
+        sanitized_event = _sanitize_for_json(event_data)
+
+        # 1. Update the persistent task state (for polling clients)
         if task_status_dict:
-            sanitized_event = _sanitize_for_json(event_data)
-            # ... (event logging and intermediate data capture remains the same) ...
             task_status_dict["events"].append({
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "event_data": sanitized_event,
                 "event_type": event_type
             })
-
             if event_type == "tool_result" and isinstance(sanitized_event, dict):
                 details = sanitized_event.get("details", {})
                 if isinstance(details, dict) and details.get("status") == "success" and "results" in details:
@@ -170,32 +173,42 @@ async def execute_query(session_id: str):
                         "tool_name": details.get("metadata", {}).get("tool_name", "unknown_tool"),
                         "data": details["results"]
                     })
-
             task_status_dict["last_updated"] = datetime.now(timezone.utc).isoformat()
 
+        # 2. Push live event to any listening UI clients for this user
+        notification_queues = APP_STATE.get("notification_queues", {}).get(user_uuid, set())
+        if notification_queues:
+            notification = {
+                "type": "rest_task_update",
+                "payload": {
+                    "task_id": task_id,
+                    "session_id": session_id,
+                    "event_type": event_type,
+                    "event_data": sanitized_event
+                }
+            }
+            for queue in notification_queues:
+                asyncio.create_task(queue.put(notification))
 
     async def background_wrapper():
-        """Wraps the execution to handle context and final state updates."""
+        """Wraps the execution to handle context, final state updates, and notifications."""
         task_status_dict = APP_STATE["background_tasks"].get(task_id)
+        final_result_payload = None
         try:
-            # --- MODIFICATION START: Use explicit app context if needed (safer for background tasks) ---
-            # Using current_app might be okay if task runs within request context lifetime,
-            # but explicit context is safer for true background execution.
-            # async with current_app.app_context(): # Or handle context manually if needed
             if task_status_dict: task_status_dict["status"] = "processing"
-            # Pass user_uuid down
+
             final_result_payload = await execution_service.run_agent_execution(
-                user_uuid=user_uuid, # Pass the UUID
+                user_uuid=user_uuid,
                 session_id=session_id,
                 user_input=prompt,
-                event_handler=event_handler
-                # Add replay parameters here if/when REST execution replay is implemented
+                event_handler=event_handler,
+                source='rest' # Identify source as REST
             )
+
             if task_status_dict:
                 task_status_dict["status"] = "complete"
                 task_status_dict["result"] = _sanitize_for_json(final_result_payload)
                 task_status_dict["last_updated"] = datetime.now(timezone.utc).isoformat()
-            # --- MODIFICATION END ---
 
         except asyncio.CancelledError:
             app_logger.info(f"REST background task {task_id} (user {user_uuid}) was cancelled.")
@@ -210,10 +223,29 @@ async def execute_query(session_id: str):
                 task_status_dict["result"] = {"error": str(e)}
                 task_status_dict["last_updated"] = datetime.now(timezone.utc).isoformat()
         finally:
-             # Remove from ACTIVE tasks registry (uses task_id)
-             if task_id in APP_STATE.get("active_tasks", {}):
-                 del APP_STATE["active_tasks"][task_id]
-             app_logger.info(f"Background task {task_id} (user {user_uuid}) finished with status: {task_status_dict.get('status', 'unknown') if task_status_dict else 'unknown'}")
+            # Remove from ACTIVE tasks registry
+            if task_id in APP_STATE.get("active_tasks", {}):
+                del APP_STATE["active_tasks"][task_id]
+
+            # Send final notification to UI clients on success
+            if final_result_payload and task_status_dict and task_status_dict.get("status") == "complete":
+                notification_queues = APP_STATE.get("notification_queues", {}).get(user_uuid, set())
+                if notification_queues:
+                    completion_notification = {
+                        "type": "rest_task_complete",
+                        "payload": {
+                            "task_id": task_id,
+                            "session_id": session_id,
+                            "turn_id": final_result_payload.get("turn_id"),
+                            "user_input": prompt,
+                            "final_answer": final_result_payload.get("final_answer")
+                        }
+                    }
+                    app_logger.info(f"Sending rest_task_complete notification for user {user_uuid}")
+                    for queue in notification_queues:
+                        asyncio.create_task(queue.put(completion_notification))
+
+            app_logger.info(f"Background task {task_id} (user {user_uuid}) finished with status: {task_status_dict.get('status', 'unknown') if task_status_dict else 'unknown'}")
 
     # Start the agent execution in the background
     task_object = asyncio.create_task(background_wrapper())

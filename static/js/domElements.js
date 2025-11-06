@@ -39,6 +39,7 @@ export const mainContent = document.getElementById('main-content');
 // Status window elements
 export const statusWindow = document.getElementById('status-window');
 export const statusWindowContent = document.getElementById('status-window-content');
+export const statusTitle = document.getElementById('status-title');
 export const toggleStatusButton = document.getElementById('toggle-status-button');
 export const statusCollapseIcon = document.getElementById('status-collapse-icon');
 export const statusExpandIcon = document.getElementById('status-expand-icon');

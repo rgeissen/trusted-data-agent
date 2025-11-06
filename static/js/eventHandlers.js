@@ -632,6 +632,10 @@ export async function handleStartNewSession() {
 export async function handleLoadSession(sessionId, isNewSession = false) {
     if (state.currentSessionId === sessionId && !isNewSession) return;
 
+    // --- MODIFICATION START: Remove highlight on load ---
+    UI.removeHighlight(sessionId);
+    // --- MODIFICATION END ---
+
     try {
         const data = await API.loadSession(sessionId);
         state.currentSessionId = sessionId;

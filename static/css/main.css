@@ -305,6 +305,25 @@ details.resource-selected > summary {
     opacity: 1;
 }
 
+/* --- MODIFICATION START: Styles for new activity indicator -- */
+.session-item .session-name-span.highlight {
+    color: var(--teradata-orange);
+    font-weight: 700; /* bold */
+}
+
+.new-activity-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--teradata-orange);
+    box-shadow: 0 0 8px var(--teradata-orange);
+    animation: pulse 1.5s infinite ease-in-out;
+    margin-right: 8px; /* Add some space between dot and text */
+    flex-shrink: 0;
+}
+/* --- MODIFICATION END --- */
+
+
 /* Individual button styling */
 .session-action-button {
     padding: 0.25rem; /* 4px padding */
