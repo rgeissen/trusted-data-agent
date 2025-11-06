@@ -1,13 +1,11 @@
 {
-  "id": "a92eb6f4-7f95-41f8-9019-dbe964d1b478",
+  "id": "d667d014-362a-4871-94fb-2c25347df8c0",
   "user_uuid": "f214fe9f-3049-4b51-a195-1b7280bcc8d7",
   "system_prompt_template": null,
   "charting_intensity": "medium",
   "provider": "Google",
   "model": "gemini-2.0-flash",
-  "models_used": [
-    "Google/gemini-2.0-flash"
-  ],
+  "models_used": [],
   "session_history": [
     {
       "role": "user",
@@ -17,7 +15,7 @@
     },
     {
       "role": "assistant",
-      "content": "<div class=\"response-card summary-card mb-4\">\n<div class=\"key-metric-card bg-gray-900/50 p-4 rounded-lg mb-4 text-center\">\n    <div class=\"text-4xl font-bold text-white\">20.00.22.31</div>\n    <div class=\"text-base text-gray-400 mt-1\">System Version</div>\n</div>\n<h3 class=\"text-lg font-bold text-white mb-3 border-b border-gray-700 pb-2\">Key Observations</h3><ul class=\"list-disc list-outside space-y-2 text-gray-300 mb-4 pl-5\"><li>The version and release are both reported as 20.00.22.31.</li><li>The language support mode is Standard.</li></ul></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>base_readQuery</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"InfoKey\": \"VERSION\", \"InfoData\": \"20.00.22.31\"}, {\"InfoKey\": \"RELEASE\", \"InfoData\": \"20.00.22.31\"}, {\"InfoKey\": \"LANGUAGE SUPPORT MODE\", \"InfoData\": \"Standard\"}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>InfoKey</th><th>InfoData</th></tr></thead>\n                    <tbody>\n        <tr><td>VERSION</td><td>20.00.22.31</td></tr><tr><td>RELEASE</td><td>20.00.22.31</td></tr><tr><td>LANGUAGE SUPPORT MODE</td><td>Standard</td></tr></tbody></table></div></div>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>TDA_FinalReport</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"direct_answer\": \"The system version is 20.00.22.31.\", \"key_metric\": {\"value\": \"20.00.22.31\", \"label\": \"System Version\"}, \"key_observations\": [{\"text\": \"The version and release are both reported as 20.00.22.31.\"}, {\"text\": \"The language support mode is Standard.\"}], \"synthesis\": []}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>direct_answer</th><th>key_metric</th><th>key_observations</th><th>synthesis</th></tr></thead>\n                    <tbody>\n        <tr><td>The system version is 20.00.22.31.</td><td>{'value': '20.00.22.31', 'label': 'System Version'}</td><td>[{'text': 'The version and release are both reported as 20.00.22.31.'}, {'text': 'The language support mode is Standard.'}]</td><td>[]</td></tr></tbody></table></div></div></div></details>",
+      "content": "<div class=\"response-card summary-card mb-4\">\n<div class=\"key-metric-card bg-gray-900/50 p-4 rounded-lg mb-4 text-center\">\n    <div class=\"text-4xl font-bold text-white\">20.00.22.31</div>\n    <div class=\"text-base text-gray-400 mt-1\">System Version</div>\n</div>\n<h3 class=\"text-lg font-bold text-white mb-3 border-b border-gray-700 pb-2\">Key Observations</h3><ul class=\"list-disc list-outside space-y-2 text-gray-300 mb-4 pl-5\"><li>The system version and release are both reported as 20.00.22.31.</li><li>The language support mode is set to Standard.</li></ul></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>base_readQuery</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"InfoKey\": \"VERSION\", \"InfoData\": \"20.00.22.31\"}, {\"InfoKey\": \"RELEASE\", \"InfoData\": \"20.00.22.31\"}, {\"InfoKey\": \"LANGUAGE SUPPORT MODE\", \"InfoData\": \"Standard\"}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>InfoKey</th><th>InfoData</th></tr></thead>\n                    <tbody>\n        <tr><td>VERSION</td><td>20.00.22.31</td></tr><tr><td>RELEASE</td><td>20.00.22.31</td></tr><tr><td>LANGUAGE SUPPORT MODE</td><td>Standard</td></tr></tbody></table></div></div>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>TDA_FinalReport</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"direct_answer\": \"The system version is 20.00.22.31.\", \"key_metric\": {\"value\": \"20.00.22.31\", \"label\": \"System Version\"}, \"key_observations\": [{\"text\": \"The system version and release are both reported as 20.00.22.31.\"}, {\"text\": \"The language support mode is set to Standard.\"}], \"synthesis\": []}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>direct_answer</th><th>key_metric</th><th>key_observations</th><th>synthesis</th></tr></thead>\n                    <tbody>\n        <tr><td>The system version is 20.00.22.31.</td><td>{'value': '20.00.22.31', 'label': 'System Version'}</td><td>[{'text': 'The system version and release are both reported as 20.00.22.31.'}, {'text': 'The language support mode is set to Standard.'}]</td><td>[]</td></tr></tbody></table></div></div></div></details>",
       "isValid": true,
       "turn_number": 1
     },
@@ -47,7 +45,7 @@
     },
     {
       "role": "user",
-      "content": "\ud83d\udd04 Replaying **query** from Turn 3: what is the system version?",
+      "content": "what is the system version?",
       "isValid": true,
       "turn_number": 4
     },
@@ -68,18 +66,6 @@
       "content": "<div class=\"response-card summary-card mb-4\"><p class=\"text-gray-300 mb-4\">The system version is 20.00.22.31.</p></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'><div class='response-card'><p class=\"text-gray-300 mb-4\">The system version is 20.00.22.31.</p></div></div></details>",
       "isValid": true,
       "turn_number": 5
-    },
-    {
-      "role": "user",
-      "content": "what is the system version?",
-      "isValid": true,
-      "turn_number": 6
-    },
-    {
-      "role": "assistant",
-      "content": "<div class=\"response-card summary-card mb-4\"><p class=\"text-gray-300 mb-4\">The system version is 20.00.22.31.</p></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'><div class='response-card'><p class=\"text-gray-300 mb-4\">The system version is 20.00.22.31.</p></div></div></details>",
-      "isValid": true,
-      "turn_number": 6
     }
   ],
   "chat_object": [
@@ -131,7 +117,7 @@
     },
     {
       "role": "user",
-      "content": "\ud83d\udd04 Replaying **query** from Turn 3: what is the system version?",
+      "content": "what is the system version?",
       "isValid": true,
       "turn_number": 4
     },
@@ -152,25 +138,13 @@
       "content": "The system version is 20.00.22.31.",
       "isValid": true,
       "turn_number": 5
-    },
-    {
-      "role": "user",
-      "content": "what is the system version?",
-      "isValid": true,
-      "turn_number": 6
-    },
-    {
-      "role": "model",
-      "content": "The system version is 20.00.22.31.",
-      "isValid": true,
-      "turn_number": 6
     }
   ],
   "name": "System Version Inquiry",
-  "created_at": "2025-11-06T11:02:27.617549",
-  "last_updated": "2025-11-06T11:11:14.878885",
-  "input_tokens": 91826,
-  "output_tokens": 751,
+  "created_at": "2025-11-06T12:03:12.998199",
+  "last_updated": "2025-11-06T12:15:28.548386",
+  "input_tokens": 74342,
+  "output_tokens": 606,
   "last_turn_data": {
     "workflow_history": [
       {
@@ -187,7 +161,7 @@
           },
           {
             "phase": 2,
-            "goal": "Generate the final report based on the Teradata database version information.",
+            "goal": "Generate the final report based on the data gathered.",
             "relevant_tools": [
               "TDA_FinalReport"
             ],
@@ -203,7 +177,7 @@
                 "details": {
                   "summary": "Generating a strategic meta-plan for the goal",
                   "full_text": "what is the system version?",
-                  "call_id": "2dddf541-1308-47d6-855c-23920817f2df",
+                  "call_id": "f243e308-02cf-4e10-bf36-e086e49da4e3",
                   "execution_depth": 0
                 }
               },
@@ -214,6 +188,54 @@
             },
             "result": {
               "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "System Correction",
+                "details": {
+                  "summary": "The agent's plan was missing a final reporting step. The system has automatically added it to ensure a complete response.",
+                  "correction": {
+                    "added_phase": {
+                      "phase": 2,
+                      "goal": "Generate the final report based on the data gathered.",
+                      "relevant_tools": [
+                        "TDA_FinalReport"
+                      ],
+                      "arguments": {}
+                    }
+                  }
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "workaround"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": "system_correction",
+            "result": {
+              "step": "System Correction",
+              "type": "workaround",
+              "details": {
+                "summary": "The agent's plan was missing a final reporting step. The system has automatically added it to ensure a complete response.",
+                "correction": {
+                  "added_phase": {
+                    "phase": 2,
+                    "goal": "Generate the final report based on the data gathered.",
+                    "relevant_tools": [
+                      "TDA_FinalReport"
+                    ],
+                    "arguments": {}
+                  }
+                }
+              }
             }
           },
           {
@@ -232,7 +254,7 @@
                   },
                   {
                     "phase": 2,
-                    "goal": "Generate the final report based on the Teradata database version information.",
+                    "goal": "Generate the final report based on the data gathered.",
                     "relevant_tools": [
                       "TDA_FinalReport"
                     ],
@@ -364,10 +386,10 @@
                 "details": {
                   "phase_num": 2,
                   "total_phases": 2,
-                  "goal": "Generate the final report based on the Teradata database version information.",
+                  "goal": "Generate the final report based on the data gathered.",
                   "phase_details": {
                     "phase": 2,
-                    "goal": "Generate the final report based on the Teradata database version information.",
+                    "goal": "Generate the final report based on the data gathered.",
                     "relevant_tools": [
                       "TDA_FinalReport"
                     ],
@@ -413,7 +435,7 @@
             "result": {
               "status": "success",
               "metadata": {
-                "call_id": "00928229-2ba4-4018-971d-4dd59cf89734",
+                "call_id": "0d4f5d98-1cc2-4b39-b990-868c2e8b8fdd",
                 "tool_name": "TDA_FinalReport"
               },
               "results": [
@@ -425,10 +447,10 @@
                   },
                   "key_observations": [
                     {
-                      "text": "The version and release are both reported as 20.00.22.31."
+                      "text": "The system version and release are both reported as 20.00.22.31."
                     },
                     {
-                      "text": "The language support mode is Standard."
+                      "text": "The language support mode is set to Standard."
                     }
                   ],
                   "synthesis": []
@@ -475,7 +497,7 @@
           }
         ],
         "final_summary": "The system version is 20.00.22.31.",
-        "timestamp": "2025-11-06T10:02:48.384474+00:00",
+        "timestamp": "2025-11-06T11:03:26.826317+00:00",
         "provider": "Google",
         "model": "gemini-2.0-flash",
         "isValid": true
@@ -504,7 +526,7 @@
                 "details": {
                   "summary": "Generating a strategic meta-plan for the goal",
                   "full_text": "what is the system version?",
-                  "call_id": "f24b1122-2ac7-46c9-8e5b-27fc2c61c212",
+                  "call_id": "a9617587-02c5-40b8-8983-32ec3e4a82f4",
                   "execution_depth": 0
                 }
               },
@@ -652,7 +674,7 @@
           }
         ],
         "final_summary": "The system version is 20.00.22.31.",
-        "timestamp": "2025-11-06T10:03:59.785117+00:00",
+        "timestamp": "2025-11-06T11:04:18.696417+00:00",
         "provider": "Google",
         "model": "gemini-2.0-flash",
         "isValid": true
@@ -681,7 +703,7 @@
                 "details": {
                   "summary": "Generating a strategic meta-plan for the goal",
                   "full_text": "what is the system version?",
-                  "call_id": "959f6fcb-0825-45b3-ad53-390e48d0fd55",
+                  "call_id": "69c85015-0941-4a96-a39a-e2370dfb436b",
                   "execution_depth": 0
                 }
               },
@@ -829,7 +851,7 @@
           }
         ],
         "final_summary": "The system version is 20.00.22.31.",
-        "timestamp": "2025-11-06T10:06:57.230127+00:00",
+        "timestamp": "2025-11-06T11:08:39.215895+00:00",
         "provider": "Google",
         "model": "gemini-2.0-flash",
         "isValid": true
@@ -858,7 +880,7 @@
                 "details": {
                   "summary": "Generating a strategic meta-plan for the goal",
                   "full_text": "what is the system version?",
-                  "call_id": "f61293cb-0f1e-4eeb-8814-adbf0371e067",
+                  "call_id": "71b5b8ca-f230-42b8-b1dd-628a3b955940",
                   "execution_depth": 0
                 }
               },
@@ -1006,7 +1028,7 @@
           }
         ],
         "final_summary": "The system version is 20.00.22.31.",
-        "timestamp": "2025-11-06T10:08:51.056183+00:00",
+        "timestamp": "2025-11-06T11:14:58.380505+00:00",
         "provider": "Google",
         "model": "gemini-2.0-flash",
         "isValid": true
@@ -1035,7 +1057,7 @@
                 "details": {
                   "summary": "Generating a strategic meta-plan for the goal",
                   "full_text": "what is the system version?",
-                  "call_id": "7dc89ab7-844b-4547-9bed-cd9a51a8bdd7",
+                  "call_id": "5d3f5261-7c92-453a-90ba-9efb1c9d25c8",
                   "execution_depth": 0
                 }
               },
@@ -1183,184 +1205,7 @@
           }
         ],
         "final_summary": "The system version is 20.00.22.31.",
-        "timestamp": "2025-11-06T10:09:28.991783+00:00",
-        "provider": "Google",
-        "model": "gemini-2.0-flash",
-        "isValid": true
-      },
-      {
-        "turn": 6,
-        "user_query": "what is the system version?",
-        "original_plan": [
-          {
-            "phase": 1,
-            "goal": "The system version is 20.00.22.31.",
-            "relevant_tools": [
-              "TDA_ContextReport"
-            ],
-            "arguments": {
-              "answer_from_context": "The system version is 20.00.22.31."
-            }
-          }
-        ],
-        "execution_trace": [
-          {
-            "action": {
-              "tool_name": "TDA_SystemLog",
-              "arguments": {
-                "message": "Calling LLM for Planning",
-                "details": {
-                  "summary": "Generating a strategic meta-plan for the goal",
-                  "full_text": "what is the system version?",
-                  "call_id": "916e67b1-eb84-49e2-969a-2c463049fc47",
-                  "execution_depth": 0
-                }
-              },
-              "metadata": {
-                "execution_depth": 0,
-                "type": "system_message"
-              }
-            },
-            "result": {
-              "status": "info"
-            }
-          },
-          {
-            "action": {
-              "tool_name": "TDA_SystemLog",
-              "arguments": {
-                "message": "Strategic Meta-Plan Generated",
-                "details": [
-                  {
-                    "phase": 1,
-                    "goal": "The system version is 20.00.22.31.",
-                    "relevant_tools": [
-                      "TDA_ContextReport"
-                    ],
-                    "arguments": {
-                      "answer_from_context": "The system version is 20.00.22.31."
-                    }
-                  }
-                ]
-              },
-              "metadata": {
-                "execution_depth": 0,
-                "type": "plan_generated"
-              }
-            },
-            "result": {
-              "status": "info"
-            }
-          },
-          {
-            "action": {
-              "tool_name": "TDA_SystemLog",
-              "arguments": {
-                "message": "Starting Plan Phase 1/1",
-                "details": {
-                  "phase_num": 1,
-                  "total_phases": 1,
-                  "goal": "The system version is 20.00.22.31.",
-                  "phase_details": {
-                    "phase": 1,
-                    "goal": "The system version is 20.00.22.31.",
-                    "relevant_tools": [
-                      "TDA_ContextReport"
-                    ],
-                    "arguments": {
-                      "answer_from_context": "The system version is 20.00.22.31."
-                    }
-                  },
-                  "execution_depth": 0
-                }
-              },
-              "metadata": {
-                "execution_depth": 0,
-                "type": "phase_start"
-              }
-            },
-            "result": {
-              "status": "info"
-            }
-          },
-          {
-            "action": {
-              "tool_name": "TDA_SystemLog",
-              "arguments": {
-                "message": "Plan Optimization",
-                "details": "FASTPATH initiated for 'TDA_ContextReport'."
-              },
-              "metadata": {
-                "execution_depth": 0,
-                "type": "plan_optimization"
-              }
-            },
-            "result": {
-              "status": "info"
-            }
-          },
-          {
-            "action": {
-              "tool_name": "TDA_ContextReport",
-              "arguments": {
-                "answer_from_context": "The system version is 20.00.22.31."
-              },
-              "metadata": {
-                "phase_number": 1,
-                "execution_depth": 0
-              }
-            },
-            "result": {
-              "status": "success",
-              "metadata": {
-                "tool_name": "TDA_ContextReport"
-              },
-              "results": [
-                {
-                  "response": "The system version is 20.00.22.31."
-                }
-              ]
-            }
-          },
-          {
-            "action": {
-              "tool_name": "TDA_SystemLog",
-              "arguments": {
-                "message": "Ending Plan Phase 1/1",
-                "details": {
-                  "phase_num": 1,
-                  "total_phases": 1,
-                  "status": "completed"
-                }
-              },
-              "metadata": {
-                "execution_depth": 0,
-                "type": "phase_end"
-              }
-            },
-            "result": {
-              "status": "info"
-            }
-          },
-          {
-            "action": {
-              "tool_name": "TDA_SystemLog",
-              "arguments": {
-                "message": "LLM has generated the final answer",
-                "details": "The system version is 20.00.22.31."
-              },
-              "metadata": {
-                "execution_depth": 0,
-                "type": null
-              }
-            },
-            "result": {
-              "status": "info"
-            }
-          }
-        ],
-        "final_summary": "The system version is 20.00.22.31.",
-        "timestamp": "2025-11-06T10:11:14.866073+00:00",
+        "timestamp": "2025-11-06T11:15:28.539767+00:00",
         "provider": "Google",
         "model": "gemini-2.0-flash",
         "isValid": true

@@ -554,39 +554,46 @@ function _renderStandardStep(eventData, parentContainer, isFinal = false) {
     }
 }
 
+/**
+ * Resets the status window and its related state variables for a new execution.
+ */
+export function resetStatusWindowForNewTask() {
+    DOM.statusWindowContent.innerHTML = '';
+    state.currentStatusId = 0;
+    state.isRestTaskActive = false;
+    state.activeRestTaskId = null;
+    state.currentPhaseContainerEl = null;
+    state.phaseContainerStack = [];
+    state.pendingSubtaskPlanningEvents = [];
+    state.isInFastPath = false;
+    setThinkingIndicator(false);
+    // Reset title to default
+    const statusTitle = DOM.statusTitle || document.getElementById('status-title');
+    if (statusTitle) {
+        statusTitle.textContent = 'Live Status';
+    }
+}
+
 export function updateStatusWindow(eventData, isFinal = false, source = 'interactive', taskId = null) {
     const { step, details, type, metadata } = eventData;
 
-    // --- MODIFICATION START: Update status title for REST tasks ---
     const statusTitle = DOM.statusTitle || document.getElementById('status-title');
+
     if (source === 'rest' && taskId) {
-        if (!state.isRestTaskActive) {
-            // Clear window only on the first event for a REST task
-            DOM.statusWindowContent.innerHTML = '';
-            state.currentStatusId = 0;
-            state.isRestTaskActive = true;
+        // Check if this is the first event for a new or different REST task
+        if (!state.isRestTaskActive || taskId !== state.activeRestTaskId) {
+            resetStatusWindowForNewTask(); // Use the centralized reset function
+            state.isRestTaskActive = true; // Set REST-specific state after reset
             state.activeRestTaskId = taskId;
         }
         statusTitle.textContent = `Live Status - REST: ${taskId.substring(0, 8)}...`;
     } else if (source === 'interactive') {
+        // If the last active view was a REST task, reset the view
         if (state.isRestTaskActive) {
-            // Clear window when switching back to interactive
-            DOM.statusWindowContent.innerHTML = '';
-            state.currentStatusId = 0;
-            state.isRestTaskActive = false;
-            state.activeRestTaskId = null;
+            resetStatusWindowForNewTask();
         }
         statusTitle.textContent = 'Live Status';
     }
-    // If the task ID changes, reset the view
-    if (source === 'rest' && taskId !== state.activeRestTaskId) {
-        DOM.statusWindowContent.innerHTML = '';
-        state.currentStatusId = 0;
-        state.isRestTaskActive = true;
-        state.activeRestTaskId = taskId;
-    }
-    // --- MODIFICATION END ---
-
 
     const execution_depth_from_details = details?.execution_depth ?? 0;
     const execution_depth_from_metadata = metadata?.execution_depth ?? 0;

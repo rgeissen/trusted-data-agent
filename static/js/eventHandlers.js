@@ -236,18 +236,12 @@ async function handleStreamRequest(endpoint, body) {
     }
     DOM.userInput.value = '';
     UI.setExecutionState(true);
-    DOM.statusWindowContent.innerHTML = '';
-    state.currentStatusId = 0;
-    state.isInFastPath = false;
-    UI.setThinkingIndicator(false);
-    state.currentPhaseContainerEl = null;
-
-    // --- MODIFICATION START: Reset Status Prompt Name to global config ---
-    // This fixes the bug where a reloaded plan's model name ("Gemini")
-    // would incorrectly persist in the header during a new execution.
-    // This call resets it to the globally configured model ("Anthropic").
-    UI.updateStatusPromptName();
+    // --- MODIFICATION START: Use centralized reset function ---
+    UI.resetStatusWindowForNewTask();
     // --- MODIFICATION END ---
+
+    // This call remains to set the prompt name specifically for the new execution
+    UI.updateStatusPromptName();
 
     const useLastTurnMode = state.isLastTurnModeLocked || state.isTempLastTurnMode;
     // --- MODIFICATION START: Also disable history if it's a replay ---

@@ -91,17 +91,16 @@ export function subscribeToNotifications() {
                 showRestQueryNotification(data.message);
                 break;
             // --- MODIFICATION START: Add handlers for REST task events ---
-            case 'rest_task_update':
-                {
-                    const { task_id, session_id, event_type, event_data } = data.payload;
-                    // Only update the main status window if the session matches
-                    // or if no session is active (or some other sensible default)
-                    if (session_id === state.currentSessionId) {
-                        const isFinal = (event_type === 'final_answer' || event_type === 'error' || event_type === 'cancelled');
-                        UI.updateStatusWindow({ ...event_data, type: event_type }, isFinal, 'rest', task_id);
-                    }
-                    break;
-                }
+            case 'rest_task_update': {
+                const { task_id, session_id, event } = data.payload;
+                if (session_id !== state.currentSessionId) break;
+
+                const isFinal = (event.type === 'final_answer' || event.type === 'error' || event.type === 'cancelled');
+                
+                // The backend now sends a canonical event object, so we can pass it directly.
+                UI.updateStatusWindow(event, isFinal, 'rest', task_id);
+                break;
+            }
             case 'rest_task_complete':
                 {
                     const { session_id, turn_id, user_input, final_answer } = data.payload;

@@ -15,6 +15,8 @@ from trusted_data_agent.core import session_manager
 from trusted_data_agent.agent import execution_service
 from trusted_data_agent.core import configuration_service
 
+from trusted_data_agent.agent.executor import PlanExecutor
+
 rest_api_bp = Blueprint('rest_api', __name__)
 app_logger = logging.getLogger("quart.app") # Use quart logger
 
@@ -152,22 +154,19 @@ async def execute_query(session_id: str):
     }
 
     async def event_handler(event_data, event_type):
-        """
-        This handler is called by the execution service for each event.
-        It now also pushes live events to the UI via the notification system.
-        """
+        """This handler is called by the execution service for each event."""
         task_status_dict = APP_STATE["background_tasks"].get(task_id)
-        sanitized_event = _sanitize_for_json(event_data)
+        sanitized_event_data = _sanitize_for_json(event_data)
 
         # 1. Update the persistent task state (for polling clients)
         if task_status_dict:
             task_status_dict["events"].append({
                 "timestamp": datetime.now(timezone.utc).isoformat(),
-                "event_data": sanitized_event,
+                "event_data": sanitized_event_data,
                 "event_type": event_type
             })
-            if event_type == "tool_result" and isinstance(sanitized_event, dict):
-                details = sanitized_event.get("details", {})
+            if event_type == "tool_result" and isinstance(sanitized_event_data, dict):
+                details = sanitized_event_data.get("details", {})
                 if isinstance(details, dict) and details.get("status") == "success" and "results" in details:
                     task_status_dict["intermediate_data"].append({
                         "tool_name": details.get("metadata", {}).get("tool_name", "unknown_tool"),
@@ -175,20 +174,39 @@ async def execute_query(session_id: str):
                     })
             task_status_dict["last_updated"] = datetime.now(timezone.utc).isoformat()
 
-        # 2. Push live event to any listening UI clients for this user
+        # 2. Create and send a canonical event to the UI notification stream
         notification_queues = APP_STATE.get("notification_queues", {}).get(user_uuid, set())
         if notification_queues:
-            notification = {
-                "type": "rest_task_update",
-                "payload": {
-                    "task_id": task_id,
-                    "session_id": session_id,
-                    "event_type": event_type,
-                    "event_data": sanitized_event
-                }
-            }
-            for queue in notification_queues:
-                asyncio.create_task(queue.put(notification))
+            try:
+                # Use the application's own formatter to guarantee a canonical event object
+                sse_message_str = PlanExecutor._format_sse(sanitized_event_data, event_type)
+                
+                # Extract the JSON part from the "data: ..." line
+                json_payload_str = None
+                for line in sse_message_str.strip().split('\n'):
+                    if line.startswith('data:'):
+                        json_payload_str = line[5:].strip()
+                        break
+                
+                if json_payload_str:
+                    # The extracted part is a JSON string, so we load it into a Python dict
+                    canonical_event = json.loads(json_payload_str)
+                    
+                    notification = {
+                        "type": "rest_task_update",
+                        "payload": {
+                            "task_id": task_id,
+                            "session_id": session_id,
+                            "event": canonical_event
+                        }
+                    }
+                    for queue in notification_queues:
+                        asyncio.create_task(queue.put(notification))
+                else:
+                    app_logger.warning(f"Could not extract JSON payload from SSE message for event type {event_type}")
+
+            except Exception as e:
+                app_logger.error(f"Failed to format or send canonical event for REST task {task_id}: {e}", exc_info=True)
 
     async def background_wrapper():
         """Wraps the execution to handle context, final state updates, and notifications."""
@@ -253,18 +271,6 @@ async def execute_query(session_id: str):
     APP_STATE.setdefault("active_tasks", {})[task_id] = task_object
 
     status_url = f"/api/v1/tasks/{task_id}"
-
-    # --- MODIFICATION START: Notify UI clients ---
-    notification_queues = APP_STATE.get("notification_queues", {}).get(user_uuid, set())
-    if notification_queues:
-        app_logger.info(f"Notifying {len(notification_queues)} UI client(s) for user {user_uuid} about REST query.")
-        notification = {
-            "message": "A REST session has been executed.",
-            "type": "info"
-        }
-        for queue in notification_queues:
-            asyncio.create_task(queue.put(notification))
-    # --- MODIFICATION END ---
 
     return jsonify({"task_id": task_id, "status_url": status_url}), 202
 
