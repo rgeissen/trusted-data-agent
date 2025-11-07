@@ -77,11 +77,24 @@ class Planner:
             turn for turn in full_workflow_history
             if isinstance(turn, dict) and turn.get("isValid", True) is not False
         ]
-        
+
+        # --- MODIFICATION START: Scrub TDA_SystemLog messages ---
+        scrubbed_workflow_history = []
+        for turn in valid_workflow_history:
+            new_turn = copy.deepcopy(turn)
+            if "execution_trace" in new_turn and isinstance(new_turn["execution_trace"], list):
+                scrubbed_trace = [
+                    entry for entry in new_turn["execution_trace"]
+                    if isinstance(entry, dict) and entry.get("action", {}).get("tool_name") != "TDA_SystemLog"
+                ]
+                new_turn["execution_trace"] = scrubbed_trace
+            scrubbed_workflow_history.append(new_turn)
+        # --- MODIFICATION END ---
+
         # 3. Create the final history object with only valid turns
         valid_history_summary = {
             # We only pass the filtered list to the planner
-            "workflow_history": valid_workflow_history 
+            "workflow_history": scrubbed_workflow_history
         }
 
         app_logger.debug(f"Planner context created. Original turns: {len(full_workflow_history)}, Valid (active) turns: {len(valid_workflow_history)}")
