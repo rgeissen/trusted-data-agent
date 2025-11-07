@@ -543,11 +543,11 @@ The primary development environment is the web-based UI. Here, you can:
 
 **Step 2: Isolate the Core Workflow Requests**
 
-Once you have a conversation that successfully executes your desired workflow, you can identify the key user prompts that drive the process. These are the prompts you will use to build your REST API requests. The UI helps you distill a complex interaction into a series of precise, automatable commands.
+Once you have a conversation that successfully executes your desired workflow, you can identify the key session turns that drive the process. These are the prompts you will use to build your REST API requests. The UI helps you distill a complex interaction into a series of precise, automatable commands.
 
 **Step 3: Automate via the REST API**
 
-With your workflow defined, you can transition to the REST API for operational use cases. This is done by sending your prompts to the appropriate API endpoint.
+With your workflow defined, you can transition to the REST API for operational use cases. This is done by sending your prompts to the appropriate API endpoint. You can find your `user_id` in the application's configuration screen, and the `session_id` for an existing conversation can be copied from the session selector in the history panel.
 
 *   **Example `curl` command:**
 
