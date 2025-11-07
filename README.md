@@ -31,20 +31,15 @@ This solution provides unparalleled, real-time insight into the complete convers
 ---
 
 ## Overview: A Superior Approach
+The Trusted Data Agent transcends typical data chat applications by delivering a seamless and powerful experience based on four core principles:
 
-The Trusted Data Agent transcends typical data chat applications by placing ultimate control and understanding in the hands of the user. It provides a seamless natural language interface to your Relational Information system, empowering you to ask complex questions and receive synthesized, accurate answers without writing a single line of SQL.
+*   **Actionable:** Go from conversational discovery to a production-ready, automated workflow in seconds. The agent's unique two-in-one approach means your interactive queries can be immediately operationalized via a REST API, eliminating the friction and redundancy of traditional data operations. What once took data experts weeks is now at your fingertips.
 
-Its core superiority lies in its revolutionary architecture, which delivers:
+*   **Transparent:** Eliminate the "black box" of AI. The Trusted Data Agent is built on a foundation of absolute trust, with a Live Status Window that shows you every step of the agent's thought process. From the initial high-level plan to every tool execution and self-correction, you have a clear, real-time view, leaving no room for guesswork.
 
-* **Deep Insights:** Go beyond black-box AI. With complete conversational transparency, rich data rendering, and integrated charting, the agent provides an unparalleled, real-time window into the AI's reasoning process, building trust and accelerating development.
+*   **Efficient:** Powered by the intelligent Fusion Optimizer, this is not a simple LLM wrapper. The agent features a revolutionary multi-layered architecture for resilient and cost-effective task execution. Through strategic and tactical planning, proactive optimization, and autonomous self-correction, the agent ensures enterprise-grade performance and reliability.
 
-* **A Revolutionary Optimizer:** This is not just an LLM wrapper. The agent features a multi-layered optimization engine with strategic planning, autonomous self-correction, and proactive safeguards. It intelligently navigates errors, optimizes execution paths, and protects against common LLM pitfalls, ensuring resilient and efficient operation.
-
-* **Unprecedented Flexibility:** The agent is designed for dynamic control. From an intuitive conversational UI to on-the-fly capability management and a powerful System Prompt Editor, the application adapts to your needs, not the other way around.
-
-* **Comparative LLM Analysis:** In a rapidly evolving AI landscape, the ability to benchmark and compare models is critical. The agent allows for seamless, real-time switching between top-tier LLM providers, including local models, providing an essential platform for enterprise-grade testing and validation.
-
-* **Voice-to-Text Interaction:** Engage with your data naturally through a high-quality, voice-driven interface. Featuring flexible interaction modes, the agent allows for a fluid, hands-free conversational experience.
+*   **Sovereignty:** Your data, your rules, your environment. The agent gives you the ultimate freedom to choose your data exposure strategy. Leverage the power of hyperscaler LLMs, or run fully private models on your own infrastructure with Ollama, keeping your data governed entirely by your rules. The agent connects to the models you trust.
 
 ## Key Features
 
