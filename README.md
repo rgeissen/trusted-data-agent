@@ -9,7 +9,7 @@ This solution provides unparalleled, real-time insight into the complete convers
 
 ---
 
-### 📋 Table Of Contents
+### Table Of Contents
 
 1. [Overview: A Superior Approach](#overview-a-superior-approach)
 2. [Key Features](#key-features)
@@ -30,7 +30,7 @@ This solution provides unparalleled, real-time insight into the complete convers
 
 ---
 
-## 💡 Overview: A Superior Approach
+## Overview: A Superior Approach
 
 The Trusted Data Agent transcends typical data chat applications by placing ultimate control and understanding in the hands of the user. It provides a seamless natural language interface to your Relational Information system, empowering you to ask complex questions and receive synthesized, accurate answers without writing a single line of SQL.
 
@@ -46,7 +46,7 @@ Its core superiority lies in its revolutionary architecture, which delivers:
 
 * **Voice-to-Text Interaction:** Engage with your data naturally through a high-quality, voice-driven interface. Featuring flexible interaction modes, the agent allows for a fluid, hands-free conversational experience.
 
-## ✨ Key Features
+## Key Features
 
 ### Deep Insights
 
@@ -102,7 +102,7 @@ Its core superiority lies in its revolutionary architecture, which delivers:
 
 * **Flexible Voice Modes**: Control the conversational flow with configurable modes for handling "Key Observations"—play them automatically, ask for confirmation before playing, or disable them entirely.
 
-## 🧠 The Heart of the Application - The Engine & its Fusion Optimizer
+## The Heart of the Application - The Engine & its Fusion Optimizer
 
 The Trusted Data Agent is engineered to be far more than a simple LLM wrapper. Its revolutionary core is the **Fusion Optimizer**, a multi-layered engine designed for resilient, intelligent, and efficient task execution in complex enterprise environments. It transforms the agent from a mere tool into a reliable analytical partner.
 
@@ -197,7 +197,7 @@ The Python source code is organized in a standard `src` layout for better mainta
 
 This structure separates concerns, making it easier to navigate and extend the application's functionality.
 
-## 🚀 Installation and Setup Guide
+## Installation and Setup Guide
 
 ### Prerequisites
 
@@ -335,7 +335,7 @@ python -m trusted_data_agent.main --all-models
 
 **Note:** **No Ollama models are currently certified.** For testing purposes, Ollama models can be evaluated by starting the server with the `--all-models` developer flag.
 
-## 📚 User Guide
+## User Guide
 
 This guide provides a walkthrough of the main features of the Trusted Data Agent UI.
 
@@ -494,7 +494,7 @@ When activated, this mode disables the **LLM Conversation History**. The agent b
     *   **Hold `Alt`** while sending a message to use it for a single query.
     *   **Press `Shift` + `Alt`** to lock the mode on for subsequent queries.
 
-## 🔌 Application REST API
+## Application REST API
 
 The Trusted Data Agent includes a powerful, asynchronous REST API to enable programmatic control, automation, and integration into larger enterprise workflows.
 
@@ -587,7 +587,7 @@ This hybrid approach gives you the best of both worlds: the automation and scala
 
   * Verify that the selected model is enabled for access in the AWS Bedrock console for your specified region.
 
-## 📜 License
+## License
 
 This project is licensed under the GNU Affero General Public License v3.0. The full license text is available in the `LICENSE` file in the root of this repository.
 
