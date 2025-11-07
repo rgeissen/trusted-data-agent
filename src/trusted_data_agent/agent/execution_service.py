@@ -71,7 +71,8 @@ async def run_agent_execution(
                 session_id,
                 'user',
                 message_to_save,
-                html_content=None # User input is plain text
+                html_content=None, # User input is plain text
+                source=source
             )
             app_logger.debug(f"Added user message to session_history for {session_id}: '{message_to_save}'")
         # --- MODIFICATION END ---

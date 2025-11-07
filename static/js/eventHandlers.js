@@ -226,13 +226,13 @@ async function handleStreamRequest(endpoint, body) {
         // --- MODIFICATION START: Do not add user message again during replay ---
         // Only add user message if it's NOT a replay initiated by the replay button
         if (!body.is_replay) {
-            UI.addMessage('user', body.message);
+            UI.addMessage('user', body.message, null, true, 'text');
         } else {
              console.log("Replay initiated, skipping adding user message again.");
         }
         // --- MODIFICATION END ---
     } else {
-        UI.addMessage('user', `Executing prompt: ${body.prompt_name}`);
+        UI.addMessage('user', `Executing prompt: ${body.prompt_name}`, null, true, 'text');
     }
     DOM.userInput.value = '';
     UI.setExecutionState(true);
@@ -392,7 +392,7 @@ export async function handleReplayQueryClick(buttonEl) {
         const displayMessage = `🔄 Replaying **query** from Turn ${turnId}: ${originalQuery}`;
         console.log(`Replaying QUERY from Turn ${turnId}: "${originalQuery}"`);
         // Add a message indicating a *query* replay
-        UI.addMessage('user', displayMessage);
+        UI.addMessage('user', displayMessage, null, true, 'text');
 
         // 2. Re-submit using handleStreamRequest, *without* a plan
         handleStreamRequest('/ask_stream', {
@@ -445,7 +445,7 @@ async function handleReplayPlanClick(buttonEl) {
         const displayMessage = `🔄 Replaying **plan** from Turn ${turnId}: ${originalQuery}`;
         console.log(`Replaying PLAN from Turn ${turnId} (Query: "${originalQuery}")`);
         // Add a message indicating a *plan* replay
-        UI.addMessage('user', displayMessage);
+        UI.addMessage('user', displayMessage, null, true, 'text');
 
         // 2. Re-submit using handleStreamRequest, passing the plan_to_execute
         handleStreamRequest('/ask_stream', {
@@ -647,11 +647,11 @@ export async function handleLoadSession(sessionId, isNewSession = false) {
 
                 if (msg.role === 'assistant') {
                     // Pass the calculated turn ID and validity for assistant messages
-                    UI.addMessage(msg.role, msg.content, currentTurnId, isValid);
+                    UI.addMessage(msg.role, msg.content, currentTurnId, isValid, msg.source);
                     currentTurnId++; // Increment turn ID after an assistant message
                 } else {
                     // User messages don't need a turn ID, but pass validity
-                    UI.addMessage(msg.role, msg.content, null, isValid);
+                    UI.addMessage(msg.role, msg.content, null, isValid, msg.source);
                 }
             }
             // --- MODIFICATION END ---

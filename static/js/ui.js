@@ -103,7 +103,7 @@ export function renderHistoricalTrace(originalPlan = [], executionTrace = [], tu
 
 
 // --- MODIFICATION START: Add 'isValid' parameter to apply context styles ---
-export function addMessage(role, content, turnId = null, isValid = true) { // eslint-disable-line no-unused-vars
+export function addMessage(role, content, turnId = null, isValid = true, source = null) { // eslint-disable-line no-unused-vars
 // --- MODIFICATION END ---
     const wrapper = document.createElement('div');
     wrapper.className = `message-bubble group flex items-start gap-4 ${role === 'user' ? 'justify-end' : ''}`;
@@ -155,6 +155,15 @@ export function addMessage(role, content, turnId = null, isValid = true) { // es
     author.textContent = role === 'user' ? 'You' : 'Assistant';
     author.classList.add(role === 'user' ? 'text-gray-300' : 'text-[#F15F22]');
     messageContainer.appendChild(author);
+
+    // --- MODIFICATION START: Add REST call tag ---
+    if (role === 'user' && source === 'rest') {
+        const restTag = document.createElement('span');
+        restTag.className = 'rest-call-tag';
+        restTag.textContent = 'Rest Call';
+        author.appendChild(restTag);
+    }
+    // --- MODIFICATION END ---
 
     const messageContent = document.createElement('div');
     messageContent.innerHTML = content;

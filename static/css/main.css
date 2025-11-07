@@ -735,6 +735,22 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
 }
 /* --- MODIFICATION END --- */
 
+/* --- MODIFICATION START: Add style for REST call tag --- */
+.rest-call-tag {
+    background-color: var(--teradata-orange);
+    color: white;
+    font-size: 0.65rem; /* text-xs */
+    font-weight: bold;
+    padding: 0.125rem 0.375rem; /* py-0.5 px-1.5 */
+    border-radius: 0.375rem; /* rounded-md */
+    margin-left: 0.5rem; /* ml-2 */
+    display: inline-block;
+    line-height: 1.2;
+    vertical-align: middle;
+}
+/* --- MODIFICATION END --- */
+
+
 /* --- MODIFICATION START: Remove .turn-invalid and add .context-invalid --- */
 /* This class will be added *directly to the badge* */
 .turn-badge.context-invalid {

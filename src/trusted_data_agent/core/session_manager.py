@@ -268,7 +268,7 @@ def delete_session(user_uuid: str, session_id: str) -> bool:
         return False # Indicate failure due to OS error
 
 # --- MODIFICATION START: Rename and refactor add_to_history ---
-def add_message_to_histories(user_uuid: str, session_id: str, role: str, content: str, html_content: str | None = None):
+def add_message_to_histories(user_uuid: str, session_id: str, role: str, content: str, html_content: str | None = None, source: str | None = None):
     """
     Adds a message to the appropriate histories, decoupling UI from LLM context.
     - `content` (plain text) is *always* added to the LLM's chat_object.
@@ -295,12 +295,17 @@ def add_message_to_histories(user_uuid: str, session_id: str, role: str, content
             else: # Assistant's turn
                 next_turn_number = last_turn_number
         
-        session_history.append({
+        message_to_append = {
             'role': role,
             'content': ui_content,
             'isValid': True,
-            'turn_number': next_turn_number
-        })
+            'turn_number': next_turn_number,
+        }
+
+        if source:
+             message_to_append['source'] = source
+        
+        session_history.append(message_to_append)
         # --- MODIFICATION END ---
 
         # --- 2. Add to LLM History (chat_object) ---

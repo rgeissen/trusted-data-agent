@@ -146,7 +146,7 @@ export function subscribeToNotifications() {
                     const { session_id, turn_id, user_input, final_answer } = data.payload;
                     if (session_id === state.currentSessionId) {
                         // Add the Q&A to the main chat log
-                        UI.addMessage('user', user_input, turn_id, true);
+                        UI.addMessage('user', user_input, turn_id, true, 'rest');
                         UI.addMessage('assistant', final_answer, turn_id, true);
                         UI.moveSessionToTop(session_id);
                         UI.setExecutionState(false); // Reset UI execution state
