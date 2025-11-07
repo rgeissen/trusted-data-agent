@@ -1,9 +1,11 @@
 # The Trusted Data Agent
-### industry-leading AI Conversational Engine for your most complex enterprise data.
+### Query it. Automate it. Zero Friction.
 
-The **Trusted Data Agent** represents a paradigm shift in how Business Leaders, Business Analysts, Developers, and Architects interact with complex data ecosystems. It is a sophisticated engine backend & web front-end application designed not only to showcase AI-powered interaction with a Relational Information system, but to serve as a powerful, fully transparent "study buddy" for mastering the integration of Large Language Models (LLMs) with enterprise data.
+The **Trusted Data Agent** represents a paradigm shift in data interaction, taking you from question to insight to action in seconds. It is the industry-leading AI conversational engine for your most complex enterprise data.
 
-This solution provides unparalleled, real-time insight into the complete conversational flow between the user, the AI agent, the **Model Context Protocol (MCP)** server, and the underlying relational information system, establishing a new standard for clarity and control in AI-driven data analytics.
+Go from conversational discovery to a production-ready, automated workflow with zero friction. This is not just another data chat application; it's a fundamental change in how you work, moving **from days to seconds**, **from guesswork to clarity**, and **from high cost to high efficiency**, while always ensuring **data sovereignty**.
+
+This solution establishes a new standard for AI-driven data analytics, built on the four core principles detailed in the overview below.
 
 ![Demo](./images/AppOverview.gif)
 
@@ -11,7 +13,7 @@ This solution provides unparalleled, real-time insight into the complete convers
 
 ### Table Of Contents
 
-1. [Overview: A Superior Approach](#overview-a-superior-approach)
+1. [Core Principles: A Superior Approach](#core-principles-a-superior-approach)
 2. [Key Features](#key-features)
 3. [The Heart of the Application - The Engine & its Fusion Optimizer](#the-heart-of-the-application---the-engine--its-fusion-optimizer)
 4. [How It Works: Architecture](#how-it-works-architecture)
@@ -30,7 +32,7 @@ This solution provides unparalleled, real-time insight into the complete convers
 
 ---
 
-## Overview: A Superior Approach
+## Core Principles: A Superior Approach
 The Trusted Data Agent transcends typical data chat applications by delivering a seamless and powerful experience based on four core principles:
 
 *   **Actionable:** Go from conversational discovery to a production-ready, automated workflow in seconds. The agent's unique two-in-one approach means your interactive queries can be immediately operationalized via a REST API, eliminating the friction and redundancy of traditional data operations. What once took data experts weeks is now at your fingertips.
