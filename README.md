@@ -20,10 +20,12 @@ This solution provides unparalleled, real-time insight into the complete convers
 7. [User Guide](#user-guide)
 8. [Context Maintenance](#context-maintenance)
 9. [Application REST API](#application-rest-api)
-10. [Troubleshooting](#troubleshooting)
-11. [License](#license)
-12. [Author & Contributions](#author--contributions)
-13. [Appendix: Feature Update List](#appendix-feature-update-list)
+10. [Real-Time Monitoring](#real-time-monitoring)
+11. [Operationalization](#operationalization)
+12. [Troubleshooting](#troubleshooting)
+13. [License](#license)
+14. [Author & Contributions](#author--contributions)
+15. [Appendix: Feature Update List](#appendix-feature-update-list)
 
 
 ---
@@ -513,6 +515,63 @@ This API exposes the core functionalities of the agent, allowing developers to b
 
 For complete technical details, endpoint definitions, and cURL examples, please see the full documentation:
 [**REST API Documentation (docs/RestAPI/restAPI.md)**](https://github.com/rgeissen/trusted-data-agent/blob/main/docs/RestAPI/restAPI.md)
+
+## Real-Time Monitoring
+
+The Trusted Data Agent's UI serves as a powerful, real-time monitoring tool that provides full visibility into all agent workloads, regardless of whether they are initiated from the user interface or the REST API. This capability is particularly valuable for developers and administrators interacting with the agent programmatically.
+
+When a task is triggered via a REST call, it is not a "black box" operation. Instead, the entire execution workflow is visualized in real-time within the UI's live status window. This provides a granular, step-by-step view of the agent's process, including:
+
+*   **Planner Activity:** See the strategic plan the agent creates to address the request.
+*   **Tool Execution:** Watch as the agent executes specific tools and gathers data.
+*   **Response Synthesis:** Observe the final phase where the agent synthesizes the gathered information into a coherent answer.
+
+This provides a level of transparency typically not available for REST API interactions, offering a "glass box" view into the agent's operations. The key benefit is that you can trigger a complex workflow through a single API call and then use the UI to visually monitor its progress, understand how it's being executed, and immediately diagnose any issues that may arise. This turns the UI into an essential tool for the development, debugging, and monitoring of any integration with the Trusted Data Agent.
+
+## Operationalization
+
+### Operationalization: From Interactive UI to Automated REST API
+
+The Trusted Data Agent is designed to facilitate a seamless transition from interactive development in the UI to automated, operational workflows via its REST API. This process allows you to build, test, and refine complex data interactions in an intuitive conversational interface and then deploy them as robust, repeatable tasks.
+
+**Step 1: Develop and Refine in the UI**
+
+The primary development environment is the web-based UI. Here, you can:
+*   **Prototype Workflows:** Engage in a dialogue with the agent to build out your desired sequence of actions.
+*   **Test and Debug:** Interactively test the agent's understanding and execution of your requests. The real-time feedback and detailed status updates in the UI are invaluable for debugging and refining your prompts.
+*   **Validate Outcomes:** Ensure the agent produces the correct results and handles edge cases appropriately before moving to automation.
+
+**Step 2: Isolate the Core Workflow Requests**
+
+Once you have a conversation that successfully executes your desired workflow, you can identify the key user prompts that drive the process. These are the prompts you will use to build your REST API requests. The UI helps you distill a complex interaction into a series of precise, automatable commands.
+
+**Step 3: Automate via the REST API**
+
+With your workflow defined, you can transition to the REST API for operational use cases. This is done by sending your prompts to the appropriate API endpoint.
+
+*   **Example `curl` command:**
+
+```bash
+curl -X POST http://localhost:8000/api/execute_turn \
+-H "Content-Type: application/json" \
+-d '{
+    "user_id": "your-user-id",
+    "session_id": "your-session-id",
+    "prompt": "Your refined prompt from the UI"
+}'
+```
+
+This allows you to integrate the Trusted Data Agent into larger automated systems, CI/CD pipelines, or other applications.
+
+**Step 4: Real-Time Monitoring of REST-driven Workflows**
+
+A key feature of the platform is the ability to monitor REST-initiated tasks in real-time through the UI. When a workflow is triggered via the API, the UI (if viewing the corresponding session) will display:
+
+*   The incoming request, flagged with a "Rest Call" tag.
+*   The complete sequence of agent thoughts, plans, and tool executions as they happen.
+*   Live status updates, providing the same level of transparency as if you were interacting with the agent directly in the UI.
+
+This hybrid approach gives you the best of both worlds: the automation and scalability of a REST API, combined with the rich, real-time monitoring and debugging capabilities of the interactive UI. It provides crucial visibility into your operationalized data workflows.
 
 ## Troubleshooting
 
