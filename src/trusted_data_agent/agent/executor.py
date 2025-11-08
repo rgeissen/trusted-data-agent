@@ -64,7 +64,7 @@ class PlanExecutor:
         return None
 
     # --- MODIFICATION START: Add plan_to_execute and is_replay ---
-    def __init__(self, session_id: str, user_uuid: str, original_user_input: str, dependencies: dict, active_prompt_name: str = None, prompt_arguments: dict = None, execution_depth: int = 0, disabled_history: bool = False, previous_turn_data: dict = None, force_history_disable: bool = False, source: str = "text", is_delegated_task: bool = False, force_final_summary: bool = False, plan_to_execute: list = None, is_replay: bool = False):
+    def __init__(self, session_id: str, user_uuid: str, original_user_input: str, dependencies: dict, active_prompt_name: str = None, prompt_arguments: dict = None, execution_depth: int = 0, disabled_history: bool = False, previous_turn_data: dict = None, force_history_disable: bool = False, source: str = "text", is_delegated_task: bool = False, force_final_summary: bool = False, plan_to_execute: list = None, is_replay: bool = False, task_id: str = None):
         self.session_id = session_id
         self.user_uuid = user_uuid
         # --- MODIFICATION END ---
@@ -128,6 +128,9 @@ class PlanExecutor:
         # --- MODIFICATION END ---
         # --- MODIFICATION START: Add instance variable for turn number ---
         self.current_turn_number = 0 # Will be calculated once in run()
+        # --- MODIFICATION END ---
+        # --- MODIFICATION START: Store task_id ---
+        self.task_id = task_id
         # --- MODIFICATION END ---
 
 
@@ -711,7 +714,8 @@ class PlanExecutor:
                     "final_summary": self.final_summary_text,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "provider": self.current_provider, # Add snapshot of provider
-                    "model": self.current_model       # Add snapshot of model
+                    "model": self.current_model,       # Add snapshot of model
+                    "task_id": self.task_id            # Add the task_id
                 }
                 # --- MODIFICATION END ---
                 session_manager.update_last_turn_data(self.user_uuid, self.session_id, turn_summary)

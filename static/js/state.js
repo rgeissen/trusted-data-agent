@@ -12,6 +12,7 @@ export const state = {
     currentModel: '',
     currentStatusId: 0,
     currentSessionId: null,
+    currentTaskId: null, // Add this line
     resourceData: { tools: {}, prompts: {}, resources: {}, charts: {} },
     currentlySelectedResource: null,
     eventSource: null,

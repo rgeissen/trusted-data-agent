@@ -260,7 +260,8 @@ async def execute_query(session_id: str):
                 session_id=session_id,
                 user_input=prompt,
                 event_handler=event_handler,
-                source='rest' # Identify source as REST
+                source='rest', # Identify source as REST
+                task_id=task_id # Pass the task_id here
             )
 
             if task_status_dict:

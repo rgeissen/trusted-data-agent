@@ -50,6 +50,9 @@ export const stopExecutionButton = document.getElementById('stop-execution-butto
 export const headerReplayPlannedButton = document.getElementById('header-replay-planned-button');
 export const headerReplayOptimizedButton = document.getElementById('header-replay-optimized-button');
 export const headerReplayQueryButton = document.getElementById('header-replay-query-button');
+export const taskIdDisplay = document.getElementById('task-id-display');
+export const taskIdValue = document.getElementById('task-id-value');
+export const copyTaskIdButton = document.getElementById('copy-task-id-button');
 // --- MODIFICATION END ---
 
 // Session history panel elements

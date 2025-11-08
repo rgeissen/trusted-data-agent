@@ -600,6 +600,7 @@ export function resetStatusWindowForNewTask() {
     state.pendingSubtaskPlanningEvents = [];
     state.isInFastPath = false;
     setThinkingIndicator(false);
+    updateTaskIdDisplay(null); // Clear and hide task ID
     // Reset title to default
     const statusTitle = DOM.statusTitle || document.getElementById('status-title');
     if (statusTitle) {
@@ -618,12 +619,14 @@ export function updateStatusWindow(eventData, isFinal = false, source = 'interac
             resetStatusWindowForNewTask(); // Use the centralized reset function
             state.isRestTaskActive = true; // Set REST-specific state after reset
             state.activeRestTaskId = taskId;
+            updateTaskIdDisplay(taskId); // Display the task ID
         }
         statusTitle.textContent = `Live Status - REST: ${taskId.substring(0, 8)}...`;
     } else if (source === 'interactive') {
         // If the last active view was a REST task, reset the view
         if (state.isRestTaskActive) {
             resetStatusWindowForNewTask();
+            updateTaskIdDisplay(null); // Hide the task ID
         }
         statusTitle.textContent = 'Live Status';
     }
@@ -744,6 +747,39 @@ export function updateStatusWindow(eventData, isFinal = false, source = 'interac
 
     if (!state.isMouseOverStatus) {
         DOM.statusWindowContent.scrollTop = DOM.statusWindowContent.scrollHeight;
+    }
+}
+
+/**
+ * Updates the display of the current task ID in the status window header.
+ * Includes functionality to copy the task ID to the clipboard.
+ * @param {string|null} taskId - The task ID to display, or null to hide the display.
+ */
+export function updateTaskIdDisplay(taskId) {
+    if (DOM.taskIdDisplay && DOM.taskIdValue && DOM.copyTaskIdButton) {
+        if (taskId) {
+            DOM.taskIdValue.textContent = `Task ID: ${taskId.substring(0, 8)}...`;
+            DOM.taskIdDisplay.classList.remove('hidden');
+
+            // Remove any existing event listener to prevent duplicates
+            DOM.copyTaskIdButton.onclick = null; 
+            DOM.copyTaskIdButton.onclick = () => {
+                navigator.clipboard.writeText(taskId).then(() => {
+                    // Provide visual feedback
+                    const originalIcon = DOM.copyTaskIdButton.innerHTML;
+                    DOM.copyTaskIdButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>`;
+                    setTimeout(() => {
+                        DOM.copyTaskIdButton.innerHTML = originalIcon;
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy task ID: ', err);
+                });
+            };
+        } else {
+            DOM.taskIdDisplay.classList.add('hidden');
+            DOM.taskIdValue.textContent = '';
+            DOM.copyTaskIdButton.onclick = null; // Clear event listener
+        }
     }
 }
 

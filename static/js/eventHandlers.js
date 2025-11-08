@@ -47,6 +47,13 @@ async function processStream(responseBody) {
                 try {
                     const eventData = JSON.parse(dataLine);
 
+                    // --- MODIFICATION START: Handle task_id for interactive sessions ---
+                    if (eventData.task_id && state.currentTaskId !== eventData.task_id) {
+                        state.currentTaskId = eventData.task_id;
+                        UI.updateTaskIdDisplay(eventData.task_id);
+                    }
+                    // --- MODIFICATION END ---
+
                     // --- Event Handling Logic ---
                     if (eventName === 'status_indicator_update') {
                         const { target, state: statusState } = eventData;
@@ -189,6 +196,8 @@ async function processStream(responseBody) {
                     } else if (eventName === 'rest_task_update') {
                         const { task_id, session_id, event } = eventData.payload; // eslint-disable-line no-unused-vars
                         UI.updateStatusWindow(event, false, 'rest', task_id);
+                    } else if (eventName === 'task_start') { // Handle the new task_start event
+                        UI.updateTaskIdDisplay(eventData.task_id);
                     } else {
                         UI.updateStatusWindow(eventData);
                     }
@@ -339,6 +348,12 @@ async function handleReloadPlanClick(element) {
 
         // Render the historical trace using the new UI function
         UI.renderHistoricalTrace(turnData.original_plan || [], turnData.execution_trace || [], turnId, turnData.user_query);
+
+        // --- MODIFICATION START: Update task ID display for reloaded turn ---
+        // Prioritize task_id if available in turnData, otherwise use turnId as fallback
+        const taskIdToDisplay = turnData.task_id || turnId;
+        UI.updateTaskIdDisplay(taskIdToDisplay);
+        // --- MODIFICATION END ---
 
         // --- MODIFICATION START: Update model display for reloaded turn ---
         // After rendering, update the model display to reflect the turn's actual model

@@ -83,10 +83,11 @@ class Planner:
         for turn in valid_workflow_history:
             new_turn = copy.deepcopy(turn)
             if "execution_trace" in new_turn and isinstance(new_turn["execution_trace"], list):
-                scrubbed_trace = [
-                    entry for entry in new_turn["execution_trace"]
-                    if isinstance(entry, dict) and entry.get("action", {}).get("tool_name") != "TDA_SystemLog"
-                ]
+                scrubbed_trace = []
+                for entry in new_turn["execution_trace"]:
+                    if isinstance(entry, dict):
+                        if entry.get("action", {}).get("tool_name") != "TDA_SystemLog":
+                            scrubbed_trace.append(entry)
                 new_turn["execution_trace"] = scrubbed_trace
             scrubbed_workflow_history.append(new_turn)
         # --- MODIFICATION END ---

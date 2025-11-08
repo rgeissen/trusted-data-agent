@@ -1,0 +1,39 @@
+{
+  "id": "b8962043-4379-4265-ba8a-5739ca7b6a45",
+  "user_uuid": "b3c96f52-ba56-46e6-93a2-6058b0c19958",
+  "system_prompt_template": null,
+  "charting_intensity": "medium",
+  "provider": "Google",
+  "model": "gemini-2.0-flash",
+  "models_used": [],
+  "session_history": [],
+  "chat_object": [
+    {
+      "role": "user",
+      "content": "You are a helpful assistant.",
+      "turn_number": 0
+    },
+    {
+      "role": "model",
+      "content": "Understood.",
+      "turn_number": 0
+    }
+  ],
+  "name": "New Chat",
+  "created_at": "2025-11-08T14:57:31.137048",
+  "last_updated": "2025-11-08T14:57:31.144911",
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "last_turn_data": {
+    "workflow_history": []
+  },
+  "full_context_sent": false,
+  "license_info": {
+    "holder": "TDA App Develpper license",
+    "issued_at": "2025-09-01T11:27:01.266255+00:00",
+    "expires_at": "2026-09-01T11:27:01.266255+00:00",
+    "version": "1.5-tiered",
+    "tier": "App Developer",
+    "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
+  }
+}

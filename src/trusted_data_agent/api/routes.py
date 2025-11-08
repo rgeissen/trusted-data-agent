@@ -7,6 +7,7 @@ import sys
 import copy
 import hashlib
 import httpx
+import uuid # Import the uuid module
 
 from quart import Blueprint, request, jsonify, render_template, Response, abort
 from langchain_mcp_adapters.prompts import load_mcp_prompt
@@ -714,6 +715,9 @@ async def ask_stream():
 
     session_manager.update_models_used(user_uuid=user_uuid, session_id=session_id, provider=APP_CONFIG.CURRENT_PROVIDER, model=APP_CONFIG.CURRENT_MODEL)
 
+    # --- MODIFICATION START: Generate task_id for interactive sessions ---
+    task_id = f"task-{uuid.uuid4()}"
+    # --- MODIFICATION END ---
 
     active_tasks_key = f"{user_uuid}_{session_id}"
     active_tasks = APP_STATE.get("active_tasks", {})
@@ -736,6 +740,11 @@ async def ask_stream():
             sse_event = PlanExecutor._format_sse(event_data, event_type)
             await queue.put(sse_event)
 
+        # --- MODIFICATION START: Send initial task_start event ---
+        # Send an initial event to the client with the task_id
+        await queue.put(PlanExecutor._format_sse({"task_id": task_id}, "task_start"))
+        # --- MODIFICATION END ---
+
         async def run_and_signal_completion():
             task = None
             try:
@@ -750,7 +759,8 @@ async def ask_stream():
                         source=source,
                         plan_to_execute=plan_to_execute, # Pass the plan
                         is_replay=is_replay, # Pass the flag
-                        display_message=display_message # Pass the display message
+                        display_message=display_message, # Pass the display message
+                        task_id=task_id # Pass the generated task_id
                     )
                 )
                 # --- MODIFICATION END ---
@@ -805,6 +815,10 @@ async def invoke_prompt_stream():
             yield PlanExecutor._format_sse({"error": "Session not found or invalid."}, "error")
         return Response(error_gen(), mimetype="text/event-stream")
 
+    # --- MODIFICATION START: Generate task_id for prompt invocations ---
+    task_id = f"task-{uuid.uuid4()}"
+    # --- MODIFICATION END ---
+
     active_tasks_key = f"{user_uuid}_{session_id}"
     active_tasks = APP_STATE.get("active_tasks", {})
     if active_tasks_key in active_tasks:
@@ -839,7 +853,8 @@ async def invoke_prompt_stream():
                         active_prompt_name=prompt_name,
                         prompt_arguments=arguments,
                         disabled_history=disabled_history,
-                        source=source
+                        source=source,
+                        task_id=task_id # Pass the generated task_id
                         # plan_to_execute=None, is_replay=False
                     )
                 )
