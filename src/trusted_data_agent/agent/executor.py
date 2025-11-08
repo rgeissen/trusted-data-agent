@@ -132,6 +132,7 @@ class PlanExecutor:
         # --- MODIFICATION START: Store task_id ---
         self.task_id = task_id
         # --- MODIFICATION END ---
+        self.last_llm_token_usage = {"input_tokens": 0, "output_tokens": 0}
 
 
     def _log_system_event(self, event_data: dict, event_name: str = None):

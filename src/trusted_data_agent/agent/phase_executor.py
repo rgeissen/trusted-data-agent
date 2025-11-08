@@ -52,17 +52,34 @@ class CorrectionStrategy(ABC):
         pass
 
     @abstractmethod
-    async def generate_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any]) -> Tuple[Dict | None, List]:
+    async def generate_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any], healing_correlation_id: str) -> Tuple[Dict | None, List, Dict]:
         """Generates a corrected action or concludes the task."""
         pass
 
-    async def _call_correction_llm(self, prompt: str, reason: str, system_prompt_override: str, failed_action: Dict[str, Any], extra_args_for_llm_task: Dict[str, Any] = None) -> Tuple[Dict | None, List]:
+    async def _call_correction_llm(self, prompt: str, reason: str, system_prompt_override: str, failed_action: Dict[str, Any], healing_correlation_id: str, extra_args_for_llm_task: Dict[str, Any] = None) -> Tuple[Dict | None, List, Dict]:
         """
         A helper method to standardize the LLM call for correction.
         Includes optional extra_args for TDA_LLMTask corrections.
         """
         events = []
         call_id = str(uuid.uuid4())
+        
+        # Log SelfCorrectionLLMCall before the LLM call
+        log_rag_event(
+            session_id=self.executor.session_id,
+            correlation_id=healing_correlation_id,
+            event_type="SelfCorrectionLLMCall",
+            event_source="CorrectionStrategy._call_correction_llm",
+            details={
+                "summary": f"LLM call for self-correction: {reason}",
+                "prompt": prompt,
+                "system_prompt_override": system_prompt_override,
+                "failed_action": copy.deepcopy(failed_action),
+                "call_id": call_id,
+                "stage": "pre_call"
+            }
+        )
+
         events.append( ({"step": "Calling LLM for Self-Correction", "type": "system_message", "details": {"summary": reason, "call_id": call_id}}, None) )
         events.append( ({"target": "llm", "state": "busy"}, "status_indicator_update") )
 
@@ -75,6 +92,23 @@ class CorrectionStrategy(ABC):
             # user_uuid implicitly passed via self.executor._call_llm_and_update_tokens
         )
         events.append( ({"target": "llm", "state": "idle"}, "status_indicator_update") )
+
+        llm_token_usage = {"input_tokens": input_tokens, "output_tokens": output_tokens}
+
+        # Log SelfCorrectionLLMCall after the LLM call
+        log_rag_event(
+            session_id=self.executor.session_id,
+            correlation_id=healing_correlation_id,
+            event_type="SelfCorrectionLLMCall",
+            event_source="CorrectionStrategy._call_correction_llm",
+            details={
+                "summary": f"LLM call for self-correction completed: {reason}",
+                "response": response_str,
+                "llm_token_usage": llm_token_usage,
+                "call_id": call_id,
+                "stage": "post_call"
+            }
+        )
 
         # --- MODIFICATION START: Pass user_uuid to get_session ---
         updated_session = session_manager.get_session(self.executor.user_uuid, self.executor.session_id)
@@ -89,7 +123,7 @@ class CorrectionStrategy(ABC):
         if "FINAL_ANSWER:" in response_str:
             app_logger.info("Self-correction resulted in a FINAL_ANSWER. Halting retries.")
             final_answer_text = response_str.split("FINAL_ANSWER:", 1)[1].strip()
-            return {"FINAL_ANSWER": final_answer_text}, events
+            return {"FINAL_ANSWER": final_answer_text}, events, llm_token_usage
 
         try:
             json_match = re.search(r"```json\s*\n(.*?)\n\s*```|(\{.*\})", response_str, re.DOTALL)
@@ -108,29 +142,29 @@ class CorrectionStrategy(ABC):
 
             if "prompt_name" in corrected_data and "arguments" in corrected_data:
                 events.append( ({"step": "System Self-Correction", "type": "workaround", "details": {"summary": f"LLM proposed switching to prompt '{corrected_data['prompt_name']}'.", "details": corrected_data}}, None) )
-                return corrected_data, events
+                return corrected_data, events, llm_token_usage
 
             if "tool_name" in corrected_data and "arguments" in corrected_data:
                 events.append( ({"step": "System Self-Correction", "type": "workaround", "details": {"summary": f"LLM proposed retrying with tool '{corrected_data['tool_name']}'.", "details": corrected_data}}, None) )
-                return corrected_data, events
+                return corrected_data, events, llm_token_usage
 
             new_args = corrected_data.get("arguments", corrected_data)
             if isinstance(new_args, dict):
                 corrected_action = {**failed_action, "arguments": new_args}
                 events.append( ({"step": "System Self-Correction", "type": "workaround", "details": {"summary": "LLM proposed new arguments.", "details": new_args}}, None) )
-                return corrected_action, events
+                return corrected_action, events, llm_token_usage
 
         except (json.JSONDecodeError, TypeError):
             events.append( ({"step": "System Self-Correction", "type": "error", "details": {"summary": "LLM failed to provide a valid JSON correction.", "details": response_str}}, None) )
 
-        return None, events
+        return None, events, llm_token_usage
 
 class TableNotFoundStrategy(CorrectionStrategy):
     """Handles errors where a specified table does not exist."""
     def can_handle(self, error_data_str: str) -> bool:
         return bool(re.search(RECOVERABLE_TOOL_ERRORS["table_not_found"], error_data_str, re.IGNORECASE))
 
-    async def generate_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any]) -> Tuple[Dict | None, List]:
+    async def generate_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any], healing_correlation_id: str) -> Tuple[Dict | None, List, Dict]:
         error_data_str = str(error_result.get('data', ''))
         table_error_match = re.search(RECOVERABLE_TOOL_ERRORS["table_not_found"], error_data_str, re.IGNORECASE)
         invalid_table = table_error_match.group(1)
@@ -152,14 +186,14 @@ class TableNotFoundStrategy(CorrectionStrategy):
         reason = f"Fact-based recovery for non-existent table '{invalid_table_name_only}'"
         system_prompt = "You are an expert troubleshooter. Follow the recovery directives precisely."
 
-        return await self._call_correction_llm(prompt, reason, system_prompt, failed_action)
+        return await self._call_correction_llm(prompt, reason, system_prompt, failed_action, healing_correlation_id)
 
 class ColumnNotFoundStrategy(CorrectionStrategy):
     """Handles errors where a specified column does not exist."""
     def can_handle(self, error_data_str: str) -> bool:
         return bool(re.search(RECOVERABLE_TOOL_ERRORS["column_not_found"], error_data_str, re.IGNORECASE))
 
-    async def generate_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any]) -> Tuple[Dict | None, List]:
+    async def generate_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any], healing_correlation_id: str) -> Tuple[Dict | None, List, Dict]:
         error_data_str = str(error_result.get('data', ''))
         column_error_match = re.search(RECOVERABLE_TOOL_ERRORS["column_not_found"], error_data_str, re.IGNORECASE)
         invalid_column = column_error_match.group(1)
@@ -177,14 +211,14 @@ class ColumnNotFoundStrategy(CorrectionStrategy):
         reason = f"Fact-based recovery for non-existent column '{invalid_column}'"
         system_prompt = "You are an expert troubleshooter. Follow the recovery directives precisely."
 
-        return await self._call_correction_llm(prompt, reason, system_prompt, failed_action)
+        return await self._call_correction_llm(prompt, reason, system_prompt, failed_action, healing_correlation_id)
 
 class GenericCorrectionStrategy(CorrectionStrategy):
     """The default fallback strategy for any other recoverable error."""
     def can_handle(self, error_data_str: str) -> bool:
         return True # It's the fallback, so it can always handle the error.
 
-    async def generate_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any]) -> Tuple[Dict | None, List]:
+    async def generate_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any], healing_correlation_id: str) -> Tuple[Dict | None, List, Dict]:
         tool_name = failed_action.get("tool_name")
         error_message = str(error_result.get('data', 'No error data.'))
         error_summary = str(error_result.get('error_message', error_message))
@@ -219,7 +253,7 @@ class GenericCorrectionStrategy(CorrectionStrategy):
                 reason = f"Recovering from JSON error in {tool_name} via text sanitization."
                 system_prompt = "You are an expert troubleshooter focused on JSON recovery. Call TDA_LLMTask as instructed."
 
-                return await self._call_correction_llm(prompt, reason, system_prompt, failed_action, extra_args_for_llm_task=extra_args_for_llm_task)
+                return await self._call_correction_llm(prompt, reason, system_prompt, failed_action, healing_correlation_id, extra_args_for_llm_task=extra_args_for_llm_task)
             else:
                  app_logger.error(f"Cannot attempt JSON sanitization for {tool_name}: Original error data containing the text is missing.")
 
@@ -248,7 +282,7 @@ class GenericCorrectionStrategy(CorrectionStrategy):
         reason = f"Generic self-correction for failed tool call: {tool_name}"
         system_prompt = "You are an expert troubleshooter. Follow the recovery directives precisely."
 
-        return await self._call_correction_llm(prompt, reason, system_prompt, failed_action, extra_args_for_llm_task=extra_args_for_llm_task)
+        return await self._call_correction_llm(prompt, reason, system_prompt, failed_action, healing_correlation_id, extra_args_for_llm_task=extra_args_for_llm_task)
 
 
 class CorrectionHandler:
@@ -260,48 +294,24 @@ class CorrectionHandler:
             GenericCorrectionStrategy(executor) # Generic is last
         ]
 
-    async def attempt_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any]) -> Tuple[Dict | None, List]:
+    async def attempt_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any], healing_correlation_id: str) -> Tuple[Dict | None, List, Dict]:
         error_data_str = str(error_result.get('data', ''))
         error_summary = str(error_result.get('error_message', ''))
 
         full_error_context = f"{error_summary} {error_data_str}"
+        total_llm_token_usage = {"input_tokens": 0, "output_tokens": 0}
 
         for strategy in self.strategies:
             if strategy.can_handle(full_error_context):
                 app_logger.info(f"Using correction strategy: {strategy.__class__.__name__}")
-                return await strategy.generate_correction(failed_action, error_result)
+                corrected_action, correction_events, llm_token_usage = await strategy.generate_correction(failed_action, error_result, healing_correlation_id)
+                total_llm_token_usage["input_tokens"] += llm_token_usage.get("input_tokens", 0)
+                total_llm_token_usage["output_tokens"] += llm_token_usage.get("output_tokens", 0)
+                return corrected_action, correction_events, total_llm_token_usage
 
         app_logger.error("No correction strategy could handle the error.")
-        return None, []
+        return None, [], total_llm_token_usage
 
-
-    async def _attempt_tool_self_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any], correlation_id: str) -> Tuple[Dict | None, List]:
-        """
-        Central point for handling tool correction. It uses the CorrectionHandler
-        to get a corrected action and logs the solution for RAG.
-        """
-        handler = CorrectionHandler(self.executor)
-        corrected_action, correction_events = await handler.attempt_correction(failed_action, error_result)
-
-        if corrected_action:
-            log_rag_event(
-                session_id=self.executor.session_id,
-                correlation_id=correlation_id,
-                event_type="SelfHealing",
-                event_source="PhaseExecutor._attempt_tool_self_correction",
-                details={
-                    "summary": "A tool execution error was automatically corrected.",
-                    "original_user_input": self.executor.original_user_input,
-                    "failed_action": copy.deepcopy(failed_action),
-                    "error": error_result,
-                    "solution": {
-                        "type": "CorrectedToolAction",
-                        "corrected_action": corrected_action
-                    }
-                }
-            )
-        
-        return corrected_action, correction_events
 
 
 class PhaseExecutor:
@@ -1334,16 +1344,13 @@ class PhaseExecutor:
 
         tool_name = action.get("tool_name")
         arguments = action.get("arguments", {})
-        
-        # --- MODIFICATION START: Add phase number and execution depth to action for history ---
         phase_num = phase.get("phase", self.executor.current_phase_index + 1)
-        action_for_history = copy.deepcopy(action)
-        action_for_history.setdefault("metadata", {})["phase_number"] = phase_num
-        action_for_history.setdefault("metadata", {})["execution_depth"] = self.executor.execution_depth
-        # --- MODIFICATION END ---
 
 
         if tool_name == "TDA_ContextReport" or (tool_name == "TDA_LLMTask" and "synthesized_answer" in arguments):
+            action_for_history = copy.deepcopy(action)
+            action_for_history.setdefault("metadata", {})["phase_number"] = phase_num
+            action_for_history.setdefault("metadata", {})["execution_depth"] = self.executor.execution_depth
             if tool_name == "TDA_ContextReport":
                 answer_key = "answer_from_context"
                 log_message = f"Bypassing execution. Using context-based answer from planner via {tool_name}."
@@ -1359,21 +1366,23 @@ class PhaseExecutor:
                 "results": [{"response": arguments.get(answer_key)}]
             }
             yield self.executor._format_sse({"step": "Tool Execution Result", "details": self.executor.last_tool_output, "tool_name": tool_name}, "tool_result")
-            # --- MODIFICATION START: Use action_for_history ---
             self.executor.turn_action_history.append({"action": action_for_history, "result": self.executor.last_tool_output})
-            # --- MODIFICATION END ---
             phase_result_key = f"result_of_phase_{phase_num}"
             self.executor.workflow_state.setdefault(phase_result_key, []).append(self.executor.last_tool_output)
             self.executor._add_to_structured_data(self.executor.last_tool_output)
             return
 
         max_retries = 3
+        # --- MODIFICATION START: Initialize variables for chained attempt logging ---
+        correction_attempts = []
+        original_failed_action = None
+        original_error_result = None
+        healing_correlation_id = None
+        # --- MODIFICATION END ---
 
         if tool_name == "TDA_LLMTask" and self.executor.is_synthesis_from_history:
             app_logger.info("Preparing TDA_LLMTask for 'full_context' execution.")
-            # --- MODIFICATION START: Pass user_uuid to get_session ---
             session_data = session_manager.get_session(self.executor.user_uuid, self.executor.session_id)
-            # --- MODIFICATION END ---
             session_history = session_data.get("session_history", []) if session_data else []
 
             action.setdefault("arguments", {})["mode"] = "full_context"
@@ -1381,6 +1390,10 @@ class PhaseExecutor:
             action["arguments"]["user_question"] = self.executor.original_user_input
 
         for attempt in range(max_retries):
+            action_for_history = copy.deepcopy(action)
+            action_for_history.setdefault("metadata", {})["phase_number"] = phase_num
+            action_for_history.setdefault("metadata", {})["execution_depth"] = self.executor.execution_depth
+
             if 'notification' in action:
                 yield self.executor._format_sse({"step": "System Notification", "details": action['notification'], "type": "workaround"})
                 del action['notification']
@@ -1417,7 +1430,6 @@ class PhaseExecutor:
                 **self.executor.workflow_state
             }
 
-            # --- MODIFICATION START: Pass user_uuid and remove incorrect comment ---
             tool_result, input_tokens, output_tokens = await mcp_adapter.invoke_mcp_tool(
                 self.executor.dependencies['STATE'],
                 action,
@@ -1426,14 +1438,11 @@ class PhaseExecutor:
                 call_id=call_id_for_tool,
                 workflow_state=full_context_for_tool
             )
-            # --- MODIFICATION END ---
 
             yield self.executor._format_sse({"target": status_target, "state": "idle"}, "status_indicator_update")
 
             if input_tokens > 0 or output_tokens > 0:
-                # --- MODIFICATION START: Pass user_uuid to get_session ---
                 updated_session = session_manager.get_session(self.executor.user_uuid, self.executor.session_id)
-                # --- MODIFICATION END ---
                 if updated_session:
                     final_call_id = tool_result.get("metadata", {}).get("call_id") if isinstance(tool_result, dict) else None
                     yield self.executor._format_sse({
@@ -1446,34 +1455,38 @@ class PhaseExecutor:
 
             self.executor.last_tool_output = tool_result
             
-            # --- MODIFICATION START: Log action and result *inside* the loop ---
-            # Log every attempt, whether success or failure, unless it's a fast-path call
-            # (Fast-path loops log their own history)
             if not is_fast_path:
                 self.executor.turn_action_history.append({"action": action_for_history, "result": self.executor.last_tool_output})
-            # --- MODIFICATION END ---
 
 
             if isinstance(tool_result, dict) and tool_result.get("status") == "error":
                 yield self.executor._format_sse({"details": tool_result, "tool_name": tool_name}, "tool_error")
 
-                # RAG Logging: This is the "problem". Create a correlation ID.
-                correlation_id = str(uuid.uuid4())
-                log_rag_event(
-                    session_id=self.executor.session_id,
-                    correlation_id=correlation_id,
-                    event_type="ExecutionError",
-                    event_source="PhaseExecutor._execute_tool",
-                    details={
-                        "summary": f"Tool '{tool_name}' failed during execution.",
-                        "original_user_input": self.executor.original_user_input,
-                        "failed_step": copy.deepcopy(action),
-                        "error": {
-                            "type": "ToolExecutionError",
-                            "message": tool_result.get("data", tool_result.get("error", "Unknown tool error."))
+                # --- MODIFICATION START: Accumulate correction attempts ---
+                if attempt == 0:
+                    # This is the first failure, log the "problem"
+                    healing_correlation_id = str(uuid.uuid4())
+                    original_failed_action = copy.deepcopy(action)
+                    original_error_result = copy.deepcopy(tool_result)
+                    log_rag_event(
+                        session_id=self.executor.session_id,
+                        correlation_id=healing_correlation_id,
+                        event_type="ExecutionError",
+                        event_source="PhaseExecutor._execute_tool",
+                        details={
+                            "summary": f"Tool '{tool_name}' failed during execution.",
+                            "original_user_input": self.executor.original_user_input,
+                            "failed_step": original_failed_action,
+                            "error": {
+                                "type": "ToolExecutionError",
+                                "message": tool_result.get("data", tool_result.get("error", "Unknown tool error."))
+                            }
                         }
-                    }
-                )
+                    )
+                else:
+                    # This is a failed correction, add it to the list of attempts
+                    correction_attempts.append(copy.deepcopy(action))
+                # --- MODIFICATION END ---
 
                 error_data_str = str(tool_result.get('data', ''))
                 error_summary = str(tool_result.get('error_message', ''))
@@ -1485,6 +1498,20 @@ class PhaseExecutor:
 
 
                 if attempt < max_retries - 1:
+                    # Log the initiation of a self-correction attempt
+                    log_rag_event(
+                        session_id=self.executor.session_id,
+                        correlation_id=healing_correlation_id,
+                        event_type="SelfCorrectionAttempt",
+                        event_source="PhaseExecutor._execute_tool",
+                        details={
+                            "summary": f"Attempting self-correction for tool '{tool_name}' (Attempt {attempt + 1}/{max_retries - 1}).",
+                            "original_user_input": self.executor.original_user_input,
+                            "failed_action": copy.deepcopy(action),
+                            "error_details": copy.deepcopy(tool_result)
+                        }
+                    )
+
                     correction_details = {
                         "summary": f"Tool failed. Attempting self-correction ({attempt + 1}/{max_retries - 1}).",
                         "details": tool_result
@@ -1493,17 +1520,33 @@ class PhaseExecutor:
                     self.executor._log_system_event(event_data)
                     yield self.executor._format_sse(event_data)
 
-                    corrected_action, correction_events = await self._attempt_tool_self_correction(action, tool_result, correlation_id)
+                    corrected_action, correction_events, correction_llm_tokens = await self._attempt_tool_self_correction(action, tool_result, healing_correlation_id)
+                    self.executor.last_llm_token_usage["input_tokens"] += correction_llm_tokens.get("input_tokens", 0)
+                    self.executor.last_llm_token_usage["output_tokens"] += correction_llm_tokens.get("output_tokens", 0)
 
                     for event_data, event_name in correction_events:
                         self.executor._log_system_event(event_data, event_name=event_name)
                         yield self.executor._format_sse(event_data, event=event_name)
 
                     if corrected_action:
+                        # Log the proposed action from self-correction
+                        log_rag_event(
+                            session_id=self.executor.session_id,
+                            correlation_id=healing_correlation_id,
+                            event_type="SelfCorrectionProposedAction",
+                            event_source="PhaseExecutor._execute_tool",
+                            details={
+                                "summary": f"LLM proposed a corrected action for tool '{tool_name}'.",
+                                "original_user_input": self.executor.original_user_input,
+                                "proposed_action": copy.deepcopy(corrected_action),
+                                "llm_token_usage": correction_llm_tokens
+                            }
+                        )
+
                         if "FINAL_ANSWER" in corrected_action:
                             final_answer_from_correction = corrected_action["FINAL_ANSWER"]
                             self.executor.last_tool_output = {"status": "success", "results": [{"response": f"FINAL_ANSWER: {final_answer_from_correction}"}]}
-                            break # Correction led to final answer, break retry loop
+                            break 
 
                         if "prompt_name" in corrected_action:
                             async for event in self.executor._run_sub_prompt(
@@ -1516,43 +1559,82 @@ class PhaseExecutor:
                             if self.executor.state == self.executor.AgentState.ERROR:
                                 app_logger.error(f"Recovery prompt '{corrected_action['prompt_name']}' failed. Continuing retry loop.")
                                 self.executor.last_tool_output = {"status": "error", "data": "The recovery prompt failed to execute."}
-                                continue # Prompt failed, continue retry loop for original tool
+                                continue 
                             else:
                                 app_logger.info(f"Successfully recovered from tool failure by executing prompt '{corrected_action['prompt_name']}'.")
-                                break # Prompt succeeded, break retry loop
+                                break 
 
                         action = corrected_action
-                        # --- MODIFICATION START: Update action_for_history for the next attempt ---
-                        action_for_history = copy.deepcopy(action)
-                        action_for_history.setdefault("metadata", {})["phase_number"] = phase_num
-                        # --- MODIFICATION END ---
                         continue
                     else:
+                        # Log that self-correction failed to propose a valid action
+                        log_rag_event(
+                            session_id=self.executor.session_id,
+                            correlation_id=healing_correlation_id,
+                            event_type="SelfCorrectionFailedProposal",
+                            event_source="PhaseExecutor._execute_tool",
+                            details={
+                                "summary": f"Self-correction LLM failed to propose a valid action for tool '{tool_name}'.",
+                                "original_user_input": self.executor.original_user_input,
+                                "error_details": copy.deepcopy(tool_result),
+                                "llm_token_usage": correction_llm_tokens
+                            }
+                        )
                         correction_failed_details = {
                             "summary": "Unable to find a correction. Aborting retries for this action.",
                             "details": tool_result
                         }
                         yield self.executor._format_sse({"step": "System Self-Correction Failed", "type": "error", "details": correction_failed_details})
-                        break
+                        # Do not break here, allow the loop to continue and exhaust max_retries
+                        # so that SelfCorrectionFailed can be logged if all attempts fail.
+                        continue
                 else:
                     persistent_failure_details = {
                         "summary": f"Tool '{tool_name}' failed after {max_retries} attempts.",
                         "details": tool_result
                     }
                     yield self.executor._format_sse({"step": "Persistent Failure", "type": "error", "details": persistent_failure_details})
+                    # Log SelfCorrectionFailed if all retries are exhausted and no solution was found
+                    if healing_correlation_id:
+                        log_rag_event(
+                            session_id=self.executor.session_id,
+                            correlation_id=healing_correlation_id,
+                            event_type="SelfCorrectionFailed",
+                            event_source="PhaseExecutor._execute_tool",
+                            details={
+                                "summary": f"Tool '{tool_name}' failed persistently after {max_retries} attempts, and self-correction could not resolve it.",
+                                "original_user_input": self.executor.original_user_input,
+                                "failed_action": original_failed_action,
+                                "final_error": copy.deepcopy(tool_result),
+                                "correction_attempts_made": correction_attempts
+                            }
+                        )
             else:
+                # --- MODIFICATION START: Log the successful SelfHealing event if applicable ---
+                if healing_correlation_id:
+                    log_rag_event(
+                        session_id=self.executor.session_id,
+                        correlation_id=healing_correlation_id,
+                        event_type="SelfHealing",
+                        event_source="PhaseExecutor._execute_tool",
+                        details={
+                            "summary": "A tool execution error was automatically corrected after one or more attempts.",
+                            "original_user_input": self.executor.original_user_input,
+                            "failed_action": original_failed_action,
+                            "error": original_error_result,
+                            "solution": {
+                                "type": "CorrectedToolAction",
+                                "correction_attempts": correction_attempts,
+                                "corrected_action": action 
+                            },
+                            "llm_token_usage": self.executor.last_llm_token_usage # Include total LLM tokens used for correction
+                        }
+                    )
+                # --- MODIFICATION END ---
                 if not is_fast_path:
                      yield self.executor._format_sse({"step": "Tool Execution Result", "details": tool_result, "tool_name": tool_name}, "tool_result")
                 break
         
-        # --- MODIFICATION START: Move logging out of the loop ---
-        # The logging is now done *inside* the loop for all non-fast-path attempts.
-        # This section is no longer needed here.
-        # --- MODIFICATION END ---
-        
-        # --- MODIFICATION START: This logic is now outside the loop ---
-        # Add to workflow state and structured data *after* the loop finishes
-        # (whether it succeeded or ended in error)
         if not is_fast_path:
             phase_result_key = f"result_of_phase_{phase_num}"
             if phase_result_key not in self.executor.workflow_state:
@@ -1560,7 +1642,7 @@ class PhaseExecutor:
             if self.executor.last_tool_output not in self.executor.workflow_state[phase_result_key]:
                 self.executor.workflow_state[phase_result_key].append(self.executor.last_tool_output)
             self.executor._add_to_structured_data(self.executor.last_tool_output)
-        # --- MODIFICATION END ---
+
 
 
     def _enrich_arguments_from_history(self, relevant_tools: list[str], current_args: dict = None) -> tuple[dict, list, bool]:
@@ -2349,11 +2431,13 @@ class PhaseExecutor:
         except (json.JSONDecodeError, ValueError) as e:
             raise RuntimeError(f"LLM-based recovery failed. The LLM did not return a valid new plan. Response: {response_text}. Error: {e}")
 
-    async def _attempt_tool_self_correction(self, failed_action: dict, error_result: dict) -> tuple[dict | None, list]:
+    async def _attempt_tool_self_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any], healing_correlation_id: str) -> Tuple[Dict | None, List, Dict]:
         """
         Delegates the correction task to the CorrectionHandler, which uses the
         Strategy Pattern to find and execute the appropriate recovery logic.
+        This method generates a potential correction but does not log it.
         """
-        correction_handler = CorrectionHandler(self.executor)
-        return await correction_handler.attempt_correction(failed_action, error_result)
+        handler = CorrectionHandler(self.executor)
+        corrected_action, correction_events, llm_token_usage = await handler.attempt_correction(failed_action, error_result, healing_correlation_id)
+        return corrected_action, correction_events, llm_token_usage
 

@@ -5,8 +5,8 @@ import uuid
 from datetime import datetime, timezone
 
 # Define the sets of problem and solution event types
-PROBLEM_EVENTS = {"InefficientPlanDetected", "ExecutionError", "InvalidPlanGenerated", "UnhandledError"}
-SOLUTION_EVENTS = {"PlanOptimization", "SelfHealing"}
+PROBLEM_EVENTS = {"InefficientPlanDetected", "ExecutionError", "InvalidPlanGenerated", "UnhandledError", "SelfCorrectionFailed"}
+SOLUTION_EVENTS = {"PlanOptimization", "SelfHealing", "SelfCorrectionAttempt", "SelfCorrectionLLMCall", "SelfCorrectionProposedAction", "SelfCorrectionFailedProposal"}
 
 # Define the absolute path for the log directory
 LOG_DIRECTORY = "/Users/livin2rave/my_private_code/trusted-data-agent/rag/rag_input"
