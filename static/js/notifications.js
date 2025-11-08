@@ -77,13 +77,23 @@ function showReconfigurationNotification(data) {
 export function subscribeToNotifications() {
     if (!state.userUUID) {
         console.warn("Cannot subscribe to notifications without a user UUID.");
+        // Set status to disconnected if we can't even start.
+        UI.updateSSEStatus('disconnected');
         return;
     }
 
     const eventSource = new EventSource(`/api/notifications/subscribe?user_uuid=${state.userUUID}`);
 
+    eventSource.onopen = () => {
+        console.log("Notification channel opened.");
+        UI.updateSSEStatus('connected');
+    };
+
     eventSource.addEventListener('notification', (event) => {
         const data = JSON.parse(event.data);
+
+        // When a notification is received, we know the connection is good.
+        UI.updateSSEStatus('connected');
 
         switch (data.type) {
             case 'reconfiguration':
@@ -171,6 +181,8 @@ export function subscribeToNotifications() {
 
     eventSource.onerror = (error) => {
         console.error("EventSource failed:", error);
-        eventSource.close();
+        // Don't close the connection; the browser will attempt to reconnect automatically.
+        // Update the UI to show the reconnecting status.
+        UI.updateSSEStatus('reconnecting');
     };
 }

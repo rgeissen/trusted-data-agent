@@ -305,6 +305,30 @@ export function setExecutionState(isActive) {
 }
 
 
+/**
+ * Updates the visual status of the Server-Sent Events (SSE) connection indicator.
+ * @param {('connected'|'reconnecting'|'disconnected')} status - The current status of the connection.
+ */
+export function updateSSEStatus(status) {
+    if (!DOM.sseStatusDot) return;
+
+    DOM.sseStatusDot.classList.remove('connected', 'reconnecting', 'disconnected');
+    DOM.sseStatusDot.classList.add(status);
+
+    switch (status) {
+        case 'connected':
+            DOM.sseStatusDot.title = 'Real-time connection active.';
+            break;
+        case 'reconnecting':
+            DOM.sseStatusDot.title = 'Connection lost. Attempting to reconnect...';
+            break;
+        case 'disconnected':
+            DOM.sseStatusDot.title = 'Real-time connection failed. Please refresh the page.';
+            break;
+    }
+}
+
+
 function _renderPlanningDetails(details) {
     if (!details.summary || !details.full_text) return null;
 

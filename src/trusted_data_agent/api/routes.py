@@ -351,6 +351,7 @@ async def get_prompt_content(prompt_name):
 async def subscribe_notifications():
     """
     SSE endpoint for clients to receive real-time notifications.
+    Includes a heartbeat to keep the connection alive.
     """
     user_uuid = request.args.get("user_uuid")
     if not user_uuid:
@@ -366,15 +367,22 @@ async def subscribe_notifications():
         queues_for_user.add(queue)
         try:
             while True:
-                notification = await queue.get()
-                yield PlanExecutor._format_sse(notification, "notification")
+                try:
+                    # Wait for a notification with a 20-second timeout
+                    notification = await asyncio.wait_for(queue.get(), timeout=20.0)
+                    yield PlanExecutor._format_sse(notification, "notification")
+                except asyncio.TimeoutError:
+                    # If timeout, send a heartbeat comment to keep the connection alive
+                    yield ": ping\n\n"
         except asyncio.CancelledError:
             app_logger.info(f"Notification subscription cancelled for user {user_uuid}.")
         finally:
             queues_for_user.remove(queue)
-            # Clean up user entry if no more queues
+            # Clean up user entry if no more queues are associated with them
             if not queues_for_user:
-                del APP_STATE["notification_queues"][user_uuid]
+                notification_queues = APP_STATE.get("notification_queues", {})
+                if user_uuid in notification_queues:
+                    del notification_queues[user_uuid]
 
     return Response(notification_generator(), mimetype="text/event-stream")
 

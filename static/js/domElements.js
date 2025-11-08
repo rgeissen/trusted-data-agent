@@ -119,6 +119,7 @@ export const ttsCredentialsJsonTextarea = document.getElementById('tts-credentia
 // Status indicators
 export const mcpStatusDot = document.getElementById('mcp-status-dot');
 export const llmStatusDot = document.getElementById('llm-status-dot');
+export const sseStatusDot = document.getElementById('sse-status-dot');
 export const contextStatusDot = document.getElementById('context-status-dot');
 
 // Window menu

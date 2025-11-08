@@ -448,6 +448,11 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     box-shadow: 0 0 8px #10b981;
     color: #10b981;
 }
+.connection-dot.reconnecting {
+    background-color: #facc15; /* yellow-400 */
+    box-shadow: 0 0 8px #facc15;
+    color: #facc15;
+}
 .connection-dot.idle {
     background-color: #10b981; /* green-500 */
     box-shadow: 0 0 8px #10b981;
