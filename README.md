@@ -561,6 +561,8 @@ curl -X POST http://localhost:8000/api/execute_turn \
 
 This allows you to integrate the Trusted Data Agent into larger automated systems, CI/CD pipelines, or other applications.
 
+For more advanced orchestration and scheduling, the Trusted Data Agent also integrates with Apache Airflow. You can find detailed documentation and example DAGs in the [Airflow Integration Guide (docs/Airflow/Airflow.md)](docs/Airflow/Airflow.md).
+
 **Step 4: Real-Time Monitoring of REST-driven Workflows**
 
 A key feature of the platform is the ability to monitor REST-initiated tasks in real-time through the UI. When a workflow is triggered via the API, the UI (if viewing the corresponding session) will display:
