@@ -12,6 +12,7 @@ import google.generativeai as genai
 from trusted_data_agent.agent.prompts import PROVIDER_SYSTEM_PROMPTS
 # --- MODIFICATION START: Import APP_CONFIG ---
 from trusted_data_agent.core.config import APP_STATE, APP_CONFIG
+from trusted_data_agent.core.utils import generate_session_id # Import generate_session_id
 # --- MODIFICATION END ---
 
 
@@ -119,7 +120,7 @@ def _save_session(user_uuid: str, session_id: str, session_data: dict):
 # --- Public Session Management Functions ---
 
 def create_session(user_uuid: str, provider: str, llm_instance: any, charting_intensity: str, system_prompt_template: str | None = None) -> str:
-    session_id = str(uuid.uuid4())
+    session_id = generate_session_id()
     app_logger.info(f"Attempting to create session '{session_id}' for user '{user_uuid}'.")
 
     # Note: chat_object cannot be directly serialized to JSON.

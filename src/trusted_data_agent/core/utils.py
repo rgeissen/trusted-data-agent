@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+import uuid # Import uuid
 
 try:
     from google.cloud import texttospeech
@@ -13,6 +14,18 @@ except ImportError:
 from trusted_data_agent.core.config import APP_STATE, AppConfig
 
 app_logger = logging.getLogger("quart.app")
+
+# --- MODIFICATION START: Add generate_task_id function ---
+def generate_task_id() -> str:
+    """Generates a unique task ID."""
+    return f"task-{uuid.uuid4()}"
+
+# --- MODIFICATION START: Add generate_session_id function ---
+def generate_session_id() -> str:
+    """Generates a unique session ID."""
+    return str(uuid.uuid4())
+# --- MODIFICATION END ---
+# --- MODIFICATION END ---
 
 # --- MODIFICATION START: Add a centralized, synonym-aware argument reader ---
 def get_argument_by_canonical_name(args: dict, canonical_name: str) -> any:

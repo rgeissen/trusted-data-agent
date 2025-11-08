@@ -24,7 +24,8 @@ from trusted_data_agent.core.utils import (
     synthesize_speech,
     unwrap_exception,
     _get_prompt_info,
-    _regenerate_contexts
+    _regenerate_contexts,
+    generate_task_id # Import generate_task_id
 )
 
 
@@ -716,7 +717,7 @@ async def ask_stream():
     session_manager.update_models_used(user_uuid=user_uuid, session_id=session_id, provider=APP_CONFIG.CURRENT_PROVIDER, model=APP_CONFIG.CURRENT_MODEL)
 
     # --- MODIFICATION START: Generate task_id for interactive sessions ---
-    task_id = f"task-{uuid.uuid4()}"
+    task_id = generate_task_id()
     # --- MODIFICATION END ---
 
     active_tasks_key = f"{user_uuid}_{session_id}"
@@ -816,7 +817,7 @@ async def invoke_prompt_stream():
         return Response(error_gen(), mimetype="text/event-stream")
 
     # --- MODIFICATION START: Generate task_id for prompt invocations ---
-    task_id = f"task-{uuid.uuid4()}"
+    task_id = generate_task_id()
     # --- MODIFICATION END ---
 
     active_tasks_key = f"{user_uuid}_{session_id}"

@@ -2,12 +2,13 @@
 import asyncio
 import json
 import logging
-import uuid
 from datetime import datetime, timezone
 import re
+import uuid # Import uuid
 
-# --- MODIFICATION START: Import abort ---
+# --- MODIFICATION START: Import generate_task_id ---
 from quart import Blueprint, current_app, jsonify, request, abort
+from trusted_data_agent.core.utils import generate_task_id
 # --- MODIFICATION END ---
 
 from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
@@ -163,7 +164,7 @@ async def execute_query(session_id: str):
         return jsonify({"error": f"Session '{session_id}' not found."}), 404
     # --- MODIFICATION END ---
 
-    task_id = f"task-{uuid.uuid4()}"
+    task_id = generate_task_id()
 
     # Initialize the task state
     APP_STATE.setdefault("background_tasks", {})[task_id] = {
