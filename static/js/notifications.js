@@ -173,9 +173,28 @@ export function subscribeToNotifications() {
                     }
                     break;
                 }
+            case 'status_indicator_update': {
+                const { target, state: statusState } = data.payload;
+                let dot;
+                if (target === 'db') dot = DOM.mcpStatusDot;
+                else if (target === 'llm') dot = DOM.llmStatusDot;
+                // Handle LLM thinking indicator separately
+                if (target === 'llm') UI.setThinkingIndicator(statusState === 'busy');
+
+                if (dot) {
+                    if (statusState === 'busy') {
+                        dot.classList.replace('idle', 'busy') || dot.classList.replace('connected', 'busy');
+                        dot.classList.add('pulsing');
+                    } else {
+                        dot.classList.remove('pulsing');
+                        dot.classList.replace('busy', target === 'db' ? 'connected' : 'idle');
+                    }
+                }
+                break;
+            }
             // --- MODIFICATION END ---
             default:
-                console.warn("Unknown notification type:", data.type);
+                // console.warn("Unknown notification type:", data.type);
         }
     });
 
