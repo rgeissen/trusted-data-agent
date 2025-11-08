@@ -3,7 +3,7 @@
 
 The **Trusted Data Agent** represents a paradigm shift in data interaction, taking you from question to insight to action in seconds. Experience the industry-leading AI conversational engine for your most complex enterprise data.
 
-Go from conversational discovery to a production-ready, automated workflow with zero friction. This is not just another data chat application; it's a fundamental change in how you work, moving **from days to seconds**, **from guesswork to clarity**, and **from high cost to high efficiency**, while always ensuring **data sovereignty**.
+Go from conversational discovery to a production-ready, automated workflow with zero friction. It represents a fundamental change in how you work, moving **from days to seconds**, **from guesswork to clarity**, and **from high cost to high efficiency**, while always ensuring **data sovereignty**.
 
 This solution establishes a new standard for AI-driven data analytics, built on the four core principles detailed in the overview below.
 
