@@ -621,7 +621,7 @@ export function updateStatusWindow(eventData, isFinal = false, source = 'interac
             state.activeRestTaskId = taskId;
             updateTaskIdDisplay(taskId); // Display the task ID
         }
-        statusTitle.textContent = `Live Status - REST: ${taskId.substring(0, 8)}...`;
+        statusTitle.textContent = 'Live Status - REST'; // Removed redundant Task ID from title
     } else if (source === 'interactive') {
         // If the last active view was a REST task, reset the view
         if (state.isRestTaskActive) {
