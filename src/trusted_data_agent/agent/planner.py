@@ -15,6 +15,7 @@ from trusted_data_agent.agent.prompts import (
     TASK_CLASSIFICATION_PROMPT,
     SQL_CONSOLIDATION_PROMPT
 )
+from trusted_data_agent.rag.logger import log_rag_event
 
 if TYPE_CHECKING:
     from trusted_data_agent.agent.executor import PlanExecutor
@@ -205,6 +206,36 @@ class Planner:
                     correction_made = True
 
             if correction_made:
+                # RAG Logging: Create a correlation ID for this problem-solution pair
+                correlation_id = str(uuid.uuid4())
+
+                # RAG Logging: Log the "problem"
+                log_rag_event(
+                    session_id=self.executor.session_id,
+                    correlation_id=correlation_id,
+                    event_type="InvalidPlanGenerated",
+                    event_source="Planner._validate_and_correct_plan",
+                    details={
+                        "summary": "Planner misclassified a capability (e.g., prompt as tool).",
+                        "original_user_input": self.executor.original_user_input,
+                        "invalid_plan_snippet": original_phase
+                    }
+                )
+
+                # RAG Logging: Log the "solution"
+                log_rag_event(
+                    session_id=self.executor.session_id,
+                    correlation_id=correlation_id,
+                    event_type="PlanOptimization",
+                    event_source="Planner._validate_and_correct_plan",
+                    details={
+                        "summary": "Corrected the misclassified capability in the plan.",
+                        "original_user_input": self.executor.original_user_input,
+                        "original_plan_snippet": original_phase,
+                        "optimized_plan_snippet": phase
+                    }
+                )
+
                 event_data = {
                     "step": "System Correction",
                     "type": "workaround",
@@ -552,6 +583,22 @@ class Planner:
             if len(sql_sequence) > 1:
                 app_logger.warning(f"PLAN REWRITE: Detected inefficient sequential SQL plan from phase {i+1} to {j}. Consolidating...")
 
+                # RAG Logging: Create a correlation ID for this problem-solution pair
+                correlation_id = str(uuid.uuid4())
+                
+                # RAG Logging: Log the "problem"
+                log_rag_event(
+                    session_id=self.executor.session_id,
+                    correlation_id=correlation_id,
+                    event_type="InefficientPlanDetected",
+                    event_source="Planner._rewrite_plan_for_sql_consolidation",
+                    details={
+                        "summary": "Detected sequential SQL queries that could be consolidated.",
+                        "original_user_input": self.executor.original_user_input,
+                        "inefficient_plan_snippet": copy.deepcopy(sql_sequence)
+                    }
+                )
+
                 inefficient_queries = []
                 sql_arg_synonyms = ["sql", "query", "query_request"]
                 for phase in sql_sequence:
@@ -619,6 +666,20 @@ class Planner:
 
                     for phase_idx in range(i + 1, len(self.executor.meta_plan)):
                         self.executor.meta_plan[phase_idx]['phase'] -= (num_phases_to_remove - 1)
+
+                    # RAG Logging: Log the "solution"
+                    log_rag_event(
+                        session_id=self.executor.session_id,
+                        correlation_id=correlation_id,
+                        event_type="PlanOptimization",
+                        event_source="Planner._rewrite_plan_for_sql_consolidation",
+                        details={
+                            "summary": "Successfully consolidated multiple SQL queries into a single query.",
+                            "original_user_input": self.executor.original_user_input,
+                            "original_plan_snippet": original_phases,
+                            "optimized_plan_snippet": copy.deepcopy(consolidated_phase)
+                        }
+                    )
 
                     event_data = {
                         "step": "System Correction", "type": "workaround",

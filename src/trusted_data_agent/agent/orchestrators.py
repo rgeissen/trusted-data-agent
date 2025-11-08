@@ -3,11 +3,14 @@ import json
 import logging
 from datetime import datetime, timedelta
 import re
+import uuid
+import copy
 
 from trusted_data_agent.mcp import adapter as mcp_adapter
 from trusted_data_agent.llm import handler as llm_handler
 from trusted_data_agent.core.config import AppConfig
 from trusted_data_agent.core.utils import get_argument_by_canonical_name
+from trusted_data_agent.rag.logger import log_rag_event
 
 
 app_logger = logging.getLogger("quart.app")
@@ -138,11 +141,31 @@ async def execute_date_range_orchestrator(executor, command: dict, date_param_na
         yield _format_sse({"step": f"Processing data for: {date_str}"})
         
         day_command = {**cleaned_command, 'arguments': {**cleaned_command['arguments'], date_param_name: date_str}}
-        # --- MODIFICATION START: Pass user_uuid ---
-        day_result, _, _ = await mcp_adapter.invoke_mcp_tool(
-            executor.dependencies['STATE'], day_command, user_uuid=user_uuid, session_id=executor.session_id
-        )
-        executor.turn_action_history.append({"action": day_command, "result": day_result})
+        # --- MODIFICATION START: Pass user_uuid and add RAG error logging ---
+        try:
+            day_result, _, _ = await mcp_adapter.invoke_mcp_tool(
+                executor.dependencies['STATE'], day_command, user_uuid=user_uuid, session_id=executor.session_id
+            )
+            executor.turn_action_history.append({"action": day_command, "result": day_result})
+        except Exception as e:
+            correlation_id = str(uuid.uuid4())
+            log_rag_event(
+                session_id=executor.session_id,
+                correlation_id=correlation_id,
+                event_type="ExecutionError",
+                event_source="Orchestrator.execute_date_range_orchestrator",
+                details={
+                    "summary": "A tool failed to execute within the date range orchestrator.",
+                    "original_user_input": executor.original_user_input,
+                    "failed_step": copy.deepcopy(day_command),
+                    "error": {
+                        "type": type(e).__name__,
+                        "message": str(e)
+                    }
+                }
+            )
+            # Re-raise the exception to be handled by the main execution loop
+            raise
         # --- MODIFICATION END ---
         
         if isinstance(day_result, dict) and day_result.get("status") == "success" and day_result.get("results"):
@@ -234,10 +257,29 @@ async def execute_column_iteration(executor, command: dict):
         
         iter_command = {"tool_name": tool_name, "arguments": iter_args}
         # --- MODIFICATION END ---
-        # --- MODIFICATION START: Pass user_uuid ---
-        col_result, _, _ = await mcp_adapter.invoke_mcp_tool(
-            executor.dependencies['STATE'], iter_command, user_uuid=user_uuid, session_id=executor.session_id
-        )
+        # --- MODIFICATION START: Pass user_uuid and add RAG error logging ---
+        try:
+            col_result, _, _ = await mcp_adapter.invoke_mcp_tool(
+                executor.dependencies['STATE'], iter_command, user_uuid=user_uuid, session_id=executor.session_id
+            )
+        except Exception as e:
+            correlation_id = str(uuid.uuid4())
+            log_rag_event(
+                session_id=executor.session_id,
+                correlation_id=correlation_id,
+                event_type="ExecutionError",
+                event_source="Orchestrator.execute_column_iteration",
+                details={
+                    "summary": "A tool failed to execute within the column iteration orchestrator.",
+                    "original_user_input": executor.original_user_input,
+                    "failed_step": copy.deepcopy(iter_command),
+                    "error": {
+                        "type": type(e).__name__,
+                        "message": str(e)
+                    }
+                }
+            )
+            raise
         # --- MODIFICATION END ---
         all_column_results.append(col_result)
     yield _format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
@@ -254,6 +296,20 @@ async def execute_hallucinated_loop(executor, phase: dict):
     tool_name = phase.get("relevant_tools", [None])[0]
     hallucinated_items = phase.get("loop_over", [])
     
+    # RAG Logging: Create a correlation ID and log the "problem"
+    correlation_id = str(uuid.uuid4())
+    log_rag_event(
+        session_id=executor.session_id,
+        correlation_id=correlation_id,
+        event_type="InvalidPlanGenerated",
+        event_source="Orchestrator.execute_hallucinated_loop",
+        details={
+            "summary": "Planner hallucinated a loop over natural language strings instead of a data source.",
+            "original_user_input": executor.original_user_input,
+            "invalid_plan_snippet": copy.deepcopy(phase)
+        }
+    )
+
     yield _format_sse({
         "step": "System Correction", "type": "workaround",
         "details": f"Planner hallucinated a loop. Correcting with generalized orchestrator for items: {hallucinated_items}"
@@ -290,17 +346,56 @@ async def execute_hallucinated_loop(executor, phase: dict):
         raise RuntimeError(f"Failed to semantically understand hallucinated loop items. Error: {e}")
 
     all_results = []
+    all_commands = []
     yield _format_sse({"target": "db", "state": "busy"}, "status_indicator_update")
     for item in hallucinated_items:
         yield _format_sse({"step": f"Processing item: {item}"})
         command = {"tool_name": tool_name, "arguments": {argument_name: item}}
-        # --- MODIFICATION START: Pass user_uuid ---
-        result, _, _ = await mcp_adapter.invoke_mcp_tool(
-            executor.dependencies['STATE'], command, user_uuid=executor.user_uuid, session_id=executor.session_id
-        )
+        all_commands.append(copy.deepcopy(command))
+        # --- MODIFICATION START: Pass user_uuid and add RAG error logging ---
+        try:
+            result, _, _ = await mcp_adapter.invoke_mcp_tool(
+                executor.dependencies['STATE'], command, user_uuid=executor.user_uuid, session_id=executor.session_id
+            )
+        except Exception as e:
+            # Log the execution error that happens *within* the self-healing attempt
+            error_correlation_id = str(uuid.uuid4())
+            log_rag_event(
+                session_id=executor.session_id,
+                correlation_id=error_correlation_id,
+                event_type="ExecutionError",
+                event_source="Orchestrator.execute_hallucinated_loop",
+                details={
+                    "summary": "A tool failed to execute during a self-healing attempt for a hallucinated loop.",
+                    "original_user_input": executor.original_user_input,
+                    "failed_step": copy.deepcopy(command),
+                    "error": { "type": type(e).__name__, "message": str(e) }
+                }
+            )
+            raise
         # --- MODIFICATION END ---
         all_results.append(result)
     yield _format_sse({"target": "db", "state": "idle"}, "status_indicator_update")
+
+    # RAG Logging: Log the "solution"
+    log_rag_event(
+        session_id=executor.session_id,
+        correlation_id=correlation_id,
+        event_type="SelfHealing",
+        event_source="Orchestrator.execute_hallucinated_loop",
+        details={
+            "summary": "Successfully corrected a hallucinated loop by semantically identifying the target argument and executing deterministically.",
+            "original_user_input": executor.original_user_input,
+            "original_plan_snippet": copy.deepcopy(phase),
+            "corrective_action": {
+                "type": "Semantic Loop Reconstruction",
+                "reconstructed_commands": all_commands,
+                "outcome": {
+                    "status": "Success"
+                }
+            }
+        }
+    )
 
     executor._add_to_structured_data(all_results)
     executor.last_tool_output = {"metadata": {"tool_name": tool_name}, "results": all_results, "status": "success"}
