@@ -49,7 +49,7 @@ async function processStream(responseBody) {
 
                     // --- Event Handling Logic ---
                     if (eventName === 'status_indicator_update') {
-                        const { target, state: statusState } = eventData;
+                        const { target, state: statusState } = eventData.payload;
                         let dot;
                         if (target === 'db') dot = DOM.mcpStatusDot;
                         else if (target === 'llm') dot = DOM.llmStatusDot;
@@ -186,6 +186,9 @@ async function processStream(responseBody) {
                         UI.addMessage('assistant', `Sorry, an error occurred: ${eventData.error || 'Unknown error'}`);
                         UI.updateStatusWindow({ step: "Error", details: eventData.details || eventData.error, type: 'error' }, true);
                         UI.setExecutionState(false);
+                    } else if (eventName === 'rest_task_update') {
+                        const { task_id, session_id, event } = eventData.payload; // eslint-disable-line no-unused-vars
+                        UI.updateStatusWindow(event, false, 'rest', task_id);
                     } else {
                         UI.updateStatusWindow(eventData);
                     }

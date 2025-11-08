@@ -217,7 +217,14 @@ async def execute_query(session_id: str):
                     canonical_event = json.loads(json_payload_str)
                     
                     # --- MODIFICATION START: Handle session_name_update as a top-level event ---
-                    if event_type == "session_name_update":
+                    # --- MODIFICATION START: Handle status_indicator_update directly ---
+                    if event_type == "status_indicator_update":
+                        notification = {
+                            "type": "status_indicator_update",
+                            "payload": canonical_event # canonical_event already contains target and state
+                        }
+                    # --- MODIFICATION END ---
+                    elif event_type == "session_name_update":
                         notification = {
                             "type": "session_name_update",
                             "payload": canonical_event # Payload already contains session_id and newName
