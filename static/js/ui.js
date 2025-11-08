@@ -600,7 +600,6 @@ export function resetStatusWindowForNewTask() {
     state.pendingSubtaskPlanningEvents = [];
     state.isInFastPath = false;
     setThinkingIndicator(false);
-    updateTaskIdDisplay(null); // Clear and hide task ID
     // Reset title to default
     const statusTitle = DOM.statusTitle || document.getElementById('status-title');
     if (statusTitle) {

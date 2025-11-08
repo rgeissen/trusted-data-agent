@@ -628,6 +628,10 @@ export async function handleStartNewSession() {
     }
     // --- MODIFICATION END ---
 
+    // --- MODIFICATION START: Clear task ID display on new session ---
+    UI.updateTaskIdDisplay(null);
+    // --- MODIFICATION END ---
+
     try {
         const data = await API.startNewSession();
         const sessionItem = UI.addSessionToList(data, true);
@@ -643,6 +647,10 @@ export async function handleStartNewSession() {
 
 export async function handleLoadSession(sessionId, isNewSession = false) {
     if (state.currentSessionId === sessionId && !isNewSession) return;
+
+    // --- MODIFICATION START: Clear task ID display on session load ---
+    UI.updateTaskIdDisplay(null);
+    // --- MODIFICATION END ---
 
     // --- MODIFICATION START: Remove highlight on load ---
     UI.removeHighlight(sessionId);
