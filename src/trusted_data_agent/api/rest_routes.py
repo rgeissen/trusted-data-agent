@@ -223,6 +223,7 @@ async def execute_query(session_id: str):
                             "type": "status_indicator_update",
                             "payload": canonical_event # canonical_event already contains target and state
                         }
+                        app_logger.debug(f"REST API: Emitting status_indicator_update for task {task_id}: {notification}")
                     # --- MODIFICATION END ---
                     elif event_type == "session_name_update":
                         notification = {

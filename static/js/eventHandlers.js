@@ -49,6 +49,7 @@ async function processStream(responseBody) {
 
                     // --- Event Handling Logic ---
                     if (eventName === 'status_indicator_update') {
+                        console.log("Frontend: Received status_indicator_update event:", eventData.payload);
                         const { target, state: statusState } = eventData.payload;
                         let dot;
                         if (target === 'db') dot = DOM.mcpStatusDot;
