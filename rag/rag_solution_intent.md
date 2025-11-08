@@ -3,7 +3,7 @@
 The RAG (Retrieval Augmented Generation) logs, comprising `problems.jsonl` and `solutions.jsonl`, provide a granular "chain of thought" for the agent's execution and problem-solving processes. They are designed to capture both challenges encountered and the agent's attempts to overcome them.
 
 **`problems.jsonl` (Problem Events):**
-This file records events that signify issues, errors, or inefficiencies. Each entry is a JSON object with standard metadata (`log_id`, `session_id`, `correlation_id`, `timestamp`, `event_source`) and specific `details`.
+This file records events that signify issues, errors, or inefficiencies. Each entry is a JSON object with standard metadata (`log_id`, `session_id`, `correlation_id`, `task_id`, `timestamp`, `event_source`) and specific `details`.
 *   **`InefficientPlanDetected`**: Highlights opportunities for optimization, such as identifying loops that can be converted to a "FASTPATH" for improved performance.
 *   **`ExecutionError`**: Logs when a tool execution fails. This is a critical event, detailing:
     *   A `summary` of the failure.
@@ -15,7 +15,7 @@ This file records events that signify issues, errors, or inefficiencies. Each en
 *   **`SelfCorrectionFailed`**: (Expected, but not observed in recent traces due to successful recovery) Would log when the agent's self-correction mechanism attempts to resolve an `ExecutionError` but ultimately fails after exhausting all retries. This captures persistent, unrecoverable problems.
 
 **`solutions.jsonl` (Solution Events):**
-This file records events representing successful resolutions, optimizations, or the detailed steps of self-correction attempts. Each entry includes similar metadata and `details`.
+This file records events representing successful resolutions, optimizations, or the detailed steps of self-correction attempts. Each entry includes similar metadata (`log_id`, `session_id`, `correlation_id`, `task_id`, `timestamp`, `event_source`) and `details`.
 *   **`PlanOptimization`**: Logs the successful application of an optimization (e.g., enabling FASTPATH for a loop).
 *   **`SelfCorrectionAttempt`**: Marks the initiation of a self-correction process for a previously failed tool execution. It includes the `failed_action` and `error_details` that triggered the attempt.
 *   **`SelfCorrectionLLMCall`**: Provides granular insight into the LLM's role in self-correction. It's logged in two stages:
@@ -25,7 +25,7 @@ This file records events representing successful resolutions, optimizations, or 
 *   **`SelfCorrectionFailedProposal`**: Logs when the LLM attempts to generate a correction but fails to provide a valid output (e.g., malformed JSON). It includes the `error_details` and `llm_token_usage` for the failed proposal.
 *   **`SelfHealing`**: The ultimate success event for the self-correction mechanism, logged when a tool execution error is successfully resolved after one or more attempts. It summarizes the `original_user_input`, `failed_action`, `error` (initial problem), the `solution` type, a list of `correction_attempts` made, the `corrected_action` that finally succeeded, and the aggregated `llm_token_usage` for the entire healing process.
 
-**Key Linkage:** The `correlation_id` is vital for linking problem events in `problems.jsonl` to their corresponding solution attempts and outcomes in `solutions.jsonl`, allowing for a complete reconstruction of the agent's problem-solving journey.
+**Key Linkage:** The `correlation_id` is vital for linking problem events in `problems.jsonl` to their corresponding solution attempts and outcomes in `solutions.jsonl`, allowing for a complete reconstruction of the agent's problem-solving journey. The `task_id` provides a higher-level grouping, linking all events related to a single overall user request, enabling hierarchical analysis.
 
 ### Strategy for LLM Classification to Influence Strategic/Tactical Planner
 

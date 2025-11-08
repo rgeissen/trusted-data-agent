@@ -1,19 +1,29 @@
+{
+type: file_content
+fileName: logger.py
+fullContent:
 # src/trusted_data_agent/rag/logger.py
 import json
 import os
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
 # Define the sets of problem and solution event types
 PROBLEM_EVENTS = {"InefficientPlanDetected", "ExecutionError", "InvalidPlanGenerated", "UnhandledError", "SelfCorrectionFailed"}
 SOLUTION_EVENTS = {"PlanOptimization", "SelfHealing", "SelfCorrectionAttempt", "SelfCorrectionLLMCall", "SelfCorrectionProposedAction", "SelfCorrectionFailedProposal"}
 
-# Define the absolute path for the log directory
-LOG_DIRECTORY = "/Users/livin2rave/my_private_code/trusted-data-agent/rag/rag_input"
+# Determine the project root relative to this file (up 4 levels from src/trusted_data_agent/rag/logger.py)
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+# Define the log directory relative to the project root, allowing for environment variable override for flexibility
+DEFAULT_LOG_DIR = _PROJECT_ROOT / "rag" / "rag_input"
+LOG_DIRECTORY = os.environ.get("TDA_RAG_LOG_DIR", str(DEFAULT_LOG_DIR))
+
 PROBLEMS_FILE = os.path.join(LOG_DIRECTORY, "problems.jsonl")
 SOLUTIONS_FILE = os.path.join(LOG_DIRECTORY, "solutions.jsonl")
 
-def log_rag_event(session_id: str, correlation_id: str, event_type: str, event_source: str, details: dict):
+def log_rag_event(session_id: str, correlation_id: str, event_type: str, event_source: str, details: dict, task_id: str = None):
     """
     Logs a structured event for RAG to the appropriate file (problems.jsonl or solutions.jsonl).
 
@@ -23,16 +33,21 @@ def log_rag_event(session_id: str, correlation_id: str, event_type: str, event_s
         event_type: The name of the event.
         event_source: The module/component that generated the event.
         details: A dictionary containing event-specific information.
+        task_id: Optional. The ID of the overall task or user request.
     """
     log_entry = {
         "log_id": str(uuid.uuid4()),
         "session_id": session_id,
+    }
+    if task_id:
+        log_entry["task_id"] = task_id
+    log_entry.update({
         "correlation_id": correlation_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "event_type": event_type,
         "event_source": event_source,
         "details": details
-    }
+    })
 
     # Determine the correct file to write to
     if event_type in PROBLEM_EVENTS:
@@ -55,3 +70,5 @@ def log_rag_event(session_id: str, correlation_id: str, event_type: str, event_s
     except IOError as e:
         # In a real application, you might have a fallback logging mechanism here
         print(f"Error writing to RAG log file: {e}")
+
+}

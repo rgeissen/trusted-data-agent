@@ -77,7 +77,8 @@ class CorrectionStrategy(ABC):
                 "failed_action": copy.deepcopy(failed_action),
                 "call_id": call_id,
                 "stage": "pre_call"
-            }
+            },
+            task_id=self.executor.task_id
         )
 
         events.append( ({"step": "Calling LLM for Self-Correction", "type": "system_message", "details": {"summary": reason, "call_id": call_id}}, None) )
@@ -107,7 +108,8 @@ class CorrectionStrategy(ABC):
                 "llm_token_usage": llm_token_usage,
                 "call_id": call_id,
                 "stage": "post_call"
-            }
+            },
+            task_id=self.executor.task_id
         )
 
         # --- MODIFICATION START: Pass user_uuid to get_session ---
@@ -569,7 +571,8 @@ class PhaseExecutor:
                     "summary": "Detected a loop that can be optimized using FASTPATH.",
                     "original_user_input": self.executor.original_user_input,
                     "inefficient_phase": copy.deepcopy(phase)
-                }
+                },
+                task_id=self.executor.task_id
             )
 
             event_data = {
@@ -590,7 +593,8 @@ class PhaseExecutor:
                         "type": "FastPathLoop",
                         "details": event_data["details"]
                     }
-                }
+                },
+                task_id=self.executor.task_id
             )
             
             self.executor._log_system_event(event_data)
@@ -1481,7 +1485,8 @@ class PhaseExecutor:
                                 "type": "ToolExecutionError",
                                 "message": tool_result.get("data", tool_result.get("error", "Unknown tool error."))
                             }
-                        }
+                        },
+                        task_id=self.executor.task_id
                     )
                 else:
                     # This is a failed correction, add it to the list of attempts
@@ -1509,7 +1514,8 @@ class PhaseExecutor:
                             "original_user_input": self.executor.original_user_input,
                             "failed_action": copy.deepcopy(action),
                             "error_details": copy.deepcopy(tool_result)
-                        }
+                        },
+                        task_id=self.executor.task_id
                     )
 
                     correction_details = {
@@ -1540,7 +1546,8 @@ class PhaseExecutor:
                                 "original_user_input": self.executor.original_user_input,
                                 "proposed_action": copy.deepcopy(corrected_action),
                                 "llm_token_usage": correction_llm_tokens
-                            }
+                            },
+                            task_id=self.executor.task_id
                         )
 
                         if "FINAL_ANSWER" in corrected_action:
@@ -1578,7 +1585,8 @@ class PhaseExecutor:
                                 "original_user_input": self.executor.original_user_input,
                                 "error_details": copy.deepcopy(tool_result),
                                 "llm_token_usage": correction_llm_tokens
-                            }
+                            },
+                            task_id=self.executor.task_id
                         )
                         correction_failed_details = {
                             "summary": "Unable to find a correction. Aborting retries for this action.",
@@ -1607,7 +1615,8 @@ class PhaseExecutor:
                                 "failed_action": original_failed_action,
                                 "final_error": copy.deepcopy(tool_result),
                                 "correction_attempts_made": correction_attempts
-                            }
+                            },
+                            task_id=self.executor.task_id
                         )
             else:
                 # --- MODIFICATION START: Log the successful SelfHealing event if applicable ---
@@ -1628,7 +1637,8 @@ class PhaseExecutor:
                                 "corrected_action": action 
                             },
                             "llm_token_usage": self.executor.last_llm_token_usage # Include total LLM tokens used for correction
-                        }
+                        },
+                        task_id=self.executor.task_id
                     )
                 # --- MODIFICATION END ---
                 if not is_fast_path:
