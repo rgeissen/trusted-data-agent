@@ -222,6 +222,17 @@ async def get_prompts():
         return jsonify({"error": "Not configured"}), 400
     return jsonify(APP_STATE.get("structured_prompts", {}))
 
+@api_bp.route("/resources")
+async def get_resources():
+    """
+    Returns a categorized list of MCP resources.
+    This is a placeholder for future functionality.
+    """
+    if not APP_STATE.get("mcp_client"):
+        return jsonify({"error": "Not configured"}), 400
+    # Placeholder: Return empty dict until implemented
+    return jsonify({})
+
 @api_bp.route("/tool/toggle_status", methods=["POST"])
 async def toggle_tool_status():
     """
