@@ -1377,12 +1377,11 @@ class PhaseExecutor:
             return
 
         max_retries = 3
-        # --- MODIFICATION START: Initialize variables for chained attempt logging ---
         correction_attempts = []
         original_failed_action = None
         original_error_result = None
         healing_correlation_id = None
-        # --- MODIFICATION END ---
+        prompt_recovery_action = None
 
         if tool_name == "TDA_LLMTask" and self.executor.is_synthesis_from_history:
             app_logger.info("Preparing TDA_LLMTask for 'full_context' execution.")
@@ -1466,9 +1465,7 @@ class PhaseExecutor:
             if isinstance(tool_result, dict) and tool_result.get("status") == "error":
                 yield self.executor._format_sse({"details": tool_result, "tool_name": tool_name}, "tool_error")
 
-                # --- MODIFICATION START: Accumulate correction attempts ---
                 if attempt == 0:
-                    # This is the first failure, log the "problem"
                     healing_correlation_id = str(uuid.uuid4())
                     original_failed_action = copy.deepcopy(action)
                     original_error_result = copy.deepcopy(tool_result)
@@ -1489,9 +1486,7 @@ class PhaseExecutor:
                         task_id=self.executor.task_id
                     )
                 else:
-                    # This is a failed correction, add it to the list of attempts
                     correction_attempts.append(copy.deepcopy(action))
-                # --- MODIFICATION END ---
 
                 error_data_str = str(tool_result.get('data', ''))
                 error_summary = str(tool_result.get('error_message', ''))
@@ -1503,7 +1498,6 @@ class PhaseExecutor:
 
 
                 if attempt < max_retries - 1:
-                    # Log the initiation of a self-correction attempt
                     log_rag_event(
                         session_id=self.executor.session_id,
                         correlation_id=healing_correlation_id,
@@ -1535,7 +1529,6 @@ class PhaseExecutor:
                         yield self.executor._format_sse(event_data, event=event_name)
 
                     if corrected_action:
-                        # Log the proposed action from self-correction
                         log_rag_event(
                             session_id=self.executor.session_id,
                             correlation_id=healing_correlation_id,
@@ -1569,12 +1562,12 @@ class PhaseExecutor:
                                 continue 
                             else:
                                 app_logger.info(f"Successfully recovered from tool failure by executing prompt '{corrected_action['prompt_name']}'.")
+                                prompt_recovery_action = corrected_action
                                 break 
 
                         action = corrected_action
                         continue
                     else:
-                        # Log that self-correction failed to propose a valid action
                         log_rag_event(
                             session_id=self.executor.session_id,
                             correlation_id=healing_correlation_id,
@@ -1593,8 +1586,6 @@ class PhaseExecutor:
                             "details": tool_result
                         }
                         yield self.executor._format_sse({"step": "System Self-Correction Failed", "type": "error", "details": correction_failed_details})
-                        # Do not break here, allow the loop to continue and exhaust max_retries
-                        # so that SelfCorrectionFailed can be logged if all attempts fail.
                         continue
                 else:
                     persistent_failure_details = {
@@ -1602,7 +1593,6 @@ class PhaseExecutor:
                         "details": tool_result
                     }
                     yield self.executor._format_sse({"step": "Persistent Failure", "type": "error", "details": persistent_failure_details})
-                    # Log SelfCorrectionFailed if all retries are exhausted and no solution was found
                     if healing_correlation_id:
                         log_rag_event(
                             session_id=self.executor.session_id,
@@ -1619,8 +1609,34 @@ class PhaseExecutor:
                             task_id=self.executor.task_id
                         )
             else:
-                # --- MODIFICATION START: Log the successful SelfHealing event if applicable ---
-                if healing_correlation_id:
+                if not is_fast_path:
+                     yield self.executor._format_sse({"step": "Tool Execution Result", "details": tool_result, "tool_name": tool_name}, "tool_result")
+                break
+        
+        if healing_correlation_id:
+            is_success = not (isinstance(self.executor.last_tool_output, dict) and self.executor.last_tool_output.get("status") == "error")
+            if is_success:
+                if prompt_recovery_action:
+                    log_rag_event(
+                        session_id=self.executor.session_id,
+                        correlation_id=healing_correlation_id,
+                        event_type="SelfHealing",
+                        event_source="PhaseExecutor._execute_tool",
+                        details={
+                            "summary": "A tool execution error was resolved by executing a corrective sub-prompt.",
+                            "original_user_input": self.executor.original_user_input,
+                            "failed_action": original_failed_action,
+                            "error": original_error_result,
+                            "solution": {
+                                "type": "PromptExecutionRecovery",
+                                "correction_attempts": correction_attempts,
+                                "executed_prompt": prompt_recovery_action
+                            },
+                            "llm_token_usage": self.executor.last_llm_token_usage
+                        },
+                        task_id=self.executor.task_id
+                    )
+                else:
                     log_rag_event(
                         session_id=self.executor.session_id,
                         correlation_id=healing_correlation_id,
@@ -1636,15 +1652,11 @@ class PhaseExecutor:
                                 "correction_attempts": correction_attempts,
                                 "corrected_action": action 
                             },
-                            "llm_token_usage": self.executor.last_llm_token_usage # Include total LLM tokens used for correction
+                            "llm_token_usage": self.executor.last_llm_token_usage
                         },
                         task_id=self.executor.task_id
                     )
-                # --- MODIFICATION END ---
-                if not is_fast_path:
-                     yield self.executor._format_sse({"step": "Tool Execution Result", "details": tool_result, "tool_name": tool_name}, "tool_result")
-                break
-        
+
         if not is_fast_path:
             phase_result_key = f"result_of_phase_{phase_num}"
             if phase_result_key not in self.executor.workflow_state:
