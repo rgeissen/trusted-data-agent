@@ -325,6 +325,19 @@ class PhaseExecutor:
     def __init__(self, executor: 'PlanExecutor'):
         self.executor = executor
 
+    def _prune_tool_output_for_log(self, tool_output: dict) -> dict:
+        """
+        Prunes the 'results' from a tool output dictionary for cleaner logging.
+        """
+        if not isinstance(tool_output, dict):
+            return tool_output
+
+        pruned_output = copy.deepcopy(tool_output)
+        if "results" in pruned_output:
+            del pruned_output["results"]
+            pruned_output["results_omitted"] = True
+        return pruned_output
+
     async def execute_phase(self, phase: dict):
         """
         The main public entry point to execute a single phase. It determines the
@@ -1630,7 +1643,8 @@ class PhaseExecutor:
                             "solution": {
                                 "type": "PromptExecutionRecovery",
                                 "correction_attempts": correction_attempts,
-                                "executed_prompt": prompt_recovery_action
+                                "executed_prompt": prompt_recovery_action,
+                                "successful_action": self._prune_tool_output_for_log(self.executor.last_tool_output)
                             },
                             "llm_token_usage": self.executor.last_llm_token_usage
                         },
@@ -1650,7 +1664,8 @@ class PhaseExecutor:
                             "solution": {
                                 "type": "CorrectedToolAction",
                                 "correction_attempts": correction_attempts,
-                                "corrected_action": action 
+                                "corrected_action": action,
+                                "successful_output": self._prune_tool_output_for_log(self.executor.last_tool_output)
                             },
                             "llm_token_usage": self.executor.last_llm_token_usage
                         },
