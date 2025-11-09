@@ -57,7 +57,6 @@ class Planner:
     def __init__(self, executor: 'PlanExecutor'):
         self.executor = executor
 
-    # --- MODIFICATION START: Update history creation to filter by context validity ---
     def _create_summary_from_history(self, history: dict) -> str:
         """
         Creates a token-efficient, high-signal summary of a history dictionary
@@ -79,7 +78,6 @@ class Planner:
             if isinstance(turn, dict) and turn.get("isValid", True) is not False
         ]
 
-        # --- MODIFICATION START: Scrub TDA_SystemLog messages ---
         scrubbed_workflow_history = []
         for turn in valid_workflow_history:
             new_turn = copy.deepcopy(turn)
@@ -91,7 +89,6 @@ class Planner:
                             scrubbed_trace.append(entry)
                 new_turn["execution_trace"] = scrubbed_trace
             scrubbed_workflow_history.append(new_turn)
-        # --- MODIFICATION END ---
 
         # 3. Create the final history object with only valid turns
         valid_history_summary = {
@@ -102,7 +99,6 @@ class Planner:
         app_logger.debug(f"Planner context created. Original turns: {len(full_workflow_history)}, Valid (active) turns: {len(valid_workflow_history)}")
 
         return json.dumps(valid_history_summary, indent=2)
-    # --- MODIFICATION END ---
 
     def _hydrate_plan_from_previous_turn(self):
         """
@@ -219,7 +215,8 @@ class Planner:
                         "summary": "Planner misclassified a capability (e.g., prompt as tool).",
                         "original_user_input": self.executor.original_user_input,
                         "invalid_plan_snippet": original_phase
-                    }
+                    },
+                    task_id=self.executor.task_id # Ensure task_id is passed
                 )
 
                 # RAG Logging: Log the "solution"
@@ -233,7 +230,8 @@ class Planner:
                         "original_user_input": self.executor.original_user_input,
                         "original_plan_snippet": original_phase,
                         "optimized_plan_snippet": phase
-                    }
+                    },
+                    task_id=self.executor.task_id # Ensure task_id is passed
                 )
 
                 event_data = {
@@ -432,9 +430,7 @@ class Planner:
                         source=self.executor.source
                     )
 
-                    # --- MODIFICATION START: Pass user_uuid to get_session ---
                     updated_session = session_manager.get_session(self.executor.user_uuid, self.executor.session_id)
-                    # --- MODIFICATION END ---
                     if updated_session:
                         yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
 
@@ -596,7 +592,8 @@ class Planner:
                         "summary": "Detected sequential SQL queries that could be consolidated.",
                         "original_user_input": self.executor.original_user_input,
                         "inefficient_plan_snippet": copy.deepcopy(sql_sequence)
-                    }
+                    },
+                    task_id=self.executor.task_id # Ensure task_id is passed
                 )
 
                 inefficient_queries = []
@@ -634,9 +631,7 @@ class Planner:
 
                 yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
 
-                # --- MODIFICATION START: Pass user_uuid to get_session ---
                 updated_session = session_manager.get_session(self.executor.user_uuid, self.executor.session_id)
-                # --- MODIFICATION END ---
                 if updated_session:
                     yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
 
@@ -678,7 +673,8 @@ class Planner:
                             "original_user_input": self.executor.original_user_input,
                             "original_plan_snippet": original_phases,
                             "optimized_plan_snippet": copy.deepcopy(consolidated_phase)
-                        }
+                        },
+                        task_id=self.executor.task_id # Ensure task_id is passed
                     )
 
                     event_data = {
@@ -710,11 +706,9 @@ class Planner:
         ):
             yield event
 
-        # --- MODIFICATION START: Make SQL consolidation rewrite conditional ---
         if APP_CONFIG.ENABLE_SQL_CONSOLIDATION_REWRITE:
             async for event in self._rewrite_plan_for_sql_consolidation():
                 yield event
-        # --- MODIFICATION END ---
 
         async for event in self._rewrite_plan_for_multi_loop_synthesis():
             yield event
@@ -875,7 +869,6 @@ class Planner:
             disabled_history=force_disable_history,
             active_prompt_name_for_filter=self.executor.active_prompt_name,
             source=self.executor.source
-            # No user_uuid/session_id needed here directly as _call_llm takes from self.executor
         )
         yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
 
@@ -889,12 +882,9 @@ class Planner:
             f"-------------------------"
         )
 
-        # --- MODIFICATION START: Pass user_uuid to get_session ---
-        # Get user_uuid and session_id from the executor instance
         user_uuid = self.executor.user_uuid
         session_id = self.executor.session_id
         updated_session = session_manager.get_session(user_uuid, session_id)
-        # --- MODIFICATION END ---
         if updated_session:
             yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
 

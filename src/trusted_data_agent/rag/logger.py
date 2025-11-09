@@ -1,7 +1,3 @@
-{
-type: file_content
-fileName: logger.py
-fullContent:
 # src/trusted_data_agent/rag/logger.py
 import json
 import os
@@ -70,5 +66,3 @@ def log_rag_event(session_id: str, correlation_id: str, event_type: str, event_s
     except IOError as e:
         # In a real application, you might have a fallback logging mechanism here
         print(f"Error writing to RAG log file: {e}")
-
-}

@@ -1,7 +1,3 @@
-{
-type: file_content
-fileName: orchestrators.py
-fullContent:
 # trusted_data_agent/agent/orchestrators.py
 import json
 import logging
