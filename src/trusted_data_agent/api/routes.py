@@ -630,7 +630,7 @@ async def get_models():
         app_logger.error(f"Failed to list models for provider {provider}: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 400
 
-@api_bp.route("/system_prompt/<provider>/<model_name>", methods=["GET"])
+@api_bp.route("/system_prompt/<provider>/<path:model_name>", methods=["GET"])
 async def get_default_system_prompt(provider, model_name):
     """Gets the default system prompt for a given model."""
     base_prompt_template = PROVIDER_SYSTEM_PROMPTS.get(provider, PROVIDER_SYSTEM_PROMPTS["Google"])
