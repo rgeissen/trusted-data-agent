@@ -1,0 +1,47 @@
+{
+  "case_id": "bcb95dde-dc0e-5e55-93a4-37fb4fd54e39",
+  "metadata": {
+    "session_id": "568e9c40-3f4b-4887-b2a0-581e07e1121f",
+    "turn_id": 2,
+    "is_success": true,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": true,
+    "timestamp": "2025-11-10T19:18:03.950807+00:00",
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "input_tokens": 15773,
+      "output_tokens": 340
+    },
+    "is_most_efficient": false,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 2,
+        "2": 1
+      },
+      "total_steps": 3
+    }
+  },
+  "intent": {
+    "user_query": "what are my top 5 customers based on revenue generated?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Retrieve the top 5 customers based on revenue generated from the Sales table in the fitness_db database.",
+        "tool": "base_readQuery",
+        "key_arguments": {
+          "sql": "SELECT TOP 5 c.CustomerID, c.FirstName, c.LastName, SUM(s.TotalAmount) AS TotalRevenue FROM fitness_db.Customers c JOIN fitness_db.Sales s ON c.CustomerID = s.CustomerID GROUP BY c.CustomerID, c.FirstName, c.LastName ORDER BY TotalRevenue DESC;"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the data gathered.",
+        "tool": "TDA_FinalReport",
+        "key_arguments": {}
+      }
+    ]
+  }
+}
