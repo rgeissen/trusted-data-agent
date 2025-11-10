@@ -126,6 +126,15 @@ class SessionMiner:
         """
         try:
             trace = turn.get("execution_trace", [])
+
+            # Check if any action in the trace is TDA_ContextReport
+            for entry in trace:
+                if not isinstance(entry, dict):
+                    continue
+                action = entry.get("action", {})
+                if isinstance(action, dict) and action.get("tool_name") == "TDA_ContextReport":
+                    logger.debug(f"  -> Skipping turn {turn.get('turn')} due to TDA_ContextReport usage.")
+                    return None
             
             is_success = True
             had_plan_improvements = False
