@@ -164,7 +164,7 @@ class RAGRetriever:
         query_results = self.collection.query(
             query_texts=[query],
             n_results=k * 10, # Retrieve more candidates to filter
-            where={"strategy_type": "successful", "is_most_efficient": True}, # Only retrieve successful and most efficient cases
+            where={"$and": [{"strategy_type": "successful"}, {"is_most_efficient": True}]}, # Only retrieve successful and most efficient cases
             include=["metadatas", "distances"]
         )
 

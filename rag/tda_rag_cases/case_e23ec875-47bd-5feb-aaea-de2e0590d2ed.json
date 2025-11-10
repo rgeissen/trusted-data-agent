@@ -1,0 +1,58 @@
+{
+  "case_id": "e23ec875-47bd-5feb-aaea-de2e0590d2ed",
+  "metadata": {
+    "session_id": "b209b8cd-2e37-4b5c-96c0-c68a0464aacf",
+    "turn_id": 1,
+    "is_success": true,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-10T17:59:35.578921+00:00",
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "input_tokens": 8124,
+      "output_tokens": 243
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 3,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 5,
+        "3": 1
+      },
+      "total_steps": 7
+    }
+  },
+  "intent": {
+    "user_query": "educate yourself on the table ddls in database fitness_db"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Get a list of all tables in the 'fitness_db' database.",
+        "tool": "base_tableList",
+        "key_arguments": {
+          "database_name": "fitness_db"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Loop through the list of tables and retrieve the DDL for each one.",
+        "tool": "base_tableDDL",
+        "key_arguments": {
+          "database_name": "fitness_db",
+          "table_name": "Customers",
+          "TableName": "Customers"
+        }
+      },
+      {
+        "phase": 3,
+        "goal": "Generate the final report based on the data gathered.",
+        "tool": "TDA_FinalReport",
+        "key_arguments": {}
+      }
+    ]
+  }
+}
