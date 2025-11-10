@@ -1,0 +1,44 @@
+{
+  "case_id": "b2c72d6c-b328-5661-8128-43233e5aa75c",
+  "metadata": {
+    "session_id": "f7af27e8-c07a-4573-8fc2-01e791396fb9",
+    "turn_id": 1,
+    "is_success": true,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-10T15:26:31.185444+00:00",
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "input_tokens": 9156,
+      "output_tokens": 117
+    },
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    }
+  },
+  "intent": {
+    "user_query": "what is the system version?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Get the Teradata database version information.",
+        "tool": "dba_databaseVersion",
+        "key_arguments": {}
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the system version.",
+        "tool": "TDA_FinalReport",
+        "key_arguments": {}
+      }
+    ]
+  }
+}

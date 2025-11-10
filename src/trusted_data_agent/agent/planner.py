@@ -4,7 +4,8 @@ import json
 import logging
 import copy
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
+from pathlib import Path
 
 from langchain_mcp_adapters.prompts import load_mcp_prompt
 
@@ -15,6 +16,7 @@ from trusted_data_agent.agent.prompts import (
     TASK_CLASSIFICATION_PROMPT,
     SQL_CONSOLIDATION_PROMPT
 )
+from trusted_data_agent.agent.rag_retriever import RAGRetriever # Import RAGRetriever
 
 if TYPE_CHECKING:
     from trusted_data_agent.agent.executor import PlanExecutor
@@ -55,6 +57,21 @@ class Planner:
     """
     def __init__(self, executor: 'PlanExecutor'):
         self.executor = executor
+        self.rag_retriever: Optional[RAGRetriever] = None
+        if APP_CONFIG.RAG_ENABLED:
+            try:
+                project_root = Path(__file__).resolve().parents[3] # trusted-data-agent
+                rag_cases_dir = project_root / APP_CONFIG.RAG_CASES_DIR
+                persist_dir = project_root / APP_CONFIG.RAG_PERSIST_DIR
+                self.rag_retriever = RAGRetriever(
+                    rag_cases_dir=rag_cases_dir,
+                    embedding_model_name=APP_CONFIG.RAG_EMBEDDING_MODEL,
+                    persist_directory=persist_dir
+                )
+                app_logger.info("RAGRetriever initialized successfully.")
+            except Exception as e:
+                app_logger.error(f"Failed to initialize RAGRetriever: {e}", exc_info=True)
+                self.rag_retriever = None
 
     # --- MODIFICATION START: Update history creation to filter by context validity ---
     def _create_summary_from_history(self, history: dict) -> str:
@@ -792,6 +809,21 @@ class Planner:
         else:
             reporting_tool_name_injection = "TDA_FinalReport"
 
+        rag_few_shot_examples_str = ""
+        if self.rag_retriever:
+            retrieved_cases = self.rag_retriever.retrieve_examples(
+                query=self.executor.original_user_input,
+                k=APP_CONFIG.RAG_NUM_EXAMPLES,
+                filter_successful=True # Always prioritize successful cases for planning
+            )
+            if retrieved_cases:
+                formatted_examples = [self.rag_retriever._format_few_shot_example(case) for case in retrieved_cases]
+                rag_few_shot_examples_str = "\n\n" + "\n".join(formatted_examples) + "\n\n"
+                app_logger.info(f"Retrieved RAG cases for few-shot examples: {[case['case_id'] for case in retrieved_cases]}")
+            else:
+                app_logger.info("No relevant RAG cases found for few-shot examples.")
+
+
         planning_prompt = WORKFLOW_META_PLANNING_PROMPT.format(
             workflow_goal=self.executor.workflow_goal_prompt,
             explicit_parameters_section=explicit_parameters_section,
@@ -804,7 +836,8 @@ class Planner:
             replan_instructions=replan_context or "",
             constraints_section=constraints_section,
             sql_consolidation_rule=sql_consolidation_rule_str,
-            reporting_tool_name=reporting_tool_name_injection
+            reporting_tool_name=reporting_tool_name_injection,
+            rag_few_shot_examples=rag_few_shot_examples_str # Pass the populated examples
         )
 
         yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
@@ -817,6 +850,10 @@ class Planner:
             # No user_uuid/session_id needed here directly as _call_llm takes from self.executor
         )
         yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
+
+        # Log RAG findings if they were used (placeholder for future RAG implementation)
+        if rag_few_shot_examples_str:
+            app_logger.info(f"RAG Findings (few-shot examples) used:\n{rag_few_shot_examples_str}")
 
         app_logger.info(
             f"\n--- Meta-Planner Turn ---\n"

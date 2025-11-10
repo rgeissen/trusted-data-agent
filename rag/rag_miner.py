@@ -28,26 +28,32 @@ class SessionMiner:
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def run(self):
-        """Main entry point to scan and process all sessions."""
-        logger.info(f"Starting mining process.")
+        """
+        Main entry point to scan and process all sessions. It now deduplicates
+        successful cases based on the user query, keeping only the one with the
+        lowest total token count.
+        """
+        logger.info("Starting mining process.")
         logger.info(f"Input (Sessions): {self.sessions_dir}")
         logger.info(f"Output (Cases):   {self.output_dir}")
-        
+
         session_files = list(self.sessions_dir.rglob("*.json"))
         logger.info(f"Found {len(session_files)} potential session files.")
 
+        successful_cases = {}  # To hold the best successful case for each query
         total_turns = 0
         processed_turns = 0
         skipped_turns = 0
+        other_cases_processed = 0
 
+        # --- First Pass: Collect all cases and identify the best successful ones ---
+        logger.info("--- Pass 1: Collecting and deduplicating successful cases ---")
         for session_file in session_files:
             try:
-                logger.info(f"Processing session file: {session_file.name}")
                 with open(session_file, 'r', encoding='utf-8') as f:
                     session_data = json.load(f)
-                
+
                 if "id" not in session_data or "last_turn_data" not in session_data:
-                    logger.warning(f"Skipping malformed session file: {session_file.name}")
                     continue
 
                 session_id = session_data["id"]
@@ -55,39 +61,84 @@ class SessionMiner:
 
                 for turn in workflow_history:
                     total_turns += 1
-                    turn_id = turn.get("turn")
-                    logger.info(f"Analyzing turn {turn_id} in session {session_id}...")
-
-                    if not turn.get("isValid", True):
-                        logger.warning(f"  -> Skipping turn {turn_id}: Marked as invalid.")
+                    if not turn.get("isValid", True) or turn.get("turn") is None:
                         continue
 
-                    if turn_id is None:
-                         logger.warning(f"  -> Skipping turn: Missing 'turn' ID.")
-                         continue
+                    case_study = self._extract_case_study(session_data, turn, "temp_id") # Use a temp ID for now
+                    if not case_study:
+                        continue
 
+                    # Handle successful cases for deduplication
+                    if "successful_strategy" in case_study:
+                        query = case_study["intent"]["user_query"]
+                        llm_config = case_study["metadata"]["llm_config"]
+                        total_tokens = llm_config.get("input_tokens", 0) + llm_config.get("output_tokens", 0)
+
+                        # If we haven't seen this query, or if the new one is better, store it
+                        if query not in successful_cases or total_tokens < successful_cases[query]["tokens"]:
+                            successful_cases[query] = {"case": case_study, "tokens": total_tokens}
+                            logger.debug(f"Found new best successful case for query '{query[:50]}...' with {total_tokens} tokens.")
+
+            except Exception as e:
+                logger.error(f"Failed to process session file {session_file.name} during collection: {e}", exc_info=True)
+
+        # --- Second Pass: Process and save the final set of cases ---
+        logger.info("--- Pass 2: Saving final case studies ---")
+        
+        # Clear the output directory if force_reprocess is on
+        if self.force_reprocess:
+            logger.info("Force reprocess is enabled. Clearing output directory...")
+            for old_case in self.output_dir.glob("case_*.json"):
+                old_case.unlink()
+
+        # Save the best successful cases
+        for query, data in successful_cases.items():
+            case_study = data["case"]
+            # Generate a stable UUID based on the query itself for the final case ID
+            case_id = str(uuid.uuid5(uuid.NAMESPACE_OID, query))
+            case_study["case_id"] = case_id
+            output_filename = f"case_{case_id}.json"
+            output_path = self.output_dir / output_filename
+            
+            self._save_case_study(case_study, output_path)
+            processed_turns += 1
+            logger.info(f"  -> SUCCESS (Best): Saved case {output_filename} for query '{query[:50]}...'")
+
+        # Save all other case types (failed, conversational) from a fresh loop
+        for session_file in session_files:
+            try:
+                with open(session_file, 'r', encoding='utf-8') as f:
+                    session_data = json.load(f)
+                if "id" not in session_data or "last_turn_data" not in session_data: continue
+                session_id = session_data["id"]
+                workflow_history = session_data.get("last_turn_data", {}).get("workflow_history", [])
+
+                for turn in workflow_history:
+                    if not turn.get("isValid", True) or turn.get("turn") is None: continue
+                    
+                    case_study = self._extract_case_study(session_data, turn, "temp_id")
+                    if not case_study or "successful_strategy" in case_study:
+                        continue # Skip successful cases as they are already handled
+
+                    # Generate a stable ID for these other cases
+                    turn_id = turn.get("turn")
                     case_id = str(uuid.uuid5(uuid.NAMESPACE_OID, f"{session_id}_{turn_id}"))
+                    case_study["case_id"] = case_id
                     output_filename = f"case_{case_id}.json"
                     output_path = self.output_dir / output_filename
 
                     if output_path.exists() and not self.force_reprocess:
                         skipped_turns += 1
-                        logger.info(f"  -> Skipping turn {turn_id}: Case study {output_filename} already exists.")
                         continue
-
-                    case_study = self._extract_case_study(session_data, turn, case_id)
-                    if case_study:
-                        self._save_case_study(case_study, output_path)
-                        processed_turns += 1
-                        logger.info(f"  -> SUCCESS: Generated case study {output_filename}")
-                    else:
-                        # This case should ideally not be reached with the new logic, but is kept for safety.
-                        logger.error(f"  -> CRITICAL: Failed to extract or categorize turn {turn_id}. Bypassing.")
+                    
+                    self._save_case_study(case_study, output_path)
+                    other_cases_processed += 1
+                    logger.info(f"  -> SUCCESS (Other): Saved case {output_filename}")
 
             except Exception as e:
-                logger.error(f"Failed to process session file {session_file.name}: {e}", exc_info=True) # Changed to True for better debugging
+                logger.error(f"Failed to process session file {session_file.name} during saving: {e}", exc_info=True)
 
-        logger.info(f"Mining complete. Total turns scanned: {total_turns}. New cases processed: {processed_turns}. Skipped (already existed): {skipped_turns}.")
+        logger.info(f"Mining complete. Total turns scanned: {total_turns}. Best successful cases processed: {processed_turns}. Other cases processed: {other_cases_processed}. Skipped (already existed): {skipped_turns}.")
 
     def _save_case_study(self, case_data: dict, output_path: Path):
         with open(output_path, 'w', encoding='utf-8') as f:

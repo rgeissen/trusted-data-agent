@@ -45,8 +45,17 @@ class AppConfig:
     CONTEXT_DISTILLATION_MAX_ROWS = 500 # The maximum number of rows from a tool's result to include in the LLM context.
     CONTEXT_DISTILLATION_MAX_CHARS = 10000 # The maximum number of characters from a tool's result to include in the LLM context.
     DETAILED_DESCRIPTION_THRESHOLD = 200 # A heuristic character count for the PlanExecutor to distinguish between a generic vs. a detailed task description from the planner.
-    SQL_OPTIMIZATION_PROMPTS = ["base_teradataQuery"] # A list of prompts that should be favored for SQL consolidation, if the rule is active.
-    SQL_OPTIMIZATION_TOOLS = ["base_readQuery"] # A list of tools that should be favored for SQL consolidation, if the rule is active.
+    SQL_OPTIMIZATION_PROMPTS = []
+    SQL_OPTIMIZATION_TOOLS = ["base_readQuery"]
+
+    # RAG Configuration
+    RAG_ENABLED = True
+    RAG_REFRESH_ON_STARTUP = True # If True, vector store is refreshed on startup. If False, it uses cache until manually refreshed.
+    RAG_CASES_DIR = "rag/tda_rag_cases"
+    RAG_PERSIST_DIR = ".chromadb_rag_cache"
+    RAG_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+    RAG_NUM_EXAMPLES = 3 # Number of few-shot examples to retrieve
+
 
     # --- Initial State Configuration ---
     INITIALLY_DISABLED_PROMPTS = [
@@ -62,7 +71,7 @@ class AppConfig:
         "dba_tableDropImpact",
         "_testMyServer"
     ]
-    INITIALLY_DISABLED_TOOLS = ["sales_top_customers", "plot_line_chart","plot_pie_chart", "plot_polar_chart", "plot_radar_chart"] # A list of tool names to be disabled by default on application startup.
+    INITIALLY_DISABLED_TOOLS = ["sales_top_customers", "plot_line_chart","plot_pie_chart", "plot_polar_chart", "plot_radar_chart", "sql_Analyze_Cluster_Stats", "rag_Execute_Workflow","sql_Execute_Full_Pipeline", "sql_Retrieve_Cluster_Queries"] # A list of tool names to be disabled by default on application startup.
 
     # --- Tool & Argument Parsing Logic ---
     TOOL_SCOPE_HIERARCHY = [
