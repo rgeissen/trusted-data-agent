@@ -634,6 +634,11 @@ async def get_models():
 async def get_default_system_prompt(provider, model_name):
     """Gets the default system prompt for a given model."""
     base_prompt_template = PROVIDER_SYSTEM_PROMPTS.get(provider, PROVIDER_SYSTEM_PROMPTS["Google"])
+
+    if not base_prompt_template:
+        app_logger.warning(f"No default system prompt found for provider '{provider}' or model '{model_name}'.")
+        return jsonify({"status": "error", "message": f"No default system prompt found for provider '{provider}' or model '{model_name}'."}), 404
+
     return jsonify({"status": "success", "system_prompt": base_prompt_template})
 
 @api_bp.route("/configure", methods=["POST"])
