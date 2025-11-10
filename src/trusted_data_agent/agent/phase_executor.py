@@ -143,11 +143,11 @@ class CorrectionStrategy(ABC):
                 events.append( ({"step": "System Self-Correction", "type": "workaround", "details": {"summary": f"LLM proposed TDA_LLMTask. Injecting required context.", "details": extra_args_for_llm_task}}, None) )
 
             if "prompt_name" in corrected_data and "arguments" in corrected_data:
-                events.append( ({"step": "System Self-Correction", "type": "workaround", "details": {"summary": f"LLM proposed switching to prompt '{corrected_data['prompt_name']}'.", "details": corrected_data}}, None) )
+                events.append( ({"step": "System Self-Correction", "type": "workaround", "details": {"summary": f"LLM proposed switching to prompt '{{{corrected_data['prompt_name']}}}'.", "details": corrected_data}}, None) )
                 return corrected_data, events, llm_token_usage
 
             if "tool_name" in corrected_data and "arguments" in corrected_data:
-                events.append( ({"step": "System Self-Correction", "type": "workaround", "details": {"summary": f"LLM proposed retrying with tool '{corrected_data['tool_name']}'.", "details": corrected_data}}, None) )
+                events.append( ({"step": "System Self-Correction", "type": "workaround", "details": {"summary": f"LLM proposed retrying with tool '{{{corrected_data['tool_name']}}}'.", "details": corrected_data}}, None) )
                 return corrected_data, events, llm_token_usage
 
             new_args = corrected_data.get("arguments", corrected_data)
@@ -261,7 +261,7 @@ class GenericCorrectionStrategy(CorrectionStrategy):
 
         tool_def = self.executor.dependencies['STATE'].get('mcp_tools', {}).get(tool_name)
         if not tool_def:
-            tool_def_str = f"{{\"name\": \"{tool_name}\", \"description\": \"Client-side tool, definition not available.\"}}"
+            tool_def_str = f"{{"name": "{tool_name}", "description": "Client-side tool, definition not available."}}"
         else:
              try:
                  tool_def_str = json.dumps({
@@ -270,7 +270,7 @@ class GenericCorrectionStrategy(CorrectionStrategy):
                      "args": getattr(tool_def, 'args', {})
                  }, default=str)
              except TypeError:
-                 tool_def_str = f"{{\"name\": \"{tool_name}\", \"description\": \"Could not serialize tool definition.\"}}"
+                 tool_def_str = f"{{"name": "{tool_name}", "description": "Could not serialize tool definition."}}"
 
 
         prompt = TACTICAL_SELF_CORRECTION_PROMPT.format(
@@ -497,6 +497,14 @@ class PhaseExecutor:
                     }
                 }
                 self.executor._log_system_event(event_data)
+                log_rag_event(
+                    session_id=self.executor.session_id,
+                    correlation_id=str(uuid.uuid4()),
+                    event_type="SystemWorkaround",
+                    event_source="PhaseExecutor._execute_looping_phase",
+                    details=event_data['details'],
+                    task_id=self.executor.task_id
+                )
                 yield self.executor._format_sse(event_data)
 
             tool_scope = self.executor.dependencies['STATE'].get('tool_scopes', {}).get(tool_name)
@@ -653,7 +661,8 @@ class PhaseExecutor:
                     yield event
 
                 enriched_tool_output = copy.deepcopy(self.executor.last_tool_output)
-                if (isinstance(enriched_tool_output, dict) and
+                if (
+                    isinstance(enriched_tool_output, dict) and
                     enriched_tool_output.get("status") == "success" and
                     isinstance(item, dict)):
 
@@ -776,6 +785,14 @@ class PhaseExecutor:
                 "details": f"Multi-tool phase detected. Agent will dispatch {len(relevant_tools)} tools based on scope."
             }
             self.executor._log_system_event(event_data)
+            log_rag_event(
+                session_id=self.executor.session_id,
+                correlation_id=str(uuid.uuid4()),
+                event_type="SystemWorkaround",
+                event_source="PhaseExecutor._execute_standard_phase",
+                details={'summary': event_data['details']},
+                task_id=self.executor.task_id
+            )
             yield self.executor._format_sse(event_data)
 
             all_phase_results = []
@@ -831,10 +848,7 @@ class PhaseExecutor:
                      "arguments": {"message": f"Multi-Tool Phase Item: {loop_item}"},
                      "metadata": {"execution_depth": self.executor.execution_depth}
                  }
-                 self.executor.turn_action_history.append({
-                     "action": action_for_history,
-                     "result": all_phase_results
-                 })
+                 self.executor.turn_action_history.append({"action": action_for_history, "result": all_phase_results})
             else:
                  self.executor.workflow_state[phase_result_key] = all_phase_results
                  self.executor.last_tool_output = all_phase_results
@@ -844,10 +858,7 @@ class PhaseExecutor:
                      "arguments": {"message": f"Multi-Tool Phase: {phase_goal}"},
                      "metadata": {"execution_depth": self.executor.execution_depth}
                  }
-                 self.executor.turn_action_history.append({
-                     "action": action_for_history,
-                     "result": all_phase_results
-                 })
+                 self.executor.turn_action_history.append({"action": action_for_history, "result": all_phase_results})
 
 
             if not is_loop_iteration:
@@ -1260,14 +1271,23 @@ class PhaseExecutor:
         )
 
 
-        yield self.executor._format_sse({
+        event_data = {
             "step": "System Correction",
             "type": "workaround",
             "details": {
                 "summary": f"Detected an argument mismatch for tool '{tool_name}'. Agent is proactively correcting the arguments.",
                 "correction_type": "argument_refinement"
             }
-        })
+        }
+        log_rag_event(
+            session_id=self.executor.session_id,
+            correlation_id=str(uuid.uuid4()),
+            event_type="SystemWorkaround",
+            event_source="PhaseExecutor._proactively_refine_arguments",
+            details=event_data['details'],
+            task_id=self.executor.task_id
+        )
+        yield self.executor._format_sse(event_data)
 
         tool_schema_str = json.dumps({name: details for name, details in tool_def.args.items()}, indent=2)
 
@@ -1276,7 +1296,8 @@ class PhaseExecutor:
             f"--- GOAL ---\n{phase.get('goal', self.executor.original_user_input)}\n\n"
             f"--- PROVIDED ARGUMENTS (May be incorrect or incomplete) ---\n{json.dumps(provided_args, indent=2)}\n\n" # Use original (potentially without 'data')
             f"--- CORRECT TOOL SCHEMA ---\n{tool_schema_str}\n\n"
-            "--- INSTRUCTIONS ---\n"
+            "--- INSTRUCTIONS ---
+"
             "1. Analyze the `GOAL` and the `PROVIDED ARGUMENTS` to understand the user's intent and what data is available.\n"
             "2. Examine the `CORRECT TOOL SCHEMA` to understand the exact argument names and structure the tool expects.\n"
             "3. Create a new, valid set of arguments by mapping the values from the `PROVIDED ARGUMENTS` to the correct names in the `CORRECT TOOL SCHEMA`.\n"
@@ -1325,7 +1346,7 @@ class PhaseExecutor:
 
                 action['arguments'] = corrected_args
                 app_logger.info(f"Argument refinement successful. New args for '{tool_name}': {corrected_args}")
-                yield self.executor._format_sse({
+                event_data = {
                     "step": "System Correction",
                     "type": "workaround",
                     "details": {
@@ -1333,7 +1354,16 @@ class PhaseExecutor:
                         "correction_type": "argument_refinement_applied",
                         "new_arguments": corrected_args
                     }
-                })
+                }
+                log_rag_event(
+                    session_id=self.executor.session_id,
+                    correlation_id=str(uuid.uuid4()),
+                    event_type="SystemWorkaround",
+                    event_source="PhaseExecutor._proactively_refine_arguments",
+                    details=event_data['details'],
+                    task_id=self.executor.task_id
+                )
+                yield self.executor._format_sse(event_data)
             else:
                  app_logger.warning("Argument refinement failed: LLM did not return a valid dictionary.")
                  if is_llm_task_in_loop and focused_data_payload is not None:
@@ -1755,12 +1785,21 @@ class PhaseExecutor:
             for arg_name, value in enriched_args.items():
                 if arg_name not in initial_args or initial_args.get(arg_name) is None:
                     app_logger.info(f"Proactively inferred '{arg_name}' from turn history: '{value}'")
-                    events_to_yield.append(self.executor._format_sse({
+                    event_data = {
                         "step": "System Correction",
-                        "details": f"System inferred '{arg_name}: {value}' from the current turn's actions.",
+                        "details": f"System inferred '{{{arg_name}}}: {{{value}}}' from the current turn's actions.",
                         "type": "workaround",
                         "correction_type": "inferred_argument"
-                    }))
+                    }
+                    log_rag_event(
+                        session_id=self.executor.session_id,
+                        correlation_id=str(uuid.uuid4()),
+                        event_type="SystemWorkaround",
+                        event_source="PhaseExecutor._enrich_arguments_from_history",
+                        details=event_data['details'],
+                        task_id=self.executor.task_id
+                    )
+                    events_to_yield.append(self.executor._format_sse(event_data))
 
         return enriched_args, events_to_yield, was_enriched
 
@@ -1917,20 +1956,38 @@ class PhaseExecutor:
             if not normalized_action.get("tool_name") and not normalized_action.get("prompt_name"):
                 if len(relevant_tools) == 1:
                     normalized_action["tool_name"] = relevant_tools[0]
-                    self.executor.events_to_yield.append(self.executor._format_sse({
+                    event_data = {
                         "step": "System Correction",
                         "type": "workaround",
                         "correction_type": "inferred_tool_name",
-                        "details": f"LLM omitted tool_name. System inferred '{relevant_tools[0]}'."
-                    }))
+                        "details": f"LLM omitted tool_name. System inferred '{{{relevant_tools[0]}}}'."
+                    }
+                    log_rag_event(
+                        session_id=self.executor.session_id,
+                        correlation_id=str(uuid.uuid4()),
+                        event_type="SystemWorkaround",
+                        event_source="PhaseExecutor._get_next_tactical_action",
+                        details=event_data['details'],
+                        task_id=self.executor.task_id
+                    )
+                    self.executor.events_to_yield.append(self.executor._format_sse(event_data))
                 elif executable_prompt:
                     normalized_action["prompt_name"] = executable_prompt
-                    self.executor.events_to_yield.append(self.executor._format_sse({
+                    event_data = {
                         "step": "System Correction",
                         "type": "workaround",
                         "correction_type": "inferred_prompt_name",
-                        "details": f"LLM omitted prompt_name. System inferred '{executable_prompt}'."
-                    }))
+                        "details": f"LLM omitted prompt_name. System inferred '{{{executable_prompt}}}'."
+                    }
+                    log_rag_event(
+                        session_id=self.executor.session_id,
+                        correlation_id=str(uuid.uuid4()),
+                        event_type="SystemWorkaround",
+                        event_source="PhaseExecutor._get_next_tactical_action",
+                        details=event_data['details'],
+                        task_id=self.executor.task_id
+                    )
+                    self.executor.events_to_yield.append(self.executor._format_sse(event_data))
 
             if not normalized_action.get("tool_name") and not normalized_action.get("prompt_name"):
                  raise ValueError("Could not determine tool_name or prompt_name from LLM response.")
@@ -2049,7 +2106,7 @@ class PhaseExecutor:
                     "phase": 1,
                     "goal": f"Recovered plan: Execute the action for the user's request: '{self.executor.original_user_input}'",
                     "relevant_tools": [tool_name], # Use the extracted tool_name
-                    "arguments": plan_object.get("arguments", {}) # Include arguments
+                    "arguments": plan_object.get("arguments", {})
                 }]
 
             elif isinstance(plan_object, list):
@@ -2074,399 +2131,8 @@ class PhaseExecutor:
         # --- MODIFICATION START: This logic is now outside the loop ---
         # Add to workflow state and structured data *after* the loop finishes
         # (whether it succeeded or ended in error)
-        if not is_fast_path:
-            phase_result_key = f"result_of_phase_{phase_num}"
-            if phase_result_key not in self.executor.workflow_state:
-                self.executor.workflow_state[phase_result_key] = []
-            if self.executor.last_tool_output not in self.executor.workflow_state[phase_result_key]:
-                self.executor.workflow_state[phase_result_key].append(self.executor.last_tool_output)
-            self.executor._add_to_structured_data(self.executor.last_tool_output)
         # --- MODIFICATION END ---
 
-
-    def _enrich_arguments_from_history(self, relevant_tools: list[str], current_args: dict = None) -> tuple[dict, list, bool]:
-        """
-        Scans the current turn's action history to find missing arguments for a tool call.
-        It now only uses arguments from tool calls that were definitively successful.
-        """
-        events_to_yield = []
-        initial_args = current_args.copy() if current_args else {}
-        enriched_args = initial_args.copy()
-
-        all_tools = self.executor.dependencies['STATE'].get('mcp_tools', {})
-        required_args_for_phase = set()
-        for tool_name in relevant_tools:
-            tool = all_tools.get(tool_name)
-            if not tool: continue
-            args_dict = tool.args if isinstance(tool.args, dict) else {}
-            for arg_name, arg_details in args_dict.items():
-                if arg_details.get('required', False):
-                    required_args_for_phase.add(arg_name)
-
-        args_to_find = {
-            arg for arg in required_args_for_phase
-            if get_argument_by_canonical_name(enriched_args, arg) is None
-        }
-
-        if not args_to_find:
-            return enriched_args, [], False
-
-        for entry in reversed(self.executor.turn_action_history):
-            if not args_to_find: break
-
-            result = entry.get("result", {})
-            is_successful_data_action = (
-                isinstance(result, dict) and
-                result.get('status') == 'success' and
-                'results' in result
-            )
-            is_successful_chart_action = (
-                isinstance(result, dict) and
-                result.get('type') == 'chart' and
-                'spec' in result
-            )
-
-            if not (is_successful_data_action or is_successful_chart_action):
-                continue
-
-            action_args = entry.get("action", {}).get("arguments", {})
-            for arg_name in list(args_to_find):
-                value_from_action = get_argument_by_canonical_name(action_args, arg_name)
-                if value_from_action is not None:
-                    enriched_args[arg_name] = value_from_action
-                    args_to_find.remove(arg_name)
-
-
-            if isinstance(result, dict):
-                result_metadata = result.get("metadata", {})
-                if result_metadata:
-                    metadata_to_arg_map = {
-                        "database": "database_name",
-                        "table": "table_name",
-                        "column": "column_name"
-                    }
-                    for meta_key, arg_name in metadata_to_arg_map.items():
-                        if arg_name in args_to_find and meta_key in result_metadata:
-                             if get_argument_by_canonical_name(enriched_args, arg_name) is None:
-                                enriched_args[arg_name] = result_metadata[meta_key]
-                                args_to_find.remove(arg_name)
-
-
-        was_enriched = enriched_args != initial_args
-        if was_enriched:
-            for arg_name, value in enriched_args.items():
-                if arg_name not in initial_args or initial_args.get(arg_name) is None:
-                    app_logger.info(f"Proactively inferred '{arg_name}' from turn history: '{value}'")
-                    events_to_yield.append(self.executor._format_sse({
-                        "step": "System Correction",
-                        "details": f"System inferred '{arg_name}: {value}' from the current turn's actions.",
-                        "type": "workaround",
-                        "correction_type": "inferred_argument"
-                    }))
-
-        return enriched_args, events_to_yield, was_enriched
-
-
-    async def _get_next_tactical_action(self, current_phase_goal: str, relevant_tools: list[str], enriched_args: dict, strategic_args: dict, executable_prompt: str = None) -> tuple[dict | str, int, int]:
-        """Makes a tactical LLM call to decide the single next best action for the current phase."""
-
-        permitted_tools_with_details = ""
-        all_tools = self.executor.dependencies['STATE'].get('mcp_tools', {})
-
-        for tool_name in relevant_tools:
-            tool = all_tools.get(tool_name)
-            if not tool: continue
-
-            tool_str = f"\n- Tool: `{tool.name}`\n  - Description: {tool.description}"
-            args_dict = tool.args if isinstance(tool.args, dict) else {}
-
-            if args_dict:
-                tool_str += "\n  - Arguments:"
-                for arg_name, arg_details in args_dict.items():
-                    is_required = arg_details.get('required', False)
-                    arg_type = arg_details.get('type', 'any')
-                    req_str = "required" if is_required else "optional"
-                    arg_desc = arg_details.get('description', 'No description.')
-                    tool_str += f"\n    - `{arg_name}` ({arg_type}, {req_str}): {arg_desc}"
-            permitted_tools_with_details += tool_str + "\n"
-
-        permitted_prompts_with_details = "None"
-        if executable_prompt:
-            all_prompts = self.executor.dependencies['STATE'].get('structured_prompts', {})
-            prompt_info = None
-            for category, prompts in all_prompts.items():
-                for p in prompts:
-                    if p['name'] == executable_prompt:
-                        prompt_info = p
-                        break
-                if prompt_info: break
-
-            if prompt_info:
-                prompt_str = f"\n- Prompt: `{prompt_info['name']}`\n  - Description: {prompt_info.get('description', 'No description.')}"
-                if prompt_info.get('arguments'):
-                    prompt_str += "\n  - Arguments:"
-                    for arg in prompt_info['arguments']:
-                        req_str = "required" if arg.get('required') else "optional"
-                        prompt_str += f"\n    - `{arg['name']}` ({arg.get('type', 'any')}, {req_str}): {arg.get('description', 'No description.')}"
-                permitted_prompts_with_details = prompt_str + "\n"
-
-
-        context_enrichment_section = ""
-        if enriched_args:
-            context_items = [f"- `{name}`: `{value}`" for name, value in enriched_args.items()]
-            context_enrichment_section = (
-                "\n--- CONTEXT FROM HISTORY ---\n"
-                "The following critical information has been inferred from the conversation history. You MUST use it to fill in missing arguments.\n"
-                + "\n".join(context_items) + "\n"
-            )
-
-        loop_context_section = ""
-        if self.executor.is_in_loop:
-            next_item = next((item for item in self.executor.current_loop_items if item not in self.executor.processed_loop_items), None)
-            if next_item:
-                loop_context_section = (
-                    f"\n--- LOOP CONTEXT ---\n"
-                    f"- You are currently in a loop to process multiple items.\n"
-                    f"- All Items in Loop: {json.dumps(self.executor.current_loop_items)}\n"
-                    f"- Items Already Processed: {json.dumps(self.executor.processed_loop_items)}\n"
-                    f"- Your task is to process this single item next: {json.dumps(next_item)}\n"
-                )
-
-        strategic_arguments_section = "None provided."
-        if strategic_args:
-            strategic_arguments_section = json.dumps(strategic_args, indent=2)
-
-        distilled_workflow_state = self.executor._distill_data_for_llm_context(copy.deepcopy(self.executor.workflow_state))
-        distilled_turn_history = self.executor._distill_data_for_llm_context(copy.deepcopy(self.executor.turn_action_history))
-
-        tactical_system_prompt = WORKFLOW_TACTICAL_PROMPT.format(
-            workflow_goal=self.executor.workflow_goal_prompt,
-            current_phase_goal=current_phase_goal,
-            strategic_arguments_section=strategic_arguments_section,
-            permitted_tools_with_details=permitted_tools_with_details,
-            permitted_prompts_with_details=permitted_prompts_with_details,
-            last_attempt_info=self.executor.last_failed_action_info,
-            turn_action_history=json.dumps(distilled_turn_history, indent=2),
-            all_collected_data=json.dumps(distilled_workflow_state, indent=2),
-            loop_context_section=loop_context_section,
-            context_enrichment_section=context_enrichment_section
-        )
-
-        response_text, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
-            prompt="Determine the next action based on the instructions and state provided in the system prompt.",
-            reason=f"Deciding next tactical action for phase: {current_phase_goal}",
-            system_prompt_override=tactical_system_prompt,
-            disabled_history=True,
-            source=self.executor.source
-            # user_uuid implicitly passed
-        )
-
-        self.executor.last_failed_action_info = "None"
-
-        if "FINAL_ANSWER:" in response_text.upper() or "SYSTEM_ACTION_COMPLETE" in response_text.upper():
-            return "SYSTEM_ACTION_COMPLETE", input_tokens, output_tokens
-
-        try:
-            json_match = re.search(r"```json\s*\n(.*?)\n\s*```|(\{.*\})", response_text, re.DOTALL)
-            if not json_match: raise json.JSONDecodeError("No JSON object found", response_text, 0)
-
-            json_str = json_match.group(1) or json_match.group(2)
-            if not json_str: raise json.JSONDecodeError("Extracted JSON is empty", response_text, 0)
-
-
-            raw_action = json.loads(json_str.strip())
-
-            action_details = raw_action
-            tool_name_synonyms = ["tool_name", "name", "tool", "action_name"]
-            prompt_name_synonyms = ["prompt_name", "prompt"]
-            arg_synonyms = ["arguments", "args", "tool_input", "action_input", "parameters"]
-
-            possible_wrapper_keys = ["action", "tool_call", "tool", "prompt_call", "prompt"]
-            for key in possible_wrapper_keys:
-                if key in action_details and isinstance(action_details[key], dict):
-                    action_details = action_details[key]
-                    break
-
-            found_tool_name = None
-            for key in tool_name_synonyms:
-                if key in action_details:
-                    found_tool_name = action_details.pop(key)
-                    break
-
-            found_prompt_name = None
-            for key in prompt_name_synonyms:
-                if key in action_details:
-                    found_prompt_name = action_details.pop(key)
-                    break
-
-            found_args = None
-            for key in arg_synonyms:
-                if key in action_details and isinstance(action_details[key], dict):
-                    found_args = action_details[key]
-                    break
-
-            if found_args is None:
-                if isinstance(action_details, dict) and not any(k in action_details for k in tool_name_synonyms + prompt_name_synonyms):
-                    found_args = action_details
-
-            normalized_action = {
-                "tool_name": found_tool_name,
-                "prompt_name": found_prompt_name,
-                "arguments": found_args if isinstance(found_args, dict) else {}
-            }
-
-
-            if not normalized_action.get("tool_name") and not normalized_action.get("prompt_name"):
-                if len(relevant_tools) == 1:
-                    normalized_action["tool_name"] = relevant_tools[0]
-                    self.executor.events_to_yield.append(self.executor._format_sse({
-                        "step": "System Correction",
-                        "type": "workaround",
-                        "correction_type": "inferred_tool_name",
-                        "details": f"LLM omitted tool_name. System inferred '{relevant_tools[0]}'."
-                    }))
-                elif executable_prompt:
-                    normalized_action["prompt_name"] = executable_prompt
-                    self.executor.events_to_yield.append(self.executor._format_sse({
-                        "step": "System Correction",
-                        "type": "workaround",
-                        "correction_type": "inferred_prompt_name",
-                        "details": f"LLM omitted prompt_name. System inferred '{executable_prompt}'."
-                    }))
-
-            if not normalized_action.get("tool_name") and not normalized_action.get("prompt_name"):
-                 raise ValueError("Could not determine tool_name or prompt_name from LLM response.")
-
-            return normalized_action, input_tokens, output_tokens
-        except (json.JSONDecodeError, ValueError) as e:
-            raise RuntimeError(f"Failed to get a valid JSON action from the tactical LLM. Response: {response_text}. Error: {e}")
-
-    def _is_date_query_candidate(self, command: dict) -> tuple[bool, str, bool]:
-        """Checks if a command is a candidate for the date-range orchestrator."""
-        tool_name = command.get("tool_name")
-        tool_spec = self.executor.dependencies['STATE'].get('mcp_tools', {}).get(tool_name)
-        if not tool_spec or not hasattr(tool_spec, 'args') or not isinstance(tool_spec.args, dict):
-            return False, None, False
-
-        tool_arg_names = set(tool_spec.args.keys())
-        tool_supports_range = 'start_date' in tool_arg_names and 'end_date' in tool_arg_names
-
-        args = command.get("arguments", {})
-        date_param_name = next((param for param in args if 'date' in param.lower()), None)
-
-        return bool(date_param_name), date_param_name, tool_supports_range
-
-    async def _classify_date_query_type(self):
-        """Uses LLM to classify a date query as 'single' or 'range'."""
-        classification_prompt = (
-            f"You are a query classifier. Analyze the following query: '{self.executor.original_user_input}'. "
-            "Determine if it refers to a 'single' date or a 'range' of dates. "
-            "Extract the specific phrase that describes the date or range. "
-            "Your response MUST be ONLY a JSON object with two keys: 'type' and 'phrase'."
-        )
-        reason="Classifying date query."
-        call_id = str(uuid.uuid4())
-        yield self.executor._format_sse({"step": "Calling LLM", "details": {"summary": reason, "call_id": call_id}})
-        response_str, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
-            prompt=classification_prompt, reason=reason,
-            system_prompt_override="You are a JSON-only responding assistant.", raise_on_error=True,
-            source=self.executor.source
-            # user_uuid implicitly passed
-        )
-        # --- MODIFICATION START: Pass user_uuid to get_session ---
-        updated_session = session_manager.get_session(self.executor.user_uuid, self.executor.session_id)
-        # --- MODIFICATION END ---
-        if updated_session:
-            yield self.executor._format_sse({ "statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id }, "token_update")
-        try:
-            json_match = re.search(r"```json\s*\n(.*?)\n\s*```|(\{.*\})", response_str, re.DOTALL)
-            if not json_match: raise json.JSONDecodeError("No JSON found in LLM response", response_str, 0)
-            json_str = json_match.group(1) or json_match.group(2)
-            self.executor.temp_data_holder = json.loads(json_str)
-        except (json.JSONDecodeError, KeyError, AttributeError):
-            self.executor.temp_data_holder = {'type': 'single', 'phrase': self.executor.original_user_input}
-
-
-    async def _recover_from_phase_failure(self, failed_phase_goal: str):
-        """
-        Attempts to recover from a persistently failing phase by generating a new plan.
-        This version is robust to conversational text mixed with the JSON output.
-        """
-        call_id = str(uuid.uuid4())
-        yield self.executor._format_sse({"step": "Attempting LLM-based Recovery", "type": "system_message", "details": {"summary": "The current plan is stuck. Asking LLM to generate a new plan.", "call_id": call_id}})
-
-        last_error = "No specific error message found."
-        failed_tool_name = "N/A (Phase Failed)"
-        for action in reversed(self.executor.turn_action_history):
-            result = action.get("result", {})
-            if isinstance(result, dict) and result.get("status") == "error":
-                last_error = result.get("data", result.get("error", "Unknown error"))
-                failed_tool_name = action.get("action", {}).get("tool_name", failed_tool_name)
-                self.executor.globally_skipped_tools.add(failed_tool_name)
-                break
-
-        distilled_workflow_state = self.executor._distill_data_for_llm_context(copy.deepcopy(self.executor.workflow_state))
-
-        recovery_prompt = ERROR_RECOVERY_PROMPT.format(
-            user_question=self.executor.original_user_input,
-            error_message=last_error,
-            failed_tool_name=failed_tool_name,
-            all_collected_data=json.dumps(distilled_workflow_state, indent=2),
-            workflow_goal_and_plan=f"The agent was trying to achieve this goal: '{failed_phase_goal}'"
-        )
-
-        reason = "Recovering from persistent phase failure."
-        yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
-        response_text, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
-            prompt=recovery_prompt,
-            reason=reason,
-            raise_on_error=True,
-            source=self.executor.source
-            # user_uuid implicitly passed
-        )
-        yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
-
-        # --- MODIFICATION START: Pass user_uuid to get_session ---
-        updated_session = session_manager.get_session(self.executor.user_uuid, self.executor.session_id)
-        # --- MODIFICATION END ---
-        if updated_session:
-            yield self.executor._format_sse({"statement_input": input_tokens, "statement_output": output_tokens, "total_input": updated_session.get("input_tokens", 0), "total_output": updated_session.get("output_tokens", 0), "call_id": call_id}, "token_update")
-
-        try:
-            json_match = re.search(r"```json\s*\n(.*?)```|(\[.*?\]|\{.*?\})", response_text, re.DOTALL)
-            if not json_match:
-                raise ValueError("No valid JSON plan or action found in the recovery response.")
-
-            json_str = next(g for g in json_match.groups() if g is not None)
-            if not json_str:
-                 raise ValueError("Extracted JSON string for recovery plan is empty.")
-
-            plan_object = json.loads(json_str.strip())
-
-
-            if isinstance(plan_object, dict) and ("tool_name" in plan_object or "prompt_name" in plan_object):
-                app_logger.warning("Recovery LLM returned a direct action; wrapping it in a plan.")
-                tool_name = plan_object.get("tool_name") or plan_object.get("prompt_name")
-                new_plan = [{
-                    "phase": 1,
-                    "goal": f"Recovered plan: Execute the action for the user's request: '{self.executor.original_user_input}'",
-                    "relevant_tools": [tool_name], # Use the extracted tool_name
-                    "arguments": plan_object.get("arguments", {}) # Include arguments
-                }]
-
-            elif isinstance(plan_object, list):
-                new_plan = plan_object
-            else:
-                raise ValueError("Recovered plan is not a valid list or action object.")
-
-            yield self.executor._format_sse({"step": "Recovery Plan Generated", "type": "system_message", "details": new_plan})
-
-            self.executor.meta_plan = new_plan
-            self.executor.current_phase_index = 0
-            self.executor.turn_action_history.append({"action": "RECOVERY_REPLAN", "result": {"status": "success"}})
-
-        except (json.JSONDecodeError, ValueError) as e:
-            raise RuntimeError(f"LLM-based recovery failed. The LLM did not return a valid new plan. Response: {response_text}. Error: {e}")
 
     async def _attempt_tool_self_correction(self, failed_action: Dict[str, Any], error_result: Dict[str, Any], healing_correlation_id: str) -> Tuple[Dict | None, List, Dict]:
         """
@@ -2477,4 +2143,3 @@ class PhaseExecutor:
         handler = CorrectionHandler(self.executor)
         corrected_action, correction_events, llm_token_usage = await handler.attempt_correction(failed_action, error_result, healing_correlation_id)
         return corrected_action, correction_events, llm_token_usage
-

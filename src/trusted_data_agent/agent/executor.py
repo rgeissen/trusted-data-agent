@@ -606,7 +606,7 @@ class PlanExecutor:
                                 try:
                                     # The event is a JSON string, parse it.
                                     event_data = json.loads(event.replace("data: ", "").strip())
-                                    self.turn_action_history.append({"action": "system_correction", "result": event_data})
+                                    self._log_system_event(event_data) # Use the centralized logging method
                                 except json.JSONDecodeError:
                                     app_logger.warning(f"Could not parse planner event for history logging: {event}")
                             # --- MODIFICATION END ---

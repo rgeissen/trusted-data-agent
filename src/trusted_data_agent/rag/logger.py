@@ -7,7 +7,7 @@ from pathlib import Path
 
 # Define the sets of problem and solution event types
 PROBLEM_EVENTS = {"InefficientPlanDetected", "ExecutionError", "InvalidPlanGenerated", "UnhandledError", "SelfCorrectionFailed"}
-SOLUTION_EVENTS = {"PlanOptimization", "SelfHealing", "SelfCorrectionAttempt", "SelfCorrectionLLMCall", "SelfCorrectionProposedAction", "SelfCorrectionFailedProposal"}
+SOLUTION_EVENTS = {"PlanOptimization", "SelfHealing", "SelfCorrectionAttempt", "SelfCorrectionLLMCall", "SelfCorrectionProposedAction", "SelfCorrectionFailedProposal", "SystemWorkaround"}
 
 # Determine the project root relative to this file (up 4 levels from src/trusted_data_agent/rag/logger.py)
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
