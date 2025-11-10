@@ -262,7 +262,7 @@ class PlanExecutor:
              self.structured_collected_data[context_key].extend(tool_result)
         else:
              self.structured_collected_data[context_key].append(tool_result)
-        app_logger.info(f"Added tool result to structured data under key: '{context_key}'.")
+        app_logger.debug(f"Added tool result to structured data under key: '{context_key}'.")
 
     def _distill_data_for_llm_context(self, data: any) -> any:
         """
@@ -619,7 +619,7 @@ class PlanExecutor:
                         # --- MODIFICATION START: Store original plan AFTER refinement ---
                         # Store the plan that was actually generated and refined before any execution begins
                         self.original_plan_for_history = copy.deepcopy(self.meta_plan)
-                        app_logger.info("Stored original plan (post-refinement) for history.")
+                        app_logger.debug("Stored original plan (post-refinement) for history.")
                         # --- MODIFICATION END ---
 
                         plan_has_prompt = self.meta_plan and any('executable_prompt' in phase for phase in self.meta_plan)
@@ -655,7 +655,7 @@ class PlanExecutor:
                         # --- MODIFICATION START: Re-capture plan if single prompt expansion happened ---
                         # If the plan was expanded from a single prompt, update the stored original plan
                         self.original_plan_for_history = copy.deepcopy(self.meta_plan)
-                        app_logger.info("Re-stored plan after single-prompt expansion for history.")
+                        app_logger.debug("Re-stored plan after single-prompt expansion for history.")
                         # --- MODIFICATION END ---
 
 
@@ -892,7 +892,7 @@ class PlanExecutor:
 
             self.current_phase_index += 1
 
-        app_logger.info("Meta-plan has been fully executed. Transitioning to summarization.")
+        app_logger.debug("Meta-plan has been fully executed. Transitioning to summarization.")
         self.state = self.AgentState.SUMMARIZING
 
     async def _run_sub_prompt(self, prompt_name: str, prompt_args: dict, is_delegated_task: bool = False):

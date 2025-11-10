@@ -102,7 +102,7 @@ def _save_session(user_uuid: str, session_id: str, session_data: dict):
                 "model": session_data.get("model"),
                 "name": session_data.get("name", "Unnamed Session"),
             }
-            app_logger.info(f"[DEBUG] _save_session sending notification for session {session_id}: provider={notification_payload['provider']}, model={notification_payload['model']}")
+            app_logger.debug(f"_save_session sending notification for session {session_id}: provider={notification_payload['provider']}, model={notification_payload['model']}")
             notification = {
                 "type": "session_model_update",
                 "payload": notification_payload
@@ -363,7 +363,7 @@ def update_session_name(user_uuid: str, session_id: str, new_name: str):
                     "session_id": session_id,
                     "newName": new_name,
                 }
-                app_logger.info(f"[DEBUG] update_session_name sending notification for session {session_id}: newName={new_name}")
+                app_logger.debug(f"update_session_name sending notification for session {session_id}: newName={new_name}")
                 notification = {
                     "type": "session_name_update",
                     "payload": notification_payload
@@ -389,7 +389,7 @@ def update_token_count(user_uuid: str, session_id: str, input_tokens: int, outpu
 
 def update_models_used(user_uuid: str, session_id: str, provider: str, model: str):
     """Adds the current model to the list of models used in the session."""
-    app_logger.info(f"[DEBUG] update_models_used called for session {session_id} with provider={provider}, model={model}")
+    app_logger.debug(f"update_models_used called for session {session_id} with provider={provider}, model={model}")
     session_data = _load_session(user_uuid, session_id)
     if session_data:
         models_used = session_data.get('models_used', [])
@@ -399,8 +399,8 @@ def update_models_used(user_uuid: str, session_id: str, provider: str, model: st
             session_data['models_used'] = models_used
 
         # --- MODIFICATION START: Update top-level provider and model ---
-        app_logger.info(f"[DEBUG] Updating session_data provider from {session_data.get('provider')} to {provider}")
-        app_logger.info(f"[DEBUG] Updating session_data model from {session_data.get('model')} to {model}")
+        app_logger.debug(f"Updating session_data provider from {session_data.get('provider')} to {provider}")
+        app_logger.debug(f"Updating session_data model from {session_data.get('model')} to {model}")
         session_data['provider'] = provider
         session_data['model'] = model
         # --- MODIFICATION END ---

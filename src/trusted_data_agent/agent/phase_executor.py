@@ -1235,7 +1235,7 @@ class PhaseExecutor:
                     app_logger.info("Restored focused 'data' payload after argument refinement.")
 
                 action['arguments'] = corrected_args
-                app_logger.info(f"Argument refinement successful. New args for '{tool_name}': {corrected_args}")
+                app_logger.debug(f"Argument refinement successful. New args for '{tool_name}': {corrected_args}")
                 yield self.executor._format_sse({
                     "step": "System Correction",
                     "type": "workaround",

@@ -813,15 +813,14 @@ class Planner:
         if self.rag_retriever:
             retrieved_cases = self.rag_retriever.retrieve_examples(
                 query=self.executor.original_user_input,
-                k=APP_CONFIG.RAG_NUM_EXAMPLES,
-                filter_successful=True # Always prioritize successful cases for planning
+                k=APP_CONFIG.RAG_NUM_EXAMPLES
             )
             if retrieved_cases:
                 formatted_examples = [self.rag_retriever._format_few_shot_example(case) for case in retrieved_cases]
                 rag_few_shot_examples_str = "\n\n" + "\n".join(formatted_examples) + "\n\n"
-                app_logger.info(f"Retrieved RAG cases for few-shot examples: {[case['case_id'] for case in retrieved_cases]}")
+                print(f"Retrieved RAG cases for few-shot examples: {[case['case_id'] for case in retrieved_cases]}")
             else:
-                app_logger.info("No relevant RAG cases found for few-shot examples.")
+                print("No relevant RAG cases found for few-shot examples.")
 
 
         planning_prompt = WORKFLOW_META_PLANNING_PROMPT.format(
@@ -853,9 +852,9 @@ class Planner:
 
         # Log RAG findings if they were used (placeholder for future RAG implementation)
         if rag_few_shot_examples_str:
-            app_logger.info(f"RAG Findings (few-shot examples) used:\n{rag_few_shot_examples_str}")
+            print(f"RAG Findings (few-shot examples) used:\n{rag_few_shot_examples_str}")
 
-        app_logger.info(
+        app_logger.debug(
             f"\n--- Meta-Planner Turn ---\n"
             f"** CONTEXT **\n"
             f"Original User Input: {self.executor.original_user_input}\n"

@@ -21,14 +21,15 @@ RAG_CASES_TEST_DIR.mkdir(parents=True, exist_ok=True)
 PERSIST_TEST_DIR.mkdir(parents=True, exist_ok=True)
 
 # Helper function to create dummy RAG case files
-def create_dummy_rag_case(case_id: str, user_query: str, strategy_type: str, phases: list = None, error_summary: str = None):
+def create_dummy_rag_case(case_id: str, user_query: str, strategy_type: str, phases: list = None, error_summary: str = None, is_most_efficient: bool = False):
     case_data = {
         "case_id": case_id,
         "metadata": {
             "session_id": f"session_{case_id}",
             "turn_id": 1,
             "is_success": strategy_type == "successful",
-            "timestamp": "2025-01-01T00:00:00+00:00"
+            "timestamp": "2025-01-01T00:00:00+00:00",
+            "is_most_efficient": is_most_efficient
         },
         "intent": {"user_query": user_query}
     }
@@ -56,6 +57,7 @@ def setup_and_teardown_rag_cases():
     create_dummy_rag_case("case_4", "how many rows in 'products' table", "successful", phases=[{"phase": 1, "goal": "count rows", "tool": "base_rowCount"}])
     create_dummy_rag_case("case_5", "tell me a joke", "conversational")
     create_dummy_rag_case("case_6", "list tables in 'non_existent_db'", "failed", error_summary="Database not found")
+    create_dummy_rag_case("case_5d2f685f-7467-5864-b22a-82d9b4d7ffcd", "how many databases are on the system?", "successful", is_most_efficient=True)
 
     yield # Run tests
 
@@ -76,7 +78,7 @@ def rag_retriever_instance():
     )
     # Ensure the collection is empty before each test
     retriever.collection.delete(ids=retriever.collection.get()["ids"])
-    retriever._load_and_process_cases() # Reload cases into the fresh collection
+    retriever.refresh_vector_store() # Reload cases into the fresh collection
 
     yield retriever
 
@@ -91,21 +93,21 @@ def test_rag_retriever_initialization(rag_retriever_instance):
 
 def test_rag_retriever_loads_cases_correctly(rag_retriever_instance):
     # Check if documents are added to the collection
-    results = rag_retriever_instance.collection.get(ids=["case_1", "case_2", "case_3", "case_4", "case_5", "case_6"])
-    assert len(results["ids"]) == 6
+    results = rag_retriever_instance.collection.get(ids=["case_1", "case_2", "case_3", "case_4", "case_5", "case_6", "case_5d2f685f-7467-5864-b22a-82d9b4d7ffcd"])
+    assert len(results["ids"]) == 7
     assert "list all tables in database 'test_db'" in results["metadatas"][0]["user_query"]
     assert "successful" in results["metadatas"][0]["strategy_type"]
 
 def test_rag_retriever_retrieves_relevant_successful_examples(rag_retriever_instance):
     query = "show me all the tables in my database"
-    examples = rag_retriever_instance.retrieve_examples(query, k=1, filter_successful=True)
+    examples = rag_retriever_instance.retrieve_examples(query, k=1, min_score=0.0)
     assert len(examples) == 1
     assert examples[0]["case_id"] == "case_1"
     assert "list all tables" in examples[0]["user_query"]
 
 def test_rag_retriever_retrieves_multiple_examples(rag_retriever_instance):
     query = "show me the schema or DDL for tables"
-    examples = rag_retriever_instance.retrieve_examples(query, k=2, filter_successful=True, min_score=0.0)
+    examples = rag_retriever_instance.retrieve_examples(query, k=2, min_score=0.0)
     assert len(examples) == 2
     # Check for presence of expected case IDs, order is not guaranteed
     case_ids = {ex["case_id"] for ex in examples}
@@ -114,15 +116,20 @@ def test_rag_retriever_retrieves_multiple_examples(rag_retriever_instance):
 
 def test_rag_retriever_filters_for_successful_cases(rag_retriever_instance):
     query = "tell me a funny story, but only if you have a successful strategy for it" # Even more distinct query
-    examples = rag_retriever_instance.retrieve_examples(query, k=1, filter_successful=True)
+    examples = rag_retriever_instance.retrieve_examples(query, k=1)
     assert len(examples) == 0 # Should not return conversational if filtering for successful
 
-def test_rag_retriever_does_not_filter_if_filter_successful_is_false(rag_retriever_instance):
+def test_rag_retriever_filters_out_non_successful_cases(rag_retriever_instance):
     query = "tell me a joke"
-    examples = rag_retriever_instance.retrieve_examples(query, k=1, filter_successful=False)
+    examples = rag_retriever_instance.retrieve_examples(query, k=1)
+    assert len(examples) == 0 # Should not return conversational if filtering for successful
+
+def test_rag_retriever_retrieves_most_efficient_case(rag_retriever_instance):
+    query = "how many databases are on the system?"
+    examples = rag_retriever_instance.retrieve_examples(query, k=1, min_score=0.0)
     assert len(examples) == 1
-    assert examples[0]["case_id"] == "case_5"
-    assert "conversational" in examples[0]["full_case_data"]["conversational_response"]["summary"]
+    assert examples[0]["case_id"] == "case_5d2f685f-7467-5864-b22a-82d9b4d7ffcd"
+    assert examples[0]["full_case_data"]["metadata"]["is_most_efficient"] is True
 
 # Removed test_rag_retriever_format_few_shot_example as it tests a private method directly.
 

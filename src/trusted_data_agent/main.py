@@ -45,7 +45,7 @@ root_logger.setLevel(logging.INFO)
 
 app_logger = logging.getLogger("quart.app")
 # --- MODIFICATION START: Set Quart App Logger Level to INFO ---
-app_logger.setLevel(logging.INFO) # Ensures quart.app messages (like ours) are shown
+app_logger.setLevel(logging.WARNING) # Ensures quart.app messages (like ours) are shown
 # app_logger.setLevel(logging.DEBUG)
 # --- MODIFICATION END ---
 app_logger.addHandler(handler)

@@ -14,6 +14,7 @@ src/trusted_data_agent/agent/orchestrators.py
 src/trusted_data_agent/agent/phase_executor.py
 src/trusted_data_agent/agent/planner.py
 src/trusted_data_agent/agent/prompts.py
+src/trusted_data_agent/agent/rag_retriever.py
 src/trusted_data_agent/agent/response_models.py
 src/trusted_data_agent/api/__init__.py
 src/trusted_data_agent/api/rest_routes.py
