@@ -132,6 +132,8 @@ class PlanExecutor:
         # --- MODIFICATION START: Store task_id ---
         self.task_id = task_id
         # --- MODIFICATION END ---
+        self.turn_input_tokens = 0
+        self.turn_output_tokens = 0
 
 
     def _log_system_event(self, event_data: dict, event_name: str = None):
@@ -190,6 +192,9 @@ class PlanExecutor:
         # --- MODIFICATION START: Update session_manager with actual provider/model ---
         session_manager.update_models_used(self.user_uuid, self.session_id, actual_provider, actual_model)
         # --- MODIFICATION END ---
+
+        self.turn_input_tokens += statement_input_tokens
+        self.turn_output_tokens += statement_output_tokens
 
         return response_text, statement_input_tokens, statement_output_tokens
 
@@ -715,7 +720,9 @@ class PlanExecutor:
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "provider": self.current_provider, # Add snapshot of provider
                     "model": self.current_model,       # Add snapshot of model
-                    "task_id": self.task_id            # Add the task_id
+                    "task_id": self.task_id,            # Add the task_id
+                    "turn_input_tokens": self.turn_input_tokens,
+                    "turn_output_tokens": self.turn_output_tokens
                 }
                 # --- MODIFICATION END ---
                 session_manager.update_last_turn_data(self.user_uuid, self.session_id, turn_summary)

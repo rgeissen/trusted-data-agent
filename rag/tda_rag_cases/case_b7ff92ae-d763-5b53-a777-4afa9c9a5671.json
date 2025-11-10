@@ -1,0 +1,23 @@
+{
+  "case_id": "b7ff92ae-d763-5b53-a777-4afa9c9a5671",
+  "metadata": {
+    "session_id": "9df49370-fa4c-4a99-9213-cfd7939a052b",
+    "turn_id": 1,
+    "is_success": true,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-10T12:39:23.911576+00:00",
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "input_tokens": 10969,
+      "output_tokens": 43
+    }
+  },
+  "intent": {
+    "user_query": "hello"
+  },
+  "conversational_response": {
+    "summary": "I'm doing well, thank you for asking! How can I help you with your Teradata database system today?"
+  }
+}
