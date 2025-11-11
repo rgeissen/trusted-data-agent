@@ -1,0 +1,61 @@
+{
+  "case_id": "fa4235d3-c54d-5ba5-ac95-1a2b970d5bd4",
+  "metadata": {
+    "session_id": "bc22debf-2cc0-4898-82ec-ff5b050c15ca",
+    "turn_id": 1,
+    "is_success": true,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-11T15:59:29.016035+00:00",
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "input_tokens": 8120,
+      "output_tokens": 201
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 3,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1,
+        "3": 1
+      },
+      "total_steps": 3
+    }
+  },
+  "intent": {
+    "user_query": "is there a demo database on the system?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "List all databases in the Teradata System.",
+        "relevant_tools": [
+          "base_databaseList"
+        ],
+        "arguments": {}
+      },
+      {
+        "phase": 2,
+        "goal": "Filter the list of databases to find one related to 'demo'.",
+        "relevant_tools": [
+          "TDA_LLMFilter"
+        ],
+        "arguments": {
+          "goal": "Find the database related to 'demo'",
+          "data_to_filter": "result_of_phase_1"
+        }
+      },
+      {
+        "phase": 3,
+        "goal": "Generate the final report based on whether a 'demo' database was found.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

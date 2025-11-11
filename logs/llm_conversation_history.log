@@ -1,23 +1,13 @@
-2025-11-11 16:18:16,977 - --- FULL CONTEXT (User: b3c96f52-ba56-46e6-93a2-6058b0c19958, Session: 9b39c988-5682-4825-9a35-2f9d9fa9ae4d) ---
+2025-11-11 17:03:37,374 - --- FULL CONTEXT (User: b3c96f52-ba56-46e6-93a2-6058b0c19958, Session: 17b38c23-4cff-4641-813d-0c5ab9e0e8e4) ---
 --- REASON FOR CALL ---
-Generating a strategic meta-plan for the goal: 'is there a demo database on the system?'
+Generating a strategic meta-plan for the goal: 'is there a fitness_db databases on the system?'
 
 --- History (History Disabled for LLM Call: False) ---
 {
   "chat_history": [
     {
       "role": "user",
-      "content": "You are a helpful assistant.",
-      "turn_number": 0
-    },
-    {
-      "role": "model",
-      "content": "Understood.",
-      "turn_number": 0
-    },
-    {
-      "role": "user",
-      "content": "is there a demo database on the system?",
+      "content": "is there a fitness_db databases on the system?",
       "isValid": true,
       "turn_number": 1
     }
@@ -45,28 +35,6 @@ To select the correct capability, you MUST follow this two-step process, governe
 **CRITICAL RULE: Follow this strict hierarchy for capability selection:**
 1.  **Prioritize Pre-defined Analysis/Reports (Prompts):** If the user's request is for an **analysis, description, or summary** that is a strong semantic match for an available `prompt`, you **MUST** select that `prompt_name`. Prompts are the preferred method for generating these pre-defined analytical outputs.
 2.  **Default to Direct Actions (Tools):** If no analytical prompt is a direct match, or if the user's request is a direct command (e.g., "list...", "count...", "show me..."), you **MUST** treat the request as a direct action. Select the most specific `tool_name` that fulfills this action.
-
-**CRITICAL RULE (Planner Efficiency):** You **MUST NOT** create a multi-phase plan using tools if the user's goal can be fully achieved by a single, available prompt. If a prompt exists that matches the user's request for an analysis or report, you **MUST** call that prompt directly. Do not create a plan that manually replicates the function of an existing prompt.
-
-# Few-Shot Examples
-Here are examples of the correct thinking process:
-
-**Example 1: Direct Action Request**
-- **User Query:** "what is the quality of table 'online' in database 'DEMO_Customer360_db'?"
-- **Thought Process:**
-    1. The user's request is about "quality," but it's a direct question, not a request for a broad "description" or "summary." No prompt for a pre-defined analysis is a perfect match.
-    2. Therefore, I move to step 2 of my critical rule: treat this as a direct action.
-    3. The user's query is about a **table**. I must choose a table-level tool.
-    4. The `qlty_columnSummary` tool takes a `table_name` and is the most specific, correct choice for this direct action.
-- **Correct Response:** `{{"tool_name": "qlty_columnSummary", "arguments": {{"database_name": "DEMO_Customer360_db", "table_name": "online"}}}}`
-
-**Example 2: Pre-defined Analysis Request**
-- **User Query:** "describe the business purpose of the 'DEMO_Customer360_db' database"
-- **Thought Process:**
-    1. The user's request is for a "business purpose" description, which is a pre-defined analysis. I will check for a matching prompt first.
-    2. The `generic_database_analysis_prompt` is described as being for this exact purpose. It is a strong semantic match.
-    3. According to my critical rule, I **MUST** select this prompt. I am forbidden from creating a multi-step plan to get the DDL and then summarize it.
-- **Correct Response:** `{{"prompt_name": "generic_database_analysis_prompt", "arguments": {{"database_name": "DEMO_Customer360_db"}}}}`
 
 # Best Practices
 - **Context is Key:** Always use information from previous turns to fill in arguments like `database_name` or `table_name`.
@@ -135,13 +103,14 @@ Here are examples of the correct thinking process:
 
 # Capabilities
 --- Available Tools ---
---- Category: Charting ---
-- `TDA_Charting` (tool): Generates a data visualization based on provided data. You must specify the chart type and map the data fields to the appropriate visual roles.
+--- Category: Data Access ---
+- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
-    - `chart_type` (string, required): The type of chart to generate (e.g., 'bar', 'pie', 'line', 'scatter'). This MUST be one of the types listed in the 'Charting Guidelines'.
-    - `data` (list[dict], required): The data to be visualized, passed directly from the output of another tool.
-    - `title` (string, required): A descriptive title for the chart.
-    - `mapping` (dict, required): A dictionary that maps data keys to chart axes or roles (e.g., {'x_axis': 'product_name', 'y_axis': 'sales_total'}). The required keys for this mapping depend on the selected chart_type.
+    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
+- `base_tablePreview` (tool): This function returns data sample and inferred structure from a database table or view via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+  - Arguments:
+    - `table_name` (string, required): table or view name
+    - `database_name` (string, optional): Database name
 --- Category: Data Quality ---
 - `qlty_columnSummary` (tool): Get the column summary statistics for a table.
   - Arguments:
@@ -176,77 +145,16 @@ Here are examples of the correct thinking process:
     - `table_name` (string, required): table name to analyze
     - `column_name` (string, required): column name to analyze
 --- Category: Database Information ---
-- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
+- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
-    - `database_name` (string, required): database name
+    - `database_name` (string, required): Database name
+    - `obj_name` (string, required): table or view name
 - `base_databaseList` (tool): 
 Lists all databases in the Teradata System.
 
 Returns:
   ResponseType: formatted response with query results + metadata
 
-- `dba_databaseVersion` (tool):  Get Teradata database version information.
-- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
---- Category: Performance ---
-- `dba_resusageSummary` (tool): Get the Teradata system usage summary metrics by weekday and hour for each workload type and query complexity bucket.
-  - Arguments:
-    - `dimensions` (array, optional): list of dimensions to aggregate the resource usage summary. All dimensions are: ["LogDate", "hourOfDay", "dayOfWeek", "workloadType", "workloadComplexity", "UserName", "AppId"]
-    - `user_name` (string, optional): user name
-    - `date` (string, optional): Date to analyze, formatted as `YYYY-MM-DD`
-    - `dayOfWeek` (string, optional): day of the week to analyze
-    - `hourOfDay` (string, optional): hour of day to analyze
-    - `workloadType` (string, optional): workload type to analyze, example: 'LOAD', 'ETL/ELT', 'EXPORT', 'QUERY', 'ADMIN', 'OTHER'
-    - `workloadComplexity` (string, optional): workload complexity to analyze, example: 'Ingest & Prep', 'Answers', 'System/Procedural'
-    - `AppId` (string, optional): Application ID to analyze, example: 'TPTLOAD%', 'TPTUPD%', 'FASTLOAD%', 'MULTLOAD%', 'EXECUTOR%', 'JDBC%'
-- `dba_flowControl` (tool): Get the Teradata flow control metrics for a specified date range.
-  - Arguments:
-    - `start_date` (string, required): No description.
-    - `end_date` (string, required): No description.
-- `dba_userDelay` (tool): Get the Teradata user delay metrics for a specified date range.
-  - Arguments:
-    - `start_date` (string, required): No description.
-    - `end_date` (string, required): No description.
---- Category: Reporting ---
-- `TDA_ContextReport` (tool): The History First Shortcut. This tool MUST be used for a single-phase plan if, and only if, the user's question can be answered entirely from the existing Workflow History. It bypasses all data gathering. Do NOT use this tool if you need to gather new data.
-  - Arguments:
-    - `answer_from_context` (string, required): The final, synthesized natural language answer, provided directly by the planner when it has confidently answered the user's question from the conversation history.
-- `TDA_FinalReport` (tool): The Data Summarization Tool. This tool MUST be the final phase of a multi-step plan to synthesize the results from all previous data-gathering phases into a final report. Do NOT use this tool in a single-phase plan or as a first step.
---- Category: SQL Management ---
-- `dba_tableSqlList` (tool): Get a list of SQL run against a table in the last number of days.
-  - Arguments:
-    - `table_name` (string, required): table name
-    - `no_days` (integer, optional): number of days
-- `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
-  - Arguments:
-    - `user_name` (string, required): user name
-    - `no_days` (integer, optional): number of days
-- `base_readQuery` (tool): Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `sql` (string, optional): SQL text, with optional bind-parameter placeholders
---- Category: Security ---
-- `sec_rolePermissions` (tool): Get permissions for a role.
-  - Arguments:
-    - `role_name` (string, required): role name to analyze
-- `sec_userDbPermissions` (tool): Get permissions for a user.
-  - Arguments:
-    - `user_name` (string, required): user name to analyze
-- `sec_userRoles` (tool): Get roles assigned to a user.
-  - Arguments:
-    - `user_name` (string, required): user name to analyze
---- Category: Session Management ---
-- `dba_sessionInfo` (tool): Get the Teradata session information for user.
-  - Arguments:
-    - `user_name` (string, required): No description.
---- Category: Table Information ---
-- `base_columnDescription` (tool): Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
-  - Arguments:
-    - `database_name` (string, required): Database name
-    - `obj_name` (string, required): table or view name
---- Category: Table Management ---
-- `dba_tableSpace` (tool): Get table space used for a table if table name is provided or get table space for all tables in a database if a database name is provided."
-  - Arguments:
-    - `database_name` (string, optional): database name
-    - `table_name` (string, optional): table name
 - `base_tableAffinity` (tool): Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, required): Database name
@@ -258,22 +166,72 @@ Returns:
 - `base_tableList` (tool): Lists all tables in a database.
   - Arguments:
     - `database_name` (string, optional): Database name
-- `base_tablePreview` (tool): This function returns data sample and inferred structure from a database table or view via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
+- `dba_databaseVersion` (tool):  Get Teradata database version information.
+--- Category: Database Monitoring ---
+- `dba_databaseSpace` (tool): Get database space if database name is provided, otherwise get all databases space allocations.
   - Arguments:
-    - `table_name` (string, required): table or view name
-    - `database_name` (string, optional): Database name
---- Category: Usage Analysis ---
+    - `database_name` (string, required): database name
+- `dba_resusageSummary` (tool): Get the Teradata system usage summary metrics by weekday and hour for each workload type and query complexity bucket.
+  - Arguments:
+    - `dimensions` (array, optional): list of dimensions to aggregate the resource usage summary. All dimensions are: ["LogDate", "hourOfDay", "dayOfWeek", "workloadType", "workloadComplexity", "UserName", "AppId"]
+    - `user_name` (string, optional): user name
+    - `date` (string, optional): Date to analyze, formatted as `YYYY-MM-DD`
+    - `dayOfWeek` (string, optional): day of the week to analyze
+    - `hourOfDay` (string, optional): hour of day to analyze
+    - `workloadType` (string, optional): workload type to analyze, example: 'LOAD', 'ETL/ELT', 'EXPORT', 'QUERY', 'ADMIN', 'OTHER'
+    - `workloadComplexity` (string, optional): workload complexity to analyze, example: 'Ingest & Prep', 'Answers', 'System/Procedural'
+    - `AppId` (string, optional): Application ID to analyze, example: 'TPTLOAD%', 'TPTUPD%', 'FASTLOAD%', 'MULTLOAD%', 'EXECUTOR%', 'JDBC%'
+- `dba_tableSpace` (tool): Get table space used for a table if table name is provided or get table space for all tables in a database if a database name is provided."
+  - Arguments:
+    - `database_name` (string, optional): database name
+    - `table_name` (string, optional): table name
+- `dba_tableSqlList` (tool): Get a list of SQL run against a table in the last number of days.
+  - Arguments:
+    - `table_name` (string, required): table name
+    - `no_days` (integer, optional): number of days
 - `dba_tableUsageImpact` (tool): Measure the usage of a table and views by users, this is helpful to understand what user and tables are driving most resource usage at any point in time.
   - Arguments:
     - `database_name` (string, optional): database name to analyze
     - `user_name` (string, optional): user name to analyze
+- `dba_userSqlList` (tool): Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.
+  - Arguments:
+    - `user_name` (string, required): user name
+    - `no_days` (integer, optional): number of days
 - `base_tableUsage` (tool): Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.
   - Arguments:
     - `database_name` (string, optional): Database name
+- `dba_flowControl` (tool): Get the Teradata flow control metrics for a specified date range.
+  - Arguments:
+    - `start_date` (string, required): No description.
+    - `end_date` (string, required): No description.
 - `dba_featureUsage` (tool): Get the user feature usage metrics for a specified date range.
   - Arguments:
     - `start_date` (string, required): No description.
     - `end_date` (string, required): No description.
+- `dba_userDelay` (tool): Get the Teradata user delay metrics for a specified date range.
+  - Arguments:
+    - `start_date` (string, required): No description.
+    - `end_date` (string, required): No description.
+- `dba_sessionInfo` (tool): Get the Teradata session information for user.
+  - Arguments:
+    - `user_name` (string, required): No description.
+- `dba_systemSpace` (tool): Get the Teradata total system database space usage.
+--- Category: RAG ---
+- `TDA_ContextReport` (tool): The History First Shortcut. This tool MUST be used for a single-phase plan if, and only if, the user's question can be answered entirely from the existing Workflow History. It bypasses all data gathering. Do NOT use this tool if you need to gather new data.
+  - Arguments:
+    - `answer_from_context` (string, required): The final, synthesized natural language answer, provided directly by the planner when it has confidently answered the user's question from the conversation history.
+--- Category: Reporting ---
+- `TDA_FinalReport` (tool): The Data Summarization Tool. This tool MUST be the final phase of a multi-step plan to synthesize the results from all previous data-gathering phases into a final report. Do NOT use this tool in a single-phase plan or as a first step.
+--- Category: Security ---
+- `sec_rolePermissions` (tool): Get permissions for a role.
+  - Arguments:
+    - `role_name` (string, required): role name to analyze
+- `sec_userDbPermissions` (tool): Get permissions for a user.
+  - Arguments:
+    - `user_name` (string, required): user name to analyze
+- `sec_userRoles` (tool): Get roles assigned to a user.
+  - Arguments:
+    - `user_name` (string, required): user name to analyze
 --- Category: Utilities ---
 - `tmpl_nameOfTool` (tool): <description of what the tool is for>
   - Arguments:
@@ -292,15 +250,21 @@ Returns:
     - `task_description` (string, required): A natural language description of the internal task to be executed (e.g., 'describe the table in a business context', 'format final output'). The LLM infers this from the workflow plan.
     - `source_data` (list[string], required): A list of keys (e.g., 'result_of_phase_1') identifying which data from the workflow history is relevant for this task. This is critical for providing the correct context.
     - `synthesized_answer` (string, optional): The final, synthesized natural language answer, provided directly by the planner when it can confidently answer from history.
+--- Category: Visualization ---
+- `TDA_Charting` (tool): Generates a data visualization based on provided data. You must specify the chart type and map the data fields to the appropriate visual roles.
+  - Arguments:
+    - `chart_type` (string, required): The type of chart to generate (e.g., 'bar', 'pie', 'line', 'scatter'). This MUST be one of the types listed in the 'Charting Guidelines'.
+    - `data` (list[dict], required): The data to be visualized, passed directly from the output of another tool.
+    - `title` (string, required): A descriptive title for the chart.
+    - `mapping` (dict, required): A dictionary that maps data keys to chart axes or roles (e.g., {'x_axis': 'product_name', 'y_axis': 'sales_total'}). The required keys for this mapping depend on the selected chart_type.
 --- Available Prompts ---
---- Category: RAG ---
-- `tdvs_rag_prompt` (prompt): Prompt for Teradata Enterprise Vector Store and RAG (Retrieval Augmented Generation) based operations.
---- Category: SQL Management ---
+--- Category: Data Access ---
 - `base_teradataQuery` (prompt): A Teradata SQL expert that effectively solves problems understanding teradata specific SQL syntax.
   - Arguments:
     - `query` (str, required): The problem or question that needs to be solved using Teradata SQL syntax.
---- Category: Vector Store ---
+--- Category: RAG ---
 - `tdvs_tools_prompt` (prompt): Main prompt for Teradata Enterprise Vector Store operations.
+- `tdvs_rag_prompt` (prompt): Prompt for Teradata Enterprise Vector Store and RAG (Retrieval Augmented Generation) based operations.
 
 
 USER PROMPT:
@@ -420,6 +384,46 @@ CRITICAL RULE (Analytical Prompt Expansion): When you are creating a new plan to
   ```
 
 
+
+### RAG Example (Case ID: case_dcfa1b45-0777-55d1-9b9c-94d5f011cdb0)
+- **User Goal**: "is there a fitness_db database on the system?"
+- **Thought Process**:
+  1. The user's request is similar to a past interaction.
+  2. Retrieved RAG case `case_dcfa1b45-0777-55d1-9b9c-94d5f011cdb0` demonstrates a successful strategy for this type of query.
+- **Correct Plan**:
+```json
+[
+  {
+    "phase": 1,
+    "goal": "List all databases in the system to check for the existence of 'fitness_db'.",
+    "relevant_tools": [
+      "base_databaseList"
+    ],
+    "arguments": {}
+  },
+  {
+    "phase": 2,
+    "goal": "Filter the list of databases to find the database named 'fitness_db'.",
+    "relevant_tools": [
+      "TDA_LLMFilter"
+    ],
+    "arguments": {
+      "goal": "Find the database named 'fitness_db'.",
+      "data_to_filter": "result_of_phase_1"
+    }
+  },
+  {
+    "phase": 3,
+    "goal": "Report whether the database 'fitness_db' exists based on the filtering result.",
+    "relevant_tools": [
+      "TDA_FinalReport"
+    ],
+    "arguments": {}
+  }
+]
+```
+
+
 ---
 ### Plan JSON Structure
 Your output **MUST** be a single, valid JSON array of phase objects. Each object must follow this structure:
@@ -434,9 +438,9 @@ Your output **MUST** be a single, valid JSON array of phase objects. Each object
 
 ---
 ### Context for this Plan
--   Overall Goal: `is there a demo database on the system?`
+-   Overall Goal: `is there a fitness_db databases on the system?`
 -   Explicit Parameters: 
--   User's Original Input: `is there a demo database on the system?`
+-   User's Original Input: `is there a fitness_db databases on the system?`
 -   Workflow History: `{
   "workflow_history": []
 }`
@@ -446,27 +450,17 @@ Your output **MUST** be a single, valid JSON array of phase objects. Each object
 Your response MUST be a single, valid JSON list of phase objects. Do NOT add any extra text, conversation, or markdown.
 
 
-2025-11-11 16:18:19,071 - --- FULL CONTEXT (User: b3c96f52-ba56-46e6-93a2-6058b0c19958, Session: 9b39c988-5682-4825-9a35-2f9d9fa9ae4d) ---
+2025-11-11 17:03:41,119 - --- FULL CONTEXT (User: b3c96f52-ba56-46e6-93a2-6058b0c19958, Session: 17b38c23-4cff-4641-813d-0c5ab9e0e8e4) ---
 --- REASON FOR CALL ---
 Client-Side Tool Call: TDA_LLMFilter
-Goal: Find the database with 'demo' in its name.
+Goal: Find the database named 'fitness_db'.
 
 --- History (History Disabled for LLM Call: False) ---
 {
   "chat_history": [
     {
       "role": "user",
-      "content": "You are a helpful assistant.",
-      "turn_number": 0
-    },
-    {
-      "role": "model",
-      "content": "Understood.",
-      "turn_number": 0
-    },
-    {
-      "role": "user",
-      "content": "is there a demo database on the system?",
+      "content": "is there a fitness_db databases on the system?",
       "isValid": true,
       "turn_number": 1
     }
@@ -481,7 +475,7 @@ USER PROMPT:
 You are an expert data extraction assistant. Your task is to find a single, specific item within a list of JSON objects that matches a given goal.
 
 --- GOAL ---
-Find the database with 'demo' in its name.
+Find the database named 'fitness_db'.
 
 --- DATA LIST ---
 [
@@ -881,27 +875,17 @@ Find the database with 'demo' in its name.
 
 Example: If you extract the database name 'fitness_db', your response must be exactly `fitness_db` and nothing else.
 
-2025-11-11 16:18:19,948 - --- FULL CONTEXT (User: b3c96f52-ba56-46e6-93a2-6058b0c19958, Session: 9b39c988-5682-4825-9a35-2f9d9fa9ae4d) ---
+2025-11-11 17:03:41,497 - --- FULL CONTEXT (User: b3c96f52-ba56-46e6-93a2-6058b0c19958, Session: 17b38c23-4cff-4641-813d-0c5ab9e0e8e4) ---
 --- REASON FOR CALL ---
 Client-Side Tool Call: TDA_FinalReport
-Goal: is there a demo database on the system?
+Goal: is there a fitness_db databases on the system?
 
 --- History (History Disabled for LLM Call: False) ---
 {
   "chat_history": [
     {
       "role": "user",
-      "content": "You are a helpful assistant.",
-      "turn_number": 0
-    },
-    {
-      "role": "model",
-      "content": "Understood.",
-      "turn_number": 0
-    },
-    {
-      "role": "user",
-      "content": "is there a demo database on the system?",
+      "content": "is there a fitness_db databases on the system?",
       "isValid": true,
       "turn_number": 1
     }
@@ -916,12 +900,12 @@ USER PROMPT:
 You are an expert data analyst. Your task is to create a final report for the user by analyzing the provided data and their original question.
 
 --- USER'S ORIGINAL QUESTION ---
-is there a demo database on the system?
+is there a fitness_db databases on the system?
 
 --- DATA FOR ANALYSIS ---
 {
-  "original_user_input": "is there a demo database on the system?",
-  "workflow_goal_prompt": "is there a demo database on the system?",
+  "original_user_input": "is there a fitness_db databases on the system?",
+  "workflow_goal_prompt": "is there a fitness_db databases on the system?",
   "result_of_phase_1": [
     {
       "status": "success",
@@ -1312,7 +1296,7 @@ is there a demo database on the system?
     {
       "status": "success",
       "metadata": {
-        "call_id": "e065884b-d45d-40bb-b51e-3b2c9e7f937b",
+        "call_id": "057b8f99-ec09-4dac-b956-405aa357222f",
         "tool_name": "TDA_LLMFilter"
       },
       "results": [
@@ -1333,7 +1317,7 @@ You are required to populate its fields based on your analysis of the data provi
 2.  `key_metric`: OPTIONAL. Use ONLY if the answer can be summarized by a single, primary value (e.g., a total count, a status). Requires `value` (string) and `label` (string). Omit the entire field if not applicable.
 3.  `key_observations`: OPTIONAL. A list of objects, each with a `text` field containing a single, narrative bullet point of supporting detail or context. Do NOT include raw data or code.
 
-2025-11-11 16:18:21,416 - --- FULL CONTEXT (User: b3c96f52-ba56-46e6-93a2-6058b0c19958, Session: 9b39c988-5682-4825-9a35-2f9d9fa9ae4d) ---
+2025-11-11 17:03:43,108 - --- FULL CONTEXT (User: b3c96f52-ba56-46e6-93a2-6058b0c19958, Session: 17b38c23-4cff-4641-813d-0c5ab9e0e8e4) ---
 --- REASON FOR CALL ---
 Generating session name from initial query.
 
@@ -1349,7 +1333,7 @@ You generate short, descriptive titles. Only respond with the title text.
 USER PROMPT:
 Based on the following user query, generate a concise and descriptive name (3-5 words) suitable for a chat session history list. Do not include any punctuation or extra text.
 
-User Query: "is there a demo database on the system?"
+User Query: "is there a fitness_db databases on the system?"
 
 Session Name:
 

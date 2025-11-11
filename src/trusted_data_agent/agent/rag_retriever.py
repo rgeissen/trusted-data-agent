@@ -342,7 +342,13 @@ class RAGRetriever:
                                 compliant_phase["type"] = original_phase["type"]
                             if "loop_over" in original_phase:
                                 compliant_phase["loop_over"] = original_phase["loop_over"]
-                            compliant_phase["arguments"] = action.get("arguments", {})
+                            
+                            # --- MODIFICATION START: Get arguments from the original plan, not the resolved action ---
+                            # This saves the strategic placeholders (e.g., {"source": "result_of_phase_1"})
+                            # instead of the raw data.
+                            compliant_phase["arguments"] = original_phase.get("arguments", {})
+                            # --- MODIFICATION END ---
+                            
                             successful_actions_map[phase_num] = compliant_phase
                         else:
                             successful_actions_map[phase_num] = {

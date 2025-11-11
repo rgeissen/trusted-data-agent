@@ -664,6 +664,7 @@ Under the AGPLv3, you are free to use, modify, and distribute this software. How
 
 This list reflects the recent enhancements and updates to the Trusted Data Agent, as shown on the application's welcome screen.
 
+*   **11-Nov-2025:** Self-Improving AI (RAG)
 *   **06-Nov-2025:** UI Real-Time Monitoring of Rest Requests
 *   **31-Oct-2025:** Fully configurable Context Management (Turn & Session)
 *   **24-Oct-2025:** Turn Replay & Turn Reload Plan

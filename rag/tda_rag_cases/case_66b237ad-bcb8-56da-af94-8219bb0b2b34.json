@@ -1,0 +1,51 @@
+{
+  "case_id": "66b237ad-bcb8-56da-af94-8219bb0b2b34",
+  "metadata": {
+    "session_id": "dc22e876-9763-4247-b3a0-6e074812cc4d",
+    "turn_id": 3,
+    "is_success": true,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": true,
+    "timestamp": "2025-11-11T16:00:57.898068+00:00",
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "input_tokens": 18370,
+      "output_tokens": 307
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 2,
+        "2": 1
+      },
+      "total_steps": 3
+    }
+  },
+  "intent": {
+    "user_query": "what are the top 5 products based on revenue generated?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Retrieve the top 5 products based on revenue generated from the SaleDetails and Products tables in the fitness_db database.",
+        "relevant_tools": [
+          "base_readQuery"
+        ],
+        "arguments": {
+          "sql": "SELECT p.ProductID, p.ProductName, SUM(sd.Quantity * sd.UnitPrice) AS TotalRevenue FROM fitness_db.Products p JOIN fitness_db.SaleDetails sd ON p.ProductID = sd.ProductID GROUP BY p.ProductID, p.ProductName ORDER BY TotalRevenue DESC LIMIT 5;"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}
