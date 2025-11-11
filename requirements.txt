@@ -10,3 +10,4 @@ openai
 cryptography
 google.cloud
 google-cloud-texttospeech
+chromadb
