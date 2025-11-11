@@ -31,16 +31,20 @@
       {
         "phase": 1,
         "goal": "Get a list of all tables in the 'fitnes_db' database.",
-        "tool": "base_tableList",
-        "key_arguments": {
+        "relevant_tools": [
+          "base_tableList"
+        ],
+        "arguments": {
           "database_name": "fitnes_db"
         }
       },
       {
         "phase": 3,
         "goal": "Generate the final report based on the data gathered.",
-        "tool": "TDA_FinalReport",
-        "key_arguments": {}
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
       }
     ]
   }

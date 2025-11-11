@@ -1,31 +1,32 @@
 {
-  "case_id": "363aac8f-7d21-5272-a902-69c5fea50243",
+  "case_id": "6ca36874-2275-5162-925d-f0e637d31d44",
   "metadata": {
-    "session_id": "eac1f5d4-0fd3-459e-b921-57e1a0f77a2a",
+    "session_id": "8f901faa-a5b9-415a-9c5d-719331a21cef",
     "turn_id": 1,
     "is_success": true,
     "had_plan_improvements": false,
-    "had_tactical_improvements": false,
-    "timestamp": "2025-11-11T07:46:13.478726+00:00",
+    "had_tactical_improvements": true,
+    "timestamp": "2025-11-11T12:03:38.600261+00:00",
     "llm_config": {
       "provider": "Friendli",
       "model": "google/gemma-3-27b-it",
-      "input_tokens": 8390,
-      "output_tokens": 251
+      "input_tokens": 41324,
+      "output_tokens": 743
     },
-    "is_most_efficient": true,
+    "is_most_efficient": false,
     "strategy_metrics": {
-      "phase_count": 3,
+      "phase_count": 4,
       "steps_per_phase": {
         "1": 1,
         "2": 5,
-        "3": 1
+        "3": 1,
+        "4": 1
       },
-      "total_steps": 7
+      "total_steps": 8
     }
   },
   "intent": {
-    "user_query": "educate yourself on the table ddls of fitness_Db"
+    "user_query": "educate yourself on the tables in fitness_db?"
   },
   "successful_strategy": {
     "phases": [
@@ -49,12 +50,19 @@
         "loop_over": "result_of_phase_1",
         "arguments": {
           "database_name": "fitness_db",
-          "table_name": "Customers",
-          "TableName": "Customers"
+          "table_name": "Customers"
         }
       },
       {
         "phase": 3,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      },
+      {
+        "phase": 4,
         "goal": "Generate the final report based on the data gathered.",
         "relevant_tools": [
           "TDA_FinalReport"

@@ -1,17 +1,17 @@
 {
-  "case_id": "a6a4271d-8ccc-5fd5-9561-ff9a070d03d9",
+  "case_id": "0761e0e2-2202-59b4-aa85-a9c7f055ba56",
   "metadata": {
-    "session_id": "6007e818-b349-4817-b473-082bb1a8f77f",
-    "turn_id": 1,
+    "session_id": "f6c430f8-7811-404b-8152-d5cf5c862297",
+    "turn_id": 3,
     "is_success": true,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-11-11T07:54:44.716032+00:00",
+    "timestamp": "2025-11-11T12:03:09.500648+00:00",
     "llm_config": {
-      "provider": "Google",
-      "model": "gemini-2.0-flash",
-      "input_tokens": 8475,
-      "output_tokens": 203
+      "provider": "Friendli",
+      "model": "google/gemma-3-27b-it",
+      "input_tokens": 11653,
+      "output_tokens": 204
     },
     "is_most_efficient": true,
     "strategy_metrics": {
@@ -24,7 +24,7 @@
     }
   },
   "intent": {
-    "user_query": "what are my top 5 customers based on revenue generated using the tables in fitness_db?"
+    "user_query": "what are the top 5 customers by revenue generated?"
   },
   "successful_strategy": {
     "phases": [

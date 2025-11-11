@@ -32,8 +32,10 @@
       {
         "phase": 1,
         "goal": "Retrieve system utilization data for the past 3 days, including the Total AMPCPUTime to generate the bar chart.",
-        "tool": "dba_resusageSummary",
-        "key_arguments": {
+        "relevant_tools": [
+          "dba_resusageSummary"
+        ],
+        "arguments": {
           "dimensions": [
             "LogDate"
           ]
@@ -42,8 +44,10 @@
       {
         "phase": 3,
         "goal": "Generate the final report based on the data gathered.",
-        "tool": "TDA_FinalReport",
-        "key_arguments": {}
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
       }
     ]
   }

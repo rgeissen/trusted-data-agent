@@ -1,16 +1,16 @@
 {
-  "case_id": "363aac8f-7d21-5272-a902-69c5fea50243",
+  "case_id": "86a43258-97a2-5d67-814c-4af0f0ba95c1",
   "metadata": {
-    "session_id": "eac1f5d4-0fd3-459e-b921-57e1a0f77a2a",
+    "session_id": "fa0b2626-f3ad-4523-a7fe-ec7a3e57e0da",
     "turn_id": 1,
     "is_success": true,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-11-11T07:46:13.478726+00:00",
+    "timestamp": "2025-11-11T11:08:25.208647+00:00",
     "llm_config": {
       "provider": "Friendli",
       "model": "google/gemma-3-27b-it",
-      "input_tokens": 8390,
+      "input_tokens": 8750,
       "output_tokens": 251
     },
     "is_most_efficient": true,
@@ -25,7 +25,7 @@
     }
   },
   "intent": {
-    "user_query": "educate yourself on the table ddls of fitness_Db"
+    "user_query": "educate yourself on the table ddls in fitness_Db"
   },
   "successful_strategy": {
     "phases": [

@@ -31,14 +31,18 @@
       {
         "phase": 1,
         "goal": "List all databases in the Teradata system.",
-        "tool": "base_databaseList",
-        "key_arguments": {}
+        "relevant_tools": [
+          "base_databaseList"
+        ],
+        "arguments": {}
       },
       {
         "phase": 2,
         "goal": "Generate the final report based on the list of databases.",
-        "tool": "TDA_FinalReport",
-        "key_arguments": {}
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
       }
     ]
   }

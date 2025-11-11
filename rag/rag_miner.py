@@ -164,7 +164,42 @@ class SessionMiner:
                     tool_name = action.get("tool_name")
                     if tool_name and tool_name != "TDA_SystemLog":
                         phase_num = action.get("metadata", {}).get("phase_number", 0)
-                        successful_actions_map[phase_num] = {"phase": phase_num, "tool": tool_name, "key_arguments": action.get("arguments", {})}
+                        
+                        # --- MODIFICATION START: Build a compliant phase object ---
+                        # Find the corresponding phase from the original plan to get all metadata
+                        original_phase = None
+                        if turn.get("original_plan"):
+                            for p in turn["original_plan"]:
+                                if isinstance(p, dict) and p.get("phase") == phase_num:
+                                    original_phase = p
+                                    break
+                        
+                        if original_phase:
+                            # Build a new, compliant phase structure
+                            compliant_phase = {
+                                "phase": phase_num,
+                                "goal": original_phase.get("goal", "Execute tool."),
+                                # Fix #2 and #3: Use 'relevant_tools' as a list and copy loop structure
+                                "relevant_tools": [tool_name]
+                            }
+                            if "type" in original_phase:
+                                compliant_phase["type"] = original_phase["type"]
+                            if "loop_over" in original_phase:
+                                compliant_phase["loop_over"] = original_phase["loop_over"]
+                            
+                            # Fix #1: Use 'arguments' key
+                            compliant_phase["arguments"] = action.get("arguments", {})
+                            
+                            successful_actions_map[phase_num] = compliant_phase
+                        else:
+                            # Fallback for safety (should not happen if plan exists)
+                            successful_actions_map[phase_num] = {
+                                "phase": phase_num, 
+                                "goal": "Goal not found in original plan.",
+                                "relevant_tools": [tool_name], 
+                                "arguments": action.get("arguments", {})
+                            }
+                        # --- MODIFICATION END ---
             
             case_study = {
                 "case_id": case_id,
@@ -189,12 +224,9 @@ class SessionMiner:
                 case_study["successful_strategy"] = {"phases": []}
                 for phase_num in sorted(successful_actions_map.keys()):
                     action_info = successful_actions_map[phase_num]
-                    original_goal = "Execute tool."
-                    if turn.get("original_plan"):
-                        for p in turn["original_plan"]:
-                            if isinstance(p, dict) and p.get("phase") == phase_num:
-                                original_goal = p.get("goal"); break
-                    case_study["successful_strategy"]["phases"].append({"phase": phase_num, "goal": original_goal, "tool": action_info['tool'], "key_arguments": action_info['key_arguments']})
+                    # --- MODIFICATION START: Append the new compliant phase object directly ---
+                    case_study["successful_strategy"]["phases"].append(action_info)
+                    # --- MODIFICATION END ---
                 
                 steps_per_phase = {}
                 total_steps = 0

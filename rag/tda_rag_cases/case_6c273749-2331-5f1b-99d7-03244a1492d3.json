@@ -32,16 +32,20 @@
       {
         "phase": 1,
         "goal": "Identify tables related to product sales and revenue in the fitness_db database to determine the top 5 products sold based on revenue generated.",
-        "tool": "base_tableList",
-        "key_arguments": {
+        "relevant_tools": [
+          "base_tableList"
+        ],
+        "arguments": {
           "database_name": "fitness_db"
         }
       },
       {
         "phase": 3,
         "goal": "Generate the final report summarizing the top 5 products sold based on revenue generated.",
-        "tool": "TDA_FinalReport",
-        "key_arguments": {}
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
       }
     ]
   }

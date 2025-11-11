@@ -31,14 +31,18 @@
       {
         "phase": 1,
         "goal": "Get the Teradata database version information.",
-        "tool": "dba_databaseVersion",
-        "key_arguments": {}
+        "relevant_tools": [
+          "dba_databaseVersion"
+        ],
+        "arguments": {}
       },
       {
         "phase": 2,
         "goal": "Generate the final report based on the data gathered.",
-        "tool": "TDA_FinalReport",
-        "key_arguments": {}
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
       }
     ]
   }

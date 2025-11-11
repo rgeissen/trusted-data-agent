@@ -32,16 +32,22 @@
       {
         "phase": 1,
         "goal": "Get a list of all tables in the 'fitness_db' database.",
-        "tool": "base_tableList",
-        "key_arguments": {
+        "relevant_tools": [
+          "base_tableList"
+        ],
+        "arguments": {
           "database_name": "fitness_db"
         }
       },
       {
         "phase": 2,
         "goal": "Loop through the list of tables and retrieve the DDL for each one.",
-        "tool": "base_tableDDL",
-        "key_arguments": {
+        "relevant_tools": [
+          "base_tableDDL"
+        ],
+        "type": "loop",
+        "loop_over": "result_of_phase_1",
+        "arguments": {
           "database_name": "fitness_db",
           "table_name": "Customers",
           "TableName": "Customers"
@@ -50,8 +56,10 @@
       {
         "phase": 3,
         "goal": "Generate the final report based on the data gathered.",
-        "tool": "TDA_FinalReport",
-        "key_arguments": {}
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
       }
     ]
   }

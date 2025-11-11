@@ -256,9 +256,27 @@ class Planner:
             return
 
         last_phase = self.executor.meta_plan[-1]
-        last_phase_tools = last_phase.get("relevant_tools", [])
-        is_already_finalized = any(tool in ["TDA_FinalReport", "TDA_ComplexPromptReport"] for tool in last_phase_tools)
+        
+        # --- MODIFICATION START: Make final report check robust to LLM key variations ---
+        # Check for the key 'relevant_tools' (list)
+        last_phase_tools_list = last_phase.get("relevant_tools", [])
+        # Also check for the key 'tool' (string), which the LLM used in the log
+        last_phase_tool_str = last_phase.get("tool")
+
+        is_already_finalized = (
+            any(tool in ["TDA_FinalReport", "TDA_ComplexPromptReport"] for tool in last_phase_tools_list) or
+            last_phase_tool_str in ["TDA_FinalReport", "TDA_ComplexPromptReport"]
+        )
+        # --- MODIFICATION END ---
+        
         is_synthesis_plan = any("TDA_ContextReport" in p.get("relevant_tools", []) for p in self.executor.meta_plan)
+
+        app_logger.debug(f"DEBUG: _ensure_final_report_phase - Current meta_plan: {self.executor.meta_plan}")
+        app_logger.debug(f"DEBUG: _ensure_final_report_phase - Last phase: {last_phase}")
+        app_logger.debug(f"DEBUG: _ensure_final_report_phase - Last phase tools list: {last_phase_tools_list}")
+        app_logger.debug(f"DEBUG: _ensure_final_report_phase - Last phase tool string: {last_phase_tool_str}")
+        app_logger.debug(f"DEBUG: _ensure_final_report_phase - is_already_finalized: {is_already_finalized}")
+        app_logger.debug(f"DEBUG: _ensure_final_report_phase - is_synthesis_plan: {is_synthesis_plan}")
 
         if is_already_finalized or is_synthesis_plan:
             return

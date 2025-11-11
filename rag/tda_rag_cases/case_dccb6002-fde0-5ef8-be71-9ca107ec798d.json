@@ -1,17 +1,17 @@
 {
-  "case_id": "a6a4271d-8ccc-5fd5-9561-ff9a070d03d9",
+  "case_id": "dccb6002-fde0-5ef8-be71-9ca107ec798d",
   "metadata": {
-    "session_id": "6007e818-b349-4817-b473-082bb1a8f77f",
-    "turn_id": 1,
+    "session_id": "b209b8cd-2e37-4b5c-96c0-c68a0464aacf",
+    "turn_id": 4,
     "is_success": true,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-11-11T07:54:44.716032+00:00",
+    "timestamp": "2025-11-11T11:38:36.201422+00:00",
     "llm_config": {
       "provider": "Google",
       "model": "gemini-2.0-flash",
-      "input_tokens": 8475,
-      "output_tokens": 203
+      "input_tokens": 12195,
+      "output_tokens": 197
     },
     "is_most_efficient": true,
     "strategy_metrics": {
@@ -24,13 +24,13 @@
     }
   },
   "intent": {
-    "user_query": "what are my top 5 customers based on revenue generated using the tables in fitness_db?"
+    "user_query": "what are my top 5 customers based on revenue generated?"
   },
   "successful_strategy": {
     "phases": [
       {
         "phase": 1,
-        "goal": "Retrieve the top 5 customers based on revenue generated from the fitness_db database.",
+        "goal": "Retrieve the top 5 customers based on revenue generated.",
         "relevant_tools": [
           "base_readQuery"
         ],

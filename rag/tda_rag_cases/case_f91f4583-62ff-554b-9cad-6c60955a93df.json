@@ -33,14 +33,18 @@
       {
         "phase": 1,
         "goal": "Get the current date to calculate the date range.",
-        "tool": "TDA_CurrentDate",
-        "key_arguments": {}
+        "relevant_tools": [
+          "TDA_CurrentDate"
+        ],
+        "arguments": {}
       },
       {
         "phase": 2,
         "goal": "Calculate the date range for the past 5 days based on the current date.",
-        "tool": "TDA_DateRange",
-        "key_arguments": {
+        "relevant_tools": [
+          "TDA_DateRange"
+        ],
+        "arguments": {
           "start_date": "2025-11-11",
           "date_phrase": "past 5 days"
         }
@@ -48,16 +52,22 @@
       {
         "phase": 3,
         "goal": "Retrieve system utilization data for each day in the specified date range.",
-        "tool": "dba_resusageSummary",
-        "key_arguments": {
+        "relevant_tools": [
+          "dba_resusageSummary"
+        ],
+        "type": "loop",
+        "loop_over": "result_of_phase_2",
+        "arguments": {
           "date": "2025-11-10"
         }
       },
       {
         "phase": 4,
         "goal": "Generate the final report based on the system utilization data gathered.",
-        "tool": "TDA_FinalReport",
-        "key_arguments": {}
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
       }
     ]
   }

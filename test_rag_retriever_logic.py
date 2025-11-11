@@ -8,7 +8,7 @@ from trusted_data_agent.core.config import APP_CONFIG
 # Configure logging for the test script
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 # Mock APP_CONFIG for testing purposes if it's not properly initialized
 # In a real scenario, ensure APP_CONFIG is loaded correctly.

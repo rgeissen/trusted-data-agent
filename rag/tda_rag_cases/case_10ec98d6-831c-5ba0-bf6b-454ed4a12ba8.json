@@ -32,22 +32,28 @@
       {
         "phase": 1,
         "goal": "Retrieve the top 5 customers based on revenue generated.",
-        "tool": "base_readQuery",
-        "key_arguments": {
+        "relevant_tools": [
+          "base_readQuery"
+        ],
+        "arguments": {
           "sql": "SELECT TOP 5 c.CustomerID, c.FirstName, c.LastName, SUM(s.TotalAmount) AS TotalRevenue FROM fitness_db.Customers c JOIN fitness_db.Sales s ON c.CustomerID = s.CustomerID GROUP BY c.CustomerID, c.FirstName, c.LastName ORDER BY TotalRevenue DESC;"
         }
       },
       {
         "phase": 2,
         "goal": "Generate the final report based on the customer revenue data.",
-        "tool": "TDA_FinalReport",
-        "key_arguments": {}
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
       },
       {
         "phase": 3,
         "goal": "Generate the final report based on the data gathered.",
-        "tool": "TDA_FinalReport",
-        "key_arguments": {}
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
       }
     ]
   }
