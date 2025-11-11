@@ -17,8 +17,8 @@ This solution establishes a new standard for AI-driven data analytics, built on 
 1. [Core Principles: A Superior Approach](#core-principles-a-superior-approach)
 2. [Key Features](#key-features)
 3. [The Heart of the Application - The Engine & its Fusion Optimizer](#the-heart-of-the-application---the-engine--its-fusion-optimizer)
-4. [How It Works: Architecture](#how-it-works-architecture)
-5. [Retrieval-Augmented Generation (RAG) for Self-Improving AI](#retrieval-augmented-generation-rag-for-self-improving-ai)
+4. [Retrieval-Augmented Generation (RAG) for Self-Improving AI](#retrieval-augmented-generation-rag-for-self-improving-ai)
+5. [How It Works: Architecture](#how-it-works-architecture)
 6. [Installation and Setup Guide](#installation-and-setup-guide)
 7. [Developer Mode: Unlocking Models](#developer-mode-unlocking-models)
 8. [User Guide](#user-guide)
@@ -149,6 +149,22 @@ The Optimizer is built with enterprise-grade reliability in mind.
 
 * **Definitive Error Handling**: The agent recognizes unrecoverable errors (e.g., database permission denied) and halts execution immediately, providing a clear explanation to the user instead of wasting resources on futile retry attempts.
 
+## Retrieval-Augmented Generation (RAG) for Self-Improving AI
+
+The Trusted Data Agent integrates a powerful **Retrieval-Augmented Generation (RAG)** system designed to create a self-improving agent. This closed-loop feedback mechanism allows the agent's Planner to learn from its own past successes, continuously enhancing its decision-making capabilities over time.
+
+The core value of this RAG implementation is its ability to automatically identify and leverage the most efficient strategies for given tasks. It works by:
+
+1.  **Capturing and Archiving:** Every successful agent interaction is captured and stored as a "case study."
+2.  **Analyzing Efficiency:** The system analyzes each case based on token cost to determine its efficiency.
+3.  **Identifying Champions:** It identifies the single "best-in-class" or "champion" strategy for any given user query.
+4.  **Augmenting Future Prompts:** When a similar query is received in the future, the system retrieves the champion case and injects it into the Planner's prompt as a "few-shot" example.
+
+This process guides the Planner to generate higher-quality, more efficient plans based on proven, successful strategies, reducing token consumption and improving response quality without manual intervention. The entire process runs asynchronously in the background to ensure no impact on user-facing performance.
+
+For a comprehensive overview of the RAG architecture, data flow, and maintenance utilities, please see the detailed documentation:
+[**RAG System Documentation (docs/RAG/RAG.md)**](docs/RAG/RAG.md)
+
 ## How It Works: Architecture
 
 The application operates on a sophisticated client-server model, ensuring a clean separation of concerns and robust performance.
@@ -197,22 +213,6 @@ The Python source code is organized in a standard `src` layout for better mainta
 ```
 
 This structure separates concerns, making it easier to navigate and extend the application's functionality.
-
-## Retrieval-Augmented Generation (RAG) for Self-Improving AI
-
-The Trusted Data Agent integrates a powerful **Retrieval-Augmented Generation (RAG)** system designed to create a self-improving agent. This closed-loop feedback mechanism allows the agent's Planner to learn from its own past successes, continuously enhancing its decision-making capabilities over time.
-
-The core value of this RAG implementation is its ability to automatically identify and leverage the most efficient strategies for given tasks. It works by:
-
-1.  **Capturing and Archiving:** Every successful agent interaction is captured and stored as a "case study."
-2.  **Analyzing Efficiency:** The system analyzes each case based on token cost to determine its efficiency.
-3.  **Identifying Champions:** It identifies the single "best-in-class" or "champion" strategy for any given user query.
-4.  **Augmenting Future Prompts:** When a similar query is received in the future, the system retrieves the champion case and injects it into the Planner's prompt as a "few-shot" example.
-
-This process guides the Planner to generate higher-quality, more efficient plans based on proven, successful strategies, reducing token consumption and improving response quality without manual intervention. The entire process runs asynchronously in the background to ensure no impact on user-facing performance.
-
-For a comprehensive overview of the RAG architecture, data flow, and maintenance utilities, please see the detailed documentation:
-[**RAG System Documentation (docs/RAG/RAG.md)**](docs/RAG/RAG.md)
 
 ## Installation and Setup Guide
 
