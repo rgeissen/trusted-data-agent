@@ -1,0 +1,47 @@
+{
+  "case_id": "34127ae5-d0a5-5ae7-ac17-f4e3055b33f7",
+  "metadata": {
+    "session_id": "6007e818-b349-4817-b473-082bb1a8f77f",
+    "turn_id": 3,
+    "is_success": true,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-11T07:56:19.268866+00:00",
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "input_tokens": 12247,
+      "output_tokens": 270
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 3,
+      "steps_per_phase": {
+        "1": 1,
+        "3": 1
+      },
+      "total_steps": 2
+    }
+  },
+  "intent": {
+    "user_query": "educate yourself on the tables in fitnes_db"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Get a list of all tables in the 'fitnes_db' database.",
+        "tool": "base_tableList",
+        "key_arguments": {
+          "database_name": "fitnes_db"
+        }
+      },
+      {
+        "phase": 3,
+        "goal": "Generate the final report based on the data gathered.",
+        "tool": "TDA_FinalReport",
+        "key_arguments": {}
+      }
+    ]
+  }
+}

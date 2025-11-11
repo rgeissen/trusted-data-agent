@@ -49,7 +49,7 @@ class AppConfig:
     SQL_OPTIMIZATION_TOOLS = ["base_readQuery"]
 
     # RAG Configuration
-    RAG_ENABLED = True
+    RAG_ENABLED = False
     RAG_REFRESH_ON_STARTUP = True # If True, vector store is refreshed on startup. If False, it uses cache until manually refreshed.
     RAG_CASES_DIR = "rag/tda_rag_cases"
     RAG_PERSIST_DIR = ".chromadb_rag_cache"

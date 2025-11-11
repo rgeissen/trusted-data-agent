@@ -1,0 +1,48 @@
+{
+  "case_id": "6c273749-2331-5f1b-99d7-03244a1492d3",
+  "metadata": {
+    "session_id": "d1131025-9985-44cf-849f-87db8fd82a19",
+    "turn_id": 1,
+    "is_success": true,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": true,
+    "timestamp": "2025-11-11T07:58:07.925845+00:00",
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "input_tokens": 12683,
+      "output_tokens": 301
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 3,
+      "steps_per_phase": {
+        "1": 3,
+        "2": 1,
+        "3": 1
+      },
+      "total_steps": 5
+    }
+  },
+  "intent": {
+    "user_query": "what are the top 5 products sold based on revenue generated using the tables in fitness_db?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Identify tables related to product sales and revenue in the fitness_db database to determine the top 5 products sold based on revenue generated.",
+        "tool": "base_tableList",
+        "key_arguments": {
+          "database_name": "fitness_db"
+        }
+      },
+      {
+        "phase": 3,
+        "goal": "Generate the final report summarizing the top 5 products sold based on revenue generated.",
+        "tool": "TDA_FinalReport",
+        "key_arguments": {}
+      }
+    ]
+  }
+}

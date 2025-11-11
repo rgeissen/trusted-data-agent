@@ -1,0 +1,45 @@
+{
+  "case_id": "f3f1157e-49c7-5e0f-a003-067f1f95ddf5",
+  "metadata": {
+    "session_id": "ba3d9549-c0af-4c6d-9360-8b6b0632a1bf",
+    "turn_id": 1,
+    "is_success": true,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-11T07:45:36.129270+00:00",
+    "llm_config": {
+      "provider": "Friendli",
+      "model": "google/gemma-3-27b-it",
+      "input_tokens": 7657,
+      "output_tokens": 108
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    }
+  },
+  "intent": {
+    "user_query": "how many databases are on the system?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "List all databases in the Teradata system.",
+        "tool": "base_databaseList",
+        "key_arguments": {}
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the list of databases.",
+        "tool": "TDA_FinalReport",
+        "key_arguments": {}
+      }
+    ]
+  }
+}
