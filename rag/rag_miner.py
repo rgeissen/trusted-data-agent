@@ -101,7 +101,7 @@ class SessionMiner:
             for c in cases:
                 c["metadata"]["is_most_efficient"] = False
 
-            best_case = min(cases, key=lambda c: c["metadata"]["llm_config"]["input_tokens"] + c["metadata"]["llm_config"]["output_tokens"])
+            best_case = min(cases, key=lambda c: c["metadata"]["llm_config"]["output_tokens"])
             best_case["metadata"]["is_most_efficient"] = True
             logger.debug(f"Marked case {best_case['case_id']} as most efficient for query '{query[:50]}...'.")
 

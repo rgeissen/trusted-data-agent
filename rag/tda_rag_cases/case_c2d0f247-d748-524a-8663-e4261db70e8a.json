@@ -1,0 +1,50 @@
+{
+  "case_id": "c2d0f247-d748-524a-8663-e4261db70e8a",
+  "metadata": {
+    "session_id": "e80a7fc7-e8b5-46e4-bcea-ca47f88a9c8a",
+    "turn_id": 2,
+    "is_success": true,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": true,
+    "timestamp": "2025-11-11T08:09:16.695896+00:00",
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "input_tokens": 19290,
+      "output_tokens": 4988
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 3,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 2,
+        "3": 1
+      },
+      "total_steps": 4
+    }
+  },
+  "intent": {
+    "user_query": "can you give me a bar chart total AMP CPU per day?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Retrieve system utilization data for the past 3 days, including the Total AMPCPUTime to generate the bar chart.",
+        "tool": "dba_resusageSummary",
+        "key_arguments": {
+          "dimensions": [
+            "LogDate"
+          ]
+        }
+      },
+      {
+        "phase": 3,
+        "goal": "Generate the final report based on the data gathered.",
+        "tool": "TDA_FinalReport",
+        "key_arguments": {}
+      }
+    ]
+  }
+}
