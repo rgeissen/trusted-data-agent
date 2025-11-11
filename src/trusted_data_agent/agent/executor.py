@@ -610,7 +610,19 @@ class PlanExecutor:
                                 try:
                                     # The event is a JSON string, parse it.
                                     event_data = json.loads(event.replace("data: ", "").strip())
-                                    self.turn_action_history.append({"action": "system_correction", "result": event_data})
+                                    self.turn_action_history.append({
+                                        "action": {
+                                            "tool_name": "TDA_SystemLog",
+                                            "arguments": {
+                                                "message": "System Correction",
+                                                "details": event_data.get("details", "No details provided.")
+                                            },
+                                            "metadata": {
+                                                "type": event_data.get("type", "system_correction")
+                                            }
+                                        },
+                                        "result": {"status": event_data.get("type", "info")}
+                                    })
                                 except json.JSONDecodeError:
                                     app_logger.warning(f"Could not parse planner event for history logging: {event}")
                             # --- MODIFICATION END ---
