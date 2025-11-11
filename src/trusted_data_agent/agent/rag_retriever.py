@@ -168,7 +168,7 @@ class RAGRetriever:
             include=["metadatas", "distances"]
         )
 
-        candidate_cases = []
+        all_candidate_cases = []
         if query_results and query_results["ids"] and query_results["ids"][0]:
             for i in range(len(query_results["ids"][0])):
                 case_id = query_results["ids"][0][i]
@@ -183,17 +183,45 @@ class RAGRetriever:
                 
                 full_case_data = json.loads(metadata["full_case_data"])
                 
-                candidate_cases.append({
+                all_candidate_cases.append({
                     "case_id": case_id,
                     "user_query": metadata["user_query"],
                     "strategy_type": metadata.get("strategy_type", "unknown"),
                     "full_case_data": full_case_data,
                     "similarity_score": similarity_score,
-                    "is_most_efficient": metadata.get("is_most_efficient")
+                    "is_most_efficient": metadata.get("is_most_efficient"),
+                    "had_plan_improvements": full_case_data.get("metadata", {}).get("had_plan_improvements", False),
+                    "had_tactical_improvements": full_case_data.get("metadata", {}).get("had_tactical_improvements", False)
                 })
         
-        candidate_cases.sort(key=lambda x: x["similarity_score"], reverse=True)
-        return candidate_cases[:k]
+        # Sort all candidates by similarity score first
+        all_candidate_cases.sort(key=lambda x: x["similarity_score"], reverse=True)
+
+        # Apply hierarchical filtering
+        no_improvements = []
+        no_tactical_improvements = []
+        other_successful_cases = []
+
+        for case in all_candidate_cases:
+            if not case["had_plan_improvements"] and not case["had_tactical_improvements"]:
+                no_improvements.append(case)
+            elif not case["had_tactical_improvements"]:
+                no_tactical_improvements.append(case)
+            else:
+                other_successful_cases.append(case)
+        
+        final_candidates = []
+        if no_improvements:
+            final_candidates = no_improvements
+            logger.debug(f"Prioritizing {len(no_improvements)} cases with no plan or tactical improvements.")
+        elif no_tactical_improvements:
+            final_candidates = no_tactical_improvements
+            logger.debug(f"Prioritizing {len(no_tactical_improvements)} cases with no tactical improvements.")
+        else:
+            final_candidates = other_successful_cases
+            logger.debug(f"No specific improvement categories found, returning {len(other_successful_cases)} other successful cases.")
+
+        return final_candidates[:k]
 
     def _format_few_shot_example(self, case: Dict[str, Any]) -> str:
         """

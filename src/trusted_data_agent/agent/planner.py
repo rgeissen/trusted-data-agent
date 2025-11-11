@@ -103,7 +103,8 @@ class Planner:
                 scrubbed_trace = []
                 for entry in new_turn["execution_trace"]:
                     if isinstance(entry, dict):
-                        if entry.get("action", {}).get("tool_name") != "TDA_SystemLog":
+                        action_data = entry.get("action", {})
+                        if isinstance(action_data, dict) and action_data.get("tool_name") != "TDA_SystemLog":
                             scrubbed_trace.append(entry)
                 new_turn["execution_trace"] = scrubbed_trace
             scrubbed_workflow_history.append(new_turn)
