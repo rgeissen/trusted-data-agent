@@ -1,6 +1,9 @@
 # src/trusted_data_agent/core/configuration_service.py
 import logging
 import httpx
+# --- MODIFICATION START: Import Path ---
+from pathlib import Path
+# --- MODIFICATION END ---
 
 from google.api_core import exceptions as google_exceptions
 from anthropic import APIError, AsyncAnthropic
@@ -14,6 +17,9 @@ from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
 from trusted_data_agent.llm import handler as llm_handler
 from trusted_data_agent.mcp import adapter as mcp_adapter
 from trusted_data_agent.core.utils import unwrap_exception, _regenerate_contexts
+# --- MODIFICATION START: Import RAGRetriever ---
+from trusted_data_agent.agent.rag_retriever import RAGRetriever
+# --- MODIFICATION END ---
 
 app_logger = logging.getLogger("quart.app")
 
@@ -167,6 +173,35 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
                 profile_part = model.split('/')[-1]
                 APP_CONFIG.CURRENT_MODEL_PROVIDER_IN_PROFILE = profile_part.split('.')[1]
             
+            # --- MODIFICATION START: Initialize and store RAGRetriever instance ---
+            if APP_CONFIG.RAG_ENABLED:
+                try:
+                    # Calculate paths relative to this file's location
+                    # configuration_service.py is in src/trusted_data_agent/core
+                    # Project root is 3 levels up
+                    project_root = Path(__file__).resolve().parents[3]
+                    rag_cases_dir = project_root / APP_CONFIG.RAG_CASES_DIR
+                    persist_dir = project_root / APP_CONFIG.RAG_PERSIST_DIR
+                    
+                    app_logger.info(f"Initializing RAGRetriever with cases dir: {rag_cases_dir}")
+                    retriever_instance = RAGRetriever(
+                        rag_cases_dir=rag_cases_dir,
+                        embedding_model_name=APP_CONFIG.RAG_EMBEDDING_MODEL,
+                        persist_directory=persist_dir
+                    )
+                    APP_STATE['rag_retriever_instance'] = retriever_instance
+                    app_logger.info("RAGRetriever initialized and stored in APP_STATE successfully.")
+                
+                except Exception as e:
+                    app_logger.error(f"Failed to initialize RAGRetriever: {e}", exc_info=True)
+                    # This is not a critical failure, so we just log it and continue.
+                    # The planner will check for the instance before using it.
+                    APP_STATE['rag_retriever_instance'] = None
+            else:
+                app_logger.info("RAG is disabled by config. Skipping RAGRetriever initialization.")
+                APP_STATE['rag_retriever_instance'] = None
+            # --- MODIFICATION END ---
+
             # --- 4. Load and Classify Capabilities (The Automatic Step) ---
             await mcp_adapter.load_and_categorize_mcp_resources(APP_STATE)
             APP_CONFIG.MCP_SERVER_CONNECTED = True
@@ -220,4 +255,3 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             return {"status": "error", "message": f"Configuration failed: {error_message}"}
         finally:
             app_logger.info("Configuration lock released.")
-

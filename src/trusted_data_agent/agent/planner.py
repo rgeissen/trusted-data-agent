@@ -55,23 +55,15 @@ class Planner:
     It is instantiated by the PlanExecutor and maintains a reference to it for state
     and helper method access.
     """
-    def __init__(self, executor: 'PlanExecutor'):
+    # --- MODIFICATION START: Accept RAGRetriever instance from executor ---
+    def __init__(self, executor: 'PlanExecutor', rag_retriever_instance: Optional[RAGRetriever] = None):
         self.executor = executor
-        self.rag_retriever: Optional[RAGRetriever] = None
-        if APP_CONFIG.RAG_ENABLED:
-            try:
-                project_root = Path(__file__).resolve().parents[3] # trusted-data-agent
-                rag_cases_dir = project_root / APP_CONFIG.RAG_CASES_DIR
-                persist_dir = project_root / APP_CONFIG.RAG_PERSIST_DIR
-                self.rag_retriever = RAGRetriever(
-                    rag_cases_dir=rag_cases_dir,
-                    embedding_model_name=APP_CONFIG.RAG_EMBEDDING_MODEL,
-                    persist_directory=persist_dir
-                )
-                app_logger.info("RAGRetriever initialized successfully.")
-            except Exception as e:
-                app_logger.error(f"Failed to initialize RAGRetriever: {e}", exc_info=True)
-                self.rag_retriever = None
+        self.rag_retriever = rag_retriever_instance
+        if APP_CONFIG.RAG_ENABLED and not self.rag_retriever:
+            app_logger.warning("Planner initialized without a RAGRetriever instance, though RAG is enabled.")
+        elif APP_CONFIG.RAG_ENABLED and self.rag_retriever:
+            app_logger.info("Planner initialized with global RAGRetriever instance.")
+    # --- MODIFICATION END ---
 
     # --- MODIFICATION START: Update history creation to filter by context validity ---
     def _create_summary_from_history(self, history: dict) -> str:
@@ -837,9 +829,9 @@ class Planner:
             if retrieved_cases:
                 formatted_examples = [self.rag_retriever._format_few_shot_example(case) for case in retrieved_cases]
                 rag_few_shot_examples_str = "\n\n" + "\n".join(formatted_examples) + "\n\n"
-                print(f"Retrieved RAG cases for few-shot examples: {[case['case_id'] for case in retrieved_cases]}")
+                app_logger.info(f"Retrieved RAG cases for few-shot examples: {[case['case_id'] for case in retrieved_cases]}")
             else:
-                print("No relevant RAG cases found for few-shot examples.")
+                app_logger.info("No relevant RAG cases found for few-shot examples.")
 
 
         planning_prompt = WORKFLOW_META_PLANNING_PROMPT.format(
@@ -869,9 +861,8 @@ class Planner:
         )
         yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
 
-        # Log RAG findings if they were used (placeholder for future RAG implementation)
         if rag_few_shot_examples_str:
-            print(f"RAG Findings (few-shot examples) used:\n{rag_few_shot_examples_str}")
+            app_logger.info(f"RAG Findings (few-shot examples) used:\n{rag_few_shot_examples_str}")
 
         app_logger.debug(
             f"\n--- Meta-Planner Turn ---\n"

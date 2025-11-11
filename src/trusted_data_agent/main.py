@@ -82,6 +82,44 @@ from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
 from trusted_data_agent.api.routes import get_tts_client # Assuming get_tts_client is still relevant
 
 
+# --- MODIFICATION START: Add RAG Processing Worker ---
+async def rag_processing_worker():
+    """
+    A single, persistent background worker that processes turns from the
+    RAG queue one by one, ensuring no race conditions.
+    """
+    app_logger.info("RAG processing worker started and waiting for queue items.")
+    while True:
+        try:
+            # 1. Wait for a turn_summary to arrive in the queue
+            turn_summary = await APP_STATE['rag_processing_queue'].get()
+
+            # 2. Get the RAG retriever instance
+            retriever = APP_STATE.get('rag_retriever_instance')
+            
+            # 3. Process the turn if RAG is enabled and the instance exists
+            if retriever and turn_summary and APP_CONFIG.RAG_ENABLED:
+                app_logger.info(f"RAG worker: Processing turn {turn_summary.get('turn')} from session {turn_summary.get('session_id')}.")
+                
+                # We create a new task for the actual processing.
+                # This allows the worker to be immediately ready for the next
+                # item, though the processing itself is still serialized
+                # by the nature of the retriever's logic.
+                # For true atomicity, we await the processing here.
+                await retriever.process_turn_for_rag(turn_summary)
+                
+            # 4. Mark the queue item as processed
+            APP_STATE['rag_processing_queue'].task_done()
+
+        except Exception as e:
+            # Log errors but don't crash the worker
+            app_logger.error(f"Error in RAG processing worker: {e}", exc_info=True)
+            # Ensure task_done() is called even on error to prevent queue blockage
+            if 'turn_summary' in locals() and turn_summary:
+                APP_STATE['rag_processing_queue'].task_done()
+# --- MODIFICATION END ---
+
+
 def create_app():
     template_folder = os.path.join(project_root, 'templates')
     static_folder = os.path.join(project_root, 'static')
@@ -117,6 +155,18 @@ def create_app():
         ]
         response.headers['Content-Security-Policy'] = "; ".join(csp_policy)
         return response
+
+    # --- MODIFICATION START: Add startup task hook ---
+    @app.before_serving
+    async def startup():
+        """
+        Runs once before the server starts serving requests.
+        Used to start background tasks like our RAG worker.
+        """
+        app_logger.info("Application starting up... Launching background tasks.")
+        # Start the single RAG worker as a background task
+        asyncio.create_task(rag_processing_worker())
+    # --- MODIFICATION END ---
 
     return app
 
@@ -160,17 +210,17 @@ if __name__ == "__main__":
 
     if args.all_models:
         APP_CONFIG.ALL_MODELS_UNLOCKED = True
-        print("\n--- DEV MODE: All models will be selectable. ---")
+        print("\n--- DEV MODE: All models will be selectable. ---\n")
 
-    print("\n--- CHARTING ENABLED: Charting configuration is active. ---")
+    print("\n--- CHARTING ENABLED: Charting configuration is active. ---\n")
 
     if APP_CONFIG.VOICE_CONVERSATION_ENABLED:
         if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-            print("\n--- ⚠️ VOICE FEATURE WARNING ---")
+            print("\n--- ⚠️ VOICE FEATURE WARNING ---\n")
             print("The 'GOOGLE_APPLICATION_CREDENTIALS' environment variable is not set.")
             print("The voice conversation feature will require credentials to be provided in the config UI.")
         else:
-            print("\n--- VOICE FEATURE ENABLED: Credentials found in environment. ---")
+            print("\n--- VOICE FEATURE ENABLED: Credentials found in environment. ---\n")
 
     try:
         asyncio.run(main(args)) # MODIFIED: Pass args to main

@@ -131,6 +131,12 @@ APP_STATE = {
     # Asynchronous task tracking for the REST API
     "background_tasks": {},
     
+    # --- MODIFICATION START: Add RAG queue and instance placeholder ---
+    # Asynchronous RAG processing queue and singleton instance
+    "rag_processing_queue": asyncio.Queue(),
+    "rag_retriever_instance": None,
+    # --- MODIFICATION END ---
+
     # Concurrency lock for the configuration process
     "configuration_lock": asyncio.Lock(),
 }
@@ -145,4 +151,3 @@ CERTIFIED_OLLAMA_MODELS = ["gemma-3-27b-it"]
 CERTIFIED_OPENAI_MODELS = ["*gpt-4o-mini"]
 CERTIFIED_AZURE_MODELS = ["*gpt-4o*"]
 CERTIFIED_FRIENDLI_MODELS = ["google/gemma-3-27b-it"]
-

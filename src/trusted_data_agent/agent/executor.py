@@ -4,7 +4,9 @@ import json
 import logging
 import copy
 import uuid
+# --- MODIFICATION START: Import asyncio ---
 import asyncio
+# --- MODIFICATION END ---
 from enum import Enum, auto
 from typing import Tuple, List
 # --- MODIFICATION START: Import datetime and timezone ---
@@ -14,7 +16,9 @@ from datetime import datetime, timezone
 from trusted_data_agent.agent.formatter import OutputFormatter
 from trusted_data_agent.core import session_manager
 from trusted_data_agent.llm import handler as llm_handler
-from trusted_data_agent.core.config import APP_CONFIG
+# --- MODIFICATION START: Import APP_CONFIG and APP_STATE ---
+from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
+# --- MODIFICATION END ---
 from trusted_data_agent.agent.response_models import CanonicalResponse, PromptReportResponse
 from trusted_data_agent.mcp import adapter as mcp_adapter
 
@@ -134,6 +138,13 @@ class PlanExecutor:
         # --- MODIFICATION END ---
         self.turn_input_tokens = 0
         self.turn_output_tokens = 0
+
+        # --- MODIFICATION START: Store the global RAG retriever instance ---
+        if APP_CONFIG.RAG_ENABLED:
+            self.rag_retriever = self.dependencies['STATE'].get('rag_retriever_instance')
+        else:
+            self.rag_retriever = None
+        # --- MODIFICATION END ---
 
 
     def _log_system_event(self, event_data: dict, event_name: str = None):
@@ -560,7 +571,9 @@ class PlanExecutor:
 
                 # --- Planning Phase ---
                 if self.state == self.AgentState.PLANNING:
-                    planner = Planner(self)
+                    # --- MODIFICATION START: Pass RAG retriever instance to Planner ---
+                    planner = Planner(self, rag_retriever_instance=self.rag_retriever)
+                    # --- MODIFICATION END ---
                     should_replan = False
                     planning_is_disabled_history = self.disabled_history
 
@@ -722,11 +735,26 @@ class PlanExecutor:
                     "model": self.current_model,       # Add snapshot of model
                     "task_id": self.task_id,            # Add the task_id
                     "turn_input_tokens": self.turn_input_tokens,
-                    "turn_output_tokens": self.turn_output_tokens
+                    "turn_output_tokens": self.turn_output_tokens,
+                    # --- MODIFICATION START: Add session_id for RAG worker ---
+                    "session_id": self.session_id
+                    # --- MODIFICATION END ---
                 }
                 # --- MODIFICATION END ---
                 session_manager.update_last_turn_data(self.user_uuid, self.session_id, turn_summary)
                 app_logger.debug(f"Saved last turn data to session {self.session_id} for user {self.user_uuid}")
+
+                # --- MODIFICATION START: Add "Producer" logic to send turn to RAG worker ---
+                if APP_CONFIG.RAG_ENABLED and APP_STATE.get('rag_processing_queue') and self.rag_retriever:
+                    try:
+                        app_logger.debug(f"Adding turn {self.current_turn_number} to RAG processing queue.")
+                        # Put the summary in the queue. This is non-blocking and instantaneous.
+                        await APP_STATE['rag_processing_queue'].put(turn_summary)
+                    except Exception as e:
+                        # Log error if queue.put fails, but don't crash the executor
+                        app_logger.error(f"Failed to add turn summary to RAG processing queue: {e}", exc_info=True)
+                # --- MODIFICATION END ---
+
 
                 # Session Naming Logic (remains unchanged)
                 # --- MODIFICATION START: Use self.current_turn_number for check ---
@@ -966,7 +994,9 @@ class PlanExecutor:
             self.state = self.AgentState.ERROR
             return
 
-        planner = Planner(self)
+        # --- MODIFICATION START: Pass RAG retriever instance to Planner ---
+        planner = Planner(self, rag_retriever_instance=self.rag_retriever)
+        # --- MODIFICATION END ---
         app_logger.info(f"Delegated task: Directly expanding prompt '{self.active_prompt_name}' into a concrete plan.")
 
         async for event in planner.generate_and_refine_plan():

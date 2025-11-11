@@ -18,17 +18,18 @@ This solution establishes a new standard for AI-driven data analytics, built on 
 2. [Key Features](#key-features)
 3. [The Heart of the Application - The Engine & its Fusion Optimizer](#the-heart-of-the-application---the-engine--its-fusion-optimizer)
 4. [How It Works: Architecture](#how-it-works-architecture)
-5. [Installation and Setup Guide](#installation-and-setup-guide)
-6. [Developer Mode: Unlocking Models](#developer-mode-unlocking-models)
-7. [User Guide](#user-guide)
-8. [Context Maintenance](#context-maintenance)
-9. [Application REST API](#application-rest-api)
-10. [Real-Time Monitoring](#real-time-monitoring)
-11. [Operationalization](#operationalization)
-12. [Troubleshooting](#troubleshooting)
-13. [License](#license)
-14. [Author & Contributions](#author--contributions)
-15. [Appendix: Feature Update List](#appendix-feature-update-list)
+5. [Retrieval-Augmented Generation (RAG) for Self-Improving AI](#retrieval-augmented-generation-rag-for-self-improving-ai)
+6. [Installation and Setup Guide](#installation-and-setup-guide)
+7. [Developer Mode: Unlocking Models](#developer-mode-unlocking-models)
+8. [User Guide](#user-guide)
+9. [Context Maintenance](#context-maintenance)
+10. [Application REST API](#application-rest-api)
+11. [Real-Time Monitoring](#real-time-monitoring)
+12. [Operationalization](#operationalization)
+13. [Troubleshooting](#troubleshooting)
+14. [License](#license)
+15. [Author & Contributions](#author--contributions)
+16. [Appendix: Feature Update List](#appendix-feature-update-list)
 
 
 ---
@@ -136,6 +137,8 @@ When errors occur, the Optimizer initiates a sophisticated, multi-tiered recover
 
 3. **Generic Recovery & Replanning**: If the error is novel, the agent falls back to a generic error-handling mechanism or, in the case of persistent failure, can escalate to generating an entirely new strategic plan to achieve the user's goal via an alternative route.
 
+4. **Strategic Correction with RAG**: The integrated **Retrieval-Augmented Generation (RAG)** system provides the highest level of self-healing. By retrieving "champion" strategies from past successes, the agent can discard a flawed or inefficient plan entirely and adopt a proven, optimal approach, learning from its own history to correct its course.
+
 ### Robust Safeguards
 
 The Optimizer is built with enterprise-grade reliability in mind.
@@ -194,6 +197,22 @@ The Python source code is organized in a standard `src` layout for better mainta
 ```
 
 This structure separates concerns, making it easier to navigate and extend the application's functionality.
+
+## Retrieval-Augmented Generation (RAG) for Self-Improving AI
+
+The Trusted Data Agent integrates a powerful **Retrieval-Augmented Generation (RAG)** system designed to create a self-improving agent. This closed-loop feedback mechanism allows the agent's Planner to learn from its own past successes, continuously enhancing its decision-making capabilities over time.
+
+The core value of this RAG implementation is its ability to automatically identify and leverage the most efficient strategies for given tasks. It works by:
+
+1.  **Capturing and Archiving:** Every successful agent interaction is captured and stored as a "case study."
+2.  **Analyzing Efficiency:** The system analyzes each case based on token cost to determine its efficiency.
+3.  **Identifying Champions:** It identifies the single "best-in-class" or "champion" strategy for any given user query.
+4.  **Augmenting Future Prompts:** When a similar query is received in the future, the system retrieves the champion case and injects it into the Planner's prompt as a "few-shot" example.
+
+This process guides the Planner to generate higher-quality, more efficient plans based on proven, successful strategies, reducing token consumption and improving response quality without manual intervention. The entire process runs asynchronously in the background to ensure no impact on user-facing performance.
+
+For a comprehensive overview of the RAG architecture, data flow, and maintenance utilities, please see the detailed documentation:
+[**RAG System Documentation (docs/RAG/RAG.md)**](docs/RAG/RAG.md)
 
 ## Installation and Setup Guide
 
