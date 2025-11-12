@@ -1,19 +1,19 @@
 {
-  "case_id": "5372605c-096a-572d-bcd9-5b2215413456",
+  "case_id": "b4c675cd-caa0-56fc-ba55-6b7b99b4d062",
   "metadata": {
-    "session_id": "dc22e876-9763-4247-b3a0-6e074812cc4d",
+    "session_id": "a1b672f0-37fb-4be2-9d30-b4bfa00c87a3",
     "turn_id": 2,
     "is_success": true,
     "had_plan_improvements": false,
     "had_tactical_improvements": true,
-    "timestamp": "2025-11-11T16:00:36.709188+00:00",
+    "timestamp": "2025-11-12T07:03:10.787523+00:00",
     "llm_config": {
       "provider": "Google",
       "model": "gemini-2.0-flash",
-      "input_tokens": 15801,
-      "output_tokens": 301
+      "input_tokens": 16924,
+      "output_tokens": 289
     },
-    "is_most_efficient": false,
+    "is_most_efficient": true,
     "strategy_metrics": {
       "phase_count": 2,
       "steps_per_phase": {

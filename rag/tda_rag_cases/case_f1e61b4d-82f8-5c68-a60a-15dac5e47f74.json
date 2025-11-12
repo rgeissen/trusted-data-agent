@@ -1,0 +1,68 @@
+{
+  "case_id": "f1e61b4d-82f8-5c68-a60a-15dac5e47f74",
+  "metadata": {
+    "session_id": "17b38c23-4cff-4641-813d-0c5ab9e0e8e4",
+    "turn_id": 3,
+    "is_success": true,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-12T06:59:14.454465+00:00",
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "input_tokens": 23606,
+      "output_tokens": 274
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 3,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 5,
+        "3": 1
+      },
+      "total_steps": 7
+    }
+  },
+  "intent": {
+    "user_query": "what's in database fitness_db?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "List all tables in the 'fitness_db' database.",
+        "relevant_tools": [
+          "base_tableList"
+        ],
+        "arguments": {
+          "database_name": "fitness_db"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "List all columns for each table in the 'fitness_db' database.",
+        "relevant_tools": [
+          "base_columnDescription"
+        ],
+        "type": "loop",
+        "loop_over": "result_of_phase_1",
+        "arguments": {
+          "database_name": "fitness_db",
+          "obj_name": {
+            "source": "loop_item",
+            "key": "TableName"
+          }
+        }
+      },
+      {
+        "phase": 3,
+        "goal": "Generate the final report based on the tables and columns found in the 'fitness_db' database.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

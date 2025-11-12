@@ -156,7 +156,7 @@ class RAGRetriever:
             return case_data["conversational_response"].get("summary", "Conversational response.")
         return "Strategy details unavailable."
 
-    def retrieve_examples(self, query: str, k: int = 3, min_score: float = 0.7) -> List[Dict[str, Any]]:
+    def retrieve_examples(self, query: str, k: int = 1, min_score: float = 0.7) -> List[Dict[str, Any]]:
         """
         Retrieves the top-k most relevant and efficient RAG cases based on the query.
         """

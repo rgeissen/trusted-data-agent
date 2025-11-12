@@ -124,7 +124,7 @@ if __name__ == '__main__':
     # SCRIPT_DIR is .../trusted-data-agent/rag
     SCRIPT_DIR = Path(__file__).resolve().parent 
     # PROJECT_ROOT is .../trusted-data-agent
-    PROJECT_ROOT = SCRIPT_DIR.parent
+    PROJECT_ROOT = SCRIPT_DIR.parent.parent
     # Use the correct, original default paths
     DEFAULT_SESSIONS_DIR = PROJECT_ROOT / "tda_sessions"
     DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "rag" / "tda_rag_cases"

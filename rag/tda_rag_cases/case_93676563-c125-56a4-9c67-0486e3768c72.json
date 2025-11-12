@@ -1,30 +1,30 @@
 {
-  "case_id": "5372605c-096a-572d-bcd9-5b2215413456",
+  "case_id": "93676563-c125-56a4-9c67-0486e3768c72",
   "metadata": {
-    "session_id": "dc22e876-9763-4247-b3a0-6e074812cc4d",
-    "turn_id": 2,
+    "session_id": "17b38c23-4cff-4641-813d-0c5ab9e0e8e4",
+    "turn_id": 6,
     "is_success": true,
     "had_plan_improvements": false,
     "had_tactical_improvements": true,
-    "timestamp": "2025-11-11T16:00:36.709188+00:00",
+    "timestamp": "2025-11-12T07:01:09.646023+00:00",
     "llm_config": {
       "provider": "Google",
       "model": "gemini-2.0-flash",
-      "input_tokens": 15801,
-      "output_tokens": 301
+      "input_tokens": 42706,
+      "output_tokens": 390
     },
-    "is_most_efficient": false,
+    "is_most_efficient": true,
     "strategy_metrics": {
       "phase_count": 2,
       "steps_per_phase": {
-        "1": 2,
+        "1": 3,
         "2": 1
       },
-      "total_steps": 3
+      "total_steps": 4
     }
   },
   "intent": {
-    "user_query": "what are the top 5 customers based on revenue generated?"
+    "user_query": "what are my top 5 customers based on revenue generated?"
   },
   "successful_strategy": {
     "phases": [
