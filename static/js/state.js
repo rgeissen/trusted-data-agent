@@ -48,6 +48,7 @@ export const state = {
     phaseContainerStack: [],
     isRestTaskActive: false,
     activeRestTaskId: null,
+    lastRagCaseData: null, // Stores the last retrieved RAG case for display
 };
 
 // Functions to modify state can be added here if needed, e.g.:

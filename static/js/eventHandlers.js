@@ -85,6 +85,7 @@ async function processStream(responseBody) {
                             }
                         }
                     } else if (eventName === 'rag_retrieval') {
+                        state.lastRagCaseData = eventData; // Store the full RAG case data
                         UI.blinkRagDot();
                     } else if (eventName === 'session_name_update') {
                         const { session_id, newName } = eventData;
@@ -1930,6 +1931,38 @@ export function initializeEventListeners() {
 
     // --- MODIFICATION START: Add context dot click listener ---
     DOM.contextStatusDot.addEventListener('click', handleContextPurgeClick);
+    // --- MODIFICATION END ---
+
+    // --- MODIFICATION START: Add RAG status dot click listener ---
+    DOM.ragStatusDot.addEventListener('click', () => {
+        if (state.lastRagCaseData) {
+            UI.showRagCaseModal(state.lastRagCaseData);
+        } else {
+            console.log("No RAG case data available to display.");
+        }
+    });
+    // --- MODIFICATION END ---
+
+    // --- MODIFICATION START: Add RAG case modal close and copy listeners ---
+    DOM.ragCaseModalClose.addEventListener('click', UI.closeRagCaseModal);
+    DOM.ragCaseModalCloseBottom.addEventListener('click', UI.closeRagCaseModal);
+    DOM.ragCaseModalOverlay.addEventListener('click', (e) => {
+        if (e.target === DOM.ragCaseModalOverlay) UI.closeRagCaseModal();
+    });
+    DOM.ragCaseModalCopy.addEventListener('click', () => {
+        if (state.lastRagCaseData) {
+            navigator.clipboard.writeText(JSON.stringify(state.lastRagCaseData.full_case_data, null, 2)).then(() => {
+                // Provide visual feedback
+                const originalText = DOM.ragCaseModalCopy.textContent;
+                DOM.ragCaseModalCopy.textContent = 'Copied!';
+                setTimeout(() => {
+                    DOM.ragCaseModalCopy.textContent = originalText;
+                }, 1500);
+            }).catch(err => {
+                console.error('Failed to copy RAG case data: ', err);
+            });
+        }
+    });
     // --- MODIFICATION END ---
 
     // --- MODIFICATION START: Add tooltips toggle listener ---

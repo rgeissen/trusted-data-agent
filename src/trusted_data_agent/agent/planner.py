@@ -829,7 +829,11 @@ class Planner:
             )
             if retrieved_cases:
                 if self.event_handler:
-                    await self.event_handler({}, "rag_retrieval")
+                    # Send the full case data of the first (most relevant) case
+                    await self.event_handler({
+                        "case_id": retrieved_cases[0]['case_id'],
+                        "full_case_data": retrieved_cases[0]['full_case_data']
+                    }, "rag_retrieval")
                 formatted_examples = [self.rag_retriever._format_few_shot_example(case) for case in retrieved_cases]
                 rag_few_shot_examples_str = "\n\n" + "\n".join(formatted_examples) + "\n\n"
                 app_logger.info(f"Retrieved RAG cases for few-shot examples: {[case['case_id'] for case in retrieved_cases]}")

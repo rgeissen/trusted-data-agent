@@ -173,3 +173,13 @@ export const viewPromptModalTitle = document.getElementById('view-prompt-modal-t
 export const viewPromptModalText = document.getElementById('view-prompt-modal-text');
 export const viewPromptModalClose = document.getElementById('view-prompt-modal-close');
 
+// RAG Case Modal elements
+export const ragCaseModalOverlay = document.getElementById('rag-case-modal-overlay');
+export const ragCaseModalContent = document.getElementById('rag-case-modal-content');
+export const ragCaseModalTitle = document.getElementById('rag-case-modal-title');
+export const ragCaseIdDisplay = document.getElementById('rag-case-id-display');
+export const ragCaseModalJson = document.getElementById('rag-case-modal-json');
+export const ragCaseModalCopy = document.getElementById('rag-case-modal-copy');
+export const ragCaseModalClose = document.getElementById('rag-case-modal-close');
+export const ragCaseModalCloseBottom = document.getElementById('rag-case-modal-close-bottom');
+

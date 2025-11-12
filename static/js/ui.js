@@ -1442,6 +1442,40 @@ export function closeViewPromptModal() {
     setTimeout(() => DOM.viewPromptModalOverlay.classList.add('hidden'), 300);
 }
 
+/**
+ * Displays the RAG Case modal with the provided case data.
+ * @param {object} caseData - The full RAG case data to display.
+ */
+export function showRagCaseModal(caseData) {
+    if (!DOM.ragCaseModalOverlay || !DOM.ragCaseModalContent || !DOM.ragCaseIdDisplay || !DOM.ragCaseModalJson) {
+        console.error("RAG Case modal DOM elements not found.");
+        return;
+    }
+
+    DOM.ragCaseIdDisplay.textContent = caseData.case_id || 'N/A';
+    DOM.ragCaseModalJson.textContent = JSON.stringify(caseData.full_case_data, null, 2);
+
+    DOM.ragCaseModalOverlay.classList.remove('hidden');
+    // Trigger reflow to ensure transition plays
+    void DOM.ragCaseModalOverlay.offsetWidth;
+    DOM.ragCaseModalOverlay.classList.remove('opacity-0');
+    DOM.ragCaseModalContent.classList.remove('scale-95', 'opacity-0');
+}
+
+/**
+ * Hides the RAG Case modal.
+ */
+export function closeRagCaseModal() {
+    if (!DOM.ragCaseModalOverlay || !DOM.ragCaseModalContent) {
+        console.error("RAG Case modal DOM elements not found.");
+        return;
+    }
+
+    DOM.ragCaseModalOverlay.classList.add('opacity-0');
+    DOM.ragCaseModalContent.classList.add('scale-95', 'opacity-0');
+    setTimeout(() => DOM.ragCaseModalOverlay.classList.add('hidden'), 300);
+}
+
 // --- MODIFICATION START: Add blinkContextDot function ---
 /**
  * Provides brief visual feedback on the context status dot by making it blink.
