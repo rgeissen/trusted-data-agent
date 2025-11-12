@@ -182,6 +182,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             DOM.keyObservationsToggleButton.classList.remove('hidden');
         }
 
+        if (DOM.ragStatusDot && !state.appConfig.rag_enabled) {
+            DOM.ragStatusDot.parentElement.style.display = 'none';
+        }
+
     } catch (e) {
         console.error("Could not fetch app config", e);
     }

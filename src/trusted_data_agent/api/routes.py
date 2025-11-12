@@ -117,6 +117,7 @@ async def get_app_config():
         "allow_synthesis_from_history": APP_CONFIG.ALLOW_SYNTHESIS_FROM_HISTORY,
         "default_charting_intensity": APP_CONFIG.DEFAULT_CHARTING_INTENSITY,
         "voice_conversation_enabled": APP_CONFIG.VOICE_CONVERSATION_ENABLED,
+        "rag_enabled": APP_CONFIG.RAG_ENABLED,
         "license_info": APP_STATE.get("license_info")
     })
 
