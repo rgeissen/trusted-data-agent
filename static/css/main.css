@@ -820,6 +820,21 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     box-shadow: 0 0 12px white;
   }
 }
+
+.blinking-yellow {
+    animation: blink-yellow 0.5s 3;
+}
+
+@keyframes blink-yellow {
+  50% {
+    background-color: #facc15; /* yellow-400 */
+    box-shadow: 0 0 12px #facc15;
+    opacity: 1;
+  }
+  75% {
+    opacity: 0.5;
+  }
+}
 /* --- MODIFICATION END --- */
 
 /* --- MODIFICATION START: Add cursor pointer to clickable badge --- */

@@ -93,7 +93,8 @@ async def run_agent_execution(
             source=source,
             plan_to_execute=plan_to_execute, # Pass the plan
             is_replay=is_replay, # Pass the flag
-            task_id=task_id # Pass the task_id here
+            task_id=task_id, # Pass the task_id here
+            event_handler=event_handler
         )
         # --- MODIFICATION END ---
 

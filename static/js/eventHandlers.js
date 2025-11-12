@@ -84,6 +84,8 @@ async function processStream(responseBody) {
                                 metricsEl.classList.remove('hidden');
                             }
                         }
+                    } else if (eventName === 'rag_retrieval') {
+                        UI.blinkRagDot();
                     } else if (eventName === 'session_name_update') {
                         const { session_id, newName } = eventData;
                         UI.updateSessionListItemName(session_id, newName);

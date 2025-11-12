@@ -68,9 +68,10 @@ class PlanExecutor:
         return None
 
     # --- MODIFICATION START: Add plan_to_execute and is_replay ---
-    def __init__(self, session_id: str, user_uuid: str, original_user_input: str, dependencies: dict, active_prompt_name: str = None, prompt_arguments: dict = None, execution_depth: int = 0, disabled_history: bool = False, previous_turn_data: dict = None, force_history_disable: bool = False, source: str = "text", is_delegated_task: bool = False, force_final_summary: bool = False, plan_to_execute: list = None, is_replay: bool = False, task_id: str = None):
+    def __init__(self, session_id: str, user_uuid: str, original_user_input: str, dependencies: dict, active_prompt_name: str = None, prompt_arguments: dict = None, execution_depth: int = 0, disabled_history: bool = False, previous_turn_data: dict = None, force_history_disable: bool = False, source: str = "text", is_delegated_task: bool = False, force_final_summary: bool = False, plan_to_execute: list = None, is_replay: bool = False, task_id: str = None, event_handler=None):
         self.session_id = session_id
         self.user_uuid = user_uuid
+        self.event_handler = event_handler
         # --- MODIFICATION END ---
         self.original_user_input = original_user_input
         self.dependencies = dependencies
@@ -572,7 +573,7 @@ class PlanExecutor:
                 # --- Planning Phase ---
                 if self.state == self.AgentState.PLANNING:
                     # --- MODIFICATION START: Pass RAG retriever instance to Planner ---
-                    planner = Planner(self, rag_retriever_instance=self.rag_retriever)
+                    planner = Planner(self, rag_retriever_instance=self.rag_retriever, event_handler=self.event_handler)
                     # --- MODIFICATION END ---
                     should_replan = False
                     planning_is_disabled_history = self.disabled_history
@@ -952,7 +953,8 @@ class PlanExecutor:
             previous_turn_data=self.previous_turn_data,
             source="prompt_library",
             is_delegated_task=is_delegated_task,
-            force_final_summary=APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY
+            force_final_summary=APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY,
+            event_handler=self.event_handler
         )
 
         sub_executor.workflow_state = self.workflow_state

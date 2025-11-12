@@ -56,9 +56,10 @@ class Planner:
     and helper method access.
     """
     # --- MODIFICATION START: Accept RAGRetriever instance from executor ---
-    def __init__(self, executor: 'PlanExecutor', rag_retriever_instance: Optional[RAGRetriever] = None):
+    def __init__(self, executor: 'PlanExecutor', rag_retriever_instance: Optional[RAGRetriever] = None, event_handler=None):
         self.executor = executor
         self.rag_retriever = rag_retriever_instance
+        self.event_handler = event_handler
         if APP_CONFIG.RAG_ENABLED and not self.rag_retriever:
             app_logger.warning("Planner initialized without a RAGRetriever instance, though RAG is enabled.")
         elif APP_CONFIG.RAG_ENABLED and self.rag_retriever:
@@ -827,6 +828,8 @@ class Planner:
                 k=APP_CONFIG.RAG_NUM_EXAMPLES
             )
             if retrieved_cases:
+                if self.event_handler:
+                    await self.event_handler({}, "rag_retrieval")
                 formatted_examples = [self.rag_retriever._format_few_shot_example(case) for case in retrieved_cases]
                 rag_few_shot_examples_str = "\n\n" + "\n".join(formatted_examples) + "\n\n"
                 app_logger.info(f"Retrieved RAG cases for few-shot examples: {[case['case_id'] for case in retrieved_cases]}")

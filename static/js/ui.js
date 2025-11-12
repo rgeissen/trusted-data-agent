@@ -1455,6 +1455,25 @@ export function blinkContextDot() {
         DOM.contextStatusDot.classList.remove('blinking-white');
     }, 1500); // 0.5s animation * 3 iterations
 }
+
+/**
+ * Provides brief visual feedback on the RAG status dot by making it blink yellow.
+ */
+export function blinkRagDot() {
+    if (!DOM.ragStatusDot) return;
+
+    // Ensure it's in the 'connected' state before blinking
+    if (!DOM.ragStatusDot.classList.contains('connected')) {
+        DOM.ragStatusDot.classList.add('connected');
+    }
+
+    DOM.ragStatusDot.classList.add('blinking-yellow');
+
+    // The animation runs for 1.5s (0.5s * 3 iterations)
+    setTimeout(() => {
+        DOM.ragStatusDot.classList.remove('blinking-yellow');
+    }, 1500);
+}
 // --- MODIFICATION END ---
 
 export function closeChatModal() {

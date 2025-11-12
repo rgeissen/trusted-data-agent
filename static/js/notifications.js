@@ -193,6 +193,9 @@ export function subscribeToNotifications() {
                 break;
             }
             // --- MODIFICATION END ---
+            case 'rag_retrieval':
+                UI.blinkRagDot();
+                break;
             default:
                 // console.warn("Unknown notification type:", data.type);
         }
