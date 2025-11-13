@@ -899,3 +899,25 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
 .notification-banner button:hover {
     background-color: #D9501A;
 }
+
+/* RAG Case Modal Styling */
+#rag-case-modal-overlay { transition: opacity 0.3s ease-in-out; }
+#rag-case-modal-content {
+    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    max-width: 80vw; /* Adjust as needed */
+    max-height: 80vh; /* Adjust as needed */
+    overflow: hidden; /* Ensure content within modal respects its bounds */
+}
+#rag-case-modal-overlay.hidden { pointer-events: none; opacity: 0; }
+#rag-case-modal-overlay.hidden #rag-case-modal-content { transform: scale(0.95); opacity: 0; }
+
+#rag-case-modal-json {
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    background-color: #1E1E1E;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 1rem;
+    overflow: auto; /* Allow scrolling within the pre tag if content is too large */
+    white-space: pre-wrap; /* Ensure long lines wrap */
+    word-break: break-all; /* Break long words */
+}
