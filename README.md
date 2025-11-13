@@ -1,4 +1,4 @@
-# The Trusted Data Agent
+# Trusted Data Agent
 ### Query it. Automate it. Zero Friction.
 
 The **Trusted Data Agent** represents a paradigm shift in data interaction, taking you from question to insight to action in seconds. Experience the industry-leading AI conversational engine for your most complex enterprise data.
