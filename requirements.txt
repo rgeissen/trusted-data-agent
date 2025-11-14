@@ -11,3 +11,4 @@ cryptography
 google.cloud
 google-cloud-texttospeech
 chromadb
+sentence-transformers
