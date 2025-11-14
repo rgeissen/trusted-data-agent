@@ -768,15 +768,19 @@ class Planner:
 
         call_id = str(uuid.uuid4())
         summary = f"Generating a strategic meta-plan for the goal"
-        details_payload = {
-            "summary": summary,
-            "full_text": self.executor.workflow_goal_prompt,
-            "call_id": call_id,
-            "execution_depth": self.executor.execution_depth
-        }
-        event_data = {"step": "Calling LLM for Planning", "type": "system_message", "details": details_payload}
-        self.executor._log_system_event(event_data)
-        yield self.executor._format_sse(event_data)
+        
+        # --- MODIFICATION START: Defer payload creation until after LLM call ---
+        # details_payload = {
+        #     "summary": summary,
+        #     "full_text": self.executor.workflow_goal_prompt,
+        #     "call_id": call_id,
+        #     "execution_depth": self.executor.execution_depth
+        # }
+        # event_data = {"step": "Calling LLM for Planning", "type": "system_message", "details": details_payload}
+        # self.executor._log_system_event(event_data)
+        # yield self.executor._format_sse(event_data)
+        # --- MODIFICATION END ---
+
 
         previous_turn_summary_str = self._create_summary_from_history(self.executor.previous_turn_data)
 
@@ -867,6 +871,20 @@ class Planner:
             # No user_uuid/session_id needed here directly as _call_llm takes from self.executor
         )
         yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
+
+        # --- MODIFICATION START: Build payload *after* LLM call to include tokens ---
+        details_payload = {
+            "summary": summary,
+            "full_text": self.executor.workflow_goal_prompt,
+            "call_id": call_id,
+            "execution_depth": self.executor.execution_depth,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens
+        }
+        event_data = {"step": "Calling LLM for Planning", "type": "system_message", "details": details_payload}
+        self.executor._log_system_event(event_data)
+        yield self.executor._format_sse(event_data)
+        # --- MODIFICATION END ---
 
         if rag_few_shot_examples_str:
             app_logger.info(f"RAG Findings (few-shot examples) used:\n{rag_few_shot_examples_str}")

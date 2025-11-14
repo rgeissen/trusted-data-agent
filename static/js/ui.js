@@ -483,6 +483,26 @@ function _renderStandardStep(eventData, parentContainer, isFinal = false) {
     if (typeof details === 'object' && details !== null && details.call_id) {
         metricsEl.dataset.callId = details.call_id;
     }
+    
+    // --- MODIFICATION START: Read persisted token counts on render ---
+    if (typeof details === 'object' && details !== null) {
+        // Check for planner tokens (at the root of 'details')
+        const planner_input = details.input_tokens;
+        const planner_output = details.output_tokens;
+        
+        // Check for tool tokens (inside 'details.metadata')
+        const tool_input = details.metadata?.input_tokens;
+        const tool_output = details.metadata?.output_tokens;
+
+        if (planner_input !== undefined && planner_output !== undefined) {
+            metricsEl.innerHTML = `(LLM Call: ${planner_input.toLocaleString()} in / ${planner_output.toLocaleString()} out)`;
+            metricsEl.classList.remove('hidden');
+        } else if (tool_input !== undefined && tool_output !== undefined) {
+            metricsEl.innerHTML = `(LLM Call: ${tool_input.toLocaleString()} in / ${tool_output.toLocaleString()} out)`;
+            metricsEl.classList.remove('hidden');
+        }
+    }
+    // --- MODIFICATION END ---
 
     stepEl.appendChild(metricsEl);
 

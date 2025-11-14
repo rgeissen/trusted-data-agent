@@ -658,8 +658,13 @@ async def _invoke_llm_filter_task(STATE: dict, command: dict, user_uuid: str = N
 
     result = {
         "status": "success",
-        # --- MODIFICATION START ---
-        "metadata": {"call_id": final_call_id, "tool_name": "TDA_LLMFilter"},
+        # --- MODIFICATION START: Add token counts to metadata ---
+        "metadata": {
+            "call_id": final_call_id,
+            "tool_name": "TDA_LLMFilter",
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens
+        },
         # --- MODIFICATION END ---
         "results": [{"response": cleaned_response_text}]
     }
@@ -810,7 +815,7 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, workflow_state: dict
 
 
     # --- MODIFICATION START: Pass user_uuid ---
-    response_text, input_tokens, output_tokens = await llm_handler.call_llm_api(
+    response_text, input_tokens, output_tokens, _, _ = await llm_handler.call_llm_api(
         llm_instance=llm_instance,
         prompt=final_prompt,
         reason=reason,
@@ -836,8 +841,13 @@ async def _invoke_core_llm_task(STATE: dict, command: dict, workflow_state: dict
     else:
         result = {
             "status": "success",
-            # --- MODIFICATION START ---
-            "metadata": {"call_id": final_call_id, "tool_name": "TDA_LLMTask"},
+            # --- MODIFICATION START: Add token counts to metadata ---
+            "metadata": {
+                "call_id": final_call_id,
+                "tool_name": "TDA_LLMTask",
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens
+            },
             # --- MODIFICATION END ---
             "results": [{"response": response_text}]
         }
@@ -883,7 +893,14 @@ async def _invoke_final_report_task(STATE: dict, command: dict, workflow_state: 
 
         result = {
             "status": "success",
-            "metadata": {"call_id": final_call_id, "tool_name": "TDA_FinalReport"},
+            # --- MODIFICATION START: Add token counts to metadata ---
+            "metadata": {
+                "call_id": final_call_id,
+                "tool_name": "TDA_FinalReport",
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens
+            },
+            # --- MODIFICATION END ---
             "results": [report_data.model_dump()],
             "corrections": correction_descriptions
         }
@@ -932,7 +949,14 @@ async def _invoke_complex_prompt_report_task(STATE: dict, command: dict, workflo
 
         result = {
             "status": "success",
-            "metadata": {"call_id": final_call_id, "tool_name": "TDA_ComplexPromptReport"},
+            # --- MODIFICATION START: Add token counts to metadata ---
+            "metadata": {
+                "call_id": final_call_id,
+                "tool_name": "TDA_ComplexPromptReport",
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens
+            },
+            # --- MODIFICATION END ---
             "results": [report_data.model_dump()],
             "corrections": correction_descriptions
         }
@@ -1277,4 +1301,3 @@ async def invoke_mcp_tool(STATE: dict, command: dict, user_uuid: str = None, ses
     app_logger.error(f"Unexpected tool result format for '{tool_name}': {call_tool_result}")
     result = {"status": "error", "error": "Unexpected tool result format", "data": str(call_tool_result)}
     return result, 0, 0
-
