@@ -846,13 +846,15 @@ async def invoke_prompt_stream():
             task = None
             try:
                 # Prompt invocation doesn't support replay currently
+                # --- MODIFICATION START: Use f-string for user_input ---
                 task = asyncio.create_task(
                     execution_service.run_agent_execution(
                         user_uuid=user_uuid,
                         session_id=session_id,
-                        user_input="Executing prompt...",
+                        user_input=f"Executing prompt: {prompt_name}",
                         event_handler=event_handler,
                         active_prompt_name=prompt_name,
+                # --- MODIFICATION END ---
                         prompt_arguments=arguments,
                         disabled_history=disabled_history,
                         source=source,
