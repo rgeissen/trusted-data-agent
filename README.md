@@ -582,6 +582,8 @@ This allows you to integrate the Trusted Data Agent into larger automated system
 
 For more advanced orchestration and scheduling, the Trusted Data Agent also integrates with Apache Airflow. You can find detailed documentation and example DAGs in the [Airflow Integration Guide (docs/Airflow/Airflow.md)](docs/Airflow/Airflow.md).
 
+For visual workflow construction and no-code/low-code integration, the agent provides example flows for the Flowise UI. These can be found in the [Flowise Integration Guide (docs/Flowise/Flowise.md)](docs/Flowise/Flowise.md).
+
 **Step 4: Real-Time Monitoring of REST-driven Workflows**
 
 A key feature of the platform is the ability to monitor REST-initiated tasks in real-time through the UI. When a workflow is triggered via the API, the UI (if viewing the corresponding session) will display:

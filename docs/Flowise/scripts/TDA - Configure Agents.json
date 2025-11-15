@@ -1,0 +1,385 @@
+{
+  "nodes": [
+    {
+      "id": "startAgentflow_0",
+      "type": "agentFlow",
+      "position": {
+        "x": 16.170731987278188,
+        "y": 208.39991553369197
+      },
+      "data": {
+        "id": "startAgentflow_0",
+        "label": "Start",
+        "version": 1.1,
+        "name": "startAgentflow",
+        "type": "Start",
+        "color": "#7EE787",
+        "hideInput": true,
+        "baseClasses": [
+          "Start"
+        ],
+        "category": "Agent Flows",
+        "description": "Starting point of the agentflow",
+        "inputParams": [
+          {
+            "label": "Input Type",
+            "name": "startInputType",
+            "type": "options",
+            "options": [
+              {
+                "label": "Chat Input",
+                "name": "chatInput",
+                "description": "Start the conversation with chat input"
+              },
+              {
+                "label": "Form Input",
+                "name": "formInput",
+                "description": "Start the workflow with form inputs"
+              }
+            ],
+            "default": "chatInput",
+            "id": "startAgentflow_0-input-startInputType-options",
+            "display": true
+          },
+          {
+            "label": "Form Title",
+            "name": "formTitle",
+            "type": "string",
+            "placeholder": "Please Fill Out The Form",
+            "show": {
+              "startInputType": "formInput"
+            },
+            "id": "startAgentflow_0-input-formTitle-string",
+            "display": false
+          },
+          {
+            "label": "Form Description",
+            "name": "formDescription",
+            "type": "string",
+            "placeholder": "Complete all fields below to continue",
+            "show": {
+              "startInputType": "formInput"
+            },
+            "id": "startAgentflow_0-input-formDescription-string",
+            "display": false
+          },
+          {
+            "label": "Form Input Types",
+            "name": "formInputTypes",
+            "description": "Specify the type of form input",
+            "type": "array",
+            "show": {
+              "startInputType": "formInput"
+            },
+            "array": [
+              {
+                "label": "Type",
+                "name": "type",
+                "type": "options",
+                "options": [
+                  {
+                    "label": "String",
+                    "name": "string"
+                  },
+                  {
+                    "label": "Number",
+                    "name": "number"
+                  },
+                  {
+                    "label": "Boolean",
+                    "name": "boolean"
+                  },
+                  {
+                    "label": "Options",
+                    "name": "options"
+                  }
+                ],
+                "default": "string"
+              },
+              {
+                "label": "Label",
+                "name": "label",
+                "type": "string",
+                "placeholder": "Label for the input"
+              },
+              {
+                "label": "Variable Name",
+                "name": "name",
+                "type": "string",
+                "placeholder": "Variable name for the input (must be camel case)",
+                "description": "Variable name must be camel case. For example: firstName, lastName, etc."
+              },
+              {
+                "label": "Add Options",
+                "name": "addOptions",
+                "type": "array",
+                "show": {
+                  "formInputTypes[$index].type": "options"
+                },
+                "array": [
+                  {
+                    "label": "Option",
+                    "name": "option",
+                    "type": "string"
+                  }
+                ]
+              }
+            ],
+            "id": "startAgentflow_0-input-formInputTypes-array",
+            "display": false
+          },
+          {
+            "label": "Ephemeral Memory",
+            "name": "startEphemeralMemory",
+            "type": "boolean",
+            "description": "Start fresh for every execution without past chat history",
+            "optional": true,
+            "id": "startAgentflow_0-input-startEphemeralMemory-boolean",
+            "display": true
+          },
+          {
+            "label": "Flow State",
+            "name": "startState",
+            "description": "Runtime state during the execution of the workflow",
+            "type": "array",
+            "optional": true,
+            "array": [
+              {
+                "label": "Key",
+                "name": "key",
+                "type": "string",
+                "placeholder": "Foo"
+              },
+              {
+                "label": "Value",
+                "name": "value",
+                "type": "string",
+                "placeholder": "Bar",
+                "optional": true
+              }
+            ],
+            "id": "startAgentflow_0-input-startState-array",
+            "display": true
+          },
+          {
+            "label": "Persist State",
+            "name": "startPersistState",
+            "type": "boolean",
+            "description": "Persist the state in the same session",
+            "optional": true,
+            "id": "startAgentflow_0-input-startPersistState-boolean",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "startInputType": "chatInput",
+          "formTitle": "",
+          "formDescription": "",
+          "formInputTypes": "",
+          "startEphemeralMemory": "",
+          "startState": [
+            {
+              "key": "Connection_Result",
+              "value": ""
+            },
+            {
+              "key": "Connection_Status",
+              "value": ""
+            },
+            {
+              "key": "baseUrl",
+              "value": "http://192.168.0.100:5050"
+            },
+            {
+              "key": "provider",
+              "value": "Google"
+            },
+            {
+              "key": "model",
+              "value": "gemini-2.0-flash"
+            },
+            {
+              "key": "apiKey",
+              "value": ""
+            },
+            {
+              "key": "mcpServerName",
+              "value": "Teradata MCP Server"
+            },
+            {
+              "key": "mcpServerHost",
+              "value": "192.168.0.100"
+            },
+            {
+              "key": "mcpServerPort",
+              "value": "8888"
+            },
+            {
+              "key": "mcpServerPath",
+              "value": "/mcp"
+            }
+          ],
+          "startPersistState": ""
+        },
+        "outputAnchors": [
+          {
+            "id": "startAgentflow_0-output-startAgentflow",
+            "label": "Start",
+            "name": "startAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "width": 103,
+      "height": 65,
+      "selected": false,
+      "dragging": false,
+      "positionAbsolute": {
+        "x": 16.170731987278188,
+        "y": 208.39991553369197
+      }
+    },
+    {
+      "id": "toolAgentflow_0",
+      "position": {
+        "x": 254.88336308713787,
+        "y": 206.64109835603233
+      },
+      "data": {
+        "id": "toolAgentflow_0",
+        "label": "TDA Configure",
+        "version": 1.1,
+        "name": "toolAgentflow",
+        "type": "Tool",
+        "color": "#d4a373",
+        "baseClasses": [
+          "Tool"
+        ],
+        "category": "Agent Flows",
+        "description": "Tools allow LLM to interact with external systems",
+        "inputParams": [
+          {
+            "label": "Tool",
+            "name": "toolAgentflowSelectedTool",
+            "type": "asyncOptions",
+            "loadMethod": "listTools",
+            "loadConfig": true,
+            "id": "toolAgentflow_0-input-toolAgentflowSelectedTool-asyncOptions",
+            "display": true
+          },
+          {
+            "label": "Tool Input Arguments",
+            "name": "toolInputArgs",
+            "type": "array",
+            "acceptVariable": true,
+            "refresh": true,
+            "array": [
+              {
+                "label": "Input Argument Name",
+                "name": "inputArgName",
+                "type": "asyncOptions",
+                "loadMethod": "listToolInputArgs",
+                "refresh": true
+              },
+              {
+                "label": "Input Argument Value",
+                "name": "inputArgValue",
+                "type": "string",
+                "acceptVariable": true
+              }
+            ],
+            "show": {
+              "toolAgentflowSelectedTool": ".+"
+            },
+            "id": "toolAgentflow_0-input-toolInputArgs-array",
+            "display": true
+          },
+          {
+            "label": "Update Flow State",
+            "name": "toolUpdateState",
+            "description": "Update runtime state during the execution of the workflow",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Key",
+                "name": "key",
+                "type": "asyncOptions",
+                "loadMethod": "listRuntimeStateKeys",
+                "freeSolo": true
+              },
+              {
+                "label": "Value",
+                "name": "value",
+                "type": "string",
+                "acceptVariable": true,
+                "acceptNodeOutputAsVariable": true
+              }
+            ],
+            "id": "toolAgentflow_0-input-toolUpdateState-array",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "toolAgentflowSelectedTool": "requestsPost",
+          "toolInputArgs": [],
+          "toolUpdateState": [
+            {
+              "key": "Connection_Result",
+              "value": "<p><span class=\"variable\" data-type=\"mention\" data-id=\"output\" data-label=\"output\">{{ output }}</span> </p>"
+            }
+          ],
+          "toolAgentflowSelectedToolConfig": {
+            "requestsPostUrl": "<p><span class=\"variable\" data-type=\"mention\" data-id=\"$flow.state.baseUrl\" data-label=\"$flow.state.baseUrl\">{{ $flow.state.baseUrl }}</span>/api/v1/configure</p>",
+            "requestsPostName": "requests_post",
+            "requestsPostDescription": "Use this when you want to execute a POST request to create or update a resource.",
+            "requestsPostHeaders": "<p>{</p><p>\"Content-Type\":\"application/json\"</p><p>}</p>",
+            "requestPostBody": "<p>{</p><p>    \"provider\": \"Google\",</p><p>    \"model\": \"gemini-2.0-flash\",</p><p>    \"credentials\": {</p><p>        \"apiKey\": \"AIzaSyBbQY_EFlUhWmF9duH_Q0UdkWo91QfS4Gk\"</p><p>    },</p><p>    \"mcp_server\": {</p><p>        \"name\": \"teradata_mcp_server\",</p><p>        \"host\": \"uderia.com\",</p><p>        \"port\": \"8888\",</p><p>        \"path\": \"/mcp\"</p><p>    },</p><p>    \"tts_credentials_json\": \"&lt;Google Cloud TTS Credentials&gt;\"</p><p>}</p>",
+            "requestsPostBodySchema": "",
+            "requestsPostMaxOutputLength": "2000",
+            "toolAgentflowSelectedTool": "requestsPost"
+          },
+          "undefined": ""
+        },
+        "outputAnchors": [
+          {
+            "id": "toolAgentflow_0-output-toolAgentflow",
+            "label": "Tool",
+            "name": "toolAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "agentFlow",
+      "width": 167,
+      "height": 67,
+      "positionAbsolute": {
+        "x": 254.88336308713787,
+        "y": 206.64109835603233
+      },
+      "selected": false,
+      "dragging": false
+    }
+  ],
+  "edges": [
+    {
+      "source": "startAgentflow_0",
+      "sourceHandle": "startAgentflow_0-output-startAgentflow",
+      "target": "toolAgentflow_0",
+      "targetHandle": "toolAgentflow_0",
+      "data": {
+        "sourceColor": "#7EE787",
+        "targetColor": "#d4a373",
+        "isHumanInput": false
+      },
+      "type": "agentFlow",
+      "id": "startAgentflow_0-startAgentflow_0-output-startAgentflow-toolAgentflow_0-toolAgentflow_0",
+      "selected": false
+    }
+  ]
+}
