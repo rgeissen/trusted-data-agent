@@ -338,7 +338,7 @@
             "requestsPostName": "requests_post",
             "requestsPostDescription": "Use this when you want to execute a POST request to create or update a resource.",
             "requestsPostHeaders": "<p>{</p><p>\"Content-Type\":\"application/json\"</p><p>}</p>",
-            "requestPostBody": "<p>{</p><p>    \"provider\": \"Google\",</p><p>    \"model\": \"gemini-2.0-flash\",</p><p>    \"credentials\": {</p><p>        \"apiKey\": \"AIzaSyBbQY_EFlUhWmF9duH_Q0UdkWo91QfS4Gk\"</p><p>    },</p><p>    \"mcp_server\": {</p><p>        \"name\": \"teradata_mcp_server\",</p><p>        \"host\": \"uderia.com\",</p><p>        \"port\": \"8888\",</p><p>        \"path\": \"/mcp\"</p><p>    },</p><p>    \"tts_credentials_json\": \"&lt;Google Cloud TTS Credentials&gt;\"</p><p>}</p>",
+            "requestPostBody": "<p>{</p><p>    \"provider\": \"Google\",</p><p>    \"model\": \"gemini-2.0-flash\",</p><p>    \"credentials\": {</p><p>        \"apiKey\": \""</p><p>    },</p><p>    \"mcp_server\": {</p><p>        \"name\": \"teradata_mcp_server\",</p><p>        \"host\": \"uderia.com\",</p><p>        \"port\": \"8888\",</p><p>        \"path\": \"/mcp\"</p><p>    },</p><p>    \"tts_credentials_json\": \"&lt;Google Cloud TTS Credentials&gt;\"</p><p>}</p>",
             "requestsPostBodySchema": "",
             "requestsPostMaxOutputLength": "2000",
             "toolAgentflowSelectedTool": "requestsPost"
