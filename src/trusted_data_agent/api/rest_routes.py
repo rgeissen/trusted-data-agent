@@ -5,6 +5,7 @@ import logging
 from datetime import datetime, timezone
 import re
 import uuid # Import uuid
+import copy # --- MODIFICATION START: Import copy ---
 
 # --- MODIFICATION START: Import generate_task_id ---
 from quart import Blueprint, current_app, jsonify, request, abort
@@ -203,48 +204,39 @@ async def execute_query(session_id: str):
         notification_queues = APP_STATE.get("notification_queues", {}).get(user_uuid, set())
         if notification_queues:
             try:
-                # Use the application's own formatter to guarantee a canonical event object
-                sse_message_str = PlanExecutor._format_sse(sanitized_event_data, event_type)
-                
-                # Extract the JSON part from the "data: ..." line
-                json_payload_str = None
-                for line in sse_message_str.strip().split('\n'):
-                    if line.startswith('data:'):
-                        json_payload_str = line[5:].strip()
-                        break
-                
-                if json_payload_str:
-                    # The extracted part is a JSON string, so we load it into a Python dict
-                    canonical_event = json.loads(json_payload_str)
+                # --- MODIFICATION START: Build canonical_event directly ---
+                # No need to format/re-parse. Just build the dict.
+                canonical_event = copy.deepcopy(sanitized_event_data)
+                # Ensure 'type' key exists, merging the event_type string
+                canonical_event['type'] = event_type
+                # --- MODIFICATION END ---
                     
-                    # --- MODIFICATION START: Handle session_name_update as a top-level event ---
-                    # --- MODIFICATION START: Handle status_indicator_update directly ---
-                    if event_type == "status_indicator_update":
-                        notification = {
-                            "type": "status_indicator_update",
-                            "payload": canonical_event # canonical_event already contains target and state
-                        }
-                        app_logger.debug(f"REST API: Emitting status_indicator_update for task {task_id}: {notification}")
-                    # --- MODIFICATION END ---
-                    elif event_type == "session_name_update":
-                        notification = {
-                            "type": "session_name_update",
-                            "payload": canonical_event # Payload already contains session_id and newName
-                        }
-                    else:
-                        notification = {
-                            "type": "rest_task_update",
-                            "payload": {
-                                "task_id": task_id,
-                                "session_id": session_id,
-                                "event": canonical_event
-                            }
-                        }
-                    # --- MODIFICATION END ---
-                    for queue in notification_queues:
-                        asyncio.create_task(queue.put(notification))
+                # --- MODIFICATION START: Handle session_name_update as a top-level event ---
+                # --- MODIFICATION START: Handle status_indicator_update directly ---
+                if event_type == "status_indicator_update":
+                    notification = {
+                        "type": "status_indicator_update",
+                        "payload": canonical_event # canonical_event already contains target and state
+                    }
+                    app_logger.debug(f"REST API: Emitting status_indicator_update for task {task_id}: {notification}")
+                # --- MODIFICATION END ---
+                elif event_type == "session_name_update":
+                    notification = {
+                        "type": "session_name_update",
+                        "payload": canonical_event # Payload already contains session_id and newName
+                    }
                 else:
-                    app_logger.warning(f"Could not extract JSON payload from SSE message for event type {event_type}")
+                    notification = {
+                        "type": "rest_task_update",
+                        "payload": {
+                            "task_id": task_id,
+                            "session_id": session_id,
+                            "event": canonical_event
+                        }
+                    }
+                # --- MODIFICATION END ---
+                for queue in notification_queues:
+                    asyncio.create_task(queue.put(notification))
 
             except Exception as e:
                 app_logger.error(f"Failed to format or send canonical event for REST task {task_id}: {e}", exc_info=True)

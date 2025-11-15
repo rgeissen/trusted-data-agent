@@ -145,6 +145,14 @@ export function subscribeToNotifications() {
                 const { task_id, session_id, event } = data.payload;
                 if (session_id !== state.currentSessionId) break;
 
+                // --- MODIFICATION START: Add RAG event handling ---
+                // Check the *original* event type inside the payload
+                if (event.type === 'rag_retrieval') {
+                    state.lastRagCaseData = event; // Store the full case data
+                    UI.blinkRagDot();
+                }
+                // --- MODIFICATION END ---
+
                 const isFinal = (event.type === 'final_answer' || event.type === 'error' || event.type === 'cancelled');
                 
                 // The backend now sends a canonical event object, so we can pass it directly.
