@@ -2,10 +2,14 @@ import time
 import os
 import json
 import requests
-from airflow.decorators import dag, task
-from airflow.hooks.base import BaseHook
+# Airflow 3 SDK Imports
+from airflow.sdk import dag, task
+from airflow.sdk import BaseHook
+import pendulum # Used for start_date calculation
+# Airflow model imports are still generally compatible
 from airflow.models import Variable
-from airflow.utils.dates import days_ago
+# The days_ago function is removed in Airflow 3
+# from airflow.utils.dates import days_ago 
 from airflow.exceptions import AirflowException
 
 # --- CONFIGURATION ---
@@ -21,7 +25,15 @@ default_args = {
 }
 
 
-@dag(dag_id=DAG_ID, default_args=default_args, schedule_interval=None, start_date=days_ago(1), tags=['tda', 'setup'], catchup=False)
+@dag(
+    dag_id=DAG_ID, 
+    default_args=default_args, 
+    # FIX: Replaced 'schedule_interval' with the correct parameter 'schedule' for Airflow 3
+    schedule=None, 
+    start_date=pendulum.now(tz="UTC").subtract(days=1), 
+    tags=['tda', 'setup'], 
+    catchup=False
+)
 def tda_configure_from_file():
     """
     Uses the session / submit / poll pattern from `tda_master_dag.py`, but reads questions
@@ -32,6 +44,7 @@ def tda_configure_from_file():
     - Tasks are chained so each question waits for the previous question's poll to finish before submitting.
     """
 
+    # BaseHook is now imported via airflow.sdk
     def get_base_url():
         return BaseHook.get_connection(CONN_ID).host
 
