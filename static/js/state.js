@@ -59,6 +59,9 @@ export const state = {
     collapseDuplicateTraceEntries: true, // Collapse consecutive identical tool entries
     currentCaseTrace: [], // Raw trace for current selected case
     // --- MODIFICATION END ---
+    // --- MODIFICATION START: Feedback Voting ---
+    feedbackByTurn: {}, // turnId -> 'up' | 'down' | null
+    // --- MODIFICATION END ---
 };
 
 // Functions to modify state can be added here if needed, e.g.:

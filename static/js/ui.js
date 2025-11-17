@@ -167,6 +167,89 @@ export function addMessage(role, content, turnId = null, isValid = true, source 
     wrapper.appendChild(role === 'user' ? messageContainer : icon);
     wrapper.appendChild(role === 'user' ? icon : messageContainer);
 
+    // --- MODIFICATION START: Add vertical feedback stack for assistant answers ---
+    if (role === 'assistant' && turnId) {
+        const feedbackWrapper = document.createElement('div');
+        feedbackWrapper.className = 'mt-2 flex justify-end';
+        feedbackWrapper.dataset.turnId = turnId;
+
+        const pill = document.createElement('div');
+        pill.className = 'flex items-stretch rounded-md bg-gray-900/50 border border-white/10 overflow-hidden backdrop-blur-sm';
+
+        const makeBtn = (dir) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            // Removed 'group' so hover only affects this button, not sibling
+            btn.className = 'feedback-btn px-2 py-1 flex items-center justify-center gap-1 text-gray-300 hover:text-white hover:bg-gray-800/60 transition text-xs';
+            btn.setAttribute('aria-label', dir === 'up' ? 'Mark answer as helpful' : 'Mark answer as unhelpful');
+            btn.setAttribute('aria-pressed', 'false');
+            btn.dataset.vote = dir;
+            const svg = dir === 'up'
+                ? `<svg class='w-4 h-4' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'>
+                     <path d='M14 9V5a3 3 0 00-3-3l-4 9v11h11a3 3 0 003-3v-5a3 3 0 00-3-3h-7'/>
+                   </svg>`
+                : `<svg class='w-4 h-4' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'>
+                     <path d='M10 15v4a3 3 0 003 3l4-9V2H6a3 3 0 00-3 3v5a3 3 0 003 3h7'/>
+                   </svg>`;
+            const labelText = dir === 'up' ? 'Helpful' : 'Unhelpful';
+            const labelSpan = document.createElement('span');
+            labelSpan.className = 'vote-label opacity-70 transition text-[10px] tracking-wide text-gray-400';
+            labelSpan.textContent = labelText;
+            btn.innerHTML = svg; // set icon first
+            btn.appendChild(labelSpan);
+            // Isolated hover: only brighten hovered button's label
+            btn.addEventListener('mouseenter', () => {
+                labelSpan.classList.remove('opacity-70', 'text-gray-400');
+                labelSpan.classList.add('opacity-100', 'text-white');
+            });
+            btn.addEventListener('mouseleave', () => {
+                labelSpan.classList.add('opacity-70', 'text-gray-400');
+                labelSpan.classList.remove('opacity-100', 'text-white');
+            });
+            return btn;
+        };
+
+        const upBtn = makeBtn('up');
+        const divider = document.createElement('div');
+        divider.className = 'w-px bg-white/10';
+        const downBtn = makeBtn('down');
+
+        const applyState = () => {
+            const current = state.feedbackByTurn[turnId] || 'none';
+            upBtn.classList.toggle('active', current === 'up');
+            downBtn.classList.toggle('active', current === 'down');
+            upBtn.setAttribute('aria-pressed', current === 'up' ? 'true' : 'false');
+            downBtn.setAttribute('aria-pressed', current === 'down' ? 'true' : 'false');
+            if (current === 'up') {
+                upBtn.classList.add('text-[#F15F22]', 'bg-gray-800/60');
+                downBtn.classList.remove('text-gray-300', 'bg-gray-800/60');
+            } else if (current === 'down') {
+                downBtn.classList.add('text-gray-300', 'bg-gray-800/60');
+                upBtn.classList.remove('text-[#F15F22]', 'bg-gray-800/60');
+            } else {
+                upBtn.classList.remove('text-[#F15F22]', 'bg-gray-800/60');
+                downBtn.classList.remove('text-gray-300', 'bg-gray-800/60');
+            }
+        };
+
+        const toggleVote = (dir) => {
+            const current = state.feedbackByTurn[turnId] || 'none';
+            state.feedbackByTurn[turnId] = current === dir ? null : dir;
+            applyState();
+        };
+
+        upBtn.addEventListener('click', () => toggleVote('up'));
+        downBtn.addEventListener('click', () => toggleVote('down'));
+
+        pill.appendChild(upBtn);
+        pill.appendChild(divider);
+        pill.appendChild(downBtn);
+        feedbackWrapper.appendChild(pill);
+        messageContainer.appendChild(feedbackWrapper);
+        applyState();
+    }
+    // --- MODIFICATION END ---
+
     DOM.chatLog.appendChild(wrapper);
 
     // Logic for avatar click, header buttons, and turn badges
@@ -1792,6 +1875,24 @@ async function selectCaseRow(caseId) {
         const turnSummary = data.session_turn_summary || null;
         if (DOM.ragSelectedCaseMetadata) {
             const meta = caseData.metadata || {};
+            // Compute total execution time from trace timestamps (first to last)
+            let totalExecutionTime = 'N/A';
+            if (turnSummary && Array.isArray(turnSummary.execution_trace) && turnSummary.execution_trace.length > 0) {
+                const parseTs = (entry) => {
+                    try {
+                        const ts = entry?.action?.metadata?.timestamp || entry?.result?.metadata?.timestamp;
+                        return ts ? Date.parse(ts) : null;
+                    } catch { return null; }
+                };
+                // Find first and last valid timestamps
+                const firstEntry = turnSummary.execution_trace.find(e => parseTs(e) !== null);
+                const lastEntry = [...turnSummary.execution_trace].reverse().find(e => parseTs(e) !== null);
+                const firstTs = parseTs(firstEntry);
+                const lastTs = parseTs(lastEntry);
+                if (firstTs !== null && lastTs !== null && lastTs >= firstTs) {
+                    totalExecutionTime = ((lastTs - firstTs) / 1000).toFixed(2) + 's';
+                }
+            }
             DOM.ragSelectedCaseMetadata.innerHTML = `
                 <div class='grid grid-cols-2 md:grid-cols-4 gap-2'>
                     <div><span class='text-gray-500'>Case ID:</span> <code>${escapeHtml(caseData.case_id || caseId)}</code></div>
@@ -1802,7 +1903,8 @@ async function selectCaseRow(caseId) {
                     <div><span class='text-gray-500'>Model:</span> ${escapeHtml(meta.llm_config?.model || '')}</div>
                     <div><span class='text-gray-500'>Output Tokens:</span> ${escapeHtml(String(meta.llm_config?.output_tokens ?? ''))}</div>
                     <div><span class='text-gray-500'>Efficient:</span> ${meta.is_most_efficient ? '<span class="text-green-400">Yes</span>' : '<span class="text-gray-400">No</span>'}</div>
-                </div>`;
+                </div>
+                <div class='mt-2 text-xs text-gray-400'>Total Execution Time: <span class='font-mono text-gray-200'>${totalExecutionTime}</span></div>`;
         }
         if (DOM.ragSelectedCasePlan) {
             const phases = caseData.successful_strategy?.phases || [];
