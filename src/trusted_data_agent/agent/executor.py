@@ -166,7 +166,10 @@ class PlanExecutor:
             },
             "metadata": {
                 "execution_depth": self.execution_depth,
-                "type": event_data.get("type")
+                "type": event_data.get("type"),
+                # --- MODIFICATION START: Add timestamp for per-step timing ---
+                "timestamp": datetime.now(timezone.utc).isoformat()
+                # --- MODIFICATION END ---
             }
         }
         result = {"status": "info"}

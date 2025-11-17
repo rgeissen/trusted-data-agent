@@ -18,6 +18,23 @@ export const conversationView = document.getElementById('conversation-view');
 export const ragMaintenanceView = document.getElementById('rag-maintenance-view');
 // NEW: RAG Marketplace view element
 export const ragMarketplaceView = document.getElementById('rag-marketplace-view');
+// NEW: RAG Maintenance collections container
+export const ragMaintenanceCollectionsContainer = document.getElementById('rag-maintenance-collections-container');
+export const ragMaintenanceEmptyHint = document.getElementById('rag-maintenance-empty-hint');
+// NEW: RAG Collection Inspection view elements
+export const ragCollectionInspectView = document.getElementById('rag-collection-inspect-view');
+export const ragCollectionInspectBack = document.getElementById('rag-collection-inspect-back');
+export const ragCollectionInspectTitle = document.getElementById('rag-collection-inspect-title');
+export const ragCollectionSearchInput = document.getElementById('rag-collection-search-input');
+export const ragCollectionRefreshButton = document.getElementById('rag-collection-refresh');
+export const ragCollectionLoading = document.getElementById('rag-collection-loading');
+export const ragCollectionTableBody = document.getElementById('rag-collection-table-body');
+export const ragCollectionFooter = document.getElementById('rag-collection-footer');
+export const ragSelectedCaseDetails = document.getElementById('rag-selected-case-details');
+export const ragSelectedCaseMetadata = document.getElementById('rag-selected-case-metadata');
+export const ragSelectedCasePlan = document.getElementById('rag-selected-case-plan');
+export const ragSelectedCaseTrace = document.getElementById('rag-selected-case-trace');
+export const ragSelectedCaseSeparator = document.getElementById('rag-selected-case-separator');
 export const conversationHeader = document.getElementById('conversation-header');
 export const conversationPanels = document.getElementById('conversation-panels');
 // This selects all view-switching buttons in the side nav

@@ -8,6 +8,8 @@ import copy
 import hashlib
 import httpx
 import uuid # Import the uuid module
+from pathlib import Path
+import chromadb
 
 from quart import Blueprint, request, jsonify, render_template, Response, abort
 from langchain_mcp_adapters.prompts import load_mcp_prompt
@@ -388,6 +390,216 @@ async def subscribe_notifications():
                     del notification_queues[user_uuid]
 
     return Response(notification_generator(), mimetype="text/event-stream")
+
+@api_bp.route("/rag/collections", methods=["GET"])
+async def list_rag_collections():
+    """Lists available ChromaDB collections with basic metadata and document counts."""
+    try:
+        retriever = APP_STATE.get('rag_retriever_instance')
+        client = None
+        if retriever and hasattr(retriever, 'client'):
+            client = retriever.client
+        else:
+            # Fallback: attempt to open persistent client if RAG is enabled
+            if APP_CONFIG.RAG_ENABLED:
+                project_root = Path(__file__).resolve().parent.parent.parent
+                persist_dir = project_root / '.chromadb_rag_cache'
+                persist_dir.mkdir(exist_ok=True)
+                client = chromadb.PersistentClient(path=str(persist_dir))
+        if not client:
+            return jsonify({"collections": []})
+        raw_collections = client.list_collections()
+        collections = []
+        for col in raw_collections:
+            name = getattr(col, 'name', None) or getattr(col, 'id', 'unknown')
+            count = None
+            metadata = {}
+            try:
+                c_obj = client.get_collection(name=name)
+                count = c_obj.count()
+                metadata = c_obj.metadata or {}
+            except Exception as inner_e:
+                app_logger.warning(f"Failed to inspect collection '{name}': {inner_e}")
+            collections.append({"name": name, "count": count, "metadata": metadata})
+        return jsonify({"collections": collections})
+    except Exception as e:
+        app_logger.error(f"Error listing RAG collections: {e}", exc_info=True)
+        return jsonify({"error": "Failed to list collections"}), 500
+
+@api_bp.route("/rag/collections/<collection_name>/rows", methods=["GET"])
+async def get_collection_rows(collection_name):
+    """Returns a sample or search results of rows from a ChromaDB collection.
+
+    Query Parameters:
+      limit (int): number of rows to return (default 25, max 100)
+      q (str): optional search query; if provided runs a similarity query
+      light (bool): if true, omits full_case_data from response for lighter payload
+    """
+    try:
+        retriever = APP_STATE.get('rag_retriever_instance')
+        client = None
+        if retriever and hasattr(retriever, 'client'):
+            client = retriever.client
+        else:
+            if APP_CONFIG.RAG_ENABLED:
+                project_root = Path(__file__).resolve().parent.parent.parent
+                persist_dir = project_root / '.chromadb_rag_cache'
+                persist_dir.mkdir(exist_ok=True)
+                client = chromadb.PersistentClient(path=str(persist_dir))
+        if not client:
+            return jsonify({"rows": [], "total": 0})
+
+        limit = request.args.get('limit', default=25, type=int)
+        limit = max(1, min(limit, 100))
+        query_text = request.args.get('q', default=None, type=str)
+        light = request.args.get('light', default='true').lower() == 'true'
+
+        try:
+            collection = client.get_collection(name=collection_name)
+        except Exception:
+            return jsonify({"error": f"Collection '{collection_name}' not found."}), 404
+
+        rows = []
+        total = 0
+        if query_text and len(query_text) >= 3:
+            # Similarity search path
+            try:
+                query_results = collection.query(
+                    query_texts=[query_text], n_results=limit, include=["metadatas", "distances"]
+                )
+                if query_results and query_results.get("ids"):
+                    total = len(query_results["ids"][0])
+                    for i in range(total):
+                        row_id = query_results["ids"][0][i]
+                        meta = query_results["metadatas"][0][i]
+                        distance = query_results["distances"][0][i]
+                        similarity = 1 - distance
+                        full_case_data = None
+                        if not light:
+                            try:
+                                full_case_data = json.loads(meta.get("full_case_data", "{}"))
+                            except json.JSONDecodeError:
+                                full_case_data = None
+                        rows.append({
+                            "id": row_id,
+                            "user_query": meta.get("user_query"),
+                            "strategy_type": meta.get("strategy_type"),
+                            "is_most_efficient": meta.get("is_most_efficient"),
+                            "output_tokens": meta.get("output_tokens"),
+                            "timestamp": meta.get("timestamp"),
+                            "similarity_score": similarity,
+                            "full_case_data": full_case_data,
+                        })
+            except Exception as qe:
+                app_logger.warning(f"Query failed for collection '{collection_name}': {qe}")
+        else:
+            # Sampling path: attempt limited get; fallback to slice
+            try:
+                # ChromaDB doesn't always expose a limit param; retrieve all then slice
+                all_results = collection.get(include=["metadatas"])
+                ids = all_results.get("ids", [])
+                metas = all_results.get("metadatas", [])
+                total = len(ids)
+                sample_count = min(limit, total)
+                for i in range(sample_count):
+                    meta = metas[i]
+                    full_case_data = None
+                    if not light:
+                        try:
+                            full_case_data = json.loads(meta.get("full_case_data", "{}"))
+                        except json.JSONDecodeError:
+                            full_case_data = None
+                    rows.append({
+                        "id": ids[i],
+                        "user_query": meta.get("user_query"),
+                        "strategy_type": meta.get("strategy_type"),
+                        "is_most_efficient": meta.get("is_most_efficient"),
+                        "output_tokens": meta.get("output_tokens"),
+                        "timestamp": meta.get("timestamp"),
+                        "full_case_data": full_case_data,
+                    })
+            except Exception as ge:
+                app_logger.error(f"Sampling failed for collection '{collection_name}': {ge}", exc_info=True)
+        return jsonify({"rows": rows, "total": total, "query": query_text, "collection": collection_name})
+    except Exception as e:
+        app_logger.error(f"Error getting collection rows for '{collection_name}': {e}", exc_info=True)
+        return jsonify({"error": "Failed to get collection rows"}), 500
+
+# --- NEW ENDPOINT: Retrieve full case + associated turn summary ---
+@api_bp.route("/rag/cases/<case_id>", methods=["GET"])
+async def get_rag_case_details(case_id: str):
+    """Returns full RAG case JSON and associated session turn summary.
+
+    Matching logic:
+      1. Load case file from rag/tda_rag_cases (case_<uuid>.json)
+      2. Extract session_id, turn_id, task_id from case metadata
+      3. Search session logs (tda_sessions/<user_uuid>/<session_id>.json)
+         - First try match by turn_id
+         - If not found, fallback to match by task_id
+    """
+    try:
+        # Determine project root (4 levels up from this file)
+        project_root = Path(__file__).resolve().parents[3]
+        cases_dir = project_root / 'rag' / 'tda_rag_cases'
+        if not cases_dir.exists():
+            return jsonify({"error": "Cases directory not found."}), 500
+
+        file_stem = case_id if case_id.startswith('case_') else f'case_{case_id}'
+        case_path = cases_dir / f"{file_stem}.json"
+        if not case_path.exists():
+            return jsonify({"error": f"Case '{file_stem}' not found."}), 404
+
+        with open(case_path, 'r', encoding='utf-8') as f:
+            case_data = json.load(f)
+
+        metadata = case_data.get('metadata', {})
+        session_id = metadata.get('session_id')
+        turn_id = metadata.get('turn_id')
+        task_id = metadata.get('task_id')
+
+        session_turn_summary = None
+        join_method = None
+
+        if session_id:
+            sessions_root = project_root / 'tda_sessions'
+            if sessions_root.exists():
+                # Iterate all user_uuid directories to locate the session file
+                for user_dir in sessions_root.iterdir():
+                    if not user_dir.is_dir():
+                        continue
+                    session_file = user_dir / f"{session_id}.json"
+                    if not session_file.exists():
+                        continue
+                    try:
+                        with open(session_file, 'r', encoding='utf-8') as sf:
+                            session_json = json.load(sf)
+                        workflow_history = session_json.get('last_turn_data', {}).get('workflow_history', [])
+                        # 1. Try by turn_id
+                        if turn_id is not None:
+                            for entry in workflow_history:
+                                if entry.get('turn') == turn_id:
+                                    session_turn_summary = entry
+                                    join_method = 'turn_id'
+                                    break
+                        # 2. Fallback by task_id
+                        if not session_turn_summary and task_id:
+                            for entry in workflow_history:
+                                if entry.get('task_id') == task_id:
+                                    session_turn_summary = entry
+                                    join_method = 'task_id'
+                                    break
+                    except Exception as se:
+                        app_logger.warning(f"Failed reading session file '{session_file.name}': {se}")
+                    break  # Stop after first matching session file directory
+
+        return jsonify({
+            "case": case_data,
+            "session_turn_summary": session_turn_summary,
+            "join_method": join_method
+        })
+    except Exception as e:
+        app_logger.error(f"Error retrieving RAG case details for '{case_id}': {e}", exc_info=True)
+        return jsonify({"error": "Failed to retrieve case details"}), 500
 
 @api_bp.route("/sessions", methods=["GET"])
 async def get_sessions():

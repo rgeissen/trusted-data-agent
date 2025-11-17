@@ -49,6 +49,16 @@ export const state = {
     isRestTaskActive: false,
     activeRestTaskId: null,
     lastRagCaseData: null, // Stores the last retrieved RAG case for display
+    // --- MODIFICATION START: RAG Collection Inspection ---
+    currentInspectedCollection: null,
+    ragCollectionRowsCache: {}, // keyed by collection name for last fetched sample
+    ragCollectionSearchTerm: '',
+    // --- MODIFICATION END ---
+    // --- MODIFICATION START: Case Trace Rendering Controls ---
+    showSystemLogsInCaseTrace: false, // Toggle for system log visibility in Selected Case Details
+    collapseDuplicateTraceEntries: true, // Collapse consecutive identical tool entries
+    currentCaseTrace: [], // Raw trace for current selected case
+    // --- MODIFICATION END ---
 };
 
 // Functions to modify state can be added here if needed, e.g.:

@@ -1599,4 +1599,318 @@ export function handleViewSwitch(viewId) {
             console.error(`[UI DEBUG] WRONG VIEW IS ACTIVE! Expected ${viewId}, but found ${activeViews[0].id}`);
         }
     }, 100); // Use a small delay to catch any subsequent changes
+
+    // 6. If switching to RAG Maintenance, load collections
+    if (viewId === 'rag-maintenance-view') {
+        loadRagCollections();
+    }
+}
+
+/**
+ * Fetches ChromaDB collections from the backend and renders them as cards.
+ */
+async function loadRagCollections() {
+    if (!DOM.ragMaintenanceCollectionsContainer) return;
+    try {
+        if (DOM.ragMaintenanceEmptyHint) {
+            DOM.ragMaintenanceEmptyHint.textContent = 'Loading collections...';
+        }
+        const res = await fetch('/rag/collections');
+        const data = await res.json();
+        const collections = (data && data.collections) ? data.collections : [];
+        DOM.ragMaintenanceCollectionsContainer.innerHTML = '';
+        if (!collections.length) {
+            const emptyMsg = document.createElement('div');
+            emptyMsg.className = 'col-span-full text-gray-400 text-sm';
+            emptyMsg.textContent = 'No collections found.';
+            DOM.ragMaintenanceCollectionsContainer.appendChild(emptyMsg);
+            return;
+        }
+        collections.forEach(col => {
+            const card = document.createElement('div');
+            card.className = 'glass-panel rounded-xl p-4 flex flex-col gap-2 border border-white/10 hover:border-teradata-orange transition-colors';
+            const title = document.createElement('h2');
+            title.className = 'text-lg font-semibold text-white';
+            title.textContent = col.name;
+            const count = document.createElement('p');
+            count.className = 'text-sm text-gray-300';
+            count.textContent = `Documents: ${col.count ?? 'N/A'}`;
+            const meta = document.createElement('p');
+            meta.className = 'text-xs text-gray-500 break-all';
+            meta.textContent = col.metadata && Object.keys(col.metadata).length ? `Metadata: ${JSON.stringify(col.metadata)}` : 'Metadata: none';
+            const actions = document.createElement('div');
+            actions.className = 'mt-2 flex gap-2';
+            const refreshBtn = document.createElement('button');
+            refreshBtn.type = 'button';
+            refreshBtn.className = 'px-3 py-1 rounded-md bg-gray-700 hover:bg-gray-600 text-sm text-gray-200';
+            refreshBtn.textContent = 'Refresh';
+            refreshBtn.addEventListener('click', () => loadRagCollections());
+            const inspectBtn = document.createElement('button');
+            inspectBtn.type = 'button';
+            inspectBtn.className = 'px-3 py-1 rounded-md bg-[#F15F22] hover:bg-[#D9501A] text-sm text-white';
+            inspectBtn.textContent = 'Inspect';
+            inspectBtn.addEventListener('click', () => {
+                openCollectionInspection(col.name);
+            });
+            actions.appendChild(refreshBtn);
+            actions.appendChild(inspectBtn);
+            card.appendChild(title);
+            card.appendChild(count);
+            card.appendChild(meta);
+            card.appendChild(actions);
+            DOM.ragMaintenanceCollectionsContainer.appendChild(card);
+        });
+    } catch (e) {
+        console.error('Failed to load RAG collections', e);
+        DOM.ragMaintenanceCollectionsContainer.innerHTML = '';
+        const errMsg = document.createElement('div');
+        errMsg.className = 'col-span-full text-red-400 text-sm';
+        errMsg.textContent = 'Error loading collections.';
+        DOM.ragMaintenanceCollectionsContainer.appendChild(errMsg);
+    }
+}
+
+// --- RAG Collection Inspection Logic ---
+async function openCollectionInspection(collectionName) {
+    if (!collectionName) return;
+    state.currentInspectedCollection = collectionName;
+    if (DOM.ragCollectionInspectTitle) {
+        DOM.ragCollectionInspectTitle.textContent = `Inspect: ${collectionName}`;
+    }
+    handleViewSwitch('rag-collection-inspect-view');
+    await fetchAndRenderCollectionRows({ collection: collectionName, refresh: true });
+    wireCollectionInspectionEvents();
+}
+
+function wireCollectionInspectionEvents() {
+    if (DOM.ragCollectionInspectBack) {
+        DOM.ragCollectionInspectBack.onclick = () => {
+            state.currentInspectedCollection = null;
+            handleViewSwitch('rag-maintenance-view');
+        };
+    }
+    if (DOM.ragCollectionRefreshButton) {
+        DOM.ragCollectionRefreshButton.onclick = () => {
+            if (state.currentInspectedCollection) {
+                fetchAndRenderCollectionRows({ collection: state.currentInspectedCollection, refresh: true });
+            }
+        };
+    }
+    if (DOM.ragCollectionSearchInput && !DOM.ragCollectionSearchInput.dataset._wired) {
+        let debounceTimer = null;
+        DOM.ragCollectionSearchInput.addEventListener('input', () => {
+            const term = DOM.ragCollectionSearchInput.value.trim();
+            state.ragCollectionSearchTerm = term;
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                if (state.currentInspectedCollection) {
+                    fetchAndRenderCollectionRows({ collection: state.currentInspectedCollection, query: term });
+                }
+            }, 300);
+        });
+        DOM.ragCollectionSearchInput.dataset._wired = 'true';
+    }
+}
+
+async function fetchAndRenderCollectionRows({ collection, query = '', refresh = false }) {
+    if (!collection) return;
+    if (DOM.ragCollectionLoading) {
+        DOM.ragCollectionLoading.textContent = query && query.length >= 3 ? 'Searching...' : 'Loading rows...';
+        DOM.ragCollectionLoading.style.display = 'block';
+    }
+    try {
+        const params = new URLSearchParams();
+        params.set('limit', '25');
+        params.set('light', 'true');
+        if (query && query.length >= 3) {
+            params.set('q', query);
+        }
+        const res = await fetch(`/rag/collections/${encodeURIComponent(collection)}/rows?${params.toString()}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        renderCollectionRows(data.rows || [], data.total, query, collection);
+    } catch (e) {
+        console.error('Failed to fetch collection rows', e);
+        if (DOM.ragCollectionTableBody) {
+            DOM.ragCollectionTableBody.innerHTML = `<tr><td colspan="6" class="px-2 py-2 text-red-400">Error loading rows.</td></tr>`;
+        }
+    } finally {
+        if (DOM.ragCollectionLoading) {
+            DOM.ragCollectionLoading.style.display = 'none';
+        }
+    }
+}
+
+function renderCollectionRows(rows, total, query, collectionName) {
+    if (!DOM.ragCollectionTableBody) return;
+    DOM.ragCollectionTableBody.innerHTML = '';
+    if (!rows.length) {
+        DOM.ragCollectionTableBody.innerHTML = `<tr><td colspan="6" class="px-2 py-2 text-gray-400">${query && query.length >= 3 ? 'No matches found.' : 'No rows in sample.'}</td></tr>`;
+    } else {
+        rows.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-gray-700 hover:bg-gray-800/40';
+            const efficientBadge = r.is_most_efficient ? '<span class="px-2 py-0.5 rounded bg-green-600 text-white text-xs">Yes</span>' : '<span class="px-2 py-0.5 rounded bg-gray-600 text-white text-xs">No</span>';
+            tr.innerHTML = `
+                <td class="px-2 py-1 font-mono text-xs text-gray-300">${r.id}</td>
+                <td class="px-2 py-1 text-gray-200">${escapeHtml(r.user_query || '')}</td>
+                <td class="px-2 py-1 text-gray-300">${r.strategy_type || ''}</td>
+                <td class="px-2 py-1">${efficientBadge}</td>
+                <td class="px-2 py-1 text-gray-300">${r.output_tokens ?? ''}</td>
+                <td class="px-2 py-1 text-gray-400">${r.timestamp || ''}</td>
+            `;
+            tr.addEventListener('click', () => selectCaseRow(r.id));
+            DOM.ragCollectionTableBody.appendChild(tr);
+        });
+    }
+    if (DOM.ragCollectionFooter) {
+        const mode = query && query.length >= 3 ? 'search results' : 'sample';
+        DOM.ragCollectionFooter.textContent = `Showing ${rows.length} ${mode} (collection has ${total} total entries).`;
+    }
+}
+
+function escapeHtml(str) {
+    return str.replace(/[&<>"]+/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+async function selectCaseRow(caseId) {
+    if (!caseId) return;
+    if (DOM.ragSelectedCaseDetails) {
+        DOM.ragSelectedCaseDetails.classList.remove('hidden');
+        DOM.ragSelectedCaseMetadata.textContent = 'Loading case details...';
+        DOM.ragSelectedCasePlan.innerHTML = '';
+        DOM.ragSelectedCaseTrace.innerHTML = '';
+        if (DOM.ragSelectedCaseSeparator) {
+            DOM.ragSelectedCaseSeparator.classList.remove('hidden');
+        }
+    }
+    try {
+        const res = await fetch(`/rag/cases/${encodeURIComponent(caseId)}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        const caseData = data.case || {};
+        const turnSummary = data.session_turn_summary || null;
+        if (DOM.ragSelectedCaseMetadata) {
+            const meta = caseData.metadata || {};
+            DOM.ragSelectedCaseMetadata.innerHTML = `
+                <div class='grid grid-cols-2 md:grid-cols-4 gap-2'>
+                    <div><span class='text-gray-500'>Case ID:</span> <code>${escapeHtml(caseData.case_id || caseId)}</code></div>
+                    <div><span class='text-gray-500'>Task ID:</span> <code>${escapeHtml(meta.task_id || '')}</code></div>
+                    <div><span class='text-gray-500'>Session:</span> <code>${escapeHtml(meta.session_id || '')}</code></div>
+                    <div><span class='text-gray-500'>Turn:</span> <code>${escapeHtml(String(meta.turn_id ?? ''))}</code></div>
+                    <div><span class='text-gray-500'>Provider:</span> ${escapeHtml(meta.llm_config?.provider || '')}</div>
+                    <div><span class='text-gray-500'>Model:</span> ${escapeHtml(meta.llm_config?.model || '')}</div>
+                    <div><span class='text-gray-500'>Output Tokens:</span> ${escapeHtml(String(meta.llm_config?.output_tokens ?? ''))}</div>
+                    <div><span class='text-gray-500'>Efficient:</span> ${meta.is_most_efficient ? '<span class="text-green-400">Yes</span>' : '<span class="text-gray-400">No</span>'}</div>
+                </div>`;
+        }
+        if (DOM.ragSelectedCasePlan) {
+            const phases = caseData.successful_strategy?.phases || [];
+            if (phases.length) {
+                const phaseHtml = phases.map(p => `
+                    <div class='p-2 rounded-md bg-gray-800/40 border border-white/10'>
+                        <div class='text-xs font-semibold text-teradata-orange mb-1'>Phase ${p.phase}</div>
+                        <div class='text-sm text-gray-200 mb-1'>Goal: ${escapeHtml(p.goal || '')}</div>
+                        <div class='text-xs text-gray-400'>Tools: ${(p.relevant_tools || []).map(t => `<code>${escapeHtml(t)}</code>`).join(', ')}</div>
+                    </div>`).join('');
+                DOM.ragSelectedCasePlan.innerHTML = `<h3 class='text-white font-semibold mb-2'>Successful Strategy</h3><div class='grid md:grid-cols-2 gap-2'>${phaseHtml}</div>`;
+            } else {
+                DOM.ragSelectedCasePlan.innerHTML = '<div class="text-gray-400 text-sm">No successful strategy phases.</div>';
+            }
+        }
+        if (DOM.ragSelectedCaseTrace) {
+            if (turnSummary && Array.isArray(turnSummary.execution_trace)) {
+                // Store raw trace and render via helper for toggling & collapsing
+                state.currentCaseTrace = turnSummary.execution_trace.slice();
+                renderCaseTrace();
+            } else {
+                DOM.ragSelectedCaseTrace.innerHTML = '<div class="text-gray-400 text-sm">No execution trace available.</div>';
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load case details', e);
+        if (DOM.ragSelectedCaseMetadata) {
+            DOM.ragSelectedCaseMetadata.textContent = 'Error loading case details.';
+        }
+    }
+}
+
+function renderCaseTrace() {
+    if (!DOM.ragSelectedCaseTrace) return;
+    const rawTrace = Array.isArray(state.currentCaseTrace) ? state.currentCaseTrace : [];
+    let workingTrace = rawTrace;
+    if (!state.showSystemLogsInCaseTrace) {
+        workingTrace = workingTrace.filter(entry => !(entry.action && entry.action.tool_name === 'TDA_SystemLog'));
+    }
+    // Collapse duplicates if enabled
+    let collapsed = [];
+    if (state.collapseDuplicateTraceEntries) {
+        for (let i = 0; i < workingTrace.length; i++) {
+            const entry = workingTrace[i];
+            const prev = collapsed.length ? collapsed[collapsed.length - 1] : null;
+            const toolName = entry.action && entry.action.tool_name;
+            const message = entry.action && entry.action.arguments && entry.action.arguments.message;
+            const status = entry.result && entry.result.status;
+            if (prev && prev.__toolName === toolName && prev.__message === message && prev.__status === status) {
+                prev.__count += 1;
+                prev.entries.push(entry);
+            } else {
+                const wrapper = { ...entry, __toolName: toolName, __message: message, __status: status, __count: 1, entries: [entry] };
+                collapsed.push(wrapper);
+            }
+        }
+    } else {
+        collapsed = workingTrace.map(e => ({ ...e, __toolName: e.action && e.action.tool_name, __message: e.action && e.action.arguments && e.action.arguments.message, __status: e.result && e.result.status, __count: 1, entries: [e] }));
+    }
+
+    // Timing calculations
+    const parseTs = ts => {
+        try { return ts ? Date.parse(ts) : null; } catch { return null; }
+    };
+    const firstTs = collapsed.length ? parseTs(collapsed[0].action && collapsed[0].action.metadata && collapsed[0].action.metadata.timestamp) : null;
+
+    const html = collapsed.map(block => {
+        const action = block.action || {}; const result = block.result || {};
+        const tool = block.__toolName || 'unknown';
+        const status = block.__status || 'info';
+        const msg = block.__message || '';
+        const tsRaw = action.metadata && action.metadata.timestamp;
+        const currentTs = parseTs(tsRaw);
+        let elapsed = '-';
+        let delta = '-';
+        if (currentTs && firstTs) {
+            elapsed = ((currentTs - firstTs) / 1000).toFixed(2) + 's';
+        }
+        // Find previous distinct block timestamp for delta
+        const idx = collapsed.indexOf(block);
+        if (idx > 0) {
+            const prevTsRaw = collapsed[idx - 1].action && collapsed[idx - 1].action.metadata && collapsed[idx - 1].action.metadata.timestamp;
+            const prevTs = parseTs(prevTsRaw);
+            if (currentTs && prevTs) {
+                delta = ((currentTs - prevTs) / 1000).toFixed(2) + 's';
+            }
+        }
+        const repeatBadge = block.__count > 1 ? `<span class='ml-2 px-1 py-0.5 rounded bg-blue-600/60 text-[10px]'>x${block.__count}</span>` : '';
+        const timingBadge = `<span class='text-[10px] text-gray-500'>t=${elapsed} Δ=${delta}</span>`;
+        return `<div class='text-xs p-2 rounded bg-gray-900/40 border border-gray-700/40'>
+            <div class='flex justify-between items-center'><span class='font-mono text-gray-300'>${escapeHtml(tool)}</span><span class='text-[10px] ${status === 'error' ? 'text-red-400' : 'text-green-400'}'>${escapeHtml(status)}</span></div>
+            <div class='text-gray-400 mt-1'>${escapeHtml(msg)}</div>
+            <div class='flex justify-between mt-1'>${timingBadge}${repeatBadge}</div>
+        </div>`;
+    }).join('');
+
+    DOM.ragSelectedCaseTrace.innerHTML = `<h3 class='text-white font-semibold mb-2 flex items-center gap-4'>Execution Trace
+        <label class='flex items-center gap-1 text-[11px] font-normal'><input type='checkbox' id='toggle-system-logs' ${state.showSystemLogsInCaseTrace ? 'checked' : ''}>System Logs</label>
+        <label class='flex items-center gap-1 text-[11px] font-normal'><input type='checkbox' id='toggle-collapse-dupes' ${state.collapseDuplicateTraceEntries ? 'checked' : ''}>Collapse Duplicates</label>
+    </h3>
+    <div class='space-y-1 max-h-64 overflow-y-auto pr-1'>${html}</div>`;
+
+    const sysToggle = document.getElementById('toggle-system-logs');
+    const dupesToggle = document.getElementById('toggle-collapse-dupes');
+    if (sysToggle) {
+        sysToggle.onchange = () => { state.showSystemLogsInCaseTrace = sysToggle.checked; renderCaseTrace(); };
+    }
+    if (dupesToggle) {
+        dupesToggle.onchange = () => { state.collapseDuplicateTraceEntries = dupesToggle.checked; renderCaseTrace(); };
+    }
 }

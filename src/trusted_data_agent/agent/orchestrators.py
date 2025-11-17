@@ -1,7 +1,7 @@
 # trusted_data_agent/agent/orchestrators.py
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import re
 
 from trusted_data_agent.mcp import adapter as mcp_adapter
@@ -142,6 +142,8 @@ async def execute_date_range_orchestrator(executor, command: dict, date_param_na
         day_result, _, _ = await mcp_adapter.invoke_mcp_tool(
             executor.dependencies['STATE'], day_command, user_uuid=user_uuid, session_id=executor.session_id
         )
+        # Add timestamp metadata for timing analysis
+        day_command.setdefault("metadata", {})["timestamp"] = datetime.now(timezone.utc).isoformat()
         executor.turn_action_history.append({"action": day_command, "result": day_result})
         # --- MODIFICATION END ---
         

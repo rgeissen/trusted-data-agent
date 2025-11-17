@@ -4,6 +4,7 @@ import json
 import logging
 import copy
 import uuid
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Tuple, Dict, Any, List
 from abc import ABC, abstractmethod
 
@@ -580,6 +581,7 @@ class PhaseExecutor:
                 action_for_history = copy.deepcopy(command)
                 action_for_history.setdefault("metadata", {})["phase_number"] = phase_num
                 action_for_history.setdefault("metadata", {})["execution_depth"] = self.executor.execution_depth
+                action_for_history.setdefault("metadata", {})["timestamp"] = datetime.now(timezone.utc).isoformat()
                 self.executor.turn_action_history.append({"action": action_for_history, "result": enriched_tool_output})
                 # --- MODIFICATION END ---
                 all_loop_results.append(enriched_tool_output)
@@ -740,7 +742,7 @@ class PhaseExecutor:
                  action_for_history = {
                      "tool_name": "TDA_SystemLog",
                      "arguments": {"message": f"Multi-Tool Phase Item: {loop_item}"},
-                     "metadata": {"execution_depth": self.executor.execution_depth}
+                     "metadata": {"execution_depth": self.executor.execution_depth, "timestamp": datetime.now(timezone.utc).isoformat()}
                  }
                  self.executor.turn_action_history.append({
                      "action": action_for_history,
@@ -753,7 +755,7 @@ class PhaseExecutor:
                  action_for_history = {
                      "tool_name": "TDA_SystemLog",
                      "arguments": {"message": f"Multi-Tool Phase: {phase_goal}"},
-                     "metadata": {"execution_depth": self.executor.execution_depth}
+                     "metadata": {"execution_depth": self.executor.execution_depth, "timestamp": datetime.now(timezone.utc).isoformat()}
                  }
                  self.executor.turn_action_history.append({
                      "action": action_for_history,
@@ -1058,6 +1060,7 @@ class PhaseExecutor:
                 # --- MODIFICATION START: Manually log orchestrator action to history ---
                 action_for_history = copy.deepcopy(action)
                 action_for_history.setdefault("metadata", {})["execution_depth"] = self.executor.execution_depth
+                action_for_history.setdefault("metadata", {})["timestamp"] = datetime.now(timezone.utc).isoformat()
                 self.executor.turn_action_history.append({"action": action_for_history, "result": self.executor.last_tool_output})
                 phase_num = phase.get("phase", self.executor.current_phase_index + 1)
                 phase_result_key = f"result_of_phase_{phase_num}"
@@ -1077,7 +1080,7 @@ class PhaseExecutor:
              action_for_history = {
                  "tool_name": "TDA_SystemLog",
                  "arguments": {"message": f"Hallucinated Loop: {phase.get('goal')}"},
-                 "metadata": {"execution_depth": self.executor.execution_depth}
+                 "metadata": {"execution_depth": self.executor.execution_depth, "timestamp": datetime.now(timezone.utc).isoformat()}
              }
              self.executor.turn_action_history.append({"action": action_for_history, "result": self.executor.last_tool_output})
              phase_num = phase.get("phase", self.executor.current_phase_index + 1)
@@ -1278,6 +1281,7 @@ class PhaseExecutor:
         action_for_history = copy.deepcopy(action)
         action_for_history.setdefault("metadata", {})["phase_number"] = phase_num
         action_for_history.setdefault("metadata", {})["execution_depth"] = self.executor.execution_depth
+        action_for_history.setdefault("metadata", {})["timestamp"] = datetime.now(timezone.utc).isoformat()
         # --- MODIFICATION END ---
 
 
@@ -1299,6 +1303,10 @@ class PhaseExecutor:
             yield self.executor._format_sse({"step": "Tool Execution Result", "details": self.executor.last_tool_output, "tool_name": tool_name}, "tool_result")
             # --- MODIFICATION START: Use action_for_history ---
             self.executor.turn_action_history.append({"action": action_for_history, "result": self.executor.last_tool_output})
+            # --- MODIFICATION START: Add timestamp if missing (defensive) ---
+            if isinstance(action_for_history, dict):
+                action_for_history.setdefault("metadata", {})["timestamp"] = action_for_history.get("metadata", {}).get("timestamp") or datetime.now(timezone.utc).isoformat()
+            # --- MODIFICATION END ---
             # --- MODIFICATION END ---
             phase_result_key = f"result_of_phase_{phase_num}"
             self.executor.workflow_state.setdefault(phase_result_key, []).append(self.executor.last_tool_output)
@@ -1389,6 +1397,8 @@ class PhaseExecutor:
             # (Fast-path loops log their own history)
             if not is_fast_path:
                 self.executor.turn_action_history.append({"action": action_for_history, "result": self.executor.last_tool_output})
+                if isinstance(action_for_history, dict):
+                    action_for_history.setdefault("metadata", {})["timestamp"] = action_for_history.get("metadata", {}).get("timestamp") or datetime.now(timezone.utc).isoformat()
             # --- MODIFICATION END ---
 
 

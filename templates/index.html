@@ -356,7 +356,53 @@
             <div id="rag-maintenance-view" class="app-view w-full h-full p-8">
                 <div class="max-w-7xl mx-auto">
                     <h1 class="text-3xl font-bold text-white header-title">RAG Maintenance</h1>
-                    <p class="text-gray-400 mt-4 text-lg">This section is under development.</p>
+                    <div id="rag-maintenance-collections-container" class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                        <!-- Dynamic ChromaDB collection cards will be injected here -->
+                        <div class="col-span-full text-gray-400 text-sm" id="rag-maintenance-empty-hint">Loading collections...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 2B: RAG Collection Inspection -->
+            <div id="rag-collection-inspect-view" class="app-view w-full h-full p-8">
+                <div class="max-w-7xl mx-auto flex flex-col h-full">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-4">
+                            <button id="rag-collection-inspect-back" type="button" class="px-3 py-2 rounded-md bg-gray-700 hover:bg-gray-600 text-sm text-gray-200">Back</button>
+                            <h1 id="rag-collection-inspect-title" class="text-2xl font-bold text-white header-title">Inspect Collection</h1>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <input id="rag-collection-search-input" type="text" placeholder="Search (min 3 chars)..." class="w-64 p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-sm" />
+                            <button id="rag-collection-refresh" type="button" class="px-3 py-2 rounded-md bg-[#F15F22] hover:bg-[#D9501A] text-sm text-white">Refresh Sample</button>
+                        </div>
+                    </div>
+                    <div id="rag-collection-table-wrapper" class="flex-1 min-h-0 flex flex-col glass-panel rounded-xl p-4 overflow-hidden">
+                        <div id="rag-collection-loading" class="text-gray-400 text-sm mb-2">Loading rows...</div>
+                        <div class="overflow-auto flex-1">
+                            <table class="min-w-full text-sm">
+                                <thead class="sticky top-0 bg-gray-800">
+                                    <tr>
+                                        <th class="px-2 py-1 text-left text-gray-300 font-semibold">ID</th>
+                                        <th class="px-2 py-1 text-left text-gray-300 font-semibold">User Query</th>
+                                        <th class="px-2 py-1 text-left text-gray-300 font-semibold">Strategy</th>
+                                        <th class="px-2 py-1 text-left text-gray-300 font-semibold">Efficient</th>
+                                        <th class="px-2 py-1 text-left text-gray-300 font-semibold">Output Tokens</th>
+                                        <th class="px-2 py-1 text-left text-gray-300 font-semibold">Timestamp</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rag-collection-table-body"></tbody>
+                            </table>
+                        </div>
+                        <div id="rag-collection-footer" class="mt-2 text-xs text-gray-500"></div>
+                        <!-- Visible separator shown once a case is selected -->
+                        <div id="rag-selected-case-separator" class="hidden my-6 border-t border-white/10"></div>
+                        <div id="rag-selected-case-details" class="mt-4 hidden">
+                            <h2 class="text-lg font-bold text-white mb-2">Selected Case Details</h2>
+                            <div id="rag-selected-case-metadata" class="text-xs text-gray-400 mb-3"></div>
+                            <div id="rag-selected-case-plan" class="mb-4"></div>
+                            <div id="rag-selected-case-trace" class="space-y-2"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
