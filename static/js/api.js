@@ -402,3 +402,34 @@ export async function purgeSessionMemory(sessionId) {
     return result;
 }
 // --- MODIFICATION END ---
+
+// --- MODIFICATION START: Add updateTurnFeedback function ---
+/**
+ * Sends a request to the backend to update the feedback (upvote/downvote) for a specific turn.
+ * @param {string} sessionId The ID of the session.
+ * @param {number} turnId The turn number to update.
+ * @param {string|null} vote The vote value: 'up', 'down', or null to clear.
+ * @returns {Promise<object>} A promise that resolves with the server's response.
+ */
+export async function updateTurnFeedback(sessionId, turnId, vote) {
+    if (!sessionId) {
+        throw new Error("Session ID is required to update feedback.");
+    }
+    if (turnId === undefined || turnId === null) {
+        throw new Error("Turn ID is required to update feedback.");
+    }
+    
+    const response = await fetch(`/api/session/${sessionId}/turn/${turnId}/feedback`, {
+        method: 'POST',
+        headers: _getHeaders(),
+        body: JSON.stringify({ vote }),
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+        throw new Error(result.message || `Failed to update feedback (status ${response.status}).`);
+    }
+    return result;
+}
+// --- MODIFICATION END ---
+

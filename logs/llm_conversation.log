@@ -1,4 +1,4 @@
-2025-11-17 21:09:20,427 - --- REASON FOR CALL ---
+2025-11-17 22:15:35,798 - --- REASON FOR CALL ---
 No reason provided.
 --- RESPONSE ---
 ```json
@@ -22,13 +22,13 @@ No reason provided.
     "category": "Database Information"
   },
   "dba_tableSqlList": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "dba_tableUsageImpact": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "dba_userSqlList": {
-    "category": "Database Information"
+    "category": "Utilities"
   },
   "qlty_columnSummary": {
     "category": "Data Quality"
@@ -76,19 +76,19 @@ No reason provided.
     "category": "Utilities"
   },
   "base_tableAffinity": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "base_tableDDL": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "base_tableList": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "base_tablePreview": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "base_tableUsage": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "sec_rolePermissions": {
     "category": "Security"
@@ -109,13 +109,13 @@ No reason provided.
     "category": "Performance"
   },
   "dba_featureUsage": {
-    "category": "Database Information"
+    "category": "Utilities"
   },
   "dba_userDelay": {
     "category": "Performance"
   },
   "dba_sessionInfo": {
-    "category": "Database Information"
+    "category": "Utilities"
   },
   "dba_systemSpace": {
     "category": "Database Information"
@@ -136,31 +136,31 @@ No reason provided.
     "category": "Utilities"
   },
   "TDA_ContextReport": {
-    "category": "Utilities"
+    "category": "Reporting"
   },
   "TDA_FinalReport": {
-    "category": "Utilities"
+    "category": "Reporting"
   },
   "TDA_ComplexPromptReport": {
-    "category": "Utilities"
+    "category": "Reporting"
   },
   "dba_tableArchive": {
-    "category": "Database Administration"
+    "category": "Archiving"
   },
   "dba_databaseLineage": {
-    "category": "Database Administration"
+    "category": "Database Information"
   },
   "dba_tableDropImpact": {
-    "category": "Database Administration"
+    "category": "Table Management"
   },
   "dba_databaseHealthAssessment": {
-    "category": "Database Administration"
+    "category": "Reporting"
   },
   "dba_userActivityAnalysis": {
-    "category": "Database Administration"
+    "category": "Utilities"
   },
   "dba_systemVoice": {
-    "category": "Database Administration"
+    "category": "Utilities"
   },
   "_testMyServer": {
     "category": "Utilities"
@@ -172,7 +172,7 @@ No reason provided.
     "category": "Utilities"
   },
   "base_tableBusinessDesc": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "base_databaseBusinessDesc": {
     "category": "Database Information"

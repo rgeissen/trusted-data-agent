@@ -221,14 +221,20 @@ export function addMessage(role, content, turnId = null, isValid = true, source 
             upBtn.setAttribute('aria-pressed', current === 'up' ? 'true' : 'false');
             downBtn.setAttribute('aria-pressed', current === 'down' ? 'true' : 'false');
             if (current === 'up') {
+                upBtn.classList.remove('text-gray-300');
                 upBtn.classList.add('text-[#F15F22]', 'bg-gray-800/60');
-                downBtn.classList.remove('text-gray-300', 'bg-gray-800/60');
+                downBtn.classList.add('text-gray-300');
+                downBtn.classList.remove('text-[#F15F22]', 'bg-gray-800/60');
             } else if (current === 'down') {
-                downBtn.classList.add('text-gray-300', 'bg-gray-800/60');
+                downBtn.classList.remove('text-gray-300');
+                downBtn.classList.add('text-[#F15F22]', 'bg-gray-800/60');
+                upBtn.classList.add('text-gray-300');
                 upBtn.classList.remove('text-[#F15F22]', 'bg-gray-800/60');
             } else {
+                upBtn.classList.add('text-gray-300');
                 upBtn.classList.remove('text-[#F15F22]', 'bg-gray-800/60');
-                downBtn.classList.remove('text-gray-300', 'bg-gray-800/60');
+                downBtn.classList.add('text-gray-300');
+                downBtn.classList.remove('text-[#F15F22]', 'bg-gray-800/60');
             }
         };
 
@@ -236,6 +242,18 @@ export function addMessage(role, content, turnId = null, isValid = true, source 
             const current = state.feedbackByTurn[turnId] || 'none';
             state.feedbackByTurn[turnId] = current === dir ? null : dir;
             applyState();
+            
+            // --- MODIFICATION START: Save feedback to backend ---
+            const vote = state.feedbackByTurn[turnId];
+            if (state.currentSessionId) {
+                import('./api.js').then(({ updateTurnFeedback }) => {
+                    updateTurnFeedback(state.currentSessionId, turnId, vote)
+                        .catch(err => {
+                            console.error(`Failed to save feedback for turn ${turnId}:`, err);
+                        });
+                });
+            }
+            // --- MODIFICATION END ---
         };
 
         upBtn.addEventListener('click', () => toggleVote('up'));
@@ -929,6 +947,55 @@ export function updateTokenDisplay(data) {
     document.getElementById('total-input-tokens').textContent = (data.total_input || 0).toLocaleString();
     document.getElementById('total-output-tokens').textContent = (data.total_output || 0).toLocaleString();
 }
+
+// --- MODIFICATION START: Add function to refresh all feedback button states ---
+/**
+ * Refreshes all feedback button states based on current state.feedbackByTurn.
+ * Should be called after loading a session to restore visual feedback state.
+ */
+export function refreshFeedbackButtons() {
+    // Find all feedback wrappers in the chat
+    const feedbackWrappers = document.querySelectorAll('[data-turn-id]');
+    
+    feedbackWrappers.forEach(wrapper => {
+        const turnId = parseInt(wrapper.dataset.turnId);
+        if (isNaN(turnId)) return;
+        
+        const upBtn = wrapper.querySelector('[data-vote="up"]');
+        const downBtn = wrapper.querySelector('[data-vote="down"]');
+        
+        if (!upBtn || !downBtn) return;
+        
+        const current = state.feedbackByTurn[turnId] || 'none';
+        
+        // Update active states
+        upBtn.classList.toggle('active', current === 'up');
+        downBtn.classList.toggle('active', current === 'down');
+        
+        // Update aria attributes
+        upBtn.setAttribute('aria-pressed', current === 'up' ? 'true' : 'false');
+        downBtn.setAttribute('aria-pressed', current === 'down' ? 'true' : 'false');
+        
+        // Update visual styling
+        if (current === 'up') {
+            upBtn.classList.remove('text-gray-300');
+            upBtn.classList.add('text-[#F15F22]', 'bg-gray-800/60');
+            downBtn.classList.add('text-gray-300');
+            downBtn.classList.remove('text-[#F15F22]', 'bg-gray-800/60');
+        } else if (current === 'down') {
+            downBtn.classList.remove('text-gray-300');
+            downBtn.classList.add('text-[#F15F22]', 'bg-gray-800/60');
+            upBtn.classList.add('text-gray-300');
+            upBtn.classList.remove('text-[#F15F22]', 'bg-gray-800/60');
+        } else {
+            upBtn.classList.add('text-gray-300');
+            upBtn.classList.remove('text-[#F15F22]', 'bg-gray-800/60');
+            downBtn.classList.add('text-gray-300');
+            downBtn.classList.remove('text-[#F15F22]', 'bg-gray-800/60');
+        }
+    });
+}
+// --- MODIFICATION END ---
 
 export function setThinkingIndicator(isThinking) {
     if (isThinking) {

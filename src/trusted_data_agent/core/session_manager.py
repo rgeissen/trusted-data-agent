@@ -560,3 +560,55 @@ def toggle_turn_validity(user_uuid: str, session_id: str, turn_id: int) -> bool:
         app_logger.error(f"An unexpected error occurred during validity toggle for turn {turn_id}: {e}", exc_info=True)
         return False
 # --- MODIFICATION END ---
+
+# --- MODIFICATION START: Add function to update turn feedback ---
+def update_turn_feedback(user_uuid: str, session_id: str, turn_id: int, vote: str | None) -> bool:
+    """
+    Updates the feedback (upvote/downvote) for a specific turn in the workflow_history.
+    
+    Args:
+        user_uuid: The user's UUID
+        session_id: The session ID
+        turn_id: The turn number to update
+        vote: 'up', 'down', or None to clear the vote
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        session_data = _load_session(user_uuid, session_id)
+        if not session_data:
+            app_logger.warning(f"Could not update feedback: Session {session_id} not found for user {user_uuid}.")
+            return False
+
+        # Get workflow_history from last_turn_data
+        workflow_history = session_data.get("last_turn_data", {}).get("workflow_history", [])
+        
+        # Find the turn with matching turn number
+        turn_found = False
+        for turn in workflow_history:
+            if turn.get("turn") == turn_id:
+                # Update or remove feedback field
+                if vote is None:
+                    turn.pop("feedback", None)
+                else:
+                    turn["feedback"] = vote
+                turn_found = True
+                app_logger.info(f"Updated feedback for turn {turn_id} in session {session_id}: {vote}")
+                break
+        
+        if not turn_found:
+            app_logger.warning(f"Turn {turn_id} not found in workflow_history for session {session_id}")
+            return False
+
+        # Save the updated session data
+        if not _save_session(user_uuid, session_id, session_data):
+            app_logger.error(f"Failed to save session after updating feedback for turn {turn_id}")
+            return False
+
+        return True
+
+    except Exception as e:
+        app_logger.error(f"Error updating feedback for turn {turn_id}: {e}", exc_info=True)
+        return False
+# --- MODIFICATION END ---

@@ -68,6 +68,15 @@ export async function handleLoadSession(sessionId, isNewSession = false) {
         state.currentSessionId = sessionId;
         state.currentProvider = data.provider || state.currentProvider;
         state.currentModel = data.model || state.currentModel;
+        
+        // --- MODIFICATION START: Restore feedback state from session data ---
+        if (data.feedback_by_turn) {
+            state.feedbackByTurn = { ...data.feedback_by_turn };
+        } else {
+            state.feedbackByTurn = {};
+        }
+        // --- MODIFICATION END ---
+        
         DOM.chatLog.innerHTML = '';
         if (data.history && data.history.length > 0) {
             // --- MODIFICATION START: Pass turn_id and isValid during history load ---
@@ -92,6 +101,10 @@ export async function handleLoadSession(sessionId, isNewSession = false) {
              UI.addMessage('assistant', "I'm ready to help. How can I assist you with your Teradata system today?");
         }
         UI.updateTokenDisplay({ total_input: data.input_tokens, total_output: data.output_tokens });
+        
+        // --- MODIFICATION START: Refresh feedback button states after loading history ---
+        UI.refreshFeedbackButtons();
+        // --- MODIFICATION END ---
 
         document.querySelectorAll('.session-item').forEach(item => {
             item.classList.toggle('active', item.dataset.sessionId === sessionId);

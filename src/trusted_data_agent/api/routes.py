@@ -615,11 +615,22 @@ async def get_session_history(session_id):
     user_uuid = _get_user_uuid_from_request()
     session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
     if session_data:
+        # --- MODIFICATION START: Extract feedback from workflow_history ---
+        feedback_by_turn = {}
+        workflow_history = session_data.get("last_turn_data", {}).get("workflow_history", [])
+        for turn in workflow_history:
+            turn_num = turn.get("turn")
+            feedback = turn.get("feedback")
+            if turn_num is not None and feedback is not None:
+                feedback_by_turn[turn_num] = feedback
+        # --- MODIFICATION END ---
+        
         response_data = {
             "history": session_data.get("session_history", []),
             "input_tokens": session_data.get("input_tokens", 0),
             "output_tokens": session_data.get("output_tokens", 0),
-            "models_used": session_data.get("models_used", [])
+            "models_used": session_data.get("models_used", []),
+            "feedback_by_turn": feedback_by_turn  # Add feedback data
         }
         return jsonify(response_data)
     app_logger.warning(f"Session {session_id} not found for user {user_uuid}.")
@@ -1133,4 +1144,22 @@ async def toggle_turn_validity_route(session_id: str, turn_id: int):
         return jsonify({"status": "success", "message": f"Turn {turn_id} validity toggled."}), 200
     else:
         return jsonify({"status": "error", "message": "Failed to toggle turn validity."}), 500
+# --- MODIFICATION END ---
+
+# --- MODIFICATION START: Add endpoint to update turn feedback ---
+@api_bp.route("/api/session/<session_id>/turn/<int:turn_id>/feedback", methods=["POST"])
+async def update_turn_feedback_route(session_id: str, turn_id: int):
+    """Updates the feedback (upvote/downvote) for a specific turn."""
+    user_uuid = _get_user_uuid_from_request()
+    data = await request.get_json()
+    vote = data.get("vote")  # Expected: 'up', 'down', or None
+    
+    app_logger.info(f"Feedback update request for session {session_id}, turn {turn_id}, user {user_uuid}: {vote}")
+
+    success = session_manager.update_turn_feedback(user_uuid, session_id, turn_id, vote)
+
+    if success:
+        return jsonify({"status": "success", "message": f"Turn {turn_id} feedback updated."}), 200
+    else:
+        return jsonify({"status": "error", "message": "Failed to update turn feedback."}), 500
 # --- MODIFICATION END ---
