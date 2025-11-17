@@ -45,7 +45,14 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7S2 13.866 2 10 5.582 3 10 3s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zm-4 0H9v2h2V9z" clip-rule="evenodd" />
                     </svg>
-                    <span class="nav-link-text font-semibold">Conversation</span>
+                    <span class="nav-link-text font-semibold">Conversations</span>
+                </a>
+                <!-- NEW: Executions View Link -->
+                <a href="#" id="view-switch-executions" data-view="executions-view" class="view-switch-button flex items-center gap-x-3 px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M3 3h14v2H3V3zm0 4h14v10H3V7zm2 2v6h2v-6H5zM9 9v4h2V9H9zM13 9v4h2V9h-2z" />
+                    </svg>
+                    <span class="nav-link-text font-semibold">Executions</span>
                 </a>
                 <!-- NEW: RAG Marketplace View Link -->
                 <a href="#" id="view-switch-rag-marketplace" data-view="rag-marketplace-view" class="view-switch-button flex items-center gap-x-3 px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
@@ -341,6 +348,14 @@
                             <p class="text-gray-400">Waiting for a new request...</p>
                         </div>
                     </aside>
+                </div>
+            </div>
+
+            <!-- VIEW X: Executions (New, placeholder view) -->
+            <div id="executions-view" class="app-view w-full h-full p-8" style="display: none;">
+                <div class="max-w-7xl mx-auto">
+                    <h1 class="text-3xl font-bold text-white header-title">Past Executions - this section is under development</h1>
+                    <p class="text-gray-400 mt-4 text-lg">Placeholder for executions history and details.</p>
                 </div>
             </div>
 

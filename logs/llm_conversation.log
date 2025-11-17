@@ -1,4 +1,4 @@
-2025-11-17 22:44:57,484 - --- REASON FOR CALL ---
+2025-11-17 23:03:14,857 - --- REASON FOR CALL ---
 No reason provided.
 --- RESPONSE ---
 ```json
@@ -19,16 +19,16 @@ No reason provided.
     "category": "Performance"
   },
   "dba_tableSpace": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "dba_tableSqlList": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "dba_tableUsageImpact": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "dba_userSqlList": {
-    "category": "User Management"
+    "category": "Database Information"
   },
   "qlty_columnSummary": {
     "category": "Data Quality"
@@ -55,16 +55,16 @@ No reason provided.
     "category": "Utilities"
   },
   "plot_line_chart": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "plot_pie_chart": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "plot_polar_chart": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "plot_radar_chart": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "base_columnDescription": {
     "category": "Database Information"
@@ -76,19 +76,19 @@ No reason provided.
     "category": "Utilities"
   },
   "base_tableAffinity": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "base_tableDDL": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "base_tableList": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "base_tablePreview": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "base_tableUsage": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "sec_rolePermissions": {
     "category": "Security"
@@ -102,26 +102,26 @@ No reason provided.
   "rag_Execute_Workflow": {
     "category": "Utilities"
   },
-  "dba_databaseVersion": {
-    "category": "Database Information"
-  },
-  "dba_flowControl": {
-    "category": "Performance"
-  },
-  "dba_featureUsage": {
-    "category": "Usage Analysis"
-  },
-  "dba_userDelay": {
-    "category": "Performance"
-  },
-  "dba_sessionInfo": {
-    "category": "User Management"
-  },
-  "dba_systemSpace": {
-    "category": "Database Information"
-  },
+   "dba_databaseVersion": {
+        "category": "Database Information"
+    },
+    "dba_flowControl": {
+        "category": "Performance"
+    },
+    "dba_featureUsage": {
+        "category": "Database Information"
+    },
+    "dba_userDelay": {
+        "category": "Performance"
+    },
+    "dba_sessionInfo": {
+        "category": "Database Information"
+    },
+    "dba_systemSpace": {
+        "category": "Database Information"
+    },
   "TDA_Charting": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "TDA_CurrentDate": {
     "category": "Utilities"
@@ -145,22 +145,22 @@ No reason provided.
     "category": "Reporting"
   },
   "dba_tableArchive": {
-    "category": "Table Management"
+    "category": "Database Management"
   },
   "dba_databaseLineage": {
-    "category": "Database Information"
+    "category": "Database Management"
   },
   "dba_tableDropImpact": {
-    "category": "Table Management"
+    "category": "Database Management"
   },
   "dba_databaseHealthAssessment": {
-    "category": "Database Information"
+    "category": "Database Management"
   },
   "dba_userActivityAnalysis": {
-    "category": "User Management"
+    "category": "Database Management"
   },
   "dba_systemVoice": {
-    "category": "Utilities"
+    "category": "Database Management"
   },
   "_testMyServer": {
     "category": "Utilities"
@@ -172,7 +172,7 @@ No reason provided.
     "category": "Utilities"
   },
   "base_tableBusinessDesc": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "base_databaseBusinessDesc": {
     "category": "Database Information"
