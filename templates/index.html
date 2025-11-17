@@ -34,11 +34,26 @@
         <nav id="app-side-nav" class="flex flex-col h-full bg-black/30 p-4 border-r border-white/10 space-y-4">
             <!-- Navigation Links -->
             <div class="flex flex-col space-y-2">
+                <!-- Reordered: Credentials first, then Conversation, then RAG Maintenance -->
+                <a href="#" id="view-switch-credentials" data-view="credentials-view" class="view-switch-button flex items-center gap-x-3 w-full px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="nav-link-text font-semibold">Credentials</span>
+                </a>
                 <a href="#" id="view-switch-conversation" data-view="conversation-view" class="view-switch-button flex items-center gap-x-3 w-full px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7S2 13.866 2 10 5.582 3 10 3s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zm-4 0H9v2h2V9z" clip-rule="evenodd" />
                     </svg>
                     <span class="nav-link-text font-semibold">Conversation</span>
+                </a>
+                <!-- NEW: RAG Marketplace View Link -->
+                <a href="#" id="view-switch-rag-marketplace" data-view="rag-marketplace-view" class="view-switch-button flex items-center gap-x-3 w-full px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
+                    <!-- Simplified marketplace icon: 2x2 grid of squares -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M4 4h4v4H4V4Zm0 8h4v4H4v-4Zm8-8h4v4h-4V4Zm0 8h4v4h-4v-4Z" />
+                    </svg>
+                    <span class="nav-link-text font-semibold">RAG Marketplace</span>
                 </a>
                 <a href="#" id="view-switch-rag-maintenance" data-view="rag-maintenance-view" class="view-switch-button flex items-center gap-x-3 w-full px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
@@ -47,14 +62,6 @@
                     </svg>
                     <span class="nav-link-text font-semibold">RAG Maintenance</span>
                 </a>
-                <!-- --- MODIFICATION START: Add Credentials View Link --- -->
-                <a href="#" id="view-switch-credentials" data-view="credentials-view" class="view-switch-button flex items-center gap-x-3 w-full px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
-                    </svg>
-                    <span class="nav-link-text font-semibold">Credentials</span>
-                </a>
-                <!-- --- MODIFICATION END --- -->
             </div>
         </nav>
 
@@ -338,6 +345,14 @@
             </div>
 
             <!-- VIEW 2: RAG Maintenance (New, placeholder view) -->
+            <!-- VIEW 2A: RAG Marketplace (New, placeholder view) -->
+            <div id="rag-marketplace-view" class="app-view w-full h-full p-8">
+                <div class="max-w-7xl mx-auto">
+                    <h1 class="text-3xl font-bold text-white header-title">RAG Marketplace</h1>
+                    <p class="text-gray-400 mt-4 text-lg">This section is under development.</p>
+                </div>
+            </div>
+
             <div id="rag-maintenance-view" class="app-view w-full h-full p-8">
                 <div class="max-w-7xl mx-auto">
                     <h1 class="text-3xl font-bold text-white header-title">RAG Maintenance</h1>

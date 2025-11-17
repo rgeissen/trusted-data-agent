@@ -16,6 +16,8 @@ export const appContentArea = document.getElementById('main-content-area');
 export const appViewContainer = document.getElementById('app-view-container');
 export const conversationView = document.getElementById('conversation-view');
 export const ragMaintenanceView = document.getElementById('rag-maintenance-view');
+// NEW: RAG Marketplace view element
+export const ragMarketplaceView = document.getElementById('rag-marketplace-view');
 export const conversationHeader = document.getElementById('conversation-header');
 export const conversationPanels = document.getElementById('conversation-panels');
 // This selects all view-switching buttons in the side nav

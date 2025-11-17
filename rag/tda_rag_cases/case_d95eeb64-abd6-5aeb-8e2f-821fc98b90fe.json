@@ -1,0 +1,50 @@
+{
+  "case_id": "d95eeb64-abd6-5aeb-8e2f-821fc98b90fe",
+  "metadata": {
+    "session_id": "fd494b8c-d86a-402b-9e4f-83100a9da11a",
+    "turn_id": 2,
+    "is_success": true,
+    "task_id": "task-9d480334-802c-4d60-b33b-aef7ef033ef3",
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-17T17:55:18.030446+00:00",
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "input_tokens": 8867,
+      "output_tokens": 121
+    },
+    "is_most_efficient": false,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    }
+  },
+  "intent": {
+    "user_query": "how many databases are on the system?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Get a list of all databases in the Teradata System.",
+        "relevant_tools": [
+          "base_databaseList"
+        ],
+        "arguments": {}
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

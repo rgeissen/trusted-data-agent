@@ -196,7 +196,9 @@ export async function handleConfigFormSubmit(e) {
         const result = await res.json();
 
         if (res.ok) {
-            await finalizeConfiguration(config, false);
+            // Switch to Conversation view immediately after successful configuration.
+            // Previously passed 'false' to keep Credentials view; requirement changed.
+            await finalizeConfiguration(config, true);
         } else {
             throw new Error(result.message || 'An unknown configuration error occurred.');
         }
