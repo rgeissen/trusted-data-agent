@@ -1526,4 +1526,55 @@ export function initializeEventListeners() {
             });
         });
     }
+    
+    // --- MODIFICATION START: Add delegated event listener for case feedback buttons ---
+    document.addEventListener('click', async (e) => {
+        const caseFeedbackBtn = e.target.closest('.case-feedback-btn');
+        if (caseFeedbackBtn) {
+            e.preventDefault();
+            const sessionId = caseFeedbackBtn.dataset.sessionId;
+            const turnId = parseInt(caseFeedbackBtn.dataset.turnId);
+            const vote = caseFeedbackBtn.dataset.vote;
+            
+            if (!sessionId || isNaN(turnId)) {
+                console.error('Missing session ID or turn ID on feedback button');
+                return;
+            }
+            
+            try {
+                // Import the API function
+                const { updateTurnFeedback } = await import('./api.js');
+                
+                // Get current state from button classes
+                const isActive = caseFeedbackBtn.classList.contains('text-[#F15F22]');
+                const newVote = isActive ? null : vote;
+                
+                // Update backend
+                await updateTurnFeedback(sessionId, turnId, newVote);
+                
+                // Update UI: find both buttons in this container
+                const container = caseFeedbackBtn.closest('.inline-flex');
+                const upBtn = container.querySelector('[data-vote="up"]');
+                const downBtn = container.querySelector('[data-vote="down"]');
+                
+                // Reset both buttons
+                upBtn.classList.remove('text-[#F15F22]', 'bg-gray-800/60');
+                upBtn.classList.add('text-gray-300');
+                downBtn.classList.remove('text-[#F15F22]', 'bg-gray-800/60');
+                downBtn.classList.add('text-gray-300');
+                
+                // Apply active state to clicked button if not clearing
+                if (newVote) {
+                    caseFeedbackBtn.classList.remove('text-gray-300');
+                    caseFeedbackBtn.classList.add('text-[#F15F22]', 'bg-gray-800/60');
+                }
+                
+                console.log(`Case feedback updated: turn ${turnId}, vote ${newVote}`);
+            } catch (error) {
+                console.error('Failed to update case feedback:', error);
+                alert(`Error updating feedback: ${error.message}`);
+            }
+        }
+    });
+    // --- MODIFICATION END ---
 }

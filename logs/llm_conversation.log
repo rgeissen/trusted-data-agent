@@ -1,4 +1,4 @@
-2025-11-17 22:15:35,798 - --- REASON FOR CALL ---
+2025-11-17 22:44:57,484 - --- REASON FOR CALL ---
 No reason provided.
 --- RESPONSE ---
 ```json
@@ -19,7 +19,7 @@ No reason provided.
     "category": "Performance"
   },
   "dba_tableSpace": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "dba_tableSqlList": {
     "category": "Table Management"
@@ -28,7 +28,7 @@ No reason provided.
     "category": "Table Management"
   },
   "dba_userSqlList": {
-    "category": "Utilities"
+    "category": "User Management"
   },
   "qlty_columnSummary": {
     "category": "Data Quality"
@@ -55,16 +55,16 @@ No reason provided.
     "category": "Utilities"
   },
   "plot_line_chart": {
-    "category": "Data Visualization"
+    "category": "Visualization"
   },
   "plot_pie_chart": {
-    "category": "Data Visualization"
+    "category": "Visualization"
   },
   "plot_polar_chart": {
-    "category": "Data Visualization"
+    "category": "Visualization"
   },
   "plot_radar_chart": {
-    "category": "Data Visualization"
+    "category": "Visualization"
   },
   "base_columnDescription": {
     "category": "Database Information"
@@ -109,19 +109,19 @@ No reason provided.
     "category": "Performance"
   },
   "dba_featureUsage": {
-    "category": "Utilities"
+    "category": "Usage Analysis"
   },
   "dba_userDelay": {
     "category": "Performance"
   },
   "dba_sessionInfo": {
-    "category": "Utilities"
+    "category": "User Management"
   },
   "dba_systemSpace": {
     "category": "Database Information"
   },
   "TDA_Charting": {
-    "category": "Data Visualization"
+    "category": "Visualization"
   },
   "TDA_CurrentDate": {
     "category": "Utilities"
@@ -145,7 +145,7 @@ No reason provided.
     "category": "Reporting"
   },
   "dba_tableArchive": {
-    "category": "Archiving"
+    "category": "Table Management"
   },
   "dba_databaseLineage": {
     "category": "Database Information"
@@ -154,10 +154,10 @@ No reason provided.
     "category": "Table Management"
   },
   "dba_databaseHealthAssessment": {
-    "category": "Reporting"
+    "category": "Database Information"
   },
   "dba_userActivityAnalysis": {
-    "category": "Utilities"
+    "category": "User Management"
   },
   "dba_systemVoice": {
     "category": "Utilities"

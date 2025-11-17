@@ -1695,6 +1695,7 @@ export function removeHighlight(sessionId) {
  * Toggles the collapsed state of the main side navigation bar.
  */
 export function toggleSideNav() {
+    // Simply toggle the 'collapsed' class - CSS handles everything
     DOM.appSideNav.classList.toggle('collapsed');
 }
 
@@ -1942,6 +1943,51 @@ async function selectCaseRow(caseId) {
         const turnSummary = data.session_turn_summary || null;
         if (DOM.ragSelectedCaseMetadata) {
             const meta = caseData.metadata || {};
+            
+            // --- MODIFICATION START: Create interactive feedback selector ---
+            const feedback = turnSummary?.feedback || null;
+            const sessionId = meta.session_id;
+            const turnId = meta.turn_id;
+            
+            let feedbackHtml = '<span class="text-gray-400">N/A (no session data)</span>';
+            if (sessionId && turnId !== undefined && turnId !== null) {
+                const upActive = feedback === 'up' ? 'text-[#F15F22] bg-gray-800/60' : 'text-gray-300';
+                const downActive = feedback === 'down' ? 'text-[#F15F22] bg-gray-800/60' : 'text-gray-300';
+                feedbackHtml = `
+                    <div class="inline-flex items-stretch rounded-md bg-gray-900/50 border border-white/10 overflow-hidden backdrop-blur-sm">
+                        <button type="button" 
+                                class="case-feedback-btn px-2 py-0.5 flex items-center gap-1 ${upActive} hover:text-white hover:bg-gray-800/60 transition text-xs"
+                                data-session-id="${escapeHtml(sessionId)}" 
+                                data-turn-id="${turnId}" 
+                                data-vote="up"
+                                title="Mark as helpful">
+                            <svg class='w-3 h-3' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'>
+                                <path d='M14 9V5a3 3 0 00-3-3l-4 9v11h11a3 3 0 003-3v-5a3 3 0 00-3-3h-7'/>
+                            </svg>
+                            <span class="text-[10px]">Helpful</span>
+                        </button>
+                        <div class="w-px bg-white/10"></div>
+                        <button type="button" 
+                                class="case-feedback-btn px-2 py-0.5 flex items-center gap-1 ${downActive} hover:text-white hover:bg-gray-800/60 transition text-xs"
+                                data-session-id="${escapeHtml(sessionId)}" 
+                                data-turn-id="${turnId}" 
+                                data-vote="down"
+                                title="Mark as unhelpful">
+                            <svg class='w-3 h-3' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'>
+                                <path d='M10 15v4a3 3 0 003 3l4-9V2H6a3 3 0 00-3 3v5a3 3 0 003 3h7'/>
+                            </svg>
+                            <span class="text-[10px]">Unhelpful</span>
+                        </button>
+                    </div>`;
+            } else if (feedback === 'up') {
+                feedbackHtml = '<span class="text-[#F15F22]">👍 Helpful</span>';
+            } else if (feedback === 'down') {
+                feedbackHtml = '<span class="text-[#F15F22]">👎 Unhelpful</span>';
+            } else {
+                feedbackHtml = '<span class="text-gray-400">None</span>';
+            }
+            // --- MODIFICATION END ---
+            
             // Compute total execution time from trace timestamps (first to last)
             let totalExecutionTime = 'N/A';
             if (turnSummary && Array.isArray(turnSummary.execution_trace) && turnSummary.execution_trace.length > 0) {
@@ -1970,6 +2016,7 @@ async function selectCaseRow(caseId) {
                     <div><span class='text-gray-500'>Model:</span> ${escapeHtml(meta.llm_config?.model || '')}</div>
                     <div><span class='text-gray-500'>Output Tokens:</span> ${escapeHtml(String(meta.llm_config?.output_tokens ?? ''))}</div>
                     <div><span class='text-gray-500'>Efficient:</span> ${meta.is_most_efficient ? '<span class="text-green-400">Yes</span>' : '<span class="text-gray-400">No</span>'}</div>
+                    <div><span class='text-gray-500'>User Feedback:</span> ${feedbackHtml}</div>
                 </div>
                 <div class='mt-2 text-xs text-gray-400'>Total Execution Time: <span class='font-mono text-gray-200'>${totalExecutionTime}</span></div>`;
         }
