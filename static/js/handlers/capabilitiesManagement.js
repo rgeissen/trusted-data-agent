@@ -1,0 +1,311 @@
+/**
+ * handlers/capabilitiesManagement.js
+ * * This module handles all logic related to the "Capabilities" panel
+ * (Tools, Prompts, Resources) and the modals launched from it.
+ */
+
+import * as DOM from '../domElements.js';
+import { state } from '../state.js';
+import * as API from '../api.js';
+import * as UI from '../ui.js';
+// We need to import from eventHandlers for functions not yet moved
+// This creates a temporary, manageable circular dependency
+import { handleStreamRequest } from '../eventHandlers.js';
+
+/**
+ * Loads resources (tools, prompts, etc.) for a given type and populates the UI.
+ * @param {string} type - The type of resource to load (e.g., 'tools', 'prompts').
+ */
+export async function handleLoadResources(type) {
+    const tabButton = document.querySelector(`.resource-tab[data-type="${type}"]`);
+    const categoriesContainer = document.getElementById(`${type}-categories`);
+    const panelsContainer = document.getElementById(`${type}-panels-container`);
+    const typeCapitalized = type.charAt(0).toUpperCase() + type.slice(1);
+
+    try {
+        const data = await API.loadResources(type);
+
+        if (!data || Object.keys(data).length === 0) {
+            if(tabButton) {
+                tabButton.style.display = 'none';
+            }
+            return;
+        }
+
+        tabButton.style.display = 'inline-block';
+        state.resourceData[type] = data;
+
+        if (type === 'prompts') {
+            UI.updatePromptsTabCounter();
+        } else if (type === 'tools') {
+            UI.updateToolsTabCounter();
+        } else {
+            const totalCount = Object.values(data).reduce((acc, items) => acc + items.length, 0);
+            tabButton.textContent = `${typeCapitalized} (${totalCount})`;
+        }
+
+        categoriesContainer.innerHTML = '';
+        panelsContainer.innerHTML = '';
+
+        Object.keys(data).forEach(category => {
+            const categoryTab = document.createElement('button');
+            categoryTab.className = 'category-tab px-4 py-2 rounded-md font-semibold text-sm transition-colors hover:bg-[#D9501A]';
+            categoryTab.textContent = category;
+            categoryTab.dataset.category = category;
+            categoryTab.dataset.type = type;
+            categoriesContainer.appendChild(categoryTab);
+
+            const panel = document.createElement('div');
+            panel.id = `panel-${type}-${category}`;
+            panel.className = 'category-panel px-4 space-y-2';
+            panel.dataset.category = category;
+
+            data[category].forEach(resource => {
+                const itemEl = UI.createResourceItem(resource, type);
+                panel.appendChild(itemEl);
+            });
+            panelsContainer.appendChild(panel);
+        });
+
+        document.querySelectorAll(`#${type}-categories .category-tab`).forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll(`#${type}-categories .category-tab`).forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                document.querySelectorAll(`#${type}-panels-container .category-panel`).forEach(p => {
+                    p.classList.toggle('open', p.dataset.category === tab.dataset.category);
+                });
+            });
+        });
+
+        if (categoriesContainer.querySelector('.category-tab')) {
+            categoriesContainer.querySelector('.category-tab').click();
+        }
+
+    } catch (error) {
+        console.error(`Failed to load ${type}: ${error.message}`);
+        if(tabButton) {
+            tabButton.textContent = `${typeCapitalized} (Error)`;
+            tabButton.style.display = 'inline-block';
+        }
+        categoriesContainer.innerHTML = '';
+        panelsContainer.innerHTML = `<div class="p-4 text-center text-red-400">Failed to load ${type}.</div>`;
+    }
+}
+
+/**
+ * Handles clicks on the main resource tabs (Tools, Prompts, etc.).
+ * @param {Event} e - The click event.
+ */
+export function handleResourceTabClick(e) {
+    if (e.target.classList.contains('resource-tab')) {
+        const type = e.target.dataset.type;
+        document.querySelectorAll('.resource-tab').forEach(tab => tab.classList.remove('active'));
+        e.target.classList.add('active');
+
+        document.querySelectorAll('.resource-panel').forEach(panel => {
+            panel.style.display = panel.id === `${type}-panel` ? 'flex' : 'none';
+        });
+    }
+}
+
+/**
+ * Opens the modal to run a prompt with arguments.
+ * @param {object} prompt - The prompt resource object.
+ */
+export function openPromptModal(prompt) {
+    DOM.promptModalOverlay.classList.remove('hidden', 'opacity-0');
+    DOM.promptModalContent.classList.remove('scale-95', 'opacity-0');
+    DOM.promptModalTitle.textContent = prompt.name;
+    DOM.promptModalForm.dataset.promptName = prompt.name;
+    DOM.promptModalInputs.innerHTML = '';
+    DOM.promptModalForm.querySelector('button[type="submit"]').textContent = 'Run Prompt';
+
+    if (prompt.arguments && prompt.arguments.length > 0) {
+        prompt.arguments.forEach(arg => {
+            const inputGroup = document.createElement('div');
+            const label = document.createElement('label');
+            label.htmlFor = `prompt-arg-${arg.name}`;
+            label.className = 'block text-sm font-medium text-gray-300 mb-1';
+            label.textContent = arg.name + (arg.required ? ' *' : '');
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = `prompt-arg-${arg.name}`;
+            input.name = arg.name;
+            input.className = 'w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none';
+            input.placeholder = arg.description || `Enter value for ${arg.name}`;
+            if (arg.required) input.required = true;
+
+            inputGroup.appendChild(label);
+            inputGroup.appendChild(input);
+            DOM.promptModalInputs.appendChild(inputGroup);
+        });
+    } else {
+        DOM.promptModalInputs.innerHTML = '<p class="text-gray-400">This prompt requires no arguments.</p>';
+    }
+
+    DOM.promptModalForm.onsubmit = (e) => {
+        e.preventDefault();
+        const promptName = e.target.dataset.promptName;
+        const formData = new FormData(e.target);
+        const arugments = Object.fromEntries(formData.entries());
+
+        UI.closePromptModal();
+        handleStreamRequest('/invoke_prompt_stream', {
+            session_id: state.currentSessionId,
+            prompt_name: promptName,
+            arguments: arugments
+        });
+    };
+}
+
+/**
+ * Opens the modal for user correction of tool arguments.
+ * @param {object} data - The correction data from the server.
+ */
+export function openCorrectionModal(data) {
+    DOM.promptModalOverlay.classList.remove('hidden', 'opacity-0');
+    DOM.promptModalContent.classList.remove('scale-95', 'opacity-0');
+
+    const spec = data.specification;
+    DOM.promptModalTitle.textContent = `Correction for: ${spec.name}`;
+    DOM.promptModalForm.dataset.toolName = spec.name;
+    DOM.promptModalInputs.innerHTML = '';
+    DOM.promptModalForm.querySelector('button[type="submit"]').textContent = 'Run Correction';
+
+    const messageEl = document.createElement('p');
+    messageEl.className = 'text-yellow-300 text-sm mb-4 p-3 bg-yellow-500/10 rounded-lg';
+    messageEl.textContent = data.message;
+    DOM.promptModalInputs.appendChild(messageEl);
+
+    spec.arguments.forEach(arg => {
+        const inputGroup = document.createElement('div');
+        const label = document.createElement('label');
+        label.htmlFor = `correction-arg-${arg.name}`;
+        label.className = 'block text-sm font-medium text-gray-300 mb-1';
+        label.textContent = arg.name + (arg.required ? ' *' : '');
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = `correction-arg-${arg.name}`;
+        input.name = arg.name;
+        input.className = 'w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none';
+        input.placeholder = arg.description || `Enter value for ${arg.name}`;
+        if (arg.required) input.required = true;
+
+        inputGroup.appendChild(label);
+        inputGroup.appendChild(input);
+        DOM.promptModalInputs.appendChild(inputGroup);
+    });
+
+    DOM.promptModalForm.onsubmit = (e) => {
+        e.preventDefault();
+        const toolName = e.target.dataset.toolName;
+        const formData = new FormData(e.target);
+        const userArgs = Object.fromEntries(formData.entries());
+
+        const correctedPrompt = `Please run the tool '${toolName}' with the following corrected parameters: ${JSON.stringify(userArgs)}`;
+
+        UI.closePromptModal();
+
+        handleStreamRequest('/ask_stream', { message: correctedPrompt, session_id: state.currentSessionId });
+    };
+}
+
+/**
+ * Opens the modal to view the content of a prompt.
+ * @param {string} promptName - The name of the prompt to view.
+ */
+export async function openViewPromptModal(promptName) {
+    DOM.viewPromptModalOverlay.classList.remove('hidden', 'opacity-0');
+    DOM.viewPromptModalContent.classList.remove('scale-95', 'opacity-0');
+    DOM.viewPromptModalTitle.textContent = `Viewing Prompt: ${promptName}`;
+    DOM.viewPromptModalText.textContent = 'Loading...';
+
+    try {
+        const res = await fetch(`/prompt/${promptName}`);
+        const data = await res.json();
+        if (res.ok) {
+            DOM.viewPromptModalText.textContent = data.content;
+        } else {
+            if (data.error === 'dynamic_prompt_error') {
+                DOM.viewPromptModalText.textContent = `Info: ${data.message}`;
+            } else {
+                throw new Error(data.error || 'Failed to fetch prompt content.');
+            }
+        }
+    } catch (error) {
+        DOM.viewPromptModalText.textContent = `Error: ${error.message}`;
+    }
+}
+
+/**
+ * Handles toggling a prompt's enabled/disabled state.
+ * @param {string} promptName - The name of the prompt.
+ * @param {boolean} isDisabled - The new disabled state.
+ * @param {HTMLButtonElement} buttonEl - The button that was clicked.
+ */
+export async function handleTogglePrompt(promptName, isDisabled, buttonEl) {
+    try {
+        await API.togglePromptApi(promptName, isDisabled);
+
+        for (const category in state.resourceData.prompts) {
+            const prompt = state.resourceData.prompts[category].find(p => p.name === promptName);
+            if (prompt) {
+                prompt.disabled = isDisabled;
+                break;
+            }
+        }
+
+        const promptItem = document.getElementById(`resource-prompts-${promptName}`);
+        const runButton = promptItem.querySelector('.run-prompt-button');
+
+        promptItem.classList.toggle('opacity-60', isDisabled);
+        promptItem.title = isDisabled ? 'This prompt is disabled and will not be used by the agent.' : '';
+        runButton.disabled = isDisabled;
+        runButton.title = isDisabled ? 'This prompt is disabled.' : 'Run this prompt.';
+
+        buttonEl.innerHTML = isDisabled ?
+            `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074L3.707 2.293zM10 12a2 2 0 110-4 2 2 0 010 4z" clip-rule="evenodd" /><path d="M2 10s3.939 4 8 4 8-4 8-4-3.939-4-8-4-8 4-8 4zm13.707 4.293a1 1 0 00-1.414-1.414L12.586 14.6A8.007 8.007 0 0110 16c-4.478 0-8.268-2.943-9.542-7 .946-2.317 2.83-4.224 5.166-5.447L2.293 1.293A1 1 0 00.879 2.707l14 14a1 1 0 001.414 0z" /></svg>` :
+            `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" /></svg>`;
+
+        UI.updatePromptsTabCounter();
+
+    } catch (error) {
+        console.error(`Failed to toggle prompt ${promptName}:`, error);
+    }
+}
+
+/**
+ * Handles toggling a tool's enabled/disabled state.
+ * @param {string} toolName - The name of the tool.
+ * @param {boolean} isDisabled - The new disabled state.
+ * @param {HTMLButtonElement} buttonEl - The button that was clicked.
+ */
+export async function handleToggleTool(toolName, isDisabled, buttonEl) {
+    try {
+        await API.toggleToolApi(toolName, isDisabled);
+
+        for (const category in state.resourceData.tools) {
+            const tool = state.resourceData.tools[category].find(t => t.name === toolName);
+            if (tool) {
+                tool.disabled = isDisabled;
+                break;
+            }
+        }
+
+        const toolItem = document.getElementById(`resource-tools-${toolName}`);
+        toolItem.classList.toggle('opacity-60', isDisabled);
+        toolItem.title = isDisabled ? 'This tool is disabled and will not be used by the agent.' : '';
+
+        buttonEl.innerHTML = isDisabled ?
+            `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074L3.707 2.293zM10 12a2 2 0 110-4 2 2 0 010 4z" clip-rule="evenodd" /><path d="M2 10s3.939 4 8 4 8-4 8-4-3.939-4-8-4-8 4-8 4zm13.707 4.293a1 1 0 00-1.414-1.414L12.586 14.6A8.007 8.007 0 0110 16c-4.478 0-8.268-2.943-9.542-7 .946-2.317 2.83-4.224 5.166-5.447L2.293 1.293A1 1 0 00.879 2.707l14 14a1 1 0 001.414 0z" /></svg>` :
+            `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" /></svg>`;
+
+        UI.updateToolsTabCounter();
+
+    } catch (error) {
+        console.error(`Failed to toggle tool ${toolName}:`, error);
+    }
+}

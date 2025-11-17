@@ -1,0 +1,203 @@
+/**
+ * handlers/sessionManagement.js
+ * * This module handles all logic related to session management.
+ * (create, load, rename, delete)
+ */
+
+import * as DOM from '../domElements.js';
+import { state } from '../state.js';
+import * as API from '../api.js';
+import * as UI from '../ui.js';
+import { renameSession, deleteSession } from '../api.js';
+
+/**
+ * Creates a new session, adds it to the list, and loads it.
+ */
+export async function handleStartNewSession() {
+    DOM.chatLog.innerHTML = '';
+    DOM.statusWindowContent.innerHTML = '<p class="text-gray-400">Waiting for a new request...</p>';
+    UI.updateTokenDisplay({ statement_input: 0, statement_output: 0, total_input: 0, total_output: 0 });
+    UI.addMessage('assistant', "Starting a new conversation... Please wait.");
+    UI.setThinkingIndicator(false);
+
+    // --- MODIFICATION START: Hide header buttons and clear turnId on new session ---
+    if (DOM.headerReplayPlannedButton) {
+        DOM.headerReplayPlannedButton.classList.add('hidden');
+        DOM.headerReplayPlannedButton.dataset.turnId = '';
+    }
+    if (DOM.headerReplayOptimizedButton) {
+        DOM.headerReplayOptimizedButton.classList.add('hidden');
+        DOM.headerReplayOptimizedButton.dataset.turnId = '';
+    }
+    // --- MODIFICATION END ---
+
+    // --- MODIFICATION START: Clear task ID display on new session ---
+    UI.updateTaskIdDisplay(null);
+    // --- MODIFICATION END ---
+
+    try {
+        const data = await API.startNewSession();
+        const sessionItem = UI.addSessionToList(data, true);
+        DOM.sessionList.prepend(sessionItem);
+        await handleLoadSession(data.id, true);
+    } catch (error) {
+        UI.addMessage('assistant', `Failed to start a new session: ${error.message}`);
+    } finally {
+        DOM.userInput.focus();
+    }
+}
+
+/**
+ * Loads a specific session's history and data into the UI.
+ * @param {string} sessionId - The ID of the session to load.
+ * @param {boolean} [isNewSession=false] - Flag to skip redundant checks if it's a new session.
+ */
+export async function handleLoadSession(sessionId, isNewSession = false) {
+    if (state.currentSessionId === sessionId && !isNewSession) return;
+
+    // --- MODIFICATION START: Clear task ID display on session load ---
+    UI.updateTaskIdDisplay(null);
+    // --- MODIFICATION END ---
+
+    // --- MODIFICATION START: Remove highlight on load ---
+    UI.removeHighlight(sessionId);
+    // --- MODIFICATION END ---
+
+    try {
+        const data = await API.loadSession(sessionId);
+        state.currentSessionId = sessionId;
+        state.currentProvider = data.provider || state.currentProvider;
+        state.currentModel = data.model || state.currentModel;
+        DOM.chatLog.innerHTML = '';
+        if (data.history && data.history.length > 0) {
+            // --- MODIFICATION START: Pass turn_id and isValid during history load ---
+            // Simulate turn IDs based on message pairs for existing sessions
+            let currentTurnId = 1;
+            for (let i = 0; i < data.history.length; i++) {
+                const msg = data.history[i];
+                // Default to true if isValid flag is missing (for older sessions)
+                const isValid = msg.isValid === undefined ? true : msg.isValid;
+
+                if (msg.role === 'assistant') {
+                    // Pass the calculated turn ID and validity for assistant messages
+                    UI.addMessage(msg.role, msg.content, currentTurnId, isValid, msg.source);
+                    currentTurnId++; // Increment turn ID after an assistant message
+                } else {
+                    // User messages don't need a turn ID, but pass validity
+                    UI.addMessage(msg.role, msg.content, null, isValid, msg.source);
+                }
+            }
+            // --- MODIFICATION END ---
+        } else {
+             UI.addMessage('assistant', "I'm ready to help. How can I assist you with your Teradata system today?");
+        }
+        UI.updateTokenDisplay({ total_input: data.input_tokens, total_output: data.output_tokens });
+
+        document.querySelectorAll('.session-item').forEach(item => {
+            item.classList.toggle('active', item.dataset.sessionId === sessionId);
+        });
+
+        // --- MODIFICATION START ---
+        // Explicitly update the models for the loaded session in the UI
+        UI.updateSessionModels(sessionId, data.models_used);
+        // This will reset the status display to the globally configured model
+        UI.updateStatusPromptName(data.provider, data.model);
+        // --- MODIFICATION END ---
+    } catch (error) {
+        UI.addMessage('assistant', `Error loading session: ${error.message}`);
+    } finally {
+        DOM.userInput.focus();
+    }
+}
+
+/**
+ * Handles the save action when editing a session name (Enter or Blur).
+ * @param {Event} e - The event object (blur or keydown).
+ */
+export async function handleSessionRenameSave(e) {
+    const inputElement = e.target;
+    const sessionItem = inputElement.closest('.session-item');
+    if (!sessionItem) return;
+
+    const sessionId = sessionItem.dataset.sessionId;
+    const newName = inputElement.value.trim();
+    const originalName = inputElement.dataset.originalName;
+
+    if (!newName || newName === originalName) {
+        UI.exitSessionEditMode(inputElement, originalName);
+        return;
+    }
+
+    inputElement.disabled = true;
+    inputElement.style.opacity = '0.7';
+
+    try {
+        await renameSession(sessionId, newName);
+        UI.exitSessionEditMode(inputElement, newName);
+        console.log(`Session ${sessionId} renamed to '${newName}'`);
+        UI.moveSessionToTop(sessionId);
+    } catch (error) {
+        console.error(`Failed to rename session ${sessionId}:`, error);
+        inputElement.style.borderColor = 'red';
+        inputElement.disabled = false;
+        // Revert to original name and exit edit mode on API error
+        UI.exitSessionEditMode(inputElement, originalName);
+    }
+}
+
+/**
+ * Handles the cancel action when editing a session name (Escape).
+ * @param {Event} e - The event object (keydown).
+ */
+export function handleSessionRenameCancel(e) {
+    const inputElement = e.target;
+    const originalName = inputElement.dataset.originalName;
+    UI.exitSessionEditMode(inputElement, originalName);
+}
+
+/**
+ * Handles the click event for the delete session button.
+ * @param {HTMLButtonElement} deleteButton - The delete button element that was clicked.
+ */
+export async function handleDeleteSessionClick(deleteButton) {
+    const sessionItem = deleteButton.closest('.session-item');
+    if (!sessionItem) return;
+
+    const sessionId = sessionItem.dataset.sessionId;
+    const sessionName = sessionItem.querySelector('.session-name-span')?.textContent || 'this session';
+
+    UI.showConfirmation(
+        'Delete Session?',
+        `Are you sure you want to permanently delete '${sessionName}'? This action cannot be undone.`,
+        async () => {
+            try {
+                await deleteSession(sessionId);
+                UI.removeSessionFromList(sessionId);
+
+                if (state.currentSessionId === sessionId) {
+                    console.log('Active session deleted. Checking for remaining sessions.');
+                    try {
+                        const remainingSessions = await API.loadAllSessions();
+                        if (remainingSessions && remainingSessions.length > 0) {
+                            // The API returns sessions sorted by most recent first.
+                            const nextSessionId = remainingSessions[0].id;
+                            console.log(`Switching to most recent session: ${nextSessionId}`);
+                            await handleLoadSession(nextSessionId);
+                        } else {
+                            console.log('No remaining sessions. Starting a new session.');
+                            await handleStartNewSession();
+                        }
+                    } catch (error) {
+                        console.error('Error handling session switch after deletion:', error);
+                        UI.addMessage('assistant', `Could not switch to another session. Please select one manually or start a new one. ${error.message}`);
+                        // As a fallback, create a new session if the session loading fails
+                        await handleStartNewSession();
+                    }
+                }
+            } catch (error) {
+                console.error(`Failed to delete session ${sessionId}:`, error);
+                UI.addMessage('assistant', `Error: Could not delete session '${sessionName}'. ${error.message}`);
+            }
+        }
+    );
+}

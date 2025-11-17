@@ -1,7 +1,7 @@
 import { state } from './state.js';
 import * as UI from './ui.js';
 import * as DOM from './domElements.js';
-import { handleLoadSession } from './eventHandlers.js';
+import { handleLoadSession } from './handlers/sessionManagement.js';
 
 function showRestQueryNotification(message) {
     const notificationContainer = document.createElement('div');

@@ -4,7 +4,8 @@
  * It initializes the application by setting up event listeners and loading initial data.
  */
 
-import { initializeEventListeners, finalizeConfiguration, loadCredentialsAndModels } from './eventHandlers.js';
+import { initializeEventListeners } from './eventHandlers.js';
+import { finalizeConfiguration, loadCredentialsAndModels } from './handlers/configManagement.js';
 import * as API from './api.js';
 import * as DOM from './domElements.js';
 import { state } from './state.js';
