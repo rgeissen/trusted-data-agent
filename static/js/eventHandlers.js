@@ -261,7 +261,7 @@ async function handleObservationConfirmation(transcribedText) {
 }
 
 
-async function handleStreamRequest(endpoint, body) {
+export async function handleStreamRequest(endpoint, body) {
     if (body.message) {
         // --- MODIFICATION START: Do not add user message again during replay ---
         // Only add user message if it's NOT a replay initiated by the replay button
@@ -1234,6 +1234,37 @@ async function handleToggleTurnValidity(badgeEl) {
 }
 // --- MODIFICATION END ---
 
+// --- MODIFICATION START: Add View Switching Logic (v4) ---
+/**
+ * Toggles the collapsed state of the main side navigation bar.
+ */
+function toggleSideNav() {
+    DOM.appSideNav.classList.toggle('collapsed');
+}
+
+/**
+ * Handles switching the main application view.
+ * @param {string} viewId - The ID of the view to switch to (e.g., 'conversation-view').
+ */
+export function handleViewSwitch(viewId) {
+    // 1. Hide all views
+    document.querySelectorAll('.app-view').forEach(view => {
+        view.classList.remove('active');
+    });
+
+    // 2. Show the selected view
+    const viewToShow = document.getElementById(viewId);
+    if (viewToShow) {
+        viewToShow.classList.add('active');
+    }
+
+    // 3. Update the active state of the menu buttons
+    DOM.viewSwitchButtons.forEach(button => {
+        button.classList.toggle('active', button.dataset.view === viewId);
+    });
+}
+// --- MODIFICATION END ---
+
 
 // --- Initializer ---
 
@@ -1468,6 +1499,9 @@ export function initializeEventListeners() {
         if (!DOM.windowDropdownMenu.contains(e.target) && e.target !== DOM.windowMenuButton) {
             DOM.windowDropdownMenu.classList.remove('open');
         }
+        // --- MODIFICATION START: Close app menu on outside click ---
+        // This is no longer a dropdown, so this logic is not needed for the app menu.
+        // --- MODIFICATION END ---
     });
 
     // --- MODIFICATION START: Add context dot click listener ---
@@ -1538,6 +1572,29 @@ export function initializeEventListeners() {
     }
     if (welcomeScreenPopupCheckbox) {
         welcomeScreenPopupCheckbox.addEventListener('change', handleWelcomeScreenToggle);
+    }
+    // --- MODIFICATION END ---
+    
+    // --- MODIFICATION START: Add App Menu Listeners (v4) ---
+    if (DOM.appMenuToggle) {
+        DOM.appMenuToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleSideNav();
+        });
+    }
+
+    if (DOM.viewSwitchButtons) {
+        DOM.viewSwitchButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                // Find the closest ancestor which is a link
+                const link = e.target.closest('.view-switch-button');
+                const viewId = link.dataset.view;
+                if (viewId) {
+                    handleViewSwitch(viewId);
+                }
+            });
+        });
     }
     // --- MODIFICATION END ---
 }

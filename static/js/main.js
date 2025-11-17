@@ -4,7 +4,9 @@
  * It initializes the application by setting up event listeners and loading initial data.
  */
 
-import { initializeEventListeners } from './eventHandlers.js';
+// MODIFICATION START: Import handleViewSwitch
+import { initializeEventListeners, handleViewSwitch } from './eventHandlers.js';
+// MODIFICATION END
 import { finalizeConfiguration, loadCredentialsAndModels } from './handlers/configManagement.js';
 import * as API from './api.js';
 import * as DOM from './domElements.js';
@@ -268,4 +270,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     UI.updateHintAndIndicatorState();
     UI.updateVoiceModeUI();
     UI.updateKeyObservationsModeUI();
+    
+    // --- MODIFICATION START: Set default application view (v4) ---
+    handleViewSwitch('conversation-view');
+    // --- MODIFICATION END ---
 });

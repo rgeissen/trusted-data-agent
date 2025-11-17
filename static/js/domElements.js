@@ -4,6 +4,19 @@
  * Consolidating DOM queries here makes it easier to manage and locate UI element references.
  */
 
+// --- MODIFICATION START: App View Management (v4 Structure) ---
+export const appSideNav = document.getElementById('app-side-nav');
+export const appMenuToggle = document.getElementById('app-menu-toggle');
+export const appContentArea = document.getElementById('main-content-area');
+export const appViewContainer = document.getElementById('app-view-container');
+export const conversationView = document.getElementById('conversation-view');
+export const ragMaintenanceView = document.getElementById('rag-maintenance-view');
+export const conversationHeader = document.getElementById('conversation-header');
+export const conversationPanels = document.getElementById('conversation-panels');
+// This selects all view-switching buttons in the side nav
+export const viewSwitchButtons = document.querySelectorAll('.view-switch-button');
+// --- MODIFICATION END ---
+
 // Chat interface elements
 export const chatLog = document.getElementById('chat-log');
 export const chatForm = document.getElementById('chat-form');
@@ -33,7 +46,7 @@ export const promptModalTitle = document.getElementById('prompt-modal-title');
 export const promptModalInputs = document.getElementById('prompt-modal-inputs');
 export const promptModalClose = document.getElementById('prompt-modal-close');
 
-// Main content area
+// Main content area (within Conversation view)
 export const mainContent = document.getElementById('main-content');
 
 // Status window elements
@@ -44,16 +57,13 @@ export const toggleStatusButton = document.getElementById('toggle-status-button'
 export const statusCollapseIcon = document.getElementById('status-collapse-icon');
 export const statusExpandIcon = document.getElementById('status-expand-icon');
 export const toggleStatusCheckbox = document.getElementById('toggle-status-checkbox');
-// --- MODIFICATION START: Add stop button element ---
 export const stopExecutionButton = document.getElementById('stop-execution-button');
-// --- MODIFICATION START: Add header replay button elements ---
 export const headerReplayPlannedButton = document.getElementById('header-replay-planned-button');
 export const headerReplayOptimizedButton = document.getElementById('header-replay-optimized-button');
 export const headerReplayQueryButton = document.getElementById('header-replay-query-button');
 export const taskIdDisplay = document.getElementById('task-id-display');
 export const taskIdValue = document.getElementById('task-id-value');
 export const copyTaskIdButton = document.getElementById('copy-task-id-button');
-// --- MODIFICATION END ---
 
 // Session history panel elements
 export const sessionHistoryPanel = document.getElementById('session-history-panel');
@@ -63,7 +73,7 @@ export const historyCollapseIcon = document.getElementById('history-collapse-ico
 export const historyExpandIcon = document.getElementById('history-expand-icon');
 export const toggleHistoryCheckbox = document.getElementById('toggle-history-checkbox');
 
-// Header elements
+// Header elements (within Conversation view)
 export const toolHeader = document.getElementById('tool-header');
 export const toggleHeaderButton = document.getElementById('toggle-header-button');
 export const headerCollapseIcon = document.getElementById('header-collapse-icon');
@@ -103,23 +113,19 @@ export const awsRegionInput = document.getElementById('aws-region');
 export const awsListingMethodContainer = document.getElementById('aws-listing-method-container');
 export const ollamaHostContainer = document.getElementById('ollama-host-container');
 export const ollamaHostInput = document.getElementById('ollama-host');
-// --- MODIFICATION START: Add selectors for new Azure credential fields ---
 export const azureCredentialsContainer = document.getElementById('azure-credentials-container');
 export const azureApiKeyInput = document.getElementById('azure-api-key');
 export const azureEndpointInput = document.getElementById('azure-endpoint');
 export const azureDeploymentNameInput = document.getElementById('azure-deployment-name');
 export const azureApiVersionInput = document.getElementById('azure-api-version');
-// --- MODIFICATION END ---
-// --- MODIFICATION START: Add selectors for new Friendli.ai credential fields ---
 export const friendliCredentialsContainer = document.getElementById('friendli-credentials-container');
 export const friendliTokenInput = document.getElementById('friendli-token');
 export const friendliEndpointUrlInput = document.getElementById('friendli-endpoint-url');
-// --- MODIFICATION END ---
 export const chartingIntensitySelect = document.getElementById('charting-intensity');
 export const ttsCredentialsJsonTextarea = document.getElementById('tts-credentials-json');
 
 
-// Status indicators
+// Status indicators (now in conversation-header)
 export const mcpStatusDot = document.getElementById('mcp-status-dot');
 export const llmStatusDot = document.getElementById('llm-status-dot');
 export const sseStatusDot = document.getElementById('sse-status-dot');
@@ -182,4 +188,3 @@ export const ragCaseModalJson = document.getElementById('rag-case-modal-json');
 export const ragCaseModalCopy = document.getElementById('rag-case-modal-copy');
 export const ragCaseModalClose = document.getElementById('rag-case-modal-close');
 export const ragCaseModalCloseBottom = document.getElementById('rag-case-modal-close-bottom');
-

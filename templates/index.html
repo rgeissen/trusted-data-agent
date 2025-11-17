@@ -9,285 +9,343 @@
     <script src="https://unpkg.com/@antv/g2plot@latest/dist/g2plot.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 </head>
-<body class="flex h-screen flex-col">
+<!-- MODIFICATION: Body is now flex-col -->
+<body class="flex h-screen flex-col bg-dark-bg text-light-text">
 
+    <!-- MODIFICATION: This is the single, global top navigation bar -->
+    <!-- It now *only* contains the title and the hamburger menu -->
     <nav class="w-full bg-black/30 backdrop-blur-md border-b border-white/10 px-4 py-2 flex items-center justify-between flex-shrink-0 z-40">
         <div class="flex items-center gap-x-4">
+            <!-- NEW: Hamburger menu toggle, moved here -->
+            <button id="app-menu-toggle" type="button" class="p-2 text-gray-300 hover:text-white transition-colors rounded-md hover:bg-white/10">
+                <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+            <!-- Title remains -->
             <h1 class="header-title text-xl font-bold text-white">Trusted Data Agent</h1>
         </div>
-        <div class="flex items-center gap-x-6">
-            <div class="flex items-center gap-x-4 pr-4 border-r border-white/10">
-                <div class="flex items-center gap-x-2" title="MCP Server Status">
-                    <div id="mcp-status-dot" class="connection-dot disconnected"></div>
-                    <span class="text-sm text-gray-300">MCP</span>
-                </div>
-                <div class="flex items-center gap-x-2" title="RAG Status">
-                    <div id="rag-status-dot" class="connection-dot connected"></div>
-                    <span class="text-sm text-gray-300">RAG</span>
-                </div>
-                <div class="flex items-center gap-x-2" title="LLM Status">
-                    <div id="llm-status-dot" class="connection-dot disconnected"></div>
-                    <span class="text-sm text-gray-300">LLM</span>
-                </div>
-                <div class="flex items-center gap-x-2" title="Real-time Connection Status">
-                    <div id="sse-status-dot" class="connection-dot disconnected"></div>
-                    <span class="text-sm text-gray-300">SSE</span>
-                </div>
-                <div class="flex items-center gap-x-2" title="Context Engine Status - Click to purge Context">
-                    <div id="context-status-dot" class="connection-dot disconnected"></div>
-                    <span class="text-sm text-gray-300">Context</span>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-x-1">
-                <div class="menu-item">
-                    <button id="chat-modal-button" class="px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-white/10 rounded-md transition-colors disabled:opacity-50" disabled>Chat</button>
-                </div>
-                <div class="menu-item">
-                    <button id="config-menu-button" class="px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-white/10 rounded-md transition-colors">Config</button>
-                </div>
-                <div class="menu-item">
-                    <button id="prompt-editor-button" class="px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-white/10 rounded-md transition-colors disabled:opacity-50" disabled>System Prompt</button>
-                </div>
-                <div class="menu-item">
-                    <button id="window-menu-button" class="px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-white/10 rounded-md transition-colors">Window</button>
-                    <div id="window-dropdown-menu" class="dropdown-menu mt-2 w-56 rounded-md shadow-lg glass-panel p-1">
-                        <label class="flex items-center justify-between w-full px-3 py-2 text-sm text-gray-200 rounded-md hover:bg-white/10 cursor-pointer">
-                            <span>History Panel</span>
-                            <input type="checkbox" id="toggle-history-checkbox" class="h-4 w-4 rounded text-teradata-orange bg-gray-700 border-gray-600 focus:ring-teradata-orange">
-                        </label>
-                        <label class="flex items-center justify-between w-full px-3 py-2 text-sm text-gray-200 rounded-md hover:bg-white/10 cursor-pointer">
-                            <span>Capabilities Panel</span>
-                            <input type="checkbox" id="toggle-header-checkbox" class="h-4 w-4 rounded text-teradata-orange bg-gray-700 border-gray-600 focus:ring-teradata-orange">
-                        </label>
-                        <label class="flex items-center justify-between w-full px-3 py-2 text-sm text-gray-200 rounded-md hover:bg-white/10 cursor-pointer">
-                            <span>Status Panel</span>
-                            <input type="checkbox" id="toggle-status-checkbox" class="h-4 w-4 rounded text-teradata-orange bg-gray-700 border-gray-600 focus:ring-teradata-orange">
-                        </label>
-                        <div class="my-1 border-t border-white/10"></div>
-                        <label class="flex items-center justify-between w-full px-3 py-2 text-sm text-gray-200 rounded-md hover:bg-white/10 cursor-pointer">
-                            <span>Show Tooltips</span>
-                            <input type="checkbox" id="toggle-tooltips-checkbox" class="h-4 w-4 rounded text-teradata-orange bg-gray-700 border-gray-600 focus:ring-teradata-orange">
-                        </label>
-                        <div class="my-1 border-t border-white/10"></div>
-                        <label class="flex items-center justify-between w-full px-3 py-2 text-sm text-gray-200 rounded-md hover:bg-white/10 cursor-pointer">
-                            <span>Show Welcome Screen</span>
-                            <input type="checkbox" id="toggle-welcome-screen-checkbox" class="h-4 w-4 rounded text-teradata-orange bg-gray-700 border-gray-600 focus:ring-teradata-orange">
-                        </label>
-                    </div>
-                </div>
-                <div class="menu-item">
-                    <button id="info-button" class="px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-white/10 rounded-md transition-colors">Info</button>
-                </div>
-            </div>
-        </div>
+        <!-- MODIFICATION: All status dots and menu buttons (Config, Info, etc.) have been MOVED -->
     </nav>
-
-    <div class="flex flex-1 min-h-0">
-        <aside id="session-history-panel" class="w-1/4 max-w-xs h-full flex flex-col glass-panel rounded-r-2xl shadow-2xl border-r border-white/10">
-            <header class="p-4 border-b border-white/10 flex justify-between items-center flex-shrink-0">
-                <h2 class="header-title text-lg font-bold text-white">History</h2>
-                <button id="new-chat-button" type="button" title="Start New Chat" class="p-2 text-gray-300 hover:text-white transition-colors rounded-md hover:bg-white/10">
-                    <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                </button>
-            </header>
-            <div id="session-list" class="flex-1 p-2 overflow-y-auto space-y-2">
-                <!-- Session items will be dynamically added here -->
+    
+    <!-- NEW: Main Content Area (holds side-nav and view-container) -->
+    <div id="main-content-area" class="flex flex-row flex-1 min-h-0">
+        
+        <!-- NEW: Vertical Side Navigation Bar -->
+        <nav id="app-side-nav" class="flex flex-col h-full bg-black/30 p-4 border-r border-white/10 space-y-4">
+            <!-- Navigation Links -->
+            <div class="flex flex-col space-y-2">
+                <a href="#" id="view-switch-conversation" data-view="conversation-view" class="view-switch-button flex items-center gap-x-3 w-full px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7S2 13.866 2 10 5.582 3 10 3s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zm-4 0H9v2h2V9z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="nav-link-text font-semibold">Conversation</span>
+                </a>
+                <a href="#" id="view-switch-rag-maintenance" data-view="rag-maintenance-view" class="view-switch-button flex items-center gap-x-3 w-full px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4z" />
+                        <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="nav-link-text font-semibold">RAG Maintenance</span>
+                </a>
             </div>
-        </aside>
+        </nav>
 
-        <div id="main-content" class="flex flex-col h-full flex-1 min-w-0 relative">
-             <div id="top-buttons-container" class="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-30 pointer-events-none">
-                <button id="toggle-history-button" title="Toggle History Panel" class="p-2 rounded-full bg-gray-800/50 hover:bg-teradata-orange transition-colors pointer-events-auto">
-                    <!-- History Expand/Collapse Icons -->
-                    <svg id="history-expand-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                    </svg>
-                    <svg id="history-collapse-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                    </svg>
-                </button>
-                 <button id="toggle-header-button" title="Toggle Capabilities Panel" class="p-2 rounded-full bg-gray-800/50 hover:bg-teradata-orange transition-colors pointer-events-auto">
-                     <!-- Header Expand/Collapse Icons -->
-                     <svg id="header-collapse-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
-                    </svg>
-                    <svg id="header-expand-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </button>
-                <button id="toggle-status-button" title="Toggle Status Panel" class="p-2 rounded-full bg-gray-800/50 hover:bg-teradata-orange transition-colors pointer-events-auto">
-                    <!-- Status Expand/Collapse Icons -->
-                    <svg id="status-collapse-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                    </svg>
-                     <svg id="status-expand-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                    </svg>
-                </button>
-            </div>
+        <!-- NEW: Main View Container (holds all swappable views) -->
+        <main id="app-view-container" class="flex-1 h-full min-w-0">
 
-            <header id="tool-header" class="relative bg-[#262626] rounded-b-2xl shadow-2xl z-20 flex flex-col flex-shrink-0 border-b border-white/10 pt-16 collapsed">
-                <!-- Capabilities Panel Content -->
-                <nav id="resource-tabs" class="flex justify-center items-center gap-x-4 p-3 border-b border-white/10">
-                    <button class="resource-tab px-4 py-2 font-semibold text-sm text-gray-300 transition-colors hover:text-white active" data-type="tools">Tools</button>
-                    <button class="resource-tab px-4 py-2 font-semibold text-sm text-gray-300 transition-colors hover:text-white" data-type="prompts">Prompts</button>
-                    <button class="resource-tab px-4 py-2 font-semibold text-sm text-gray-300 transition-colors hover:text-white" data-type="resources">Resources</button>
-                </nav>
-                <div id="panels-container" class="flex-1 min-h-0">
-                    <div id="tools-panel" class="resource-panel flex flex-col h-full">
-                        <nav id="tools-categories" class="flex justify-center items-center gap-x-2 p-3 border-b border-white/10"></nav>
-                        <div id="tools-panels-container" class="flex-1 min-h-0 overflow-y-auto p-2"></div>
+            <!-- VIEW 1: Conversation -->
+            <!-- MODIFICATION: This is now flex-col to hold its own header + the 3-panel layout -->
+            <div id="conversation-view" class="app-view active flex flex-col w-full h-full">
+                
+                <!-- NEW: Conversation View Header (contains status dots and config/info buttons) -->
+                <header id="conversation-header" class="w-full bg-black/10 border-b border-white/10 px-4 py-2 flex items-center justify-between flex-shrink-0 z-10">
+                    <!-- Status Dots (MOVED HERE) -->
+                    <div class="flex items-center gap-x-4">
+                        <div class="flex items-center gap-x-2" title="MCP Server Status">
+                            <div id="mcp-status-dot" class="connection-dot disconnected"></div>
+                            <span class="text-sm text-gray-300">MCP</span>
+                        </div>
+                        <div class="flex items-center gap-x-2" title="RAG Status">
+                            <div id="rag-status-dot" class="connection-dot connected"></div>
+                            <span class="text-sm text-gray-300">RAG</span>
+                        </div>
+                        <div class="flex items-center gap-x-2" title="LLM Status">
+                            <div id="llm-status-dot" class="connection-dot disconnected"></div>
+                            <span class="text-sm text-gray-300">LLM</span>
+                        </div>
+                        <div class="flex items-center gap-x-2" title="Real-time Connection Status">
+                            <div id="sse-status-dot" class="connection-dot disconnected"></div>
+                            <span class="text-sm text-gray-300">SSE</span>
+                        </div>
+                        <div class="flex items-center gap-x-2" title="Context Engine Status - Click to purge Context">
+                            <div id="context-status-dot" class="connection-dot disconnected"></div>
+                            <span class="text-sm text-gray-300">Context</span>
+                        </div>
                     </div>
-                    <div id="prompts-panel" class="resource-panel flex-col h-full" style="display: none;">
-                        <nav id="prompts-categories" class="flex justify-center items-center gap-x-2 p-3 border-b border-white/10"></nav>
-                        <div id="prompts-panels-container" class="flex-1 min-h-0 overflow-y-auto p-2"></div>
-                    </div>
-                    <div id="resources-panel" class="resource-panel flex-col h-full" style="display: none;">
-                        <nav id="resources-categories" class="flex justify-center items-center gap-x-2 p-3 border-b border-white/10"></nav>
-                        <div id="resources-panels-container" class="flex-1 min-h-0 overflow-y-auto p-2"></div>
-                    </div>
-                </div>
-            </header>
-
-            <div class="flex-1 flex flex-col min-h-0">
-                 <main id="chat-container" class="flex-1 overflow-y-auto p-6">
-                    <div id="chat-log" class="max-w-4xl mx-auto space-y-8">
-                        <!-- Chat messages will be added here -->
-                    </div>
-                </main>
-
-                <footer class="p-4">
-                    <div class="max-w-4xl mx-auto">
-                        <form id="chat-form" class="flex items-center gap-3 glass-panel rounded-xl p-2">
-                            <input type="text" id="user-input" placeholder="Ask about databases, tables, users..."
-                                class="flex-1 p-3 bg-transparent border-none rounded-lg focus:outline-none text-white placeholder-gray-400"
-                                autocomplete="off" disabled />
-                            <!-- Voice Input Button -->
-                            <button type="button" id="voice-input-button"
-                                class="p-3 bg-gray-600 rounded-lg hover:bg-gray-500 disabled:bg-gray-700 flex items-center justify-center w-12 h-12 transition-all duration-200 transform hover:scale-110 hidden"
-                                title="Voice Conversation (Hold Ctrl)">
-                                <svg id="mic-icon" class="w-6 h-6 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M12 14a3 3 0 003-3V5a3 3 0 00-6 0v6a3 3 0 003 3z" />
-                                    <path d="M12 16.5a4.5 4.5 0 01-4.5-4.5V7a1 1 0 012 0v5a2.5 2.5 0 005 0V7a1 1 0 012 0v5a4.5 4.5 0 01-4.5 4.5z" />
-                                    <path d="M12 21a1 1 0 01-1-1v-2.06a7 7 0 01-5.9-6.84 1 1 0 012 0A5 5 0 0012 16a5 5 0 005-5.06 1 1 0 012 0 7 7 0 01-5.9 6.84V20a1 1 0 01-1 1z" />
-                                </svg>
-                            </button>
-                            <!-- Key Observations Toggle Button -->
-                            <button type="button" id="key-observations-toggle-button" class="p-3 bg-gray-600 rounded-lg hover:bg-gray-500 disabled:bg-gray-700 flex items-center justify-center w-12 h-12 transition-all duration-200 transform hover:scale-110 hidden" title="Key Observations - Autoplay Off">
-                                <!-- Icons for different states -->
-                                <svg id="observations-autoplay-off-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M4.804 21.644A6.707 6.707 0 0 0 6 21.75a6.721 6.721 0 0 0 3.583-1.029c.774.182 1.584.279 2.417.279 5.352 0 9.75-3.62 9.75-8.125s-4.398-8.125-9.75-8.125S2.25 6.22 2.25 10.725c0 2.21.849 4.234 2.27 5.769a.75.75 0 0 1 .104.515v.23a.75.75 0 0 0 .45.694ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clip-rule="evenodd" />
-                                    <path d="M12.982 4.555A.75.75 0 0 0 12 5.25v.162A8.25 8.25 0 0 1 20.25 13.5c0 2.25-.89 4.31-2.344 5.842a.75.75 0 0 0 .938 1.165A9.753 9.753 0 0 0 21.75 13.5c0-5.11-4.14-9.25-9.25-9.25a.75.75 0 0 0-.518.305Z" />
-                                </svg>
-                                <svg id="observations-autoplay-on-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white hidden" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M12.982 4.555A.75.75 0 0 0 12 5.25v.162A8.25 8.25 0 0 1 20.25 13.5c0 2.25-.89 4.31-2.344 5.842a.75.75 0 0 0 .938 1.165A9.753 9.753 0 0 0 21.75 13.5c0-5.11-4.14-9.25-9.25-9.25a.75.75 0 0 0-.518.305Z" />
-                                    <path fill-rule="evenodd" d="M4.804 21.644A6.707 6.707 0 0 0 6 21.75a6.721 6.721 0 0 0 3.583-1.029c.774.182 1.584.279 2.417.279 5.352 0 9.75-3.62 9.75-8.125s-4.398-8.125-9.75-8.125S2.25 6.22 2.25 10.725c0 2.21.849 4.234 2.27 5.769a.75.75 0 0 1 .104.515v.23a.75.75 0 0 0 .45.694ZM9.402 9.242a.75.75 0 0 1 1.054-.168l3.75 2.25a.75.75 0 0 1 0 1.352l-3.75 2.25a.75.75 0 0 1-1.054-1.184L12.333 12 9.402 10.258a.75.75 0 0 1-.168-1.016Z" clip-rule="evenodd" />
-                                </svg>
-                                <svg id="observations-off-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white hidden" viewBox="0 0 24 24" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M3.553 4.453a.75.75 0 0 0-1.06 1.06l16.5 16.5a.75.75 0 0 0 1.06-1.06l-2.03-2.03A9.732 9.732 0 0 0 21.75 13.5c0-5.11-4.14-9.25-9.25-9.25a9.68 9.68 0 0 0-3.32.556L7.203 2.78a.75.75 0 0 0-1.06-1.06l-2.59 2.59Zm2.83 2.83 2.473 2.473A8.223 8.223 0 0 1 12 5.412a8.25 8.25 0 0 1 8.25 8.25c0 .64-.074 1.264-.214 1.86l2.311 2.311A9.73 9.73 0 0 0 20.25 13.5a9.75 9.75 0 0 0-13.867-8.217Z" clip-rule="evenodd" />
-                                    <path d="M4.804 21.644A6.707 6.707 0 0 0 6 21.75a6.721 6.721 0 0 0 3.583-1.029c.774.182 1.584.279 2.417.279 3.425 0 6.446-1.72 8.16-4.323l-1.68-1.68A8.253 8.253 0 0 1 12 19.088a8.138 8.138 0 0 1-4.145-1.13L4.82 21.436a.75.75 0 0 1-.015.208Z" />
-                                </svg>
-                            </button>
-                            <!-- Submit Button -->
-                            <button type="submit" id="submit-button"
-                                class="p-3 bg-[#F15F22] rounded-lg hover:bg-[#D9501A] disabled:bg-gray-600 flex items-center justify-center w-12 h-12 transition-all duration-200 transform hover:scale-110"
-                                disabled>
-                                <!-- Send Icon and Loading Spinner -->
-                                <svg id="send-icon" class="w-6 h-6 text-white flipped" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                                <svg id="loading-spinner" class="w-6 h-6 text-white animate-spin hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                            </button>
-                        </form>
-                        <div id="input-hint" class="input-hint">
-                            <!-- Input Hint Content -->
-                            <span><strong>Full Session Context:</strong> <span class="text-green-400 font-semibold">On</span></span>
-                            <div class="hint-icon">
-                                ?
-                                <span class="tooltip">Full session context is the default. Hold <kbd>Alt</kbd> to temporarily use 'Turn Summaries' context. Press <kbd>Shift</kbd> + <kbd>Alt</kbd> to lock 'Turn Summaries' context on.</span>
+                    <!-- Config/Info/Window Buttons (MOVED HERE) -->
+                    <div class="flex items-center gap-x-1">
+                        <div class="menu-item">
+                            <button id="chat-modal-button" class="px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-white/10 rounded-md transition-colors disabled:opacity-50" disabled>Chat</button>
+                        </div>
+                        <div class="menu-item">
+                            <button id="config-menu-button" class="px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-white/10 rounded-md transition-colors">Config</button>
+                        </div>
+                        <div class="menu-item">
+                            <button id="prompt-editor-button" class="px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-white/10 rounded-md transition-colors disabled:opacity-50" disabled>System Prompt</button>
+                        </div>
+                        <div class="menu-item">
+                            <button id="window-menu-button" class="px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-white/10 rounded-md transition-colors">Window</button>
+                            <div id="window-dropdown-menu" class="dropdown-menu mt-2 w-56 rounded-md shadow-lg glass-panel p-1">
+                                <label class="flex items-center justify-between w-full px-3 py-2 text-sm text-gray-200 rounded-md hover:bg-white/10 cursor-pointer">
+                                    <span>History Panel</span>
+                                    <input type="checkbox" id="toggle-history-checkbox" class="h-4 w-4 rounded text-teradata-orange bg-gray-700 border-gray-600 focus:ring-teradata-orange">
+                                </label>
+                                <label class="flex items-center justify-between w-full px-3 py-2 text-sm text-gray-200 rounded-md hover:bg-white/10 cursor-pointer">
+                                    <span>Capabilities Panel</span>
+                                    <input type="checkbox" id="toggle-header-checkbox" class="h-4 w-4 rounded text-teradata-orange bg-gray-700 border-gray-600 focus:ring-teradata-orange">
+                                </label>
+                                <label class="flex items-center justify-between w-full px-3 py-2 text-sm text-gray-200 rounded-md hover:bg-white/10 cursor-pointer">
+                                    <span>Status Panel</span>
+                                    <input type="checkbox" id="toggle-status-checkbox" class="h-4 w-4 rounded text-teradata-orange bg-gray-700 border-gray-600 focus:ring-teradata-orange">
+                                </label>
+                                <div class="my-1 border-t border-white/10"></div>
+                                <label class="flex items-center justify-between w-full px-3 py-2 text-sm text-gray-200 rounded-md hover:bg-white/10 cursor-pointer">
+                                    <span>Show Tooltips</span>
+                                    <input type="checkbox" id="toggle-tooltips-checkbox" class="h-4 w-4 rounded text-teradata-orange bg-gray-700 border-gray-600 focus:ring-teradata-orange">
+                                </label>
+                                <div class="my-1 border-t border-white/10"></div>
+                                <label class="flex items-center justify-between w-full px-3 py-2 text-sm text-gray-200 rounded-md hover:bg-white/10 cursor-pointer">
+                                    <span>Show Welcome Screen</span>
+                                    <input type="checkbox" id="toggle-welcome-screen-checkbox" class="h-4 w-4 rounded text-teradata-orange bg-gray-700 border-gray-600 focus:ring-teradata-orange">
+                                </label>
                             </div>
                         </div>
+                        <div class="menu-item">
+                            <button id="info-button" class="px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-white/10 rounded-md transition-colors">Info</button>
                         </div>
-                </footer>
-            </div>
-        </div>
-
-        <aside id="status-window" class="w-1/3 max-w-md h-full flex flex-col glass-panel rounded-l-2xl shadow-2xl border-l border-white/10">
-            <!-- --- MODIFICATION START: Add replay button group --- -->
-            <header class="p-4 border-b border-white/10 flex flex-col justify-center items-center relative">
-                <div class="flex justify-center items-center w-full relative">
-                    <h2 id="status-title" class="header-title text-lg font-bold text-white">Live Status</h2>
-                    
-                    <div id="status-action-buttons" class="absolute right-0 flex items-center gap-x-1">
-                        <!-- Button 3: Replay Planned Query (Dummy) -->
-                        <button id="header-replay-planned-button" title="Replay Planned Query (Not Implemented)" class="replay-action-button p-2 text-gray-300 hover:text-white transition-colors rounded-md hover:bg-white/10 hidden">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </button>
-                        <!-- Button 4: Replay Optimized Query (Dummy) -->
-                        <button id="header-replay-optimized-button" title="Replay Optimized Query (Not Implemented)" class="replay-action-button p-2 text-gray-300 hover:text-white transition-colors rounded-md hover:bg-white/10 hidden">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </button>
-
-                        
-                        <!-- Stop Button (Moved from absolute to flow) -->
-                        <button id="stop-execution-button" title="Stop Current Execution" class="p-2 text-red-400 hover:text-red-300 transition-colors rounded-md hover:bg-red-500/20 hidden">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd" />
-                            </svg>
-                        </button>
                     </div>
-                </div>
-            <!-- --- MODIFICATION END --- -->
-                <div id="task-id-display" class="text-xs text-gray-400 mt-1 flex items-center justify-center gap-x-2 h-4 hidden">
-                    <span id="task-id-value" class="font-semibold text-white"></span>
-                    <button id="copy-task-id-button" title="Copy Task ID" class="p-1 text-gray-400 hover:text-white transition-colors rounded-md hover:bg-white/10">
-                        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                    </button>
-                </div>
-                <div id="status-prompt-name" class="text-xs text-gray-400 mt-1 flex items-center justify-center gap-x-2 h-4">
-                    <span id="prompt-name-display">No Model/Prompt Loaded</span>
-                    <span id="thinking-indicator" class="hidden items-center gap-x-1 text-yellow-400">
-                        <!-- Thinking Indicator SVG -->
-                        <svg class="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        <span>LLM Thinking...</span>
-                    </span>
-                </div>
-                <div id="token-usage-display" class="text-xs text-gray-400 mt-2 w-full">
-                    <!-- Token Usage Display Content -->
-                    <div id="token-normal-display">
-                        <div class="flex justify-around items-center space-x-2">
-                            <div class="text-center">
-                                <span class="font-semibold text-gray-300">Last Statement</span>
-                                <div class="flex gap-x-2 justify-center">
-                                    <span title="Input Tokens">In: <strong id="statement-input-tokens" class="text-white">0</strong></span>
-                                    <span title="Output Tokens">Out: <strong id="statement-output-tokens" class="text-white">0</strong></span>
+                </header>
+
+                <!-- NEW: Wrapper for the 3-panel layout -->
+                <div id="conversation-panels" class="flex flex-row flex-1 min-h-0">
+                    <!-- Original 3-Panel Layout (History, Main, Status) -->
+                    <aside id="session-history-panel" class="w-1/4 max-w-xs h-full flex flex-col glass-panel rounded-r-2xl shadow-2xl border-r border-white/10">
+                        <header class="p-4 border-b border-white/10 flex justify-between items-center flex-shrink-0">
+                            <h2 class="header-title text-lg font-bold text-white">History</h2>
+                            <button id="new-chat-button" type="button" title="Start New Chat" class="p-2 text-gray-300 hover:text-white transition-colors rounded-md hover:bg-white/10">
+                                <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                            </button>
+                        </header>
+                        <div id="session-list" class="flex-1 p-2 overflow-y-auto space-y-2">
+                            <!-- Session items will be dynamically added here -->
+                        </div>
+                    </aside>
+
+                    <div id="main-content" class="flex flex-col h-full flex-1 min-w-0 relative">
+                         <div id="top-buttons-container" class="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-30 pointer-events-none">
+                            <button id="toggle-history-button" title="Toggle History Panel" class="p-2 rounded-full bg-gray-800/50 hover:bg-teradata-orange transition-colors pointer-events-auto">
+                                <!-- History Expand/Collapse Icons -->
+                                <svg id="history-expand-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                                </svg>
+                                <svg id="history-collapse-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                                </svg>
+                            </button>
+                             <button id="toggle-header-button" title="Toggle Capabilities Panel" class="p-2 rounded-full bg-gray-800/50 hover:bg-teradata-orange transition-colors pointer-events-auto">
+                                 <!-- Header Expand/Collapse Icons -->
+                                 <svg id="header-collapse-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+                                </svg>
+                                <svg id="header-expand-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            <button id="toggle-status-button" title="Toggle Status Panel" class="p-2 rounded-full bg-gray-800/50 hover:bg-teradata-orange transition-colors pointer-events-auto">
+                                <!-- Status Expand/Collapse Icons -->
+                                <svg id="status-collapse-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                                </svg>
+                                 <svg id="status-expand-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <header id="tool-header" class="relative bg-[#262626] rounded-b-2xl shadow-2xl z-20 flex flex-col flex-shrink-0 border-b border-white/10 pt-16 collapsed">
+                            <!-- Capabilities Panel Content -->
+                            <nav id="resource-tabs" class="flex justify-center items-center gap-x-4 p-3 border-b border-white/10">
+                                <button class="resource-tab px-4 py-2 font-semibold text-sm text-gray-300 transition-colors hover:text-white active" data-type="tools">Tools</button>
+                                <button class="resource-tab px-4 py-2 font-semibold text-sm text-gray-300 transition-colors hover:text-white" data-type="prompts">Prompts</button>
+                                <button class="resource-tab px-4 py-2 font-semibold text-sm text-gray-300 transition-colors hover:text-white" data-type="resources">Resources</button>
+                            </nav>
+                            <div id="panels-container" class="flex-1 min-h-0">
+                                <div id="tools-panel" class="resource-panel flex flex-col h-full">
+                                    <nav id="tools-categories" class="flex justify-center items-center gap-x-2 p-3 border-b border-white/10"></nav>
+                                    <div id="tools-panels-container" class="flex-1 min-h-0 overflow-y-auto p-2"></div>
+                                </div>
+                                <div id="prompts-panel" class="resource-panel flex-col h-full" style="display: none;">
+                                    <nav id="prompts-categories" class="flex justify-center items-center gap-x-2 p-3 border-b border-white/10"></nav>
+                                    <div id="prompts-panels-container" class="flex-1 min-h-0 overflow-y-auto p-2"></div>
+                                </div>
+                                <div id="resources-panel" class="resource-panel flex-col h-full" style="display: none;">
+                                    <nav id="resources-categories" class="flex justify-center items-center gap-x-2 p-3 border-b border-white/10"></nav>
+                                    <div id="resources-panels-container" class="flex-1 min-h-0 overflow-y-auto p-2"></div>
                                 </div>
                             </div>
-                            <div class="border-l border-white/20 h-6"></div>
-                            <div class="text-center">
-                                <span class="font-semibold text-gray-300">Session Total</span>
-                                <div class="flex gap-x-2 justify-center">
-                                    <span title="Total Input Tokens">In: <strong id="total-input-tokens" class="text-white">0</strong></span>
-                                    <span title="Total Output Tokens">Out: <strong id="total-output-tokens" class="text-white">0</strong></span>
+                        </header>
+
+                        <div class="flex-1 flex flex-col min-h-0">
+                             <main id="chat-container" class="flex-1 overflow-y-auto p-6">
+                                <div id="chat-log" class="max-w-4xl mx-auto space-y-8">
+                                    <!-- Chat messages will be added here -->
                                 </div>
-                            </div>
+                            </main>
+
+                            <footer class="p-4">
+                                <div class="max-w-4xl mx-auto">
+                                    <form id="chat-form" class="flex items-center gap-3 glass-panel rounded-xl p-2">
+                                        <input type="text" id="user-input" placeholder="Ask about databases, tables, users..."
+                                            class="flex-1 p-3 bg-transparent border-none rounded-lg focus:outline-none text-white placeholder-gray-400"
+                                            autocomplete="off" disabled />
+                                        <!-- Voice Input Button -->
+                                        <button type="button" id="voice-input-button"
+                                            class="p-3 bg-gray-600 rounded-lg hover:bg-gray-500 disabled:bg-gray-700 flex items-center justify-center w-12 h-12 transition-all duration-200 transform hover:scale-110 hidden"
+                                            title="Voice Conversation (Hold Ctrl)">
+                                            <svg id="mic-icon" class="w-6 h-6 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M12 14a3 3 0 003-3V5a3 3 0 00-6 0v6a3 3 0 003 3z" />
+                                                <path d="M12 16.5a4.5 4.5 0 01-4.5-4.5V7a1 1 0 012 0v5a2.5 2.5 0 005 0V7a1 1 0 012 0v5a4.5 4.5 0 01-4.5 4.5z" />
+                                                <path d="M12 21a1 1 0 01-1-1v-2.06a7 7 0 01-5.9-6.84 1 1 0 012 0A5 5 0 0012 16a5 5 0 005-5.06 1 1 0 012 0 7 7 0 01-5.9 6.84V20a1 1 0 01-1 1z" />
+                                            </svg>
+                                        </button>
+                                        <!-- Key Observations Toggle Button -->
+                                        <button type="button" id="key-observations-toggle-button" class="p-3 bg-gray-600 rounded-lg hover:bg-gray-500 disabled:bg-gray-700 flex items-center justify-center w-12 h-12 transition-all duration-200 transform hover:scale-110 hidden" title="Key Observations - Autoplay Off">
+                                            <!-- Icons for different states -->
+                                            <svg id="observations-autoplay-off-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M4.804 21.644A6.707 6.707 0 0 0 6 21.75a6.721 6.721 0 0 0 3.583-1.029c.774.182 1.584.279 2.417.279 5.352 0 9.75-3.62 9.75-8.125s-4.398-8.125-9.75-8.125S2.25 6.22 2.25 10.725c0 2.21.849 4.234 2.27 5.769a.75.75 0 0 1 .104.515v.23a.75.75 0 0 0 .45.694ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clip-rule="evenodd" />
+                                                <path d="M12.982 4.555A.75.75 0 0 0 12 5.25v.162A8.25 8.25 0 0 1 20.25 13.5c0 2.25-.89 4.31-2.344 5.842a.75.75 0 0 0 .938 1.165A9.753 9.753 0 0 0 21.75 13.5c0-5.11-4.14-9.25-9.25-9.25a.75.75 0 0 0-.518.305Z" />
+                                            </svg>
+                                            <svg id="observations-autoplay-on-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white hidden" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M12.982 4.555A.75.75 0 0 0 12 5.25v.162A8.25 8.25 0 0 1 20.25 13.5c0 2.25-.89 4.31-2.344 5.842a.75.75 0 0 0 .938 1.165A9.753 9.753 0 0 0 21.75 13.5c0-5.11-4.14-9.25-9.25-9.25a.75.75 0 0 0-.518.305Z" />
+                                                <path fill-rule="evenodd" d="M4.804 21.644A6.707 6.707 0 0 0 6 21.75a6.721 6.721 0 0 0 3.583-1.029c.774.182 1.584.279 2.417.279 5.352 0 9.75-3.62 9.75-8.125s-4.398-8.125-9.75-8.125S2.25 6.22 2.25 10.725c0 2.21.849 4.234 2.27 5.769a.75.75 0 0 1 .104.515v.23a.75.75 0 0 0 .45.694ZM9.402 9.242a.75.75 0 0 1 1.054-.168l3.75 2.25a.75.75 0 0 1 0 1.352l-3.75 2.25a.75.75 0 0 1-1.054-1.184L12.333 12 9.402 10.258a.75.75 0 0 1-.168-1.016Z" clip-rule="evenodd" />
+                                            </svg>
+                                            <svg id="observations-off-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white hidden" viewBox="0 0 24 24" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M3.553 4.453a.75.75 0 0 0-1.06 1.06l16.5 16.5a.75.75 0 0 0 1.06-1.06l-2.03-2.03A9.732 9.732 0 0 0 21.75 13.5c0-5.11-4.14-9.25-9.25-9.25a9.68 9.68 0 0 0-3.32.556L7.203 2.78a.75.75 0 0 0-1.06-1.06l-2.59 2.59Zm2.83 2.83 2.473 2.473A8.223 8.223 0 0 1 12 5.412a8.25 8.25 0 0 1 8.25 8.25c0 .64-.074 1.264-.214 1.86l2.311 2.311A9.73 9.73 0 0 0 20.25 13.5a9.75 9.75 0 0 0-13.867-8.217Z" clip-rule="evenodd" />
+                                                <path d="M4.804 21.644A6.707 6.707 0 0 0 6 21.75a6.721 6.721 0 0 0 3.583-1.029c.774.182 1.584.279 2.417.279 3.425 0 6.446-1.72 8.16-4.323l-1.68-1.68A8.253 8.253 0 0 1 12 19.088a8.138 8.138 0 0 1-4.145-1.13L4.82 21.436a.75.75 0 0 1-.015.208Z" />
+                                            </svg>
+                                        </button>
+                                        <!-- Submit Button -->
+                                        <button type="submit" id="submit-button"
+                                            class="p-3 bg-[#F15F22] rounded-lg hover:bg-[#D9501A] disabled:bg-gray-600 flex items-center justify-center w-12 h-12 transition-all duration-200 transform hover:scale-110"
+                                            disabled>
+                                            <!-- Send Icon and Loading Spinner -->
+                                            <svg id="send-icon" class="w-6 h-6 text-white flipped" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                                            <svg id="loading-spinner" class="w-6 h-6 text-white animate-spin hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        </button>
+                                    </form>
+                                    <div id="input-hint" class="input-hint">
+                                        <!-- Input Hint Content -->
+                                        <span><strong>Full Session Context:</strong> <span class="text-green-400 font-semibold">On</span></span>
+                                        <div class="hint-icon">
+                                            ?
+                                            <span class="tooltip">Full session context is the default. Hold <kbd>Alt</kbd> to temporarily use 'Turn Summaries' context. Press <kbd>Shift</kbd> + <kbd>Alt</kbd> to lock 'Turn Summaries' context on.</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </footer>
                         </div>
                     </div>
-                    <div id="token-aws-message" class="text-center hidden">Token usage not available for Amazon Bedrock</div>
+
+                    <aside id="status-window" class="w-1/3 max-w-md h-full flex flex-col glass-panel rounded-l-2xl shadow-2xl border-l border-white/10">
+                        <header class="p-4 border-b border-white/10 flex flex-col justify-center items-center relative">
+                            <div class="flex justify-center items-center w-full relative">
+                                <h2 id="status-title" class="header-title text-lg font-bold text-white">Live Status</h2>
+                                
+                                <div id="status-action-buttons" class="absolute right-0 flex items-center gap-x-1">
+                                    <!-- Button 3: Replay Planned Query (Dummy) -->
+                                    <button id="header-replay-planned-button" title="Replay Planned Query (Not Implemented)" class="replay-action-button p-2 text-gray-300 hover:text-white transition-colors rounded-md hover:bg-white/10 hidden">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                          <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                          <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </button>
+                                    <!-- Button 4: Replay Optimized Query (Dummy) -->
+                                    <button id="header-replay-optimized-button" title="Replay Optimized Query (Not Implemented)" class="replay-action-button p-2 text-gray-300 hover:text-white transition-colors rounded-md hover:bg-white/10 hidden">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                          <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                          <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </button>
+
+                                    
+                                    <!-- Stop Button (Moved from absolute to flow) -->
+                                    <button id="stop-execution-button" title="Stop Current Execution" class="p-2 text-red-400 hover:text-red-300 transition-colors rounded-md hover:bg-red-500/20 hidden">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="task-id-display" class="text-xs text-gray-400 mt-1 flex items-center justify-center gap-x-2 h-4 hidden">
+                                <span id="task-id-value" class="font-semibold text-white"></span>
+                                <button id="copy-task-id-button" title="Copy Task ID" class="p-1 text-gray-400 hover:text-white transition-colors rounded-md hover:bg-white/10">
+                                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                </button>
+                            </div>
+                            <div id="status-prompt-name" class="text-xs text-gray-400 mt-1 flex items-center justify-center gap-x-2 h-4">
+                                <span id="prompt-name-display">No Model/Prompt Loaded</span>
+                                <span id="thinking-indicator" class="hidden items-center gap-x-1 text-yellow-400">
+                                    <!-- Thinking Indicator SVG -->
+                                    <svg class="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span>LLM Thinking...</span>
+                                </span>
+                            </div>
+                            <div id="token-usage-display" class="text-xs text-gray-400 mt-2 w-full">
+                                <!-- Token Usage Display Content -->
+                                <div id="token-normal-display">
+                                    <div class="flex justify-around items-center space-x-2">
+                                        <div class="text-center">
+                                            <span class="font-semibold text-gray-300">Last Statement</span>
+                                            <div class="flex gap-x-2 justify-center">
+                                                <span title="Input Tokens">In: <strong id="statement-input-tokens" class="text-white">0</strong></span>
+                                                <span title="Output Tokens">Out: <strong id="statement-output-tokens" class="text-white">0</strong></span>
+                                            </div>
+                                        </div>
+                                        <div class="border-l border-white/20 h-6"></div>
+                                        <div class="text-center">
+                                            <span class="font-semibold text-gray-300">Session Total</span>
+                                            <div class="flex gap-x-2 justify-center">
+                                                <span title="Total Input Tokens">In: <strong id="total-input-tokens" class="text-white">0</strong></span>
+                                                <span title="Total Output Tokens">Out: <strong id="total-output-tokens" class="text-white">0</strong></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="token-aws-message" class="text-center hidden">Token usage not available for Amazon Bedrock</div>
+                            </div>
+                        </header>
+                        <div id="status-window-content" class="flex-1 p-4 overflow-y-auto space-y-4">
+                            <p class="text-gray-400">Waiting for a new request...</p>
+                        </div>
+                    </aside>
                 </div>
-            </header>
-            <div id="status-window-content" class="flex-1 p-4 overflow-y-auto space-y-4">
-                <p class="text-gray-400">Waiting for a new request...</p>
             </div>
-        </aside>
+
+            <!-- VIEW 2: RAG Maintenance (New, placeholder view) -->
+            <div id="rag-maintenance-view" class="app-view w-full h-full p-8">
+                <div class="max-w-7xl mx-auto">
+                    <h1 class="text-3xl font-bold text-white header-title">RAG Maintenance</h1>
+                    <p class="text-gray-400 mt-4 text-lg">This section is under development.</p>
+                </div>
+            </div>
+
+        </main>
     </div>
 
     <!-- Modals (Chat, Info, Config, Prompt Editor, Confirmation, Prompt View, System Prompt Popup) -->
+    <!-- All modals remain at the end of <body> to overlay all views -->
+
     <!-- Chat Modal -->
     <div id="chat-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
         <div id="chat-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-2xl p-6 transform scale-95 opacity-0 flex flex-col" style="height: 80vh;">

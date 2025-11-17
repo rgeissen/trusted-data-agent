@@ -7,17 +7,19 @@
     --medium-bg: #333333;
     --light-text: #F0F0F0;
     --medium-text: #999999;
-    /* --- MODIFICATION START: Add user avatar gray color variable --- */
     --user-avatar-bg: #4b5563; /* Tailwind gray-700 */
-    /* --- MODIFICATION END --- */
 }
 
+/* MODIFICATION: Set body to flex-col for new layout */
 body {
     font-family: 'Inter', sans-serif;
     background-color: var(--dark-bg);
     background-image: radial-gradient(circle, #4a4a4a, var(--dark-bg));
     color: var(--light-text);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
 }
 
 .glass-panel {
@@ -104,9 +106,15 @@ details.resource-selected > summary {
 }
 
 /* Modal transitions */
-#prompt-modal-overlay, #info-modal-overlay, #config-modal-overlay, #prompt-editor-overlay, #confirm-modal-overlay, #system-prompt-popup-overlay, #chat-modal-overlay, #view-prompt-modal-overlay { transition: opacity 0.3s ease-in-out; }
-#prompt-modal-content, #info-modal-content, #config-modal-content, #prompt-editor-content, #confirm-modal-content, #system-prompt-popup-content, #chat-modal-content, #view-prompt-modal-content { transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out; }
-#prompt-modal-overlay.hidden, #info-modal-overlay.hidden, #config-modal-overlay.hidden, #prompt-editor-overlay.hidden, #confirm-modal-overlay.hidden, #system-prompt-popup-overlay.hidden, #chat-modal-overlay.hidden, #view-prompt-modal-overlay.hidden { pointer-events: none; opacity: 0; }
+#prompt-modal-overlay, #info-modal-overlay, #config-modal-overlay, #prompt-editor-overlay, #confirm-modal-overlay, #system-prompt-popup-overlay, #chat-modal-overlay, #view-prompt-modal-overlay, #rag-case-modal-overlay { 
+    transition: opacity 0.3s ease-in-out; 
+}
+#prompt-modal-content, #info-modal-content, #config-modal-content, #prompt-editor-content, #confirm-modal-content, #system-prompt-popup-content, #chat-modal-content, #view-prompt-modal-content, #rag-case-modal-content { 
+    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out; 
+}
+#prompt-modal-overlay.hidden, #info-modal-overlay.hidden, #config-modal-overlay.hidden, #prompt-editor-overlay.hidden, #confirm-modal-overlay.hidden, #system-prompt-popup-overlay.hidden, #chat-modal-overlay.hidden, #view-prompt-modal-overlay.hidden, #rag-case-modal-overlay.hidden { 
+    pointer-events: none; opacity: 0; 
+}
 #prompt-modal-overlay.hidden #prompt-modal-content,
 #info-modal-overlay.hidden #info-modal-content,
 #config-modal-overlay.hidden #config-modal-content,
@@ -114,7 +122,10 @@ details.resource-selected > summary {
 #confirm-modal-overlay.hidden #confirm-modal-content,
 #system-prompt-popup-overlay.hidden #system-prompt-popup-content,
 #chat-modal-overlay.hidden #chat-modal-content,
-#view-prompt-modal-overlay.hidden #view-prompt-modal-content { transform: scale(0.95); opacity: 0; }
+#view-prompt-modal-overlay.hidden #view-prompt-modal-content,
+#rag-case-modal-overlay.hidden #rag-case-modal-content { 
+    transform: scale(0.95); opacity: 0; 
+}
 
 .status-step {
     transition: all 0.3s ease-in-out;
@@ -919,5 +930,75 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     padding: 1rem;
     overflow: auto; /* Allow scrolling within the pre tag if content is too large */
     white-space: pre-wrap; /* Ensure long lines wrap */
-    word-break: break-all; /* Break long words */
+    word-break: break-all;
 }
+
+/* --- MODIFICATION START: Styles for New Platform Layout --- */
+/* Base style for the new vertical side navigation */
+#app-side-nav {
+    width: 288px; /* 18rem */
+    flex-shrink: 0;
+    overflow-x: hidden;
+    transition: width 0.3s ease-in-out;
+}
+
+/* Styles for the navigation text */
+#app-side-nav .nav-link-text {
+    transition: opacity 0.2s ease-in-out;
+    opacity: 1;
+    white-space: nowrap;
+}
+
+/* Collapsed state for the side navigation */
+#app-side-nav.collapsed {
+    width: 88px; /* 5.5rem, which is p-4 (1rem*2) + button width (3.5rem) */
+}
+
+/* Hide text when collapsed */
+#app-side-nav.collapsed .nav-link-text {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Ensure the main content area fills the remaining space */
+#app-content-area {
+    display: flex;
+    flex-direction: row;
+    flex: 1 1 0%;
+    overflow: hidden; /* The content area itself controls overflow */
+}
+
+/* Hide all views by default */
+.app-view {
+    display: none;
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* Views should manage their own internal scrolling */
+}
+
+/* Show the active view */
+.app-view.active {
+    display: block;
+}
+
+/* The conversation view is a flex container, so it needs 'display: flex' */
+/* THIS IS THE FIX: Set flex-direction to column */
+#conversation-view.active {
+    display: flex;
+    flex-direction: column;
+}
+
+/* NEW: This wrapper for the 3 panels must be a flex-row */
+#conversation-panels {
+    display: flex;
+    flex-direction: row;
+    flex: 1 1 0%; /* Fill remaining vertical space in conversation-view */
+    min-height: 0; /* Fix for flex overflow */
+}
+
+/* Style for the active view switch button in the app menu */
+.view-switch-button.active {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--teradata-orange);
+}
+/* --- MODIFICATION END --- */
