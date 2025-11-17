@@ -1,19 +1,20 @@
 {
-  "case_id": "0231afb3-2ea8-5a40-9ef5-200378b51c3a",
+  "case_id": "638e515e-8083-570c-a6cb-e361dbbe9d85",
   "metadata": {
-    "session_id": "a9481750-a61e-4edb-beb6-0063466a4693",
+    "session_id": "77b03714-cce8-4d65-b061-71e0f3bdd040",
     "turn_id": 1,
     "is_success": true,
+    "task_id": "task-7cbfac59-bb73-48fb-97ba-0b71dcc5f391",
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-11-12T13:23:08.511881+00:00",
+    "timestamp": "2025-11-17T10:54:33.878396+00:00",
     "llm_config": {
       "provider": "Google",
       "model": "gemini-2.0-flash",
-      "input_tokens": 8361,
-      "output_tokens": 116
+      "input_tokens": 8072,
+      "output_tokens": 105
     },
-    "is_most_efficient": false,
+    "is_most_efficient": true,
     "strategy_metrics": {
       "phase_count": 2,
       "steps_per_phase": {
@@ -24,15 +25,15 @@
     }
   },
   "intent": {
-    "user_query": "what is the system date?"
+    "user_query": "what is the system version?"
   },
   "successful_strategy": {
     "phases": [
       {
         "phase": 1,
-        "goal": "Get the current system date.",
+        "goal": "Get the Teradata database version information.",
         "relevant_tools": [
-          "TDA_CurrentDate"
+          "dba_databaseVersion"
         ],
         "arguments": {}
       },

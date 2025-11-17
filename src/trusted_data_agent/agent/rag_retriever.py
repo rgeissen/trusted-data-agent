@@ -296,11 +296,24 @@ class RAGRetriever:
                     logger.debug(f"  -> Skipping turn {turn.get('turn')} due to TDA_ContextReport usage.")
                     return None
             
-            is_success = True
+            # --- MODIFICATION START: Stricter success checking ---
+            original_plan = turn.get("original_plan")
+            if not original_plan or not isinstance(original_plan, list):
+                logger.debug(f"  -> Skipping turn {turn.get('turn')}: 'original_plan' is missing or not a list.")
+                return None
+
+            required_phases = {p.get("phase") for p in original_plan if isinstance(p, dict) and p.get("phase") is not None}
+            if not required_phases:
+                logger.debug(f"  -> Skipping turn {turn.get('turn')}: 'original_plan' has no valid phases.")
+                return None
+            
+            completed_phases = set()
+            has_critical_error = False
+            first_error_action = None
+            successful_actions_map = {}
             had_plan_improvements = False
             had_tactical_improvements = False
-            successful_actions_map = {}
-            first_error_action = None
+            # --- MODIFICATION END ---
 
             for entry in trace:
                 if not isinstance(entry, dict): continue
@@ -313,55 +326,83 @@ class RAGRetriever:
                     action_args = action.get("arguments", {})
                     action_meta = action.get("metadata", {})
                     tool_name = action.get("tool_name", "")
-                    if isinstance(action_args, dict) and action_args.get("message") == "Unrecoverable Error": is_success = False
+                    # --- MODIFICATION START: Check for unrecoverable errors ---
+                    if (tool_name == "TDA_SystemLog" and 
+                        isinstance(action_args, dict) and 
+                        action_args.get("message") == "Unrecoverable Error"):
+                        has_critical_error = True
+                    # --- MODIFICATION END ---
                     if isinstance(action_meta, dict) and action_meta.get("type") == "workaround": had_tactical_improvements = True
                     if tool_name == "TDA_SystemLog" and isinstance(action_args, dict) and action_args.get("message") == "System Correction":
                         if "Planner" in action_args.get("details", {}).get("summary", ""): had_plan_improvements = True
                 
-                if result_is_dict and result.get("status") == "error" and not first_error_action: first_error_action = action
+                # --- MODIFICATION START: Stricter error tracking ---
+                if result_is_dict and result.get("status") == "error":
+                    has_critical_error = True
+                    if not first_error_action:
+                        first_error_action = action
+                # --- MODIFICATION END ---
                 
                 if result_is_dict and result.get("status") == "success" and action_is_dict:
                     tool_name = action.get("tool_name")
                     if tool_name and tool_name != "TDA_SystemLog":
-                        phase_num = action.get("metadata", {}).get("phase_number", 0)
-                        
-                        original_phase = None
-                        if turn.get("original_plan"):
-                            for p in turn["original_plan"]:
-                                if isinstance(p, dict) and p.get("phase") == phase_num:
-                                    original_phase = p
-                                    break
-                        
-                        if original_phase:
-                            compliant_phase = {
-                                "phase": phase_num,
-                                "goal": original_phase.get("goal", "Execute tool."),
-                                "relevant_tools": [tool_name]
-                            }
-                            if "type" in original_phase:
-                                compliant_phase["type"] = original_phase["type"]
-                            if "loop_over" in original_phase:
-                                compliant_phase["loop_over"] = original_phase["loop_over"]
+                        # --- MODIFICATION START: Use phase_number (can be None) ---
+                        phase_num = action.get("metadata", {}).get("phase_number")
+                        if phase_num is not None:
+                            completed_phases.add(phase_num)
+                        # --- MODIFICATION END ---
                             
-                            # --- MODIFICATION START: Get arguments from the original plan, not the resolved action ---
-                            # This saves the strategic placeholders (e.g., {"source": "result_of_phase_1"})
-                            # instead of the raw data.
-                            compliant_phase["arguments"] = original_phase.get("arguments", {})
+                            original_phase = None
+                            # --- MODIFICATION START: Use original_plan variable ---
+                            if original_plan:
+                                for p in original_plan:
                             # --- MODIFICATION END ---
+                                    if isinstance(p, dict) and p.get("phase") == phase_num:
+                                        original_phase = p
+                                        break
                             
-                            successful_actions_map[phase_num] = compliant_phase
-                        else:
-                            successful_actions_map[phase_num] = {
-                                "phase": phase_num, 
-                                "goal": "Goal not found in original plan.",
-                                "relevant_tools": [tool_name], 
-                                "arguments": action.get("arguments", {})
-                            }
+                            if original_phase:
+                                compliant_phase = {
+                                    "phase": phase_num,
+                                    "goal": original_phase.get("goal", "Execute tool."),
+                                    "relevant_tools": [tool_name]
+                                }
+                                if "type" in original_phase:
+                                    compliant_phase["type"] = original_phase["type"]
+                                if "loop_over" in original_phase:
+                                    compliant_phase["loop_over"] = original_phase["loop_over"]
+                                
+                                # --- MODIFICATION START: Get arguments from the original plan, not the resolved action ---
+                                # This saves the strategic placeholders (e.g., {"source": "result_of_phase_1"})
+                                # instead of the raw data.
+                                compliant_phase["arguments"] = original_phase.get("arguments", {})
+                                # --- MODIFICATION END ---
+                                
+                                successful_actions_map[phase_num] = compliant_phase
+                            else:
+                                successful_actions_map[phase_num] = {
+                                    "phase": phase_num, 
+                                    "goal": "Goal not found in original plan.",
+                                    "relevant_tools": [tool_name], 
+                                    "arguments": action.get("arguments", {})
+                                }
             
+            # --- MODIFICATION START: Apply new success criteria ---
+            is_success = (not has_critical_error) and (required_phases == completed_phases)
+            if not is_success:
+                logger.debug(f"  -> Marking turn {turn.get('turn')} as NOT successful. "
+                             f"HasError: {has_critical_error}, "
+                             f"Required: {required_phases}, "
+                             f"Completed: {completed_phases}")
+            # --- MODIFICATION END ---
+
             case_study = {
                 "case_id": case_id,
                 "metadata": {
                     "session_id": session_id, "turn_id": turn.get("turn"), "is_success": is_success,
+                    # --- MODIFICATION START: Add task_id ---
+                    "task_id": turn.get("task_id"),
+                    # --- MODIFICATION END ---
                     "had_plan_improvements": had_plan_improvements, "had_tactical_improvements": had_tactical_improvements,
                     "timestamp": turn.get("timestamp"),
                     "llm_config": {
@@ -376,7 +417,8 @@ class RAGRetriever:
                 logger.warning(f"  -> Skipping turn {turn.get('turn')}: 'user_query' is missing or empty.")
                 return None
 
-            if successful_actions_map:
+            # --- MODIFICATION START: Use is_success flag to build strategy ---
+            if is_success:
                 case_study["metadata"]["is_most_efficient"] = False # Default
                 case_study["successful_strategy"] = {"phases": []}
                 for phase_num in sorted(successful_actions_map.keys()):
@@ -394,10 +436,11 @@ class RAGRetriever:
                         steps_per_phase[phase_num] = steps_per_phase.get(phase_num, 0) + 1
                         total_steps += 1
                 case_study["metadata"]["strategy_metrics"] = {"phase_count": len(turn.get("original_plan", [])), "steps_per_phase": steps_per_phase, "total_steps": total_steps}
-            elif not is_success:
+            elif first_error_action:
                 case_study["failed_strategy"] = {"original_plan": turn.get("original_plan"), "error_summary": turn.get("final_summary", ""), "failed_action": first_error_action}
             else:
                 case_study["conversational_response"] = { "summary": turn.get("final_summary", "") }
+            # --- MODIFICATION END ---
 
             return case_study
         except Exception as e:
@@ -421,6 +464,9 @@ class RAGRetriever:
             "user_query": case_study["intent"]["user_query"],
             "strategy_type": strategy_type,
             "timestamp": case_study["metadata"]["timestamp"],
+            # --- MODIFICATION START: Add task_id ---
+            "task_id": case_study["metadata"].get("task_id"),
+            # --- MODIFICATION END ---
             "is_most_efficient": case_study["metadata"].get("is_most_efficient", False),
             "had_plan_improvements": case_study["metadata"].get("had_plan_improvements", False),
             "had_tactical_improvements": case_study["metadata"].get("had_tactical_improvements", False),
