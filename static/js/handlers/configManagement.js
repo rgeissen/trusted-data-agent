@@ -11,8 +11,8 @@ import * as UI from '../ui.js';
 import * as Utils from '../utils.js';
 import { handleLoadSession, handleStartNewSession } from './sessionManagement.js';
 // We need to import from eventHandlers for functions not yet moved
-// This creates a temporary, manageable circular dependency
 import { handleLoadResources, openSystemPromptPopup } from '../eventHandlers.js';
+import { handleViewSwitch } from '../ui.js';
 
 /**
  * Gets the current core configuration from the form.
@@ -26,31 +26,31 @@ function getCurrentCoreConfig() {
 /**
  * Handles request to close the config modal, checking for changes.
  */
-export function handleCloseConfigModalRequest() {
-    const coreChanged = JSON.stringify(getCurrentCoreConfig()) !== JSON.stringify(state.pristineConfig);
-    if (coreChanged) {
-        UI.showConfirmation('Discard Changes?', 'You have unsaved changes in your configuration. Are you sure you want to close?', UI.closeConfigModal);
-    } else {
-        UI.closeConfigModal();
-    }
-}
+// export function handleCloseConfigModalRequest() {
+//     const coreChanged = JSON.stringify(getCurrentCoreConfig()) !== JSON.stringify(state.pristineConfig);
+//     if (coreChanged) {
+//         UI.showConfirmation('Discard Changes?', 'You have unsaved changes in your configuration. Are you sure you want to close?', UI.closeConfigModal);
+//     } else {
+//         UI.closeConfigModal();
+//     }
+// }
 
 /**
  * Handles click on the main config modal action button (Connect/Close).
  * @param {Event} e - The click event.
  */
-export function handleConfigActionButtonClick(e) {
-    if (e.currentTarget.type === 'button') {
-        handleCloseConfigModalRequest();
-    }
-}
+// export function handleConfigActionButtonClick(e) {
+//     if (e.currentTarget.type === 'button') {
+//         handleCloseConfigModalRequest();
+//     }
+// }
 
 /**
  * Finalizes the application configuration after a successful connection.
  * Loads resources, sessions, and sets UI state.
  * @param {object} config - The configuration object from the form.
  */
-export async function finalizeConfiguration(config) {
+export async function finalizeConfiguration(config, switchToConversationView = true) {
     DOM.configStatus.textContent = 'Success! MCP & LLM services connected.';
     DOM.configStatus.className = 'text-sm text-green-400 text-center';
     DOM.mcpStatusDot.classList.remove('disconnected');
@@ -125,7 +125,12 @@ export async function finalizeConfiguration(config) {
         openSystemPromptPopup();
     }
 
-    setTimeout(UI.closeConfigModal, 1000);
+    // setTimeout(UI.closeConfigModal, 1000); // REMOVED
+    // DOM.unconfiguredWrapper.classList.add('hidden'); // REMOVED
+    // DOM.configuredWrapper.classList.remove('hidden'); // REMOVED
+    if (switchToConversationView) {
+        handleViewSwitch('conversation-view'); // Set the default view
+    }
 }
 
 /**
@@ -191,7 +196,7 @@ export async function handleConfigFormSubmit(e) {
         const result = await res.json();
 
         if (res.ok) {
-            await finalizeConfiguration(config);
+            await finalizeConfiguration(config, false);
         } else {
             throw new Error(result.message || 'An unknown configuration error occurred.');
         }

@@ -969,7 +969,7 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
 }
 
 /* Hide all views by default */
-.app-view {
+div.app-view {
     display: none;
     width: 100%;
     height: 100%;
@@ -986,6 +986,11 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
 #conversation-view.active {
     display: flex;
     flex-direction: column;
+}
+
+/* The credentials view is also a flex container */
+#credentials-view.active {
+    display: flex;
 }
 
 /* NEW: This wrapper for the 3 panels must be a flex-row */

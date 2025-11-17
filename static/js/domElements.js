@@ -4,6 +4,11 @@
  * Consolidating DOM queries here makes it easier to manage and locate UI element references.
  */
 
+// --- MODIFICATION START: Add top-level application wrappers ---
+export const unconfiguredWrapper = document.getElementById('unconfigured-wrapper');
+export const configuredWrapper = document.getElementById('configured-wrapper');
+// --- MODIFICATION END ---
+
 // --- MODIFICATION START: App View Management (v4 Structure) ---
 export const appSideNav = document.getElementById('app-side-nav');
 export const appMenuToggle = document.getElementById('app-menu-toggle');
@@ -87,10 +92,13 @@ export const infoModalClose = document.getElementById('info-modal-close');
 export const infoModalContent = document.getElementById('info-modal-content');
 
 // Configuration Modal elements
-export const configMenuButton = document.getElementById('config-menu-button');
-export const configModalOverlay = document.getElementById('config-modal-overlay');
-export const configModalContent = document.getElementById('config-modal-content');
-export const configModalClose = document.getElementById('config-modal-close');
+// --- MODIFICATION START: Remove Config Modal elements ---
+// The config form is now a top-level view, not a modal.
+// export const configMenuButton = document.getElementById('config-menu-button');
+// export const configModalOverlay = document.getElementById('config-modal-overlay');
+// export const configModalContent = document.getElementById('config-modal-content');
+// export const configModalClose = document.getElementById('config-modal-close');
+// --- MODIFICATION END ---
 export const configForm = document.getElementById('config-form');
 export const configStatus = document.getElementById('config-status');
 export const configLoadingSpinner = document.getElementById('config-loading-spinner');

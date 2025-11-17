@@ -4,19 +4,17 @@
  * It initializes the application by setting up event listeners and loading initial data.
  */
 
-// MODIFICATION START: Import handleViewSwitch
-import { initializeEventListeners, handleViewSwitch } from './eventHandlers.js';
-// MODIFICATION END
+import { initializeEventListeners } from './eventHandlers.js';
 import { finalizeConfiguration, loadCredentialsAndModels } from './handlers/configManagement.js';
 import * as API from './api.js';
 import * as DOM from './domElements.js';
 import { state } from './state.js';
 import { setupPanelToggle } from './utils.js';
 import * as UI from './ui.js';
+import { handleViewSwitch } from './ui.js';
 import { initializeVoiceRecognition } from './voice.js';
 import { subscribeToNotifications } from './notifications.js';
 
-// --- MODIFICATION START: Add user UUID handling ---
 /**
  * Ensures a user UUID exists in localStorage and application state.
  * Generates a new UUID if one is not found.
@@ -57,10 +55,8 @@ function ensureUserUUID() {
          alert("Fatal error: Could not establish user identifier.");
     }
 }
-// --- MODIFICATION END ---
 
 
-// --- MODIFICATION START: Add function to load initial config from localStorage ---
 /**
  * Loads initial configuration from localStorage and populates the form fields.
  * This function specifically handles the MCP server configuration.
@@ -111,11 +107,9 @@ function loadInitialConfig() {
         console.error("loadInitialConfig: Error loading or parsing MCP config from localStorage:", e);
     }
 }
-// --- MODIFICATION END ---
 
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // --- MODIFICATION START: Load welcome screen preference ---
     const savedShowWelcomeScreen = localStorage.getItem('showWelcomeScreenAtStartup');
     state.showWelcomeScreenAtStartup = savedShowWelcomeScreen === null ? true : savedShowWelcomeScreen === 'true';
     const welcomeScreenCheckbox = document.getElementById('toggle-welcome-screen-checkbox');
@@ -126,14 +120,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (welcomeScreenPopupCheckbox) {
         welcomeScreenPopupCheckbox.checked = state.showWelcomeScreenAtStartup;
     }
-    // --- MODIFICATION END ---
 
-    // --- MODIFICATION START: Ensure UUID is set first ---
     ensureUserUUID(); // Get/Set the User UUID right away
     console.log("DOMContentLoaded: User UUID ensured:", state.userUUID);
     subscribeToNotifications();
 
-    // --- MODIFICATION START: Populate and handle UUID copy ---
     const uuidInput = document.getElementById('tda-user-uuid');
     const copyButton = document.getElementById('copy-uuid-button');
 
@@ -152,12 +143,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }, 2000);
         });
     }
-    // --- MODIFICATION END ---
 
-    // --- MODIFICATION START: Call loadInitialConfig ---
     // Load MCP config from localStorage into the modal fields before initializing event listeners
     loadInitialConfig();
-    // --- MODIFICATION END ---
 
     // Initialize all event listeners first to ensure they are ready.
     initializeEventListeners();
@@ -216,9 +204,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const currentConfig = { provider: status.provider, model: status.model };
             // Pass the mcp_server details from status to ensure they are used if re-finalizing
             currentConfig.mcp_server = status.mcp_server;
-            await finalizeConfiguration(currentConfig);
+            await finalizeConfiguration(currentConfig, true);
 
             console.log("DEBUG: Configuration finalized. Session loading is handled by finalizeConfiguration.");
+
+            // handleViewSwitch is now called inside finalizeConfiguration
 
 
         } else {
@@ -234,7 +224,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 DOM.llmProviderSelect.value = lastProvider;
             }
             await loadCredentialsAndModels(); // Load potential credentials/models
-            DOM.configMenuButton.click(); // Open the config modal
+            
+            handleViewSwitch('credentials-view');
         }
     } catch (startupError) {
         console.error("DEBUG: Error during startup configuration/session loading. Showing config modal.", startupError);
@@ -249,7 +240,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (prefillError) {
             console.error("DEBUG: Error during fallback pre-fill:", prefillError);
         }
-        DOM.configMenuButton.click(); // Show config modal
+        
+        handleViewSwitch('credentials-view');
     }
 
 
@@ -271,7 +263,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     UI.updateVoiceModeUI();
     UI.updateKeyObservationsModeUI();
     
-    // --- MODIFICATION START: Set default application view (v4) ---
-    handleViewSwitch('conversation-view');
-    // --- MODIFICATION END ---
+    // This buggy line was unconditionally overriding the logic in the try/catch block.
+    // handleViewSwitch('conversation-view'); // - REMOVED
 });

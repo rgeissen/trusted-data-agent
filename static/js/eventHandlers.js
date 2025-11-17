@@ -8,21 +8,19 @@ import * as DOM from './domElements.js';
 import { state } from './state.js';
 import * as API from './api.js';
 import * as UI from './ui.js';
+import { handleViewSwitch, toggleSideNav } from './ui.js';
 import * as Utils from './utils.js';
 import { copyToClipboard, copyTableToClipboard, classifyConfirmation } from './utils.js';
 import { renameSession, deleteSession } from './api.js'; // Import the rename/delete API functions
 import { startRecognition, stopRecognition, startConfirmationRecognition } from './voice.js';
-// --- MODIFICATION START: Import session handlers ---
 import {
     handleStartNewSession,
     handleLoadSession,
     handleDeleteSessionClick
 } from './handlers/sessionManagement.js';
-// --- MODIFICATION END ---
-// --- MODIFICATION START: Import config handlers ---
 import {
-    handleCloseConfigModalRequest,
-    handleConfigActionButtonClick,
+    // handleCloseConfigModalRequest, // REMOVED
+    // handleConfigActionButtonClick, // REMOVED
     finalizeConfiguration,
     handleConfigFormSubmit,
     loadCredentialsAndModels,
@@ -35,7 +33,6 @@ import {
     resetSystemPrompt,
     handleIntensityChange
 } from './handlers/configManagement.js';
-// --- MODIFICATION END ---
 
 
 // --- Stream Processing ---
@@ -72,12 +69,10 @@ async function processStream(responseBody) {
                 try {
                     const eventData = JSON.parse(dataLine);
 
-                    // --- MODIFICATION START: Handle task_id for interactive sessions ---
                     if (eventData.task_id && state.currentTaskId !== eventData.task_id) {
                         state.currentTaskId = eventData.task_id;
                         UI.updateTaskIdDisplay(eventData.task_id);
                     }
-                    // --- MODIFICATION END ---
 
                     // --- Event Handling Logic ---
                     if (eventName === 'status_indicator_update') {
@@ -145,10 +140,8 @@ async function processStream(responseBody) {
                         UI.updateStatusWindow({ step: "Execution Stopped", details: eventData.message || "Process cancelled by user.", type: 'cancelled'}, true);
                         UI.setExecutionState(false);
                     } else if (eventName === 'final_answer') {
-                        // --- MODIFICATION START: Pass turn_id to addMessage ---
                         // All new messages are valid by default, so we don't need to pass `true`
                         UI.addMessage('assistant', eventData.final_answer, eventData.turn_id); // Pass turn_id here
-                        // --- MODIFICATION END ---
                         UI.updateStatusWindow({ step: "Finished", details: "Response sent to chat." }, true);
                         UI.setExecutionState(false);
 
@@ -263,30 +256,24 @@ async function handleObservationConfirmation(transcribedText) {
 
 export async function handleStreamRequest(endpoint, body) {
     if (body.message) {
-        // --- MODIFICATION START: Do not add user message again during replay ---
         // Only add user message if it's NOT a replay initiated by the replay button
         if (!body.is_replay) {
             UI.addMessage('user', body.message, null, true, 'text');
         } else {
              console.log("Replay initiated, skipping adding user message again.");
         }
-        // --- MODIFICATION END ---
     } else {
         UI.addMessage('user', `Executing prompt: ${body.prompt_name}`, null, true, 'text');
     }
     DOM.userInput.value = '';
     UI.setExecutionState(true);
-    // --- MODIFICATION START: Use centralized reset function ---
     UI.resetStatusWindowForNewTask();
-    // --- MODIFICATION END ---
 
     // This call remains to set the prompt name specifically for the new execution
     UI.updateStatusPromptName();
 
     const useLastTurnMode = state.isLastTurnModeLocked || state.isTempLastTurnMode;
-    // --- MODIFICATION START: Also disable history if it's a replay ---
     body.disabled_history = useLastTurnMode || body.is_replay; // Disable if last turn mode OR replay
-    // --- MODIFICATION END ---
 
 
     DOM.contextStatusDot.classList.remove('history-disabled-preview');
@@ -337,7 +324,6 @@ async function handleStopExecutionClick() {
     }
 }
 
-// --- MODIFICATION START: Define handleReloadPlanClick ---
 /**
  * Handles clicks on the "Reload Plan" button or user avatar. Fetches and displays the full turn details.
  * @param {HTMLElement} element - The element that was clicked (button or avatar div).
@@ -410,9 +396,7 @@ async function handleReloadPlanClick(element) {
         DOM.statusWindowContent.innerHTML = `<div class="p-4 status-step error"><h4 class="font-bold text-sm text-white mb-2">Error Loading Details</h4><p class="text-xs">${error.message}</p></div>`;
     }
 }
-// --- MODIFICATION END ---
 
-// --- MODIFICATION START: This function is now for REPLAYING THE QUERY ---
 /**
  * Handles clicks on the "Replay Original Query" button. Fetches the original query
  * text for that turn and re-submits it, triggering a NEW PLAN.
@@ -455,9 +439,7 @@ export async function handleReplayQueryClick(buttonEl) {
         UI.addMessage('assistant', `Sorry, could not replay the query from Turn ${turnId}. Error: ${error.message}`);
     }
 }
-// --- MODIFICATION END ---
 
-// --- MODIFICATION START: Add new handler for REPLAYING THE PLAN ---
 /**
  * Handles clicks on the "Replay Planned Query" button. Fetches the original query *and*
  * the original plan for that turn, then re-submits *the plan* for execution.
@@ -508,9 +490,7 @@ async function handleReplayPlanClick(buttonEl) {
         UI.addMessage('assistant', `Sorry, could not replay the plan from Turn ${turnId}. Error: ${error.message}`);
     }
 }
-// --- MODIFICATION END ---
 
-// --- MODIFICATION START: Add handler for context purge click ---
 /**
  * Handles clicks on the "Context" status dot to purge agent memory.
  */
@@ -557,7 +537,6 @@ async function handleContextPurgeClick() {
         }
     );
 }
-// --- MODIFICATION END ---
 
 
 export async function handleLoadResources(type) {
@@ -1199,7 +1178,6 @@ export function handleSessionRenameCancel(e) {
     UI.exitSessionEditMode(inputElement, originalName);
 }
 
-// --- MODIFICATION START: Add handler for toggling turn validity ---
 async function handleToggleTurnValidity(badgeEl) {
     const turnId = badgeEl.dataset.turnId;
     const sessionId = state.currentSessionId;
@@ -1232,39 +1210,6 @@ async function handleToggleTurnValidity(badgeEl) {
         alert(`Error: Could not update turn status. ${error.message}`);
     }
 }
-// --- MODIFICATION END ---
-
-// --- MODIFICATION START: Add View Switching Logic (v4) ---
-/**
- * Toggles the collapsed state of the main side navigation bar.
- */
-function toggleSideNav() {
-    DOM.appSideNav.classList.toggle('collapsed');
-}
-
-/**
- * Handles switching the main application view.
- * @param {string} viewId - The ID of the view to switch to (e.g., 'conversation-view').
- */
-export function handleViewSwitch(viewId) {
-    // 1. Hide all views
-    document.querySelectorAll('.app-view').forEach(view => {
-        view.classList.remove('active');
-    });
-
-    // 2. Show the selected view
-    const viewToShow = document.getElementById(viewId);
-    if (viewToShow) {
-        viewToShow.classList.add('active');
-    }
-
-    // 3. Update the active state of the menu buttons
-    DOM.viewSwitchButtons.forEach(button => {
-        button.classList.toggle('active', button.dataset.view === viewId);
-    });
-}
-// --- MODIFICATION END ---
-
 
 // --- Initializer ---
 
@@ -1301,7 +1246,6 @@ export function initializeEventListeners() {
         console.error("Stop execution button not found in DOM elements.");
     }
 
-    // --- MODIFICATION START: Add event listeners for header replay buttons ---
     if (DOM.headerReplayPlannedButton) {
         DOM.headerReplayPlannedButton.addEventListener('click', (e) => {
             // --- MODIFICATION: Wire to the new handleReplayPlanClick ---
@@ -1314,7 +1258,6 @@ export function initializeEventListeners() {
             // Placeholder: handleReplayOptimizedClick(e.currentTarget);
         });
     }
-    // --- MODIFICATION END ---
 
 
     DOM.mainContent.addEventListener('click', (e) => {
@@ -1417,21 +1360,21 @@ export function initializeEventListeners() {
     });
 
     // Config modal listeners
-    DOM.configMenuButton.addEventListener('click', () => {
-        DOM.configModalOverlay.classList.remove('hidden', 'opacity-0');
-        DOM.configModalContent.classList.remove('scale-95', 'opacity-0');
-        // --- MODIFICATION: Use function from config handler ---
-        // This function will need to be created/moved
-        // For now, we'll assume getCurrentCoreConfig is still here
-        // state.pristineConfig = getCurrentCoreConfig();
-        // UI.updateConfigButtonState();
-        // ---
-        // Let's find getCurrentCoreConfig. It's not exported.
-        // It's in the configManagement.js file but not exported.
-        // I will assume for now that it is correctly handled by the config form's input listener.
-    });
-    DOM.configModalClose.addEventListener('click', handleCloseConfigModalRequest);
-    DOM.configActionButton.addEventListener('click', handleConfigActionButtonClick);
+    // DOM.configMenuButton.addEventListener('click', () => {
+    //     DOM.configModalOverlay.classList.remove('hidden', 'opacity-0');
+    //     DOM.configModalContent.classList.remove('scale-95', 'opacity-0');
+    //     // --- MODIFICATION: Use function from config handler ---
+    //     // This function will need to be created/moved
+    //     // For now, we'll assume getCurrentCoreConfig is still here
+    //     // state.pristineConfig = getCurrentCoreConfig();
+    //     // UI.updateConfigButtonState();
+    //     // ---
+    //     // Let's find getCurrentCoreConfig. It's not exported.
+    //     // It's in the configManagement.js file but not exported.
+    //     // I will assume for now that it is correctly handled by the config form's input listener.
+    // });
+    // DOM.configModalClose.addEventListener('click', handleCloseConfigModalRequest);
+    // DOM.configActionButton.addEventListener('click', handleConfigActionButtonClick);
     DOM.configForm.addEventListener('submit', handleConfigFormSubmit);
     DOM.configForm.addEventListener('input', UI.updateConfigButtonState);
 
@@ -1499,16 +1442,11 @@ export function initializeEventListeners() {
         if (!DOM.windowDropdownMenu.contains(e.target) && e.target !== DOM.windowMenuButton) {
             DOM.windowDropdownMenu.classList.remove('open');
         }
-        // --- MODIFICATION START: Close app menu on outside click ---
         // This is no longer a dropdown, so this logic is not needed for the app menu.
-        // --- MODIFICATION END ---
     });
 
-    // --- MODIFICATION START: Add context dot click listener ---
     DOM.contextStatusDot.addEventListener('click', handleContextPurgeClick);
-    // --- MODIFICATION END ---
 
-    // --- MODIFICATION START: Add RAG status dot click listener ---
     DOM.ragStatusDot.addEventListener('click', () => {
         if (state.lastRagCaseData) {
             UI.showRagCaseModal(state.lastRagCaseData);
@@ -1516,9 +1454,7 @@ export function initializeEventListeners() {
             console.log("No RAG case data available to display.");
         }
     });
-    // --- MODIFICATION END ---
 
-    // --- MODIFICATION START: Add RAG case modal close and copy listeners ---
     DOM.ragCaseModalClose.addEventListener('click', UI.closeRagCaseModal);
     DOM.ragCaseModalCloseBottom.addEventListener('click', UI.closeRagCaseModal);
     DOM.ragCaseModalOverlay.addEventListener('click', (e) => {
@@ -1538,9 +1474,7 @@ export function initializeEventListeners() {
             });
         }
     });
-    // --- MODIFICATION END ---
 
-    // --- MODIFICATION START: Add tooltips toggle listener ---
     const toggleTooltipsCheckbox = document.getElementById('toggle-tooltips-checkbox');
     if (toggleTooltipsCheckbox) {
         // Set initial state from localStorage
@@ -1553,9 +1487,7 @@ export function initializeEventListeners() {
             localStorage.setItem('showTooltips', state.showTooltips);
         });
     }
-    // --- MODIFICATION END ---
 
-    // --- MODIFICATION START: Add welcome screen toggle listeners ---
     const welcomeScreenCheckbox = document.getElementById('toggle-welcome-screen-checkbox');
     const welcomeScreenPopupCheckbox = document.getElementById('welcome-screen-show-at-startup-checkbox');
 
@@ -1573,9 +1505,7 @@ export function initializeEventListeners() {
     if (welcomeScreenPopupCheckbox) {
         welcomeScreenPopupCheckbox.addEventListener('change', handleWelcomeScreenToggle);
     }
-    // --- MODIFICATION END ---
     
-    // --- MODIFICATION START: Add App Menu Listeners (v4) ---
     if (DOM.appMenuToggle) {
         DOM.appMenuToggle.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1596,5 +1526,4 @@ export function initializeEventListeners() {
             });
         });
     }
-    // --- MODIFICATION END ---
 }

@@ -9,11 +9,10 @@
     <script src="https://unpkg.com/@antv/g2plot@latest/dist/g2plot.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 </head>
-<!-- MODIFICATION: Body is now flex-col -->
+<!-- MODIFICATION: Body remains the 100vh flex-col container -->
 <body class="flex h-screen flex-col bg-dark-bg text-light-text">
 
-    <!-- MODIFICATION: This is the single, global top navigation bar -->
-    <!-- It now *only* contains the title and the hamburger menu -->
+    <!-- MODIFICATION: These are now top-level. The wrappers are removed. -->
     <nav class="w-full bg-black/30 backdrop-blur-md border-b border-white/10 px-4 py-2 flex items-center justify-between flex-shrink-0 z-40">
         <div class="flex items-center gap-x-4">
             <!-- NEW: Hamburger menu toggle, moved here -->
@@ -28,7 +27,7 @@
         <!-- MODIFICATION: All status dots and menu buttons (Config, Info, etc.) have been MOVED -->
     </nav>
     
-    <!-- NEW: Main Content Area (holds side-nav and view-container) -->
+    <!-- MODIFICATION: These are now top-level. The wrappers are removed. -->
     <div id="main-content-area" class="flex flex-row flex-1 min-h-0">
         
         <!-- NEW: Vertical Side Navigation Bar -->
@@ -48,6 +47,14 @@
                     </svg>
                     <span class="nav-link-text font-semibold">RAG Maintenance</span>
                 </a>
+                <!-- --- MODIFICATION START: Add Credentials View Link --- -->
+                <a href="#" id="view-switch-credentials" data-view="credentials-view" class="view-switch-button flex items-center gap-x-3 w-full px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="nav-link-text font-semibold">Credentials</span>
+                </a>
+                <!-- --- MODIFICATION END --- -->
             </div>
         </nav>
 
@@ -55,8 +62,8 @@
         <main id="app-view-container" class="flex-1 h-full min-w-0">
 
             <!-- VIEW 1: Conversation -->
-            <!-- MODIFICATION: This is now flex-col to hold its own header + the 3-panel layout -->
-            <div id="conversation-view" class="app-view active flex flex-col w-full h-full">
+            <!-- MODIFICATION: Removed hard-coded 'active' class -->
+            <div id="conversation-view" class="app-view flex flex-col w-full h-full">
                 
                 <!-- NEW: Conversation View Header (contains status dots and config/info buttons) -->
                 <header id="conversation-header" class="w-full bg-black/10 border-b border-white/10 px-4 py-2 flex items-center justify-between flex-shrink-0 z-10">
@@ -88,9 +95,7 @@
                         <div class="menu-item">
                             <button id="chat-modal-button" class="px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-white/10 rounded-md transition-colors disabled:opacity-50" disabled>Chat</button>
                         </div>
-                        <div class="menu-item">
-                            <button id="config-menu-button" class="px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-white/10 rounded-md transition-colors">Config</button>
-                        </div>
+                        <!-- MODIFICATION: Removed Config Button -->
                         <div class="menu-item">
                             <button id="prompt-editor-button" class="px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-white/10 rounded-md transition-colors disabled:opacity-50" disabled>System Prompt</button>
                         </div>
@@ -143,7 +148,7 @@
                     </aside>
 
                     <div id="main-content" class="flex flex-col h-full flex-1 min-w-0 relative">
-                         <div id="top-buttons-container" class="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-30 pointer-events-none">
+                        <div id="top-buttons-container" class="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-30 pointer-events-none">
                             <button id="toggle-history-button" title="Toggle History Panel" class="p-2 rounded-full bg-gray-800/50 hover:bg-teradata-orange transition-colors pointer-events-auto">
                                 <!-- History Expand/Collapse Icons -->
                                 <svg id="history-expand-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -153,9 +158,9 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
                                 </svg>
                             </button>
-                             <button id="toggle-header-button" title="Toggle Capabilities Panel" class="p-2 rounded-full bg-gray-800/50 hover:bg-teradata-orange transition-colors pointer-events-auto">
-                                 <!-- Header Expand/Collapse Icons -->
-                                 <svg id="header-collapse-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <button id="toggle-header-button" title="Toggle Capabilities Panel" class="p-2 rounded-full bg-gray-800/50 hover:bg-teradata-orange transition-colors pointer-events-auto">
+                                <!-- Header Expand/Collapse Icons -->
+                                <svg id="header-collapse-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
                                 </svg>
                                 <svg id="header-expand-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -167,7 +172,7 @@
                                 <svg id="status-collapse-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
                                 </svg>
-                                 <svg id="status-expand-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <svg id="status-expand-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
                                 </svg>
                             </button>
@@ -197,7 +202,7 @@
                         </header>
 
                         <div class="flex-1 flex flex-col min-h-0">
-                             <main id="chat-container" class="flex-1 overflow-y-auto p-6">
+                            <main id="chat-container" class="flex-1 overflow-y-auto p-6">
                                 <div id="chat-log" class="max-w-4xl mx-auto space-y-8">
                                     <!-- Chat messages will be added here -->
                                 </div>
@@ -266,15 +271,15 @@
                                     <!-- Button 3: Replay Planned Query (Dummy) -->
                                     <button id="header-replay-planned-button" title="Replay Planned Query (Not Implemented)" class="replay-action-button p-2 text-gray-300 hover:text-white transition-colors rounded-md hover:bg-white/10 hidden">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                          <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                          <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                     </button>
                                     <!-- Button 4: Replay Optimized Query (Dummy) -->
                                     <button id="header-replay-optimized-button" title="Replay Optimized Query (Not Implemented)" class="replay-action-button p-2 text-gray-300 hover:text-white transition-colors rounded-md hover:bg-white/10 hidden">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                          <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                          <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                     </button>
 
@@ -282,7 +287,7 @@
                                     <!-- Stop Button (Moved from absolute to flow) -->
                                     <button id="stop-execution-button" title="Stop Current Execution" class="p-2 text-red-400 hover:text-red-300 transition-colors rounded-md hover:bg-red-500/20 hidden">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd" />
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd" />
                                         </svg>
                                     </button>
                                 </div>
@@ -340,8 +345,215 @@
                 </div>
             </div>
 
+            <!-- --- MODIFICATION START: Add Credentials View --- -->
+            <div id="credentials-view" class="app-view w-full h-full flex flex-col items-center justify-center p-4">
+                <div class="w-full max-w-6xl mx-auto">
+                    <!-- Content moved from config-modal-content -->
+                    <div class="glass-panel rounded-xl shadow-2xl w-full p-8">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-2xl font-bold header-title text-white">Application Configuration</h3>
+                            <!-- Close button is removed, this is no longer a modal -->
+                        </div>
+
+                        <!-- Config Form (moved from modal) -->
+                        <form id="config-form">
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-x-8">
+                                <!-- Column 1: MCP Server -->
+                                <div class="bg-white/5 border border-white/10 rounded-lg p-6 flex flex-col">
+                                    <!-- MCP Form Fields -->
+                                    <div class="flex items-center mb-4">
+                                        <div class="bg-[#F15F22]/20 text-[#F15F22] rounded-lg p-2 mr-4">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9V3m-3.516 6.636a9 9 0 015.032 0" /></svg>
+                                        </div>
+                                        <h4 class="font-bold text-lg text-white">MCP Server</h4>
+                                    </div>
+                                    <p class="text-sm text-gray-400 mb-6 flex-grow">Connect to the Model-Context-Protocol server.</p>
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label for="mcp-server-name" class="block text-sm font-medium text-gray-300 mb-1">Server Name</label>
+                                            <input type="text" id="mcp-server-name" name="server_name" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., my_mcp_server">
+                                        </div>
+                                        <div>
+                                            <label for="mcp-host" class="block text-sm font-medium text-gray-300 mb-1">Host</label>
+                                            <input type="text" id="mcp-host" name="host" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
+                                        </div>
+                                        <div>
+                                            <label for="mcp-port" class="block text-sm font-medium text-gray-300 mb-1">Port</label>
+                                            <input type="text" id="mcp-port" name="port" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
+                                        </div>
+                                        <div>
+                                            <label for="mcp-path" class="block text-sm font-medium text-gray-300 mb-1">Path</label>
+                                            <input type="text" id="mcp-path" name="path" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Column 2: LLM Configuration -->
+                                <div class="bg-white/5 border border-white/10 rounded-lg p-6 flex flex-col mt-8 lg:mt-0">
+                                    <!-- LLM Form Fields -->
+                                    <div class="flex items-center mb-4">
+                                        <div class="bg-[#F15F22]/20 text-[#F15F22] rounded-lg p-2 mr-4">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                                        </div>
+                                        <h4 class="font-bold text-lg text-white">Language Model (LLM)</h4>
+                                    </div>
+                                    <p class="text-sm text-gray-400 mb-6 flex-grow">Configure the Language Model provider and credentials.</p>
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label for="llm-provider" class="block text-sm font-medium text-gray-300 mb-1">Provider</label>
+                                            <select id="llm-provider" name="provider" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
+                                                <option value="Google">Google</option>
+                                                <option value="Anthropic">Anthropic</option>
+                                                <option value="OpenAI">OpenAI</option>
+                                                <option value="Azure">Microsoft Azure</option>
+                                                <option value="Friendli">Friendli.ai</option>
+                                                <option value="Amazon">Amazon</option>
+                                                <option value="Ollama">Ollama (Local)</option>
+                                                <option value="Cohere" disabled>Cohere (coming soon)</option>
+                                                <option value="Mistral" disabled>Mistral (coming soon)</option>
+                                            </select>
+                                        </div>
+                                        <div id="api-key-container">
+                                            <label for="llm-api-key" class="block text-sm font-medium text-gray-300 mb-1">API Key</label>
+                                            <input type="password" id="llm-api-key" name="apiKey" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your API Key">
+                                        </div>
+                                        <div id="friendli-credentials-container" class="hidden space-y-4">
+                                            <!-- Friendli Credentials -->
+                                            <div>
+                                                <label for="friendli-token" class="block text-sm font-medium text-gray-300 mb-1">Personal Access Token</label>
+                                                <input type="password" id="friendli-token" name="friendli_token" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your Friendli PAT">
+                                            </div>
+                                            <div>
+                                                <label for="friendli-endpoint-url" class="block text-sm font-medium text-gray-300 mb-1">Dedicated Endpoint URL (Optional)</label>
+                                                <input type="text" id="friendli-endpoint-url" name="friendli_endpoint_url" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., https://your-endpoint.friendli.ai">
+                                            </div>
+                                        </div>
+                                        <div id="azure-credentials-container" class="hidden space-y-4">
+                                            <!-- Azure Credentials -->
+                                            <div>
+                                                <label for="azure-api-key" class="block text-sm font-medium text-gray-300 mb-1">Azure API Key</label>
+                                                <input type="password" id="azure-api-key" name="azure_api_key" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your Azure API Key">
+                                            </div>
+                                            <div>
+                                                <label for="azure-endpoint" class="block text-sm font-medium text-gray-300 mb-1">Azure Endpoint</label>
+                                                <input type="text" id="azure-endpoint" name="azure_endpoint" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., https://your-resource.openai.azure.com/">
+                                            </div>
+                                            <div>
+                                                <label for="azure-deployment-name" class="block text-sm font-medium text-gray-300 mb-1">Deployment Name</label>
+                                                <input type="text" id="azure-deployment-name" name="azure_deployment_name" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Your model deployment name">
+                                            </div>
+                                            <div>
+                                                <label for="azure-api-version" class="block text-sm font-medium text-gray-300 mb-1">API Version</label>
+                                                <input type="text" id="azure-api-version" name="azure_api_version" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., 2024-02-01">
+                                            </div>
+                                        </div>
+                                        <div id="ollama-host-container" class="hidden">
+                                            <!-- Ollama Host Input -->
+                                            <label for="ollama-host" class="block text-sm font-medium text-gray-300 mb-1">Ollama Host</label>
+                                            <input type="text" id="ollama-host" name="ollama_host" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., http://localhost:11434">
+                                        </div>
+                                        <div id="aws-credentials-container" class="hidden space-y-4">
+                                            <!-- AWS Credentials -->
+                                            <div>
+                                                <label for="aws-access-key-id" class="block text-sm font-medium text-gray-300 mb-1">AWS Access Key ID</label>
+                                                <input type="password" id="aws-access-key-id" name="aws_access_key_id" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your AWS Access Key ID">
+                                            </div>
+                                            <div>
+                                                <label for="aws-secret-access-key" class="block text-sm font-medium text-gray-300 mb-1">AWS Secret Access Key</label>
+                                                <input type="password" id="aws-secret-access-key" name="aws_secret_access_key" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your AWS Secret Access Key">
+                                            </div>
+                                            <div>
+                                                <label for="aws-region" class="block text-sm font-medium text-gray-300 mb-1">AWS Region</label>
+                                                <input type="text" id="aws-region" name="aws_region" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., us-east-1">
+                                            </div>
+                                        </div>
+                                        <fieldset id="aws-listing-method-container" class="hidden">
+                                            <!-- AWS Listing Method Radio Buttons -->
+                                            <legend class="block text-sm font-medium text-gray-300 mb-2">Model Listing Method</legend>
+                                            <div class="flex items-center gap-x-6">
+                                                <div class="flex items-center">
+                                                    <input id="foundation_models" name="listing_method" type="radio" value="foundation_models" class="h-4 w-4 border-gray-300 text-teradata-orange focus:ring-teradata-orange" checked>
+                                                    <label for="foundation_models" class="ml-3 block text-sm font-medium leading-6 text-gray-300">Foundation Models</label>
+                                                </div>
+                                                <div class="flex items-center">
+                                                    <input id="inference_profiles" name="listing_method" type="radio" value="inference_profiles" class="h-4 w-4 border-gray-300 text-teradata-orange focus:ring-teradata-orange">
+                                                    <label for="inference_profiles" class="ml-3 block text-sm font-medium leading-6 text-gray-300">Inference Profiles</label>
+                                                </div>
+                                            </div>
+                                        </fieldset>
+                                        <div>
+                                            <label for="llm-model" class="block text-sm font-medium text-gray-300 mb-1">Model</label>
+                                            <div class="flex items-center gap-2">
+                                                <select id="llm-model" name="model" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
+                                                    <option value="">-- Select Provider & Enter Credentials --</option>
+                                                </select>
+                                                <button type="button" id="refresh-models-button" title="Refresh Model List" class="p-2 bg-gray-600 hover:bg-gray-500 rounded-md transition-colors">
+                                                    <!-- Refresh Icon and Spinner -->
+                                                    <svg id="refresh-icon" class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.667 0l3.181-3.183m-4.991-2.691L7.985 5.356m0 0v4.992m0 0h4.992m0 0l3.181-3.183a8.25 8.25 0 0111.667 0l3.181 3.183" /></svg>
+                                                    <svg id="refresh-spinner" class="w-5 h-5 animate-spin hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Column 3: Optional Services -->
+                                <div class="bg-white/5 border border-white/10 rounded-lg p-6 flex flex-col mt-8 lg:mt-0">
+                                    <!-- Optional Services Form Fields -->
+                                    <div class="flex items-center mb-4">
+                                        <div class="bg-[#F15F22]/20 text-[#F15F22] rounded-lg p-2 mr-4">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                                        </div>
+                                        <h4 class="font-bold text-lg text-white">Optional Services</h4>
+                                    </div>
+                                    <p class="text-sm text-gray-400 mb-6 flex-grow">Configure additional features like charting and voice.</p>
+                                    <div class="space-y-4">
+                                        <div id="charting-intensity-container">
+                                            <label for="charting-intensity" class="block text-sm font-medium text-gray-300 mb-1">Charting Intensity</label>
+                                            <select id="charting-intensity" name="charting_intensity" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
+                                                <option value="none" selected>No Charting</option>
+                                                <option value="medium">Medium Charting</option>
+                                                <option value="heavy">Heavy Charting</option>
+                                            </select>
+                                        </div>
+                                        <details class="pt-4 border-t border-white/10">
+                                            <summary class="text-sm font-medium text-gray-300 cursor-pointer hover:text-white">Configure Google TTS</summary>
+                                            <div class="mt-2">
+                                                <label for="tts-credentials-json" class="block text-xs font-medium text-gray-400 mb-1">Google TTS Credentials JSON (Optional)</label>
+                                                <textarea id="tts-credentials-json" name="tts_credentials_json" rows="4" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-xs font-mono" placeholder="Paste credentials.json content here. Leave blank to use server environment variable."></textarea>
+                                            </div>
+                                        </details>
+                                        <div class="pt-4 border-t border-white/10">
+                                            <label for="tda-user-uuid" class="block text-sm font-medium text-gray-300 mb-1">REST UserID</label>
+                                            <div class="flex items-center gap-2">
+                                                <input type="text" id="tda-user-uuid" name="tda_user_uuid" class="w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-gray-400" readonly>
+                                                <button type="button" id="copy-uuid-button" title="Copy UUID" class="p-2 bg-gray-600 hover:bg-gray-500 rounded-md transition-colors">
+                                                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="pt-6 mt-6 border-t border-white/10 lg:col-span-3">
+                                <button id="config-action-button" type="submit" class="w-full px-4 py-3 rounded-md bg-[#F15F22] hover:bg-[#D9501A] transition-colors font-semibold flex items-center justify-center text-white">
+                                    <!-- Config Action Button Content -->
+                                    <svg id="config-loading-spinner" class="w-5 h-5 mr-2 animate-spin hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span id="config-action-button-text">Connect & Load</span>
+                                </button>
+                                <div id="config-status" class="text-sm min-h-[1.25rem] mt-4 text-center"></div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <!-- --- MODIFICATION END --- -->
+
         </main>
     </div>
+    <!-- MODIFICATION: Removed configured-wrapper closing tag -->
+
 
     <!-- Modals (Chat, Info, Config, Prompt Editor, Confirmation, Prompt View, System Prompt Popup) -->
     <!-- All modals remain at the end of <body> to overlay all views -->
@@ -378,7 +590,7 @@
             <h3 class="text-xl font-bold mb-4 header-title">About This Project</h3>
             <div class="text-gray-300 space-y-4 text-sm">
                 <!-- Project details -->
-                 <div>
+                <div>
                     <h4 class="font-semibold text-white mb-2">Overview</h4>
                     <p class="mb-4">The <strong>Trusted Data Agent</strong> represents a paradigm shift in data interaction, taking you from question to insight to action in seconds. Experience the industry-leading AI conversational engine for your most complex enterprise data.</p>
                     <p>Go from conversational discovery to a production-ready, automated workflow with zero friction. It represents a fundamental change in how you work, moving <strong>from days to seconds</strong>, <strong>from guesswork to clarity</strong>, and <strong>from high cost to high efficiency</strong>, while always ensuring <strong>data sovereignty</strong>.</p>
@@ -410,210 +622,9 @@
             </div>
         </div>
     </div>
-    <!-- Config Modal -->
-    <div id="config-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
-        <div id="config-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-6xl p-8 transform scale-95 opacity-0">
-            <!-- Config Modal Content (Form) -->
-             <div class="flex justify-between items-center mb-6">
-                <h3 class="text-2xl font-bold header-title text-white">Application Configuration</h3>
-                <button type="button" id="config-modal-close" class="p-2 rounded-full text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-
-            <form id="config-form">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-x-8">
-                    <!-- Column 1: MCP Server -->
-                    <div class="bg-white/5 border border-white/10 rounded-lg p-6 flex flex-col">
-                        <!-- MCP Form Fields -->
-                         <div class="flex items-center mb-4">
-                            <div class="bg-[#F15F22]/20 text-[#F15F22] rounded-lg p-2 mr-4">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9V3m-3.516 6.636a9 9 0 015.032 0" /></svg>
-                            </div>
-                            <h4 class="font-bold text-lg text-white">MCP Server</h4>
-                        </div>
-                        <p class="text-sm text-gray-400 mb-6 flex-grow">Connect to the Model-Context-Protocol server.</p>
-                        <div class="space-y-4">
-                            <div>
-                                <label for="mcp-server-name" class="block text-sm font-medium text-gray-300 mb-1">Server Name</label>
-                                <input type="text" id="mcp-server-name" name="server_name" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., my_mcp_server">
-                            </div>
-                            <div>
-                                <label for="mcp-host" class="block text-sm font-medium text-gray-300 mb-1">Host</label>
-                                <input type="text" id="mcp-host" name="host" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
-                            </div>
-                            <div>
-                                <label for="mcp-port" class="block text-sm font-medium text-gray-300 mb-1">Port</label>
-                                <input type="text" id="mcp-port" name="port" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
-                            </div>
-                            <div>
-                                <label for="mcp-path" class="block text-sm font-medium text-gray-300 mb-1">Path</label>
-                                <input type="text" id="mcp-path" name="path" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Column 2: LLM Configuration -->
-                    <div class="bg-white/5 border border-white/10 rounded-lg p-6 flex flex-col mt-8 lg:mt-0">
-                         <!-- LLM Form Fields -->
-                          <div class="flex items-center mb-4">
-                            <div class="bg-[#F15F22]/20 text-[#F15F22] rounded-lg p-2 mr-4">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-                            </div>
-                            <h4 class="font-bold text-lg text-white">Language Model (LLM)</h4>
-                        </div>
-                        <p class="text-sm text-gray-400 mb-6 flex-grow">Configure the Language Model provider and credentials.</p>
-                        <div class="space-y-4">
-                             <div>
-                                <label for="llm-provider" class="block text-sm font-medium text-gray-300 mb-1">Provider</label>
-                                <select id="llm-provider" name="provider" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
-                                    <option value="Google">Google</option>
-                                    <option value="Anthropic">Anthropic</option>
-                                    <option value="OpenAI">OpenAI</option>
-                                    <option value="Azure">Microsoft Azure</option>
-                                    <option value="Friendli">Friendli.ai</option>
-                                    <option value="Amazon">Amazon</option>
-                                    <option value="Ollama">Ollama (Local)</option>
-                                    <option value="Cohere" disabled>Cohere (coming soon)</option>
-                                    <option value="Mistral" disabled>Mistral (coming soon)</option>
-                                </select>
-                            </div>
-                            <div id="api-key-container">
-                                <label for="llm-api-key" class="block text-sm font-medium text-gray-300 mb-1">API Key</label>
-                                <input type="password" id="llm-api-key" name="apiKey" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your API Key">
-                            </div>
-                            <div id="friendli-credentials-container" class="hidden space-y-4">
-                                <!-- Friendli Credentials -->
-                                <div>
-                                    <label for="friendli-token" class="block text-sm font-medium text-gray-300 mb-1">Personal Access Token</label>
-                                    <input type="password" id="friendli-token" name="friendli_token" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your Friendli PAT">
-                                </div>
-                                <div>
-                                    <label for="friendli-endpoint-url" class="block text-sm font-medium text-gray-300 mb-1">Dedicated Endpoint URL (Optional)</label>
-                                    <input type="text" id="friendli-endpoint-url" name="friendli_endpoint_url" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., https://your-endpoint.friendli.ai">
-                                </div>
-                            </div>
-                            <div id="azure-credentials-container" class="hidden space-y-4">
-                                <!-- Azure Credentials -->
-                                 <div>
-                                    <label for="azure-api-key" class="block text-sm font-medium text-gray-300 mb-1">Azure API Key</label>
-                                    <input type="password" id="azure-api-key" name="azure_api_key" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your Azure API Key">
-                                </div>
-                                <div>
-                                    <label for="azure-endpoint" class="block text-sm font-medium text-gray-300 mb-1">Azure Endpoint</label>
-                                    <input type="text" id="azure-endpoint" name="azure_endpoint" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., https://your-resource.openai.azure.com/">
-                                </div>
-                                <div>
-                                    <label for="azure-deployment-name" class="block text-sm font-medium text-gray-300 mb-1">Deployment Name</label>
-                                    <input type="text" id="azure-deployment-name" name="azure_deployment_name" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Your model deployment name">
-                                </div>
-                                <div>
-                                    <label for="azure-api-version" class="block text-sm font-medium text-gray-300 mb-1">API Version</label>
-                                    <input type="text" id="azure-api-version" name="azure_api_version" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., 2024-02-01">
-                                </div>
-                            </div>
-                            <div id="ollama-host-container" class="hidden">
-                                <!-- Ollama Host Input -->
-                                 <label for="ollama-host" class="block text-sm font-medium text-gray-300 mb-1">Ollama Host</label>
-                                <input type="text" id="ollama-host" name="ollama_host" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., http://localhost:11434">
-                            </div>
-                            <div id="aws-credentials-container" class="hidden space-y-4">
-                                <!-- AWS Credentials -->
-                                <div>
-                                    <label for="aws-access-key-id" class="block text-sm font-medium text-gray-300 mb-1">AWS Access Key ID</label>
-                                    <input type="password" id="aws-access-key-id" name="aws_access_key_id" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your AWS Access Key ID">
-                                </div>
-                                <div>
-                                    <label for="aws-secret-access-key" class="block text-sm font-medium text-gray-300 mb-1">AWS Secret Access Key</label>
-                                    <input type="password" id="aws-secret-access-key" name="aws_secret_access_key" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your AWS Secret Access Key">
-                                </div>
-                                <div>
-                                    <label for="aws-region" class="block text-sm font-medium text-gray-300 mb-1">AWS Region</label>
-                                    <input type="text" id="aws-region" name="aws_region" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., us-east-1">
-                                </div>
-                            </div>
-                            <fieldset id="aws-listing-method-container" class="hidden">
-                                <!-- AWS Listing Method Radio Buttons -->
-                                 <legend class="block text-sm font-medium text-gray-300 mb-2">Model Listing Method</legend>
-                                <div class="flex items-center gap-x-6">
-                                    <div class="flex items-center">
-                                        <input id="foundation_models" name="listing_method" type="radio" value="foundation_models" class="h-4 w-4 border-gray-300 text-teradata-orange focus:ring-teradata-orange" checked>
-                                        <label for="foundation_models" class="ml-3 block text-sm font-medium leading-6 text-gray-300">Foundation Models</label>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <input id="inference_profiles" name="listing_method" type="radio" value="inference_profiles" class="h-4 w-4 border-gray-300 text-teradata-orange focus:ring-teradata-orange">
-                                        <label for="inference_profiles" class="ml-3 block text-sm font-medium leading-6 text-gray-300">Inference Profiles</label>
-                                    </div>
-                                </div>
-                            </fieldset>
-                            <div>
-                                <label for="llm-model" class="block text-sm font-medium text-gray-300 mb-1">Model</label>
-                                <div class="flex items-center gap-2">
-                                    <select id="llm-model" name="model" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
-                                        <option value="">-- Select Provider & Enter Credentials --</option>
-                                    </select>
-                                    <button type="button" id="refresh-models-button" title="Refresh Model List" class="p-2 bg-gray-600 hover:bg-gray-500 rounded-md transition-colors">
-                                        <!-- Refresh Icon and Spinner -->
-                                        <svg id="refresh-icon" class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.667 0l3.181-3.183m-4.991-2.691L7.985 5.356m0 0v4.992m0 0h4.992m0 0l3.181-3.183a8.25 8.25 0 0111.667 0l3.181 3.183" /></svg>
-                                        <svg id="refresh-spinner" class="w-5 h-5 animate-spin hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Column 3: Optional Services -->
-                    <div class="bg-white/5 border border-white/10 rounded-lg p-6 flex flex-col mt-8 lg:mt-0">
-                         <!-- Optional Services Form Fields -->
-                          <div class="flex items-center mb-4">
-                            <div class="bg-[#F15F22]/20 text-[#F15F22] rounded-lg p-2 mr-4">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
-                            </div>
-                            <h4 class="font-bold text-lg text-white">Optional Services</h4>
-                        </div>
-                        <p class="text-sm text-gray-400 mb-6 flex-grow">Configure additional features like charting and voice.</p>
-                        <div class="space-y-4">
-                             <div id="charting-intensity-container">
-                                <label for="charting-intensity" class="block text-sm font-medium text-gray-300 mb-1">Charting Intensity</label>
-                                <select id="charting-intensity" name="charting_intensity" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
-                                    <option value="none" selected>No Charting</option>
-                                    <option value="medium">Medium Charting</option>
-                                    <option value="heavy">Heavy Charting</option>
-                                </select>
-                            </div>
-                            <details class="pt-4 border-t border-white/10">
-                                <summary class="text-sm font-medium text-gray-300 cursor-pointer hover:text-white">Configure Google TTS</summary>
-                                <div class="mt-2">
-                                    <label for="tts-credentials-json" class="block text-xs font-medium text-gray-400 mb-1">Google TTS Credentials JSON (Optional)</label>
-                                    <textarea id="tts-credentials-json" name="tts_credentials_json" rows="4" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-xs font-mono" placeholder="Paste credentials.json content here. Leave blank to use server environment variable."></textarea>
-                                </div>
-                            </details>
-                            <div class="pt-4 border-t border-white/10">
-                                <label for="tda-user-uuid" class="block text-sm font-medium text-gray-300 mb-1">REST UserID</label>
-                                <div class="flex items-center gap-2">
-                                    <input type="text" id="tda-user-uuid" name="tda_user_uuid" class="w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-gray-400" readonly>
-                                    <button type="button" id="copy-uuid-button" title="Copy UUID" class="p-2 bg-gray-600 hover:bg-gray-500 rounded-md transition-colors">
-                                        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="pt-6 mt-6 border-t border-white/10">
-                    <button id="config-action-button" type="submit" class="w-full px-4 py-3 rounded-md bg-[#F15F22] hover:bg-[#D9501A] transition-colors font-semibold flex items-center justify-center text-white">
-                        <!-- Config Action Button Content -->
-                         <svg id="config-loading-spinner" class="w-5 h-5 mr-2 animate-spin hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        <span id="config-action-button-text">Connect & Load</span>
-                    </button>
-                    <div id="config-status" class="text-sm min-h-[1.25rem] mt-4 text-center"></div>
-                </div>
-            </form>
-        </div>
-    </div>
+    
+    <!-- MODIFICATION: Config Modal Overlay is REMOVED -->
+    <!-- <div id="config-modal-overlay" ... > ... </div> -->
 
     <!-- Prompt Editor Modal -->
     <div id="prompt-editor-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">

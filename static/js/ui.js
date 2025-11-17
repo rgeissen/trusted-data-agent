@@ -8,7 +8,8 @@ import * as DOM from './domElements.js';
 import { state } from './state.js';
 import { renderChart, isPrivilegedUser, isPromptCustomForModel, getNormalizedModelId } from './utils.js';
 // We need access to the functions that will handle save/cancel from the input
-import { handleSessionRenameSave, handleSessionRenameCancel, handleReplayQueryClick } from './eventHandlers.js';
+import { handleSessionRenameSave, handleSessionRenameCancel } from './handlers/sessionManagement.js';
+import { handleReplayQueryClick } from './eventHandlers.js';
 
 
 // NOTE: This module no longer imports from eventHandlers.js, breaking a circular dependency.
@@ -102,9 +103,7 @@ export function renderHistoricalTrace(originalPlan = [], executionTrace = [], tu
 }
 
 
-// --- MODIFICATION START: Add 'isValid' parameter to apply context styles ---
 export function addMessage(role, content, turnId = null, isValid = true, source = null) { // eslint-disable-line no-unused-vars
-// --- MODIFICATION END ---
     const wrapper = document.createElement('div');
     wrapper.className = `message-bubble group flex items-start gap-4 ${role === 'user' ? 'justify-end' : ''}`;
     const icon = document.createElement('div');
@@ -142,9 +141,7 @@ export function addMessage(role, content, turnId = null, isValid = true, source 
         icon.addEventListener('touchend', cancelPress);
     }
 
-    // --- MODIFICATION START: Remove .turn-invalid from avatar ---
     // This logic is now handled by the badge.
-    // --- MODIFICATION END ---
 
     const messageContainer = document.createElement('div');
     messageContainer.className = 'p-4 rounded-xl shadow-lg max-w-2xl glass-panel';
@@ -156,14 +153,12 @@ export function addMessage(role, content, turnId = null, isValid = true, source 
     author.classList.add(role === 'user' ? 'text-gray-300' : 'text-[#F15F22]');
     messageContainer.appendChild(author);
 
-    // --- MODIFICATION START: Add REST call tag ---
     if (role === 'user' && source === 'rest') {
         const restTag = document.createElement('span');
         restTag.className = 'rest-call-tag';
         restTag.textContent = 'Rest Call';
         author.appendChild(restTag);
     }
-    // --- MODIFICATION END ---
 
     const messageContent = document.createElement('div');
     messageContent.innerHTML = content;
@@ -187,11 +182,9 @@ export function addMessage(role, content, turnId = null, isValid = true, source 
         assistantBadge.textContent = turnId;
         icon.appendChild(assistantBadge); // Append badge to assistant icon
 
-        // --- MODIFICATION START: Apply context style to assistant badge ---
         if (isValid === false) {
             assistantBadge.classList.add('context-invalid');
         }
-        // --- MODIFICATION END ---
 
 
         // --- Find previous User message and add badge/click handler ---
@@ -216,7 +209,6 @@ export function addMessage(role, content, turnId = null, isValid = true, source 
                 userBadge.textContent = turnId;
                 userAvatarIcon.appendChild(userBadge); // Append badge to user icon
                 
-                // --- MODIFICATION START: Style badge and update title based on context ---
                 if (isValid === false) {
                     userBadge.classList.add('context-invalid');
                 }
@@ -227,7 +219,6 @@ export function addMessage(role, content, turnId = null, isValid = true, source 
                         userAvatarIcon.title = `Reload Plan & Details for Turn ${turnId}`;
                     }
                 }
-                // --- MODIFICATION END ---
             }
         }
 
@@ -484,7 +475,6 @@ function _renderStandardStep(eventData, parentContainer, isFinal = false) {
         metricsEl.dataset.callId = details.call_id;
     }
     
-    // --- MODIFICATION START: Read persisted token counts on render ---
     if (typeof details === 'object' && details !== null) {
         // Check for planner tokens (at the root of 'details')
         const planner_input = details.input_tokens;
@@ -502,7 +492,6 @@ function _renderStandardStep(eventData, parentContainer, isFinal = false) {
             metricsEl.classList.remove('hidden');
         }
     }
-    // --- MODIFICATION END ---
 
     stepEl.appendChild(metricsEl);
 
@@ -802,7 +791,6 @@ export function updateTaskIdDisplay(taskId) {
     }
 }
 
-// --- MODIFICATION START: Add highlightSession function ---
 /**
  * Provides a visual cue on a session in the list to show it has new, unseen activity.
  * @param {string} sessionId The ID of the session to highlight.
@@ -838,7 +826,6 @@ export function moveSessionToTop(sessionId) {
         console.log(`UI Updated: Session ${sessionId} moved to top.`);
     }
 }
-// --- MODIFICATION END ---
 
 
 export function updateTokenDisplay(data) {
@@ -872,7 +859,6 @@ export function setThinkingIndicator(isThinking) {
     }
 }
 
-// --- MODIFICATION START: Refactor function to accept optional args ---
 export function updateStatusPromptName(provider = null, model = null, isHistorical = false) {
     const promptNameDiv = document.getElementById('prompt-name-display');
 
@@ -896,7 +882,6 @@ export function updateStatusPromptName(provider = null, model = null, isHistoric
         promptNameDiv.innerHTML = '<span>No Model/Prompt Loaded</span>';
     }
 }
-// --- MODIFICATION END ---
 
 
 export function createResourceItem(resource, type) {
@@ -1295,6 +1280,7 @@ export function updateConfigButtonState() {
         DOM.configActionButton.type = 'submit';
         DOM.configActionButton.classList.remove('bg-gray-600', 'hover:bg-gray-500');
         DOM.configActionButton.classList.add('bg-[#F15F22]', 'hover:bg-[#D9501A]');
+        DOM.configActionButton.disabled = false; // Ensure it's enabled if not connected
         return;
     }
 
@@ -1307,11 +1293,14 @@ export function updateConfigButtonState() {
         DOM.configActionButton.type = 'submit';
         DOM.configActionButton.classList.remove('bg-gray-600', 'hover:bg-gray-500');
         DOM.configActionButton.classList.add('bg-[#F15F22]', 'hover:bg-[#D9501A]');
+        DOM.configActionButton.disabled = false; // Enable for submission
     } else {
-        DOM.configActionButtonText.textContent = 'Close';
-        DOM.configActionButton.type = 'button';
+        // MODIFICATION: If connected and unchanged, just disable the button. No "Close" action.
+        DOM.configActionButtonText.textContent = 'Reconnect & Load'; // Keep the text
+        DOM.configActionButton.type = 'submit'; // Always a submit button
         DOM.configActionButton.classList.remove('bg-[#F15F22]', 'hover:bg-[#D9501A]');
         DOM.configActionButton.classList.add('bg-gray-600', 'hover:bg-gray-500');
+        DOM.configActionButton.disabled = true; // Disable as it's unchanged
     }
 }
 
@@ -1444,11 +1433,11 @@ export function updateKeyObservationsModeUI() {
     }
 }
 
-export function closeConfigModal() {
-    DOM.configModalOverlay.classList.add('opacity-0');
-    DOM.configModalContent.classList.add('scale-95', 'opacity-0');
-    setTimeout(() => DOM.configModalOverlay.classList.add('hidden'), 300);
-}
+// export function closeConfigModal() {
+//     DOM.configModalOverlay.classList.add('opacity-0');
+//     DOM.configModalContent.classList.add('scale-95', 'opacity-0');
+//     setTimeout(() => DOM.configModalOverlay.classList.add('hidden'), 300);
+// }
 
 export function closePromptModal() {
     DOM.promptModalOverlay.classList.add('opacity-0');
@@ -1496,7 +1485,6 @@ export function closeRagCaseModal() {
     setTimeout(() => DOM.ragCaseModalOverlay.classList.add('hidden'), 300);
 }
 
-// --- MODIFICATION START: Add blinkContextDot function ---
 /**
  * Provides brief visual feedback on the context status dot by making it blink.
  */
@@ -1528,7 +1516,6 @@ export function blinkRagDot() {
         DOM.ragStatusDot.classList.remove('blinking-yellow');
     }, 1500);
 }
-// --- MODIFICATION END ---
 
 export function closeChatModal() {
     DOM.chatModalOverlay.classList.add('opacity-0');
@@ -1536,7 +1523,6 @@ export function closeChatModal() {
     setTimeout(() => DOM.chatModalOverlay.classList.add('hidden'), 300);
 }
 
-// --- MODIFICATION START: Add removeHighlight function ---
 /**
  * Removes the visual highlight from a session item.
  * @param {string} sessionId The ID of the session to un-highlight.
@@ -1554,4 +1540,63 @@ export function removeHighlight(sessionId) {
         }
     }
 }
-// --- MODIFICATION END ---
+
+/**
+ * Toggles the collapsed state of the main side navigation bar.
+ */
+export function toggleSideNav() {
+    DOM.appSideNav.classList.toggle('collapsed');
+}
+
+/**
+ * Handles switching the main application view.
+ * @param {string} viewId - The ID of the view to switch to (e.g., 'conversation-view').
+ */
+export function handleViewSwitch(viewId) {
+    console.log(`[UI DEBUG] handleViewSwitch called with viewId: ${viewId}`);
+
+    // 1. Log all app views found
+    const appViews = document.querySelectorAll('.app-view');
+    console.log('[UI DEBUG] Found app views:', appViews);
+
+    // 2. Hide all views
+    appViews.forEach(view => {
+        console.log(`[UI DEBUG] Hiding view:`, view.id);
+        view.classList.remove('active');
+    });
+
+    // 3. Show the selected view
+    const viewToShow = document.getElementById(viewId);
+    if (viewToShow) {
+        console.log(`[UI DEBUG] Found view to show:`, viewToShow.id);
+        console.log(`[UI DEBUG] Current classes for ${viewToShow.id}:`, viewToShow.className);
+        viewToShow.classList.add('active');
+        console.log(`[UI DEBUG] New classes for ${viewToShow.id}:`, viewToShow.className);
+    } else {
+        console.error(`[UI DEBUG] View with ID '${viewId}' not found!`);
+    }
+
+    // 4. Update the active state of the menu buttons
+    if (DOM.viewSwitchButtons) {
+        DOM.viewSwitchButtons.forEach(button => {
+            const isActive = button.dataset.view === viewId;
+            console.log(`[UI DEBUG] Updating button ${button.dataset.view}: active=${isActive}`);
+            button.classList.toggle('active', isActive);
+        });
+    } else {
+        console.warn('[UI DEBUG] DOM.viewSwitchButtons not found.');
+    }
+
+    // 5. Final check
+    setTimeout(() => {
+        const activeViews = document.querySelectorAll('.app-view.active');
+        console.log('[UI DEBUG] Final check: Active views are:', activeViews);
+        if (activeViews.length > 1) {
+            console.warn('[UI DEBUG] Multiple views are active!', activeViews);
+        } else if (activeViews.length === 0) {
+            console.warn('[UI DEBUG] No view is active!');
+        } else if (activeViews[0].id !== viewId) {
+            console.error(`[UI DEBUG] WRONG VIEW IS ACTIVE! Expected ${viewId}, but found ${activeViews[0].id}`);
+        }
+    }, 100); // Use a small delay to catch any subsequent changes
+}
