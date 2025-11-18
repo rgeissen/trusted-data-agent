@@ -722,14 +722,30 @@ async function refreshModels(provider) {
         const data = await response.json();
 
         if (data.models && data.models.length > 0) {
+            // Find first certified model for auto-selection
+            const certifiedModels = data.models.filter(model => {
+                return typeof model === 'string' || model.certified !== false;
+            });
+            const firstCertifiedModel = certifiedModels.length > 0 
+                ? (typeof certifiedModels[0] === 'string' ? certifiedModels[0] : certifiedModels[0].name)
+                : null;
+            
             select.innerHTML = '<option value="">-- Select a model --</option>' + 
                 data.models.map(model => {
                     const modelName = typeof model === 'string' ? model : model.name;
                     const certified = typeof model === 'object' ? model.certified : true;
                     const label = certified ? modelName : `${modelName} (support evaluated)`;
-                    return `<option value="${escapeHtml(modelName)}" ${!certified ? 'disabled' : ''}>${escapeHtml(label)}</option>`;
+                    const selected = modelName === firstCertifiedModel ? 'selected' : '';
+                    return `<option value="${escapeHtml(modelName)}" ${!certified ? 'disabled' : ''} ${selected}>${escapeHtml(label)}</option>`;
                 }).join('');
-            showNotification('success', `Found ${data.models.length} models`);
+            
+            // Update the provider's model in state if auto-selected
+            if (firstCertifiedModel) {
+                const currentProvider = configState.llmProviders[provider] || {};
+                currentProvider.model = firstCertifiedModel;
+            }
+            
+            showNotification('success', `Found ${data.models.length} models${firstCertifiedModel ? ` - selected ${firstCertifiedModel}` : ''}`);
         } else {
             showNotification('warning', 'No models found');
         }

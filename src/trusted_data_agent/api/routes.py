@@ -889,29 +889,33 @@ async def configure_services():
     if not data_from_ui:
         return jsonify({"status": "error", "message": "Request body must be a valid JSON."}), 400
 
+    # Check if credentials are nested (new format) or flat (old format)
+    creds = data_from_ui.get("credentials", {})
+    
     host_keys = ["ollama_host", "ollamaHost", "host"]
-    ollama_host_value = next((data_from_ui.get(key) for key in host_keys if data_from_ui.get(key) is not None), None)
+    ollama_host_value = next((creds.get(key) or data_from_ui.get(key) for key in host_keys if creds.get(key) or data_from_ui.get(key)), None)
 
     service_config_data = {
         "provider": data_from_ui.get("provider"),
         "model": data_from_ui.get("model"),
         "tts_credentials_json": data_from_ui.get("tts_credentials_json"),
         "credentials": {
-            "apiKey": data_from_ui.get("apiKey"),
-            "aws_access_key_id": data_from_ui.get("aws_access_key_id"),
-            "aws_secret_access_key": data_from_ui.get("aws_secret_access_key"),
-            "aws_region": data_from_ui.get("aws_region"),
+            "apiKey": creds.get("apiKey") or data_from_ui.get("apiKey"),
+            "aws_access_key_id": creds.get("aws_access_key_id") or data_from_ui.get("aws_access_key_id"),
+            "aws_secret_access_key": creds.get("aws_secret_access_key") or data_from_ui.get("aws_secret_access_key"),
+            "aws_region": creds.get("aws_region") or data_from_ui.get("aws_region"),
             "ollama_host": ollama_host_value,
-            "azure_api_key": data_from_ui.get("azure_api_key"),
-            "azure_endpoint": data_from_ui.get("azure_endpoint"),
-            "azure_deployment_name": data_from_ui.get("azure_deployment_name"),
-            "azure_api_version": data_from_ui.get("azure_api_version"),
-            "listing_method": data_from_ui.get("listing_method", "foundation_models"),
-            "friendli_token": data_from_ui.get("friendli_token"),
-            "friendli_endpoint_url": data_from_ui.get("friendli_endpoint_url")
+            "azure_api_key": creds.get("azure_api_key") or data_from_ui.get("azure_api_key"),
+            "azure_endpoint": creds.get("azure_endpoint") or data_from_ui.get("azure_endpoint"),
+            "azure_deployment_name": creds.get("azure_deployment_name") or data_from_ui.get("azure_deployment_name"),
+            "azure_api_version": creds.get("azure_api_version") or data_from_ui.get("azure_api_version"),
+            "listing_method": creds.get("listing_method") or data_from_ui.get("listing_method", "foundation_models"),
+            "friendli_token": creds.get("friendli_token") or data_from_ui.get("friendli_token"),
+            "friendli_endpoint_url": creds.get("friendli_endpoint_url") or data_from_ui.get("friendli_endpoint_url")
         },
         "mcp_server": {
             "name": data_from_ui.get("server_name"),
+            "id": data_from_ui.get("server_id"),  # Add server ID
             "host": data_from_ui.get("host"),
             "port": data_from_ui.get("port"),
             "path": data_from_ui.get("path")

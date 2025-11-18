@@ -33,12 +33,15 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
     # --- Use the global lock to prevent race conditions ---
     async with APP_STATE["configuration_lock"]:
         app_logger.info("Configuration lock acquired. Starting service setup...")
+        app_logger.info(f"[DEBUG] Received config_data: {config_data}")
         
         provider = config_data.get("provider")
         model = config_data.get("model")
         server_name = config_data.get("mcp_server", {}).get("name") or config_data.get("server_name")
         server_id = config_data.get("mcp_server", {}).get("id") or config_data.get("server_id")
         tts_credentials_json = config_data.get("tts_credentials_json")
+
+        app_logger.info(f"[DEBUG] Extracted - provider: {provider}, model: {model}, server_name: {server_name}, server_id: {server_id}")
 
         if not server_name:
             return {"status": "error", "message": "Configuration failed: 'mcp_server.name' or 'server_name' is a required field."}
