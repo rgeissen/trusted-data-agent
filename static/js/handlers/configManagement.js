@@ -144,6 +144,12 @@ export async function finalizeConfiguration(config, switchToConversationView = t
     // setTimeout(UI.closeConfigModal, 1000); // REMOVED
     // DOM.unconfiguredWrapper.classList.add('hidden'); // REMOVED
     // DOM.configuredWrapper.classList.remove('hidden'); // REMOVED
+    
+    // Hide welcome screen if it's showing
+    if (window.hideWelcomeScreen) {
+        window.hideWelcomeScreen();
+    }
+    
     if (switchToConversationView) {
         handleViewSwitch('conversation-view'); // Set the default view
     }

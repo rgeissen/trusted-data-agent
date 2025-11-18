@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
         } else {
-            console.log("DEBUG: Server is not configured. Showing config modal.");
+            console.log("DEBUG: Server is not configured. Showing welcome screen.");
             // The new configuration UI handles its own state
             // No need to pre-fill old form fields
             const savedTtsCreds = localStorage.getItem('ttsCredentialsJson');
@@ -170,10 +170,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 DOM.ttsCredentialsJsonTextarea.value = savedTtsCreds;
             }
             
+            // Show welcome screen in conversation view
+            showWelcomeScreen();
+            
             // NOTE: Old loadCredentialsAndModels() is not needed with new config UI
             // The new configurationHandler manages everything via localStorage
             
-            handleViewSwitch('credentials-view');
+            // Don't automatically switch to credentials view - let user stay on conversation view with welcome screen
+            // handleViewSwitch('credentials-view');
         }
     } catch (startupError) {
         console.error("DEBUG: Error during startup configuration/session loading. Showing config modal.", startupError);
@@ -209,7 +213,47 @@ document.addEventListener('DOMContentLoaded', async () => {
     UI.updateHintAndIndicatorState();
     UI.updateVoiceModeUI();
     UI.updateKeyObservationsModeUI();
-    
-    // This buggy line was unconditionally overriding the logic in the try/catch block.
-    // handleViewSwitch('conversation-view'); // - REMOVED
 });
+
+// ============================================================================
+// WELCOME SCREEN MANAGEMENT
+// ============================================================================
+
+/**
+ * Show the welcome screen for unconfigured applications
+ */
+function showWelcomeScreen() {
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const chatLog = document.getElementById('chat-log');
+    const welcomeBtn = document.getElementById('welcome-configure-btn');
+    
+    if (welcomeScreen && chatLog) {
+        welcomeScreen.classList.remove('hidden');
+        chatLog.classList.add('hidden');
+    }
+    
+    // Wire up the configure button
+    if (welcomeBtn && !welcomeBtn.dataset._wired) {
+        welcomeBtn.addEventListener('click', () => {
+            handleViewSwitch('credentials-view');
+        });
+        welcomeBtn.dataset._wired = 'true';
+    }
+}
+
+/**
+ * Hide the welcome screen when application is configured
+ */
+function hideWelcomeScreen() {
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const chatLog = document.getElementById('chat-log');
+    
+    if (welcomeScreen && chatLog) {
+        welcomeScreen.classList.add('hidden');
+        chatLog.classList.remove('hidden');
+    }
+}
+
+// Make functions available globally
+window.showWelcomeScreen = showWelcomeScreen;
+window.hideWelcomeScreen = hideWelcomeScreen;

@@ -76,13 +76,7 @@
         <nav id="app-side-nav" class="collapsed flex flex-col h-full bg-black/30 p-4 border-r border-white/10 space-y-4">
             <!-- Navigation Links -->
             <div class="flex flex-col space-y-2">
-                <!-- Reordered: Credentials first, then Conversation, then RAG Maintenance -->
-                <a href="#" id="view-switch-credentials" data-view="credentials-view" class="view-switch-button flex items-center gap-x-3 px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
-                    </svg>
-                    <span class="nav-link-text font-semibold">Credentials</span>
-                </a>
+                <!-- Reordered: Conversation first, then Executions, RAG Maintenance, Marketplace, and Credentials last -->
                 <a href="#" id="view-switch-conversation" data-view="conversation-view" class="view-switch-button flex items-center gap-x-3 px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7S2 13.866 2 10 5.582 3 10 3s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zm-4 0H9v2h2V9z" clip-rule="evenodd" />
@@ -96,6 +90,13 @@
                     </svg>
                     <span class="nav-link-text font-semibold">Executions</span>
                 </a>
+                <a href="#" id="view-switch-rag-maintenance" data-view="rag-maintenance-view" class="view-switch-button flex items-center gap-x-3 px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4z" />
+                        <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="nav-link-text font-semibold">RAG Maintenance</span>
+                </a>
                 <!-- NEW: RAG Marketplace View Link -->
                 <a href="#" id="view-switch-rag-marketplace" data-view="rag-marketplace-view" class="view-switch-button flex items-center gap-x-3 px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
                     <!-- Simplified marketplace icon: 2x2 grid of squares -->
@@ -104,12 +105,11 @@
                     </svg>
                     <span class="nav-link-text font-semibold">Marketplace</span>
                 </a>
-                <a href="#" id="view-switch-rag-maintenance" data-view="rag-maintenance-view" class="view-switch-button flex items-center gap-x-3 px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
+                <a href="#" id="view-switch-credentials" data-view="credentials-view" class="view-switch-button flex items-center gap-x-3 px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4z" />
-                        <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
+                        <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
                     </svg>
-                    <span class="nav-link-text font-semibold">RAG Maintenance</span>
+                    <span class="nav-link-text font-semibold">Credentials</span>
                 </a>
             </div>
         </nav>
@@ -118,8 +118,8 @@
         <main id="app-view-container" class="flex-1 h-full min-w-0">
 
             <!-- VIEW 1: Conversation -->
-            <!-- MODIFICATION: Removed hard-coded 'active' class -->
-            <div id="conversation-view" class="app-view flex flex-col w-full h-full">
+            <!-- MODIFICATION: Set as initial active view -->
+            <div id="conversation-view" class="app-view active flex flex-col w-full h-full">
                 
                 <!-- NEW: Conversation View Header (contains status dots and config/info buttons) -->
                 <header id="conversation-header" class="w-full bg-black/10 border-b border-white/10 px-4 py-2 flex items-center justify-between flex-shrink-0 z-10">
@@ -244,6 +244,89 @@
 
                         <div class="flex-1 flex flex-col min-h-0">
                             <main id="chat-container" class="flex-1 overflow-y-auto p-6">
+                                <!-- Welcome Screen for Unconfigured State -->
+                                <div id="welcome-screen" class="hidden h-full flex items-center justify-center">
+                                    <div class="max-w-2xl mx-auto text-center space-y-8 p-8">
+                                        <!-- Logo/Icon -->
+                                        <div class="flex justify-center">
+                                            <div class="w-24 h-24 bg-gradient-to-br from-teradata-orange to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-14 w-14 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Heading -->
+                                        <div class="space-y-3">
+                                            <h1 class="text-4xl font-bold text-white">The Trusted Data Agent</h1>
+                                            <p class="text-xl text-gray-300">A Paradigm Shift in Data Interaction</p>
+                                            <p class="text-lg text-blue-400 font-semibold mt-2">Go from question to insight to action in seconds</p>
+                                        </div>
+                                        
+                                        <!-- Description -->
+                                        <p class="text-gray-400 text-lg leading-relaxed">
+                                            To get started, configure your connection settings and experience 
+                                            a new way to interact with your data ecosystem.
+                                        </p>
+                                        
+                                        <!-- CTA Button -->
+                                        <div class="flex flex-col items-center gap-4">
+                                            <button id="welcome-configure-btn" class="group px-8 py-4 bg-teradata-orange hover:bg-orange-600 text-white text-lg font-semibold rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105 hover:shadow-xl flex items-center gap-3">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                </svg>
+                                                <span>Configure Application</span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                                </svg>
+                                            </button>
+                                            <p class="text-sm text-gray-500">You'll need an MCP server and an LLM provider</p>
+                                        </div>
+                                        
+                                        <!-- Features Grid -->
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12 pt-8 border-t border-white/10">
+                                            <div class="space-y-2">
+                                                <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mx-auto">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                    </svg>
+                                                </div>
+                                                <h3 class="text-white font-semibold">Actionable</h3>
+                                                <p class="text-sm text-gray-400">From discovery to automation in seconds - zero friction</p>
+                                            </div>
+                                            <div class="space-y-2">
+                                                <div class="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center mx-auto">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                </div>
+                                                <h3 class="text-white font-semibold">Transparent</h3>
+                                                <p class="text-sm text-gray-400">See every step - no AI black box, just clarity</p>
+                                            </div>
+                                            <div class="space-y-2">
+                                                <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mx-auto">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                                                    </svg>
+                                                </div>
+                                                <h3 class="text-white font-semibold">Efficient</h3>
+                                                <p class="text-sm text-gray-400">Fusion Optimizer delivers enterprise-grade efficiency</p>
+                                            </div>
+                                            <div class="space-y-2">
+                                                <div class="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center mx-auto">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                    </svg>
+                                                </div>
+                                                <h3 class="text-white font-semibold">Sovereignty</h3>
+                                                <p class="text-sm text-gray-400">Your data, your rules, your infrastructure choice</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
                                 <div id="chat-log" class="max-w-4xl mx-auto space-y-8">
                                     <!-- Chat messages will be added here -->
                                 </div>
@@ -457,8 +540,8 @@
             </div>
 
             <!-- --- MODIFICATION START: Add Credentials View --- -->
-            <!-- MODIFICATION: Start with active class to avoid blank screen during JS load -->
-            <div id="credentials-view" class="app-view active w-full h-full flex flex-col p-6">
+            <!-- MODIFICATION: No longer the default active view -->
+            <div id="credentials-view" class="app-view w-full h-full flex flex-col p-6">
                 <div class="w-full max-w-7xl mx-auto flex flex-col h-full">
                     <!-- Page Header -->
                     <div class="flex justify-between items-center mb-6">
