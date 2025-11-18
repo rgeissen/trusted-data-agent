@@ -36,17 +36,21 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
         
         provider = config_data.get("provider")
         model = config_data.get("model")
-        server_name = config_data.get("mcp_server", {}).get("name")
+        server_name = config_data.get("mcp_server", {}).get("name") or config_data.get("server_name")
+        server_id = config_data.get("mcp_server", {}).get("id") or config_data.get("server_id")
         tts_credentials_json = config_data.get("tts_credentials_json")
 
         if not server_name:
-            return {"status": "error", "message": "Configuration failed: 'mcp_server.name' is a required field."}
+            return {"status": "error", "message": "Configuration failed: 'mcp_server.name' or 'server_name' is a required field."}
+        
+        if not server_id:
+            return {"status": "error", "message": "Configuration failed: 'mcp_server.id' or 'server_id' is a required field."}
 
         is_already_configured = (
             APP_CONFIG.SERVICES_CONFIGURED and
             provider == APP_CONFIG.ACTIVE_PROVIDER and
             model == APP_CONFIG.ACTIVE_MODEL and
-            server_name == APP_CONFIG.ACTIVE_MCP_SERVER_NAME
+            server_id == APP_CONFIG.ACTIVE_MCP_SERVER_ID  # Use ID instead of name
         )
 
         if is_already_configured:
@@ -165,6 +169,7 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
                 }
             APP_CONFIG.CURRENT_MODEL_PROVIDER_IN_PROFILE = None
             APP_CONFIG.CURRENT_MCP_SERVER_NAME = server_name
+            APP_CONFIG.CURRENT_MCP_SERVER_ID = server_id  # Store the unique ID
             
             APP_STATE['llm'] = temp_llm_instance
             APP_STATE['mcp_client'] = temp_mcp_client

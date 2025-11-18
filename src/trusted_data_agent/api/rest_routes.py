@@ -580,3 +580,148 @@ async def refresh_rag_collection(collection_id: int):
     except Exception as e:
         app_logger.error(f"Error refreshing RAG collection: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ============================================================================
+# MCP SERVER CONFIGURATION ENDPOINTS
+# ============================================================================
+
+@rest_api_bp.route("/v1/mcp/servers", methods=["GET"])
+async def get_mcp_servers():
+    """Get all MCP server configurations."""
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        
+        servers = config_manager.get_mcp_servers()
+        active_server_id = config_manager.get_active_mcp_server_id()
+        
+        return jsonify({
+            "status": "success",
+            "servers": servers,
+            "active_server_id": active_server_id
+        }), 200
+    except Exception as e:
+        app_logger.error(f"Error getting MCP servers: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/mcp/servers", methods=["POST"])
+async def create_mcp_server():
+    """Create a new MCP server configuration."""
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        
+        data = await request.get_json()
+        
+        # Validate required fields
+        required_fields = ["id", "name", "host", "port"]
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"status": "error", "message": f"Field '{field}' is required"}), 400
+        
+        # Add server
+        success = config_manager.add_mcp_server(data)
+        
+        if success:
+            app_logger.info(f"Created MCP server: {data.get('name')} (ID: {data.get('id')})")
+            return jsonify({
+                "status": "success",
+                "message": "MCP server created successfully",
+                "server_id": data.get("id")
+            }), 201
+        else:
+            return jsonify({"status": "error", "message": "Failed to create MCP server"}), 500
+            
+    except Exception as e:
+        app_logger.error(f"Error creating MCP server: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/mcp/servers/<server_id>", methods=["PUT"])
+async def update_mcp_server(server_id: str):
+    """Update an existing MCP server configuration."""
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        
+        data = await request.get_json()
+        
+        # Don't allow changing the ID
+        if "id" in data and data["id"] != server_id:
+            return jsonify({"status": "error", "message": "Cannot change server ID"}), 400
+        
+        success = config_manager.update_mcp_server(server_id, data)
+        
+        if success:
+            app_logger.info(f"Updated MCP server: {server_id}")
+            return jsonify({
+                "status": "success",
+                "message": "MCP server updated successfully"
+            }), 200
+        else:
+            return jsonify({"status": "error", "message": "MCP server not found"}), 404
+            
+    except Exception as e:
+        app_logger.error(f"Error updating MCP server: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/mcp/servers/<server_id>", methods=["DELETE"])
+async def delete_mcp_server(server_id: str):
+    """Delete an MCP server configuration."""
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        
+        # Check if this is the active server
+        active_server_id = config_manager.get_active_mcp_server_id()
+        if active_server_id == server_id:
+            # Clear active server
+            config_manager.set_active_mcp_server_id(None)
+        
+        success = config_manager.remove_mcp_server(server_id)
+        
+        if success:
+            app_logger.info(f"Deleted MCP server: {server_id}")
+            return jsonify({
+                "status": "success",
+                "message": "MCP server deleted successfully"
+            }), 200
+        else:
+            return jsonify({"status": "error", "message": "MCP server not found"}), 404
+            
+    except Exception as e:
+        app_logger.error(f"Error deleting MCP server: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/mcp/servers/<server_id>/activate", methods=["POST"])
+async def activate_mcp_server(server_id: str):
+    """Set an MCP server as the active server."""
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        
+        # Verify server exists
+        servers = config_manager.get_mcp_servers()
+        server = next((s for s in servers if s.get("id") == server_id), None)
+        
+        if not server:
+            return jsonify({"status": "error", "message": "MCP server not found"}), 404
+        
+        success = config_manager.set_active_mcp_server_id(server_id)
+        
+        if success:
+            app_logger.info(f"Activated MCP server: {server_id}")
+            return jsonify({
+                "status": "success",
+                "message": "MCP server activated successfully"
+            }), 200
+        else:
+            return jsonify({"status": "error", "message": "Failed to activate MCP server"}), 500
+            
+    except Exception as e:
+        app_logger.error(f"Error activating MCP server: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500

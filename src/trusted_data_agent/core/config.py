@@ -33,6 +33,7 @@ class AppConfig:
     CURRENT_PROVIDER = None # Stores the name of the currently configured LLM provider (e.g., "Google").
     CURRENT_MODEL = None # Stores the name of the currently configured LLM model (e.g., "gemini-1.5-flash").
     CURRENT_MCP_SERVER_NAME = None # Stores the name of the active MCP server configuration.
+    CURRENT_MCP_SERVER_ID = None # Stores the unique ID of the active MCP server (decoupled from name).
     CURRENT_AWS_REGION = None # Stores the AWS region, used specifically for the "Amazon" provider.
     CURRENT_AZURE_DEPLOYMENT_DETAILS = None # Stores Azure-specific details {endpoint, deployment_name, api_version}.
     CURRENT_FRIENDLI_DETAILS = None # Stores Friendli.ai specific details {token, endpoint_url}.

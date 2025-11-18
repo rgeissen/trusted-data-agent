@@ -458,104 +458,132 @@
 
             <!-- --- MODIFICATION START: Add Credentials View --- -->
             <!-- MODIFICATION: Start with active class to avoid blank screen during JS load -->
-            <div id="credentials-view" class="app-view active w-full h-full overflow-y-auto p-6">
-                <div class="w-full max-w-7xl mx-auto space-y-6">
+            <div id="credentials-view" class="app-view active w-full h-full flex flex-col p-6">
+                <div class="w-full max-w-7xl mx-auto flex flex-col h-full">
                     <!-- Page Header -->
-                    <div class="flex justify-between items-center">
+                    <div class="flex justify-between items-center mb-6">
                         <h2 class="text-3xl font-bold text-white">Configuration</h2>
-                        <div id="config-status-message" class="text-sm"></div>
                     </div>
 
-                    <!-- Section 1: MCP Servers -->
-                    <div class="glass-panel rounded-xl p-6">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-xl font-bold text-white flex items-center gap-3">
-                                <div class="bg-[#F15F22]/20 text-[#F15F22] rounded-lg p-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9V3m-3.516 6.636a9 9 0 015.032 0" />
-                                    </svg>
-                                </div>
+                    <!-- Tab Navigation -->
+                    <div class="flex gap-2 border-b border-white/10 mb-6">
+                        <button class="config-tab active px-6 py-3 text-sm font-medium transition-all border-b-2 border-[#F15F22] text-white" data-tab="mcp-servers-tab">
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9V3m-3.516 6.636a9 9 0 015.032 0" />
+                                </svg>
                                 MCP Servers
-                            </h3>
-                            <button type="button" id="add-mcp-server-btn" class="px-4 py-2 bg-[#F15F22] hover:bg-[#D9501A] rounded-md transition-colors text-white font-medium text-sm">
-                                + Add Server
-                            </button>
-                        </div>
-                        <p class="text-sm text-gray-400 mb-6">Configure Model-Context-Protocol servers. Select one as active.</p>
-                        <div id="mcp-servers-container" class="space-y-4">
-                            <!-- MCP server cards will be dynamically added here -->
-                        </div>
-                    </div>
-
-                    <!-- Section 2: LLM Providers -->
-                    <div class="glass-panel rounded-xl p-6">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-xl font-bold text-white flex items-center gap-3">
-                                <div class="bg-[#F15F22]/20 text-[#F15F22] rounded-lg p-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                    </svg>
-                                </div>
+                            </div>
+                        </button>
+                        <button class="config-tab px-6 py-3 text-sm font-medium text-gray-400 hover:text-white transition-all border-b-2 border-transparent hover:border-white/20" data-tab="llm-providers-tab">
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                </svg>
                                 LLM Providers
-                            </h3>
-                        </div>
-                        <p class="text-sm text-gray-400 mb-6">Configure Language Model providers and credentials. Select one as active.</p>
-                        <div id="llm-providers-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <!-- LLM provider cards will be dynamically added here -->
-                        </div>
+                            </div>
+                        </button>
+                        <button class="config-tab px-6 py-3 text-sm font-medium text-gray-400 hover:text-white transition-all border-b-2 border-transparent hover:border-white/20" data-tab="advanced-tab">
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                </svg>
+                                Advanced
+                            </div>
+                        </button>
                     </div>
 
-                    <!-- Section 3: Optional Services -->
-                    <div class="glass-panel rounded-xl p-6">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-xl font-bold text-white flex items-center gap-3">
-                                <div class="bg-[#F15F22]/20 text-[#F15F22] rounded-lg p-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                                    </svg>
-                                </div>
-                                Optional Services
-                            </h3>
-                        </div>
-                        <p class="text-sm text-gray-400 mb-6">Configure additional features like charting and voice.</p>
-                        <div class="space-y-4">
-                            <div>
-                                <label for="charting-intensity" class="block text-sm font-medium text-gray-300 mb-2">Charting Intensity</label>
-                                <select id="charting-intensity" name="charting_intensity" class="w-full max-w-md p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
-                                    <option value="none" selected>No Charting</option>
-                                    <option value="medium">Medium Charting</option>
-                                    <option value="heavy">Heavy Charting</option>
-                                </select>
-                            </div>
-                            <details class="pt-4 border-t border-white/10">
-                                <summary class="text-sm font-medium text-gray-300 cursor-pointer hover:text-white">Configure Google TTS</summary>
-                                <div class="mt-4">
-                                    <label for="tts-credentials-json" class="block text-sm font-medium text-gray-400 mb-2">Google TTS Credentials JSON (Optional)</label>
-                                    <textarea id="tts-credentials-json" name="tts_credentials_json" rows="4" class="w-full max-w-2xl p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-sm font-mono" placeholder="Paste credentials.json content here. Leave blank to use server environment variable."></textarea>
-                                </div>
-                            </details>
-                            <div class="pt-4 border-t border-white/10">
-                                <label for="tda-user-uuid" class="block text-sm font-medium text-gray-300 mb-2">REST UserID</label>
-                                <div class="flex items-center gap-2 max-w-2xl">
-                                    <input type="text" id="tda-user-uuid" name="tda_user_uuid" class="flex-1 p-2 bg-gray-800 border border-gray-600 rounded-md text-gray-400" readonly>
-                                    <button type="button" id="copy-uuid-button" title="Copy UUID" class="p-2 bg-gray-600 hover:bg-gray-500 rounded-md transition-colors">
-                                        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                        </svg>
-                                    </button>
+                    <!-- Tab Content Container -->
+                    <div class="flex-1 overflow-y-auto">
+                        <!-- Tab 1: MCP Servers -->
+                        <div id="mcp-servers-tab" class="config-tab-content active">
+                            <div class="space-y-6">
+                                            <!-- Section 1: MCP Servers -->
+                                <div class="glass-panel rounded-xl p-6">
+                                    <div class="flex justify-between items-center mb-6">
+                                        <div>
+                                            <h3 class="text-xl font-bold text-white">Configure MCP Servers</h3>
+                                            <p class="text-sm text-gray-400 mt-1">Model-Context-Protocol servers provide access to your data sources</p>
+                                        </div>
+                                        <button type="button" id="add-mcp-server-btn" class="px-4 py-2 bg-[#F15F22] hover:bg-[#D9501A] rounded-md transition-colors text-white font-medium text-sm">
+                                            + Add Server
+                                        </button>
+                                    </div>
+                                    <div id="mcp-servers-container" class="space-y-4">
+                                        <!-- MCP server cards will be dynamically added here -->
+                                    </div>
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Tab 2: LLM Providers -->
+                        <div id="llm-providers-tab" class="config-tab-content hidden">
+                            <div class="space-y-6">
+                                <!-- Section 2: LLM Providers -->
+                                <div class="glass-panel rounded-xl p-6">
+                                    <div class="mb-6">
+                                        <h3 class="text-xl font-bold text-white">Configure LLM Providers</h3>
+                                        <p class="text-sm text-gray-400 mt-1">Select and configure your preferred Language Model provider</p>
+                                    </div>
+                                    <div id="llm-providers-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        <!-- LLM provider cards will be dynamically added here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab 3: Advanced Settings -->
+                        <div id="advanced-tab" class="config-tab-content hidden">
+                            <div class="space-y-6">
+                                <!-- Section 3: Optional Services -->
+                                <div class="glass-panel rounded-xl p-6">
+                                    <div class="mb-6">
+                                        <h3 class="text-xl font-bold text-white">Advanced Settings</h3>
+                                        <p class="text-sm text-gray-400 mt-1">Configure optional features and services</p>
+                                    </div>
+                                    <div class="space-y-6">
+                                        <div>
+                                            <label for="charting-intensity" class="block text-sm font-medium text-gray-300 mb-2">Charting Intensity</label>
+                                            <select id="charting-intensity" name="charting_intensity" class="w-full max-w-md p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
+                                                <option value="none" selected>No Charting</option>
+                                                <option value="medium">Medium Charting</option>
+                                                <option value="heavy">Heavy Charting</option>
+                                            </select>
+                                        </div>
+                                        <div class="pt-4 border-t border-white/10">
+                                            <details>
+                                                <summary class="text-sm font-medium text-gray-300 cursor-pointer hover:text-white mb-2">Configure Google TTS</summary>
+                                                <div class="mt-4">
+                                                    <label for="tts-credentials-json" class="block text-sm font-medium text-gray-400 mb-2">Google TTS Credentials JSON (Optional)</label>
+                                                    <textarea id="tts-credentials-json" name="tts_credentials_json" rows="4" class="w-full max-w-2xl p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-sm font-mono" placeholder="Paste credentials.json content here. Leave blank to use server environment variable."></textarea>
+                                                </div>
+                                            </details>
+                                        </div>
+                                        <div class="pt-4 border-t border-white/10">
+                                            <label for="tda-user-uuid" class="block text-sm font-medium text-gray-300 mb-2">REST API User ID</label>
+                                            <div class="flex items-center gap-2 max-w-2xl">
+                                                <input type="text" id="tda-user-uuid" name="tda_user_uuid" class="flex-1 p-2 bg-gray-800 border border-gray-600 rounded-md text-gray-400" readonly>
+                                                <button type="button" id="copy-uuid-button" title="Copy UUID" class="p-2 bg-gray-600 hover:bg-gray-500 rounded-md transition-colors">
+                                                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Action Button -->
-                    <div class="glass-panel rounded-xl p-6">
+                    <!-- Action Button - Always Visible -->
+                    <div class="glass-panel rounded-xl p-6 mt-6 flex-shrink-0">
                         <button id="reconnect-and-load-btn" type="button" disabled class="w-full px-6 py-4 rounded-md bg-gray-600 transition-colors font-semibold flex items-center justify-center text-white disabled:opacity-50 disabled:cursor-not-allowed enabled:bg-[#F15F22] enabled:hover:bg-[#D9501A]">
                             <svg id="reconnect-loading-spinner" class="w-5 h-5 mr-2 animate-spin hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            <span id="reconnect-button-text">Reconnect & Load</span>
+                            <span id="reconnect-button-text">Save & Connect</span>
                         </button>
                         <div id="reconnect-status" class="text-sm min-h-[1.25rem] mt-4 text-center"></div>
                     </div>

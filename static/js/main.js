@@ -103,8 +103,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     initializeEventListeners();
     initializeVoiceRecognition();
 
-    // Initialize new configuration UI
-    initializeConfigurationUI();
+    // Initialize new configuration UI (async - loads MCP servers from backend)
+    await initializeConfigurationUI();
 
     const promptEditorMenuItem = DOM.promptEditorButton.parentElement;
     promptEditorMenuItem.style.display = 'none';

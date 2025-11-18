@@ -58,7 +58,9 @@ class ConfigManager:
             "schema_version": self.CURRENT_SCHEMA_VERSION,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "last_modified": datetime.now(timezone.utc).isoformat(),
-            "rag_collections": []  # Empty - default collection created by RAGRetriever
+            "rag_collections": [],  # Empty - default collection created by RAGRetriever
+            "mcp_servers": [],  # MCP server configurations
+            "active_mcp_server_id": None  # ID of currently active MCP server
         }
     
     def load_config(self) -> Dict[str, Any]:
@@ -221,6 +223,113 @@ class ConfigManager:
             return False
         
         return self.save_rag_collections(collections)
+    
+    # ========================================================================
+    # MCP SERVER CONFIGURATION METHODS
+    # ========================================================================
+    
+    def get_mcp_servers(self) -> list:
+        """
+        Get all MCP server configurations.
+        
+        Returns:
+            List of MCP server configuration dictionaries
+        """
+        config = self.load_config()
+        return config.get("mcp_servers", [])
+    
+    def save_mcp_servers(self, servers: list) -> bool:
+        """
+        Save MCP server configurations.
+        
+        Args:
+            servers: List of MCP server configuration dictionaries
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        config = self.load_config()
+        config["mcp_servers"] = servers
+        return self.save_config(config)
+    
+    def add_mcp_server(self, server: Dict[str, Any]) -> bool:
+        """
+        Add a new MCP server configuration.
+        
+        Args:
+            server: MCP server configuration dictionary
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        servers = self.get_mcp_servers()
+        servers.append(server)
+        return self.save_mcp_servers(servers)
+    
+    def update_mcp_server(self, server_id: str, updates: Dict[str, Any]) -> bool:
+        """
+        Update an existing MCP server configuration.
+        
+        Args:
+            server_id: Unique ID of the server to update
+            updates: Dictionary of fields to update
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        servers = self.get_mcp_servers()
+        server = next((s for s in servers if s.get("id") == server_id), None)
+        
+        if not server:
+            app_logger.warning(f"MCP server with ID {server_id} not found for update")
+            return False
+        
+        server.update(updates)
+        return self.save_mcp_servers(servers)
+    
+    def remove_mcp_server(self, server_id: str) -> bool:
+        """
+        Remove an MCP server configuration.
+        
+        Args:
+            server_id: Unique ID of the server to remove
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        servers = self.get_mcp_servers()
+        original_count = len(servers)
+        servers = [s for s in servers if s.get("id") != server_id]
+        
+        if len(servers) == original_count:
+            app_logger.warning(f"MCP server with ID {server_id} not found for removal")
+            return False
+        
+        return self.save_mcp_servers(servers)
+    
+    def get_active_mcp_server_id(self) -> Optional[str]:
+        """
+        Get the ID of the currently active MCP server.
+        
+        Returns:
+            Active MCP server ID or None
+        """
+        config = self.load_config()
+        return config.get("active_mcp_server_id")
+    
+    def set_active_mcp_server_id(self, server_id: Optional[str]) -> bool:
+        """
+        Set the active MCP server ID.
+        
+        Args:
+            server_id: ID of the server to set as active, or None to clear
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        config = self.load_config()
+        config["active_mcp_server_id"] = server_id
+        return self.save_config(config)
 
 
 # Singleton instance

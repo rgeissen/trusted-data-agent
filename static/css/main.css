@@ -1144,6 +1144,40 @@ button[data-action="delete-mcp"]:hover {
     scroll-behavior: smooth;
 }
 
+/* Configuration tabs styling */
+.config-tab {
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.config-tab.active {
+    color: white;
+    border-color: #F15F22;
+}
+
+.config-tab:not(.active):hover {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.config-tab-content {
+    animation: fadeIn 0.3s ease;
+}
+
+.config-tab-content.hidden {
+    display: none;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* Grid responsiveness for LLM providers */
 @media (max-width: 768px) {
     #llm-providers-container {

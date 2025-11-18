@@ -94,12 +94,12 @@ class RAGRetriever:
     def _load_active_collections(self):
         """
         Loads and initializes enabled collections that match the current MCP server.
-        Only collections associated with the active MCP server are loaded.
+        Only collections associated with the active MCP server (by ID) are loaded.
         """
         collections_list = APP_STATE.get("rag_collections", [])
-        current_mcp_server = APP_CONFIG.CURRENT_MCP_SERVER_NAME
+        current_mcp_server_id = APP_CONFIG.CURRENT_MCP_SERVER_ID
         
-        logger.info(f"Loading RAG collections for MCP server: '{current_mcp_server}'")
+        logger.info(f"Loading RAG collections for MCP server ID: '{current_mcp_server_id}'")
         
         for coll_meta in collections_list:
             if not coll_meta.get("enabled", False):
@@ -107,11 +107,11 @@ class RAGRetriever:
             
             coll_id = coll_meta["id"]
             coll_name = coll_meta["collection_name"]
-            coll_mcp_server = coll_meta.get("mcp_server_id")
+            coll_mcp_server_id = coll_meta.get("mcp_server_id")
             
-            # Enforcement rule: Collection must match current MCP server
-            if coll_mcp_server != current_mcp_server:
-                logger.debug(f"Skipping collection '{coll_id}': associated with '{coll_mcp_server}', current server is '{current_mcp_server}'")
+            # Enforcement rule: Collection must match current MCP server ID
+            if coll_mcp_server_id != current_mcp_server_id:
+                logger.debug(f"Skipping collection '{coll_id}': associated with server ID '{coll_mcp_server_id}', current server ID is '{current_mcp_server_id}'")
                 continue
             
             try:
@@ -121,14 +121,14 @@ class RAGRetriever:
                     metadata={"hnsw:space": "cosine"}
                 )
                 self.collections[coll_id] = collection
-                logger.info(f"Loaded collection '{coll_id}' (ChromaDB: '{coll_name}', MCP: '{coll_mcp_server}')")
+                logger.info(f"Loaded collection '{coll_id}' (ChromaDB: '{coll_name}', MCP Server ID: '{coll_mcp_server_id}')")
             except Exception as e:
                 logger.error(f"Failed to load collection '{coll_id}': {e}", exc_info=True)
         
         if not self.collections:
-            logger.warning(f"No active RAG collections loaded for MCP server '{current_mcp_server}'!")
+            logger.warning(f"No active RAG collections loaded for MCP server ID '{current_mcp_server_id}'!")
         else:
-            logger.info(f"Loaded {len(self.collections)} collection(s) for MCP server '{current_mcp_server}'")
+            logger.info(f"Loaded {len(self.collections)} collection(s) for MCP server ID '{current_mcp_server_id}'")
         
         # Refresh vector stores for all collections if configured
         if APP_CONFIG.RAG_REFRESH_ON_STARTUP:
@@ -182,9 +182,9 @@ class RAGRetriever:
         # Persist to config file
         config_manager.save_rag_collections(collections_list)
         
-        # Create ChromaDB collection only if it matches the current MCP server
-        current_mcp_server = APP_CONFIG.CURRENT_MCP_SERVER_NAME
-        if mcp_server_id == current_mcp_server:
+        # Create ChromaDB collection only if it matches the current MCP server ID
+        current_mcp_server_id = APP_CONFIG.CURRENT_MCP_SERVER_ID
+        if mcp_server_id == current_mcp_server_id:
             try:
                 collection = self.client.get_or_create_collection(
                     name=collection_name,
@@ -192,7 +192,7 @@ class RAGRetriever:
                     metadata={"hnsw:space": "cosine"}
                 )
                 self.collections[collection_id] = collection
-                logger.info(f"Added and loaded new collection '{collection_id}' (ChromaDB: '{collection_name}', MCP: '{mcp_server_id}')")
+                logger.info(f"Added and loaded new collection '{collection_id}' (ChromaDB: '{collection_name}', MCP Server ID: '{mcp_server_id}'")
             except Exception as e:
                 logger.error(f"Failed to create collection '{collection_id}': {e}", exc_info=True)
                 # Remove from APP_STATE if creation failed
@@ -200,7 +200,7 @@ class RAGRetriever:
                 config_manager.save_rag_collections(APP_STATE["rag_collections"])
                 return None
         else:
-            logger.info(f"Added collection '{collection_id}' for MCP server '{mcp_server_id}' (not loaded - current server is '{current_mcp_server}')")
+            logger.info(f"Added collection '{collection_id}' for MCP server ID '{mcp_server_id}' (not loaded - current server ID is '{current_mcp_server_id}')")
         
         return collection_id
     
@@ -263,14 +263,14 @@ class RAGRetriever:
         # Persist to config file
         config_manager.save_rag_collections(collections_list)
         
-        # Check if collection matches current MCP server
-        current_mcp_server = APP_CONFIG.CURRENT_MCP_SERVER_NAME
+        # Check if collection matches current MCP server ID
+        current_mcp_server_id = APP_CONFIG.CURRENT_MCP_SERVER_ID
         
-        mcp_server_matches = (coll_mcp_server == current_mcp_server)
+        mcp_server_matches = (coll_mcp_server == current_mcp_server_id)
         
         if enabled and collection_id not in self.collections:
             if not mcp_server_matches:
-                logger.info(f"Collection '{collection_id}' enabled but not loaded: associated with '{coll_mcp_server}', current server is '{current_mcp_server}'")
+                logger.info(f"Collection '{collection_id}' enabled but not loaded: associated with server ID '{coll_mcp_server}', current server ID is '{current_mcp_server_id}'")
                 return True  # Config updated, but not loaded
             
             # Load the collection
@@ -298,8 +298,8 @@ class RAGRetriever:
         Unloads collections from previous MCP server and loads collections for current server.
         Should be called when the MCP server changes.
         """
-        current_mcp_server = APP_CONFIG.CURRENT_MCP_SERVER_NAME
-        logger.info(f"Reloading RAG collections for MCP server: '{current_mcp_server}'")
+        current_mcp_server_id = APP_CONFIG.CURRENT_MCP_SERVER_ID
+        logger.info(f"Reloading RAG collections for MCP server ID: '{current_mcp_server_id}'")
         
         # Clear currently loaded collections
         self.collections.clear()
@@ -310,7 +310,7 @@ class RAGRetriever:
         # Reload collections using the standard method
         self._load_active_collections()
         
-        logger.info(f"Reload complete. {len(self.collections)} collection(s) now loaded for MCP server '{current_mcp_server}'")
+        logger.info(f"Reload complete. {len(self.collections)} collection(s) now loaded for MCP server ID '{current_mcp_server_id}'")
 
     def refresh_vector_store(self, collection_id: Optional[str] = None):
         """

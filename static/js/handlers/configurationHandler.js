@@ -137,19 +137,39 @@ const LLM_PROVIDER_TEMPLATES = {
 // ============================================================================
 class ConfigurationState {
     constructor() {
-        this.mcpServers = this.loadMCPServers();
+        this.mcpServers = [];
         this.llmProviders = this.loadLLMProviders();
-        this.activeMCP = localStorage.getItem(STORAGE_KEYS.ACTIVE_MCP);
+        this.activeMCP = null;
         this.activeLLM = localStorage.getItem(STORAGE_KEYS.ACTIVE_LLM);
+        this.initialized = false;
     }
 
-    loadMCPServers() {
-        const stored = localStorage.getItem(STORAGE_KEYS.MCP_SERVERS);
-        return stored ? JSON.parse(stored) : [];
+    async initialize() {
+        if (this.initialized) return;
+        await this.loadMCPServers();
+        this.initialized = true;
     }
 
-    saveMCPServers() {
-        localStorage.setItem(STORAGE_KEYS.MCP_SERVERS, JSON.stringify(this.mcpServers));
+    async loadMCPServers() {
+        try {
+            const response = await fetch('/api/v1/mcp/servers');
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                this.mcpServers = result.servers || [];
+                this.activeMCP = result.active_server_id;
+                return this.mcpServers;
+            }
+        } catch (error) {
+            console.error('Failed to load MCP servers:', error);
+            this.mcpServers = [];
+        }
+        return this.mcpServers;
+    }
+
+    async saveMCPServers() {
+        // No-op: servers are saved individually via API
+        // Kept for compatibility
     }
 
     loadLLMProviders() {
@@ -169,10 +189,19 @@ class ConfigurationState {
         localStorage.setItem(STORAGE_KEYS.LLM_PROVIDERS, JSON.stringify(this.llmProviders));
     }
 
-    setActiveMCP(serverId) {
-        this.activeMCP = serverId;
-        localStorage.setItem(STORAGE_KEYS.ACTIVE_MCP, serverId);
-        updateReconnectButton();
+    async setActiveMCP(serverId) {
+        try {
+            const response = await fetch(`/api/v1/mcp/servers/${serverId}/activate`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                this.activeMCP = serverId;
+                updateReconnectButton();
+            }
+        } catch (error) {
+            console.error('Failed to set active MCP server:', error);
+        }
     }
 
     setActiveLLM(provider) {
@@ -181,28 +210,67 @@ class ConfigurationState {
         updateReconnectButton();
     }
 
-    addMCPServer(server) {
+    async addMCPServer(server) {
         server.id = server.id || generateId();
-        this.mcpServers.push(server);
-        this.saveMCPServers();
-        return server.id;
+        
+        try {
+            const response = await fetch('/api/v1/mcp/servers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(server)
+            });
+            
+            if (response.ok) {
+                // Reload servers from backend to get the updated list
+                await this.loadMCPServers();
+                return server.id;
+            } else {
+                const errorData = await response.json();
+                console.error('Failed to add MCP server:', errorData);
+                throw new Error(errorData.message || 'Failed to add MCP server');
+            }
+        } catch (error) {
+            console.error('Failed to add MCP server:', error);
+            throw error;
+        }
     }
 
-    removeMCPServer(serverId) {
-        this.mcpServers = this.mcpServers.filter(s => s.id !== serverId);
-        if (this.activeMCP === serverId) {
-            this.activeMCP = null;
-            localStorage.removeItem(STORAGE_KEYS.ACTIVE_MCP);
+    async removeMCPServer(serverId) {
+        try {
+            const response = await fetch(`/api/v1/mcp/servers/${serverId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                this.mcpServers = this.mcpServers.filter(s => s.id !== serverId);
+                if (this.activeMCP === serverId) {
+                    this.activeMCP = null;
+                }
+                return true;
+            }
+        } catch (error) {
+            console.error('Failed to remove MCP server:', error);
         }
-        this.saveMCPServers();
+        return false;
     }
 
-    updateMCPServer(serverId, updates) {
-        const server = this.mcpServers.find(s => s.id === serverId);
-        if (server) {
-            Object.assign(server, updates);
-            this.saveMCPServers();
+    async updateMCPServer(serverId, updates) {
+        try {
+            const response = await fetch(`/api/v1/mcp/servers/${serverId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates)
+            });
+            
+            if (response.ok) {
+                // Reload servers from backend to get the updated list
+                await this.loadMCPServers();
+                return true;
+            }
+        } catch (error) {
+            console.error('Failed to update MCP server:', error);
         }
+        return false;
     }
 
     updateLLMProvider(provider, data) {
@@ -536,7 +604,7 @@ export function showMCPServerModal(serverId = null) {
 
     const modal = document.getElementById('mcp-server-modal');
     modal.querySelector('#mcp-modal-cancel').addEventListener('click', () => modal.remove());
-    modal.querySelector('#mcp-modal-save').addEventListener('click', () => {
+    modal.querySelector('#mcp-modal-save').addEventListener('click', async () => {
         const data = {
             name: modal.querySelector('#mcp-modal-name').value.trim(),
             host: modal.querySelector('#mcp-modal-host').value.trim(),
@@ -549,15 +617,23 @@ export function showMCPServerModal(serverId = null) {
             return;
         }
 
-        if (isEdit) {
-            configState.updateMCPServer(serverId, data);
-        } else {
-            configState.addMCPServer(data);
-        }
+        try {
+            let success;
+            if (isEdit) {
+                success = await configState.updateMCPServer(serverId, data);
+            } else {
+                const result = await configState.addMCPServer(data);
+                success = result !== null && result !== undefined;
+            }
 
-        renderMCPServers();
-        modal.remove();
-        showNotification('success', `MCP server ${isEdit ? 'updated' : 'added'} successfully`);
+            if (success) {
+                renderMCPServers();
+                modal.remove();
+                showNotification('success', `MCP server ${isEdit ? 'updated' : 'added'} successfully`);
+            }
+        } catch (error) {
+            showNotification('error', `Failed to ${isEdit ? 'update' : 'add'} MCP server: ${error.message}`);
+        }
     });
 }
 
@@ -690,8 +766,25 @@ export async function reconnectAndLoad() {
     const mcpServer = configState.getActiveMCPServer();
     const llmProvider = configState.getActiveLLMProvider();
 
-    if (!mcpServer || !llmProvider) {
-        showNotification('error', 'Please select both an MCP server and LLM provider');
+    // Validate that both MCP server and LLM provider are configured
+    if (!mcpServer) {
+        showNotification('error', 'Please configure and select an MCP Server first (go to MCP Servers tab)');
+        return;
+    }
+
+    if (!llmProvider) {
+        showNotification('error', 'Please configure and select an LLM Provider first (go to LLM Providers tab)');
+        return;
+    }
+
+    // Additional validation for required fields
+    if (!mcpServer.host || !mcpServer.port) {
+        showNotification('error', 'MCP Server configuration is incomplete (missing host or port)');
+        return;
+    }
+
+    if (!llmProvider.credentials || Object.keys(llmProvider.credentials).length === 0) {
+        showNotification('error', 'LLM Provider credentials are missing or incomplete');
         return;
     }
 
@@ -711,6 +804,7 @@ export async function reconnectAndLoad() {
             model: llmProvider.model,
             ...llmProvider.credentials,
             server_name: mcpServer.name,
+            server_id: mcpServer.id, // Add unique server ID
             host: mcpServer.host,
             port: mcpServer.port,
             path: mcpServer.path,
@@ -809,7 +903,47 @@ export async function reconnectAndLoad() {
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
-export function initializeConfigurationUI() {
+
+/**
+ * Initialize configuration tabs
+ */
+function initializeConfigTabs() {
+    const tabs = document.querySelectorAll('.config-tab');
+    const tabContents = document.querySelectorAll('.config-tab-content');
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const targetTabId = tab.getAttribute('data-tab');
+            
+            // Update tab buttons
+            tabs.forEach(t => {
+                t.classList.remove('active', 'border-[#F15F22]', 'text-white');
+                t.classList.add('text-gray-400', 'border-transparent');
+            });
+            tab.classList.add('active', 'border-[#F15F22]', 'text-white');
+            tab.classList.remove('text-gray-400', 'border-transparent');
+            
+            // Update tab content
+            tabContents.forEach(content => {
+                if (content.id === targetTabId) {
+                    content.classList.remove('hidden');
+                    content.classList.add('active');
+                } else {
+                    content.classList.add('hidden');
+                    content.classList.remove('active');
+                }
+            });
+        });
+    });
+}
+
+export async function initializeConfigurationUI() {
+    // Initialize tabs
+    initializeConfigTabs();
+    
+    // Load MCP servers from backend first
+    await configState.initialize();
+    
     renderMCPServers();
     renderLLMProviders();
     updateReconnectButton();
