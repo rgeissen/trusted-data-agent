@@ -1,4 +1,4 @@
-2025-11-18 09:51:51,216 - --- REASON FOR CALL ---
+2025-11-18 10:15:19,797 - --- REASON FOR CALL ---
 No reason provided.
 --- RESPONSE ---
 ```json
@@ -22,13 +22,13 @@ No reason provided.
     "category": "Database Information"
   },
   "dba_tableSqlList": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "dba_tableUsageImpact": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "dba_userSqlList": {
-    "category": "Database Information"
+    "category": "User Management"
   },
   "qlty_columnSummary": {
     "category": "Data Quality"
@@ -55,16 +55,16 @@ No reason provided.
     "category": "Utilities"
   },
   "plot_line_chart": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "plot_pie_chart": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "plot_polar_chart": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "plot_radar_chart": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "base_columnDescription": {
     "category": "Database Information"
@@ -73,22 +73,22 @@ No reason provided.
     "category": "Database Information"
   },
   "base_readQuery": {
-    "category": "Utilities"
+    "category": "Query Execution"
   },
   "base_tableAffinity": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "base_tableDDL": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "base_tableList": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "base_tablePreview": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "base_tableUsage": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "sec_rolePermissions": {
     "category": "Security"
@@ -109,19 +109,19 @@ No reason provided.
     "category": "Performance"
   },
   "dba_featureUsage": {
-    "category": "Performance"
+    "category": "Usage Tracking"
   },
   "dba_userDelay": {
     "category": "Performance"
   },
   "dba_sessionInfo": {
-    "category": "Database Information"
+    "category": "User Management"
   },
   "dba_systemSpace": {
     "category": "Database Information"
   },
   "TDA_Charting": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "TDA_CurrentDate": {
     "category": "Utilities"
@@ -157,22 +157,22 @@ No reason provided.
     "category": "Database Information"
   },
   "dba_userActivityAnalysis": {
-    "category": "Performance"
+    "category": "User Management"
   },
   "dba_systemVoice": {
-    "category": "Performance"
+    "category": "System Information"
   },
   "_testMyServer": {
     "category": "Utilities"
   },
   "base_teradataQuery": {
-    "category": "Utilities"
+    "category": "Query Execution"
   },
   "base_query": {
-    "category": "Utilities"
+    "category": "Query Execution"
   },
   "base_tableBusinessDesc": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "base_databaseBusinessDesc": {
     "category": "Database Information"
