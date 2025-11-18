@@ -1,20 +1,21 @@
 {
-  "case_id": "fa1de19e-acc4-5219-9bfb-77f09f8f3ec4",
+  "case_id": "b0994ccd-6233-5873-86d9-81d4c81ba68f",
   "metadata": {
-    "session_id": "78932c52-fa4d-4212-b37d-27b4d6e0484b",
-    "turn_id": 2,
+    "session_id": "f5832bb5-69c8-4b2a-9488-c45160ee4e76",
+    "turn_id": 1,
     "is_success": true,
-    "task_id": "task-c41934cc-6c54-4228-a204-77666815ac80",
+    "task_id": "task-f871446c-1b02-4023-97bc-ee0b3251b1f1",
+    "collection_id": 0,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-11-18T10:07:54.606331+00:00",
+    "timestamp": "2025-11-18T11:08:30.283634+00:00",
     "llm_config": {
       "provider": "Google",
       "model": "gemini-2.0-flash",
-      "input_tokens": 9451,
-      "output_tokens": 121
+      "input_tokens": 8073,
+      "output_tokens": 105
     },
-    "is_most_efficient": false,
+    "is_most_efficient": true,
     "strategy_metrics": {
       "phase_count": 2,
       "steps_per_phase": {
@@ -25,15 +26,15 @@
     }
   },
   "intent": {
-    "user_query": "how many databases are on the system?"
+    "user_query": "what is the system version?"
   },
   "successful_strategy": {
     "phases": [
       {
         "phase": 1,
-        "goal": "Get a list of all databases in the Teradata System.",
+        "goal": "Get the Teradata database version information.",
         "relevant_tools": [
-          "base_databaseList"
+          "dba_databaseVersion"
         ],
         "arguments": {}
       },

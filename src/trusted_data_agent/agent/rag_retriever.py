@@ -4,16 +4,17 @@ import glob
 import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-# --- MODIFICATION START: Import uuid and copy ---
+# --- MODIFICATION START: Import uuid, copy, and datetime ---
 import uuid
 import copy
+from datetime import datetime, timezone
 # --- MODIFICATION END ---
 
 from sentence_transformers import SentenceTransformer
 import chromadb
 from chromadb.utils import embedding_functions
 
-from trusted_data_agent.core.config import APP_CONFIG
+from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
 
 # Configure a dedicated logger for the RAG retriever
 logger = logging.getLogger("rag_retriever")
@@ -24,9 +25,10 @@ class RAGRetriever:
         self.embedding_model_name = embedding_model_name
         self.persist_directory = Path(persist_directory).resolve() if persist_directory else None
 
+        # Create RAG cases directory if it doesn't exist
         if not self.rag_cases_dir.exists():
-            logger.error(f"RAG cases directory not found at: {self.rag_cases_dir}")
-            raise FileNotFoundError(f"RAG cases directory not found: {self.rag_cases_dir}")
+            logger.info(f"Creating RAG cases directory at: {self.rag_cases_dir}")
+            self.rag_cases_dir.mkdir(parents=True, exist_ok=True)
 
         # Initialize ChromaDB client
         if self.persist_directory:
@@ -43,46 +45,222 @@ class RAGRetriever:
         )
         logger.info(f"Embedding model loaded: {self.embedding_model_name}")
 
-        self.collection_name = "tda_rag_cases_collection"
-        self.collection = self.client.get_or_create_collection(
-            name=self.collection_name,
-            embedding_function=self.embedding_function,
-            metadata={"hnsw:space": "cosine"} # Use cosine similarity for retrieval
-        )
-        logger.info(f"ChromaDB collection '{self.collection_name}' ready.")
+        # --- MODIFICATION START: Support multiple collections ---
+        # Store collections as a dict: {collection_id: chromadb_collection_object}
+        self.collections = {}
+        
+        # Initialize default collection if not already in APP_STATE
+        self._ensure_default_collection()
+        
+        # Load all active collections from APP_STATE
+        self._load_active_collections()
+        # --- MODIFICATION END ---
 
+    def _ensure_default_collection(self):
+        """Ensures the default collection exists in APP_STATE."""
+        collections_list = APP_STATE.get("rag_collections", [])
+        
+        # Check if default collection already exists (ID = 0)
+        default_exists = any(c["id"] == 0 for c in collections_list)
+        
+        if not default_exists:
+            default_collection = {
+                "id": 0,  # Default collection always has ID 0
+                "name": "Default TDA RAG Cases",
+                "collection_name": APP_CONFIG.RAG_DEFAULT_COLLECTION_NAME,
+                "mcp_server_name": None,  # Not tied to specific MCP server
+                "enabled": True,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "description": "Default collection for TDA RAG cases"
+            }
+            collections_list.append(default_collection)
+            APP_STATE["rag_collections"] = collections_list
+            logger.info(f"Created default RAG collection with ID: 0")
+    
+    def get_collection_metadata(self, collection_id: int) -> Optional[Dict[str, Any]]:
+        """Get metadata for a specific collection by ID."""
+        collections_list = APP_STATE.get("rag_collections", [])
+        return next((c for c in collections_list if c["id"] == collection_id), None)
+    
+    def _load_active_collections(self):
+        """Loads and initializes all enabled collections from APP_STATE."""
+        collections_list = APP_STATE.get("rag_collections", [])
+        
+        for coll_meta in collections_list:
+            if coll_meta.get("enabled", False):
+                coll_id = coll_meta["id"]
+                coll_name = coll_meta["collection_name"]
+                
+                try:
+                    collection = self.client.get_or_create_collection(
+                        name=coll_name,
+                        embedding_function=self.embedding_function,
+                        metadata={"hnsw:space": "cosine"}
+                    )
+                    self.collections[coll_id] = collection
+                    logger.info(f"Loaded collection '{coll_id}' (ChromaDB: '{coll_name}')")
+                except Exception as e:
+                    logger.error(f"Failed to load collection '{coll_id}': {e}", exc_info=True)
+        
+        if not self.collections:
+            logger.warning("No active RAG collections loaded!")
+        
+        # Refresh vector stores for all collections if configured
         if APP_CONFIG.RAG_REFRESH_ON_STARTUP:
-            logger.info("RAG_REFRESH_ON_STARTUP is True. Refreshing vector store...")
-            self._maintain_vector_store()
+            logger.info("RAG_REFRESH_ON_STARTUP is True. Refreshing all vector stores...")
+            for coll_id in self.collections:
+                self._maintain_vector_store(coll_id)
         else:
-            logger.info("RAG_REFRESH_ON_STARTUP is False. Using cached vector store.")
+            logger.info("RAG_REFRESH_ON_STARTUP is False. Using cached vector stores.")
+    
+    def add_collection(self, name: str, mcp_server_name: Optional[str] = None, description: str = "") -> Optional[int]:
+        """
+        Adds a new RAG collection and enables it.
+        
+        Args:
+            name: Display name for the collection
+            mcp_server_name: Associated MCP server name
+            description: Collection description
+            
+        Returns:
+            The numeric collection ID if successful, None otherwise
+        """
+        # Generate unique numeric ID
+        collections_list = APP_STATE.get("rag_collections", [])
+        existing_ids = [c["id"] for c in collections_list if isinstance(c["id"], int)]
+        collection_id = max(existing_ids) + 1 if existing_ids else 1
+        
+        # Generate unique ChromaDB collection name
+        collection_name = f"tda_rag_coll_{collection_id}_{uuid.uuid4().hex[:6]}"
+        
+        new_collection = {
+            "id": collection_id,
+            "name": name,
+            "collection_name": collection_name,
+            "mcp_server_name": mcp_server_name,
+            "enabled": True,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "description": description
+        }
+        
+        # Add to APP_STATE
+        collections_list.append(new_collection)
+        APP_STATE["rag_collections"] = collections_list
+        
+        # Create ChromaDB collection
+        try:
+            collection = self.client.get_or_create_collection(
+                name=collection_name,
+                embedding_function=self.embedding_function,
+                metadata={"hnsw:space": "cosine"}
+            )
+            self.collections[collection_id] = collection
+            logger.info(f"Added new collection '{collection_id}' (ChromaDB: '{collection_name}')")
+            return collection_id
+        except Exception as e:
+            logger.error(f"Failed to create collection '{collection_id}': {e}", exc_info=True)
+            # Remove from APP_STATE if creation failed
+            APP_STATE["rag_collections"] = [c for c in collections_list if c["id"] != collection_id]
+            return None
+    
+    def remove_collection(self, collection_id: int):
+        """Removes a RAG collection (except default)."""
+        if collection_id == 0:  # Default collection is always ID 0
+            logger.warning("Cannot remove default collection")
+            return False
+        
+        collections_list = APP_STATE.get("rag_collections", [])
+        coll_meta = next((c for c in collections_list if c["id"] == collection_id), None)
+        
+        if not coll_meta:
+            logger.warning(f"Collection '{collection_id}' not found")
+            return False
+        
+        try:
+            # Delete from ChromaDB
+            self.client.delete_collection(name=coll_meta["collection_name"])
+            
+            # Remove from runtime
+            if collection_id in self.collections:
+                del self.collections[collection_id]
+            
+            # Remove from APP_STATE
+            APP_STATE["rag_collections"] = [c for c in collections_list if c["id"] != collection_id]
+            
+            logger.info(f"Removed collection '{collection_id}'")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to remove collection '{collection_id}': {e}", exc_info=True)
+            return False
+    
+    def toggle_collection(self, collection_id: int, enabled: bool):
+        """Enables or disables a RAG collection."""
+        collections_list = APP_STATE.get("rag_collections", [])
+        coll_meta = next((c for c in collections_list if c["id"] == collection_id), None)
+        
+        if not coll_meta:
+            logger.warning(f"Collection '{collection_id}' not found")
+            return False
+        
+        coll_meta["enabled"] = enabled
+        
+        if enabled and collection_id not in self.collections:
+            # Load the collection
+            try:
+                collection = self.client.get_or_create_collection(
+                    name=coll_meta["collection_name"],
+                    embedding_function=self.embedding_function,
+                    metadata={"hnsw:space": "cosine"}
+                )
+                self.collections[collection_id] = collection
+                logger.info(f"Enabled collection '{collection_id}'")
+            except Exception as e:
+                logger.error(f"Failed to enable collection '{collection_id}': {e}", exc_info=True)
+                return False
+        elif not enabled and collection_id in self.collections:
+            # Unload the collection
+            del self.collections[collection_id]
+            logger.info(f"Disabled collection '{collection_id}'")
+        
+        return True
 
-    def refresh_vector_store(self):
+    def refresh_vector_store(self, collection_id: Optional[str] = None):
         """
         Manually triggers the maintenance of the vector store.
+        If collection_id is None, refreshes all collections.
         """
-        logger.info("Manual refresh of vector store triggered.")
-        self._maintain_vector_store()
+        if collection_id:
+            logger.info(f"Manual refresh of vector store triggered for collection: {collection_id}")
+            self._maintain_vector_store(collection_id)
+        else:
+            logger.info("Manual refresh of all vector stores triggered.")
+            for coll_id in self.collections:
+                self._maintain_vector_store(coll_id)
 
-    def _maintain_vector_store(self):
+    def _maintain_vector_store(self, collection_id: str):
         """
-        Maintains the ChromaDB vector store by synchronizing it with the
+        Maintains the ChromaDB vector store for a specific collection by synchronizing it with the
         JSON case files on disk. It adds new cases, removes deleted ones,
         and updates existing ones if their metadata has changed.
         """
-        logger.info(f"Starting vector store maintenance for {self.rag_cases_dir}...")
+        if collection_id not in self.collections:
+            logger.warning(f"Cannot maintain vector store: collection '{collection_id}' not loaded")
+            return
+        
+        collection = self.collections[collection_id]
+        logger.info(f"Starting vector store maintenance for collection '{collection_id}' at {self.rag_cases_dir}...")
         
         # 1. Get current state from disk and DB
         disk_case_ids = {p.stem for p in self.rag_cases_dir.glob("case_*.json")}
-        db_results = self.collection.get(include=["metadatas"])
+        db_results = collection.get(include=["metadatas"])
         db_case_ids = set(db_results["ids"])
         db_metadatas = {db_results["ids"][i]: meta for i, meta in enumerate(db_results["metadatas"])}
 
         # 2. Identify cases to delete from DB
         ids_to_delete = list(db_case_ids - disk_case_ids)
         if ids_to_delete:
-            logger.info(f"Found {len(ids_to_delete)} stale cases to remove from DB.")
-            self.collection.delete(ids=ids_to_delete)
+            logger.info(f"Found {len(ids_to_delete)} stale cases to remove from collection '{collection_id}'.")
+            collection.delete(ids=ids_to_delete)
 
         # 3. Iterate through disk cases to add or update
         added_count = 0
@@ -110,9 +288,9 @@ class RAGRetriever:
                 # Decide whether to add or update
                 if case_id_stem not in db_case_ids:
                     # Add new case
-                    self.collection.add(documents=[document_content], metadatas=[metadata], ids=[case_id_stem])
+                    collection.add(documents=[document_content], metadatas=[metadata], ids=[case_id_stem])
                     added_count += 1
-                    logger.debug(f"Added new case {case_id_stem} to DB.")
+                    logger.debug(f"Added new case {case_id_stem} to collection '{collection_id}'.")
                 else:
                     # Check if update is needed by comparing the full content
                     existing_meta = db_metadatas.get(case_id_stem, {})
@@ -123,18 +301,18 @@ class RAGRetriever:
 
                     # If the file on disk is different from what's in the DB, update.
                     if case_data != existing_case_data:
-                        self.collection.update(
+                        collection.update(
                             ids=[case_id_stem],
                             metadatas=[metadata],
                             documents=[document_content] # Ensure embedding is updated too
                         )
                         updated_count += 1
-                        logger.info(f"Updated case {case_id_stem} in DB because content has changed.")
+                        logger.info(f"Updated case {case_id_stem} in collection '{collection_id}' because content has changed.")
 
             except Exception as e:
                 logger.error(f"Failed to process RAG case file {case_file.name}: {e}", exc_info=True)
         
-        logger.info(f"Vector store maintenance complete. Added: {added_count}, Updated: {updated_count}, Removed: {len(ids_to_delete)}.")
+        logger.info(f"Vector store maintenance complete for '{collection_id}'. Added: {added_count}, Updated: {updated_count}, Removed: {len(ids_to_delete)}.")
 
     def _summarize_strategy(self, case_data: Dict[str, Any]) -> str:
         """
@@ -159,46 +337,61 @@ class RAGRetriever:
     def retrieve_examples(self, query: str, k: int = 1, min_score: float = 0.7) -> List[Dict[str, Any]]:
         """
         Retrieves the top-k most relevant and efficient RAG cases based on the query.
+        Queries all active collections and aggregates results by similarity score.
         """
         logger.info(f"Retrieving top {k} RAG examples for query: '{query}' (min_score: {min_score})")
         
-        # --- MODIFICATION START: Fix ChromaDB $and syntax ---
-        query_results = self.collection.query(
-            query_texts=[query],
-            n_results=k * 10, # Retrieve more candidates to filter
-            where={"$and": [
-                {"strategy_type": {"$eq": "successful"}},
-                {"is_most_efficient": {"$eq": True}}
-            ]}, # Only retrieve successful and most efficient cases
-            include=["metadatas", "distances"]
-        )
-        # --- MODIFICATION END ---
-
+        if not self.collections:
+            logger.warning("No active collections to retrieve examples from")
+            return []
+        
+        # --- MODIFICATION START: Query all active collections ---
         all_candidate_cases = []
-        if query_results and query_results["ids"] and query_results["ids"][0]:
-            for i in range(len(query_results["ids"][0])):
-                case_id = query_results["ids"][0][i]
-                metadata = query_results["metadatas"][0][i]
-                distance = query_results["distances"][0][i]
+        
+        for collection_id, collection in self.collections.items():
+            try:
+                query_results = collection.query(
+                    query_texts=[query],
+                    n_results=k * 10,  # Retrieve more candidates to filter
+                    where={"$and": [
+                        {"strategy_type": {"$eq": "successful"}},
+                        {"is_most_efficient": {"$eq": True}}
+                    ]},  # Only retrieve successful and most efficient cases
+                    include=["metadatas", "distances"]
+                )
                 
-                similarity_score = 1 - distance 
+                if query_results and query_results["ids"] and query_results["ids"][0]:
+                    for i in range(len(query_results["ids"][0])):
+                        case_id = query_results["ids"][0][i]
+                        metadata = query_results["metadatas"][0][i]
+                        distance = query_results["distances"][0][i]
+                        
+                        similarity_score = 1 - distance 
 
-                if similarity_score < min_score:
-                    logger.debug(f"Skipping case {case_id} due to low similarity score: {similarity_score:.2f}")
-                    continue
-                
-                full_case_data = json.loads(metadata["full_case_data"])
-                
-                all_candidate_cases.append({
-                    "case_id": case_id,
-                    "user_query": metadata["user_query"],
-                    "strategy_type": metadata.get("strategy_type", "unknown"),
-                    "full_case_data": full_case_data,
-                    "similarity_score": similarity_score,
-                    "is_most_efficient": metadata.get("is_most_efficient"),
-                    "had_plan_improvements": full_case_data.get("metadata", {}).get("had_plan_improvements", False),
-                    "had_tactical_improvements": full_case_data.get("metadata", {}).get("had_tactical_improvements", False)
-                })
+                        if similarity_score < min_score:
+                            logger.debug(f"Skipping case {case_id} from collection '{collection_id}' due to low similarity score: {similarity_score:.2f}")
+                            continue
+                        
+                        full_case_data = json.loads(metadata["full_case_data"])
+                        
+                        all_candidate_cases.append({
+                            "case_id": case_id,
+                            "collection_id": collection_id,  # Track which collection this came from
+                            "user_query": metadata["user_query"],
+                            "strategy_type": metadata.get("strategy_type", "unknown"),
+                            "full_case_data": full_case_data,
+                            "similarity_score": similarity_score,
+                            "is_most_efficient": metadata.get("is_most_efficient"),
+                            "had_plan_improvements": full_case_data.get("metadata", {}).get("had_plan_improvements", False),
+                            "had_tactical_improvements": full_case_data.get("metadata", {}).get("had_tactical_improvements", False)
+                        })
+            except Exception as e:
+                logger.error(f"Error querying collection '{collection_id}': {e}", exc_info=True)
+        
+        if not all_candidate_cases:
+            logger.info("No candidate cases found across all collections")
+            return []
+        # --- MODIFICATION END ---
         
         # Sort all candidates by similarity score first
         all_candidate_cases.sort(key=lambda x: x["similarity_score"], reverse=True)
@@ -226,6 +419,15 @@ class RAGRetriever:
         else:
             final_candidates = other_successful_cases
             logger.debug(f"No specific improvement categories found, returning {len(other_successful_cases)} other successful cases.")
+
+        # Enrich with collection metadata
+        for case in final_candidates[:k]:
+            coll_id = case.get("collection_id")
+            if coll_id:
+                coll_meta = self.get_collection_metadata(coll_id)
+                if coll_meta:
+                    case["collection_name"] = coll_meta.get("name")
+                    case["collection_mcp_server"] = coll_meta.get("mcp_server_name")
 
         return final_candidates[:k]
 
@@ -267,10 +469,14 @@ class RAGRetriever:
 
     # --- MODIFICATION START: Add real-time processing methods ---
     
-    def _extract_case_from_turn_summary(self, turn_summary: dict) -> dict | None:
+    def _extract_case_from_turn_summary(self, turn_summary: dict, collection_id: Optional[int] = None) -> dict | None:
         """
         Core logic to transform a raw turn_summary log into a clean Case Study.
         Adapted from rag_miner.py's _extract_case_study.
+        
+        Args:
+            turn_summary: The turn data to process
+            collection_id: The collection this case will belong to (defaults to 0)
         """
         try:
             turn = turn_summary
@@ -400,8 +606,9 @@ class RAGRetriever:
                 "case_id": case_id,
                 "metadata": {
                     "session_id": session_id, "turn_id": turn.get("turn"), "is_success": is_success,
-                    # --- MODIFICATION START: Add task_id ---
+                    # --- MODIFICATION START: Add task_id and collection_id ---
                     "task_id": turn.get("task_id"),
+                    "collection_id": collection_id if collection_id is not None else 0,
                     # --- MODIFICATION END ---
                     "had_plan_improvements": had_plan_improvements, "had_tactical_improvements": had_tactical_improvements,
                     "timestamp": turn.get("timestamp"),
@@ -464,8 +671,9 @@ class RAGRetriever:
             "user_query": case_study["intent"]["user_query"],
             "strategy_type": strategy_type,
             "timestamp": case_study["metadata"]["timestamp"],
-            # --- MODIFICATION START: Add task_id ---
+            # --- MODIFICATION START: Add task_id and collection_id ---
             "task_id": case_study["metadata"].get("task_id"),
+            "collection_id": case_study["metadata"].get("collection_id", 0),
             # --- MODIFICATION END ---
             "is_most_efficient": case_study["metadata"].get("is_most_efficient", False),
             "had_plan_improvements": case_study["metadata"].get("had_plan_improvements", False),
@@ -476,37 +684,48 @@ class RAGRetriever:
         }
         return metadata
 
-    async def process_turn_for_rag(self, turn_summary: dict):
+    async def process_turn_for_rag(self, turn_summary: dict, collection_id: Optional[int] = None):
         """
         The main "consumer" method. It processes a single turn summary,
         determines its efficiency, and transactionally updates the vector store.
+        If collection_id is not specified, uses the default collection (ID 0).
         """
         try:
-            # 1. Extract & Filter
-            case_study = self._extract_case_from_turn_summary(turn_summary)
+            # 1. Determine which collection to use first
+            if collection_id is None:
+                collection_id = 0  # Default collection ID
+            
+            # 2. Extract & Filter (pass collection_id so it's stored in case metadata)
+            case_study = self._extract_case_from_turn_summary(turn_summary, collection_id)
             
             if not case_study or "successful_strategy" not in case_study:
                 logger.debug("Skipping RAG processing: Turn was not a successful strategy.")
                 return
 
-            # 2. Get new case data
+            # 3. Verify collection is active
+
+            if collection_id not in self.collections:
+                logger.warning(f"Collection '{collection_id}' not found or not active. Skipping RAG processing.")
+                return
+            
+            collection = self.collections[collection_id]
+
+            # 3. Get new case data
             new_case_id = case_study["case_id"]
             new_query = case_study["intent"]["user_query"]
             new_tokens = case_study["metadata"].get("llm_config", {}).get("output_tokens", 0)
             new_document = new_query # The document we embed is the user query
             
-            logger.info(f"Processing RAG case {new_case_id} for query: '{new_query[:50]}...' (Tokens: {new_tokens})")
+            logger.info(f"Processing RAG case {new_case_id} for collection '{collection_id}', query: '{new_query[:50]}...' (Tokens: {new_tokens})")
 
-            # 3. Query ChromaDB for existing "most efficient"
-            # --- MODIFICATION START: Fix ChromaDB $and syntax ---
-            existing_cases = self.collection.get(
+            # 4. Query ChromaDB for existing "most efficient" in this collection
+            existing_cases = collection.get(
                 where={"$and": [
                     {"user_query": {"$eq": new_query}},
                     {"is_most_efficient": {"$eq": True}}
                 ]},
                 include=["metadatas"]
             )
-            # --- MODIFICATION END ---
 
             old_best_case_id = None
             old_best_case_tokens = float('inf')
@@ -515,7 +734,7 @@ class RAGRetriever:
                 old_best_case_id = existing_cases["ids"][0]
                 old_best_case_tokens = existing_cases["metadatas"][0].get("output_tokens", float('inf'))
 
-            # 4. Compare & Decide
+            # 5. Compare & Decide
             id_to_demote = None
             if new_tokens < old_best_case_tokens:
                 logger.info(f"New case {new_case_id} is MORE efficient ({new_tokens} tokens) than old case {old_best_case_id} ({old_best_case_tokens} tokens).")
@@ -527,24 +746,24 @@ class RAGRetriever:
             
             new_metadata = self._prepare_chroma_metadata(case_study)
 
-            # 5. Transact with ChromaDB
-            # Step 5a: Upsert the new case
-            self.collection.upsert(
+            # 6. Transact with ChromaDB
+            # Step 6a: Upsert the new case
+            collection.upsert(
                 ids=[new_case_id],
                 documents=[new_document],
                 metadatas=[new_metadata]
             )
-            logger.debug(f"Upserted new case {new_case_id} with is_most_efficient={new_metadata['is_most_efficient']}.")
+            logger.debug(f"Upserted new case {new_case_id} to collection '{collection_id}' with is_most_efficient={new_metadata['is_most_efficient']}.")
 
-            # Step 5b: Demote the old case if necessary
+            # Step 6b: Demote the old case if necessary
             if id_to_demote:
                 logger.info(f"Demoting old best case: {id_to_demote}")
                 # We must fetch the *full metadata* for the old case to update it
-                old_case_meta_result = self.collection.get(ids=[id_to_demote], include=["metadatas"])
+                old_case_meta_result = collection.get(ids=[id_to_demote], include=["metadatas"])
                 if old_case_meta_result["metadatas"]:
                     meta_to_update = old_case_meta_result["metadatas"][0]
                     meta_to_update["is_most_efficient"] = False
-                    self.collection.update(
+                    collection.update(
                         ids=[id_to_demote],
                         metadatas=[meta_to_update]
                     )
@@ -552,7 +771,9 @@ class RAGRetriever:
                 else:
                     logger.warning(f"Could not find old case {id_to_demote} to demote it.")
             
-            # 6. Save the case study JSON to disk
+            # 7. Save the case study JSON to disk
+            # Ensure the directory exists before writing
+            self.rag_cases_dir.mkdir(parents=True, exist_ok=True)
             output_path = self.rag_cases_dir / f"case_{new_case_id}.json"
             with open(output_path, 'w', encoding='utf-8') as f:
                 json.dump(case_study, f, indent=2)
@@ -560,8 +781,6 @@ class RAGRetriever:
 
         except Exception as e:
             logger.error(f"Error during real-time RAG processing: {e}", exc_info=True)
-    
-    # --- MODIFICATION END ---
 
 
 # Example Usage (for testing purposes)

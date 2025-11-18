@@ -369,13 +369,126 @@ async def cancel_task(task_id: str):
         # Ensure final status reflects completion if missed
         if task_status_dict.get("status") not in ["complete", "error", "cancelled"]:
              task_status_dict["status"] = "complete" # Or infer from result if possible
-        return jsonify({"status": "info", "message": "Task already completed."}), 200
+        return jsonify({"status": "success", "message": "Task already completed."}), 200
     else:
         # Task might exist in background_tasks but not in active_tasks if already finished/cancelled
         current_status = task_status_dict.get("status", "unknown")
         if current_status in ["complete", "error", "cancelled"]:
              app_logger.info(f"REST cancellation request for task {task_id} (user {user_uuid}) ignored: task already finished with status '{current_status}'.")
-             return jsonify({"status": "info", "message": f"Task already finished ({current_status})."}), 200
+             return jsonify({"status": "success", "message": f"Task already finished ({current_status})."}), 200
         else:
             app_logger.warning(f"REST cancellation request for task {task_id} (user {user_uuid}) failed: No active asyncio task found, status is '{current_status}'.")
             return jsonify({"status": "error", "message": "No active running task found for this task ID."}), 404
+
+
+# --- RAG Collection Management Endpoints ---
+
+@rest_api_bp.route("/v1/rag/collections", methods=["GET"])
+async def get_rag_collections():
+    """Get all RAG collections."""
+    try:
+        collections = APP_STATE.get("rag_collections", [])
+        return jsonify({"status": "success", "collections": collections}), 200
+    except Exception as e:
+        app_logger.error(f"Error getting RAG collections: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/rag/collections", methods=["POST"])
+async def create_rag_collection():
+    """Create a new RAG collection."""
+    try:
+        data = await request.get_json()
+        
+        # Validate required fields (ID is now auto-generated)
+        if not data.get("name"):
+            return jsonify({"status": "error", "message": "Collection name is required"}), 400
+        
+        name = data["name"]
+        mcp_server_name = data.get("mcp_server_name")
+        description = data.get("description", "")
+        
+        # Add collection via RAG retriever (ID is auto-generated)
+        retriever = APP_STATE.get("rag_retriever_instance")
+        if not retriever:
+            return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
+        
+        collection_id = retriever.add_collection(name, mcp_server_name, description)
+        
+        if collection_id is not None:
+            app_logger.info(f"Created RAG collection with ID: {collection_id}")
+            return jsonify({"status": "success", "message": "Collection created successfully", "collection_id": collection_id}), 201
+        else:
+            return jsonify({"status": "error", "message": "Failed to create collection"}), 500
+            
+    except Exception as e:
+        app_logger.error(f"Error creating RAG collection: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/rag/collections/<collection_id>", methods=["DELETE"])
+async def delete_rag_collection(collection_id: str):
+    """Delete a RAG collection."""
+    try:
+        retriever = APP_STATE.get("rag_retriever_instance")
+        if not retriever:
+            return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
+        
+        success = retriever.remove_collection(collection_id)
+        
+        if success:
+            app_logger.info(f"Deleted RAG collection: {collection_id}")
+            return jsonify({"status": "success", "message": "Collection deleted successfully"}), 200
+        else:
+            return jsonify({"status": "error", "message": "Failed to delete collection or collection not found"}), 404
+            
+    except Exception as e:
+        app_logger.error(f"Error deleting RAG collection: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/rag/collections/<collection_id>/toggle", methods=["POST"])
+async def toggle_rag_collection(collection_id: str):
+    """Enable or disable a RAG collection."""
+    try:
+        data = await request.get_json()
+        enabled = data.get("enabled")
+        
+        if enabled is None:
+            return jsonify({"status": "error", "message": "Field 'enabled' is required"}), 400
+        
+        retriever = APP_STATE.get("rag_retriever_instance")
+        if not retriever:
+            return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
+        
+        success = retriever.toggle_collection(collection_id, enabled)
+        
+        if success:
+            action = "enabled" if enabled else "disabled"
+            app_logger.info(f"{action.capitalize()} RAG collection: {collection_id}")
+            return jsonify({"status": "success", "message": f"Collection {action} successfully"}), 200
+        else:
+            return jsonify({"status": "error", "message": "Failed to toggle collection or collection not found"}), 404
+            
+    except Exception as e:
+        app_logger.error(f"Error toggling RAG collection: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/rag/collections/<collection_id>/refresh", methods=["POST"])
+async def refresh_rag_collection(collection_id: str):
+    """Refresh the vector store for a specific RAG collection."""
+    try:
+        retriever = APP_STATE.get("rag_retriever_instance")
+        if not retriever:
+            return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
+        
+        # Run refresh in background to avoid timeout
+        asyncio.create_task(asyncio.to_thread(retriever.refresh_vector_store, collection_id))
+        
+        app_logger.info(f"Started refresh for RAG collection: {collection_id}")
+        return jsonify({"status": "success", "message": "Collection refresh started"}), 202
+            
+    except Exception as e:
+        app_logger.error(f"Error refreshing RAG collection: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500

@@ -54,7 +54,8 @@ class AppConfig:
     RAG_CASES_DIR = "rag/tda_rag_cases"
     RAG_PERSIST_DIR = ".chromadb_rag_cache"
     RAG_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
-    RAG_NUM_EXAMPLES = 3 # Number of few-shot examples to retrieve
+    RAG_NUM_EXAMPLES = 3 # Total number of few-shot examples to retrieve across all active collections
+    RAG_DEFAULT_COLLECTION_NAME = "tda_rag_cases_collection" # ChromaDB collection name for default collection (ID 0)
 
 
     # --- Initial State Configuration ---
@@ -135,6 +136,9 @@ APP_STATE = {
     # Asynchronous RAG processing queue and singleton instance
     "rag_processing_queue": asyncio.Queue(),
     "rag_retriever_instance": None,
+    # RAG collections configuration: list of collection metadata
+    # Each collection: {id, name, collection_name, mcp_server_name, enabled, created_at, description}
+    "rag_collections": [],
     # --- MODIFICATION END ---
 
     # Concurrency lock for the configuration process

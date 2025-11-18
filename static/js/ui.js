@@ -1863,7 +1863,7 @@ async function loadRagCollections() {
         if (DOM.ragMaintenanceEmptyHint) {
             DOM.ragMaintenanceEmptyHint.textContent = 'Loading collections...';
         }
-        const res = await fetch('/rag/collections');
+        const res = await fetch('/api/v1/rag/collections');
         const data = await res.json();
         const collections = (data && data.collections) ? data.collections : [];
         DOM.ragMaintenanceCollectionsContainer.innerHTML = '';
@@ -1876,34 +1876,113 @@ async function loadRagCollections() {
         }
         collections.forEach(col => {
             const card = document.createElement('div');
-            card.className = 'glass-panel rounded-xl p-4 flex flex-col gap-2 border border-white/10 hover:border-teradata-orange transition-colors';
+            card.className = 'glass-panel rounded-xl p-4 flex flex-col gap-3 border border-white/10 hover:border-teradata-orange transition-colors';
+            
+            // Header with title and status badge
+            const header = document.createElement('div');
+            header.className = 'flex items-start justify-between gap-2';
+            
+            const titleSection = document.createElement('div');
+            titleSection.className = 'flex-1';
+            
             const title = document.createElement('h2');
             title.className = 'text-lg font-semibold text-white';
             title.textContent = col.name;
-            const count = document.createElement('p');
-            count.className = 'text-sm text-gray-300';
-            count.textContent = `Documents: ${col.count ?? 'N/A'}`;
+            
+            const collectionId = document.createElement('p');
+            collectionId.className = 'text-xs text-gray-500';
+            collectionId.textContent = `Collection ID: ${col.id}`;
+            
+            titleSection.appendChild(title);
+            titleSection.appendChild(collectionId);
+            
+            const statusBadge = document.createElement('span');
+            statusBadge.className = col.enabled 
+                ? 'px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400' 
+                : 'px-2 py-1 text-xs rounded-full bg-gray-500/20 text-gray-400';
+            statusBadge.textContent = col.enabled ? 'Active' : 'Disabled';
+            
+            header.appendChild(titleSection);
+            header.appendChild(statusBadge);
+            
+            // MCP Server info
+            const mcpInfo = document.createElement('p');
+            mcpInfo.className = 'text-sm text-gray-300';
+            mcpInfo.innerHTML = `<span class="text-gray-500">MCP Server:</span> ${col.mcp_server_name || 'None'}`;
+            
+            // Description (if exists)
+            if (col.description) {
+                const desc = document.createElement('p');
+                desc.className = 'text-xs text-gray-400';
+                desc.textContent = col.description;
+                card.appendChild(desc);
+            }
+            
+            // Metadata (collection_name from ChromaDB)
             const meta = document.createElement('p');
-            meta.className = 'text-xs text-gray-500 break-all';
-            meta.textContent = col.metadata && Object.keys(col.metadata).length ? `Metadata: ${JSON.stringify(col.metadata)}` : 'Metadata: none';
+            meta.className = 'text-xs text-gray-500';
+            meta.textContent = `ChromaDB: ${col.collection_name}`;
+            
+            // Actions
             const actions = document.createElement('div');
-            actions.className = 'mt-2 flex gap-2';
+            actions.className = 'mt-2 flex gap-2 flex-wrap';
+            
+            // Toggle enable/disable button
+            const toggleBtn = document.createElement('button');
+            toggleBtn.type = 'button';
+            toggleBtn.className = col.enabled
+                ? 'px-3 py-1 rounded-md bg-yellow-600 hover:bg-yellow-500 text-sm text-white'
+                : 'px-3 py-1 rounded-md bg-green-600 hover:bg-green-500 text-sm text-white';
+            toggleBtn.textContent = col.enabled ? 'Disable' : 'Enable';
+            toggleBtn.addEventListener('click', () => {
+                if (window.ragCollectionManagement) {
+                    window.ragCollectionManagement.toggleRagCollection(col.id, col.enabled);
+                }
+            });
+            
+            // Refresh button
             const refreshBtn = document.createElement('button');
             refreshBtn.type = 'button';
             refreshBtn.className = 'px-3 py-1 rounded-md bg-gray-700 hover:bg-gray-600 text-sm text-gray-200';
             refreshBtn.textContent = 'Refresh';
-            refreshBtn.addEventListener('click', () => loadRagCollections());
+            refreshBtn.addEventListener('click', () => {
+                if (window.ragCollectionManagement) {
+                    window.ragCollectionManagement.refreshRagCollection(col.id, col.name);
+                }
+            });
+            
+            // Inspect button
             const inspectBtn = document.createElement('button');
             inspectBtn.type = 'button';
             inspectBtn.className = 'px-3 py-1 rounded-md bg-[#F15F22] hover:bg-[#D9501A] text-sm text-white';
             inspectBtn.textContent = 'Inspect';
             inspectBtn.addEventListener('click', () => {
-                openCollectionInspection(col.name);
+                openCollectionInspection(col.collection_name);
             });
+            
+            // Delete button (disabled for default collection ID 0)
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.className = col.id === 0
+                ? 'px-3 py-1 rounded-md bg-gray-800 text-sm text-gray-600 cursor-not-allowed'
+                : 'px-3 py-1 rounded-md bg-red-600 hover:bg-red-500 text-sm text-white';
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.disabled = col.id === 0;
+            if (col.id !== 0) {
+                deleteBtn.addEventListener('click', () => {
+                    if (window.ragCollectionManagement) {
+                        window.ragCollectionManagement.deleteRagCollection(col.id, col.name);
+                    }
+                });
+            }
+            
+            actions.appendChild(toggleBtn);
             actions.appendChild(refreshBtn);
             actions.appendChild(inspectBtn);
-            card.appendChild(title);
-            card.appendChild(count);
+            actions.appendChild(deleteBtn);
+            
+            card.appendChild(header);
+            card.appendChild(mcpInfo);
             card.appendChild(meta);
             card.appendChild(actions);
             DOM.ragMaintenanceCollectionsContainer.appendChild(card);
@@ -1976,7 +2055,7 @@ async function fetchAndRenderCollectionRows({ collection, query = '', refresh = 
         const res = await fetch(`/rag/collections/${encodeURIComponent(collection)}/rows?${params.toString()}`);
         const data = await res.json();
         if (data.error) throw new Error(data.error);
-        renderCollectionRows(data.rows || [], data.total, query, collectionName);
+        renderCollectionRows(data.rows || [], data.total, query, collection);
     } catch (e) {
         console.error('Failed to fetch collection rows', e);
         if (DOM.ragCollectionTableBody) {

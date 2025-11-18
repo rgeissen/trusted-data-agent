@@ -1,4 +1,4 @@
-2025-11-18 11:29:44,135 - --- REASON FOR CALL ---
+2025-11-18 12:13:22,862 - --- REASON FOR CALL ---
 No reason provided.
 --- RESPONSE ---
 ```json
@@ -19,16 +19,16 @@ No reason provided.
     "category": "Performance"
   },
   "dba_tableSpace": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "dba_tableSqlList": {
-    "category": "Utilities"
+    "category": "Table Management"
   },
   "dba_tableUsageImpact": {
-    "category": "Utilities"
+    "category": "Table Management"
   },
   "dba_userSqlList": {
-    "category": "Utilities"
+    "category": "User Management"
   },
   "qlty_columnSummary": {
     "category": "Data Quality"
@@ -54,7 +54,7 @@ No reason provided.
   "tmpl_nameOfTool": {
     "category": "Utilities"
   },
-    "plot_line_chart": {
+  "plot_line_chart": {
     "category": "Visualization"
   },
   "plot_pie_chart": {
@@ -76,19 +76,19 @@ No reason provided.
     "category": "Utilities"
   },
   "base_tableAffinity": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "base_tableDDL": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "base_tableList": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "base_tablePreview": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "base_tableUsage": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "sec_rolePermissions": {
     "category": "Security"
@@ -115,9 +115,9 @@ No reason provided.
     "category": "Performance"
   },
   "dba_sessionInfo": {
-    "category": "Utilities"
+    "category": "User Management"
   },
-    "dba_systemSpace": {
+  "dba_systemSpace": {
     "category": "Database Information"
   },
   "TDA_Charting": {
@@ -145,25 +145,25 @@ No reason provided.
     "category": "Reporting"
   },
   "dba_tableArchive": {
-    "category": "Archiving"
+    "category": "Table Management"
   },
   "dba_databaseLineage": {
     "category": "Database Information"
   },
   "dba_tableDropImpact": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "dba_databaseHealthAssessment": {
-    "category": "Reporting"
+    "category": "Database Information"
   },
   "dba_userActivityAnalysis": {
-    "category": "Utilities"
+    "category": "User Management"
   },
   "dba_systemVoice": {
-    "category": "Reporting"
+    "category": "Utilities"
   },
   "_testMyServer": {
-    "category": "Testing"
+    "category": "Utilities"
   },
   "base_teradataQuery": {
     "category": "Utilities"
@@ -172,7 +172,7 @@ No reason provided.
     "category": "Utilities"
   },
   "base_tableBusinessDesc": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "base_databaseBusinessDesc": {
     "category": "Database Information"
@@ -181,10 +181,10 @@ No reason provided.
     "category": "Data Quality"
   },
   "tdvs_tools_prompt": {
-    "category": "Vector Store"
+    "category": "Utilities"
   },
   "tdvs_rag_prompt": {
-    "category": "Vector Store"
+    "category": "Utilities"
   }
 }
 ```

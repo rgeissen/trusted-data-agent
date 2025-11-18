@@ -395,7 +395,15 @@
 
             <div id="rag-maintenance-view" class="app-view w-full h-full p-8">
                 <div class="max-w-7xl mx-auto">
-                    <h1 class="text-3xl font-bold text-white header-title">Available Collections</h1>
+                    <div class="flex items-center justify-between mb-6">
+                        <h1 class="text-3xl font-bold text-white header-title">Available Collections</h1>
+                        <button id="add-rag-collection-btn" type="button" class="px-4 py-2 rounded-md bg-[#F15F22] hover:bg-[#D9501A] text-white font-medium text-sm flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Add Collection
+                        </button>
+                    </div>
                     <div id="rag-maintenance-collections-container" class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                         <!-- Dynamic ChromaDB collection cards will be injected here -->
                         <div class="col-span-full text-gray-400 text-sm" id="rag-maintenance-empty-hint">Loading collections...</div>
@@ -814,6 +822,64 @@
         </div>
     </div>
     
+    <!-- Add RAG Collection Modal -->
+    <div id="add-rag-collection-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
+        <div id="add-rag-collection-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-lg p-6 transform scale-95 opacity-0">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-white">Add RAG Collection</h2>
+                <button type="button" id="add-rag-collection-modal-close" class="p-2 rounded-full text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <form id="add-rag-collection-form" class="space-y-4">
+                <div>
+                    <label for="rag-collection-name" class="block text-sm font-medium text-gray-300 mb-2">
+                        Collection Name <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" id="rag-collection-name" name="name" required
+                           class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white"
+                           placeholder="e.g., Teradata Query Patterns">
+                </div>
+                
+                <div>
+                    <label for="rag-collection-mcp-server" class="block text-sm font-medium text-gray-300 mb-2">
+                        Associated MCP Server <span class="text-red-400">*</span>
+                    </label>
+                    <select id="rag-collection-mcp-server" name="mcp_server_name" required
+                            class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white">
+                        <option value="">Select an MCP Server...</option>
+                        <!-- Options will be populated dynamically -->
+                    </select>
+                    <p class="mt-1 text-xs text-gray-400">This collection will store RAG cases for the selected MCP server</p>
+                </div>
+                
+                <div>
+                    <label for="rag-collection-description" class="block text-sm font-medium text-gray-300 mb-2">
+                        Description (Optional)
+                    </label>
+                    <textarea id="rag-collection-description" name="description" rows="3"
+                              class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white resize-none"
+                              placeholder="Brief description of this collection's purpose..."></textarea>
+                </div>
+                
+                <!-- Modal Footer -->
+                <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-600">
+                    <button type="button" id="add-rag-collection-cancel" class="px-4 py-2 rounded-md bg-gray-600 hover:bg-gray-500 transition-colors font-semibold text-white">
+                        Cancel
+                    </button>
+                    <button type="submit" id="add-rag-collection-submit" class="px-4 py-2 rounded-md bg-teradata-orange hover:bg-teradata-orange-dark transition-colors font-semibold text-white">
+                        Create Collection
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
     <!-- MODIFICATION: Config Modal Overlay is REMOVED -->
     <!-- <div id="config-modal-overlay" ... > ... </div> -->
 
@@ -905,6 +971,7 @@
 
     <script type="module" src="{{ url_for('static', filename='js/notifications.js') }}"></script>
     <script type="module" src="{{ url_for('static', filename='js/main.js') }}?v=2.6"></script>
+    <script type="module" src="{{ url_for('static', filename='js/handlers/ragCollectionManagement.js') }}"></script>
     <!-- RAG Case Modal -->
     <div id="rag-case-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
         <div id="rag-case-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-4xl p-6 transform scale-95 opacity-0 flex flex-col" style="height: 90vh;">
