@@ -3,6 +3,10 @@
  * Manages the Add RAG Collection modal and collection operations
  */
 
+import { state } from '../state.js';
+import { loadRagCollections } from '../ui.js';
+// Note: configState is accessed via window.configState to avoid circular imports
+
 /**
  * Show notification helper
  */
@@ -82,11 +86,11 @@ function populateMcpServerDropdown() {
     // Clear existing options except the placeholder
     ragCollectionMcpServerSelect.innerHTML = '<option value="">Select an MCP Server...</option>';
     
-    // Get MCP servers from state
-    if (state && state.server_configs && Array.isArray(state.server_configs)) {
-        state.server_configs.forEach(server => {
+    // Get MCP servers from window.configState
+    if (window.configState && window.configState.mcpServers && Array.isArray(window.configState.mcpServers)) {
+        window.configState.mcpServers.forEach(server => {
             const option = document.createElement('option');
-            option.value = server.name;
+            option.value = server.id;  // Use server ID instead of name
             option.textContent = server.name;
             ragCollectionMcpServerSelect.appendChild(option);
         });
@@ -110,7 +114,7 @@ async function handleAddRagCollection(event) {
     
     // Get form values
     const name = ragCollectionNameInput.value.trim();
-    const mcpServerName = ragCollectionMcpServerSelect.value;
+    const mcpServerId = ragCollectionMcpServerSelect.value;  // This is now the server ID
     const description = ragCollectionDescriptionInput.value.trim();
     
     // Validate
@@ -119,7 +123,7 @@ async function handleAddRagCollection(event) {
         return;
     }
     
-    if (!mcpServerName) {
+    if (!mcpServerId) {
         showNotification('error', 'Please select an MCP server');
         return;
     }
@@ -129,7 +133,7 @@ async function handleAddRagCollection(event) {
     addRagCollectionSubmit.textContent = 'Creating...';
     
     try {
-        // Call API
+        // Call API with mcp_server_id
         const response = await fetch('/api/v1/rag/collections', {
             method: 'POST',
             headers: {
@@ -137,7 +141,7 @@ async function handleAddRagCollection(event) {
             },
             body: JSON.stringify({
                 name: name,
-                mcp_server_name: mcpServerName,
+                mcp_server_id: mcpServerId,  // Send ID instead of name
                 description: description || ''
             })
         });
@@ -150,10 +154,8 @@ async function handleAddRagCollection(event) {
             // Close modal
             closeAddRagCollectionModal();
             
-            // Refresh RAG collections list (if a refresh function exists)
-            if (typeof loadRagCollections === 'function') {
-                await loadRagCollections();
-            }
+            // Refresh RAG collections list
+            await loadRagCollections();
         } else {
             showNotification('error', `Failed to create collection: ${data.error || 'Unknown error'}`);
         }
@@ -192,9 +194,7 @@ async function toggleRagCollection(collectionId, currentState) {
             showNotification('success', `Collection ${newState} successfully`);
             
             // Refresh collections list
-            if (typeof loadRagCollections === 'function') {
-                await loadRagCollections();
-            }
+            await loadRagCollections();
         } else {
             showNotification('error', `Failed to toggle collection: ${data.error || 'Unknown error'}`);
         }
@@ -224,9 +224,7 @@ async function deleteRagCollection(collectionId, collectionName) {
             showNotification('success', `Collection "${collectionName}" deleted successfully`);
             
             // Refresh collections list
-            if (typeof loadRagCollections === 'function') {
-                await loadRagCollections();
-            }
+            await loadRagCollections();
         } else {
             showNotification('error', `Failed to delete collection: ${data.error || 'Unknown error'}`);
         }
@@ -250,12 +248,13 @@ function openEditCollectionModal(collection) {
     
     // Populate MCP server dropdown for edit modal
     editCollectionMcpServerSelect.innerHTML = '<option value="">Select an MCP Server...</option>';
-    if (state && state.server_configs && Array.isArray(state.server_configs)) {
-        state.server_configs.forEach(server => {
+    if (window.configState && window.configState.mcpServers && Array.isArray(window.configState.mcpServers)) {
+        window.configState.mcpServers.forEach(server => {
             const option = document.createElement('option');
-            option.value = server.name;
+            option.value = server.id;
             option.textContent = server.name;
-            if (server.name === collection.mcp_server_name) {
+            // Check if this server is the one assigned to the collection
+            if (server.id === collection.mcp_server_id) {
                 option.selected = true;
             }
             editCollectionMcpServerSelect.appendChild(option);
@@ -311,7 +310,7 @@ async function handleEditRagCollection(event) {
     // Get form values
     const collectionId = parseInt(editCollectionIdInput.value);
     const name = editCollectionNameInput.value.trim();
-    const mcpServerName = editCollectionMcpServerSelect.value;
+    const mcpServerId = editCollectionMcpServerSelect.value;  // This is now the server ID
     const description = editCollectionDescriptionInput.value.trim();
     
     // Validate
@@ -320,7 +319,7 @@ async function handleEditRagCollection(event) {
         return;
     }
     
-    if (!mcpServerName) {
+    if (!mcpServerId) {
         showNotification('error', 'Please select an MCP server');
         return;
     }
@@ -330,7 +329,7 @@ async function handleEditRagCollection(event) {
     editSubmitBtn.textContent = 'Saving...';
     
     try {
-        // Call API
+        // Call API with mcp_server_id
         const response = await fetch(`/api/v1/rag/collections/${collectionId}`, {
             method: 'PUT',
             headers: {
@@ -338,7 +337,7 @@ async function handleEditRagCollection(event) {
             },
             body: JSON.stringify({
                 name: name,
-                mcp_server_name: mcpServerName,
+                mcp_server_id: mcpServerId,  // Send ID instead of name
                 description: description || ''
             })
         });
@@ -352,9 +351,7 @@ async function handleEditRagCollection(event) {
             closeEditCollectionModal();
             
             // Refresh RAG collections list
-            if (typeof loadRagCollections === 'function') {
-                await loadRagCollections();
-            }
+            await loadRagCollections();
         } else {
             showNotification('error', `Failed to update collection: ${data.error || data.message || 'Unknown error'}`);
         }

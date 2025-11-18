@@ -1,19 +1,19 @@
 {
-  "case_id": "b0994ccd-6233-5873-86d9-81d4c81ba68f",
+  "case_id": "b24cbc6e-3063-54c3-aa12-2a695841c94e",
   "metadata": {
-    "session_id": "f5832bb5-69c8-4b2a-9488-c45160ee4e76",
+    "session_id": "9261b95e-9fb4-4f3c-a231-f590f2695d92",
     "turn_id": 1,
     "is_success": true,
-    "task_id": "task-f871446c-1b02-4023-97bc-ee0b3251b1f1",
+    "task_id": "task-eae183ac-71e1-4cf4-9859-0d43b8b97a65",
     "collection_id": 0,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-11-18T11:08:30.283634+00:00",
+    "timestamp": "2025-11-18T12:11:58.336276+00:00",
     "llm_config": {
       "provider": "Google",
       "model": "gemini-2.0-flash",
-      "input_tokens": 8073,
-      "output_tokens": 105
+      "input_tokens": 8088,
+      "output_tokens": 117
     },
     "is_most_efficient": true,
     "strategy_metrics": {

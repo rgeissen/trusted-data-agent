@@ -2,6 +2,8 @@
  * handlers/configManagement.js
  * * This module handles all logic related to the Configuration modal
  * and the System Prompt Editor.
+ * NOTE: Many functions reference old config form DOM elements that may not exist.
+ * Null checks are added to prevent errors with the new configuration system.
  */
 
 import * as DOM from '../domElements.js';
@@ -15,10 +17,24 @@ import { handleLoadResources, openSystemPromptPopup } from '../eventHandlers.js'
 import { handleViewSwitch } from '../ui.js';
 
 /**
+ * Helper to safely set config status message (old form element may not exist)
+ */
+function setConfigStatus(message, className = 'text-sm text-gray-400 text-center') {
+    if (DOM.configStatus) {
+        DOM.configStatus.textContent = message;
+        DOM.configStatus.className = className;
+    }
+}
+
+/**
  * Gets the current core configuration from the form.
  * @returns {object} The configuration object.
  */
 function getCurrentCoreConfig() {
+    // Old config form no longer exists - return empty object
+    if (!DOM.configForm) {
+        return {};
+    }
     const formData = new FormData(DOM.configForm);
     return Object.fromEntries(formData.entries());
 }
@@ -51,8 +67,8 @@ function getCurrentCoreConfig() {
  * @param {object} config - The configuration object from the form.
  */
 export async function finalizeConfiguration(config, switchToConversationView = true) {
-    DOM.configStatus.textContent = 'Success! MCP & LLM services connected.';
-    DOM.configStatus.className = 'text-sm text-green-400 text-center';
+    // Update old config form status elements if they exist
+    setConfigStatus('Success! MCP & LLM services connected.', 'text-sm text-green-400 text-center');
     DOM.mcpStatusDot.classList.remove('disconnected');
     DOM.mcpStatusDot.classList.add('connected');
     DOM.llmStatusDot.classList.remove('disconnected', 'busy');
@@ -143,15 +159,13 @@ export async function handleConfigFormSubmit(e) {
 
     const selectedModel = DOM.llmModelSelect.value;
     if (!selectedModel) {
-        DOM.configStatus.textContent = 'Please select your LLM Model.';
-        DOM.configStatus.className = 'text-sm text-red-400 text-center';
+        setConfigStatus('Please select your LLM Model.', 'text-sm text-red-400 text-center');
         return;
     }
 
-    DOM.configLoadingSpinner.classList.remove('hidden');
-    DOM.configActionButton.disabled = true;
-    DOM.configStatus.textContent = 'Connecting to MCP & LLM...';
-    DOM.configStatus.className = 'text-sm text-yellow-400 text-center';
+    if (DOM.configLoadingSpinner) DOM.configLoadingSpinner.classList.remove('hidden');
+    if (DOM.configActionButton) DOM.configActionButton.disabled = true;
+    setConfigStatus('Connecting to MCP & LLM...', 'text-sm text-yellow-400 text-center');
 
     const formData = new FormData(e.target);
     const config = Object.fromEntries(formData.entries());
@@ -203,8 +217,7 @@ export async function handleConfigFormSubmit(e) {
             throw new Error(result.message || 'An unknown configuration error occurred.');
         }
     } catch (error) {
-        DOM.configStatus.textContent = `Error: ${error.message}`;
-        DOM.configStatus.className = 'text-sm text-red-400 text-center';
+        setConfigStatus(`Error: ${error.message}`, 'text-sm text-red-400 text-center');
         DOM.promptEditorButton.disabled = true;
         DOM.chatModalButton.disabled = true;
         DOM.mcpStatusDot.classList.add('disconnected');
@@ -214,8 +227,8 @@ export async function handleConfigFormSubmit(e) {
         DOM.contextStatusDot.classList.add('disconnected');
         DOM.contextStatusDot.classList.remove('idle', 'context-active');
     } finally {
-        DOM.configLoadingSpinner.classList.add('hidden');
-        DOM.configActionButton.disabled = false;
+        if (DOM.configLoadingSpinner) DOM.configLoadingSpinner.classList.add('hidden');
+        if (DOM.configActionButton) DOM.configActionButton.disabled = false;
         UI.updateConfigButtonState();
     }
 }
@@ -273,7 +286,7 @@ export async function loadCredentialsAndModels() {
  */
 export async function handleProviderChange() {
     DOM.llmModelSelect.innerHTML = '<option value="">-- Select Provider & Enter Credentials --</option>';
-    DOM.configStatus.textContent = '';
+    setConfigStatus('');
 
     await loadCredentialsAndModels();
 }
@@ -289,11 +302,10 @@ export async function handleModelChange() {
     if (Utils.isPrivilegedUser()) {
         const activePrompt = Utils.getSystemPromptForModel(state.currentProvider, state.currentModel);
         if (!activePrompt) {
-            DOM.configStatus.textContent = `Fetching default prompt for ${Utils.getNormalizedModelId(state.currentModel)}...`;
-            DOM.configStatus.className = 'text-sm text-gray-400 text-center';
+            setConfigStatus(`Fetching default prompt for ${Utils.getNormalizedModelId(state.currentModel)}...`);
             await resetSystemPrompt(true);
-            DOM.configStatus.textContent = `Default prompt for ${Utils.getNormalizedModelId(state.currentModel)} loaded.`;
-            setTimeout(() => { DOM.configStatus.textContent = ''; }, 2000);
+            setConfigStatus(`Default prompt for ${Utils.getNormalizedModelId(state.currentModel)} loaded.`);
+            setTimeout(() => { setConfigStatus(''); }, 2000);
         }
     }
 }
@@ -305,8 +317,7 @@ export async function handleRefreshModelsClick() {
     DOM.refreshIcon.classList.add('hidden');
     DOM.refreshSpinner.classList.remove('hidden');
     DOM.refreshModelsButton.disabled = true;
-    DOM.configStatus.textContent = 'Fetching models...';
-    DOM.configStatus.className = 'text-sm text-gray-400 text-center';
+    setConfigStatus('Fetching models...');
     try {
         const result = await API.fetchModels();
         DOM.llmModelSelect.innerHTML = '';
@@ -317,14 +328,12 @@ export async function handleRefreshModelsClick() {
             option.disabled = !model.certified;
             DOM.llmModelSelect.appendChild(option);
         });
-        DOM.configStatus.textContent = `Successfully fetched ${result.models.length} models.`;
-        DOM.configStatus.className = 'text-sm text-green-400 text-center';
+        setConfigStatus(`Successfully fetched ${result.models.length} models.`, 'text-sm text-green-400 text-center');
         if (DOM.llmModelSelect.value) {
             await handleModelChange();
         }
     } catch (error) {
-        DOM.configStatus.textContent = `Error: ${error.message}`;
-        DOM.configStatus.className = 'text-sm text-red-400 text-center';
+        setConfigStatus(`Error: ${error.message}`, 'text-sm text-red-400 text-center');
         DOM.llmModelSelect.innerHTML = '<option value="">-- Could not fetch models --</option>';
     } finally {
         DOM.refreshIcon.classList.remove('hidden');

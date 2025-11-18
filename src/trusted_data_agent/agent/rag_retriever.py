@@ -68,7 +68,7 @@ class RAGRetriever:
                 "id": 0,  # Default collection always has ID 0
                 "name": "Default TDA RAG Cases",
                 "collection_name": APP_CONFIG.RAG_DEFAULT_COLLECTION_NAME,
-                "mcp_server_name": None,  # Not tied to specific MCP server
+                "mcp_server_id": None,  # Not tied to specific MCP server
                 "enabled": True,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "description": "Default collection for TDA RAG cases"
@@ -113,14 +113,14 @@ class RAGRetriever:
         else:
             logger.info("RAG_REFRESH_ON_STARTUP is False. Using cached vector stores.")
     
-    def add_collection(self, name: str, mcp_server_name: Optional[str] = None, description: str = "") -> Optional[int]:
+    def add_collection(self, name: str, description: str = "", mcp_server_id: Optional[str] = None) -> Optional[int]:
         """
         Adds a new RAG collection and enables it.
         
         Args:
             name: Display name for the collection
-            mcp_server_name: Associated MCP server name
             description: Collection description
+            mcp_server_id: Associated MCP server ID
             
         Returns:
             The numeric collection ID if successful, None otherwise
@@ -137,7 +137,7 @@ class RAGRetriever:
             "id": collection_id,
             "name": name,
             "collection_name": collection_name,
-            "mcp_server_name": mcp_server_name,
+            "mcp_server_id": mcp_server_id,
             "enabled": True,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "description": description
@@ -427,7 +427,7 @@ class RAGRetriever:
                 coll_meta = self.get_collection_metadata(coll_id)
                 if coll_meta:
                     case["collection_name"] = coll_meta.get("name")
-                    case["collection_mcp_server"] = coll_meta.get("mcp_server_name")
+                    case["collection_mcp_server_id"] = coll_meta.get("mcp_server_id")
 
         return final_candidates[:k]
 

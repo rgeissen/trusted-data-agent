@@ -1,4 +1,4 @@
-2025-11-18 12:43:08,176 - --- REASON FOR CALL ---
+2025-11-18 13:17:49,814 - --- REASON FOR CALL ---
 No reason provided.
 --- RESPONSE ---
 ```json
@@ -22,13 +22,13 @@ No reason provided.
     "category": "Database Information"
   },
   "dba_tableSqlList": {
-    "category": "Table Management"
+    "category": "Usage Analysis"
   },
   "dba_tableUsageImpact": {
-    "category": "Table Management"
+    "category": "Usage Analysis"
   },
   "dba_userSqlList": {
-    "category": "Utilities"
+    "category": "Usage Analysis"
   },
   "qlty_columnSummary": {
     "category": "Data Quality"
@@ -55,19 +55,19 @@ No reason provided.
     "category": "Utilities"
   },
   "plot_line_chart": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "plot_pie_chart": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "plot_polar_chart": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "plot_radar_chart": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "base_columnDescription": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "base_databaseList": {
     "category": "Database Information"
@@ -76,19 +76,19 @@ No reason provided.
     "category": "Utilities"
   },
   "base_tableAffinity": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "base_tableDDL": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "base_tableList": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "base_tablePreview": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "base_tableUsage": {
-    "category": "Table Management"
+    "category": "Usage Analysis"
   },
   "sec_rolePermissions": {
     "category": "Security"
@@ -100,28 +100,28 @@ No reason provided.
     "category": "Security"
   },
   "rag_Execute_Workflow": {
-    "category": "Utilities"
+    "category": "RAG"
   },
   "dba_databaseVersion": {
     "category": "Database Information"
   },
-    "dba_flowControl": {
+  "dba_flowControl": {
     "category": "Performance"
   },
   "dba_featureUsage": {
-    "category": "Utilities"
+    "category": "Usage Analysis"
   },
   "dba_userDelay": {
     "category": "Performance"
   },
   "dba_sessionInfo": {
-    "category": "Utilities"
+    "category": "Usage Analysis"
   },
   "dba_systemSpace": {
     "category": "Database Information"
   },
   "TDA_Charting": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "TDA_CurrentDate": {
     "category": "Utilities"
@@ -136,43 +136,43 @@ No reason provided.
     "category": "Utilities"
   },
   "TDA_ContextReport": {
-    "category": "Utilities"
+    "category": "Reporting"
   },
   "TDA_FinalReport": {
-    "category": "Utilities"
+    "category": "Reporting"
   },
   "TDA_ComplexPromptReport": {
-    "category": "Utilities"
+    "category": "Reporting"
   },
   "dba_tableArchive": {
-    "category": "Table Management"
+    "category": "Archiving"
   },
   "dba_databaseLineage": {
-    "category": "Database Information"
+    "category": "Lineage"
   },
   "dba_tableDropImpact": {
-    "category": "Table Management"
+    "category": "Impact Analysis"
   },
   "dba_databaseHealthAssessment": {
-    "category": "Database Information"
+    "category": "Health Assessment"
   },
   "dba_userActivityAnalysis": {
-    "category": "Utilities"
+    "category": "Usage Analysis"
   },
   "dba_systemVoice": {
-    "category": "Utilities"
+    "category": "Reporting"
   },
   "_testMyServer": {
-    "category": "Utilities"
+    "category": "Testing"
   },
   "base_teradataQuery": {
-    "category": "Utilities"
+    "category": "Querying"
   },
   "base_query": {
-    "category": "Utilities"
+    "category": "Querying"
   },
   "base_tableBusinessDesc": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "base_databaseBusinessDesc": {
     "category": "Database Information"
@@ -181,10 +181,10 @@ No reason provided.
     "category": "Data Quality"
   },
   "tdvs_tools_prompt": {
-    "category": "Utilities"
+    "category": "Vector Store"
   },
   "tdvs_rag_prompt": {
-    "category": "Utilities"
+    "category": "RAG"
   }
 }
 ```

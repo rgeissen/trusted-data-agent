@@ -1857,7 +1857,7 @@ export function handleViewSwitch(viewId) {
 /**
  * Fetches ChromaDB collections from the backend and renders them as cards.
  */
-async function loadRagCollections() {
+export async function loadRagCollections() {
     if (!DOM.ragMaintenanceCollectionsContainer) return;
     try {
         if (DOM.ragMaintenanceEmptyHint) {
@@ -1905,10 +1905,15 @@ async function loadRagCollections() {
             header.appendChild(titleSection);
             header.appendChild(statusBadge);
             
-            // MCP Server info
+            // MCP Server info - look up name from ID using window.configState
             const mcpInfo = document.createElement('p');
             mcpInfo.className = 'text-sm text-gray-300';
-            mcpInfo.innerHTML = `<span class="text-gray-500">MCP Server:</span> ${col.mcp_server_name || 'None'}`;
+            let mcpServerDisplay = 'None';
+            if (col.mcp_server_id && window.configState && window.configState.mcpServers) {
+                const mcpServer = window.configState.mcpServers.find(s => s.id === col.mcp_server_id);
+                mcpServerDisplay = mcpServer ? mcpServer.name : 'Unknown';
+            }
+            mcpInfo.innerHTML = `<span class="text-gray-500">MCP Server:</span> ${mcpServerDisplay}`;
             
             // Description (if exists)
             if (col.description) {

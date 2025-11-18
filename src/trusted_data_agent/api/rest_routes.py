@@ -405,7 +405,7 @@ async def create_rag_collection():
             return jsonify({"status": "error", "message": "Collection name is required"}), 400
         
         name = data["name"]
-        mcp_server_name = data.get("mcp_server_name")
+        mcp_server_id = data.get("mcp_server_id")  # MCP server ID
         description = data.get("description", "")
         
         # Add collection via RAG retriever (ID is auto-generated)
@@ -413,7 +413,7 @@ async def create_rag_collection():
         if not retriever:
             return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
         
-        collection_id = retriever.add_collection(name, mcp_server_name, description)
+        collection_id = retriever.add_collection(name, description, mcp_server_id)
         
         if collection_id is not None:
             app_logger.info(f"Created RAG collection with ID: {collection_id}")
@@ -447,8 +447,8 @@ async def update_rag_collection(collection_id: int):
         # Update fields
         if "name" in data:
             coll_meta["name"] = data["name"]
-        if "mcp_server_name" in data:
-            coll_meta["mcp_server_name"] = data["mcp_server_name"]
+        if "mcp_server_id" in data:
+            coll_meta["mcp_server_id"] = data["mcp_server_id"]
         if "description" in data:
             coll_meta["description"] = data["description"]
         

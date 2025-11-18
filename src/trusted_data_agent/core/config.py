@@ -137,7 +137,7 @@ APP_STATE = {
     "rag_processing_queue": asyncio.Queue(),
     "rag_retriever_instance": None,
     # RAG collections configuration: list of collection metadata
-    # Each collection: {id, name, collection_name, mcp_server_name, enabled, created_at, description}
+    # Each collection: {id, name, collection_name, mcp_server_id, enabled, created_at, description}
     "rag_collections": [],
     # --- MODIFICATION END ---
 

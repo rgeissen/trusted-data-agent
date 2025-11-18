@@ -57,58 +57,9 @@ function ensureUserUUID() {
     }
 }
 
-
-/**
- * Loads initial configuration from localStorage and populates the form fields.
- * This function specifically handles the MCP server configuration.
- */
-function loadInitialConfig() {
-    console.log("loadInitialConfig: Loading initial MCP configuration from localStorage...");
-    try {
-        const savedMcpConfig = JSON.parse(localStorage.getItem('mcpConfig'));
-        if (savedMcpConfig) {
-            console.log("loadInitialConfig: Found saved MCP config:", savedMcpConfig);
-            // Use DOM elements from domElements.js, assuming they are correctly imported and available
-            if (DOM.mcpServerNameInput) {
-                DOM.mcpServerNameInput.value = savedMcpConfig.server_name || 'teradata_mcp_server';
-            }
-            const mcpHostInput = document.getElementById('mcp-host');
-            if (mcpHostInput) {
-                mcpHostInput.value = savedMcpConfig.host || '127.0.0.1';
-            }
-            const mcpPortInput = document.getElementById('mcp-port');
-            if (mcpPortInput) {
-                mcpPortInput.value = savedMcpConfig.port || '8001';
-            }
-            const mcpPathInput = document.getElementById('mcp-path');
-            if (mcpPathInput) {
-                mcpPathInput.value = savedMcpConfig.path || '/mcp/';
-            }
-            console.log("loadInitialConfig: Successfully populated MCP config fields.");
-        } else {
-            console.log("loadInitialConfig: No saved MCP config found. Using default values.");
-            // Set default values if nothing is in localStorage
-            if (DOM.mcpServerNameInput) {
-                DOM.mcpServerNameInput.value = 'teradata_mcp_server';
-            }
-            const mcpHostInput = document.getElementById('mcp-host');
-            if (mcpHostInput) {
-                mcpHostInput.value = '127.0.0.1';
-            }
-            const mcpPortInput = document.getElementById('mcp-port');
-            if (mcpPortInput) {
-                mcpPortInput.value = '8001';
-            }
-            const mcpPathInput = document.getElementById('mcp-path');
-            if (mcpPathInput) {
-                mcpPathInput.value = '/mcp/';
-            }
-        }
-    } catch (e) {
-        console.error("loadInitialConfig: Error loading or parsing MCP config from localStorage:", e);
-    }
-}
-
+// REMOVED: loadInitialConfig() function - obsolete with new configuration system
+// The new configuration system (configState) automatically loads from localStorage
+// and doesn't need manual form population
 
 document.addEventListener('DOMContentLoaded', async () => {
     const savedShowWelcomeScreen = localStorage.getItem('showWelcomeScreenAtStartup');
@@ -145,8 +96,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Load MCP config from localStorage into the modal fields before initializing event listeners
-    loadInitialConfig();
+    // REMOVED: loadInitialConfig() - obsolete with new configuration system
+    // The new configuration system uses configState which loads from localStorage automatically
 
     // Initialize all event listeners first to ensure they are ready.
     initializeEventListeners();

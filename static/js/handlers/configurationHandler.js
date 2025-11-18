@@ -214,6 +214,9 @@ class ConfigurationState {
 // Global state instance
 export const configState = new ConfigurationState();
 
+// Also expose to window to avoid circular imports
+window.configState = configState;
+
 // ============================================================================
 // UI RENDERING - MCP SERVERS
 // ============================================================================
