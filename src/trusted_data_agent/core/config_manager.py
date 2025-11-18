@@ -287,25 +287,44 @@ class ConfigManager:
         server.update(updates)
         return self.save_mcp_servers(servers)
     
-    def remove_mcp_server(self, server_id: str) -> bool:
+    def remove_mcp_server(self, server_id: str) -> tuple[bool, Optional[str]]:
         """
         Remove an MCP server configuration.
+        Prevents deletion if any RAG collections are assigned to this server.
         
         Args:
             server_id: Unique ID of the server to remove
             
         Returns:
-            True if successful, False otherwise
+            Tuple of (success: bool, error_message: Optional[str])
+            If successful, error_message is None
+            If failed, error_message contains the reason
         """
+        # Check if any collections are assigned to this server
+        collections = self.get_rag_collections()
+        assigned_collections = [
+            c for c in collections 
+            if c.get("mcp_server_id") == server_id
+        ]
+        
+        if assigned_collections:
+            collection_names = [c.get("name", "Unknown") for c in assigned_collections]
+            names_list = ", ".join(collection_names)
+            error_msg = f"Cannot delete MCP server: {len(assigned_collections)} collection(s) assigned: {names_list}"
+            app_logger.warning(f"{error_msg} (Server ID: {server_id})")
+            return False, error_msg
+        
         servers = self.get_mcp_servers()
         original_count = len(servers)
         servers = [s for s in servers if s.get("id") != server_id]
         
         if len(servers) == original_count:
+            error_msg = "MCP server not found"
             app_logger.warning(f"MCP server with ID {server_id} not found for removal")
-            return False
+            return False, error_msg
         
-        return self.save_mcp_servers(servers)
+        success = self.save_mcp_servers(servers)
+        return success, None if success else "Failed to save configuration"
     
     def get_active_mcp_server_id(self) -> Optional[str]:
         """

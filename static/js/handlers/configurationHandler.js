@@ -246,12 +246,21 @@ class ConfigurationState {
                 if (this.activeMCP === serverId) {
                     this.activeMCP = null;
                 }
-                return true;
+                return { success: true };
+            } else {
+                const errorData = await response.json();
+                return { 
+                    success: false, 
+                    error: errorData.message || 'Failed to remove MCP server' 
+                };
             }
         } catch (error) {
             console.error('Failed to remove MCP server:', error);
+            return { 
+                success: false, 
+                error: error.message || 'Failed to remove MCP server' 
+            };
         }
-        return false;
     }
 
     async updateMCPServer(serverId, updates) {
@@ -384,11 +393,19 @@ function attachMCPEventListeners() {
 
     // Delete MCP button
     document.querySelectorAll('[data-action="delete-mcp"]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
             const serverId = e.target.dataset.serverId;
-            if (confirm('Are you sure you want to delete this MCP server?')) {
-                configState.removeMCPServer(serverId);
-                renderMCPServers();
+            const server = configState.mcpServers.find(s => s.id === serverId);
+            const serverName = server ? server.name : 'this server';
+            
+            if (confirm(`Are you sure you want to delete MCP server "${serverName}"?`)) {
+                const result = await configState.removeMCPServer(serverId);
+                if (result.success) {
+                    renderMCPServers();
+                    showNotification('success', 'MCP server deleted successfully');
+                } else {
+                    showNotification('error', result.error);
+                }
             }
         });
     });

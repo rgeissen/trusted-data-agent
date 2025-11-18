@@ -675,22 +675,25 @@ async def delete_mcp_server(server_id: str):
         from trusted_data_agent.core.config_manager import get_config_manager
         config_manager = get_config_manager()
         
-        # Check if this is the active server
+        # Try to remove the server (will fail if collections are assigned)
+        success, error_message = config_manager.remove_mcp_server(server_id)
+        
+        if not success:
+            return jsonify({
+                "status": "error", 
+                "message": error_message or "Failed to delete MCP server"
+            }), 400
+        
+        # Check if this was the active server and clear it
         active_server_id = config_manager.get_active_mcp_server_id()
         if active_server_id == server_id:
-            # Clear active server
             config_manager.set_active_mcp_server_id(None)
         
-        success = config_manager.remove_mcp_server(server_id)
-        
-        if success:
-            app_logger.info(f"Deleted MCP server: {server_id}")
-            return jsonify({
-                "status": "success",
-                "message": "MCP server deleted successfully"
-            }), 200
-        else:
-            return jsonify({"status": "error", "message": "MCP server not found"}), 404
+        app_logger.info(f"Deleted MCP server: {server_id}")
+        return jsonify({
+            "status": "success",
+            "message": "MCP server deleted successfully"
+        }), 200
             
     except Exception as e:
         app_logger.error(f"Error deleting MCP server: {e}", exc_info=True)
