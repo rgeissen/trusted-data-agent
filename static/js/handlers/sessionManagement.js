@@ -15,6 +15,11 @@ import { updateActiveSessionTitle } from '../ui.js';
  * Creates a new session, adds it to the list, and loads it.
  */
 export async function handleStartNewSession() {
+    // Hide welcome screen when starting a new session
+    if (window.hideWelcomeScreen) {
+        window.hideWelcomeScreen();
+    }
+    
     DOM.chatLog.innerHTML = '';
     DOM.statusWindowContent.innerHTML = '<p class="text-gray-400">Waiting for a new request...</p>';
     UI.updateTokenDisplay({ statement_input: 0, statement_output: 0, total_input: 0, total_output: 0 });
@@ -77,6 +82,11 @@ export async function handleLoadSession(sessionId, isNewSession = false) {
             state.feedbackByTurn = {};
         }
         // --- MODIFICATION END ---
+        
+        // Hide welcome screen when loading a session with history
+        if (window.hideWelcomeScreen) {
+            window.hideWelcomeScreen();
+        }
         
         DOM.chatLog.innerHTML = '';
         if (data.history && data.history.length > 0) {

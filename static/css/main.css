@@ -988,6 +988,12 @@ div.app-view {
     flex-direction: column;
 }
 
+/* Executions view should also be flex when active */
+#executions-view.active {
+    display: flex;
+    flex-direction: column;
+}
+
 /* NEW: This wrapper for the 3 panels must be a flex-row */
 #conversation-panels {
     display: flex;

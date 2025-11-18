@@ -1852,6 +1852,15 @@ export function handleViewSwitch(viewId) {
     if (viewId === 'rag-maintenance-view') {
         loadRagCollections();
     }
+    
+    // 7. If switching to Executions view, initialize dashboard
+    if (viewId === 'executions-view') {
+        if (window.executionDashboard) {
+            window.executionDashboard.initialize();
+        } else {
+            console.error('[UI DEBUG] ExecutionDashboard not initialized');
+        }
+    }
 }
 
 /**

@@ -727,3 +727,324 @@ async def activate_mcp_server(server_id: str):
     except Exception as e:
         app_logger.error(f"Error activating MCP server: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ============================================================================
+# EXECUTION DASHBOARD API ENDPOINTS
+# ============================================================================
+
+@rest_api_bp.route('/v1/sessions/analytics', methods=['GET'])
+async def get_sessions_analytics():
+    """
+    Get comprehensive analytics across all sessions for the execution dashboard.
+    Returns: total sessions, tokens, success rate, cost, velocity, model distribution, top champions
+    """
+    try:
+        user_uuid = _get_user_uuid_from_request()
+        from pathlib import Path
+        
+        project_root = Path(__file__).resolve().parents[3]
+        sessions_root = project_root / 'tda_sessions' / user_uuid
+        rag_cases_dir = project_root / 'rag' / 'tda_rag_cases'
+        
+        if not sessions_root.exists():
+            return jsonify({
+                "total_sessions": 0,
+                "total_tokens": {"input": 0, "output": 0, "total": 0},
+                "success_rate": 0,
+                "estimated_cost": 0,
+                "model_distribution": {},
+                "top_champions": [],
+                "velocity_data": []
+            }), 200
+        
+        # Initialize analytics
+        total_sessions = 0
+        total_input_tokens = 0
+        total_output_tokens = 0
+        successful_turns = 0
+        total_turns = 0
+        model_usage = {}
+        sessions_by_hour = {}
+        
+        # Scan all session files
+        for session_file in sessions_root.glob('*.json'):
+            try:
+                with open(session_file, 'r', encoding='utf-8') as f:
+                    session_data = json.load(f)
+                
+                total_sessions += 1
+                total_input_tokens += session_data.get('input_tokens', 0)
+                total_output_tokens += session_data.get('output_tokens', 0)
+                
+                # Track model usage
+                models_used = session_data.get('models_used', [])
+                for model in models_used:
+                    model_usage[model] = model_usage.get(model, 0) + 1
+                
+                # Analyze workflow history
+                workflow_history = session_data.get('last_turn_data', {}).get('workflow_history', [])
+                for turn in workflow_history:
+                    if turn.get('isValid', True):
+                        total_turns += 1
+                        # Simple success heuristic: has final_summary and no critical errors
+                        if turn.get('final_summary'):
+                            successful_turns += 1
+                
+                # Track velocity (sessions per hour)
+                created_at = session_data.get('created_at')
+                if created_at:
+                    try:
+                        dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                        hour_key = dt.strftime('%Y-%m-%d %H:00')
+                        sessions_by_hour[hour_key] = sessions_by_hour.get(hour_key, 0) + 1
+                    except:
+                        pass
+                        
+            except Exception as e:
+                app_logger.warning(f"Error processing session file {session_file.name}: {e}")
+                continue
+        
+        # Calculate metrics
+        total_tokens_val = total_input_tokens + total_output_tokens
+        success_rate = (successful_turns / total_turns * 100) if total_turns > 0 else 0
+        
+        # Rough cost estimate ($0.01 per 1K tokens as average)
+        estimated_cost = total_tokens_val / 1000 * 0.01
+        
+        # Model distribution percentages
+        total_model_count = sum(model_usage.values())
+        model_distribution = {
+            model: round(count / total_model_count * 100, 1)
+            for model, count in model_usage.items()
+        } if total_model_count > 0 else {}
+        
+        # Get top efficiency champions from RAG
+        top_champions = []
+        if rag_cases_dir.exists():
+            case_files = list(rag_cases_dir.glob('case_*.json'))[:50]  # Sample first 50
+            champions = []
+            
+            for case_file in case_files:
+                try:
+                    with open(case_file, 'r', encoding='utf-8') as f:
+                        case_data = json.load(f)
+                    
+                    metadata = case_data.get('metadata', {})
+                    if metadata.get('is_most_efficient'):
+                        user_query = case_data.get('intent', {}).get('user_query', 'Unknown')
+                        output_tokens = metadata.get('llm_config', {}).get('output_tokens', 0)
+                        champions.append({
+                            "query": user_query[:50] + "..." if len(user_query) > 50 else user_query,
+                            "tokens": output_tokens,
+                            "case_id": case_data.get('case_id')
+                        })
+                except:
+                    continue
+            
+            # Sort by token count (ascending) and take top 5
+            champions.sort(key=lambda x: x['tokens'])
+            top_champions = champions[:5]
+        
+        # Velocity data (last 24 hours)
+        velocity_data = []
+        if sessions_by_hour:
+            sorted_hours = sorted(sessions_by_hour.items())[-24:]  # Last 24 hours
+            velocity_data = [{"hour": hour, "count": count} for hour, count in sorted_hours]
+        
+        return jsonify({
+            "total_sessions": total_sessions,
+            "total_tokens": {
+                "input": total_input_tokens,
+                "output": total_output_tokens,
+                "total": total_tokens_val
+            },
+            "success_rate": round(success_rate, 1),
+            "estimated_cost": round(estimated_cost, 2),
+            "model_distribution": model_distribution,
+            "top_champions": top_champions,
+            "velocity_data": velocity_data
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error getting session analytics: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@rest_api_bp.route('/v1/sessions', methods=['GET'])
+async def get_sessions_list():
+    """
+    Get list of all sessions with metadata for the execution dashboard.
+    Query params: search, sort, filter_status, filter_model, limit, offset
+    """
+    try:
+        user_uuid = _get_user_uuid_from_request()
+        from pathlib import Path
+        
+        # Get query parameters
+        search_query = request.args.get('search', '').lower()
+        sort_by = request.args.get('sort', 'recent')  # recent, oldest, tokens, turns
+        filter_status = request.args.get('filter_status', 'all')  # all, success, partial, failed
+        filter_model = request.args.get('filter_model', 'all')
+        limit = int(request.args.get('limit', 100))
+        offset = int(request.args.get('offset', 0))
+        
+        project_root = Path(__file__).resolve().parents[3]
+        sessions_root = project_root / 'tda_sessions' / user_uuid
+        rag_cases_dir = project_root / 'rag' / 'tda_rag_cases'
+        
+        if not sessions_root.exists():
+            return jsonify({"sessions": [], "total": 0}), 200
+        
+        sessions = []
+        
+        # Load all sessions
+        for session_file in sessions_root.glob('*.json'):
+            try:
+                with open(session_file, 'r', encoding='utf-8') as f:
+                    session_data = json.load(f)
+                
+                session_id = session_data.get('id')
+                name = session_data.get('name', 'Unnamed Session')
+                created_at = session_data.get('created_at', '')
+                last_updated = session_data.get('last_updated', '')
+                provider = session_data.get('provider', 'Unknown')
+                model = session_data.get('model', 'Unknown')
+                input_tokens = session_data.get('input_tokens', 0)
+                output_tokens = session_data.get('output_tokens', 0)
+                
+                # Analyze workflow
+                workflow_history = session_data.get('last_turn_data', {}).get('workflow_history', [])
+                turn_count = len([t for t in workflow_history if t.get('isValid', True)])
+                
+                # Determine status
+                has_errors = False
+                all_successful = True
+                for turn in workflow_history:
+                    if not turn.get('isValid', True):
+                        continue
+                    if not turn.get('final_summary'):
+                        all_successful = False
+                    # Check for errors in execution trace
+                    exec_trace = turn.get('execution_trace', [])
+                    for entry in exec_trace:
+                        if isinstance(entry, dict):
+                            result = entry.get('result', {})
+                            if isinstance(result, dict) and result.get('status') == 'error':
+                                has_errors = True
+                
+                if all_successful and not has_errors and turn_count > 0:
+                    status = 'success'
+                elif turn_count > 0:
+                    status = 'partial' if all_successful else 'failed'
+                else:
+                    status = 'empty'
+                
+                # Check for RAG enhancement
+                has_rag = False
+                if rag_cases_dir.exists():
+                    for case_file in rag_cases_dir.glob(f'case_*-{session_id[:8]}*.json'):
+                        has_rag = True
+                        break
+                
+                # Apply filters
+                if search_query and search_query not in name.lower():
+                    continue
+                if filter_status != 'all' and status != filter_status:
+                    continue
+                if filter_model != 'all' and filter_model not in f"{provider}/{model}":
+                    continue
+                
+                sessions.append({
+                    "id": session_id,
+                    "name": name,
+                    "created_at": created_at,
+                    "last_updated": last_updated,
+                    "provider": provider,
+                    "model": model,
+                    "turn_count": turn_count,
+                    "total_tokens": input_tokens + output_tokens,
+                    "status": status,
+                    "has_rag": has_rag,
+                    "has_errors": has_errors
+                })
+                
+            except Exception as e:
+                app_logger.warning(f"Error processing session {session_file.name}: {e}")
+                continue
+        
+        # Sort sessions
+        if sort_by == 'recent':
+            sessions.sort(key=lambda x: x.get('last_updated', ''), reverse=True)
+        elif sort_by == 'oldest':
+            sessions.sort(key=lambda x: x.get('created_at', ''))
+        elif sort_by == 'tokens':
+            sessions.sort(key=lambda x: x.get('total_tokens', 0), reverse=True)
+        elif sort_by == 'turns':
+            sessions.sort(key=lambda x: x.get('turn_count', 0), reverse=True)
+        
+        # Paginate
+        total = len(sessions)
+        sessions_page = sessions[offset:offset + limit]
+        
+        return jsonify({
+            "sessions": sessions_page,
+            "total": total,
+            "limit": limit,
+            "offset": offset
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error getting sessions list: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@rest_api_bp.route('/v1/sessions/<session_id>/details', methods=['GET'])
+async def get_session_details(session_id: str):
+    """
+    Get full session details for deep dive inspector.
+    Returns: complete session data with timeline, execution traces, RAG associations
+    """
+    try:
+        user_uuid = _get_user_uuid_from_request()
+        from pathlib import Path
+        
+        project_root = Path(__file__).resolve().parents[3]
+        sessions_root = project_root / 'tda_sessions' / user_uuid
+        rag_cases_dir = project_root / 'rag' / 'tda_rag_cases'
+        
+        session_file = sessions_root / f"{session_id}.json"
+        
+        if not session_file.exists():
+            return jsonify({"error": "Session not found"}), 404
+        
+        with open(session_file, 'r', encoding='utf-8') as f:
+            session_data = json.load(f)
+        
+        # Find associated RAG cases
+        rag_cases = []
+        if rag_cases_dir.exists():
+            for case_file in rag_cases_dir.glob('case_*.json'):
+                try:
+                    with open(case_file, 'r', encoding='utf-8') as cf:
+                        case_data = json.load(cf)
+                    
+                    if case_data.get('metadata', {}).get('session_id') == session_id:
+                        rag_cases.append({
+                            "case_id": case_data.get('case_id'),
+                            "turn_id": case_data.get('metadata', {}).get('turn_id'),
+                            "is_most_efficient": case_data.get('metadata', {}).get('is_most_efficient', False),
+                            "output_tokens": case_data.get('metadata', {}).get('llm_config', {}).get('output_tokens', 0),
+                            "strategy_metrics": case_data.get('metadata', {}).get('strategy_metrics', {}),
+                            "collection_id": case_data.get('metadata', {}).get('collection_id', 0)
+                        })
+                except:
+                    continue
+        
+        session_data['rag_cases'] = rag_cases
+        
+        return jsonify(session_data), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error getting session details: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500

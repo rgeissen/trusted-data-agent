@@ -272,11 +272,12 @@
                                         <!-- CTA Button -->
                                         <div class="flex flex-col items-center gap-4">
                                             <button id="welcome-configure-btn" class="group px-8 py-4 bg-teradata-orange hover:bg-orange-600 text-white text-lg font-semibold rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105 hover:shadow-xl flex items-center gap-3">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <!-- Cogwheel Icon (spins during connection) -->
+                                                <svg id="welcome-cogwheel-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                 </svg>
-                                                <span>Configure Application</span>
+                                                <span id="welcome-button-text">Configure Application</span>
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                                 </svg>
@@ -391,7 +392,7 @@
                         </div>
                     </div>
 
-                    <aside id="status-window" class="w-1/3 max-w-md h-full flex flex-col glass-panel rounded-l-2xl shadow-2xl border-l border-white/10">
+                    <aside id="status-window" class="collapsed w-1/3 max-w-md h-full flex flex-col glass-panel rounded-l-2xl shadow-2xl border-l border-white/10">
                         <header class="p-4 border-b border-white/10 flex flex-col justify-center items-center relative">
                             <div class="flex justify-center items-center w-full relative">
                                 <h2 id="status-title" class="header-title text-lg font-bold text-white">Live Status</h2>
@@ -466,20 +467,324 @@
                 </div>
             </div>
 
-            <!-- VIEW X: Executions (New, placeholder view) -->
-            <div id="executions-view" class="app-view w-full h-full p-8" style="display: none;">
-                <div class="max-w-7xl mx-auto">
-                    <h1 class="text-3xl font-bold text-white header-title">Past Executions - this section is under development</h1>
-                    <p class="text-gray-400 mt-4 text-lg">Placeholder for executions history and details.</p>
+            <!-- VIEW X: Executions Dashboard - Three-Tier World-Class Design -->
+            <div id="executions-view" class="app-view flex flex-col w-full h-full">
+                <div class="w-full h-full flex flex-col overflow-hidden">
+                    
+                    <!-- TIER 1: Executive Command Center -->
+                    <div id="exec-command-center" class="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border-b border-white/10 p-6">
+                        <div class="max-w-7xl mx-auto">
+                            <div class="flex items-center justify-between mb-6">
+                                <div>
+                                    <h1 class="text-3xl font-bold text-white">Execution Intelligence</h1>
+                                    <p class="text-gray-400 mt-1">Real-time analytics and strategic insights</p>
+                                </div>
+                                <button id="refresh-dashboard-btn" class="px-4 py-2 bg-teradata-orange hover:bg-orange-600 text-white rounded-lg transition-colors flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    Refresh
+                                </button>
+                            </div>
+                            
+                            <!-- Metrics Grid -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                                <!-- Total Sessions Card -->
+                                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:border-blue-500/50 transition-all">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <p class="text-gray-400 text-sm font-medium">Total Sessions</p>
+                                            <p id="metric-total-sessions" class="text-3xl font-bold text-white mt-1">0</p>
+                                        </div>
+                                        <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Total Tokens Card -->
+                                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:border-purple-500/50 transition-all">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <p class="text-gray-400 text-sm font-medium">Total Tokens</p>
+                                            <p id="metric-total-tokens" class="text-3xl font-bold text-white mt-1">0</p>
+                                            <p class="text-xs text-gray-500 mt-1">
+                                                <span id="metric-input-tokens">0</span> in / <span id="metric-output-tokens">0</span> out
+                                            </p>
+                                        </div>
+                                        <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Success Rate Card -->
+                                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:border-green-500/50 transition-all">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <p class="text-gray-400 text-sm font-medium">Success Rate</p>
+                                            <p id="metric-success-rate" class="text-3xl font-bold text-green-400 mt-1">0%</p>
+                                        </div>
+                                        <div class="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Estimated Cost Card -->
+                                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:border-yellow-500/50 transition-all">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <p class="text-gray-400 text-sm font-medium">Est. Cost</p>
+                                            <p id="metric-estimated-cost" class="text-3xl font-bold text-yellow-400 mt-1">$0.00</p>
+                                        </div>
+                                        <div class="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Execution Velocity Card -->
+                                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:border-orange-500/50 transition-all">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex-1">
+                                            <p class="text-gray-400 text-sm font-medium">Velocity (24h)</p>
+                                            <canvas id="velocity-sparkline" class="w-full h-8 mt-2"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Model Distribution & Top Champions -->
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+                                <!-- Model Distribution -->
+                                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                                    <h3 class="text-white font-semibold mb-3 flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                        </svg>
+                                        Model Distribution
+                                    </h3>
+                                    <div id="model-distribution-list" class="space-y-2">
+                                        <p class="text-gray-400 text-sm">No data available</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Top Efficiency Champions -->
+                                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                                    <h3 class="text-white font-semibold mb-3 flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                                        </svg>
+                                        Top Efficiency Champions
+                                    </h3>
+                                    <div id="top-champions-list" class="space-y-2">
+                                        <p class="text-gray-400 text-sm">No efficiency data available</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- TIER 2: Session Gallery -->
+                    <div id="session-gallery" class="flex-1 p-6 bg-gray-900/50 overflow-y-auto">
+                        <div class="max-w-7xl mx-auto">
+                            <div class="flex items-center justify-between mb-6">
+                                <h2 class="text-2xl font-bold text-white">Session Gallery</h2>
+                                
+                                <!-- Filter & Sort Controls -->
+                                <div class="flex items-center gap-3">
+                                    <input 
+                                        id="session-search" 
+                                        type="text" 
+                                        placeholder="Search sessions..." 
+                                        class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-teradata-orange transition-colors"
+                                    />
+                                    <select id="session-filter-status" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-teradata-orange transition-colors">
+                                        <option value="all">All Status</option>
+                                        <option value="success">Success</option>
+                                        <option value="partial">Partial</option>
+                                        <option value="failed">Failed</option>
+                                    </select>
+                                    <select id="session-sort" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-teradata-orange transition-colors">
+                                        <option value="recent">Most Recent</option>
+                                        <option value="oldest">Oldest First</option>
+                                        <option value="tokens">Most Tokens</option>
+                                        <option value="turns">Most Turns</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- Session Cards Grid -->
+                            <div id="session-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <!-- Session cards will be dynamically inserted here -->
+                                <div class="col-span-full text-center py-12">
+                                    <p class="text-gray-400">Loading sessions...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- TIER 3: Deep Dive Inspector (Initially Hidden) -->
+                    <div id="deep-dive-inspector" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 overflow-y-auto">
+                        <div class="min-h-screen flex items-start justify-center p-6">
+                            <div class="bg-gray-900 rounded-2xl border border-white/20 max-w-6xl w-full my-8">
+                                <!-- Inspector Header -->
+                                <div class="border-b border-white/10 p-6 flex items-center justify-between">
+                                    <div>
+                                        <h2 id="inspector-session-name" class="text-2xl font-bold text-white">Session Details</h2>
+                                        <p id="inspector-session-meta" class="text-gray-400 mt-1">Loading...</p>
+                                    </div>
+                                    <button id="close-inspector-btn" class="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400 hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                
+                                <!-- Inspector Content -->
+                                <div class="p-6 space-y-6">
+                                    <!-- Session Stats -->
+                                    <div class="grid grid-cols-4 gap-4">
+                                        <div class="bg-white/5 rounded-lg p-4">
+                                            <p class="text-gray-400 text-sm">Total Turns</p>
+                                            <p id="inspector-turn-count" class="text-2xl font-bold text-white mt-1">0</p>
+                                        </div>
+                                        <div class="bg-white/5 rounded-lg p-4">
+                                            <p class="text-gray-400 text-sm">Total Tokens</p>
+                                            <p id="inspector-total-tokens" class="text-2xl font-bold text-white mt-1">0</p>
+                                        </div>
+                                        <div class="bg-white/5 rounded-lg p-4">
+                                            <p class="text-gray-400 text-sm">Model</p>
+                                            <p id="inspector-model" class="text-lg font-semibold text-white mt-1">-</p>
+                                        </div>
+                                        <div class="bg-white/5 rounded-lg p-4">
+                                            <p class="text-gray-400 text-sm">RAG Cases</p>
+                                            <p id="inspector-rag-count" class="text-2xl font-bold text-green-400 mt-1">0</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Timeline -->
+                                    <div>
+                                        <h3 class="text-xl font-bold text-white mb-4">Execution Timeline</h3>
+                                        <div id="inspector-timeline" class="space-y-4">
+                                            <p class="text-gray-400">Loading timeline...</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- RAG Cases -->
+                                    <div id="inspector-rag-section" class="hidden">
+                                        <h3 class="text-xl font-bold text-white mb-4">RAG Efficiency Cases</h3>
+                                        <div id="inspector-rag-cases" class="space-y-3">
+                                            <!-- RAG cases will be inserted here -->
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Export Options -->
+                                    <div class="border-t border-white/10 pt-6 flex gap-3">
+                                        <button id="export-json-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                                            Export as JSON
+                                        </button>
+                                        <button id="export-report-btn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
+                                            Generate Report
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                 </div>
             </div>
 
             <!-- VIEW 2: RAG Maintenance (New, placeholder view) -->
             <!-- VIEW 2A: RAG Marketplace (New, placeholder view) -->
-            <div id="rag-marketplace-view" class="app-view w-full h-full p-8">
-                <div class="max-w-7xl mx-auto">
-                    <h1 class="text-3xl font-bold text-white header-title">Marketplace</h1>
-                    <p class="text-gray-400 mt-4 text-lg">This section is under development.</p>
+            <div id="rag-marketplace-view" class="app-view w-full h-full p-8 flex items-center justify-center">
+                <div class="max-w-4xl mx-auto text-center space-y-8">
+                    <!-- Icon -->
+                    <div class="flex justify-center">
+                        <div class="w-24 h-24 bg-gradient-to-br from-purple-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-14 w-14 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <!-- Heading -->
+                    <div class="space-y-4">
+                        <h1 class="text-4xl font-bold text-white">Community Knowledge Marketplace</h1>
+                        <p class="text-2xl font-semibold text-purple-400">Coming Soon</p>
+                    </div>
+                    
+                    <!-- Value Proposition -->
+                    <div class="space-y-6 text-left bg-white/5 rounded-2xl p-8 backdrop-blur-sm border border-white/10">
+                        <h2 class="text-xl font-bold text-white text-center">The Power of Collective Intelligence</h2>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-start gap-4">
+                                <div class="flex-shrink-0 w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-semibold text-white mb-1">Share & Discover Execution Strategies</h3>
+                                    <p class="text-gray-400">Access community-curated knowledge bases of proven planner executions, optimized for specific MCP servers and use cases.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start gap-4">
+                                <div class="flex-shrink-0 w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-semibold text-white mb-1">Supercharge Efficiency</h3>
+                                    <p class="text-gray-400">Dramatically reduce token costs and improve execution speed by learning from battle-tested strategies that already work.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start gap-4">
+                                <div class="flex-shrink-0 w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-semibold text-white mb-1">Enable On-Prem Intelligence</h3>
+                                    <p class="text-gray-400">Augment smaller, local models with community knowledge, achieving enterprise-grade results while maintaining data sovereignty.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start gap-4">
+                                <div class="flex-shrink-0 w-8 h-8 bg-orange-500/20 rounded-lg flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-semibold text-white mb-1">Continuous Learning Loop</h3>
+                                    <p class="text-gray-400">The planner evolves with every shared execution, creating a self-improving ecosystem that benefits everyone.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- CTA -->
+                    <div class="pt-4">
+                        <p class="text-gray-400 text-lg">
+                            Building the future of collaborative AI intelligence. Stay tuned!
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -667,9 +972,10 @@
                     <!-- Action Button - Always Visible -->
                     <div class="glass-panel rounded-xl p-6 mt-6 flex-shrink-0">
                         <button id="reconnect-and-load-btn" type="button" disabled class="w-full px-6 py-4 rounded-md bg-gray-600 transition-colors font-semibold flex items-center justify-center text-white disabled:opacity-50 disabled:cursor-not-allowed enabled:bg-[#F15F22] enabled:hover:bg-[#D9501A]">
-                            <svg id="reconnect-loading-spinner" class="w-5 h-5 mr-2 animate-spin hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            <!-- Cogwheel Icon (spins during connection) -->
+                            <svg id="reconnect-loading-spinner" class="w-5 h-5 mr-2 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                             <span id="reconnect-button-text">Save & Connect</span>
                         </button>
@@ -960,6 +1266,7 @@
     </div>
 
     <script type="module" src="{{ url_for('static', filename='js/notifications.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/executionDashboard.js') }}"></script>
     <script type="module" src="{{ url_for('static', filename='js/main.js') }}?v=2.6"></script>
     <script type="module" src="{{ url_for('static', filename='js/handlers/ragCollectionManagement.js') }}"></script>
     <!-- RAG Case Modal -->

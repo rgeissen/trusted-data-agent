@@ -834,6 +834,7 @@ export async function reconnectAndLoad() {
     btn.disabled = true;
     btnText.textContent = 'Connecting...';
     spinner.classList.remove('hidden');
+    spinner.classList.add('animate-spin');
     statusDiv.innerHTML = '<span class="text-gray-400">Initializing connection...</span>';
 
     try {
@@ -919,6 +920,11 @@ export async function reconnectAndLoad() {
                         await handleStartNewSession();
                     }
                     
+                    // Hide welcome screen and show chat interface
+                    if (window.hideWelcomeScreen) {
+                        window.hideWelcomeScreen();
+                    }
+                    
                     handleViewSwitch('conversation-view');
                 } catch (sessionError) {
                     console.error('Failed to load/create session:', sessionError);
@@ -935,7 +941,8 @@ export async function reconnectAndLoad() {
         showNotification('error', `Connection failed: ${error.message}`);
     } finally {
         btn.disabled = false;
-        btnText.textContent = 'Reconnect & Load';
+        btnText.textContent = 'Save & Connect';
+        spinner.classList.remove('animate-spin');
         spinner.classList.add('hidden');
     }
 }

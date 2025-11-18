@@ -102,6 +102,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize all event listeners first to ensure they are ready.
     initializeEventListeners();
     initializeVoiceRecognition();
+    
+    // Initialize Execution Dashboard
+    if (window.ExecutionDashboard) {
+        window.executionDashboard = new window.ExecutionDashboard();
+        console.log('Execution Dashboard initialized');
+    } else {
+        console.warn('ExecutionDashboard class not found');
+    }
 
     // Initialize new configuration UI (async - loads MCP servers from backend)
     await initializeConfigurationUI();
@@ -226,7 +234,8 @@ async function showWelcomeScreen() {
     const welcomeScreen = document.getElementById('welcome-screen');
     const chatLog = document.getElementById('chat-log');
     const welcomeBtn = document.getElementById('welcome-configure-btn');
-    const welcomeBtnText = welcomeBtn?.querySelector('span');
+    const welcomeBtnText = document.getElementById('welcome-button-text');
+    const welcomeCogwheel = document.getElementById('welcome-cogwheel-icon');
     const welcomeSubtext = document.querySelector('.welcome-subtext');
     const reconfigureLink = document.getElementById('welcome-reconfigure-link');
     
@@ -301,8 +310,50 @@ async function showWelcomeScreen() {
     
     // Wire up the configure button
     if (welcomeBtn && !welcomeBtn.dataset._wired) {
-        welcomeBtn.addEventListener('click', () => {
-            handleViewSwitch('credentials-view');
+        welcomeBtn.addEventListener('click', async () => {
+            if (hasSavedConfig) {
+                // User has saved config - connect and load automatically
+                console.log('Connect and Load: Automatically configuring with saved settings...');
+                
+                // Show spinning cogwheel and update button text
+                if (welcomeCogwheel) {
+                    welcomeCogwheel.classList.add('animate-spin');
+                }
+                if (welcomeBtnText) {
+                    welcomeBtnText.textContent = 'Connecting...';
+                }
+                welcomeBtn.disabled = true;
+                
+                try {
+                    // Import reconnectAndLoad function which handles the full connection process
+                    const { reconnectAndLoad } = await import('./handlers/configurationHandler.js');
+                    
+                    // Call reconnectAndLoad which will:
+                    // 1. Validate MCP and LLM configurations
+                    // 2. Send /configure request to backend
+                    // 3. Load resources (tools, prompts, resources)
+                    // 4. Load or create session
+                    // 5. Switch to conversation view
+                    await reconnectAndLoad();
+                    
+                    console.log('Configuration completed via reconnectAndLoad');
+                } catch (error) {
+                    console.error('Error during auto-configuration:', error);
+                    // reconnectAndLoad handles its own error notifications
+                } finally {
+                    // Stop spinning and restore button
+                    if (welcomeCogwheel) {
+                        welcomeCogwheel.classList.remove('animate-spin');
+                    }
+                    if (welcomeBtnText) {
+                        welcomeBtnText.textContent = hasSavedConfig ? 'Connect and Load' : 'Configure Application';
+                    }
+                    welcomeBtn.disabled = false;
+                }
+            } else {
+                // No saved config - go to credentials view
+                handleViewSwitch('credentials-view');
+            }
         });
         welcomeBtn.dataset._wired = 'true';
     }

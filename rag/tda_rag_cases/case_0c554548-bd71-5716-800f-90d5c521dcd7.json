@@ -1,0 +1,51 @@
+{
+  "case_id": "0c554548-bd71-5716-800f-90d5c521dcd7",
+  "metadata": {
+    "session_id": "b3c3b3bd-f6d6-433d-96fc-a4229c76d7a4",
+    "turn_id": 3,
+    "is_success": true,
+    "task_id": "task-6601a38e-8cae-4bd6-94f8-19cdb8a534a9",
+    "collection_id": 0,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-18T18:13:48.160183+00:00",
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "input_tokens": 10247,
+      "output_tokens": 115
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    }
+  },
+  "intent": {
+    "user_query": "what is the current date?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Get the current date.",
+        "relevant_tools": [
+          "TDA_CurrentDate"
+        ],
+        "arguments": {}
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the current date.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}
