@@ -2078,7 +2078,13 @@ async function fetchAndRenderCollectionRows({ collectionId, query = '', refresh 
     } catch (e) {
         console.error('Failed to fetch collection rows', e);
         if (DOM.ragCollectionTableBody) {
-            DOM.ragCollectionTableBody.innerHTML = `<tr><td colspan="6" class="px-2 py-2 text-red-400">Error loading rows.</td></tr>`;
+            // Check if it's actually an error or just an empty collection
+            const isEmptyCollection = e.message && e.message.includes('not found');
+            const message = isEmptyCollection 
+                ? 'No rows available.' 
+                : 'Error loading rows. Check console for details.';
+            const colorClass = isEmptyCollection ? 'text-gray-400' : 'text-red-400';
+            DOM.ragCollectionTableBody.innerHTML = `<tr><td colspan="6" class="px-2 py-2 ${colorClass}">${message}</td></tr>`;
         }
     } finally {
         if (DOM.ragCollectionLoading) {
@@ -2091,7 +2097,8 @@ function renderCollectionRows(rows, total, query, collectionName) {
     if (!DOM.ragCollectionTableBody) return;
     DOM.ragCollectionTableBody.innerHTML = '';
     if (!rows.length) {
-        DOM.ragCollectionTableBody.innerHTML = `<tr><td colspan="6" class="px-2 py-2 text-gray-400">${query && query.length >= 3 ? 'No matches found.' : 'No rows in sample.'}</td></tr>`;
+        const message = query && query.length >= 3 ? 'No matches found.' : 'No rows available.';
+        DOM.ragCollectionTableBody.innerHTML = `<tr><td colspan="6" class="px-2 py-2 text-gray-400">${message}</td></tr>`;
     } else {
         rows.forEach(r => {
             const tr = document.createElement('tr');

@@ -211,7 +211,8 @@ async function toggleRagCollection(collectionId, currentState) {
             // Refresh collections list
             await loadRagCollections();
         } else {
-            showNotification('error', `Failed to toggle collection: ${data.error || 'Unknown error'}`);
+            // Backend returns 'message' field for errors
+            showNotification('error', data.message || 'Failed to toggle collection');
         }
     } catch (error) {
         console.error('Error toggling RAG collection:', error);

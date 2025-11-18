@@ -453,12 +453,9 @@ async def update_rag_collection(collection_id: int):
         
         data = await request.get_json()
         
-        # Get the RAG retriever
-        retriever = APP_STATE.get("rag_retriever_instance")
-        if not retriever:
-            return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
-        
         # Find the collection in APP_STATE
+        # Note: We allow updating metadata even if RAG retriever is not initialized
+        # This enables users to assign MCP servers before full configuration
         collections_list = APP_STATE.get("rag_collections", [])
         coll_meta = next((c for c in collections_list if c["id"] == collection_id), None)
         
@@ -531,11 +528,8 @@ async def toggle_rag_collection(collection_id: int):
         if enabled is None:
             return jsonify({"status": "error", "message": "Field 'enabled' is required"}), 400
         
-        retriever = APP_STATE.get("rag_retriever_instance")
-        if not retriever:
-            return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
-        
-        # Check if attempting to enable a collection without MCP server
+        # Check if attempting to enable a collection without MCP server assignment FIRST
+        # This validation should happen even if RAG retriever is not initialized
         if enabled:
             collections_list = APP_STATE.get("rag_collections", [])
             coll_meta = next((c for c in collections_list if c["id"] == collection_id), None)
@@ -544,6 +538,11 @@ async def toggle_rag_collection(collection_id: int):
                     "status": "error", 
                     "message": "Cannot enable collection: MCP server must be assigned first"
                 }), 400
+        
+        # Now check if RAG retriever is initialized
+        retriever = APP_STATE.get("rag_retriever_instance")
+        if not retriever:
+            return jsonify({"status": "error", "message": "RAG retriever not initialized. Please configure and connect the application first."}), 500
         
         success = retriever.toggle_collection(collection_id, enabled)
         

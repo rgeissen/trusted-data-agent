@@ -783,6 +783,11 @@ export async function reconnectAndLoad() {
     const mcpServer = configState.getActiveMCPServer();
     const llmProvider = configState.getActiveLLMProvider();
 
+    console.log('[DEBUG] reconnectAndLoad - activeMCP:', configState.activeMCP);
+    console.log('[DEBUG] reconnectAndLoad - mcpServers:', configState.mcpServers);
+    console.log('[DEBUG] reconnectAndLoad - mcpServer:', mcpServer);
+    console.log('[DEBUG] reconnectAndLoad - llmProvider:', llmProvider);
+
     // Validate that both MCP server and LLM provider are configured
     if (!mcpServer) {
         showNotification('error', 'Please configure and select an MCP Server first (go to MCP Servers tab)');
@@ -819,7 +824,7 @@ export async function reconnectAndLoad() {
         const configData = {
             provider: llmProvider.provider,
             model: llmProvider.model,
-            ...llmProvider.credentials,
+            credentials: llmProvider.credentials,
             server_name: mcpServer.name,
             server_id: mcpServer.id, // Add unique server ID
             host: mcpServer.host,
@@ -829,6 +834,8 @@ export async function reconnectAndLoad() {
             tts_credentials_json: document.getElementById('tts-credentials-json')?.value || '',
             charting_intensity: document.getElementById('charting-intensity')?.value || 'none'
         };
+
+        console.log('[DEBUG] reconnectAndLoad - configData being sent:', configData);
 
         const response = await fetch('/configure', {
             method: 'POST',
