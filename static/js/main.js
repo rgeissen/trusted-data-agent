@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             // Show welcome screen in conversation view
-            showWelcomeScreen();
+            await showWelcomeScreen();
             
             // NOTE: Old loadCredentialsAndModels() is not needed with new config UI
             // The new configurationHandler manages everything via localStorage
@@ -222,14 +222,81 @@ document.addEventListener('DOMContentLoaded', async () => {
 /**
  * Show the welcome screen for unconfigured applications
  */
-function showWelcomeScreen() {
+async function showWelcomeScreen() {
     const welcomeScreen = document.getElementById('welcome-screen');
     const chatLog = document.getElementById('chat-log');
     const welcomeBtn = document.getElementById('welcome-configure-btn');
+    const welcomeBtnText = welcomeBtn?.querySelector('span');
+    const welcomeSubtext = document.querySelector('.welcome-subtext');
+    const reconfigureLink = document.getElementById('welcome-reconfigure-link');
     
     if (welcomeScreen && chatLog) {
         welcomeScreen.classList.remove('hidden');
         chatLog.classList.add('hidden');
+    }
+    
+    // Check if user has previously saved MCP servers and LLM providers
+    let hasSavedConfig = false;
+    let configDetails = '';
+    try {
+        const response = await fetch('/api/v1/mcp/servers');
+        if (response.ok) {
+            const data = await response.json();
+            // API returns {status, servers: [...], active_server_id}
+            hasSavedConfig = data && data.servers && data.servers.length > 0;
+            
+            if (hasSavedConfig && data.active_server_id) {
+                // Find the active server
+                const activeServer = data.servers.find(s => s.id === data.active_server_id);
+                if (activeServer) {
+                    const mcpName = activeServer.name || 'Unknown Server';
+                    
+                    // Get the active LLM provider from ConfigurationState
+                    const activeLLM = await configState.getActiveLLMProvider();
+                    
+                    if (activeLLM) {
+                        const llmProvider = activeLLM.provider || 'Unknown Provider';
+                        const llmModel = activeLLM.model || 'Unknown Model';
+                        configDetails = `${mcpName} • ${llmProvider} / ${llmModel}`;
+                    } else {
+                        configDetails = `${mcpName} • LLM not configured`;
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Error checking for saved configurations:", error);
+    }
+    
+    // Update button text based on whether user has saved configurations
+    if (welcomeBtnText) {
+        const buttonText = hasSavedConfig ? 'Connect and Load' : 'Configure Application';
+        welcomeBtnText.textContent = buttonText;
+    }
+    
+    // Update subtext with configuration details or default message
+    if (welcomeSubtext) {
+        welcomeSubtext.textContent = hasSavedConfig && configDetails 
+            ? configDetails 
+            : "You'll need an MCP server and an LLM provider";
+    }
+    
+    // Show/hide reconfigure link based on saved config
+    if (reconfigureLink) {
+        if (hasSavedConfig) {
+            reconfigureLink.classList.remove('hidden');
+        } else {
+            reconfigureLink.classList.add('hidden');
+        }
+        
+        // Wire up the reconfigure link
+        if (!reconfigureLink.dataset._wired) {
+            reconfigureLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                handleViewSwitch('credentials-view');
+            });
+            reconfigureLink.dataset._wired = 'true';
+        }
     }
     
     // Wire up the configure button
