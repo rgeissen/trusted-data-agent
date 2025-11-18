@@ -1957,7 +1957,18 @@ async function loadRagCollections() {
             inspectBtn.className = 'px-3 py-1 rounded-md bg-[#F15F22] hover:bg-[#D9501A] text-sm text-white';
             inspectBtn.textContent = 'Inspect';
             inspectBtn.addEventListener('click', () => {
-                openCollectionInspection(col.collection_name);
+                openCollectionInspection(col.id, col.name);
+            });
+            
+            // Edit button
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.className = 'px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-500 text-sm text-white';
+            editBtn.textContent = 'Edit';
+            editBtn.addEventListener('click', () => {
+                if (window.ragCollectionManagement) {
+                    window.ragCollectionManagement.openEditCollectionModal(col);
+                }
             });
             
             // Delete button (disabled for default collection ID 0)
@@ -1979,6 +1990,7 @@ async function loadRagCollections() {
             actions.appendChild(toggleBtn);
             actions.appendChild(refreshBtn);
             actions.appendChild(inspectBtn);
+            actions.appendChild(editBtn);
             actions.appendChild(deleteBtn);
             
             card.appendChild(header);
@@ -1998,28 +2010,30 @@ async function loadRagCollections() {
 }
 
 // --- RAG Collection Inspection Logic ---
-async function openCollectionInspection(collectionName) {
-    if (!collectionName) return;
-    state.currentInspectedCollection = collectionName;
+async function openCollectionInspection(collectionId, collectionName) {
+    if (collectionId === undefined) return;
+    state.currentInspectedCollectionId = collectionId;
+    state.currentInspectedCollectionName = collectionName;
     if (DOM.ragCollectionInspectTitle) {
         DOM.ragCollectionInspectTitle.textContent = `Inspect: ${collectionName}`;
     }
     handleViewSwitch('rag-collection-inspect-view');
-    await fetchAndRenderCollectionRows({ collection: collectionName, refresh: true });
+    await fetchAndRenderCollectionRows({ collectionId: collectionId, refresh: true });
     wireCollectionInspectionEvents();
 }
 
 function wireCollectionInspectionEvents() {
     if (DOM.ragCollectionInspectBack) {
         DOM.ragCollectionInspectBack.onclick = () => {
-            state.currentInspectedCollection = null;
+            state.currentInspectedCollectionId = null;
+            state.currentInspectedCollectionName = null;
             handleViewSwitch('rag-maintenance-view');
         };
     }
     if (DOM.ragCollectionRefreshButton) {
         DOM.ragCollectionRefreshButton.onclick = () => {
-            if (state.currentInspectedCollection) {
-                fetchAndRenderCollectionRows({ collection: state.currentInspectedCollection, refresh: true });
+            if (state.currentInspectedCollectionId !== null && state.currentInspectedCollectionId !== undefined) {
+                fetchAndRenderCollectionRows({ collectionId: state.currentInspectedCollectionId, refresh: true });
             }
         };
     }
@@ -2030,8 +2044,8 @@ function wireCollectionInspectionEvents() {
             state.ragCollectionSearchTerm = term;
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
-                if (state.currentInspectedCollection) {
-                    fetchAndRenderCollectionRows({ collection: state.currentInspectedCollection, query: term });
+                if (state.currentInspectedCollectionId !== null && state.currentInspectedCollectionId !== undefined) {
+                    fetchAndRenderCollectionRows({ collectionId: state.currentInspectedCollectionId, query: term });
                 }
             }, 300);
         });
@@ -2039,8 +2053,8 @@ function wireCollectionInspectionEvents() {
     }
 }
 
-async function fetchAndRenderCollectionRows({ collection, query = '', refresh = false }) {
-    if (!collection) return;
+async function fetchAndRenderCollectionRows({ collectionId, query = '', refresh = false }) {
+    if (collectionId === undefined || collectionId === null) return;
     if (DOM.ragCollectionLoading) {
         DOM.ragCollectionLoading.textContent = query && query.length >= 3 ? 'Searching...' : 'Loading rows...';
         DOM.ragCollectionLoading.style.display = 'block';
@@ -2052,10 +2066,10 @@ async function fetchAndRenderCollectionRows({ collection, query = '', refresh = 
         if (query && query.length >= 3) {
             params.set('q', query);
         }
-        const res = await fetch(`/rag/collections/${encodeURIComponent(collection)}/rows?${params.toString()}`);
+        const res = await fetch(`/rag/collections/${collectionId}/rows?${params.toString()}`);
         const data = await res.json();
         if (data.error) throw new Error(data.error);
-        renderCollectionRows(data.rows || [], data.total, query, collection);
+        renderCollectionRows(data.rows || [], data.total, query, data.collection_name || `Collection ${collectionId}`);
     } catch (e) {
         console.error('Failed to fetch collection rows', e);
         if (DOM.ragCollectionTableBody) {

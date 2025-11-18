@@ -455,7 +455,8 @@
             </div>
 
             <!-- --- MODIFICATION START: Add Credentials View --- -->
-            <div id="credentials-view" class="app-view w-full h-full overflow-y-auto p-6">
+            <!-- MODIFICATION: Start with active class to avoid blank screen during JS load -->
+            <div id="credentials-view" class="app-view active w-full h-full overflow-y-auto p-6">
                 <div class="w-full max-w-7xl mx-auto space-y-6">
                     <!-- Page Header -->
                     <div class="flex justify-between items-center">
@@ -560,198 +561,9 @@
             </div>
             <!-- --- MODIFICATION END: Credentials View --- -->
 
-            <!-- OLD CONFIG FORM - TO BE REMOVED -->
-            <div id="old-config-form-container" class="hidden">
-                <form id="config-form">
-                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-x-8">
-                                <!-- Column 1: MCP Server -->
-                                <div class="bg-white/5 border border-white/10 rounded-lg p-6 flex flex-col">
-                                    <!-- MCP Form Fields -->
-                                    <div class="flex items-center mb-4">
-                                        <div class="bg-[#F15F22]/20 text-[#F15F22] rounded-lg p-2 mr-4">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9V3m-3.516 6.636a9 9 0 015.032 0" /></svg>
-                                        </div>
-                                        <h4 class="font-bold text-lg text-white">MCP Server</h4>
-                                    </div>
-                                    <p class="text-sm text-gray-400 mb-6 flex-grow">Connect to the Model-Context-Protocol server.</p>
-                                    <div class="space-y-4">
-                                        <div>
-                                            <label for="mcp-server-name" class="block text-sm font-medium text-gray-300 mb-1">Server Name</label>
-                                            <input type="text" id="mcp-server-name" name="server_name" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., my_mcp_server">
-                                        </div>
-                                        <div>
-                                            <label for="mcp-host" class="block text-sm font-medium text-gray-300 mb-1">Host</label>
-                                            <input type="text" id="mcp-host" name="host" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
-                                        </div>
-                                        <div>
-                                            <label for="mcp-port" class="block text-sm font-medium text-gray-300 mb-1">Port</label>
-                                            <input type="text" id="mcp-port" name="port" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
-                                        </div>
-                                        <div>
-                                            <label for="mcp-path" class="block text-sm font-medium text-gray-300 mb-1">Path</label>
-                                            <input type="text" id="mcp-path" name="path" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Column 2: LLM Configuration -->
-                                <div class="bg-white/5 border border-white/10 rounded-lg p-6 flex flex-col mt-8 lg:mt-0">
-                                    <!-- LLM Form Fields -->
-                                    <div class="flex items-center mb-4">
-                                        <div class="bg-[#F15F22]/20 text-[#F15F22] rounded-lg p-2 mr-4">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-                                        </div>
-                                        <h4 class="font-bold text-lg text-white">Language Model (LLM)</h4>
-                                    </div>
-                                    <p class="text-sm text-gray-400 mb-6 flex-grow">Configure the Language Model provider and credentials.</p>
-                                    <div class="space-y-4">
-                                        <div>
-                                            <label for="llm-provider" class="block text-sm font-medium text-gray-300 mb-1">Provider</label>
-                                            <select id="llm-provider" name="provider" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
-                                                <option value="Google">Google</option>
-                                                <option value="Anthropic">Anthropic</option>
-                                                <option value="OpenAI">OpenAI</option>
-                                                <option value="Azure">Microsoft Azure</option>
-                                                <option value="Friendli">Friendli.ai</option>
-                                                <option value="Amazon">Amazon</option>
-                                                <option value="Ollama">Ollama (Local)</option>
-                                                <option value="Cohere" disabled>Cohere (coming soon)</option>
-                                                <option value="Mistral" disabled>Mistral (coming soon)</option>
-                                            </select>
-                                        </div>
-                                        <div id="api-key-container">
-                                            <label for="llm-api-key" class="block text-sm font-medium text-gray-300 mb-1">API Key</label>
-                                            <input type="password" id="llm-api-key" name="apiKey" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your API Key">
-                                        </div>
-                                        <div id="friendli-credentials-container" class="hidden space-y-4">
-                                            <!-- Friendli Credentials -->
-                                            <div>
-                                                <label for="friendli-token" class="block text-sm font-medium text-gray-300 mb-1">Personal Access Token</label>
-                                                <input type="password" id="friendli-token" name="friendli_token" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your Friendli PAT">
-                                            </div>
-                                            <div>
-                                                <label for="friendli-endpoint-url" class="block text-sm font-medium text-gray-300 mb-1">Dedicated Endpoint URL (Optional)</label>
-                                                <input type="text" id="friendli-endpoint-url" name="friendli_endpoint_url" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., https://your-endpoint.friendli.ai">
-                                            </div>
-                                        </div>
-                                        <div id="azure-credentials-container" class="hidden space-y-4">
-                                            <!-- Azure Credentials -->
-                                            <div>
-                                                <label for="azure-api-key" class="block text-sm font-medium text-gray-300 mb-1">Azure API Key</label>
-                                                <input type="password" id="azure-api-key" name="azure_api_key" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your Azure API Key">
-                                            </div>
-                                            <div>
-                                                <label for="azure-endpoint" class="block text-sm font-medium text-gray-300 mb-1">Azure Endpoint</label>
-                                                <input type="text" id="azure-endpoint" name="azure_endpoint" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., https://your-resource.openai.azure.com/">
-                                            </div>
-                                            <div>
-                                                <label for="azure-deployment-name" class="block text-sm font-medium text-gray-300 mb-1">Deployment Name</label>
-                                                <input type="text" id="azure-deployment-name" name="azure_deployment_name" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Your model deployment name">
-                                            </div>
-                                            <div>
-                                                <label for="azure-api-version" class="block text-sm font-medium text-gray-300 mb-1">API Version</label>
-                                                <input type="text" id="azure-api-version" name="azure_api_version" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., 2024-02-01">
-                                            </div>
-                                        </div>
-                                        <div id="ollama-host-container" class="hidden">
-                                            <!-- Ollama Host Input -->
-                                            <label for="ollama-host" class="block text-sm font-medium text-gray-300 mb-1">Ollama Host</label>
-                                            <input type="text" id="ollama-host" name="ollama_host" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., http://localhost:11434">
-                                        </div>
-                                        <div id="aws-credentials-container" class="hidden space-y-4">
-                                            <!-- AWS Credentials -->
-                                            <div>
-                                                <label for="aws-access-key-id" class="block text-sm font-medium text-gray-300 mb-1">AWS Access Key ID</label>
-                                                <input type="password" id="aws-access-key-id" name="aws_access_key_id" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your AWS Access Key ID">
-                                            </div>
-                                            <div>
-                                                <label for="aws-secret-access-key" class="block text-sm font-medium text-gray-300 mb-1">AWS Secret Access Key</label>
-                                                <input type="password" id="aws-secret-access-key" name="aws_secret_access_key" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="Enter your AWS Secret Access Key">
-                                            </div>
-                                            <div>
-                                                <label for="aws-region" class="block text-sm font-medium text-gray-300 mb-1">AWS Region</label>
-                                                <input type="text" id="aws-region" name="aws_region" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none" placeholder="e.g., us-east-1">
-                                            </div>
-                                        </div>
-                                        <fieldset id="aws-listing-method-container" class="hidden">
-                                            <!-- AWS Listing Method Radio Buttons -->
-                                            <legend class="block text-sm font-medium text-gray-300 mb-2">Model Listing Method</legend>
-                                            <div class="flex items-center gap-x-6">
-                                                <div class="flex items-center">
-                                                    <input id="foundation_models" name="listing_method" type="radio" value="foundation_models" class="h-4 w-4 border-gray-300 text-teradata-orange focus:ring-teradata-orange" checked>
-                                                    <label for="foundation_models" class="ml-3 block text-sm font-medium leading-6 text-gray-300">Foundation Models</label>
-                                                </div>
-                                                <div class="flex items-center">
-                                                    <input id="inference_profiles" name="listing_method" type="radio" value="inference_profiles" class="h-4 w-4 border-gray-300 text-teradata-orange focus:ring-teradata-orange">
-                                                    <label for="inference_profiles" class="ml-3 block text-sm font-medium leading-6 text-gray-300">Inference Profiles</label>
-                                                </div>
-                                            </div>
-                                        </fieldset>
-                                        <div>
-                                            <label for="llm-model" class="block text-sm font-medium text-gray-300 mb-1">Model</label>
-                                            <div class="flex items-center gap-2">
-                                                <select id="llm-model" name="model" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
-                                                    <option value="">-- Select Provider & Enter Credentials --</option>
-                                                </select>
-                                                <button type="button" id="refresh-models-button" title="Refresh Model List" class="p-2 bg-gray-600 hover:bg-gray-500 rounded-md transition-colors">
-                                                    <!-- Refresh Icon and Spinner -->
-                                                    <svg id="refresh-icon" class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.667 0l3.181-3.183m-4.991-2.691L7.985 5.356m0 0v4.992m0 0h4.992m0 0l3.181-3.183a8.25 8.25 0 0111.667 0l3.181 3.183" /></svg>
-                                                    <svg id="refresh-spinner" class="w-5 h-5 animate-spin hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Column 3: Optional Services -->
-                                <div class="bg-white/5 border border-white/10 rounded-lg p-6 flex flex-col mt-8 lg:mt-0">
-                                    <!-- Optional Services Form Fields -->
-                                    <div class="flex items-center mb-4">
-                                        <div class="bg-[#F15F22]/20 text-[#F15F22] rounded-lg p-2 mr-4">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
-                                        </div>
-                                        <h4 class="font-bold text-lg text-white">Optional Services</h4>
-                                    </div>
-                                    <p class="text-sm text-gray-400 mb-6 flex-grow">Configure additional features like charting and voice.</p>
-                                    <div class="space-y-4">
-                                        <div id="charting-intensity-container">
-                                            <label for="charting-intensity" class="block text-sm font-medium text-gray-300 mb-1">Charting Intensity</label>
-                                            <select id="charting-intensity" name="charting_intensity" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none">
-                                                <option value="none" selected>No Charting</option>
-                                                <option value="medium">Medium Charting</option>
-                                                <option value="heavy">Heavy Charting</option>
-                                            </select>
-                                        </div>
-                                        <details class="pt-4 border-t border-white/10">
-                                            <summary class="text-sm font-medium text-gray-300 cursor-pointer hover:text-white">Configure Google TTS</summary>
-                                            <div class="mt-2">
-                                                <label for="tts-credentials-json" class="block text-xs font-medium text-gray-400 mb-1">Google TTS Credentials JSON (Optional)</label>
-                                                <textarea id="tts-credentials-json" name="tts_credentials_json" rows="4" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-xs font-mono" placeholder="Paste credentials.json content here. Leave blank to use server environment variable."></textarea>
-                                            </div>
-                                        </details>
-                                        <div class="pt-4 border-t border-white/10">
-                                            <label for="tda-user-uuid" class="block text-sm font-medium text-gray-300 mb-1">REST UserID</label>
-                                            <div class="flex items-center gap-2">
-                                                <input type="text" id="tda-user-uuid" name="tda_user_uuid" class="w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-gray-400" readonly>
-                                                <button type="button" id="copy-uuid-button" title="Copy UUID" class="p-2 bg-gray-600 hover:bg-gray-500 rounded-md transition-colors">
-                                                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- OLD FORM CONTENT ENDS HERE -->
-                        </form>
-                    </div>
-                </div>
-            </div>
-            <!-- --- OLD CONFIG FORM ENDS --- -->
-
         </main>
     </div>
-    <!-- MODIFICATION: Removed configured-wrapper closing tag -->
+    <!-- Main content wrapper closing div -->
 
 
     <!-- Modals (Chat, Info, Config, Prompt Editor, Confirmation, Prompt View, System Prompt Popup) -->
@@ -874,6 +686,66 @@
                     </button>
                     <button type="submit" id="add-rag-collection-submit" class="px-4 py-2 rounded-md bg-teradata-orange hover:bg-teradata-orange-dark transition-colors font-semibold text-white">
                         Create Collection
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Edit RAG Collection Modal -->
+    <div id="edit-rag-collection-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
+        <div id="edit-rag-collection-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-lg p-6 transform scale-95 opacity-0">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-white">Edit RAG Collection</h2>
+                <button type="button" id="edit-rag-collection-modal-close" class="p-2 rounded-full text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <form id="edit-rag-collection-form" class="space-y-4">
+                <input type="hidden" id="edit-rag-collection-id" name="collection_id">
+                
+                <div>
+                    <label for="edit-rag-collection-name" class="block text-sm font-medium text-gray-300 mb-2">
+                        Collection Name <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" id="edit-rag-collection-name" name="name" required
+                           class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white"
+                           placeholder="e.g., Teradata Query Patterns">
+                </div>
+                
+                <div>
+                    <label for="edit-rag-collection-mcp-server" class="block text-sm font-medium text-gray-300 mb-2">
+                        Associated MCP Server <span class="text-red-400">*</span>
+                    </label>
+                    <select id="edit-rag-collection-mcp-server" name="mcp_server_name" required
+                            class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white">
+                        <option value="">Select an MCP Server...</option>
+                        <!-- Options will be populated dynamically -->
+                    </select>
+                    <p class="mt-1 text-xs text-gray-400">This collection will store RAG cases for the selected MCP server</p>
+                </div>
+                
+                <div>
+                    <label for="edit-rag-collection-description" class="block text-sm font-medium text-gray-300 mb-2">
+                        Description (Optional)
+                    </label>
+                    <textarea id="edit-rag-collection-description" name="description" rows="3"
+                              class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white resize-none"
+                              placeholder="Brief description of this collection's purpose..."></textarea>
+                </div>
+                
+                <!-- Modal Footer -->
+                <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-600">
+                    <button type="button" id="edit-rag-collection-cancel" class="px-4 py-2 rounded-md bg-gray-600 hover:bg-gray-500 transition-colors font-semibold text-white">
+                        Cancel
+                    </button>
+                    <button type="submit" id="edit-rag-collection-submit" class="px-4 py-2 rounded-md bg-teradata-orange hover:bg-teradata-orange-dark transition-colors font-semibold text-white">
+                        Save Changes
                     </button>
                 </div>
             </form>

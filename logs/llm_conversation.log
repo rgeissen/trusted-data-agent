@@ -1,4 +1,4 @@
-2025-11-18 12:13:22,862 - --- REASON FOR CALL ---
+2025-11-18 12:43:08,176 - --- REASON FOR CALL ---
 No reason provided.
 --- RESPONSE ---
 ```json
@@ -19,7 +19,7 @@ No reason provided.
     "category": "Performance"
   },
   "dba_tableSpace": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "dba_tableSqlList": {
     "category": "Table Management"
@@ -28,7 +28,7 @@ No reason provided.
     "category": "Table Management"
   },
   "dba_userSqlList": {
-    "category": "User Management"
+    "category": "Utilities"
   },
   "qlty_columnSummary": {
     "category": "Data Quality"
@@ -67,7 +67,7 @@ No reason provided.
     "category": "Visualization"
   },
   "base_columnDescription": {
-    "category": "Database Information"
+    "category": "Table Management"
   },
   "base_databaseList": {
     "category": "Database Information"
@@ -105,7 +105,7 @@ No reason provided.
   "dba_databaseVersion": {
     "category": "Database Information"
   },
-  "dba_flowControl": {
+    "dba_flowControl": {
     "category": "Performance"
   },
   "dba_featureUsage": {
@@ -115,7 +115,7 @@ No reason provided.
     "category": "Performance"
   },
   "dba_sessionInfo": {
-    "category": "User Management"
+    "category": "Utilities"
   },
   "dba_systemSpace": {
     "category": "Database Information"
@@ -136,13 +136,13 @@ No reason provided.
     "category": "Utilities"
   },
   "TDA_ContextReport": {
-    "category": "Reporting"
+    "category": "Utilities"
   },
   "TDA_FinalReport": {
-    "category": "Reporting"
+    "category": "Utilities"
   },
   "TDA_ComplexPromptReport": {
-    "category": "Reporting"
+    "category": "Utilities"
   },
   "dba_tableArchive": {
     "category": "Table Management"
@@ -157,7 +157,7 @@ No reason provided.
     "category": "Database Information"
   },
   "dba_userActivityAnalysis": {
-    "category": "User Management"
+    "category": "Utilities"
   },
   "dba_systemVoice": {
     "category": "Utilities"

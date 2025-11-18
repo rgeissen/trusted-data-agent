@@ -1400,34 +1400,49 @@ export function initializeEventListeners() {
     // });
     // DOM.configModalClose.addEventListener('click', handleCloseConfigModalRequest);
     // DOM.configActionButton.addEventListener('click', handleConfigActionButtonClick);
-    DOM.configForm.addEventListener('submit', handleConfigFormSubmit);
-    DOM.configForm.addEventListener('input', UI.updateConfigButtonState);
+    
+    // Old config form event listeners - wrapped in null checks since form was removed
+    if (DOM.configForm) {
+        DOM.configForm.addEventListener('submit', handleConfigFormSubmit);
+        DOM.configForm.addEventListener('input', UI.updateConfigButtonState);
+    }
 
-
-    // LLM config listeners
-    DOM.llmProviderSelect.addEventListener('change', handleProviderChange);
-    [DOM.awsAccessKeyIdInput, DOM.awsSecretAccessKeyInput, DOM.awsRegionInput].forEach(input => {
-        input.addEventListener('blur', () => {
-            const awsCreds = {
-                aws_access_key_id: DOM.awsAccessKeyIdInput.value,
-                aws_secret_access_key: DOM.awsSecretAccessKeyInput.value,
-                aws_region: DOM.awsRegionInput.value
-            };
-            localStorage.setItem('amazonApiKey', JSON.stringify(awsCreds));
+    // LLM config listeners - wrapped in null checks
+    if (DOM.llmProviderSelect) {
+        DOM.llmProviderSelect.addEventListener('change', handleProviderChange);
+    }
+    if (DOM.awsAccessKeyIdInput && DOM.awsSecretAccessKeyInput && DOM.awsRegionInput) {
+        [DOM.awsAccessKeyIdInput, DOM.awsSecretAccessKeyInput, DOM.awsRegionInput].forEach(input => {
+            input.addEventListener('blur', () => {
+                const awsCreds = {
+                    aws_access_key_id: DOM.awsAccessKeyIdInput.value,
+                    aws_secret_access_key: DOM.awsSecretAccessKeyInput.value,
+                    aws_region: DOM.awsRegionInput.value
+                };
+                localStorage.setItem('amazonApiKey', JSON.stringify(awsCreds));
+            });
         });
-    });
-    DOM.llmApiKeyInput.addEventListener('blur', () => {
-        const provider = DOM.llmProviderSelect.value;
-        const apiKey = DOM.llmApiKeyInput.value;
-        if (apiKey && !['Amazon', 'Ollama'].includes(provider)) {
-            localStorage.setItem(`${provider.toLowerCase()}ApiKey`, apiKey);
-        }
-    });
-    DOM.ollamaHostInput.addEventListener('blur', () => {
-        localStorage.setItem('ollamaHost', DOM.ollamaHostInput.value);
-    });
-    DOM.refreshModelsButton.addEventListener('click', handleRefreshModelsClick);
-    DOM.llmModelSelect.addEventListener('change', handleModelChange);
+    }
+    if (DOM.llmApiKeyInput && DOM.llmProviderSelect) {
+        DOM.llmApiKeyInput.addEventListener('blur', () => {
+            const provider = DOM.llmProviderSelect.value;
+            const apiKey = DOM.llmApiKeyInput.value;
+            if (apiKey && !['Amazon', 'Ollama'].includes(provider)) {
+                localStorage.setItem(`${provider.toLowerCase()}ApiKey`, apiKey);
+            }
+        });
+    }
+    if (DOM.ollamaHostInput) {
+        DOM.ollamaHostInput.addEventListener('blur', () => {
+            localStorage.setItem('ollamaHost', DOM.ollamaHostInput.value);
+        });
+    }
+    if (DOM.refreshModelsButton) {
+        DOM.refreshModelsButton.addEventListener('click', handleRefreshModelsClick);
+    }
+    if (DOM.llmModelSelect) {
+        DOM.llmModelSelect.addEventListener('change', handleModelChange);
+    }
 
 
     // Prompt editor listeners

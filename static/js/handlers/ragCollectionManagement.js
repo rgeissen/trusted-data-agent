@@ -145,7 +145,7 @@ async function handleAddRagCollection(event) {
         const data = await response.json();
         
         if (response.ok) {
-            showNotification('success', `Collection "${name}" created successfully (ID: ${data.id})`);
+            showNotification('success', `Collection "${name}" created successfully (ID: ${data.collection_id})`);
             
             // Close modal
             closeAddRagCollectionModal();
@@ -172,8 +172,17 @@ async function handleAddRagCollection(event) {
  */
 async function toggleRagCollection(collectionId, currentState) {
     try {
+        // Toggle the state: if currently enabled, disable it; if disabled, enable it
+        const newState = !currentState;
+        
         const response = await fetch(`/api/v1/rag/collections/${collectionId}/toggle`, {
-            method: 'POST'
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                enabled: newState
+            })
         });
         
         const data = await response.json();
@@ -228,6 +237,138 @@ async function deleteRagCollection(collectionId, collectionName) {
 }
 
 /**
+ * Open Edit RAG Collection modal
+ */
+function openEditCollectionModal(collection) {
+    // Get edit modal elements
+    const editModalOverlay = document.getElementById('edit-rag-collection-modal-overlay');
+    const editModalContent = document.getElementById('edit-rag-collection-modal-content');
+    const editCollectionIdInput = document.getElementById('edit-rag-collection-id');
+    const editCollectionNameInput = document.getElementById('edit-rag-collection-name');
+    const editCollectionMcpServerSelect = document.getElementById('edit-rag-collection-mcp-server');
+    const editCollectionDescriptionInput = document.getElementById('edit-rag-collection-description');
+    
+    // Populate MCP server dropdown for edit modal
+    editCollectionMcpServerSelect.innerHTML = '<option value="">Select an MCP Server...</option>';
+    if (state && state.server_configs && Array.isArray(state.server_configs)) {
+        state.server_configs.forEach(server => {
+            const option = document.createElement('option');
+            option.value = server.name;
+            option.textContent = server.name;
+            if (server.name === collection.mcp_server_name) {
+                option.selected = true;
+            }
+            editCollectionMcpServerSelect.appendChild(option);
+        });
+    }
+    
+    // Populate form with collection data
+    editCollectionIdInput.value = collection.id;
+    editCollectionNameInput.value = collection.name;
+    editCollectionDescriptionInput.value = collection.description || '';
+    
+    // Show modal with animation
+    editModalOverlay.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        editModalOverlay.classList.remove('opacity-0');
+        editModalContent.classList.remove('scale-95', 'opacity-0');
+        editModalContent.classList.add('scale-100', 'opacity-100');
+    });
+}
+
+/**
+ * Close Edit RAG Collection modal
+ */
+function closeEditCollectionModal() {
+    const editModalOverlay = document.getElementById('edit-rag-collection-modal-overlay');
+    const editModalContent = document.getElementById('edit-rag-collection-modal-content');
+    const editForm = document.getElementById('edit-rag-collection-form');
+    
+    // Animate out
+    editModalOverlay.classList.add('opacity-0');
+    editModalContent.classList.remove('scale-100', 'opacity-100');
+    editModalContent.classList.add('scale-95', 'opacity-0');
+    
+    // Hide after animation
+    setTimeout(() => {
+        editModalOverlay.classList.add('hidden');
+        editForm.reset();
+    }, 200);
+}
+
+/**
+ * Handle Edit RAG Collection form submission
+ */
+async function handleEditRagCollection(event) {
+    event.preventDefault();
+    
+    const editCollectionIdInput = document.getElementById('edit-rag-collection-id');
+    const editCollectionNameInput = document.getElementById('edit-rag-collection-name');
+    const editCollectionMcpServerSelect = document.getElementById('edit-rag-collection-mcp-server');
+    const editCollectionDescriptionInput = document.getElementById('edit-rag-collection-description');
+    const editSubmitBtn = document.getElementById('edit-rag-collection-submit');
+    
+    // Get form values
+    const collectionId = parseInt(editCollectionIdInput.value);
+    const name = editCollectionNameInput.value.trim();
+    const mcpServerName = editCollectionMcpServerSelect.value;
+    const description = editCollectionDescriptionInput.value.trim();
+    
+    // Validate
+    if (!name) {
+        showNotification('error', 'Collection name is required');
+        return;
+    }
+    
+    if (!mcpServerName) {
+        showNotification('error', 'Please select an MCP server');
+        return;
+    }
+    
+    // Disable submit button
+    editSubmitBtn.disabled = true;
+    editSubmitBtn.textContent = 'Saving...';
+    
+    try {
+        // Call API
+        const response = await fetch(`/api/v1/rag/collections/${collectionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: name,
+                mcp_server_name: mcpServerName,
+                description: description || ''
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showNotification('success', `Collection "${name}" updated successfully`);
+            
+            // Close modal
+            closeEditCollectionModal();
+            
+            // Refresh RAG collections list
+            if (typeof loadRagCollections === 'function') {
+                await loadRagCollections();
+            }
+        } else {
+            showNotification('error', `Failed to update collection: ${data.error || data.message || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error('Error updating RAG collection:', error);
+        showNotification('error', 'Failed to update collection. Check console for details.');
+    } finally {
+        // Re-enable submit button
+        editSubmitBtn.disabled = false;
+        editSubmitBtn.textContent = 'Save Changes';
+    }
+}
+
+/**
  * Refresh a RAG collection's vector store
  */
 async function refreshRagCollection(collectionId, collectionName) {
@@ -277,9 +418,37 @@ if (addRagCollectionForm) {
     addRagCollectionForm.addEventListener('submit', handleAddRagCollection);
 }
 
+// Edit Modal Event Listeners
+const editRagCollectionModalClose = document.getElementById('edit-rag-collection-modal-close');
+const editRagCollectionCancel = document.getElementById('edit-rag-collection-cancel');
+const editRagCollectionModalOverlay = document.getElementById('edit-rag-collection-modal-overlay');
+const editRagCollectionForm = document.getElementById('edit-rag-collection-form');
+
+if (editRagCollectionModalClose) {
+    editRagCollectionModalClose.addEventListener('click', closeEditCollectionModal);
+}
+
+if (editRagCollectionCancel) {
+    editRagCollectionCancel.addEventListener('click', closeEditCollectionModal);
+}
+
+if (editRagCollectionModalOverlay) {
+    editRagCollectionModalOverlay.addEventListener('click', (e) => {
+        // Close if clicking on overlay background (not content)
+        if (e.target === editRagCollectionModalOverlay) {
+            closeEditCollectionModal();
+        }
+    });
+}
+
+if (editRagCollectionForm) {
+    editRagCollectionForm.addEventListener('submit', handleEditRagCollection);
+}
+
 // Export functions for use in other modules
 window.ragCollectionManagement = {
     toggleRagCollection,
     deleteRagCollection,
-    refreshRagCollection
+    refreshRagCollection,
+    openEditCollectionModal
 };

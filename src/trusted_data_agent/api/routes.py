@@ -427,8 +427,8 @@ async def list_rag_collections():
         app_logger.error(f"Error listing RAG collections: {e}", exc_info=True)
         return jsonify({"error": "Failed to list collections"}), 500
 
-@api_bp.route("/rag/collections/<collection_name>/rows", methods=["GET"])
-async def get_collection_rows(collection_name):
+@api_bp.route("/rag/collections/<int:collection_id>/rows", methods=["GET"])
+async def get_collection_rows(collection_id):
     """Returns a sample or search results of rows from a ChromaDB collection.
 
     Query Parameters:
@@ -437,6 +437,15 @@ async def get_collection_rows(collection_name):
       light (bool): if true, omits full_case_data from response for lighter payload
     """
     try:
+        # Look up collection metadata by ID
+        collections_list = APP_STATE.get("rag_collections", [])
+        collection_meta = next((c for c in collections_list if c["id"] == collection_id), None)
+        
+        if not collection_meta:
+            return jsonify({"error": f"Collection with ID {collection_id} not found."}), 404
+        
+        collection_name = collection_meta["collection_name"]
+        
         retriever = APP_STATE.get('rag_retriever_instance')
         client = None
         if retriever and hasattr(retriever, 'client'):
@@ -458,7 +467,7 @@ async def get_collection_rows(collection_name):
         try:
             collection = client.get_collection(name=collection_name)
         except Exception:
-            return jsonify({"error": f"Collection '{collection_name}' not found."}), 404
+            return jsonify({"error": f"ChromaDB collection '{collection_name}' not found."}), 404
 
         rows = []
         total = 0
@@ -521,9 +530,15 @@ async def get_collection_rows(collection_name):
                     })
             except Exception as ge:
                 app_logger.error(f"Sampling failed for collection '{collection_name}': {ge}", exc_info=True)
-        return jsonify({"rows": rows, "total": total, "query": query_text, "collection": collection_name})
+        return jsonify({
+            "rows": rows, 
+            "total": total, 
+            "query": query_text, 
+            "collection_id": collection_id,
+            "collection_name": collection_meta["name"]
+        })
     except Exception as e:
-        app_logger.error(f"Error getting collection rows for '{collection_name}': {e}", exc_info=True)
+        app_logger.error(f"Error getting collection rows for collection ID {collection_id}: {e}", exc_info=True)
         return jsonify({"error": "Failed to get collection rows"}), 500
 
 # --- NEW ENDPOINT: Retrieve full case + associated turn summary ---

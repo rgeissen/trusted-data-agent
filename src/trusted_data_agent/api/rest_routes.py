@@ -426,8 +426,49 @@ async def create_rag_collection():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@rest_api_bp.route("/v1/rag/collections/<collection_id>", methods=["DELETE"])
-async def delete_rag_collection(collection_id: str):
+@rest_api_bp.route("/v1/rag/collections/<int:collection_id>", methods=["PUT"])
+async def update_rag_collection(collection_id: int):
+    """Update a RAG collection's metadata (name, MCP server, description)."""
+    try:
+        data = await request.get_json()
+        
+        # Get the RAG retriever
+        retriever = APP_STATE.get("rag_retriever_instance")
+        if not retriever:
+            return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
+        
+        # Find the collection in APP_STATE
+        collections_list = APP_STATE.get("rag_collections", [])
+        coll_meta = next((c for c in collections_list if c["id"] == collection_id), None)
+        
+        if not coll_meta:
+            return jsonify({"status": "error", "message": f"Collection with ID {collection_id} not found"}), 404
+        
+        # Update fields
+        if "name" in data:
+            coll_meta["name"] = data["name"]
+        if "mcp_server_name" in data:
+            coll_meta["mcp_server_name"] = data["mcp_server_name"]
+        if "description" in data:
+            coll_meta["description"] = data["description"]
+        
+        # Save the updated collections list
+        APP_STATE["rag_collections"] = collections_list
+        
+        app_logger.info(f"Updated RAG collection {collection_id}: {coll_meta['name']}")
+        return jsonify({
+            "status": "success", 
+            "message": "Collection updated successfully",
+            "collection": coll_meta
+        }), 200
+            
+    except Exception as e:
+        app_logger.error(f"Error updating RAG collection: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/rag/collections/<int:collection_id>", methods=["DELETE"])
+async def delete_rag_collection(collection_id: int):
     """Delete a RAG collection."""
     try:
         retriever = APP_STATE.get("rag_retriever_instance")
@@ -447,8 +488,8 @@ async def delete_rag_collection(collection_id: str):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@rest_api_bp.route("/v1/rag/collections/<collection_id>/toggle", methods=["POST"])
-async def toggle_rag_collection(collection_id: str):
+@rest_api_bp.route("/v1/rag/collections/<int:collection_id>/toggle", methods=["POST"])
+async def toggle_rag_collection(collection_id: int):
     """Enable or disable a RAG collection."""
     try:
         data = await request.get_json()
@@ -466,7 +507,11 @@ async def toggle_rag_collection(collection_id: str):
         if success:
             action = "enabled" if enabled else "disabled"
             app_logger.info(f"{action.capitalize()} RAG collection: {collection_id}")
-            return jsonify({"status": "success", "message": f"Collection {action} successfully"}), 200
+            return jsonify({
+                "status": "success", 
+                "message": f"Collection {action} successfully",
+                "enabled": enabled
+            }), 200
         else:
             return jsonify({"status": "error", "message": "Failed to toggle collection or collection not found"}), 404
             
@@ -475,8 +520,8 @@ async def toggle_rag_collection(collection_id: str):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@rest_api_bp.route("/v1/rag/collections/<collection_id>/refresh", methods=["POST"])
-async def refresh_rag_collection(collection_id: str):
+@rest_api_bp.route("/v1/rag/collections/<int:collection_id>/refresh", methods=["POST"])
+async def refresh_rag_collection(collection_id: int):
     """Refresh the vector store for a specific RAG collection."""
     try:
         retriever = APP_STATE.get("rag_retriever_instance")

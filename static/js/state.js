@@ -50,8 +50,9 @@ export const state = {
     activeRestTaskId: null,
     lastRagCaseData: null, // Stores the last retrieved RAG case for display
     // --- MODIFICATION START: RAG Collection Inspection ---
-    currentInspectedCollection: null,
-    ragCollectionRowsCache: {}, // keyed by collection name for last fetched sample
+    currentInspectedCollectionId: null,
+    currentInspectedCollectionName: null,
+    ragCollectionRowsCache: {}, // keyed by collection ID for last fetched sample
     ragCollectionSearchTerm: '',
     // --- MODIFICATION END ---
     // --- MODIFICATION START: Case Trace Rendering Controls ---

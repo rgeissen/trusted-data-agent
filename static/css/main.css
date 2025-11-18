@@ -988,11 +988,6 @@ div.app-view {
     flex-direction: column;
 }
 
-/* The credentials view is also a flex container */
-#credentials-view.active {
-    display: flex;
-}
-
 /* NEW: This wrapper for the 3 panels must be a flex-row */
 #conversation-panels {
     display: flex;
