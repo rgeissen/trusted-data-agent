@@ -2083,6 +2083,7 @@ async function fetchAndRenderCollectionRows({ collectionId, query = '', refresh 
         const res = await fetch(`/rag/collections/${collectionId}/rows?${params.toString()}`);
         const data = await res.json();
         if (data.error) throw new Error(data.error);
+        
         renderCollectionRows(data.rows || [], data.total, query, data.collection_name || `Collection ${collectionId}`);
     } catch (e) {
         console.error('Failed to fetch collection rows', e);

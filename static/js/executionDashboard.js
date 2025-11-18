@@ -214,7 +214,7 @@ class ExecutionDashboard {
                     <div class="flex-1 flex items-center gap-2">
                         <span class="text-sm text-white truncate" title="${model}">${model}</span>
                         <div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                            <div class="h-full bg-blue-500 rounded-full" style="width: ${percentage}%"></div>
+                            <div class="h-full bg-teradata-orange rounded-full" style="width: ${percentage}%"></div>
                         </div>
                     </div>
                     <span class="text-sm text-gray-400 w-12 text-right">${percentage}%</span>
@@ -455,8 +455,8 @@ class ExecutionDashboard {
             return `
                 <div class="flex gap-4">
                     <div class="flex flex-col items-center">
-                        <div class="w-8 h-8 rounded-full ${hasError ? 'bg-red-500/20' : 'bg-blue-500/20'} flex items-center justify-center">
-                            <span class="text-sm font-bold ${hasError ? 'text-red-400' : 'text-blue-400'}">${turn.turn_number || index + 1}</span>
+                        <div class="w-8 h-8 rounded-full ${hasError ? 'bg-red-500/20' : 'bg-teradata-orange/20'} flex items-center justify-center">
+                            <span class="text-sm font-bold ${hasError ? 'text-red-400' : 'text-teradata-orange'}">${turn.turn_number || index + 1}</span>
                         </div>
                         ${index < workflow.length - 1 ? '<div class="w-0.5 h-12 bg-white/10"></div>' : ''}
                     </div>

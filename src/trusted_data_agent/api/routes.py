@@ -10,6 +10,7 @@ import httpx
 import uuid # Import the uuid module
 from pathlib import Path
 import chromadb
+from chromadb.utils import embedding_functions
 
 from quart import Blueprint, request, jsonify, render_template, Response, abort
 from langchain_mcp_adapters.prompts import load_mcp_prompt
@@ -445,19 +446,63 @@ async def get_collection_rows(collection_id):
             return jsonify({"error": f"Collection with ID {collection_id} not found."}), 404
         
         collection_name = collection_meta["collection_name"]
+        app_logger.info(f"RAG Inspection - Collection ID: {collection_id}, Name: {collection_meta.get('name')}, ChromaDB Name: {collection_name}")
         
-        retriever = APP_STATE.get('rag_retriever_instance')
+        # Always try to get ChromaDB client, even if app is not configured
+        # RAG collections can be inspected independently of MCP/LLM configuration
         client = None
+        retriever = APP_STATE.get('rag_retriever_instance')
+        
         if retriever and hasattr(retriever, 'client'):
+            # Use existing retriever's client if available
             client = retriever.client
+            app_logger.info(f"Using existing RAG retriever client")
         else:
-            if APP_CONFIG.RAG_ENABLED:
-                project_root = Path(__file__).resolve().parent.parent.parent
+            # Create direct client connection to ChromaDB
+            # This allows RAG inspection even before app configuration
+            try:
+                # routes.py is at src/trusted_data_agent/api/routes.py
+                # We need to go up 4 levels to get to project root
+                project_root = Path(__file__).resolve().parent.parent.parent.parent
                 persist_dir = project_root / '.chromadb_rag_cache'
                 persist_dir.mkdir(exist_ok=True)
+                
+                # Create client
                 client = chromadb.PersistentClient(path=str(persist_dir))
+                
+                # WORKAROUND: Force client initialization by listing collections immediately
+                # This seems to help with ChromaDB 0.6+ telemetry initialization timing
+                try:
+                    _ = client.list_collections()
+                except:
+                    pass
+                
+                app_logger.info(f"Created direct ChromaDB client for RAG inspection (app not configured)")
+                app_logger.info(f"ChromaDB persist directory: {persist_dir}")
+                app_logger.info(f"Directory exists: {persist_dir.exists()}")
+                if persist_dir.exists():
+                    files = list(persist_dir.glob('*'))
+                    app_logger.info(f"Files in persist_dir: {[f.name for f in files]}")
+                
+                # Note: We don't set the embedding function on the client itself.
+                # Collections in ChromaDB 0.6+ store their own embedding function,
+                # so we need to get the collection and it will use its stored embedding function.
+            except Exception as e:
+                app_logger.error(f"Failed to create ChromaDB client: {e}")
+                return jsonify({
+                    "error": "Failed to connect to RAG database",
+                    "rows": [],
+                    "total": 0,
+                    "collection_name": collection_name
+                }), 500
+        
         if not client:
-            return jsonify({"rows": [], "total": 0})
+            return jsonify({
+                "error": "RAG database not available",
+                "rows": [],
+                "total": 0,
+                "collection_name": collection_name
+            }), 500
 
         limit = request.args.get('limit', default=25, type=int)
         limit = max(1, min(limit, 100))
@@ -465,9 +510,33 @@ async def get_collection_rows(collection_id):
         light = request.args.get('light', default='true').lower() == 'true'
 
         try:
+            # Try to get the collection
             collection = client.get_collection(name=collection_name)
-        except Exception:
-            return jsonify({"error": f"ChromaDB collection '{collection_name}' not found."}), 404
+            count = collection.count()
+            app_logger.info(f"Successfully retrieved collection '{collection_name}' with {count} documents")
+        except Exception as e:
+            app_logger.error(f"Failed to get ChromaDB collection '{collection_name}': {e}")
+            
+            # List available collections for debugging
+            try:
+                available_collections = client.list_collections()
+                available_names = [str(col) for col in available_collections]
+                app_logger.info(f"Available collections in ChromaDB: {available_names}")
+                
+                # If there's only one collection and it's not the one we're looking for,
+                # this might be a naming mismatch - use the first available collection
+                if len(available_collections) == 1 and collection_name == "default_collection":
+                    actual_name = str(available_collections[0])
+                    app_logger.info(f"Attempting to use actual collection '{actual_name}' instead of '{collection_name}'")
+                    collection = client.get_collection(name=actual_name)
+                    count = collection.count()
+                    app_logger.info(f"Successfully retrieved fallback collection '{actual_name}' with {count} documents")
+                    collection_name = actual_name  # Update for response
+                else:
+                    return jsonify({"error": f"ChromaDB collection '{collection_name}' not found. Available: {available_names}"}), 404
+            except Exception as list_error:
+                app_logger.error(f"Failed to list ChromaDB collections: {list_error}")
+                return jsonify({"error": f"ChromaDB collection '{collection_name}' not found."}), 404
 
         rows = []
         total = 0
