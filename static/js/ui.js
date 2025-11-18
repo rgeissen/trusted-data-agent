@@ -1315,6 +1315,103 @@ export function updateSessionModels(sessionId, models_used) {
     }
 }
 
+// --- NEW: Update the active session title in the header ---
+export function updateActiveSessionTitle(newName) {
+    const titleEl = document.getElementById('active-session-title');
+    if (titleEl) {
+        titleEl.textContent = newName || 'Unnamed Session';
+    }
+}
+
+// --- NEW: Enter edit mode for active session title ---
+export function enterActiveSessionTitleEdit() {
+    const titleEl = document.getElementById('active-session-title');
+    if (!titleEl) return;
+    // Prevent multiple edit inputs
+    if (document.getElementById('active-session-title-input')) return;
+
+    const currentName = titleEl.textContent.trim();
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = 'active-session-title-input';
+    input.className = 'bg-gray-700 text-white px-2 py-1 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teradata-orange w-64';
+    input.value = currentName;
+    input.dataset.originalName = currentName;
+
+    // Replace span with input
+    titleEl.replaceWith(input);
+    if (DOM.activeSessionTitleEditingHint) {
+        DOM.activeSessionTitleEditingHint.classList.remove('hidden');
+    }
+    input.focus();
+
+    // Only allow one handler to run (blur or keydown)
+    let finished = false;
+    function finishEdit(action, value) {
+        if (finished) return;
+        finished = true;
+        if (action === 'save') {
+            saveActiveSessionTitleEdit(value);
+        } else {
+            cancelActiveSessionTitleEdit();
+        }
+    }
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const newName = input.value.trim();
+            if (!newName) {
+                finishEdit('cancel');
+                return;
+            }
+            finishEdit('save', newName);
+        } else if (e.key === 'Escape') {
+            finishEdit('cancel');
+        }
+    });
+
+    input.addEventListener('blur', () => {
+        const newName = input.value.trim();
+        if (newName && newName !== input.dataset.originalName) {
+            finishEdit('save', newName);
+        } else {
+            finishEdit('cancel');
+        }
+    });
+}
+
+// --- NEW: Cancel editing of active session title ---
+export function cancelActiveSessionTitleEdit() {
+    const input = document.getElementById('active-session-title-input');
+    if (!input || !input.parentNode) return;
+    const originalName = input.dataset.originalName || 'Unnamed Session';
+    const span = document.createElement('span');
+    span.id = 'active-session-title';
+    span.className = 'text-lg font-semibold text-white cursor-pointer';
+    span.textContent = originalName;
+    input.replaceWith(span);
+    if (DOM.activeSessionTitleEditingHint) {
+        DOM.activeSessionTitleEditingHint.classList.add('hidden');
+    }
+}
+
+// --- NEW: Save editing of active session title ---
+export function saveActiveSessionTitleEdit(newName) {
+    const input = document.getElementById('active-session-title-input');
+    if (!input || !input.parentNode) return;
+    const span = document.createElement('span');
+    span.id = 'active-session-title';
+    span.className = 'text-lg font-semibold text-white cursor-pointer';
+    span.textContent = newName;
+    input.replaceWith(span);
+    if (DOM.activeSessionTitleEditingHint) {
+        DOM.activeSessionTitleEditingHint.classList.add('hidden');
+    }
+    // Fire custom event to trigger rename logic elsewhere (decouple UI and logic)
+    const renameEvent = new CustomEvent('activeSessionTitleRenamed', { detail: { newName } });
+    document.dispatchEvent(renameEvent);
+}
+
 export function updateSessionTimestamp(sessionId, last_updated) {
     const sessionItem = document.getElementById(`session-${sessionId}`);
     if (sessionItem) {

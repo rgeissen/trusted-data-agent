@@ -9,6 +9,7 @@ import { state } from '../state.js';
 import * as API from '../api.js';
 import * as UI from '../ui.js';
 import { renameSession, deleteSession } from '../api.js';
+import { updateActiveSessionTitle } from '../ui.js';
 
 /**
  * Creates a new session, adds it to the list, and loads it.
@@ -110,6 +111,13 @@ export async function handleLoadSession(sessionId, isNewSession = false) {
             item.classList.toggle('active', item.dataset.sessionId === sessionId);
         });
 
+        // --- NEW: Update active session title (derive from list item since name not in loadSession response) ---
+        const activeItem = document.getElementById(`session-${sessionId}`);
+        const nameSpan = activeItem ? activeItem.querySelector('.session-name-span') : null;
+        if (nameSpan) {
+            updateActiveSessionTitle(nameSpan.textContent.trim());
+        }
+
         // --- MODIFICATION START ---
         // Explicitly update the models for the loaded session in the UI
         UI.updateSessionModels(sessionId, data.models_used);
@@ -149,12 +157,31 @@ export async function handleSessionRenameSave(e) {
         UI.exitSessionEditMode(inputElement, newName);
         console.log(`Session ${sessionId} renamed to '${newName}'`);
         UI.moveSessionToTop(sessionId);
+        if (state.currentSessionId === sessionId) {
+            updateActiveSessionTitle(newName);
+        }
     } catch (error) {
         console.error(`Failed to rename session ${sessionId}:`, error);
         inputElement.style.borderColor = 'red';
         inputElement.disabled = false;
         // Revert to original name and exit edit mode on API error
         UI.exitSessionEditMode(inputElement, originalName);
+    }
+}
+
+// --- NEW: Rename active session directly (used by header title editing) ---
+export async function renameActiveSession(newName) {
+    if (!state.currentSessionId) return;
+    const trimmed = (newName || '').trim();
+    if (!trimmed) return;
+    try {
+        await renameSession(state.currentSessionId, trimmed);
+        console.log(`Active session ${state.currentSessionId} renamed to '${trimmed}' via header.`);
+        updateActiveSessionTitle(trimmed);
+        UI.updateSessionListItemName(state.currentSessionId, trimmed);
+        UI.moveSessionToTop(state.currentSessionId);
+    } catch (error) {
+        console.error('Failed to rename active session via header:', error);
     }
 }
 

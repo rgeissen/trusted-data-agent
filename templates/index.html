@@ -104,9 +104,13 @@
             <div id="conversation-view" class="app-view flex flex-col w-full h-full">
                 
                 <!-- NEW: Conversation View Header (contains status dots and config/info buttons) -->
-                <header id="conversation-header" class="w-full bg-black/10 border-b border-white/10 px-4 py-2 flex items-center justify-end flex-shrink-0 z-10">
-                    <!-- Status Dots (MOVED) -->
-                    <!-- Config/Info/Window Buttons (MOVED HERE) -->
+                <header id="conversation-header" class="w-full bg-black/10 border-b border-white/10 px-4 py-2 flex items-center justify-between flex-shrink-0 z-10">
+                    <!-- LEFT: Active Session Title -->
+                    <div id="active-session-title-wrapper" class="flex items-center gap-x-2">
+                        <span id="active-session-title" class="text-lg font-semibold text-white cursor-pointer" title="Click to rename session">Current Session</span>
+                        <span id="active-session-title-editing-hint" class="text-xs text-gray-400 hidden">Press Enter to save, Esc to cancel</span>
+                    </div>
+                    <!-- RIGHT: Config/Info/Window Buttons -->
                     <div class="flex items-center gap-x-1">
                         <div class="menu-item">
                             <button id="chat-modal-button" class="px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-white/10 rounded-md transition-colors disabled:opacity-50" disabled>Chat</button>

@@ -115,6 +115,9 @@ export function subscribeToNotifications() {
                 console.log(`[notifications.js] Received session_name_update: session_id=${session_id}, newName=${newName}`);
                 UI.updateSessionListItemName(session_id, newName);
                 UI.moveSessionToTop(session_id);
+                if (session_id === state.currentSessionId) {
+                    UI.updateActiveSessionTitle(newName);
+                }
                 break;
             }
             case 'session_model_update': {

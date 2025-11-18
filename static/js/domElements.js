@@ -96,6 +96,9 @@ export const toggleHistoryButton = document.getElementById('toggle-history-butto
 export const historyCollapseIcon = document.getElementById('history-collapse-icon');
 export const historyExpandIcon = document.getElementById('history-expand-icon');
 export const toggleHistoryCheckbox = document.getElementById('toggle-history-checkbox');
+// Active session title elements (conversation header)
+export const activeSessionTitle = document.getElementById('active-session-title');
+export const activeSessionTitleEditingHint = document.getElementById('active-session-title-editing-hint');
 
 // Header elements (within Conversation view)
 export const toolHeader = document.getElementById('tool-header');

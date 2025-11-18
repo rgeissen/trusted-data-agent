@@ -16,7 +16,8 @@ import { startRecognition, stopRecognition, startConfirmationRecognition } from 
 import {
     handleStartNewSession,
     handleLoadSession,
-    handleDeleteSessionClick
+    handleDeleteSessionClick,
+    renameActiveSession
 } from './handlers/sessionManagement.js';
 import {
     // handleCloseConfigModalRequest, // REMOVED
@@ -1332,6 +1333,21 @@ export function initializeEventListeners() {
             UI.enterSessionEditMode(editButton);
         } else if (!sessionItem.querySelector('.session-edit-input')) {
             handleLoadSession(sessionItem.dataset.sessionId);
+        }
+    });
+
+    // --- NEW: Active session title click to edit ---
+    if (DOM.activeSessionTitle) {
+        DOM.activeSessionTitle.addEventListener('click', () => {
+            UI.enterActiveSessionTitleEdit();
+        });
+    }
+
+    // --- NEW: Listen for custom rename event dispatched by UI.saveActiveSessionTitleEdit ---
+    document.addEventListener('activeSessionTitleRenamed', (e) => {
+        const { newName } = e.detail || {};
+        if (newName) {
+            renameActiveSession(newName);
         }
     });
 
