@@ -1593,4 +1593,19 @@ export function initializeEventListeners() {
         }
     });
     // --- MODIFICATION END ---
+
+    // Add event listener for the copy session ID button
+    document.addEventListener('DOMContentLoaded', () => {
+        const copyButton = document.getElementById('copy-session-id');
+        if (copyButton) {
+            copyButton.addEventListener('click', () => {
+                const sessionId = state.activeSessionId; // Assuming activeSessionId holds the current session ID
+                if (sessionId) {
+                    UI.copySessionIdToClipboard(sessionId);
+                } else {
+                    console.error('No active session ID found.');
+                }
+            });
+        }
+    });
 }

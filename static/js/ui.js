@@ -1976,7 +1976,7 @@ async function fetchAndRenderCollectionRows({ collection, query = '', refresh = 
         const res = await fetch(`/rag/collections/${encodeURIComponent(collection)}/rows?${params.toString()}`);
         const data = await res.json();
         if (data.error) throw new Error(data.error);
-        renderCollectionRows(data.rows || [], data.total, query, collection);
+        renderCollectionRows(data.rows || [], data.total, query, collectionName);
     } catch (e) {
         console.error('Failed to fetch collection rows', e);
         if (DOM.ragCollectionTableBody) {
@@ -2226,4 +2226,16 @@ function renderCaseTrace() {
     if (dupesToggle) {
         dupesToggle.onchange = () => { state.collapseDuplicateTraceEntries = dupesToggle.checked; renderCaseTrace(); };
     }
+}
+
+/**
+ * Copies the session ID to the clipboard.
+ * @param {string} sessionId - The session ID to copy.
+ */
+export function copySessionIdToClipboard(sessionId) {
+    navigator.clipboard.writeText(sessionId).then(() => {
+        console.log(`Session ID ${sessionId} copied to clipboard.`);
+    }).catch(err => {
+        console.error('Failed to copy session ID:', err);
+    });
 }

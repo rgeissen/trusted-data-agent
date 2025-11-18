@@ -1007,3 +1007,22 @@ div.app-view {
     color: var(--teradata-orange);
 }
 /* --- MODIFICATION END --- */
+
+#copy-session-id {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+#copy-session-id:hover svg {
+    color: var(--light-text);
+}
+
+#copy-session-id svg {
+    color: var(--medium-text);
+    transition: color 0.2s ease-in-out;
+}
