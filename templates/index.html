@@ -24,7 +24,31 @@
             <!-- Title remains -->
             <h1 class="header-title text-xl font-bold text-white">Trusted Data Agent</h1>
         </div>
-        <!-- MODIFICATION: All status dots and menu buttons (Config, Info, etc.) have been MOVED -->
+        <div class="flex items-center gap-x-4">
+            <!-- Status Dots (MOVED HERE) -->
+            <div class="flex items-center gap-x-4">
+                <div class="flex items-center gap-x-2" title="MCP Server Status">
+                    <div id="mcp-status-dot" class="connection-dot disconnected"></div>
+                    <span class="text-sm text-gray-300">MCP</span>
+                </div>
+                <div class="flex items-center gap-x-2" title="RAG Status">
+                    <div id="rag-status-dot" class="connection-dot connected"></div>
+                    <span class="text-sm text-gray-300">RAG</span>
+                </div>
+                <div class="flex items-center gap-x-2" title="LLM Status">
+                    <div id="llm-status-dot" class="connection-dot disconnected"></div>
+                    <span class="text-sm text-gray-300">LLM</span>
+                </div>
+                <div class="flex items-center gap-x-2" title="Real-time Connection Status">
+                    <div id="sse-status-dot" class="connection-dot disconnected"></div>
+                    <span class="text-sm text-gray-300">SSE</span>
+                </div>
+                <div class="flex items-center gap-x-2" title="Context Engine Status - Click to purge Context">
+                    <div id="context-status-dot" class="connection-dot disconnected"></div>
+                    <span class="text-sm text-gray-300">Context</span>
+                </div>
+            </div>
+        </div>
     </nav>
     
     <!-- MODIFICATION: These are now top-level. The wrappers are removed. -->
@@ -80,30 +104,8 @@
             <div id="conversation-view" class="app-view flex flex-col w-full h-full">
                 
                 <!-- NEW: Conversation View Header (contains status dots and config/info buttons) -->
-                <header id="conversation-header" class="w-full bg-black/10 border-b border-white/10 px-4 py-2 flex items-center justify-between flex-shrink-0 z-10">
-                    <!-- Status Dots (MOVED HERE) -->
-                    <div class="flex items-center gap-x-4">
-                        <div class="flex items-center gap-x-2" title="MCP Server Status">
-                            <div id="mcp-status-dot" class="connection-dot disconnected"></div>
-                            <span class="text-sm text-gray-300">MCP</span>
-                        </div>
-                        <div class="flex items-center gap-x-2" title="RAG Status">
-                            <div id="rag-status-dot" class="connection-dot connected"></div>
-                            <span class="text-sm text-gray-300">RAG</span>
-                        </div>
-                        <div class="flex items-center gap-x-2" title="LLM Status">
-                            <div id="llm-status-dot" class="connection-dot disconnected"></div>
-                            <span class="text-sm text-gray-300">LLM</span>
-                        </div>
-                        <div class="flex items-center gap-x-2" title="Real-time Connection Status">
-                            <div id="sse-status-dot" class="connection-dot disconnected"></div>
-                            <span class="text-sm text-gray-300">SSE</span>
-                        </div>
-                        <div class="flex items-center gap-x-2" title="Context Engine Status - Click to purge Context">
-                            <div id="context-status-dot" class="connection-dot disconnected"></div>
-                            <span class="text-sm text-gray-300">Context</span>
-                        </div>
-                    </div>
+                <header id="conversation-header" class="w-full bg-black/10 border-b border-white/10 px-4 py-2 flex items-center justify-end flex-shrink-0 z-10">
+                    <!-- Status Dots (MOVED) -->
                     <!-- Config/Info/Window Buttons (MOVED HERE) -->
                     <div class="flex items-center gap-x-1">
                         <div class="menu-item">
