@@ -17,8 +17,9 @@ from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
 from trusted_data_agent.llm import handler as llm_handler
 from trusted_data_agent.mcp import adapter as mcp_adapter
 from trusted_data_agent.core.utils import unwrap_exception, _regenerate_contexts
-# --- MODIFICATION START: Import RAGRetriever ---
+# --- MODIFICATION START: Import RAGRetriever and config_manager ---
 from trusted_data_agent.agent.rag_retriever import RAGRetriever
+from trusted_data_agent.core.config_manager import get_config_manager
 # --- MODIFICATION END ---
 
 app_logger = logging.getLogger("quart.app")
@@ -183,14 +184,29 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
                     rag_cases_dir = project_root / APP_CONFIG.RAG_CASES_DIR
                     persist_dir = project_root / APP_CONFIG.RAG_PERSIST_DIR
                     
-                    app_logger.info(f"Initializing RAGRetriever with cases dir: {rag_cases_dir}")
-                    retriever_instance = RAGRetriever(
-                        rag_cases_dir=rag_cases_dir,
-                        embedding_model_name=APP_CONFIG.RAG_EMBEDDING_MODEL,
-                        persist_directory=persist_dir
-                    )
-                    APP_STATE['rag_retriever_instance'] = retriever_instance
-                    app_logger.info("RAGRetriever initialized and stored in APP_STATE successfully.")
+                    # Check if RAGRetriever already exists
+                    existing_retriever = APP_STATE.get('rag_retriever_instance')
+                    
+                    if existing_retriever:
+                        # MCP server changed - reload collections for new server
+                        app_logger.info("RAGRetriever already exists. Reloading collections for new MCP server.")
+                        existing_retriever.reload_collections_for_mcp_server()
+                    else:
+                        # First-time initialization
+                        # Load persistent config and sync to APP_STATE
+                        config_manager = get_config_manager()
+                        collections_list = config_manager.get_rag_collections()
+                        APP_STATE["rag_collections"] = collections_list
+                        app_logger.info(f"Loaded {len(collections_list)} RAG collections from persistent config")
+                        
+                        app_logger.info(f"Initializing RAGRetriever with cases dir: {rag_cases_dir}")
+                        retriever_instance = RAGRetriever(
+                            rag_cases_dir=rag_cases_dir,
+                            embedding_model_name=APP_CONFIG.RAG_EMBEDDING_MODEL,
+                            persist_directory=persist_dir
+                        )
+                        APP_STATE['rag_retriever_instance'] = retriever_instance
+                        app_logger.info("RAGRetriever initialized and stored in APP_STATE successfully.")
                 
                 except Exception as e:
                     app_logger.error(f"Failed to initialize RAGRetriever: {e}", exc_info=True)

@@ -55,7 +55,7 @@ class AppConfig:
     RAG_PERSIST_DIR = ".chromadb_rag_cache"
     RAG_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
     RAG_NUM_EXAMPLES = 3 # Total number of few-shot examples to retrieve across all active collections
-    RAG_DEFAULT_COLLECTION_NAME = "tda_rag_cases_collection" # ChromaDB collection name for default collection (ID 0)
+    RAG_DEFAULT_COLLECTION_NAME = "default_collection" # ChromaDB collection name for default collection (ID 0)
 
 
     # --- Initial State Configuration ---

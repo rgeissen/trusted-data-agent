@@ -15,6 +15,7 @@ import chromadb
 from chromadb.utils import embedding_functions
 
 from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
+from trusted_data_agent.core.config_manager import get_config_manager
 
 # Configure a dedicated logger for the RAG retriever
 logger = logging.getLogger("rag_retriever")
@@ -57,25 +58,33 @@ class RAGRetriever:
         # --- MODIFICATION END ---
 
     def _ensure_default_collection(self):
-        """Ensures the default collection exists in APP_STATE."""
-        collections_list = APP_STATE.get("rag_collections", [])
+        """Ensures the default collection exists in persistent config and APP_STATE."""
+        config_manager = get_config_manager()
+        
+        # Load collections from persistent config
+        collections_list = config_manager.get_rag_collections()
         
         # Check if default collection already exists (ID = 0)
         default_exists = any(c["id"] == 0 for c in collections_list)
         
         if not default_exists:
+            # Create default collection with no MCP server assignment
+            # User must explicitly assign MCP server before enabling
             default_collection = {
                 "id": 0,  # Default collection always has ID 0
-                "name": "Default TDA RAG Cases",
+                "name": "Default Collection",
                 "collection_name": APP_CONFIG.RAG_DEFAULT_COLLECTION_NAME,
-                "mcp_server_id": None,  # Not tied to specific MCP server
-                "enabled": True,
+                "mcp_server_id": "",  # No MCP server assigned initially
+                "enabled": False,  # User must explicitly enable collections
                 "created_at": datetime.now(timezone.utc).isoformat(),
-                "description": "Default collection for TDA RAG cases"
+                "description": "Default collection for RAG cases"
             }
             collections_list.append(default_collection)
-            APP_STATE["rag_collections"] = collections_list
-            logger.info(f"Created default RAG collection with ID: 0")
+            config_manager.save_rag_collections(collections_list)
+            logger.info("Created default RAG collection with ID: 0 (no MCP server assigned)")
+        
+        # Sync to APP_STATE
+        APP_STATE["rag_collections"] = collections_list
     
     def get_collection_metadata(self, collection_id: int) -> Optional[Dict[str, Any]]:
         """Get metadata for a specific collection by ID."""
@@ -83,27 +92,43 @@ class RAGRetriever:
         return next((c for c in collections_list if c["id"] == collection_id), None)
     
     def _load_active_collections(self):
-        """Loads and initializes all enabled collections from APP_STATE."""
+        """
+        Loads and initializes enabled collections that match the current MCP server.
+        Only collections associated with the active MCP server are loaded.
+        """
         collections_list = APP_STATE.get("rag_collections", [])
+        current_mcp_server = APP_CONFIG.CURRENT_MCP_SERVER_NAME
+        
+        logger.info(f"Loading RAG collections for MCP server: '{current_mcp_server}'")
         
         for coll_meta in collections_list:
-            if coll_meta.get("enabled", False):
-                coll_id = coll_meta["id"]
-                coll_name = coll_meta["collection_name"]
-                
-                try:
-                    collection = self.client.get_or_create_collection(
-                        name=coll_name,
-                        embedding_function=self.embedding_function,
-                        metadata={"hnsw:space": "cosine"}
-                    )
-                    self.collections[coll_id] = collection
-                    logger.info(f"Loaded collection '{coll_id}' (ChromaDB: '{coll_name}')")
-                except Exception as e:
-                    logger.error(f"Failed to load collection '{coll_id}': {e}", exc_info=True)
+            if not coll_meta.get("enabled", False):
+                continue
+            
+            coll_id = coll_meta["id"]
+            coll_name = coll_meta["collection_name"]
+            coll_mcp_server = coll_meta.get("mcp_server_id")
+            
+            # Enforcement rule: Collection must match current MCP server
+            if coll_mcp_server != current_mcp_server:
+                logger.debug(f"Skipping collection '{coll_id}': associated with '{coll_mcp_server}', current server is '{current_mcp_server}'")
+                continue
+            
+            try:
+                collection = self.client.get_or_create_collection(
+                    name=coll_name,
+                    embedding_function=self.embedding_function,
+                    metadata={"hnsw:space": "cosine"}
+                )
+                self.collections[coll_id] = collection
+                logger.info(f"Loaded collection '{coll_id}' (ChromaDB: '{coll_name}', MCP: '{coll_mcp_server}')")
+            except Exception as e:
+                logger.error(f"Failed to load collection '{coll_id}': {e}", exc_info=True)
         
         if not self.collections:
-            logger.warning("No active RAG collections loaded!")
+            logger.warning(f"No active RAG collections loaded for MCP server '{current_mcp_server}'!")
+        else:
+            logger.info(f"Loaded {len(self.collections)} collection(s) for MCP server '{current_mcp_server}'")
         
         # Refresh vector stores for all collections if configured
         if APP_CONFIG.RAG_REFRESH_ON_STARTUP:
@@ -120,11 +145,18 @@ class RAGRetriever:
         Args:
             name: Display name for the collection
             description: Collection description
-            mcp_server_id: Associated MCP server ID
+            mcp_server_id: Associated MCP server ID (REQUIRED for non-default collections)
             
         Returns:
             The numeric collection ID if successful, None otherwise
         """
+        config_manager = get_config_manager()
+        
+        # Enforcement: mcp_server_id is required for new collections
+        if mcp_server_id is None:
+            logger.error("Cannot add collection: mcp_server_id is required")
+            return None
+        
         # Generate unique numeric ID
         collections_list = APP_STATE.get("rag_collections", [])
         existing_ids = [c["id"] for c in collections_list if isinstance(c["id"], int)]
@@ -147,21 +179,30 @@ class RAGRetriever:
         collections_list.append(new_collection)
         APP_STATE["rag_collections"] = collections_list
         
-        # Create ChromaDB collection
-        try:
-            collection = self.client.get_or_create_collection(
-                name=collection_name,
-                embedding_function=self.embedding_function,
-                metadata={"hnsw:space": "cosine"}
-            )
-            self.collections[collection_id] = collection
-            logger.info(f"Added new collection '{collection_id}' (ChromaDB: '{collection_name}')")
-            return collection_id
-        except Exception as e:
-            logger.error(f"Failed to create collection '{collection_id}': {e}", exc_info=True)
-            # Remove from APP_STATE if creation failed
-            APP_STATE["rag_collections"] = [c for c in collections_list if c["id"] != collection_id]
-            return None
+        # Persist to config file
+        config_manager.save_rag_collections(collections_list)
+        
+        # Create ChromaDB collection only if it matches the current MCP server
+        current_mcp_server = APP_CONFIG.CURRENT_MCP_SERVER_NAME
+        if mcp_server_id == current_mcp_server:
+            try:
+                collection = self.client.get_or_create_collection(
+                    name=collection_name,
+                    embedding_function=self.embedding_function,
+                    metadata={"hnsw:space": "cosine"}
+                )
+                self.collections[collection_id] = collection
+                logger.info(f"Added and loaded new collection '{collection_id}' (ChromaDB: '{collection_name}', MCP: '{mcp_server_id}')")
+            except Exception as e:
+                logger.error(f"Failed to create collection '{collection_id}': {e}", exc_info=True)
+                # Remove from APP_STATE if creation failed
+                APP_STATE["rag_collections"] = [c for c in collections_list if c["id"] != collection_id]
+                config_manager.save_rag_collections(APP_STATE["rag_collections"])
+                return None
+        else:
+            logger.info(f"Added collection '{collection_id}' for MCP server '{mcp_server_id}' (not loaded - current server is '{current_mcp_server}')")
+        
+        return collection_id
     
     def remove_collection(self, collection_id: int):
         """Removes a RAG collection (except default)."""
@@ -169,6 +210,7 @@ class RAGRetriever:
             logger.warning("Cannot remove default collection")
             return False
         
+        config_manager = get_config_manager()
         collections_list = APP_STATE.get("rag_collections", [])
         coll_meta = next((c for c in collections_list if c["id"] == collection_id), None)
         
@@ -187,6 +229,9 @@ class RAGRetriever:
             # Remove from APP_STATE
             APP_STATE["rag_collections"] = [c for c in collections_list if c["id"] != collection_id]
             
+            # Persist to config file
+            config_manager.save_rag_collections(APP_STATE["rag_collections"])
+            
             logger.info(f"Removed collection '{collection_id}'")
             return True
         except Exception as e:
@@ -194,7 +239,12 @@ class RAGRetriever:
             return False
     
     def toggle_collection(self, collection_id: int, enabled: bool):
-        """Enables or disables a RAG collection."""
+        """
+        Enables or disables a RAG collection.
+        Collections are only loaded into memory if they match the current MCP server.
+        Collections cannot be enabled without an MCP server assignment.
+        """
+        config_manager = get_config_manager()
         collections_list = APP_STATE.get("rag_collections", [])
         coll_meta = next((c for c in collections_list if c["id"] == collection_id), None)
         
@@ -202,9 +252,27 @@ class RAGRetriever:
             logger.warning(f"Collection '{collection_id}' not found")
             return False
         
+        # Validate: Cannot enable a collection without an MCP server assignment
+        coll_mcp_server = coll_meta.get("mcp_server_id")
+        if enabled and not coll_mcp_server:
+            logger.warning(f"Cannot enable collection '{collection_id}': no MCP server assigned")
+            return False
+        
         coll_meta["enabled"] = enabled
         
+        # Persist to config file
+        config_manager.save_rag_collections(collections_list)
+        
+        # Check if collection matches current MCP server
+        current_mcp_server = APP_CONFIG.CURRENT_MCP_SERVER_NAME
+        
+        mcp_server_matches = (coll_mcp_server == current_mcp_server)
+        
         if enabled and collection_id not in self.collections:
+            if not mcp_server_matches:
+                logger.info(f"Collection '{collection_id}' enabled but not loaded: associated with '{coll_mcp_server}', current server is '{current_mcp_server}'")
+                return True  # Config updated, but not loaded
+            
             # Load the collection
             try:
                 collection = self.client.get_or_create_collection(
@@ -213,7 +281,7 @@ class RAGRetriever:
                     metadata={"hnsw:space": "cosine"}
                 )
                 self.collections[collection_id] = collection
-                logger.info(f"Enabled collection '{collection_id}'")
+                logger.info(f"Enabled and loaded collection '{collection_id}'")
             except Exception as e:
                 logger.error(f"Failed to enable collection '{collection_id}': {e}", exc_info=True)
                 return False
@@ -223,6 +291,26 @@ class RAGRetriever:
             logger.info(f"Disabled collection '{collection_id}'")
         
         return True
+
+    def reload_collections_for_mcp_server(self):
+        """
+        Reloads collections to match the current MCP server.
+        Unloads collections from previous MCP server and loads collections for current server.
+        Should be called when the MCP server changes.
+        """
+        current_mcp_server = APP_CONFIG.CURRENT_MCP_SERVER_NAME
+        logger.info(f"Reloading RAG collections for MCP server: '{current_mcp_server}'")
+        
+        # Clear currently loaded collections
+        self.collections.clear()
+        
+        # Ensure default collection exists (will create if MCP server is now set)
+        self._ensure_default_collection()
+        
+        # Reload collections using the standard method
+        self._load_active_collections()
+        
+        logger.info(f"Reload complete. {len(self.collections)} collection(s) now loaded for MCP server '{current_mcp_server}'")
 
     def refresh_vector_store(self, collection_id: Optional[str] = None):
         """

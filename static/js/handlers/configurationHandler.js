@@ -14,28 +14,42 @@ import { state } from '../state.js';
 // ============================================================================
 
 /**
- * Shows a toast notification
+ * Shows a toast notification in the header status area
  * @param {string} type - 'success', 'error', 'warning', 'info'
  * @param {string} message - The message to display
  */
 function showNotification(type, message) {
     const colors = {
-        success: 'bg-green-600',
-        error: 'bg-red-600',
-        warning: 'bg-yellow-600',
-        info: 'bg-blue-600'
+        success: 'bg-green-600/90',
+        error: 'bg-red-600/90',
+        warning: 'bg-yellow-600/90',
+        info: 'bg-blue-600/90'
     };
 
-    const notification = document.createElement('div');
-    notification.className = `fixed top-4 right-4 ${colors[type] || colors.info} text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-opacity duration-300`;
-    notification.textContent = message;
+    const statusElement = document.getElementById('header-status-message');
+    if (!statusElement) {
+        console.warn('Header status message element not found');
+        return;
+    }
     
-    document.body.appendChild(notification);
+    // Clear any existing timeout
+    if (statusElement.hideTimeout) {
+        clearTimeout(statusElement.hideTimeout);
+    }
     
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
+    // Set the message and style
+    statusElement.textContent = message;
+    statusElement.className = `text-sm px-3 py-1 rounded-md transition-all duration-300 ${colors[type] || colors.info} text-white`;
+    statusElement.style.opacity = '1';
+    
+    // Auto-hide after 5 seconds
+    statusElement.hideTimeout = setTimeout(() => {
+        statusElement.style.opacity = '0';
+        setTimeout(() => {
+            statusElement.textContent = '';
+            statusElement.className = 'text-sm px-3 py-1 rounded-md transition-all duration-300 opacity-0';
+        }, 300);
+    }, 5000);
 }
 
 function generateId() {

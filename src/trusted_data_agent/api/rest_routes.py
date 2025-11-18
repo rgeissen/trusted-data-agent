@@ -385,10 +385,20 @@ async def cancel_task(task_id: str):
 
 @rest_api_bp.route("/v1/rag/collections", methods=["GET"])
 async def get_rag_collections():
-    """Get all RAG collections."""
+    """Get all RAG collections with their active status."""
     try:
         collections = APP_STATE.get("rag_collections", [])
-        return jsonify({"status": "success", "collections": collections}), 200
+        retriever = APP_STATE.get("rag_retriever_instance")
+        
+        # Add 'is_active' field to indicate if collection is actually loaded
+        enhanced_collections = []
+        for coll in collections:
+            coll_copy = coll.copy()
+            # A collection is active if it's loaded in the retriever's collections dict
+            coll_copy["is_active"] = retriever and coll["id"] in retriever.collections if retriever else False
+            enhanced_collections.append(coll_copy)
+        
+        return jsonify({"status": "success", "collections": enhanced_collections}), 200
     except Exception as e:
         app_logger.error(f"Error getting RAG collections: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -400,15 +410,19 @@ async def create_rag_collection():
     try:
         data = await request.get_json()
         
-        # Validate required fields (ID is now auto-generated)
+        # Validate required fields
         if not data.get("name"):
             return jsonify({"status": "error", "message": "Collection name is required"}), 400
         
+        # ENFORCEMENT: mcp_server_id is now required for all new collections
+        if not data.get("mcp_server_id"):
+            return jsonify({"status": "error", "message": "mcp_server_id is required. Collections must be associated with an MCP server."}), 400
+        
         name = data["name"]
-        mcp_server_id = data.get("mcp_server_id")  # MCP server ID
+        mcp_server_id = data["mcp_server_id"]
         description = data.get("description", "")
         
-        # Add collection via RAG retriever (ID is auto-generated)
+        # Add collection via RAG retriever
         retriever = APP_STATE.get("rag_retriever_instance")
         if not retriever:
             return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
@@ -416,8 +430,13 @@ async def create_rag_collection():
         collection_id = retriever.add_collection(name, description, mcp_server_id)
         
         if collection_id is not None:
-            app_logger.info(f"Created RAG collection with ID: {collection_id}")
-            return jsonify({"status": "success", "message": "Collection created successfully", "collection_id": collection_id}), 201
+            app_logger.info(f"Created RAG collection with ID: {collection_id}, MCP server: {mcp_server_id}")
+            return jsonify({
+                "status": "success", 
+                "message": "Collection created successfully", 
+                "collection_id": collection_id,
+                "mcp_server_id": mcp_server_id
+            }), 201
         else:
             return jsonify({"status": "error", "message": "Failed to create collection"}), 500
             
@@ -430,6 +449,8 @@ async def create_rag_collection():
 async def update_rag_collection(collection_id: int):
     """Update a RAG collection's metadata (name, MCP server, description)."""
     try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        
         data = await request.get_json()
         
         # Get the RAG retriever
@@ -444,18 +465,30 @@ async def update_rag_collection(collection_id: int):
         if not coll_meta:
             return jsonify({"status": "error", "message": f"Collection with ID {collection_id} not found"}), 404
         
-        # Update fields
+        # ENFORCEMENT: Prevent removing mcp_server_id from ANY collection
+        if "mcp_server_id" in data:
+            new_mcp_server_id = data["mcp_server_id"]
+            if not new_mcp_server_id:
+                return jsonify({
+                    "status": "error", 
+                    "message": "Cannot remove mcp_server_id. All collections must be associated with an MCP server."
+                }), 400
+            coll_meta["mcp_server_id"] = new_mcp_server_id
+        
+        # Update other fields
         if "name" in data:
             coll_meta["name"] = data["name"]
-        if "mcp_server_id" in data:
-            coll_meta["mcp_server_id"] = data["mcp_server_id"]
         if "description" in data:
             coll_meta["description"] = data["description"]
         
-        # Save the updated collections list
+        # Save the updated collections list to APP_STATE
         APP_STATE["rag_collections"] = collections_list
         
-        app_logger.info(f"Updated RAG collection {collection_id}: {coll_meta['name']}")
+        # Persist to config file
+        config_manager = get_config_manager()
+        config_manager.save_rag_collections(collections_list)
+        
+        app_logger.info(f"Updated RAG collection {collection_id}: {coll_meta['name']} (MCP: {coll_meta.get('mcp_server_id')})")
         return jsonify({
             "status": "success", 
             "message": "Collection updated successfully",
@@ -501,6 +534,16 @@ async def toggle_rag_collection(collection_id: int):
         retriever = APP_STATE.get("rag_retriever_instance")
         if not retriever:
             return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
+        
+        # Check if attempting to enable a collection without MCP server
+        if enabled:
+            collections_list = APP_STATE.get("rag_collections", [])
+            coll_meta = next((c for c in collections_list if c["id"] == collection_id), None)
+            if coll_meta and not coll_meta.get("mcp_server_id"):
+                return jsonify({
+                    "status": "error", 
+                    "message": "Cannot enable collection: MCP server must be assigned first"
+                }), 400
         
         success = retriever.toggle_collection(collection_id, enabled)
         
