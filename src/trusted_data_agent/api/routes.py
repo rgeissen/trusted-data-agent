@@ -13,6 +13,7 @@ import chromadb
 
 from quart import Blueprint, request, jsonify, render_template, Response, abort
 from langchain_mcp_adapters.prompts import load_mcp_prompt
+from langchain_mcp_adapters.client import MultiServerMCPClient
 
 from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
 from trusted_data_agent.core import session_manager
@@ -906,6 +907,56 @@ async def configure_services():
         return jsonify(result), 200
     else:
         return jsonify(result), 500
+
+@api_bp.route("/test-mcp-connection", methods=["POST"])
+async def test_mcp_connection():
+    """
+    Tests MCP server connectivity without performing full configuration.
+    This allows users to validate individual MCP server settings before activation.
+    """
+    data = await request.get_json()
+    if not data:
+        return jsonify({"status": "error", "message": "Request body must be valid JSON."}), 400
+
+    server_name = data.get("name")
+    host = data.get("host")
+    port = data.get("port")
+    path = data.get("path")
+
+    if not all([server_name, host, port, path]):
+        return jsonify({"status": "error", "message": "Missing required fields: name, host, port, path."}), 400
+
+    try:
+        # Construct temporary server config
+        mcp_server_url = f"http://{host}:{port}{path}"
+        temp_server_configs = {server_name: {"url": mcp_server_url, "transport": "streamable_http"}}
+        
+        # Create temporary MCP client
+        temp_mcp_client = MultiServerMCPClient(temp_server_configs)
+        
+        # Test connection by listing tools
+        async with temp_mcp_client.session(server_name) as temp_session:
+            tools_result = await temp_session.list_tools()
+            tool_count = len(tools_result.tools) if hasattr(tools_result, 'tools') else 0
+        
+        app_logger.info(f"MCP connection test successful for '{server_name}' at {mcp_server_url}. Found {tool_count} tools.")
+        return jsonify({
+            "status": "success",
+            "message": f"Connection successful! Found {tool_count} tools.",
+            "tool_count": tool_count
+        }), 200
+
+    except Exception as e:
+        root_exception = unwrap_exception(e)
+        error_message = ""
+        
+        if isinstance(root_exception, (httpx.ConnectTimeout, httpx.ConnectError)):
+            error_message = f"Connection failed: Cannot reach server at {host}:{port}. Please verify host and port."
+        else:
+            error_message = f"Connection test failed: {str(root_exception)}"
+        
+        app_logger.error(f"MCP connection test failed for '{server_name}': {error_message}", exc_info=True)
+        return jsonify({"status": "error", "message": error_message}), 500
 
 @api_bp.route("/ask_stream", methods=["POST"])
 async def ask_stream():

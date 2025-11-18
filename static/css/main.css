@@ -1026,3 +1026,132 @@ div.app-view {
     color: var(--medium-text);
     transition: color 0.2s ease-in-out;
 }
+
+/* ============================================================================
+   NEW CONFIGURATION UI STYLES
+   ============================================================================ */
+
+/* LLM Provider Collapse/Expand Animation */
+.llm-provider-details {
+    transition: all 0.3s ease-in-out;
+}
+
+/* Active State Highlighting */
+[data-mcp-id].border-\[\#F15F22\] {
+    box-shadow: 0 0 0 1px rgba(241, 95, 34, 0.3);
+}
+
+[data-llm-provider].border-\[\#F15F22\] {
+    box-shadow: 0 0 0 1px rgba(241, 95, 34, 0.3);
+}
+
+/* Radio Button Custom Styling */
+input[type="radio"][data-action="select-mcp"],
+input[type="radio"][data-action="select-llm"] {
+    cursor: pointer;
+    accent-color: var(--teradata-orange);
+}
+
+/* MCP Server Test Status Indicators */
+[data-mcp-id] .text-green-400 {
+    animation: fadeIn 0.3s ease-in;
+}
+
+[data-mcp-id] .text-red-400 {
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* Chevron Rotation */
+[data-chevron] {
+    transition: transform 0.3s ease-in-out;
+}
+
+/* Button Hover Effects */
+button[data-action="test-mcp"],
+button[data-action="edit-mcp"],
+button[data-action="delete-mcp"],
+button[data-action="refresh-models"],
+button[data-action="save-llm-provider"] {
+    transition: all 0.2s ease-in-out;
+}
+
+button[data-action="test-mcp"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+button[data-action="edit-mcp"]:hover,
+button[data-action="refresh-models"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(75, 85, 99, 0.3);
+}
+
+button[data-action="delete-mcp"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+}
+
+/* Disabled State for Reconnect Button */
+#reconnect-and-load-btn:disabled {
+    cursor: not-allowed;
+    filter: grayscale(50%);
+}
+
+#reconnect-and-load-btn:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(241, 95, 34, 0.4);
+}
+
+/* Modal Backdrop */
+#mcp-server-modal {
+    animation: fadeInBackdrop 0.2s ease-in-out;
+}
+
+#mcp-server-modal > div {
+    animation: scaleIn 0.2s ease-in-out;
+}
+
+@keyframes fadeInBackdrop {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Smooth scrolling for credentials view */
+#credentials-view {
+    scroll-behavior: smooth;
+}
+
+/* Grid responsiveness for LLM providers */
+@media (max-width: 768px) {
+    #llm-providers-container {
+        grid-template-columns: 1fr !important;
+    }
+}

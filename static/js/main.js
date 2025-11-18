@@ -5,7 +5,8 @@
  */
 
 import { initializeEventListeners } from './eventHandlers.js';
-import { finalizeConfiguration, loadCredentialsAndModels } from './handlers/configManagement.js';
+import { finalizeConfiguration } from './handlers/configManagement.js';
+import { initializeConfigurationUI } from './handlers/configurationHandler.js';
 import * as API from './api.js';
 import * as DOM from './domElements.js';
 import { state } from './state.js';
@@ -151,6 +152,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     initializeEventListeners();
     initializeVoiceRecognition();
 
+    // Initialize new configuration UI
+    initializeConfigurationUI();
+
     const promptEditorMenuItem = DOM.promptEditorButton.parentElement;
     promptEditorMenuItem.style.display = 'none';
 
@@ -188,18 +192,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (status.isConfigured) {
             console.log("DEBUG: Server is already configured. Proceeding with setup.", status);
 
-            DOM.llmProviderSelect.value = status.provider;
-            DOM.mcpServerNameInput.value = status.mcp_server.name;
-
-            await loadCredentialsAndModels(); // Load credentials/models based on provider
-
-            const modelExists = Array.from(DOM.llmModelSelect.options).some(opt => opt.value === status.model);
-            if (modelExists) {
-                DOM.llmModelSelect.value = status.model;
-            } else {
-                console.warn(`DEBUG: Model '${status.model}' from server status not found in dropdown. Model list might be outdated or model unavailable.`);
-            }
-
+            // NOTE: With new config UI, we don't need to pre-fill old form fields
+            // The configurationHandler manages its own state via localStorage
+            
+            // Old code removed:
+            // DOM.llmProviderSelect.value = status.provider;
+            // DOM.mcpServerNameInput.value = status.mcp_server.name;
+            // await loadCredentialsAndModels();
 
             const currentConfig = { provider: status.provider, model: status.model };
             // Pass the mcp_server details from status to ensure they are used if re-finalizing
@@ -213,30 +212,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         } else {
             console.log("DEBUG: Server is not configured. Showing config modal.");
-            // The new loadInitialConfig() function handles pre-filling the MCP fields.
-            // We still need to handle the TTS credentials and last provider.
+            // The new configuration UI handles its own state
+            // No need to pre-fill old form fields
             const savedTtsCreds = localStorage.getItem('ttsCredentialsJson');
-            if (savedTtsCreds) {
+            if (savedTtsCreds && DOM.ttsCredentialsJsonTextarea) {
                 DOM.ttsCredentialsJsonTextarea.value = savedTtsCreds;
             }
-            const lastProvider = localStorage.getItem('lastSelectedProvider');
-            if (lastProvider) {
-                DOM.llmProviderSelect.value = lastProvider;
-            }
-            await loadCredentialsAndModels(); // Load potential credentials/models
+            
+            // NOTE: Old loadCredentialsAndModels() is not needed with new config UI
+            // The new configurationHandler manages everything via localStorage
             
             handleViewSwitch('credentials-view');
         }
     } catch (startupError) {
         console.error("DEBUG: Error during startup configuration/session loading. Showing config modal.", startupError);
-        // Fallback to pre-filling and showing the modal on any error.
-        // The new loadInitialConfig() function handles pre-filling the MCP fields.
+        // Fallback to showing credentials view
         try {
              const savedTtsCreds = localStorage.getItem('ttsCredentialsJson');
-             if (savedTtsCreds) { DOM.ttsCredentialsJsonTextarea.value = savedTtsCreds; }
-             const lastProvider = localStorage.getItem('lastSelectedProvider');
-             if (lastProvider) { DOM.llmProviderSelect.value = lastProvider; }
-             await loadCredentialsAndModels();
+             if (savedTtsCreds && DOM.ttsCredentialsJsonTextarea) { 
+                 DOM.ttsCredentialsJsonTextarea.value = savedTtsCreds; 
+             }
+             // NOTE: Old loadCredentialsAndModels() removed - new config UI handles this
         } catch (prefillError) {
             console.error("DEBUG: Error during fallback pre-fill:", prefillError);
         }
