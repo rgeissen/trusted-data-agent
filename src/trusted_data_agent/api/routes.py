@@ -845,7 +845,10 @@ async def get_models():
                 "friendli_endpoint_url": data.get("friendli_endpoint_url")
             })
         elif provider == 'Ollama':
-            credentials["host"] = data.get("host")
+            # Support multiple host key formats for compatibility
+            host_keys = ["ollama_host", "ollamaHost", "host"]
+            ollama_host = next((data.get(key) for key in host_keys if data.get(key) is not None), None)
+            credentials["host"] = ollama_host
         else:
             credentials["apiKey"] = data.get("apiKey")
 
