@@ -164,6 +164,19 @@ def create_app():
         Used to start background tasks like our RAG worker.
         """
         app_logger.info("Application starting up... Launching background tasks.")
+        
+        # Load RAG collections from persistent config into APP_STATE early
+        # This allows the UI to display collections even before full configuration
+        try:
+            from trusted_data_agent.core.config_manager import get_config_manager
+            config_manager = get_config_manager()
+            collections_list = config_manager.get_rag_collections()
+            APP_STATE["rag_collections"] = collections_list
+            app_logger.info(f"Pre-loaded {len(collections_list)} RAG collections from persistent config")
+        except Exception as e:
+            app_logger.error(f"Failed to pre-load RAG collections: {e}", exc_info=True)
+            APP_STATE["rag_collections"] = []
+        
         # Start the single RAG worker as a background task
         asyncio.create_task(rag_processing_worker())
     # --- MODIFICATION END ---
