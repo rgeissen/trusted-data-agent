@@ -1520,35 +1520,10 @@ export function exitSessionEditMode(inputElement, finalName) {
 
 
 export function updateConfigButtonState() {
-    const isConnected = DOM.mcpStatusDot.classList.contains('connected');
-
-    if (!isConnected) {
-        DOM.configActionButtonText.textContent = 'Connect & Load';
-        DOM.configActionButton.type = 'submit';
-        DOM.configActionButton.classList.remove('bg-gray-600', 'hover:bg-gray-500');
-        DOM.configActionButton.classList.add('bg-[#F15F22]', 'hover:bg-[#D9501A]');
-        DOM.configActionButton.disabled = false; // Ensure it's enabled if not connected
-        return;
-    }
-
-    const formData = new FormData(DOM.configForm);
-    const currentConfig = Object.fromEntries(formData.entries());
-    const hasChanged = JSON.stringify(currentConfig) !== JSON.stringify(state.pristineConfig);
-
-    if (hasChanged) {
-        DOM.configActionButtonText.textContent = 'Reconnect & Load';
-        DOM.configActionButton.type = 'submit';
-        DOM.configActionButton.classList.remove('bg-gray-600', 'hover:bg-gray-500');
-        DOM.configActionButton.classList.add('bg-[#F15F22]', 'hover:bg-[#D9501A]');
-        DOM.configActionButton.disabled = false; // Enable for submission
-    } else {
-        // MODIFICATION: If connected and unchanged, just disable the button. No "Close" action.
-        DOM.configActionButtonText.textContent = 'Reconnect & Load'; // Keep the text
-        DOM.configActionButton.type = 'submit'; // Always a submit button
-        DOM.configActionButton.classList.remove('bg-[#F15F22]', 'hover:bg-[#D9501A]');
-        DOM.configActionButton.classList.add('bg-gray-600', 'hover:bg-gray-500');
-        DOM.configActionButton.disabled = true; // Disable as it's unchanged
-    }
+    // This function is obsolete with the new configuration UI
+    // The old config modal elements (configActionButton, configActionButtonText, configForm) no longer exist
+    // Keeping the function for backwards compatibility but making it a no-op
+    return;
 }
 
 export function showConfirmation(title, body, onConfirm) {

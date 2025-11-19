@@ -1537,7 +1537,8 @@ export function initializeEventListeners() {
     const handleWelcomeScreenToggle = (e) => {
         const isChecked = e.target.checked;
         state.showWelcomeScreenAtStartup = isChecked;
-        localStorage.setItem('showWelcomeScreenAtStartup', isChecked);
+        // Note: localStorage is now only updated on page load/unload, not on every toggle
+        // This prevents race conditions with other configuration saves
         if (welcomeScreenCheckbox) welcomeScreenCheckbox.checked = isChecked;
         if (welcomeScreenPopupCheckbox) welcomeScreenPopupCheckbox.checked = isChecked;
     };

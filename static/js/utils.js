@@ -257,6 +257,7 @@ export function renderChart(containerId, spec) {
 export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIcon) {
     // ... (no changes in this function) ...
     const toggle = (isOpen) => {
+        console.log('Toggle called for panel:', panel.id, 'isOpen:', isOpen);
         const isCollapsed = !isOpen;
         panel.classList.toggle('collapsed', isCollapsed);
         if (collapseIcon) collapseIcon.classList.toggle('hidden', isCollapsed);
@@ -264,7 +265,10 @@ export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIc
         if (checkbox) checkbox.checked = isOpen;
     };
 
-    button.addEventListener('click', () => toggle(panel.classList.contains('collapsed')));
+    button.addEventListener('click', (e) => {
+        console.log('Panel toggle button clicked:', button.id, 'pointerEvents:', button.style.pointerEvents);
+        toggle(panel.classList.contains('collapsed'));
+    });
     if (checkbox) {
         checkbox.addEventListener('change', () => toggle(checkbox.checked));
     }

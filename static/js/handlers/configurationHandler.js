@@ -897,6 +897,35 @@ export async function reconnectAndLoad() {
             // Update status bar with provider and model info
             UI.updateStatusPromptName(configData.provider, configData.model);
             
+            // Enable panel toggle buttons after configuration
+            if (DOM.toggleHistoryButton) {
+                console.log('Enabling history toggle button');
+                DOM.toggleHistoryButton.classList.remove('btn-disabled');
+                DOM.toggleHistoryButton.style.opacity = '1';
+                DOM.toggleHistoryButton.style.cursor = 'pointer';
+                DOM.toggleHistoryButton.style.pointerEvents = 'auto';
+                if (DOM.historyExpandIcon) DOM.historyExpandIcon.classList.remove('hidden');
+                if (DOM.historyCollapseIcon) DOM.historyCollapseIcon.classList.add('hidden');
+            }
+            if (DOM.toggleStatusButton) {
+                console.log('Enabling status toggle button');
+                DOM.toggleStatusButton.classList.remove('btn-disabled');
+                DOM.toggleStatusButton.style.opacity = '1';
+                DOM.toggleStatusButton.style.cursor = 'pointer';
+                DOM.toggleStatusButton.style.pointerEvents = 'auto';
+                if (DOM.statusExpandIcon) DOM.statusExpandIcon.classList.remove('hidden');
+                if (DOM.statusCollapseIcon) DOM.statusCollapseIcon.classList.add('hidden');
+            }
+            if (DOM.toggleHeaderButton) {
+                console.log('Enabling header toggle button');
+                DOM.toggleHeaderButton.classList.remove('btn-disabled');
+                DOM.toggleHeaderButton.style.opacity = '1';
+                DOM.toggleHeaderButton.style.cursor = 'pointer';
+                DOM.toggleHeaderButton.style.pointerEvents = 'auto';
+                if (DOM.headerExpandIcon) DOM.headerExpandIcon.classList.remove('hidden');
+                if (DOM.headerCollapseIcon) DOM.headerCollapseIcon.classList.add('hidden');
+            }
+            
             // Load MCP resources (tools, prompts, resources)
             await Promise.all([
                 handleLoadResources('tools'),

@@ -101,19 +101,41 @@ export async function finalizeConfiguration(config, switchToConversationView = t
 
     // Enable panel toggle buttons after configuration
     if (DOM.toggleHistoryButton) {
-        DOM.toggleHistoryButton.disabled = false;
+        console.log('Enabling history toggle button - before:', {
+            pointerEvents: DOM.toggleHistoryButton.style.pointerEvents,
+            opacity: DOM.toggleHistoryButton.style.opacity
+        });
+        DOM.toggleHistoryButton.classList.remove('btn-disabled');
         DOM.toggleHistoryButton.style.opacity = '1';
         DOM.toggleHistoryButton.style.cursor = 'pointer';
+        DOM.toggleHistoryButton.style.pointerEvents = 'auto';
+        console.log('Enabling history toggle button - after:', {
+            pointerEvents: DOM.toggleHistoryButton.style.pointerEvents,
+            opacity: DOM.toggleHistoryButton.style.opacity
+        });
+        // Update icons to show expand state (since panels are collapsed)
+        if (DOM.historyExpandIcon) DOM.historyExpandIcon.classList.remove('hidden');
+        if (DOM.historyCollapseIcon) DOM.historyCollapseIcon.classList.add('hidden');
     }
     if (DOM.toggleStatusButton) {
-        DOM.toggleStatusButton.disabled = false;
+        console.log('Enabling status toggle button');
+        DOM.toggleStatusButton.classList.remove('btn-disabled');
         DOM.toggleStatusButton.style.opacity = '1';
         DOM.toggleStatusButton.style.cursor = 'pointer';
+        DOM.toggleStatusButton.style.pointerEvents = 'auto';
+        // Update icons to show expand state (since panels are collapsed)
+        if (DOM.statusExpandIcon) DOM.statusExpandIcon.classList.remove('hidden');
+        if (DOM.statusCollapseIcon) DOM.statusCollapseIcon.classList.add('hidden');
     }
     if (DOM.toggleHeaderButton) {
-        DOM.toggleHeaderButton.disabled = false;
+        console.log('Enabling header toggle button');
+        DOM.toggleHeaderButton.classList.remove('btn-disabled');
         DOM.toggleHeaderButton.style.opacity = '1';
         DOM.toggleHeaderButton.style.cursor = 'pointer';
+        DOM.toggleHeaderButton.style.pointerEvents = 'auto';
+        // Update icons to show expand state (since panels are collapsed)
+        if (DOM.headerExpandIcon) DOM.headerExpandIcon.classList.remove('hidden');
+        if (DOM.headerCollapseIcon) DOM.headerCollapseIcon.classList.add('hidden');
     }
 
     if (Utils.isPrivilegedUser()) {
@@ -179,11 +201,14 @@ export async function finalizeConfiguration(config, switchToConversationView = t
     // DOM.configuredWrapper.classList.remove('hidden'); // REMOVED
     
     // Hide welcome screen if it's showing
+    console.log('finalizeConfiguration: Checking if hideWelcomeScreen exists:', typeof window.hideWelcomeScreen);
     if (window.hideWelcomeScreen) {
+        console.log('finalizeConfiguration: Calling hideWelcomeScreen');
         window.hideWelcomeScreen();
     }
     
     if (switchToConversationView) {
+        console.log('finalizeConfiguration: Switching to conversation-view');
         handleViewSwitch('conversation-view'); // Set the default view
     }
 }

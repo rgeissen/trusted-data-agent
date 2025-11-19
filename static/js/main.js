@@ -119,6 +119,22 @@ async function fetchGitHubStarCount() {
 // The new configuration system (configState) automatically loads from localStorage
 // and doesn't need manual form population
 
+// Define welcome screen functions BEFORE DOMContentLoaded to ensure they're available
+function hideWelcomeScreen() {
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const chatLog = document.getElementById('chat-log');
+    
+    console.log('hideWelcomeScreen called', { welcomeScreen, chatLog });
+    if (welcomeScreen && chatLog) {
+        welcomeScreen.classList.add('hidden');
+        chatLog.classList.remove('hidden');
+        console.log('Welcome screen hidden, chat log shown');
+    }
+}
+
+// Make function available globally
+window.hideWelcomeScreen = hideWelcomeScreen;
+
 document.addEventListener('DOMContentLoaded', async () => {
     const savedShowWelcomeScreen = localStorage.getItem('showWelcomeScreenAtStartup');
     state.showWelcomeScreenAtStartup = savedShowWelcomeScreen === null ? true : savedShowWelcomeScreen === 'true';
@@ -135,8 +151,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log("DOMContentLoaded: User UUID ensured:", state.userUUID);
     subscribeToNotifications();
 
-    // Fetch GitHub star count
-    fetchGitHubStarCount();
+    // Fetch GitHub star count - DEACTIVATED to conserve API credits
+    // fetchGitHubStarCount();
 
     const uuidInput = document.getElementById('tda-user-uuid');
     const copyButton = document.getElementById('copy-uuid-button');
@@ -284,15 +300,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     DOM.sessionHistoryPanel.classList.add('collapsed');
     DOM.statusWindow.classList.add('collapsed');
     DOM.toolHeader.classList.add('collapsed');
-    DOM.toggleHistoryButton.disabled = true;
+    DOM.toggleHistoryButton.classList.add('btn-disabled');
     DOM.toggleHistoryButton.style.opacity = '0.5';
     DOM.toggleHistoryButton.style.cursor = 'not-allowed';
-    DOM.toggleStatusButton.disabled = true;
+    DOM.toggleHistoryButton.style.pointerEvents = 'none';
+    DOM.toggleStatusButton.classList.add('btn-disabled');
     DOM.toggleStatusButton.style.opacity = '0.5';
     DOM.toggleStatusButton.style.cursor = 'not-allowed';
-    DOM.toggleHeaderButton.disabled = true;
+    DOM.toggleStatusButton.style.pointerEvents = 'none';
+    DOM.toggleHeaderButton.classList.add('btn-disabled');
     DOM.toggleHeaderButton.style.opacity = '0.5';
     DOM.toggleHeaderButton.style.cursor = 'not-allowed';
+    DOM.toggleHeaderButton.style.pointerEvents = 'none';
 
     DOM.toggleHistoryCheckbox.checked = !DOM.sessionHistoryPanel.classList.contains('collapsed');
     setupPanelToggle(DOM.toggleHistoryButton, DOM.sessionHistoryPanel, DOM.toggleHistoryCheckbox, DOM.historyCollapseIcon, DOM.historyExpandIcon);
@@ -311,6 +330,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     UI.updateHintAndIndicatorState();
     UI.updateVoiceModeUI();
     UI.updateKeyObservationsModeUI();
+
+    // Save user preferences before page unloads
+    window.addEventListener('beforeunload', () => {
+        localStorage.setItem('showWelcomeScreenAtStartup', state.showWelcomeScreenAtStartup);
+    });
 });
 
 // ============================================================================
@@ -453,19 +477,5 @@ async function showWelcomeScreen() {
     }
 }
 
-/**
- * Hide the welcome screen when application is configured
- */
-function hideWelcomeScreen() {
-    const welcomeScreen = document.getElementById('welcome-screen');
-    const chatLog = document.getElementById('chat-log');
-    
-    if (welcomeScreen && chatLog) {
-        welcomeScreen.classList.add('hidden');
-        chatLog.classList.remove('hidden');
-    }
-}
-
-// Make functions available globally
+// Make showWelcomeScreen available globally
 window.showWelcomeScreen = showWelcomeScreen;
-window.hideWelcomeScreen = hideWelcomeScreen;
