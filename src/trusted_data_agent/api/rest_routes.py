@@ -1144,9 +1144,7 @@ async def get_sessions_list():
                         has_rag = True
                         break
                 
-                # Apply filters
-                if search_query and search_query not in name.lower():
-                    continue
+                # Apply filters (but not search - let client handle that for flexibility)
                 if filter_status != 'all' and status != filter_status:
                     continue
                 if filter_model != 'all' and filter_model not in f"{provider}/{model}":
@@ -1163,7 +1161,10 @@ async def get_sessions_list():
                     "total_tokens": input_tokens + output_tokens,
                     "status": status,
                     "has_rag": has_rag,
-                    "has_errors": has_errors
+                    "has_errors": has_errors,
+                    "last_turn_data": {
+                        "workflow_history": workflow_history
+                    }
                 })
                 
             except Exception as e:

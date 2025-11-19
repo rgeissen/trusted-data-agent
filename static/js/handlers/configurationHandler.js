@@ -938,6 +938,13 @@ export async function reconnectAndLoad() {
                 console.error('[DEBUG] reconnectAndLoad - Conversation header element not found!');
             }
             
+            // Show panel toggle buttons after configuration
+            const topButtonsContainer = document.getElementById('top-buttons-container');
+            if (topButtonsContainer) {
+                topButtonsContainer.classList.remove('hidden');
+                console.log('[DEBUG] reconnectAndLoad - Panel toggle buttons shown');
+            }
+            
             // Load MCP resources (tools, prompts, resources)
             await Promise.all([
                 handleLoadResources('tools'),

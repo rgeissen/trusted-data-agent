@@ -53,9 +53,47 @@ class ExecutionDashboard {
         });
 
         // Search input
-        document.getElementById('session-search')?.addEventListener('input', (e) => {
-            this.filterAndRenderSessions();
-        });
+        const searchInput = document.getElementById('session-search');
+        const clearSearchBtn = document.getElementById('clear-search-btn');
+        
+        if (searchInput) {
+            console.log('[DEBUG] Search input event listener attached');
+            
+            // Show/hide clear button based on input content
+            const updateClearButton = () => {
+                if (clearSearchBtn) {
+                    clearSearchBtn.classList.toggle('hidden', !searchInput.value);
+                }
+            };
+            
+            searchInput.addEventListener('input', (e) => {
+                console.log('[DEBUG] Search input changed:', e.target.value);
+                updateClearButton();
+                this.filterAndRenderSessions();
+            });
+            
+            // Clear search when clicking the X button
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener('click', () => {
+                    searchInput.value = '';
+                    updateClearButton();
+                    this.filterAndRenderSessions();
+                    searchInput.focus();
+                });
+            }
+            
+            // Track if the search was set programmatically (from clicking a question)
+            searchInput.addEventListener('focus', () => {
+                // If search box has content and user clicks to edit, select all text for easy replacement
+                if (searchInput.value) {
+                    searchInput.select();
+                }
+            });
+            
+            updateClearButton();
+        } else {
+            console.error('[DEBUG] Search input element not found during setup');
+        }
 
         // Filter and sort controls
         document.getElementById('session-filter-status')?.addEventListener('change', () => {
@@ -307,6 +345,9 @@ class ExecutionDashboard {
         const filterStatus = document.getElementById('session-filter-status')?.value || 'all';
         const sortBy = document.getElementById('session-sort')?.value || 'recent';
 
+        console.log('[DEBUG] filterAndRenderSessions - searchQuery:', searchQuery);
+        console.log('[DEBUG] filterAndRenderSessions - total sessions:', this.sessionsData.length);
+
         // Filter sessions - search in both session name and questions within the session
         let filteredSessions = this.sessionsData.filter(session => {
             const matchesSessionName = session.name.toLowerCase().includes(searchQuery);
@@ -319,10 +360,22 @@ class ExecutionDashboard {
                 );
             }
             
+            // Debug: Log first session structure to understand data
+            if (session === this.sessionsData[0] && searchQuery) {
+                console.log('[DEBUG] Sample session structure:', {
+                    name: session.name,
+                    has_last_turn_data: !!session.last_turn_data,
+                    has_workflow_history: !!session.last_turn_data?.workflow_history,
+                    workflow_history_length: session.last_turn_data?.workflow_history?.length || 0
+                });
+            }
+            
             const matchesSearch = matchesSessionName || matchesQuestion;
             const matchesStatus = filterStatus === 'all' || session.status === filterStatus;
             return matchesSearch && matchesStatus;
         });
+
+        console.log('[DEBUG] filterAndRenderSessions - filtered sessions:', filteredSessions.length);
 
         // Sort sessions
         filteredSessions.sort((a, b) => {
@@ -348,6 +401,17 @@ class ExecutionDashboard {
      * Highlight a specific session by ID (supports partial IDs)
      */
     highlightSession(sessionId) {
+        // Clear search box to show all sessions
+        const searchInput = document.getElementById('session-search');
+        const clearSearchBtn = document.getElementById('clear-search-btn');
+        if (searchInput && searchInput.value) {
+            searchInput.value = '';
+            if (clearSearchBtn) {
+                clearSearchBtn.classList.add('hidden');
+            }
+            this.filterAndRenderSessions();
+        }
+        
         // Scroll to session gallery
         const gallery = document.getElementById('session-gallery');
         if (gallery) {
@@ -417,10 +481,14 @@ class ExecutionDashboard {
      * Search for sessions containing a specific question
      */
     searchForQuestion(questionText) {
+        console.log('[DEBUG] searchForQuestion called with:', questionText);
+        
         // Set the search input
         const searchInput = document.getElementById('session-search');
         if (searchInput) {
             searchInput.value = questionText;
+            console.log('[DEBUG] Search input value set to:', searchInput.value);
+            
             // Trigger the filter
             this.filterAndRenderSessions();
             
@@ -429,6 +497,8 @@ class ExecutionDashboard {
             if (gallery) {
                 gallery.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
+        } else {
+            console.error('[DEBUG] Search input element not found');
         }
     }
 
