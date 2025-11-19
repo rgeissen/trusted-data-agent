@@ -53,7 +53,7 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             APP_CONFIG.SERVICES_CONFIGURED and
             provider == APP_CONFIG.ACTIVE_PROVIDER and
             model == APP_CONFIG.ACTIVE_MODEL and
-            server_id == APP_CONFIG.ACTIVE_MCP_SERVER_ID  # Use ID instead of name
+            server_id == APP_CONFIG.CURRENT_MCP_SERVER_ID  # Use ID instead of name
         )
 
         if is_already_configured:
