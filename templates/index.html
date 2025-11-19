@@ -13,14 +13,16 @@
 <body class="flex h-screen flex-col bg-dark-bg text-light-text">
 
     <!-- MODIFICATION: These are now top-level. The wrappers are removed. -->
-    <nav class="w-full bg-black/30 backdrop-blur-md border-b border-white/10 px-4 py-2 flex items-center justify-between flex-shrink-0 z-40">
+    <nav class="w-full bg-black/30 backdrop-blur-md border-b border-white/10 py-2 flex items-center justify-between flex-shrink-0 z-40">
         <div class="flex items-center gap-x-4">
-            <!-- NEW: Hamburger menu toggle, moved here -->
-            <button id="app-menu-toggle" type="button" class="p-2 text-gray-300 hover:text-white transition-colors rounded-md hover:bg-white/10">
-                <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-            </button>
+            <!-- NEW: Hamburger menu toggle aligned with sidebar icons -->
+            <div class="w-[88px] pl-4 flex items-center flex-shrink-0">
+                <button id="app-menu-toggle" type="button" class="p-3 text-gray-300 hover:text-white transition-colors rounded-md hover:bg-white/10">
+                    <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+            </div>
             <!-- Title remains -->
             <h1 class="header-title text-xl font-bold text-white">Trusted Data Agent</h1>
             <!-- GitHub Star Button -->
