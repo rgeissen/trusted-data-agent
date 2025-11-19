@@ -267,9 +267,9 @@ async function showWelcomeScreen() {
         if (response.ok) {
             const data = await response.json();
             // API returns {status, servers: [...], active_server_id}
-            hasSavedConfig = data && data.servers && data.servers.length > 0;
+            const hasMCPServer = data && data.servers && data.servers.length > 0;
             
-            if (hasSavedConfig && data.active_server_id) {
+            if (hasMCPServer && data.active_server_id) {
                 // Find the active server
                 const activeServer = data.servers.find(s => s.id === data.active_server_id);
                 if (activeServer) {
@@ -282,8 +282,12 @@ async function showWelcomeScreen() {
                         const llmProvider = activeLLM.provider || 'Unknown Provider';
                         const llmModel = activeLLM.model || 'Unknown Model';
                         configDetails = `${mcpName} • ${llmProvider} / ${llmModel}`;
+                        // Only set hasSavedConfig to true if BOTH MCP and LLM are configured
+                        hasSavedConfig = true;
                     } else {
                         configDetails = `${mcpName} • LLM not configured`;
+                        // MCP configured but LLM missing - don't enable Connect & Load
+                        hasSavedConfig = false;
                     }
                 }
             }
