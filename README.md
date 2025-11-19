@@ -666,6 +666,7 @@ Under the AGPLv3, you are free to use, modify, and distribute this software. How
 
 This list reflects the recent enhancements and updates to the Trusted Data Agent, as shown on the application's welcome screen.
 
+*   **19-Nov-2025:** Modern UI Design
 *   **15-Nov-2025:** Flowise Integration
 *   **14-Nov-2025:** Airflow Integration
 *   **11-Nov-2025:** Self-Improving AI (RAG)

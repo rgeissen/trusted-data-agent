@@ -256,8 +256,8 @@
                         <div class="flex-1 flex flex-col min-h-0">
                             <main id="chat-container" class="flex-1 overflow-y-auto p-6">
                                 <!-- Welcome Screen for Unconfigured State -->
-                                <div id="welcome-screen" class="hidden h-full flex items-center justify-center">
-                                    <div class="max-w-2xl mx-auto text-center space-y-8 p-8">
+                                <div id="welcome-screen" class="hidden h-full flex items-center justify-center overflow-y-auto">
+                                    <div class="max-w-4xl mx-auto text-center space-y-8 p-8 pb-20">
                                         <!-- Logo/Icon -->
                                         <div class="flex justify-center">
                                             <div class="w-24 h-24 bg-gradient-to-br from-teradata-orange to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
@@ -340,6 +340,131 @@
                                                 <h3 class="text-white font-semibold">Sovereignty</h3>
                                                 <p class="text-sm text-gray-400">Your data, your rules, your infrastructure choice</p>
                                             </div>
+                                        </div>
+
+                                        <!-- What's New Section -->
+                                        <div class="mt-12 pt-8 border-t border-white/10 text-left max-w-3xl mx-auto">
+                                            <h4 class="text-xl font-bold text-yellow-300 mb-4 text-center">What's New</h4>
+                                            <div class="grid md:grid-cols-2 gap-6">
+                                                <div class="space-y-3">
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div>
+                                                            <p class="text-sm text-gray-300"><strong class="text-white">19-Nov-2025:</strong> Modern UI Design</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div>
+                                                            <p class="text-sm text-gray-300"><strong class="text-white">15-Nov-2025:</strong> Flowise Integration</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div>
+                                                            <p class="text-sm text-gray-300"><strong class="text-white">14-Nov-2025:</strong> Airflow Integration</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div>
+                                                            <p class="text-sm text-gray-300"><strong class="text-white">11-Nov-2025:</strong> Self-Improving AI (RAG)</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div>
+                                                            <p class="text-sm text-gray-300"><strong class="text-white">06-Nov-2025:</strong> UI Real-Time Monitoring of Rest Requests</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div>
+                                                            <p class="text-sm text-gray-300"><strong class="text-white">31-Oct-2025:</strong> Fully configurable Context Management</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div>
+                                                            <p class="text-sm text-gray-300"><strong class="text-white">24-Oct-2025:</strong> Turn Replay & Turn Reload Plan</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div>
+                                                            <p class="text-sm text-gray-300"><strong class="text-white">24-Oct-2025:</strong> Stop Button - Immediately Stop Workflows</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="space-y-3">
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div>
+                                                            <p class="text-sm text-gray-300"><strong class="text-white">23-Oct-2025:</strong> Robust Multi-Tool Phase Handling</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div>
+                                                            <p class="text-sm text-gray-300"><strong class="text-white">11-Oct-2025:</strong> Friendly.AI Integration</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div>
+                                                            <p class="text-sm text-gray-300"><strong class="text-white">10-Oct-2025:</strong> Context Aware Collateral Report Rendering</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div>
+                                                            <p class="text-sm text-gray-300"><strong class="text-white">19-Sep-2025:</strong> Microsoft Azure Integration</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div>
+                                                            <p class="text-sm text-gray-300"><strong class="text-white">18-Sep-2025:</strong> REST Interface for Engine Configuration</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div>
+                                                            <p class="text-sm text-gray-300"><strong class="text-white">12-Sep-2025:</strong> Significant Formatting Upgrade</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div>
+                                                            <p class="text-sm text-gray-300"><strong class="text-white">05-Sep-2025:</strong> Conversation Mode (TTS)</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- LLM Leaderboard Link -->
+                                        <div class="mt-8 pt-6 border-t border-white/10 max-w-3xl mx-auto">
+                                            <div class="flex items-center justify-center gap-3 text-sm">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                                </svg>
+                                                <span class="text-gray-400">View the latest LLM benchmarks:</span>
+                                                <a href="https://gorilla.cs.berkeley.edu/leaderboard.html" target="_blank" class="text-teradata-orange hover:text-orange-400 underline transition-colors">
+                                                    Gorilla Leaderboard
+                                                </a>
+                                            </div>
+                                        </div>
+
+                                        <!-- Disabled Capabilities (dynamically populated) -->
+                                        <div id="welcome-disabled-capabilities" class="mt-8 hidden"></div>
+
+                                        <!-- Show at startup checkbox -->
+                                        <div class="mt-8 pt-6 border-t border-white/10">
+                                            <label class="flex items-center justify-center gap-x-2 text-sm text-gray-400 cursor-pointer hover:text-gray-300 transition-colors">
+                                                <input type="checkbox" id="welcome-screen-show-at-startup-checkbox" class="h-4 w-4 rounded text-teradata-orange bg-gray-700 border-gray-600 focus:ring-teradata-orange">
+                                                <span>Show this screen at startup</span>
+                                            </label>
                                         </div>
                                     </div>
                                 </div>
@@ -1238,19 +1363,17 @@
         </div>
     </div>
 
-    <!-- System Prompt Popup -->
-    <div id="system-prompt-popup-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
+    <!-- System Prompt Popup - DEPRECATED: Content migrated to main welcome screen -->
+    <!-- <div id="system-prompt-popup-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
         <div id="system-prompt-popup-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-3xl p-6 transform scale-95 opacity-0 flex flex-col">
-            <!-- System Prompt Popup Content -->
             <div class="flex justify-between items-center mb-4">
                 <h3 id="system-prompt-popup-title" class="text-xl font-bold header-title">Welcome to the Trusted Data Agent</h3>
             </div>
             <div id="system-prompt-popup-body" class="flex-1 w-full p-3 bg-gray-800/80 border border-gray-600 rounded-md overflow-y-auto">
-                <!-- Content will be generated by main.js -->
             </div>
             <div class="flex justify-between items-center mt-4">
                 <label class="flex items-center gap-x-2 text-sm text-gray-400 cursor-pointer">
-                    <input type="checkbox" id="welcome-screen-show-at-startup-checkbox" class="h-4 w-4 rounded text-teradata-orange bg-gray-700 border-gray-600 focus:ring-teradata-orange">
+                    <input type="checkbox" id="welcome-screen-show-at-startup-checkbox-old" class="h-4 w-4 rounded text-teradata-orange bg-gray-700 border-gray-600 focus:ring-teradata-orange">
                     <span>Show this screen at startup</span>
                 </label>
                 <div>
@@ -1259,7 +1382,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
 
     <!-- View Prompt Modal -->
     <div id="view-prompt-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">

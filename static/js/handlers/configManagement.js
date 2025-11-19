@@ -13,7 +13,8 @@ import * as UI from '../ui.js';
 import * as Utils from '../utils.js';
 import { handleLoadSession, handleStartNewSession } from './sessionManagement.js';
 // We need to import from eventHandlers for functions not yet moved
-import { handleLoadResources, openSystemPromptPopup } from '../eventHandlers.js';
+import { handleLoadResources } from '../eventHandlers.js';
+// Note: openSystemPromptPopup is deprecated - welcome screen is now the unified interface
 import { handleViewSwitch } from '../ui.js';
 
 /**
@@ -192,19 +193,27 @@ export async function finalizeConfiguration(config, switchToConversationView = t
 
     state.pristineConfig = getCurrentCoreConfig();
     UI.updateConfigButtonState();
-    if (state.showWelcomeScreenAtStartup) {
-        openSystemPromptPopup();
-    }
-
+    
+    // No longer showing the old popup - the welcome screen is now the unified interface
     // setTimeout(UI.closeConfigModal, 1000); // REMOVED
     // DOM.unconfiguredWrapper.classList.add('hidden'); // REMOVED
     // DOM.configuredWrapper.classList.remove('hidden'); // REMOVED
     
-    // Hide welcome screen if it's showing
-    console.log('finalizeConfiguration: Checking if hideWelcomeScreen exists:', typeof window.hideWelcomeScreen);
-    if (window.hideWelcomeScreen) {
-        console.log('finalizeConfiguration: Calling hideWelcomeScreen');
-        window.hideWelcomeScreen();
+    // Check if we should show the welcome screen based on user preference
+    // This applies when reloading a page with existing configuration
+    if (state.showWelcomeScreenAtStartup && switchToConversationView) {
+        console.log('finalizeConfiguration: User preference is to show welcome screen at startup');
+        if (window.showWelcomeScreen) {
+            console.log('finalizeConfiguration: Showing welcome screen');
+            window.showWelcomeScreen();
+        }
+    } else {
+        // Hide welcome screen if it's showing and user doesn't want to see it
+        console.log('finalizeConfiguration: Checking if hideWelcomeScreen exists:', typeof window.hideWelcomeScreen);
+        if (window.hideWelcomeScreen) {
+            console.log('finalizeConfiguration: Calling hideWelcomeScreen');
+            window.hideWelcomeScreen();
+        }
     }
     
     if (switchToConversationView) {

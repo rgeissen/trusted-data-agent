@@ -1466,14 +1466,22 @@ export function initializeEventListeners() {
     DOM.statusWindowContent.addEventListener('mouseenter', () => { state.isMouseOverStatus = true; });
     DOM.statusWindowContent.addEventListener('mouseleave', () => { state.isMouseOverStatus = false; });
     DOM.chartingIntensitySelect.addEventListener('change', handleIntensityChange);
-    DOM.systemPromptPopupClose.addEventListener('click', closeSystemPromptPopup);
-    DOM.systemPromptPopupViewFull.addEventListener('click', () => {
-        closeSystemPromptPopup();
-        openPromptEditor();
-    });
-    DOM.systemPromptPopupOverlay.addEventListener('click', (e) => {
-        if (e.target === DOM.systemPromptPopupOverlay) closeSystemPromptPopup();
-    });
+    
+    // Old system prompt popup - deprecated but kept for backward compatibility
+    if (DOM.systemPromptPopupClose) {
+        DOM.systemPromptPopupClose.addEventListener('click', closeSystemPromptPopup);
+    }
+    if (DOM.systemPromptPopupViewFull) {
+        DOM.systemPromptPopupViewFull.addEventListener('click', () => {
+            closeSystemPromptPopup();
+            openPromptEditor();
+        });
+    }
+    if (DOM.systemPromptPopupOverlay) {
+        DOM.systemPromptPopupOverlay.addEventListener('click', (e) => {
+            if (e.target === DOM.systemPromptPopupOverlay) closeSystemPromptPopup();
+        });
+    }
     DOM.windowMenuButton.addEventListener('click', (e) => {
         e.stopPropagation();
         DOM.windowDropdownMenu.classList.toggle('open');

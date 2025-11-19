@@ -225,6 +225,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error("Could not fetch app config", e);
     }
 
+    // Initialize panels as collapsed and disabled until configuration is loaded
+    DOM.sessionHistoryPanel.classList.add('collapsed');
+    DOM.statusWindow.classList.add('collapsed');
+    DOM.toolHeader.classList.add('collapsed');
+    DOM.toggleHistoryButton.classList.add('btn-disabled');
+    DOM.toggleHistoryButton.style.opacity = '0.5';
+    DOM.toggleHistoryButton.style.cursor = 'not-allowed';
+    DOM.toggleHistoryButton.style.pointerEvents = 'none';
+    DOM.toggleStatusButton.classList.add('btn-disabled');
+    DOM.toggleStatusButton.style.opacity = '0.5';
+    DOM.toggleStatusButton.style.cursor = 'not-allowed';
+    DOM.toggleStatusButton.style.pointerEvents = 'none';
+    DOM.toggleHeaderButton.classList.add('btn-disabled');
+    DOM.toggleHeaderButton.style.opacity = '0.5';
+    DOM.toggleHeaderButton.style.cursor = 'not-allowed';
+    DOM.toggleHeaderButton.style.pointerEvents = 'none';
+
     try {
         console.log("DEBUG: Checking server status on startup...");
         const status = await API.checkServerStatus();
@@ -295,24 +312,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         handleViewSwitch('credentials-view');
     }
 
-
-    // Initialize panels as collapsed and disabled until configuration is loaded
-    DOM.sessionHistoryPanel.classList.add('collapsed');
-    DOM.statusWindow.classList.add('collapsed');
-    DOM.toolHeader.classList.add('collapsed');
-    DOM.toggleHistoryButton.classList.add('btn-disabled');
-    DOM.toggleHistoryButton.style.opacity = '0.5';
-    DOM.toggleHistoryButton.style.cursor = 'not-allowed';
-    DOM.toggleHistoryButton.style.pointerEvents = 'none';
-    DOM.toggleStatusButton.classList.add('btn-disabled');
-    DOM.toggleStatusButton.style.opacity = '0.5';
-    DOM.toggleStatusButton.style.cursor = 'not-allowed';
-    DOM.toggleStatusButton.style.pointerEvents = 'none';
-    DOM.toggleHeaderButton.classList.add('btn-disabled');
-    DOM.toggleHeaderButton.style.opacity = '0.5';
-    DOM.toggleHeaderButton.style.cursor = 'not-allowed';
-    DOM.toggleHeaderButton.style.pointerEvents = 'none';
-
+    // Setup panel toggle handlers (called after configuration check so panels can be enabled if configured)
     DOM.toggleHistoryCheckbox.checked = !DOM.sessionHistoryPanel.classList.contains('collapsed');
     setupPanelToggle(DOM.toggleHistoryButton, DOM.sessionHistoryPanel, DOM.toggleHistoryCheckbox, DOM.historyCollapseIcon, DOM.historyExpandIcon);
 
@@ -352,6 +352,15 @@ async function showWelcomeScreen() {
     const welcomeCogwheel = document.getElementById('welcome-cogwheel-icon');
     const welcomeSubtext = document.querySelector('.welcome-subtext');
     const reconfigureLink = document.getElementById('welcome-reconfigure-link');
+    const welcomeCheckbox = document.getElementById('welcome-screen-show-at-startup-checkbox');
+    
+    // Populate disabled capabilities section
+    populateWelcomeDisabledCapabilities();
+    
+    // Sync checkbox state with user preference
+    if (welcomeCheckbox) {
+        welcomeCheckbox.checked = state.showWelcomeScreenAtStartup;
+    }
     
     if (welcomeScreen && chatLog) {
         welcomeScreen.classList.remove('hidden');
@@ -475,6 +484,61 @@ async function showWelcomeScreen() {
         });
         welcomeBtn.dataset._wired = 'true';
     }
+}
+
+/**
+ * Populate the disabled capabilities section on the welcome screen
+ */
+function populateWelcomeDisabledCapabilities() {
+    const container = document.getElementById('welcome-disabled-capabilities');
+    if (!container) return;
+
+    const disabledTools = [];
+    if (state.resourceData.tools) {
+        Object.values(state.resourceData.tools).flat().forEach(tool => {
+            if (tool.disabled) disabledTools.push(tool.name);
+        });
+    }
+
+    const disabledPrompts = [];
+    if (state.resourceData.prompts) {
+        Object.values(state.resourceData.prompts).flat().forEach(prompt => {
+            if (prompt.disabled) disabledPrompts.push(prompt.name);
+        });
+    }
+
+    if (disabledTools.length === 0 && disabledPrompts.length === 0) {
+        container.classList.add('hidden');
+        return;
+    }
+
+    container.classList.remove('hidden');
+    
+    let html = `
+        <div class="pt-6 border-t border-white/10 max-w-3xl mx-auto text-left">
+            <h4 class="text-lg font-bold text-yellow-300 mb-2">Reactive Capabilities</h4>
+            <p class="text-sm text-gray-400 mb-4">The following capabilities are not actively participating in queries. You can enable them in the Capabilities panel.</p>
+            <div class="grid md:grid-cols-2 gap-6">
+    `;
+
+    if (disabledTools.length > 0) {
+        html += '<div><h5 class="font-semibold text-sm text-white mb-2">Tools</h5><ul class="space-y-1">';
+        disabledTools.forEach(name => {
+            html += `<li class="text-xs text-gray-300"><code class="text-teradata-orange">${name}</code></li>`;
+        });
+        html += '</ul></div>';
+    }
+
+    if (disabledPrompts.length > 0) {
+        html += '<div><h5 class="font-semibold text-sm text-white mb-2">Prompts</h5><ul class="space-y-1">';
+        disabledPrompts.forEach(name => {
+            html += `<li class="text-xs text-gray-300"><code class="text-teradata-orange">${name}</code></li>`;
+        });
+        html += '</ul></div>';
+    }
+
+    html += '</div></div>';
+    container.innerHTML = html;
 }
 
 // Make showWelcomeScreen available globally
