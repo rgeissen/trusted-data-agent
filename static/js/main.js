@@ -289,12 +289,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Show welcome screen in conversation view
             await showWelcomeScreen();
-            
-            // NOTE: Old loadCredentialsAndModels() is not needed with new config UI
-            // The new configurationHandler manages everything via localStorage
-            
-            // Don't automatically switch to credentials view - let user stay on conversation view with welcome screen
-            // handleViewSwitch('credentials-view');
         }
     } catch (startupError) {
         console.error("DEBUG: Error during startup configuration/session loading. Showing config modal.", startupError);

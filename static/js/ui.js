@@ -1318,8 +1318,19 @@ export function updateSessionModels(sessionId, models_used) {
 // --- NEW: Update the active session title in the header ---
 export function updateActiveSessionTitle(newName) {
     const titleEl = document.getElementById('active-session-title');
+    const wrapperEl = document.getElementById('active-session-title-wrapper');
+    
     if (titleEl) {
         titleEl.textContent = newName || 'Unnamed Session';
+    }
+    
+    // Show the wrapper when we have a session loaded (after configuration)
+    if (wrapperEl) {
+        if (newName) {
+            wrapperEl.classList.remove('hidden');
+        } else {
+            wrapperEl.classList.add('hidden');
+        }
     }
 }
 

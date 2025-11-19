@@ -926,6 +926,18 @@ export async function reconnectAndLoad() {
                 if (DOM.headerCollapseIcon) DOM.headerCollapseIcon.classList.add('hidden');
             }
             
+            // Show conversation header after successful configuration
+            const conversationHeader = document.getElementById('conversation-header');
+            console.log('[DEBUG] reconnectAndLoad - Showing conversation header, element exists:', !!conversationHeader);
+            if (conversationHeader) {
+                console.log('[DEBUG] reconnectAndLoad - Header classes before:', conversationHeader.className);
+                conversationHeader.classList.remove('hidden');
+                console.log('[DEBUG] reconnectAndLoad - Header classes after:', conversationHeader.className);
+                console.log('[DEBUG] reconnectAndLoad - Conversation header enabled');
+            } else {
+                console.error('[DEBUG] reconnectAndLoad - Conversation header element not found!');
+            }
+            
             // Load MCP resources (tools, prompts, resources)
             await Promise.all([
                 handleLoadResources('tools'),

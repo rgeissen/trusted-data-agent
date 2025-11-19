@@ -92,6 +92,18 @@ export async function finalizeConfiguration(config, switchToConversationView = t
             console.log('RAG indicator set to disconnected - rag_active:', status.rag_active);
         }
     }
+    
+    // Show conversation header after successful configuration
+    const conversationHeader = document.getElementById('conversation-header');
+    console.log('Attempting to show conversation header, element exists:', !!conversationHeader);
+    if (conversationHeader) {
+        console.log('Conversation header classes before:', conversationHeader.className);
+        conversationHeader.classList.remove('hidden');
+        console.log('Conversation header classes after:', conversationHeader.className);
+        console.log('Conversation header enabled after configuration');
+    } else {
+        console.error('Conversation header element not found!');
+    }
 
     localStorage.setItem('lastSelectedProvider', config.provider);
 
@@ -199,21 +211,11 @@ export async function finalizeConfiguration(config, switchToConversationView = t
     // DOM.unconfiguredWrapper.classList.add('hidden'); // REMOVED
     // DOM.configuredWrapper.classList.remove('hidden'); // REMOVED
     
-    // Check if we should show the welcome screen based on user preference
-    // This applies when reloading a page with existing configuration
-    if (state.showWelcomeScreenAtStartup && switchToConversationView) {
-        console.log('finalizeConfiguration: User preference is to show welcome screen at startup');
-        if (window.showWelcomeScreen) {
-            console.log('finalizeConfiguration: Showing welcome screen');
-            window.showWelcomeScreen();
-        }
-    } else {
-        // Hide welcome screen if it's showing and user doesn't want to see it
-        console.log('finalizeConfiguration: Checking if hideWelcomeScreen exists:', typeof window.hideWelcomeScreen);
-        if (window.hideWelcomeScreen) {
-            console.log('finalizeConfiguration: Calling hideWelcomeScreen');
-            window.hideWelcomeScreen();
-        }
+    // Always hide welcome screen after successful configuration
+    // The welcome screen is only for unconfigured state
+    console.log('finalizeConfiguration: Hiding welcome screen after configuration');
+    if (window.hideWelcomeScreen) {
+        window.hideWelcomeScreen();
     }
     
     if (switchToConversationView) {
