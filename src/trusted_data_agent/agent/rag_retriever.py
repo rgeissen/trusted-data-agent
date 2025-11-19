@@ -312,12 +312,15 @@ class RAGRetriever:
         
         logger.info(f"Reload complete. {len(self.collections)} collection(s) now loaded for MCP server ID '{current_mcp_server_id}'")
 
-    def refresh_vector_store(self, collection_id: Optional[str] = None):
+    def refresh_vector_store(self, collection_id: Optional[int] = None):
         """
         Manually triggers the maintenance of the vector store.
         If collection_id is None, refreshes all collections.
         """
-        if collection_id:
+        if collection_id is not None:
+            # Ensure collection_id is an integer
+            if isinstance(collection_id, str):
+                collection_id = int(collection_id)
             logger.info(f"Manual refresh of vector store triggered for collection: {collection_id}")
             self._maintain_vector_store(collection_id)
         else:
@@ -450,12 +453,16 @@ class RAGRetriever:
         except Exception as e:
             logger.error(f"Error re-evaluating champion: {e}", exc_info=True)
 
-    def _maintain_vector_store(self, collection_id: str):
+    def _maintain_vector_store(self, collection_id: int):
         """
         Maintains the ChromaDB vector store for a specific collection by synchronizing it with the
         JSON case files on disk. It adds new cases, removes deleted ones,
         and updates existing ones if their metadata has changed.
         """
+        # Ensure collection_id is an integer
+        if isinstance(collection_id, str):
+            collection_id = int(collection_id)
+            
         if collection_id not in self.collections:
             logger.warning(f"Cannot maintain vector store: collection '{collection_id}' not loaded")
             return

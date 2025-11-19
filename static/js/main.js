@@ -57,6 +57,64 @@ function ensureUserUUID() {
     }
 }
 
+/**
+ * Fetches the current star count for the GitHub repository and updates the UI.
+ */
+async function fetchGitHubStarCount() {
+    const starCountElement = document.getElementById('github-star-count');
+    const starIconElement = document.getElementById('github-star-icon');
+    
+    console.log('fetchGitHubStarCount: Starting...', { starCountElement, starIconElement });
+    
+    if (!starCountElement) {
+        console.error('fetchGitHubStarCount: star count element not found');
+        return;
+    }
+
+    try {
+        console.log('fetchGitHubStarCount: Fetching from GitHub API...');
+        const response = await fetch('https://api.github.com/repos/rgeissen/trusted-data-agent', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/vnd.github.v3+json'
+            },
+            mode: 'cors'
+        });
+        
+        console.log('fetchGitHubStarCount: Response status:', response.status);
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('fetchGitHubStarCount: API response data:', data);
+            const starCount = data.stargazers_count || 0;
+            // Format the number with comma separators
+            starCountElement.textContent = starCount.toLocaleString('en-US');
+            
+            // Update star icon based on count (filled if > 0, outline if 0)
+            if (starIconElement) {
+                if (starCount > 0) {
+                    starIconElement.setAttribute('fill', 'currentColor');
+                } else {
+                    starIconElement.setAttribute('fill', 'none');
+                    starIconElement.setAttribute('stroke', 'currentColor');
+                    starIconElement.setAttribute('stroke-width', '1.5');
+                }
+            }
+            
+            console.log('GitHub star count fetched successfully:', starCount);
+        } else {
+            console.warn('Failed to fetch GitHub star count. Status:', response.status, 'Status Text:', response.statusText);
+            const errorText = await response.text();
+            console.warn('Error response:', errorText);
+            starCountElement.textContent = '-';
+        }
+    } catch (error) {
+        console.error('Error fetching GitHub star count:', error);
+        console.error('Error details:', error.message, error.stack);
+        starCountElement.textContent = '-';
+    }
+}
+
 // REMOVED: loadInitialConfig() function - obsolete with new configuration system
 // The new configuration system (configState) automatically loads from localStorage
 // and doesn't need manual form population
@@ -76,6 +134,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     ensureUserUUID(); // Get/Set the User UUID right away
     console.log("DOMContentLoaded: User UUID ensured:", state.userUUID);
     subscribeToNotifications();
+
+    // Fetch GitHub star count
+    fetchGitHubStarCount();
 
     const uuidInput = document.getElementById('tda-user-uuid');
     const copyButton = document.getElementById('copy-uuid-button');

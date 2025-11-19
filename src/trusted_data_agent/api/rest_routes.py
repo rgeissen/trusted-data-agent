@@ -570,6 +570,30 @@ async def refresh_rag_collection(collection_id: int):
         if not retriever:
             return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
         
+        # Check if the collection is actually loaded
+        if collection_id not in retriever.collections:
+            # Get collection info for better error message
+            collections_list = APP_STATE.get("rag_collections", [])
+            coll_meta = next((c for c in collections_list if c["id"] == collection_id), None)
+            
+            if not coll_meta:
+                return jsonify({"status": "error", "message": f"Collection {collection_id} not found in configuration"}), 404
+            
+            # Collection exists but isn't loaded - explain why
+            current_mcp = APP_CONFIG.CURRENT_MCP_SERVER_ID
+            coll_mcp = coll_meta.get("mcp_server_id")
+            error_msg = f"Collection '{coll_meta['name']}' (ID: {collection_id}) is not loaded. "
+            
+            if coll_mcp != current_mcp:
+                error_msg += f"It's associated with MCP server '{coll_mcp}' but current server is '{current_mcp}'. "
+            elif not coll_meta.get("enabled", False):
+                error_msg += "It's disabled. Please enable it first."
+            else:
+                error_msg += "Reason unknown. Check server logs."
+            
+            app_logger.warning(error_msg)
+            return jsonify({"status": "error", "message": error_msg}), 400
+        
         # Run refresh in background to avoid timeout
         asyncio.create_task(asyncio.to_thread(retriever.refresh_vector_store, collection_id))
         

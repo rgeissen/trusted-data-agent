@@ -68,7 +68,8 @@ async def get_application_status():
     rag_retriever = APP_STATE.get('rag_retriever_instance')
     rag_collections = APP_STATE.get('rag_collections', [])
     active_collections = [c for c in rag_collections if c.get('enabled', False)]
-    rag_active = bool(rag_retriever and active_collections)
+    # RAG is active if retriever exists AND has actually loaded collections
+    rag_active = bool(rag_retriever and rag_retriever.collections if rag_retriever else False)
     
     if is_configured:
         status_payload = {

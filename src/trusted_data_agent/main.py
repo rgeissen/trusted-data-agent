@@ -158,7 +158,7 @@ def create_app():
             "script-src 'self' https://cdn.tailwindcss.com https://unpkg.com",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", # Allow inline styles for G2Plot tooltips etc.
             "font-src 'self' https://fonts.gstatic.com",
-            "connect-src 'self' *.googleapis.com https://*.withgoogle.com https://unpkg.com", # Added unpkg
+            "connect-src 'self' *.googleapis.com https://*.withgoogle.com https://unpkg.com https://api.github.com", # Added unpkg and GitHub API
             "worker-src 'self' blob:",
             "img-src 'self' data:",
             "media-src 'self' blob:" # Allow media from blobs for TTS audio
