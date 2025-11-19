@@ -99,6 +99,23 @@ export async function finalizeConfiguration(config, switchToConversationView = t
 
     UI.updateStatusPromptName(config.provider, config.model);
 
+    // Enable panel toggle buttons after configuration
+    if (DOM.toggleHistoryButton) {
+        DOM.toggleHistoryButton.disabled = false;
+        DOM.toggleHistoryButton.style.opacity = '1';
+        DOM.toggleHistoryButton.style.cursor = 'pointer';
+    }
+    if (DOM.toggleStatusButton) {
+        DOM.toggleStatusButton.disabled = false;
+        DOM.toggleStatusButton.style.opacity = '1';
+        DOM.toggleStatusButton.style.cursor = 'pointer';
+    }
+    if (DOM.toggleHeaderButton) {
+        DOM.toggleHeaderButton.disabled = false;
+        DOM.toggleHeaderButton.style.opacity = '1';
+        DOM.toggleHeaderButton.style.cursor = 'pointer';
+    }
+
     if (Utils.isPrivilegedUser()) {
         const activePrompt = Utils.getSystemPromptForModel(state.currentProvider, state.currentModel);
         if (!activePrompt) {

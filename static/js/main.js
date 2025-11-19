@@ -280,6 +280,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
 
+    // Initialize panels as collapsed and disabled until configuration is loaded
+    DOM.sessionHistoryPanel.classList.add('collapsed');
+    DOM.statusWindow.classList.add('collapsed');
+    DOM.toolHeader.classList.add('collapsed');
+    DOM.toggleHistoryButton.disabled = true;
+    DOM.toggleHistoryButton.style.opacity = '0.5';
+    DOM.toggleHistoryButton.style.cursor = 'not-allowed';
+    DOM.toggleStatusButton.disabled = true;
+    DOM.toggleStatusButton.style.opacity = '0.5';
+    DOM.toggleStatusButton.style.cursor = 'not-allowed';
+    DOM.toggleHeaderButton.disabled = true;
+    DOM.toggleHeaderButton.style.opacity = '0.5';
+    DOM.toggleHeaderButton.style.cursor = 'not-allowed';
+
     DOM.toggleHistoryCheckbox.checked = !DOM.sessionHistoryPanel.classList.contains('collapsed');
     setupPanelToggle(DOM.toggleHistoryButton, DOM.sessionHistoryPanel, DOM.toggleHistoryCheckbox, DOM.historyCollapseIcon, DOM.historyExpandIcon);
 
