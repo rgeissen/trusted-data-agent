@@ -123,12 +123,16 @@ async function fetchGitHubStarCount() {
 function hideWelcomeScreen() {
     const welcomeScreen = document.getElementById('welcome-screen');
     const chatLog = document.getElementById('chat-log');
+    const chatFooter = document.getElementById('chat-footer');
     
-    console.log('hideWelcomeScreen called', { welcomeScreen, chatLog });
+    console.log('hideWelcomeScreen called', { welcomeScreen, chatLog, chatFooter });
     if (welcomeScreen && chatLog) {
         welcomeScreen.classList.add('hidden');
         chatLog.classList.remove('hidden');
-        console.log('Welcome screen hidden, chat log shown');
+        if (chatFooter) {
+            chatFooter.classList.remove('hidden');
+        }
+        console.log('Welcome screen hidden, chat log and footer shown');
     }
 }
 
@@ -341,6 +345,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function showWelcomeScreen() {
     const welcomeScreen = document.getElementById('welcome-screen');
     const chatLog = document.getElementById('chat-log');
+    const chatFooter = document.getElementById('chat-footer');
     const welcomeBtn = document.getElementById('welcome-configure-btn');
     const welcomeBtnText = document.getElementById('welcome-button-text');
     const welcomeCogwheel = document.getElementById('welcome-cogwheel-icon');
@@ -359,6 +364,10 @@ async function showWelcomeScreen() {
     if (welcomeScreen && chatLog) {
         welcomeScreen.classList.remove('hidden');
         chatLog.classList.add('hidden');
+        // Hide chat input footer when showing welcome screen
+        if (chatFooter) {
+            chatFooter.classList.add('hidden');
+        }
     }
     
     // Check if user has previously saved MCP servers and LLM providers
