@@ -1,0 +1,70 @@
+{
+  "case_id": "7d7cbb11-8ed0-546f-8879-31b932ce6cb4",
+  "metadata": {
+    "session_id": "d69d7276-a015-4957-ad7a-e49f82468134",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "task-20bd76f2-14fe-4d84-8bab-b0b731a93a22",
+    "collection_id": 0,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-19T08:22:06.099424+00:00",
+    "llm_config": {
+      "provider": "Friendli",
+      "model": "google/gemma-3-27b-it",
+      "input_tokens": 8052,
+      "output_tokens": 269
+    },
+    "is_most_efficient": false,
+    "strategy_metrics": {
+      "phase_count": 3,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 5,
+        "3": 1
+      },
+      "total_steps": 7
+    }
+  },
+  "intent": {
+    "user_query": "educate yourself on the table ddls in fitness_db"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Get a list of all tables in the 'fitness_db' database.",
+        "relevant_tools": [
+          "base_tableList"
+        ],
+        "arguments": {
+          "database_name": "fitness_db"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Loop through the list of tables and retrieve the DDL for each one.",
+        "relevant_tools": [
+          "base_tableDDL"
+        ],
+        "type": "loop",
+        "loop_over": "result_of_phase_1",
+        "arguments": {
+          "database_name": "fitness_db",
+          "table_name": {
+            "source": "loop_item",
+            "key": "TableName"
+          }
+        }
+      },
+      {
+        "phase": 3,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

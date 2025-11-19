@@ -64,17 +64,29 @@ async def get_application_status():
     is_configured = APP_CONFIG.SERVICES_CONFIGURED
     app_logger.debug(f"API endpoint /api/status checked. Current configured status: {is_configured}")
 
+    # Check RAG status
+    rag_retriever = APP_STATE.get('rag_retriever_instance')
+    rag_collections = APP_STATE.get('rag_collections', [])
+    active_collections = [c for c in rag_collections if c.get('enabled', False)]
+    rag_active = bool(rag_retriever and active_collections)
+    
     if is_configured:
         status_payload = {
             "isConfigured": True,
             "provider": APP_CONFIG.ACTIVE_PROVIDER,
             "model": APP_CONFIG.ACTIVE_MODEL,
-            "mcp_server": { "name": APP_CONFIG.ACTIVE_MCP_SERVER_NAME }
+            "mcp_server": { "name": APP_CONFIG.ACTIVE_MCP_SERVER_NAME },
+            "rag_active": rag_active,
+            "rag_enabled": APP_CONFIG.RAG_ENABLED
         }
         app_logger.debug(f"/api/status responding with configured state: {status_payload}")
         return jsonify(status_payload)
     else:
-        status_payload = {"isConfigured": False}
+        status_payload = {
+            "isConfigured": False,
+            "rag_active": rag_active,
+            "rag_enabled": APP_CONFIG.RAG_ENABLED
+        }
         app_logger.debug(f"/api/status responding with unconfigured state.")
         return jsonify(status_payload)
 

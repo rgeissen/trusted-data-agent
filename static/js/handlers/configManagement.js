@@ -75,6 +75,20 @@ export async function finalizeConfiguration(config, switchToConversationView = t
     DOM.llmStatusDot.classList.add('idle'); // Start as idle
     DOM.contextStatusDot.classList.remove('disconnected');
     DOM.contextStatusDot.classList.add('idle');
+    
+    // Update RAG indicator - check if RAG is active after configuration
+    if (DOM.ragStatusDot && state.appConfig.rag_enabled) {
+        // RAG starts as disconnected until retriever is initialized with active collections
+        // The status will be updated by checkServerStatus or when collections are enabled
+        const status = await API.checkServerStatus();
+        if (status.rag_active) {
+            DOM.ragStatusDot.classList.remove('disconnected');
+            DOM.ragStatusDot.classList.add('connected');
+        } else {
+            DOM.ragStatusDot.classList.remove('connected');
+            DOM.ragStatusDot.classList.add('disconnected');
+        }
+    }
 
     localStorage.setItem('lastSelectedProvider', config.provider);
 

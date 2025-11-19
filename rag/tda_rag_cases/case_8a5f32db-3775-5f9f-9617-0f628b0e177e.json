@@ -1,0 +1,53 @@
+{
+  "case_id": "8a5f32db-3775-5f9f-9617-0f628b0e177e",
+  "metadata": {
+    "session_id": "d69d7276-a015-4957-ad7a-e49f82468134",
+    "turn_id": 2,
+    "is_success": true,
+    "task_id": "task-9e22fe51-75f0-4733-b2c3-4d8f16d606eb",
+    "collection_id": 0,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-19T08:22:23.438881+00:00",
+    "llm_config": {
+      "provider": "Friendli",
+      "model": "google/gemma-3-27b-it",
+      "input_tokens": 11366,
+      "output_tokens": 203
+    },
+    "is_most_efficient": false,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    }
+  },
+  "intent": {
+    "user_query": "what are my top 5 customers based on revenue generated?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Retrieve the top 5 customers based on revenue generated from the Sales and Customers tables.",
+        "relevant_tools": [
+          "base_readQuery"
+        ],
+        "arguments": {
+          "sql": "SELECT TOP 5 c.CustomerID, c.FirstName, c.LastName, SUM(s.TotalAmount) AS TotalRevenue FROM fitness_db.Customers c JOIN fitness_db.Sales s ON c.CustomerID = s.CustomerID GROUP BY c.CustomerID, c.FirstName, c.LastName ORDER BY TotalRevenue DESC;"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

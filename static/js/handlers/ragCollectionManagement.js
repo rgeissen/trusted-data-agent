@@ -5,7 +5,32 @@
 
 import { state } from '../state.js';
 import { loadRagCollections } from '../ui.js';
+import * as DOM from '../domElements.js';
 // Note: configState is accessed via window.configState to avoid circular imports
+
+/**
+ * Updates the RAG indicator based on current RAG status
+ */
+async function updateRagIndicator() {
+    if (!DOM.ragStatusDot || !state.appConfig.rag_enabled) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/status');
+        const status = await response.json();
+        
+        if (status.rag_active) {
+            DOM.ragStatusDot.classList.remove('disconnected');
+            DOM.ragStatusDot.classList.add('connected');
+        } else {
+            DOM.ragStatusDot.classList.remove('connected');
+            DOM.ragStatusDot.classList.add('disconnected');
+        }
+    } catch (error) {
+        console.error('Failed to update RAG indicator:', error);
+    }
+}
 
 /**
  * Show notification helper - displays in header status area
@@ -210,6 +235,9 @@ async function toggleRagCollection(collectionId, currentState) {
             
             // Refresh collections list
             await loadRagCollections();
+            
+            // Update RAG indicator status
+            await updateRagIndicator();
         } else {
             // Backend returns 'message' field for errors
             showNotification('error', data.message || 'Failed to toggle collection');

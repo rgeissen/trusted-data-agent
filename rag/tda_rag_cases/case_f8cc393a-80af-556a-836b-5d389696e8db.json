@@ -1,0 +1,112 @@
+{
+  "case_id": "f8cc393a-80af-556a-836b-5d389696e8db",
+  "metadata": {
+    "session_id": "f3b730d2-5f1c-4887-8c27-0fbaeaf8b933",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "task-99907d9f-ca55-40f1-ad3a-44863035b9f8",
+    "collection_id": 0,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-19T07:42:50.989395+00:00",
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "input_tokens": 8695,
+      "output_tokens": 586
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 5,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 5,
+        "3": 16,
+        "4": 33,
+        "5": 1
+      },
+      "total_steps": 56
+    }
+  },
+  "intent": {
+    "user_query": "Executing prompt: qlty_databaseQuality"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Get a list of all tables in the 'fitness_db' database.",
+        "relevant_tools": [
+          "base_tableList"
+        ],
+        "arguments": {
+          "database_name": "fitness_db"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "For each table in the list, gather column statistics using qlty_columnSummary.",
+        "relevant_tools": [
+          "qlty_columnSummary"
+        ],
+        "type": "loop",
+        "loop_over": "result_of_phase_1",
+        "arguments": {
+          "database_name": "fitness_db",
+          "table_name": {
+            "source": "loop_item",
+            "key": "TableName"
+          }
+        }
+      },
+      {
+        "phase": 3,
+        "goal": "For each table in the list, get univariate statistics using qlty_univariateStatistics.",
+        "relevant_tools": [
+          "qlty_univariateStatistics"
+        ],
+        "type": "loop",
+        "loop_over": "result_of_phase_1",
+        "arguments": {
+          "database_name": "fitness_db",
+          "table_name": {
+            "source": "loop_item",
+            "key": "TableName"
+          },
+          "column_name": {
+            "source": "loop_item",
+            "key": "ColumnName"
+          }
+        }
+      },
+      {
+        "phase": 4,
+        "goal": "For each table in the list, get rows with missing values using qlty_rowsWithMissingValues.",
+        "relevant_tools": [
+          "qlty_rowsWithMissingValues"
+        ],
+        "type": "loop",
+        "loop_over": "result_of_phase_1",
+        "arguments": {
+          "database_name": "fitness_db",
+          "table_name": {
+            "source": "loop_item",
+            "key": "TableName"
+          },
+          "column_name": {
+            "source": "loop_item",
+            "key": "ColumnName"
+          }
+        }
+      },
+      {
+        "phase": 5,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_ComplexPromptReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

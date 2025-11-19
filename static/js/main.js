@@ -136,8 +136,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             DOM.keyObservationsToggleButton.classList.remove('hidden');
         }
 
-        if (DOM.ragStatusDot && !state.appConfig.rag_enabled) {
-            DOM.ragStatusDot.parentElement.style.display = 'none';
+        if (DOM.ragStatusDot) {
+            if (!state.appConfig.rag_enabled) {
+                DOM.ragStatusDot.parentElement.style.display = 'none';
+            } else {
+                DOM.ragStatusDot.parentElement.style.display = 'flex';
+            }
         }
 
     } catch (e) {
@@ -147,6 +151,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         console.log("DEBUG: Checking server status on startup...");
         const status = await API.checkServerStatus();
+        
+        // Update RAG indicator based on status
+        if (DOM.ragStatusDot && state.appConfig.rag_enabled) {
+            if (status.rag_active) {
+                DOM.ragStatusDot.classList.remove('disconnected');
+                DOM.ragStatusDot.classList.add('connected');
+            } else {
+                DOM.ragStatusDot.classList.remove('connected');
+                DOM.ragStatusDot.classList.add('disconnected');
+            }
+        }
 
         if (status.isConfigured) {
             console.log("DEBUG: Server is already configured. Proceeding with setup.", status);
