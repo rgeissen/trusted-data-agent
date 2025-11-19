@@ -385,17 +385,33 @@ async def cancel_task(task_id: str):
 
 @rest_api_bp.route("/v1/rag/collections", methods=["GET"])
 async def get_rag_collections():
-    """Get all RAG collections with their active status."""
+    """Get all RAG collections with their active status and document counts."""
     try:
         collections = APP_STATE.get("rag_collections", [])
         retriever = APP_STATE.get("rag_retriever_instance")
         
-        # Add 'is_active' field to indicate if collection is actually loaded
+        # Add 'is_active' field and 'count' to indicate if collection is actually loaded and how many docs it has
         enhanced_collections = []
         for coll in collections:
             coll_copy = coll.copy()
             # A collection is active if it's loaded in the retriever's collections dict
-            coll_copy["is_active"] = retriever and coll["id"] in retriever.collections if retriever else False
+            is_active = retriever and coll["id"] in retriever.collections if retriever else False
+            coll_copy["is_active"] = is_active
+            
+            # Get document count if collection is active
+            if is_active and retriever:
+                try:
+                    chromadb_collection = retriever.collections.get(coll["id"])
+                    if chromadb_collection:
+                        coll_copy["count"] = chromadb_collection.count()
+                    else:
+                        coll_copy["count"] = 0
+                except Exception as count_err:
+                    app_logger.warning(f"Failed to get count for collection {coll['id']}: {count_err}")
+                    coll_copy["count"] = 0
+            else:
+                coll_copy["count"] = 0
+            
             enhanced_collections.append(coll_copy)
         
         return jsonify({"status": "success", "collections": enhanced_collections}), 200
@@ -603,6 +619,118 @@ async def refresh_rag_collection(collection_id: int):
     except Exception as e:
         app_logger.error(f"Error refreshing RAG collection: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/rag/collections/<int:collection_id>/rows", methods=["GET"])
+async def get_rag_collection_rows(collection_id: int):
+    """Get rows (cases) from a specific RAG collection.
+    
+    Query Parameters:
+      limit (int): number of rows to return (default 25, max 10000)
+      q (str): optional search query; if provided runs a similarity query
+      light (bool): if true, omits full_case_data from response for lighter payload
+    """
+    try:
+        # Get query parameters
+        limit = int(request.args.get('limit', 25))
+        limit = min(limit, 10000)  # Cap at 10000 for performance
+        query_text = request.args.get('q', '').strip()
+        light = request.args.get('light', 'false').lower() == 'true'
+        
+        # Get retriever
+        retriever = APP_STATE.get("rag_retriever_instance")
+        if not retriever:
+            return jsonify({"error": "RAG retriever not initialized"}), 500
+        
+        # Check if collection is loaded
+        if collection_id not in retriever.collections:
+            return jsonify({"error": f"Collection {collection_id} is not loaded"}), 404
+        
+        # Get the ChromaDB collection
+        collection = retriever.collections[collection_id]
+        
+        # Get collection metadata
+        collections_list = APP_STATE.get("rag_collections", [])
+        collection_meta = next((c for c in collections_list if c["id"] == collection_id), None)
+        
+        if not collection_meta:
+            return jsonify({"error": f"Collection {collection_id} metadata not found"}), 404
+        
+        rows = []
+        total = 0
+        
+        if query_text and len(query_text) >= 3:
+            # Similarity search
+            try:
+                query_results = collection.query(
+                    query_texts=[query_text], n_results=limit, include=["metadatas", "distances"]
+                )
+                if query_results and query_results.get("ids"):
+                    total = len(query_results["ids"][0])
+                    for i in range(total):
+                        row_id = query_results["ids"][0][i]
+                        meta = query_results["metadatas"][0][i]
+                        distance = query_results["distances"][0][i]
+                        similarity = 1 - distance
+                        full_case_data = None
+                        if not light:
+                            try:
+                                full_case_data = json.loads(meta.get("full_case_data", "{}"))
+                            except json.JSONDecodeError:
+                                full_case_data = None
+                        rows.append({
+                            "id": row_id,
+                            "user_query": meta.get("user_query"),
+                            "strategy_type": meta.get("strategy_type"),
+                            "is_most_efficient": meta.get("is_most_efficient"),
+                            "user_feedback_score": meta.get("user_feedback_score", 0),
+                            "output_tokens": meta.get("output_tokens"),
+                            "timestamp": meta.get("timestamp"),
+                            "similarity_score": similarity,
+                            "full_case_data": full_case_data,
+                        })
+            except Exception as qe:
+                app_logger.warning(f"Query failed for collection {collection_id}: {qe}")
+        else:
+            # Get all or sample
+            try:
+                all_results = collection.get(include=["metadatas"])
+                ids = all_results.get("ids", [])
+                metas = all_results.get("metadatas", [])
+                total = len(ids)
+                sample_count = min(limit, total)
+                for i in range(sample_count):
+                    meta = metas[i]
+                    full_case_data = None
+                    if not light:
+                        try:
+                            full_case_data = json.loads(meta.get("full_case_data", "{}"))
+                        except json.JSONDecodeError:
+                            full_case_data = None
+                    rows.append({
+                        "id": ids[i],
+                        "user_query": meta.get("user_query"),
+                        "strategy_type": meta.get("strategy_type"),
+                        "is_most_efficient": meta.get("is_most_efficient"),
+                        "user_feedback_score": meta.get("user_feedback_score", 0),
+                        "output_tokens": meta.get("output_tokens"),
+                        "timestamp": meta.get("timestamp"),
+                        "full_case_data": full_case_data,
+                    })
+            except Exception as ge:
+                app_logger.error(f"Failed to get rows for collection {collection_id}: {ge}", exc_info=True)
+        
+        return jsonify({
+            "rows": rows,
+            "total": total,
+            "query": query_text,
+            "collection_id": collection_id,
+            "collection_name": collection_meta["name"]
+        }), 200
+            
+    except Exception as e:
+        app_logger.error(f"Error getting collection rows: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
 
 
 @rest_api_bp.route("/v1/rag/cases/<case_id>/feedback", methods=["POST"])
@@ -816,7 +944,8 @@ async def get_sessions_analytics():
                 "success_rate": 0,
                 "estimated_cost": 0,
                 "model_distribution": {},
-                "top_champions": [],
+                "top_expensive_queries": [],
+                "top_expensive_questions": [],
                 "velocity_data": []
             }), 200
         
@@ -828,6 +957,8 @@ async def get_sessions_analytics():
         total_turns = 0
         model_usage = {}
         sessions_by_hour = {}
+        expensive_queries = []
+        expensive_questions = []
         
         # Scan all session files
         for session_file in sessions_root.glob('*.json'):
@@ -852,6 +983,29 @@ async def get_sessions_analytics():
                         # Simple success heuristic: has final_summary and no critical errors
                         if turn.get('final_summary'):
                             successful_turns += 1
+                        
+                        # Track expensive individual questions
+                        user_query = turn.get('user_query', '')
+                        turn_tokens = (turn.get('turn_input_tokens', 0) + 
+                                     turn.get('turn_output_tokens', 0))
+                        
+                        if turn_tokens > 0 and user_query:
+                            expensive_questions.append({
+                                "query": user_query[:60] + "..." if len(user_query) > 60 else user_query,
+                                "tokens": turn_tokens,
+                                "session_id": session_data.get('id', 'unknown')[:8]
+                            })
+                
+                # Track expensive sessions (tokens are at session level, not turn level)
+                session_tokens = session_data.get('input_tokens', 0) + session_data.get('output_tokens', 0)
+                session_name = session_data.get('name', 'Unnamed Session')
+                
+                if session_tokens > 0:
+                    expensive_queries.append({
+                        "query": session_name[:60] + "..." if len(session_name) > 60 else session_name,
+                        "tokens": session_tokens,
+                        "session_id": session_data.get('id', 'unknown')[:8]
+                    })
                 
                 # Track velocity (sessions per hour)
                 created_at = session_data.get('created_at')
@@ -881,32 +1035,12 @@ async def get_sessions_analytics():
             for model, count in model_usage.items()
         } if total_model_count > 0 else {}
         
-        # Get top efficiency champions from RAG
-        top_champions = []
-        if rag_cases_dir.exists():
-            case_files = list(rag_cases_dir.glob('case_*.json'))[:50]  # Sample first 50
-            champions = []
-            
-            for case_file in case_files:
-                try:
-                    with open(case_file, 'r', encoding='utf-8') as f:
-                        case_data = json.load(f)
-                    
-                    metadata = case_data.get('metadata', {})
-                    if metadata.get('is_most_efficient'):
-                        user_query = case_data.get('intent', {}).get('user_query', 'Unknown')
-                        output_tokens = metadata.get('llm_config', {}).get('output_tokens', 0)
-                        champions.append({
-                            "query": user_query[:50] + "..." if len(user_query) > 50 else user_query,
-                            "tokens": output_tokens,
-                            "case_id": case_data.get('case_id')
-                        })
-                except:
-                    continue
-            
-            # Sort by token count (ascending) and take top 5
-            champions.sort(key=lambda x: x['tokens'])
-            top_champions = champions[:5]
+        # Sort by token count (descending) and take top 5 most expensive sessions and questions
+        expensive_queries.sort(key=lambda x: x['tokens'], reverse=True)
+        top_expensive_queries = expensive_queries[:5]
+        
+        expensive_questions.sort(key=lambda x: x['tokens'], reverse=True)
+        top_expensive_questions = expensive_questions[:5]
         
         # Velocity data (last 24 hours)
         velocity_data = []
@@ -924,7 +1058,8 @@ async def get_sessions_analytics():
             "success_rate": round(success_rate, 1),
             "estimated_cost": round(estimated_cost, 2),
             "model_distribution": model_distribution,
-            "top_champions": top_champions,
+            "top_expensive_queries": top_expensive_queries,
+            "top_expensive_questions": top_expensive_questions,
             "velocity_data": velocity_data
         }), 200
         

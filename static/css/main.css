@@ -994,6 +994,24 @@ div.app-view {
     flex-direction: column;
 }
 
+/* Highlighted session card animation */
+.session-card-highlighted {
+    animation: highlight-pulse 1.5s ease-in-out;
+    border-color: var(--teradata-orange) !important;
+    box-shadow: 0 0 20px rgba(241, 95, 34, 0.5) !important;
+}
+
+@keyframes highlight-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 20px rgba(241, 95, 34, 0.5);
+    }
+    50% {
+        transform: scale(1.02);
+        box-shadow: 0 0 30px rgba(241, 95, 34, 0.8);
+    }
+}
+
 /* NEW: This wrapper for the 3 panels must be a flex-row */
 #conversation-panels {
     display: flex;

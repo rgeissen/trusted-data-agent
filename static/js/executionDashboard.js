@@ -139,8 +139,9 @@ class ExecutionDashboard {
         // Render model distribution
         this.renderModelDistribution(data.model_distribution);
 
-        // Render top champions
-        this.renderTopChampions(data.top_champions);
+        // Render top expensive queries and questions
+        this.renderTopExpensiveQueries(data.top_expensive_queries);
+        this.renderTopExpensiveQuestions(data.top_expensive_questions);
     }
 
     /**
@@ -227,28 +228,75 @@ class ExecutionDashboard {
     /**
      * Render top efficiency champions
      */
-    renderTopChampions(champions) {
-        const container = document.getElementById('top-champions-list');
+    renderTopExpensiveQueries(sessions) {
+        const container = document.getElementById('top-expensive-queries-list');
         if (!container) return;
 
-        if (!champions || champions.length === 0) {
-            container.innerHTML = '<p class="text-gray-400 text-sm">No efficiency data available</p>';
+        if (!sessions || sessions.length === 0) {
+            container.innerHTML = '<p class="text-gray-400 text-sm">No session data available</p>';
             return;
         }
 
-        const html = champions.map((champion, index) => `
-            <div class="flex items-center gap-3 p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors">
-                <div class="flex-shrink-0 w-6 h-6 bg-yellow-500/20 rounded-full flex items-center justify-center">
-                    <span class="text-xs font-bold text-yellow-400">${index + 1}</span>
+        const html = sessions.map((session, index) => `
+            <div class="expensive-session-item flex items-center gap-3 p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer" 
+                 data-session-id="${session.session_id}">
+                <div class="flex-shrink-0 w-6 h-6 bg-red-500/20 rounded-full flex items-center justify-center">
+                    <span class="text-xs font-bold text-red-400">${index + 1}</span>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm text-white truncate" title="${champion.query}">${champion.query}</p>
+                    <p class="text-sm text-white truncate" title="${session.query}">${session.query}</p>
+                    <p class="text-xs text-gray-500">ID: ${session.session_id}</p>
                 </div>
-                <div class="flex-shrink-0 text-xs text-gray-400">${champion.tokens.toLocaleString()} tokens</div>
+                <div class="flex-shrink-0 text-xs font-semibold text-red-400">${session.tokens.toLocaleString()}</div>
             </div>
         `).join('');
 
         container.innerHTML = html;
+        
+        // Add click event listeners
+        container.querySelectorAll('.expensive-session-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const sessionId = item.getAttribute('data-session-id');
+                this.highlightSession(sessionId);
+            });
+        });
+    }
+
+    /**
+     * Render top expensive questions
+     */
+    renderTopExpensiveQuestions(questions) {
+        const container = document.getElementById('top-expensive-questions-list');
+        if (!container) return;
+
+        if (!questions || questions.length === 0) {
+            container.innerHTML = '<p class="text-gray-400 text-sm">No question data available</p>';
+            return;
+        }
+
+        const html = questions.map((question, index) => `
+            <div class="expensive-question-item flex items-center gap-3 p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer" 
+                 data-question-text="${question.query.replace(/"/g, '&quot;')}">
+                <div class="flex-shrink-0 w-6 h-6 bg-orange-500/20 rounded-full flex items-center justify-center">
+                    <span class="text-xs font-bold text-orange-400">${index + 1}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm text-white truncate" title="${question.query}">${question.query}</p>
+                    <p class="text-xs text-gray-500">Session: ${question.session_id}</p>
+                </div>
+                <div class="flex-shrink-0 text-xs font-semibold text-orange-400">${question.tokens.toLocaleString()}</div>
+            </div>
+        `).join('');
+
+        container.innerHTML = html;
+        
+        // Add click event listeners
+        container.querySelectorAll('.expensive-question-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const questionText = item.getAttribute('data-question-text');
+                this.searchForQuestion(questionText);
+            });
+        });
     }
 
     /**
@@ -259,9 +307,19 @@ class ExecutionDashboard {
         const filterStatus = document.getElementById('session-filter-status')?.value || 'all';
         const sortBy = document.getElementById('session-sort')?.value || 'recent';
 
-        // Filter sessions
+        // Filter sessions - search in both session name and questions within the session
         let filteredSessions = this.sessionsData.filter(session => {
-            const matchesSearch = session.name.toLowerCase().includes(searchQuery);
+            const matchesSessionName = session.name.toLowerCase().includes(searchQuery);
+            
+            // Also search in questions within this session
+            let matchesQuestion = false;
+            if (session.last_turn_data?.workflow_history) {
+                matchesQuestion = session.last_turn_data.workflow_history.some(turn => 
+                    turn.user_query?.toLowerCase().includes(searchQuery)
+                );
+            }
+            
+            const matchesSearch = matchesSessionName || matchesQuestion;
             const matchesStatus = filterStatus === 'all' || session.status === filterStatus;
             return matchesSearch && matchesStatus;
         });
@@ -287,6 +345,94 @@ class ExecutionDashboard {
     }
 
     /**
+     * Highlight a specific session by ID (supports partial IDs)
+     */
+    highlightSession(sessionId) {
+        // Scroll to session gallery
+        const gallery = document.getElementById('session-gallery');
+        if (gallery) {
+            gallery.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // Clear any existing highlights
+        document.querySelectorAll('.session-card-highlighted').forEach(el => {
+            el.classList.remove('session-card-highlighted');
+        });
+
+        // Find and highlight the target session (handle partial IDs)
+        setTimeout(() => {
+            let sessionCard = document.getElementById(`session-card-${sessionId}`);
+            
+            // If not found, try finding by partial match (for truncated IDs)
+            if (!sessionCard) {
+                const allCards = document.querySelectorAll('[id^="session-card-"]');
+                for (const card of allCards) {
+                    if (card.id.includes(sessionId)) {
+                        sessionCard = card;
+                        break;
+                    }
+                }
+            }
+            
+            if (sessionCard) {
+                sessionCard.classList.add('session-card-highlighted');
+                sessionCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Remove highlight after 3 seconds
+                setTimeout(() => {
+                    sessionCard.classList.remove('session-card-highlighted');
+                }, 3000);
+            }
+        }, 500);
+    }
+
+    /**
+     * Activate a session in the conversation view
+     */
+    async activateSession(sessionId) {
+        try {
+            // Import the session handler dynamically
+            const { handleLoadSession } = await import('./handlers/sessionManagement.js');
+            
+            // Switch to conversation view
+            const conversationViewBtn = document.getElementById('view-switch-conversation');
+            if (conversationViewBtn) {
+                conversationViewBtn.click();
+            }
+            
+            // Wait a moment for view to switch
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // Load the session
+            await handleLoadSession(sessionId);
+            
+            console.log(`Activated session ${sessionId} in conversation view`);
+        } catch (error) {
+            console.error('Error activating session:', error);
+            alert('Failed to activate session. Please try again.');
+        }
+    }
+
+    /**
+     * Search for sessions containing a specific question
+     */
+    searchForQuestion(questionText) {
+        // Set the search input
+        const searchInput = document.getElementById('session-search');
+        if (searchInput) {
+            searchInput.value = questionText;
+            // Trigger the filter
+            this.filterAndRenderSessions();
+            
+            // Scroll to gallery
+            const gallery = document.getElementById('session-gallery');
+            if (gallery) {
+                gallery.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    }
+
+    /**
      * Render session cards in the gallery
      */
     renderSessionCards(sessions) {
@@ -309,7 +455,21 @@ class ExecutionDashboard {
         sessions.forEach(session => {
             const card = document.getElementById(`session-card-${session.id}`);
             if (card) {
-                card.addEventListener('click', () => this.openInspector(session.id));
+                card.addEventListener('click', (e) => {
+                    // Don't open inspector if clicking the activate button
+                    if (!e.target.closest('.activate-session-btn')) {
+                        this.openInspector(session.id);
+                    }
+                });
+                
+                // Add listener to activate button
+                const activateBtn = card.querySelector('.activate-session-btn');
+                if (activateBtn) {
+                    activateBtn.addEventListener('click', (e) => {
+                        e.stopPropagation(); // Prevent card click
+                        this.activateSession(session.id);
+                    });
+                }
             }
         });
     }
@@ -334,9 +494,18 @@ class ExecutionDashboard {
                     <h3 class="text-white font-semibold truncate flex-1 group-hover:text-teradata-orange transition-colors" title="${session.name}">
                         ${session.name}
                     </h3>
-                    <span class="px-2 py-1 text-xs font-semibold rounded border ${statusColor} flex-shrink-0 ml-2">
-                        ${session.status}
-                    </span>
+                    <div class="flex items-center gap-2 flex-shrink-0 ml-2">
+                        <button class="activate-session-btn p-1.5 rounded hover:bg-teradata-orange/20 text-gray-400 hover:text-teradata-orange transition-colors" 
+                                data-session-id="${session.id}" 
+                                title="Activate in Conversation View">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                        </button>
+                        <span class="px-2 py-1 text-xs font-semibold rounded border ${statusColor}">
+                            ${session.status}
+                        </span>
+                    </div>
                 </div>
                 
                 <div class="space-y-2 text-sm">

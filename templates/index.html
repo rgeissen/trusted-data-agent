@@ -604,11 +604,11 @@
             </div>
 
             <!-- VIEW X: Executions Dashboard - Three-Tier World-Class Design -->
-            <div id="executions-view" class="app-view flex flex-col w-full h-full">
+            <div id="executions-view" class="app-view flex flex-col w-full h-full bg-neutral-900">
                 <div class="w-full h-full flex flex-col overflow-hidden">
                     
                     <!-- TIER 1: Executive Command Center -->
-                    <div id="exec-command-center" class="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border-b border-white/10 p-6">
+                    <div id="exec-command-center" class="bg-gradient-to-br from-neutral-800 to-neutral-900 border-b border-white/10 p-6">
                         <div class="max-w-7xl mx-auto">
                             <div class="flex items-center justify-between mb-6">
                                 <div>
@@ -699,8 +699,8 @@
                                 </div>
                             </div>
                             
-                            <!-- Model Distribution & Top Champions -->
-                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+                            <!-- Model Distribution, Expensive Sessions & Questions -->
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
                                 <!-- Model Distribution -->
                                 <div class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                                     <h3 class="text-white font-semibold mb-3 flex items-center gap-2">
@@ -714,16 +714,29 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Top Efficiency Champions -->
+                                <!-- Most Token-Intensive Sessions -->
                                 <div class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                                     <h3 class="text-white font-semibold mb-3 flex items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                                         </svg>
-                                        Top Efficiency Champions
+                                        Most Token-Intensive Sessions
                                     </h3>
-                                    <div id="top-champions-list" class="space-y-2">
-                                        <p class="text-gray-400 text-sm">No efficiency data available</p>
+                                    <div id="top-expensive-queries-list" class="space-y-2">
+                                        <p class="text-gray-400 text-sm">No session data available</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Most Token-Intensive Questions -->
+                                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                                    <h3 class="text-white font-semibold mb-3 flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        Most Token-Intensive Questions
+                                    </h3>
+                                    <div id="top-expensive-questions-list" class="space-y-2">
+                                        <p class="text-gray-400 text-sm">No question data available</p>
                                     </div>
                                 </div>
                             </div>
@@ -731,7 +744,7 @@
                     </div>
                     
                     <!-- TIER 2: Session Gallery -->
-                    <div id="session-gallery" class="flex-1 p-6 bg-gray-900/50 overflow-y-auto">
+                    <div id="session-gallery" class="flex-1 p-6 bg-neutral-900 overflow-y-auto">
                         <div class="max-w-7xl mx-auto">
                             <div class="flex items-center justify-between mb-6">
                                 <h2 class="text-2xl font-bold text-white">Session Gallery</h2>
@@ -741,7 +754,7 @@
                                     <input 
                                         id="session-search" 
                                         type="text" 
-                                        placeholder="Search sessions..." 
+                                        placeholder="Search sessions or questions..." 
                                         class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-teradata-orange transition-colors"
                                     />
                                     <select id="session-filter-status" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-teradata-orange transition-colors">
@@ -770,9 +783,9 @@
                     </div>
                     
                     <!-- TIER 3: Deep Dive Inspector (Initially Hidden) -->
-                    <div id="deep-dive-inspector" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 overflow-y-auto">
+                    <div id="deep-dive-inspector" class="hidden fixed inset-0 bg-neutral-900/95 backdrop-blur-sm z-50 overflow-y-auto">
                         <div class="min-h-screen flex items-start justify-center p-6">
-                            <div class="bg-gray-900 rounded-2xl border border-white/20 max-w-6xl w-full my-8">
+                            <div class="bg-gradient-to-br from-neutral-800 to-neutral-900 rounded-2xl border border-white/20 max-w-6xl w-full my-8 shadow-2xl">
                                 <!-- Inspector Header -->
                                 <div class="border-b border-white/10 p-6 flex items-center justify-between">
                                     <div>
@@ -924,10 +937,10 @@
                 </div>
             </div>
 
-            <div id="rag-maintenance-view" class="app-view w-full h-full p-8">
+            <div id="rag-maintenance-view" class="app-view w-full h-full p-8 overflow-y-auto">
                 <div class="max-w-7xl mx-auto">
                     <div class="flex items-center justify-between mb-6">
-                        <h1 class="text-3xl font-bold text-white header-title">Local Collections</h1>
+                        <h1 class="text-3xl font-bold text-white header-title">RAG Impact Dashboard</h1>
                         <button id="add-rag-collection-btn" type="button" class="px-4 py-2 rounded-md bg-[#F15F22] hover:bg-[#D9501A] text-white font-medium text-sm flex items-center gap-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -935,7 +948,135 @@
                             Add Collection
                         </button>
                     </div>
-                    <div id="rag-maintenance-collections-container" class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+
+                    <!-- RAG Impact KPI Cards -->
+                    <div class="grid gap-6 md:grid-cols-4 mb-8">
+                        <!-- Self-Healing Events Card -->
+                        <div class="glass-panel rounded-xl p-6 border-l-4 border-green-500" 
+                             title="Champion strategies available for RAG retrieval. These are the most efficient, proven solutions that RAG can inject into new tasks to accelerate execution and prevent errors.">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-sm font-medium text-gray-400">Champion Strategies</h3>
+                                        <p class="text-xs text-gray-500">Available for RAG</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-end justify-between">
+                                <div>
+                                    <p class="text-4xl font-bold text-white" id="rag-kpi-healing-count">--</p>
+                                    <p class="text-xs text-green-400 mt-1 flex items-center gap-1" id="rag-kpi-healing-trend">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                        </svg>
+                                        <span>Loading...</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- RAG Activation Rate Card -->
+                        <div class="glass-panel rounded-xl p-6 border-l-4 border-emerald-500"
+                             title="Percentage of agent tasks that received RAG assistance. Shows how often champion strategies were retrieved and injected into LLM prompts to guide execution.">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-12 h-12 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-sm font-medium text-gray-400">RAG Activation Rate</h3>
+                                        <p class="text-xs text-gray-500">Tasks Enhanced</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-end justify-between">
+                                <div class="w-full">
+                                    <p class="text-4xl font-bold text-white mb-2" id="rag-kpi-activation-rate">--%</p>
+                                    <div class="space-y-1">
+                                        <div class="flex justify-between text-xs text-gray-400">
+                                            <span>RAG-Enhanced:</span>
+                                            <span id="rag-kpi-enhanced-count" class="text-emerald-400 font-semibold">--</span>
+                                        </div>
+                                        <div class="flex justify-between text-xs text-gray-400">
+                                            <span>Total Tasks:</span>
+                                            <span id="rag-kpi-total-tasks" class="font-semibold">--</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cost Savings Card -->
+                        <div class="glass-panel rounded-xl p-6 border-l-4 border-yellow-500"
+                             title="Estimated cost savings when RAG provides champion strategies upfront vs trial-and-error exploration. Champion strategies reduce output tokens by ~50% by avoiding failed attempts and corrections.">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-sm font-medium text-gray-400">Potential Savings</h3>
+                                        <p class="text-xs text-gray-500">Via Champion Cases</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-end justify-between">
+                                <div>
+                                    <p class="text-4xl font-bold text-white" id="rag-kpi-cost-savings">$--</p>
+                                    <p class="text-xs text-gray-400 mt-1" id="rag-kpi-tokens-saved">-- tokens saved</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Performance Improvement Card -->
+                        <div class="glass-panel rounded-xl p-6 border-l-4 border-blue-500"
+                             title="Estimated speed improvement when RAG retrieves champion strategies. By providing proven solutions upfront, RAG eliminates exploration and correction cycles, typically achieving 60-70% faster execution.">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-sm font-medium text-gray-400">Speed Boost</h3>
+                                        <p class="text-xs text-gray-500">With Champion Cases</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-end justify-between">
+                                <div class="w-full">
+                                    <p class="text-4xl font-bold text-white mb-2" id="rag-kpi-speed-improvement">--%</p>
+                                    <div class="space-y-1">
+                                        <div class="flex items-center justify-between text-xs">
+                                            <span class="text-gray-400">With RAG:</span>
+                                            <span class="text-green-400 font-medium" id="rag-kpi-speed-with">--s</span>
+                                        </div>
+                                        <div class="flex items-center justify-between text-xs">
+                                            <span class="text-gray-400">Without RAG:</span>
+                                            <span class="text-gray-400" id="rag-kpi-speed-without">--s</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Collections Section -->
+                    <div class="mb-4">
+                        <h2 class="text-2xl font-bold text-white">Local Collections</h2>
+                        <p class="text-sm text-gray-400 mt-1">Manage your RAG knowledge base collections</p>
+                    </div>
+                    <div id="rag-maintenance-collections-container" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                         <!-- Dynamic ChromaDB collection cards will be injected here -->
                         <div class="col-span-full text-gray-400 text-sm" id="rag-maintenance-empty-hint">Loading collections...</div>
                     </div>

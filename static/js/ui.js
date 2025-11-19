@@ -1823,9 +1823,13 @@ export function handleViewSwitch(viewId) {
         }
     }, 100); // Use a small delay to catch any subsequent changes
 
-    // 6. If switching to RAG Maintenance, load collections
+    // 6. If switching to RAG Maintenance, load collections and calculate KPIs
     if (viewId === 'rag-maintenance-view') {
         loadRagCollections();
+        // Calculate and display RAG impact KPIs
+        if (window.ragCollectionManagement && window.ragCollectionManagement.calculateRagImpactKPIs) {
+            window.ragCollectionManagement.calculateRagImpactKPIs();
+        }
     }
     
     // 7. If switching to Executions view, initialize dashboard
