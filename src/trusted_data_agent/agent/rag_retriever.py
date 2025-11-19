@@ -93,13 +93,20 @@ class RAGRetriever:
     
     def _load_active_collections(self):
         """
-        Loads and initializes enabled collections that match the current MCP server.
-        Only collections associated with the active MCP server (by ID) are loaded.
+        Loads and initializes enabled collections.
+        If an MCP server is configured, only loads collections for that server.
+        If no MCP server is configured (startup), loads all enabled collections for viewing.
         """
         collections_list = APP_STATE.get("rag_collections", [])
         current_mcp_server_id = APP_CONFIG.CURRENT_MCP_SERVER_ID
         
-        logger.info(f"Loading RAG collections for MCP server ID: '{current_mcp_server_id}'")
+        # If no MCP server configured, load all enabled collections for viewing
+        if not current_mcp_server_id:
+            logger.info("No MCP server configured - loading all enabled collections for viewing")
+            filter_by_mcp = False
+        else:
+            logger.info(f"Loading RAG collections for MCP server ID: '{current_mcp_server_id}'")
+            filter_by_mcp = True
         
         for coll_meta in collections_list:
             if not coll_meta.get("enabled", False):
@@ -109,8 +116,8 @@ class RAGRetriever:
             coll_name = coll_meta["collection_name"]
             coll_mcp_server_id = coll_meta.get("mcp_server_id")
             
-            # Enforcement rule: Collection must match current MCP server ID
-            if coll_mcp_server_id != current_mcp_server_id:
+            # Only filter by MCP server if one is configured
+            if filter_by_mcp and coll_mcp_server_id != current_mcp_server_id:
                 logger.debug(f"Skipping collection '{coll_id}': associated with server ID '{coll_mcp_server_id}', current server ID is '{current_mcp_server_id}'")
                 continue
             
@@ -126,9 +133,15 @@ class RAGRetriever:
                 logger.error(f"Failed to load collection '{coll_id}': {e}", exc_info=True)
         
         if not self.collections:
-            logger.warning(f"No active RAG collections loaded for MCP server ID '{current_mcp_server_id}'!")
+            if filter_by_mcp:
+                logger.warning(f"No active RAG collections loaded for MCP server ID '{current_mcp_server_id}'!")
+            else:
+                logger.info("No enabled RAG collections found")
         else:
-            logger.info(f"Loaded {len(self.collections)} collection(s) for MCP server ID '{current_mcp_server_id}'")
+            if filter_by_mcp:
+                logger.info(f"Loaded {len(self.collections)} collection(s) for MCP server ID '{current_mcp_server_id}'")
+            else:
+                logger.info(f"Loaded {len(self.collections)} enabled collection(s) for viewing")
         
         # Refresh vector stores for all collections if configured
         if APP_CONFIG.RAG_REFRESH_ON_STARTUP:

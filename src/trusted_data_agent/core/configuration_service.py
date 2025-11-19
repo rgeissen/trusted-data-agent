@@ -183,16 +183,11 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
                 APP_CONFIG.CURRENT_MODEL_PROVIDER_IN_PROFILE = profile_part.split('.')[1]
             
             # --- MODIFICATION START: Initialize and store RAGRetriever instance ---
+            # Note: RAGRetriever is now initialized at application startup independently
+            # Here we only reload collections if MCP server changes
             if APP_CONFIG.RAG_ENABLED:
                 try:
-                    # Calculate paths relative to this file's location
-                    # configuration_service.py is in src/trusted_data_agent/core
-                    # Project root is 3 levels up
-                    project_root = Path(__file__).resolve().parents[3]
-                    rag_cases_dir = project_root / APP_CONFIG.RAG_CASES_DIR
-                    persist_dir = project_root / APP_CONFIG.RAG_PERSIST_DIR
-                    
-                    # Check if RAGRetriever already exists
+                    # Check if RAGRetriever already exists (should be initialized at startup)
                     existing_retriever = APP_STATE.get('rag_retriever_instance')
                     
                     if existing_retriever:
@@ -200,8 +195,12 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
                         app_logger.info("RAGRetriever already exists. Reloading collections for new MCP server.")
                         existing_retriever.reload_collections_for_mcp_server()
                     else:
-                        # First-time initialization
-                        # Load persistent config and sync to APP_STATE
+                        # Fallback: Initialize RAG if it wasn't started at startup for some reason
+                        app_logger.warning("RAGRetriever not initialized at startup. Initializing now...")
+                        project_root = Path(__file__).resolve().parents[3]
+                        rag_cases_dir = project_root / APP_CONFIG.RAG_CASES_DIR
+                        persist_dir = project_root / APP_CONFIG.RAG_PERSIST_DIR
+                        
                         config_manager = get_config_manager()
                         collections_list = config_manager.get_rag_collections()
                         APP_STATE["rag_collections"] = collections_list

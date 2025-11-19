@@ -171,20 +171,43 @@ def create_app():
     async def startup():
         """
         Runs once before the server starts serving requests.
-        Used to start background tasks like our RAG worker.
+        Used to start background tasks like our RAG worker and initialize RAG independently.
         """
         app_logger.info("Application starting up... Launching background tasks.")
         
-        # Load RAG collections from persistent config into APP_STATE early
-        # This allows the UI to display collections even before full configuration
-        try:
-            from trusted_data_agent.core.config_manager import get_config_manager
-            config_manager = get_config_manager()
-            collections_list = config_manager.get_rag_collections()
-            APP_STATE["rag_collections"] = collections_list
-            app_logger.info(f"Pre-loaded {len(collections_list)} RAG collections from persistent config")
-        except Exception as e:
-            app_logger.error(f"Failed to pre-load RAG collections: {e}", exc_info=True)
+        # Initialize RAG early if enabled - independent of LLM/MCP configuration
+        if APP_CONFIG.RAG_ENABLED:
+            try:
+                from pathlib import Path
+                from trusted_data_agent.agent.rag_retriever import RAGRetriever
+                from trusted_data_agent.core.config_manager import get_config_manager
+                
+                # Calculate paths
+                project_root = Path(__file__).resolve().parents[2]
+                rag_cases_dir = project_root / APP_CONFIG.RAG_CASES_DIR
+                persist_dir = project_root / APP_CONFIG.RAG_PERSIST_DIR
+                
+                # Load collections from persistent config
+                config_manager = get_config_manager()
+                collections_list = config_manager.get_rag_collections()
+                APP_STATE["rag_collections"] = collections_list
+                app_logger.info(f"Pre-loaded {len(collections_list)} RAG collections from persistent config")
+                
+                # Initialize RAG retriever
+                app_logger.info(f"Initializing RAGRetriever at startup with cases dir: {rag_cases_dir}")
+                retriever_instance = RAGRetriever(
+                    rag_cases_dir=rag_cases_dir,
+                    embedding_model_name=APP_CONFIG.RAG_EMBEDDING_MODEL,
+                    persist_directory=persist_dir
+                )
+                APP_STATE['rag_retriever_instance'] = retriever_instance
+                app_logger.info("RAGRetriever initialized successfully at startup - ready for use")
+                
+            except Exception as e:
+                app_logger.error(f"Failed to initialize RAG at startup: {e}", exc_info=True)
+                APP_STATE["rag_collections"] = []
+        else:
+            app_logger.info("RAG is disabled in configuration")
             APP_STATE["rag_collections"] = []
         
         # Start the single RAG worker as a background task
