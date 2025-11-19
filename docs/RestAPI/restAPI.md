@@ -216,6 +216,352 @@ Requests cancellation of an actively running background task.
         }
         ```
 
+### 3.6. RAG Collection Management
+
+#### 3.6.1. Get All RAG Collections
+
+Get all configured RAG collections with their active status.
+
+* **Endpoint**: `GET /v1/rag/collections`
+* **Method**: `GET`
+* **Success Response**:
+    * **Code**: `200 OK`
+    * **Content**:
+        ```json
+        {
+          "status": "success",
+          "collections": [
+            {
+              "id": 1,
+              "name": "Support Queries",
+              "description": "Customer support query patterns",
+              "mcp_server_id": "prod_server",
+              "enabled": true,
+              "is_active": true
+            }
+          ]
+        }
+        ```
+
+#### 3.6.2. Create RAG Collection
+
+Create a new RAG collection. All collections must be associated with an MCP server.
+
+* **Endpoint**: `POST /v1/rag/collections`
+* **Method**: `POST`
+* **Body**:
+    ```json
+    {
+      "name": "Support Queries",
+      "description": "Customer support query patterns",
+      "mcp_server_id": "prod_server"
+    }
+    ```
+* **Success Response**:
+    * **Code**: `201 Created`
+    * **Content**:
+        ```json
+        {
+          "status": "success",
+          "message": "Collection created successfully",
+          "collection_id": 1,
+          "mcp_server_id": "prod_server"
+        }
+        ```
+* **Error Response**:
+    * **Code**: `400 Bad Request` (if `mcp_server_id` is missing)
+
+#### 3.6.3. Update RAG Collection
+
+Update a RAG collection's metadata (name, description, MCP server association).
+
+* **Endpoint**: `PUT /v1/rag/collections/{collection_id}`
+* **Method**: `PUT`
+* **URL Parameters**:
+    * `collection_id` (integer, required): The collection ID
+* **Body**:
+    ```json
+    {
+      "name": "Updated Name",
+      "description": "Updated description",
+      "mcp_server_id": "new_server"
+    }
+    ```
+* **Success Response**:
+    * **Code**: `200 OK`
+* **Error Response**:
+    * **Code**: `400 Bad Request` (if attempting to remove `mcp_server_id`)
+    * **Code**: `404 Not Found` (if collection doesn't exist)
+
+#### 3.6.4. Delete RAG Collection
+
+Delete a RAG collection and its vector store.
+
+* **Endpoint**: `DELETE /v1/rag/collections/{collection_id}`
+* **Method**: `DELETE`
+* **URL Parameters**:
+    * `collection_id` (integer, required): The collection ID
+* **Success Response**:
+    * **Code**: `200 OK`
+* **Error Response**:
+    * **Code**: `404 Not Found`
+
+#### 3.6.5. Toggle RAG Collection
+
+Enable or disable a RAG collection.
+
+* **Endpoint**: `POST /v1/rag/collections/{collection_id}/toggle`
+* **Method**: `POST`
+* **URL Parameters**:
+    * `collection_id` (integer, required): The collection ID
+* **Body**:
+    ```json
+    {
+      "enabled": true
+    }
+    ```
+* **Success Response**:
+    * **Code**: `200 OK`
+* **Error Response**:
+    * **Code**: `400 Bad Request` (if enabling a collection without MCP server assignment)
+
+#### 3.6.6. Refresh RAG Collection
+
+Refresh the vector store for a specific collection (rebuilds from case files).
+
+* **Endpoint**: `POST /v1/rag/collections/{collection_id}/refresh`
+* **Method**: `POST`
+* **URL Parameters**:
+    * `collection_id` (integer, required): The collection ID
+* **Success Response**:
+    * **Code**: `202 Accepted`
+    * **Content**:
+        ```json
+        {
+          "status": "success",
+          "message": "Collection refresh started"
+        }
+        ```
+
+#### 3.6.7. Submit Case Feedback
+
+Submit user feedback (upvote/downvote) for a RAG case.
+
+* **Endpoint**: `POST /v1/rag/cases/{case_id}/feedback`
+* **Method**: `POST`
+* **URL Parameters**:
+    * `case_id` (string, required): The case UUID
+* **Body**:
+    ```json
+    {
+      "feedback_score": 1
+    }
+    ```
+    * `feedback_score`: `-1` (downvote), `0` (neutral), `1` (upvote)
+* **Success Response**:
+    * **Code**: `200 OK`
+    * **Content**:
+        ```json
+        {
+          "status": "success",
+          "message": "Feedback submitted successfully",
+          "case_id": "f3a16261-82a9-5d30-a654-64af74f19fcd",
+          "feedback_score": 1
+        }
+        ```
+* **Error Response**:
+    * **Code**: `400 Bad Request` (invalid feedback_score)
+    * **Code**: `404 Not Found` (case not found)
+
+### 3.7. MCP Server Management
+
+#### 3.7.1. Get All MCP Servers
+
+Get all configured MCP servers and the active server ID.
+
+* **Endpoint**: `GET /v1/mcp/servers`
+* **Method**: `GET`
+* **Success Response**:
+    * **Code**: `200 OK`
+    * **Content**:
+        ```json
+        {
+          "status": "success",
+          "servers": [
+            {
+              "id": "prod_server",
+              "name": "Production Server",
+              "host": "localhost",
+              "port": 8001,
+              "path": "/mcp"
+            }
+          ],
+          "active_server_id": "prod_server"
+        }
+        ```
+
+#### 3.7.2. Create MCP Server
+
+Create a new MCP server configuration.
+
+* **Endpoint**: `POST /v1/mcp/servers`
+* **Method**: `POST`
+* **Body**:
+    ```json
+    {
+      "id": "dev_server",
+      "name": "Development Server",
+      "host": "localhost",
+      "port": 8002,
+      "path": "/mcp"
+    }
+    ```
+* **Success Response**:
+    * **Code**: `201 Created`
+* **Error Response**:
+    * **Code**: `400 Bad Request` (missing required fields)
+
+#### 3.7.3. Update MCP Server
+
+Update an existing MCP server configuration.
+
+* **Endpoint**: `PUT /v1/mcp/servers/{server_id}`
+* **Method**: `PUT`
+* **URL Parameters**:
+    * `server_id` (string, required): The server ID
+* **Body**:
+    ```json
+    {
+      "name": "Updated Name",
+      "host": "newhost",
+      "port": 8003
+    }
+    ```
+* **Success Response**:
+    * **Code**: `200 OK`
+* **Error Response**:
+    * **Code**: `404 Not Found`
+
+#### 3.7.4. Delete MCP Server
+
+Delete an MCP server configuration. Fails if any RAG collections are assigned to it.
+
+* **Endpoint**: `DELETE /v1/mcp/servers/{server_id}`
+* **Method**: `DELETE`
+* **URL Parameters**:
+    * `server_id` (string, required): The server ID
+* **Success Response**:
+    * **Code**: `200 OK`
+* **Error Response**:
+    * **Code**: `400 Bad Request` (if collections are assigned to this server)
+
+#### 3.7.5. Activate MCP Server
+
+Set an MCP server as the active server for the application.
+
+* **Endpoint**: `POST /v1/mcp/servers/{server_id}/activate`
+* **Method**: `POST`
+* **URL Parameters**:
+    * `server_id` (string, required): The server ID
+* **Success Response**:
+    * **Code**: `200 OK`
+* **Error Response**:
+    * **Code**: `404 Not Found`
+
+### 3.8. Session Analytics and Management
+
+#### 3.8.1. Get Session Analytics
+
+Get comprehensive analytics across all sessions for the execution dashboard.
+
+* **Endpoint**: `GET /v1/sessions/analytics`
+* **Method**: `GET`
+* **Headers**:
+    * `X-TDA-User-UUID` (string, required): The unique identifier for the user.
+* **Success Response**:
+    * **Code**: `200 OK`
+    * **Content**:
+        ```json
+        {
+          "total_sessions": 42,
+          "total_tokens": {
+            "input": 125000,
+            "output": 85000,
+            "total": 210000
+          },
+          "success_rate": 87.5,
+          "estimated_cost": 2.10,
+          "model_distribution": {
+            "gemini-1.5-flash": 60.0,
+            "gpt-4": 40.0
+          },
+          "top_champions": [
+            {
+              "query": "What databases are available?",
+              "tokens": 320,
+              "case_id": "abc-123"
+            }
+          ],
+          "velocity_data": [
+            {"hour": "2025-11-19 10:00", "count": 5}
+          ]
+        }
+        ```
+
+#### 3.8.2. Get Sessions List
+
+Get a filtered and sorted list of all sessions.
+
+* **Endpoint**: `GET /v1/sessions`
+* **Method**: `GET`
+* **Headers**:
+    * `X-TDA-User-UUID` (string, required): The unique identifier for the user.
+* **Query Parameters**:
+    * `search` (string, optional): Search query to filter sessions
+    * `sort` (string, optional): Sort order - `recent`, `oldest`, `tokens`, `turns` (default: `recent`)
+    * `filter_status` (string, optional): Filter by status - `all`, `success`, `partial`, `failed` (default: `all`)
+    * `filter_model` (string, optional): Filter by model name (default: `all`)
+    * `limit` (integer, optional): Maximum number of results (default: 100)
+    * `offset` (integer, optional): Pagination offset (default: 0)
+* **Success Response**:
+    * **Code**: `200 OK`
+    * **Content**:
+        ```json
+        {
+          "sessions": [
+            {
+              "id": "session-uuid",
+              "name": "Data Analysis Session",
+              "created_at": "2025-11-19T10:00:00Z",
+              "last_updated": "2025-11-19T10:15:00Z",
+              "provider": "Google",
+              "model": "gemini-1.5-flash",
+              "input_tokens": 5000,
+              "output_tokens": 3000,
+              "turn_count": 3,
+              "status": "success"
+            }
+          ],
+          "total": 42
+        }
+        ```
+
+#### 3.8.3. Get Session Details
+
+Get complete details for a specific session including timeline and RAG associations.
+
+* **Endpoint**: `GET /v1/sessions/{session_id}/details`
+* **Method**: `GET`
+* **Headers**:
+    * `X-TDA-User-UUID` (string, required): The unique identifier for the user.
+* **URL Parameters**:
+    * `session_id` (string, required): The session UUID
+* **Success Response**:
+    * **Code**: `200 OK`
+    * **Content**: Complete session data including `workflow_history`, `execution_trace`, and `rag_cases`
+* **Error Response**:
+    * **Code**: `404 Not Found`
+
 ## 4. The Task Object
 
 The Task Object is the central data structure for monitoring a query. It is returned by the `GET /v1/tasks/{task_id}` endpoint.

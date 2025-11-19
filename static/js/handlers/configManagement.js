@@ -77,16 +77,18 @@ export async function finalizeConfiguration(config, switchToConversationView = t
     DOM.contextStatusDot.classList.add('idle');
     
     // Update RAG indicator - check if RAG is active after configuration
-    if (DOM.ragStatusDot && state.appConfig.rag_enabled) {
-        // RAG starts as disconnected until retriever is initialized with active collections
-        // The status will be updated by checkServerStatus or when collections are enabled
+    if (DOM.ragStatusDot) {
+        // Fetch fresh status after configuration to check if RAG collections are loaded
         const status = await API.checkServerStatus();
+        console.log('RAG status after configuration:', status.rag_active, 'RAG enabled:', status.rag_enabled);
         if (status.rag_active) {
             DOM.ragStatusDot.classList.remove('disconnected');
             DOM.ragStatusDot.classList.add('connected');
+            console.log('RAG indicator set to connected');
         } else {
             DOM.ragStatusDot.classList.remove('connected');
             DOM.ragStatusDot.classList.add('disconnected');
+            console.log('RAG indicator set to disconnected - rag_active:', status.rag_active);
         }
     }
 

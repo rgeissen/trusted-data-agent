@@ -1,3 +1,19 @@
+"""
+RAG Miner: Batch processor for historical session data.
+
+This script processes historical session data and populates the RAG system
+using the same logic as the real-time worker. It supports:
+- Full reprocessing with --force flag
+- Incremental updates
+- Consistent with real-time processing logic including:
+  * user_feedback_score initialization (default: 0)
+  * Skipping conversational turns
+  * Champion selection based on feedback + token efficiency
+
+Note: The miner doesn't save case_id back to sessions since it runs offline
+without user context. This is acceptable for batch processing.
+"""
+
 import os
 import json
 import glob
@@ -5,17 +21,22 @@ import logging
 import argparse
 import re
 import shutil
+import sys
 from pathlib import Path
 from datetime import datetime, timezone
 import uuid
 from collections import defaultdict
-# --- MODIFICATION START: Import asyncio and RAGRetriever ---
+
+# Add project root to path for imports
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
+
+# --- Import asyncio and RAGRetriever ---
 import asyncio
 from trusted_data_agent.agent.rag_retriever import RAGRetriever
-# --- MODIFICATION START: Remove APP_CONFIG import ---
-# from trusted_data_agent.core.config import APP_CONFIG
-# --- MODIFICATION END ---
-# --- MODIFICATION END ---
+from trusted_data_agent.core.config import APP_STATE, APP_CONFIG
+from trusted_data_agent.core.config_manager import get_config_manager
 
 # Configure a dedicated logger for the miner
 logging.basicConfig(
@@ -52,7 +73,8 @@ class SessionMiner:
         logger.info(f"Output (Cases):   {self.output_dir}")
 
         # --- MODIFICATION START: Correct project root calculation ---
-        project_root = Path(__file__).resolve().parent.parent
+        # This script is at docs/RAG/rag_miner.py, so we need to go up 2 levels
+        project_root = Path(__file__).resolve().parent.parent.parent
         # Hardcode path to chromadb cache
         chroma_cache_dir = project_root / ".chromadb_rag_cache"
         # --- MODIFICATION END ---
@@ -66,14 +88,23 @@ class SessionMiner:
                 logger.info(f"Flushing ChromaDB cache at {chroma_cache_dir}...")
                 shutil.rmtree(chroma_cache_dir)
         
-        # --- MODIFICATION START: Initialize the retriever *after* flushing ---
+        # --- MODIFICATION START: Load configuration and initialize retriever ---
+        # Load RAG collections and MCP server configuration
+        config_manager = get_config_manager()
+        APP_STATE["rag_collections"] = config_manager.get_rag_collections()
+        APP_CONFIG.CURRENT_MCP_SERVER_ID = config_manager.get_active_mcp_server_id()
+        
+        logger.info(f"Loaded configuration:")
+        logger.info(f"  MCP Server ID: {APP_CONFIG.CURRENT_MCP_SERVER_ID}")
+        logger.info(f"  RAG Collections: {len(APP_STATE.get('rag_collections', []))}")
+        
         # Initialize the single RAGRetriever instance that this miner will use.
         self.retriever = RAGRetriever(
             rag_cases_dir=self.output_dir,
-            embedding_model_name="all-MiniLM-L6-v2", # Hardcode default
-            persist_directory=project_root / ".chromadb_rag_cache" # Hardcode path
+            embedding_model_name="all-MiniLM-L6-v2",
+            persist_directory=project_root / ".chromadb_rag_cache"
         )
-        logger.info("Miner initialized its RAGRetriever instance.")
+        logger.info(f"Miner initialized RAGRetriever with {len(self.retriever.collections)} active collection(s).")
         # --- MODIFICATION END ---
 
         session_files = list(self.sessions_dir.rglob("*.json"))
@@ -104,9 +135,15 @@ class SessionMiner:
                     if "session_id" not in turn:
                         turn["session_id"] = session_id
                     
+                    # Note: We don't add user_uuid since the miner runs offline
+                    # and doesn't have access to user context. The case_id won't
+                    # be saved back to sessions, but that's acceptable for batch processing.
+                    
                     # Call the same transactional logic as the real-time worker
-                    await self.retriever.process_turn_for_rag(turn)
-                    processed_turns += 1
+                    case_id = await self.retriever.process_turn_for_rag(turn)
+                    if case_id:
+                        processed_turns += 1
+                        logger.debug(f"Processed turn {turn.get('turn')} from session {session_id[:8]}... -> case {case_id[:8]}...")
 
             except Exception as e:
                 logger.error(f"Failed to process session file {session_file.name}: {e}", exc_info=True)
@@ -121,9 +158,9 @@ class SessionMiner:
 
 if __name__ == '__main__':
     # --- MODIFICATION START: Correct project root and default path logic ---
-    # SCRIPT_DIR is .../trusted-data-agent/rag
+    # SCRIPT_DIR is .../trusted-data-agent/docs/RAG
     SCRIPT_DIR = Path(__file__).resolve().parent 
-    # PROJECT_ROOT is .../trusted-data-agent
+    # PROJECT_ROOT is .../trusted-data-agent (go up 2 levels)
     PROJECT_ROOT = SCRIPT_DIR.parent.parent
     # Use the correct, original default paths
     DEFAULT_SESSIONS_DIR = PROJECT_ROOT / "tda_sessions"

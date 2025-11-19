@@ -71,6 +71,11 @@ async def get_application_status():
     # RAG is active if retriever exists AND has actually loaded collections
     rag_active = bool(rag_retriever and rag_retriever.collections if rag_retriever else False)
     
+    # Debug logging
+    app_logger.info(f"RAG Status Check: retriever_exists={bool(rag_retriever)}, "
+                   f"collections_loaded={len(rag_retriever.collections) if rag_retriever else 0}, "
+                   f"rag_active={rag_active}")
+    
     if is_configured:
         status_payload = {
             "isConfigured": True,
@@ -523,8 +528,12 @@ async def get_collection_rows(collection_id):
         light = request.args.get('light', default='true').lower() == 'true'
 
         try:
-            # Try to get the collection
-            collection = client.get_collection(name=collection_name)
+            # Try to get or create the collection
+            # Use get_or_create to handle case where collection doesn't exist yet
+            collection = client.get_or_create_collection(
+                name=collection_name,
+                metadata={"hnsw:space": "cosine"}
+            )
             count = collection.count()
             app_logger.info(f"Successfully retrieved collection '{collection_name}' with {count} documents")
         except Exception as e:
@@ -577,6 +586,7 @@ async def get_collection_rows(collection_id):
                             "user_query": meta.get("user_query"),
                             "strategy_type": meta.get("strategy_type"),
                             "is_most_efficient": meta.get("is_most_efficient"),
+                            "user_feedback_score": meta.get("user_feedback_score", 0),
                             "output_tokens": meta.get("output_tokens"),
                             "timestamp": meta.get("timestamp"),
                             "similarity_score": similarity,
@@ -606,6 +616,7 @@ async def get_collection_rows(collection_id):
                         "user_query": meta.get("user_query"),
                         "strategy_type": meta.get("strategy_type"),
                         "is_most_efficient": meta.get("is_most_efficient"),
+                        "user_feedback_score": meta.get("user_feedback_score", 0),
                         "output_tokens": meta.get("output_tokens"),
                         "timestamp": meta.get("timestamp"),
                         "full_case_data": full_case_data,

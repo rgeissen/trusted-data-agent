@@ -9,6 +9,7 @@
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
     "timestamp": "2025-11-19T08:22:23.438881+00:00",
+    "user_feedback_score": 0,
     "llm_config": {
       "provider": "Friendli",
       "model": "google/gemma-3-27b-it",

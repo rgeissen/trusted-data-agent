@@ -903,6 +903,7 @@ class RAGRetriever:
             "had_plan_improvements": case_study["metadata"].get("had_plan_improvements", False),
             "had_tactical_improvements": case_study["metadata"].get("had_tactical_improvements", False),
             "output_tokens": case_study["metadata"].get("llm_config", {}).get("output_tokens", 0),
+            "user_feedback_score": case_study["metadata"].get("user_feedback_score", 0),
             # Store the full case data as a JSON string
             "full_case_data": json.dumps(case_study)
         }
@@ -1015,7 +1016,22 @@ class RAGRetriever:
                         ids=[id_to_demote],
                         metadatas=[meta_to_update]
                     )
-                    logger.info(f"Successfully demoted old case {id_to_demote}.")
+                    logger.info(f"Successfully demoted old case {id_to_demote} in ChromaDB.")
+                    
+                    # Also update the JSON file on disk
+                    old_case_file = self.rag_cases_dir / f"case_{id_to_demote}.json"
+                    if old_case_file.exists():
+                        try:
+                            with open(old_case_file, 'r', encoding='utf-8') as f:
+                                old_case_data = json.load(f)
+                            old_case_data["metadata"]["is_most_efficient"] = False
+                            with open(old_case_file, 'w', encoding='utf-8') as f:
+                                json.dump(old_case_data, f, indent=2)
+                            logger.debug(f"Updated JSON file for demoted case {id_to_demote}")
+                        except Exception as e:
+                            logger.warning(f"Failed to update JSON file for demoted case {id_to_demote}: {e}")
+                    else:
+                        logger.debug(f"JSON file not found for old case {id_to_demote} (might not be persisted yet)")
                 else:
                     logger.warning(f"Could not find old case {id_to_demote} to demote it.")
             

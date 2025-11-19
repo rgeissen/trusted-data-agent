@@ -874,6 +874,21 @@ export async function reconnectAndLoad() {
             DOM.contextStatusDot.classList.remove('disconnected');
             DOM.contextStatusDot.classList.add('idle');
             
+            // Update RAG indicator - check if RAG is active after configuration
+            if (DOM.ragStatusDot) {
+                const status = await API.checkServerStatus();
+                console.log('RAG status after reconnectAndLoad:', status.rag_active, 'RAG enabled:', status.rag_enabled);
+                if (status.rag_active) {
+                    DOM.ragStatusDot.classList.remove('disconnected');
+                    DOM.ragStatusDot.classList.add('connected');
+                    console.log('RAG indicator set to connected');
+                } else {
+                    DOM.ragStatusDot.classList.remove('connected');
+                    DOM.ragStatusDot.classList.add('disconnected');
+                    console.log('RAG indicator set to disconnected - rag_active:', status.rag_active);
+                }
+            }
+            
             // Update state with current provider/model
             state.currentProvider = configData.provider;
             state.currentModel = configData.model;

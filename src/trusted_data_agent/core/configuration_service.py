@@ -215,6 +215,36 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
                         )
                         APP_STATE['rag_retriever_instance'] = retriever_instance
                         app_logger.info("RAGRetriever initialized and stored in APP_STATE successfully.")
+                    
+                    # Auto-enable and assign default collection to current MCP server if needed
+                    config_manager = get_config_manager()
+                    collections_list = config_manager.get_rag_collections()
+                    default_collection = next((c for c in collections_list if c["id"] == 0), None)
+                    
+                    collection_needs_update = False
+                    if default_collection:
+                        # Check if default collection needs to be assigned to this MCP server or enabled
+                        if not default_collection.get("mcp_server_id") or not default_collection.get("enabled"):
+                            app_logger.info(f"Auto-assigning/enabling default collection for MCP server '{server_id}'")
+                            default_collection["mcp_server_id"] = server_id
+                            default_collection["enabled"] = True
+                            collection_needs_update = True
+                        # Also update if switching to a different MCP server
+                        elif default_collection.get("mcp_server_id") != server_id:
+                            app_logger.info(f"Updating default collection from server '{default_collection.get('mcp_server_id')}' to '{server_id}'")
+                            default_collection["mcp_server_id"] = server_id
+                            collection_needs_update = True
+                    
+                    if collection_needs_update:
+                        config_manager.save_rag_collections(collections_list)
+                        APP_STATE["rag_collections"] = collections_list
+                        
+                        # Reload collections to pick up the changes
+                        retriever_instance = APP_STATE.get('rag_retriever_instance')
+                        if retriever_instance:
+                            retriever_instance.reload_collections_for_mcp_server()
+                            loaded_count = len(retriever_instance.collections)
+                            app_logger.info(f"Default collection configured and reloaded. {loaded_count} collection(s) now active.")
                 
                 except Exception as e:
                     app_logger.error(f"Failed to initialize RAGRetriever: {e}", exc_info=True)

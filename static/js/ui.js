@@ -2094,7 +2094,7 @@ async function fetchAndRenderCollectionRows({ collectionId, query = '', refresh 
                 ? 'No rows available.' 
                 : 'Error loading rows. Check console for details.';
             const colorClass = isEmptyCollection ? 'text-gray-400' : 'text-red-400';
-            DOM.ragCollectionTableBody.innerHTML = `<tr><td colspan="6" class="px-2 py-2 ${colorClass}">${message}</td></tr>`;
+            DOM.ragCollectionTableBody.innerHTML = `<tr><td colspan="7" class="px-2 py-2 ${colorClass}">${message}</td></tr>`;
         }
     } finally {
         if (DOM.ragCollectionLoading) {
@@ -2108,17 +2108,27 @@ function renderCollectionRows(rows, total, query, collectionName) {
     DOM.ragCollectionTableBody.innerHTML = '';
     if (!rows.length) {
         const message = query && query.length >= 3 ? 'No matches found.' : 'No rows available.';
-        DOM.ragCollectionTableBody.innerHTML = `<tr><td colspan="6" class="px-2 py-2 text-gray-400">${message}</td></tr>`;
+        DOM.ragCollectionTableBody.innerHTML = `<tr><td colspan="7" class="px-2 py-2 text-gray-400">${message}</td></tr>`;
     } else {
         rows.forEach(r => {
             const tr = document.createElement('tr');
             tr.className = 'border-b border-gray-700 hover:bg-gray-800/40';
             const efficientBadge = r.is_most_efficient ? '<span class="px-2 py-0.5 rounded bg-green-600 text-white text-xs">Yes</span>' : '<span class="px-2 py-0.5 rounded bg-gray-600 text-white text-xs">No</span>';
+            
+            // Render feedback badge
+            let feedbackBadge = '<span class="px-2 py-0.5 rounded bg-gray-600 text-white text-xs">—</span>';
+            if (r.user_feedback_score === 1) {
+                feedbackBadge = '<span class="px-2 py-0.5 rounded bg-green-600 text-white text-xs">👍</span>';
+            } else if (r.user_feedback_score === -1) {
+                feedbackBadge = '<span class="px-2 py-0.5 rounded bg-red-600 text-white text-xs">👎</span>';
+            }
+            
             tr.innerHTML = `
                 <td class="px-2 py-1 font-mono text-xs text-gray-300">${r.id}</td>
                 <td class="px-2 py-1 text-gray-200">${escapeHtml(r.user_query || '')}</td>
                 <td class="px-2 py-1 text-gray-300">${r.strategy_type || ''}</td>
                 <td class="px-2 py-1">${efficientBadge}</td>
+                <td class="px-2 py-1">${feedbackBadge}</td>
                 <td class="px-2 py-1 text-gray-300">${r.output_tokens ?? ''}</td>
                 <td class="px-2 py-1 text-gray-400">${r.timestamp || ''}</td>
             `;
@@ -2157,14 +2167,15 @@ async function selectCaseRow(caseId) {
             const meta = caseData.metadata || {};
             
             // --- MODIFICATION START: Create interactive feedback selector ---
-            const feedback = turnSummary?.feedback || null;
+            // Use RAG case feedback score (not session turn feedback)
+            const ragFeedbackScore = meta.user_feedback_score ?? 0;
             const sessionId = meta.session_id;
             const turnId = meta.turn_id;
             
             let feedbackHtml = '<span class="text-gray-400">N/A (no session data)</span>';
             if (sessionId && turnId !== undefined && turnId !== null) {
-                const upActive = feedback === 'up' ? 'text-[#F15F22] bg-gray-800/60' : 'text-gray-300';
-                const downActive = feedback === 'down' ? 'text-[#F15F22] bg-gray-800/60' : 'text-gray-300';
+                const upActive = ragFeedbackScore === 1 ? 'text-[#F15F22] bg-gray-800/60' : 'text-gray-300';
+                const downActive = ragFeedbackScore === -1 ? 'text-[#F15F22] bg-gray-800/60' : 'text-gray-300';
                 feedbackHtml = `
                     <div class="inline-flex items-stretch rounded-md bg-gray-900/50 border border-white/10 overflow-hidden backdrop-blur-sm">
                         <button type="button" 
@@ -2191,9 +2202,9 @@ async function selectCaseRow(caseId) {
                             <span class="text-[10px]">Unhelpful</span>
                         </button>
                     </div>`;
-            } else if (feedback === 'up') {
+            } else if (ragFeedbackScore === 1) {
                 feedbackHtml = '<span class="text-[#F15F22]">👍 Helpful</span>';
-            } else if (feedback === 'down') {
+            } else if (ragFeedbackScore === -1) {
                 feedbackHtml = '<span class="text-[#F15F22]">👎 Unhelpful</span>';
             } else {
                 feedbackHtml = '<span class="text-gray-400">None</span>';
