@@ -564,7 +564,8 @@ def toggle_turn_validity(user_uuid: str, session_id: str, turn_id: int) -> bool:
 # --- MODIFICATION START: Add function to update turn feedback ---
 def update_turn_feedback(user_uuid: str, session_id: str, turn_id: int, vote: str | None) -> bool:
     """
-    Updates the feedback (upvote/downvote) for a specific turn in the workflow_history.
+    Updates the feedback (upvote/downvote) for a specific turn in the workflow_history
+    and propagates the feedback to the corresponding RAG case.
     
     Args:
         user_uuid: The user's UUID
@@ -575,6 +576,9 @@ def update_turn_feedback(user_uuid: str, session_id: str, turn_id: int, vote: st
     Returns:
         True if successful, False otherwise
     """
+    import asyncio
+    from trusted_data_agent.core.config import APP_STATE, APP_CONFIG
+    
     try:
         session_data = _load_session(user_uuid, session_id)
         if not session_data:
@@ -586,6 +590,7 @@ def update_turn_feedback(user_uuid: str, session_id: str, turn_id: int, vote: st
         
         # Find the turn with matching turn number
         turn_found = False
+        case_id = None
         for turn in workflow_history:
             if turn.get("turn") == turn_id:
                 # Update or remove feedback field
@@ -594,6 +599,10 @@ def update_turn_feedback(user_uuid: str, session_id: str, turn_id: int, vote: st
                 else:
                     turn["feedback"] = vote
                 turn_found = True
+                
+                # Extract case_id if this turn has one (for RAG update)
+                case_id = turn.get("case_id")
+                
                 app_logger.info(f"Updated feedback for turn {turn_id} in session {session_id}: {vote}")
                 break
         
@@ -606,9 +615,79 @@ def update_turn_feedback(user_uuid: str, session_id: str, turn_id: int, vote: st
             app_logger.error(f"Failed to save session after updating feedback for turn {turn_id}")
             return False
 
+        # --- Update RAG case if RAG is enabled and case_id exists ---
+        if APP_CONFIG.RAG_ENABLED and case_id:
+            retriever = APP_STATE.get('rag_retriever_instance')
+            if retriever:
+                # Convert vote string to numeric score
+                feedback_score = 1 if vote == 'up' else -1 if vote == 'down' else 0
+                
+                # Update the RAG case asynchronously
+                try:
+                    # Get or create event loop
+                    try:
+                        loop = asyncio.get_running_loop()
+                        # We're already in an async context
+                        loop.create_task(retriever.update_case_feedback(case_id, feedback_score))
+                    except RuntimeError:
+                        # No running loop, create new one
+                        asyncio.run(retriever.update_case_feedback(case_id, feedback_score))
+                    
+                    app_logger.info(f"Queued RAG case {case_id} feedback update: {feedback_score}")
+                except Exception as e:
+                    app_logger.error(f"Failed to update RAG case {case_id}: {e}", exc_info=True)
+            else:
+                app_logger.debug(f"RAG retriever not available, skipping case update for turn {turn_id}")
+        
         return True
 
     except Exception as e:
         app_logger.error(f"Error updating feedback for turn {turn_id}: {e}", exc_info=True)
         return False
 # --- MODIFICATION END ---
+
+def add_case_id_to_turn(user_uuid: str, session_id: str, turn_id: int, case_id: str) -> bool:
+    """
+    Adds a RAG case_id to a specific turn in the workflow_history.
+    
+    Args:
+        user_uuid: The user's UUID
+        session_id: The session ID
+        turn_id: The turn number to update
+        case_id: The RAG case ID to associate with this turn
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        session_data = _load_session(user_uuid, session_id)
+        if not session_data:
+            app_logger.warning(f"Could not add case_id: Session {session_id} not found for user {user_uuid}.")
+            return False
+
+        # Get workflow_history from last_turn_data
+        workflow_history = session_data.get("last_turn_data", {}).get("workflow_history", [])
+        
+        # Find the turn with matching turn number
+        turn_found = False
+        for turn in workflow_history:
+            if turn.get("turn") == turn_id:
+                turn["case_id"] = case_id
+                turn_found = True
+                app_logger.debug(f"Added case_id {case_id} to turn {turn_id} in session {session_id}")
+                break
+        
+        if not turn_found:
+            app_logger.warning(f"Turn {turn_id} not found in workflow_history for session {session_id}")
+            return False
+
+        # Save the updated session data
+        if not _save_session(user_uuid, session_id, session_data):
+            app_logger.error(f"Failed to save session after adding case_id to turn {turn_id}")
+            return False
+
+        return True
+
+    except Exception as e:
+        app_logger.error(f"Error adding case_id to turn {turn_id}: {e}", exc_info=True)
+        return False

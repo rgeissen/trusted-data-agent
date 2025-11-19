@@ -101,12 +101,22 @@ async def rag_processing_worker():
             if retriever and turn_summary and APP_CONFIG.RAG_ENABLED:
                 app_logger.info(f"RAG worker: Processing turn {turn_summary.get('turn')} from session {turn_summary.get('session_id')}.")
                 
-                # We create a new task for the actual processing.
-                # This allows the worker to be immediately ready for the next
-                # item, though the processing itself is still serialized
-                # by the nature of the retriever's logic.
-                # For true atomicity, we await the processing here.
-                await retriever.process_turn_for_rag(turn_summary)
+                # Process the turn and get the case_id
+                case_id = await retriever.process_turn_for_rag(turn_summary)
+                
+                # If a case was created, store the case_id in the session
+                if case_id:
+                    from trusted_data_agent.core import session_manager
+                    session_id = turn_summary.get('session_id')
+                    turn_id = turn_summary.get('turn')
+                    user_uuid = turn_summary.get('user_uuid')
+                    
+                    if session_id and turn_id and user_uuid:
+                        try:
+                            session_manager.add_case_id_to_turn(user_uuid, session_id, turn_id, case_id)
+                            app_logger.debug(f"Stored case_id {case_id} for turn {turn_id}")
+                        except Exception as e:
+                            app_logger.error(f"Failed to store case_id {case_id} in session: {e}")
                 
             # 4. Mark the queue item as processed
             APP_STATE['rag_processing_queue'].task_done()

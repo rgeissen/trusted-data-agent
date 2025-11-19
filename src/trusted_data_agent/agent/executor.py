@@ -752,6 +752,8 @@ class PlanExecutor:
                 if APP_CONFIG.RAG_ENABLED and APP_STATE.get('rag_processing_queue') and self.rag_retriever:
                     try:
                         app_logger.debug(f"Adding turn {self.current_turn_number} to RAG processing queue.")
+                        # Add user_uuid to turn_summary for session updates
+                        turn_summary['user_uuid'] = self.user_uuid
                         # Put the summary in the queue. This is non-blocking and instantaneous.
                         await APP_STATE['rag_processing_queue'].put(turn_summary)
                     except Exception as e:

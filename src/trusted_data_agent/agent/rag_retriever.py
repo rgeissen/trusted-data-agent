@@ -325,6 +325,131 @@ class RAGRetriever:
             for coll_id in self.collections:
                 self._maintain_vector_store(coll_id)
 
+    async def update_case_feedback(self, case_id: str, feedback_score: int) -> bool:
+        """
+        Update user feedback for a RAG case.
+        
+        Args:
+            case_id: The case ID to update
+            feedback_score: -1 (downvote), 0 (neutral), 1 (upvote)
+            
+        Returns:
+            True if successful, False if case not found
+        """
+        import json
+        
+        # Load case study from disk
+        case_file = self.rag_cases_dir / f"case_{case_id}.json"
+        if not case_file.exists():
+            logger.warning(f"Case file not found: {case_file}")
+            return False
+        
+        try:
+            # Update case study JSON
+            with open(case_file, 'r', encoding='utf-8') as f:
+                case_study = json.load(f)
+            
+            old_feedback = case_study["metadata"].get("user_feedback_score", 0)
+            case_study["metadata"]["user_feedback_score"] = feedback_score
+            
+            # Save updated case study
+            with open(case_file, 'w', encoding='utf-8') as f:
+                json.dump(case_study, f, indent=2)
+            
+            logger.info(f"Updated case {case_id} feedback: {old_feedback} -> {feedback_score}")
+            
+            # Update ChromaDB metadata in all collections that contain this case
+            for collection_id, collection in self.collections.items():
+                try:
+                    # Check if this case exists in this collection
+                    existing = collection.get(ids=[case_id], include=["metadatas"])
+                    
+                    if existing and existing["ids"]:
+                        # Update the metadata
+                        metadata = existing["metadatas"][0]
+                        metadata["user_feedback_score"] = feedback_score
+                        
+                        # If downvoted, demote from champion status
+                        if feedback_score < 0:
+                            metadata["is_most_efficient"] = False
+                            logger.info(f"Case {case_id} downvoted - demoted from champion in collection {collection_id}")
+                            
+                            # Trigger re-evaluation to find new champion
+                            await self._reevaluate_champion_for_query(
+                                collection_id, 
+                                metadata["user_query"]
+                            )
+                        
+                        # Update full_case_data with new feedback
+                        metadata["full_case_data"] = json.dumps(case_study)
+                        
+                        collection.update(
+                            ids=[case_id],
+                            metadatas=[metadata]
+                        )
+                        logger.debug(f"Updated ChromaDB metadata for case {case_id} in collection {collection_id}")
+                        
+                except Exception as e:
+                    logger.error(f"Error updating case {case_id} in collection {collection_id}: {e}")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error updating case feedback: {e}", exc_info=True)
+            return False
+
+    async def _reevaluate_champion_for_query(self, collection_id: int, user_query: str):
+        """
+        Re-evaluates which case should be champion for a given query.
+        Called when the current champion is downvoted.
+        """
+        if collection_id not in self.collections:
+            return
+        
+        collection = self.collections[collection_id]
+        
+        try:
+            # Get all cases for this query (excluding downvoted)
+            all_cases = collection.get(
+                where={"$and": [
+                    {"user_query": {"$eq": user_query}},
+                    {"user_feedback_score": {"$gte": 0}}  # Exclude downvoted
+                ]},
+                include=["metadatas"]
+            )
+            
+            if not all_cases or not all_cases["ids"]:
+                logger.info(f"No eligible cases remain for query '{user_query}' in collection {collection_id}")
+                return
+            
+            # Find the best case using our priority logic
+            best_case_id = None
+            best_feedback = -999
+            best_tokens = float('inf')
+            
+            for i, case_id in enumerate(all_cases["ids"]):
+                meta = all_cases["metadatas"][i]
+                feedback = meta.get("user_feedback_score", 0)
+                tokens = meta.get("output_tokens", float('inf'))
+                
+                # Priority: feedback first, then tokens
+                if feedback > best_feedback or (feedback == best_feedback and tokens < best_tokens):
+                    best_case_id = case_id
+                    best_feedback = feedback
+                    best_tokens = tokens
+            
+            if best_case_id:
+                # Demote all others, promote the best
+                for i, case_id in enumerate(all_cases["ids"]):
+                    meta = all_cases["metadatas"][i]
+                    meta["is_most_efficient"] = (case_id == best_case_id)
+                    collection.update(ids=[case_id], metadatas=[meta])
+                
+                logger.info(f"New champion for query '{user_query[:50]}...' in collection {collection_id}: {best_case_id} (feedback={best_feedback}, tokens={best_tokens})")
+                
+        except Exception as e:
+            logger.error(f"Error re-evaluating champion: {e}", exc_info=True)
+
     def _maintain_vector_store(self, collection_id: str):
         """
         Maintains the ChromaDB vector store for a specific collection by synchronizing it with the
@@ -443,8 +568,9 @@ class RAGRetriever:
                     n_results=k * 10,  # Retrieve more candidates to filter
                     where={"$and": [
                         {"strategy_type": {"$eq": "successful"}},
-                        {"is_most_efficient": {"$eq": True}}
-                    ]},  # Only retrieve successful and most efficient cases
+                        {"is_most_efficient": {"$eq": True}},
+                        {"user_feedback_score": {"$gte": 0}}  # Exclude downvoted cases
+                    ]},  # Only retrieve successful, most efficient, non-downvoted cases
                     include=["metadatas", "distances"]
                 )
                 
@@ -700,6 +826,7 @@ class RAGRetriever:
                     # --- MODIFICATION END ---
                     "had_plan_improvements": had_plan_improvements, "had_tactical_improvements": had_tactical_improvements,
                     "timestamp": turn.get("timestamp"),
+                    "user_feedback_score": 0,  # Default: no feedback yet (-1=downvote, 0=neutral, 1=upvote)
                     "llm_config": {
                         "provider": turn.get("provider"), "model": turn.get("model"),
                         "input_tokens": turn.get("turn_input_tokens", 0), "output_tokens": turn.get("turn_output_tokens", 0)
@@ -731,13 +858,15 @@ class RAGRetriever:
                         steps_per_phase[phase_num] = steps_per_phase.get(phase_num, 0) + 1
                         total_steps += 1
                 case_study["metadata"]["strategy_metrics"] = {"phase_count": len(turn.get("original_plan", [])), "steps_per_phase": steps_per_phase, "total_steps": total_steps}
+                return case_study  # Return successful strategy
             elif first_error_action:
                 case_study["failed_strategy"] = {"original_plan": turn.get("original_plan"), "error_summary": turn.get("final_summary", ""), "failed_action": first_error_action}
+                return case_study  # Return failed strategy for analysis
             else:
-                case_study["conversational_response"] = { "summary": turn.get("final_summary", "") }
+                # Conversational response - skip RAG processing
+                logger.debug(f"  -> Skipping turn {turn.get('turn')}: Conversational response (no strategic value for RAG).")
+                return None
             # --- MODIFICATION END ---
-
-            return case_study
         except Exception as e:
             logger.error(f"  -> CRITICAL: An unexpected error occurred during case extraction for turn {turn.get('turn')}: {e}", exc_info=True)
             return None
@@ -817,20 +946,44 @@ class RAGRetriever:
 
             old_best_case_id = None
             old_best_case_tokens = float('inf')
+            old_best_case_feedback = 0
+            new_feedback = case_study["metadata"].get("user_feedback_score", 0)
 
             if existing_cases and existing_cases["ids"]:
                 old_best_case_id = existing_cases["ids"][0]
                 old_best_case_tokens = existing_cases["metadatas"][0].get("output_tokens", float('inf'))
+                old_best_case_feedback = existing_cases["metadatas"][0].get("user_feedback_score", 0)
 
-            # 5. Compare & Decide
+            # 5. Compare & Decide (Feedback score takes priority over token efficiency)
             id_to_demote = None
-            if new_tokens < old_best_case_tokens:
-                logger.info(f"New case {new_case_id} is MORE efficient ({new_tokens} tokens) than old case {old_best_case_id} ({old_best_case_tokens} tokens).")
+            
+            # Downvoted cases never become champion
+            if new_feedback < 0:
+                logger.info(f"New case {new_case_id} is downvoted (feedback={new_feedback}). Not eligible for champion.")
+                case_study["metadata"]["is_most_efficient"] = False
+            # Old champion is downvoted, new case wins by default (if not also downvoted)
+            elif old_best_case_feedback < 0:
+                logger.info(f"Old case {old_best_case_id} is downvoted. New case {new_case_id} becomes champion.")
                 case_study["metadata"]["is_most_efficient"] = True
                 id_to_demote = old_best_case_id
+            # Compare feedback scores first
+            elif new_feedback != old_best_case_feedback:
+                if new_feedback > old_best_case_feedback:
+                    logger.info(f"New case {new_case_id} has better feedback ({new_feedback}) than old case {old_best_case_id} ({old_best_case_feedback}). New case wins.")
+                    case_study["metadata"]["is_most_efficient"] = True
+                    id_to_demote = old_best_case_id
+                else:
+                    logger.info(f"Old case {old_best_case_id} has better feedback ({old_best_case_feedback}) than new case {new_case_id} ({new_feedback}). Old case wins.")
+                    case_study["metadata"]["is_most_efficient"] = False
+            # Same feedback level - use token efficiency as tiebreaker
             else:
-                logger.info(f"New case {new_case_id} ({new_tokens} tokens) is NOT more efficient than old case {old_best_case_id} ({old_best_case_tokens} tokens).")
-                case_study["metadata"]["is_most_efficient"] = False
+                if new_tokens < old_best_case_tokens:
+                    logger.info(f"New case {new_case_id} is MORE efficient ({new_tokens} tokens) than old case {old_best_case_id} ({old_best_case_tokens} tokens). Same feedback level ({new_feedback}).")
+                    case_study["metadata"]["is_most_efficient"] = True
+                    id_to_demote = old_best_case_id
+                else:
+                    logger.info(f"New case {new_case_id} ({new_tokens} tokens) is NOT more efficient than old case {old_best_case_id} ({old_best_case_tokens} tokens). Same feedback level ({new_feedback}).")
+                    case_study["metadata"]["is_most_efficient"] = False
             
             new_metadata = self._prepare_chroma_metadata(case_study)
 
@@ -866,9 +1019,13 @@ class RAGRetriever:
             with open(output_path, 'w', encoding='utf-8') as f:
                 json.dump(case_study, f, indent=2)
             logger.debug(f"Saved case study JSON to disk: {output_path.name}")
+            
+            # Return the case_id so it can be stored in the session
+            return new_case_id
 
         except Exception as e:
             logger.error(f"Error during real-time RAG processing: {e}", exc_info=True)
+            return None
 
 
 # Example Usage (for testing purposes)

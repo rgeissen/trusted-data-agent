@@ -581,6 +581,44 @@ async def refresh_rag_collection(collection_id: int):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@rest_api_bp.route("/v1/rag/cases/<case_id>/feedback", methods=["POST"])
+async def submit_rag_case_feedback(case_id: str):
+    """Submit user feedback (upvote/downvote) for a RAG case."""
+    try:
+        data = await request.get_json()
+        feedback_score = data.get("feedback_score")
+        
+        # Validate feedback_score
+        if feedback_score not in [-1, 0, 1]:
+            return jsonify({
+                "status": "error", 
+                "message": "Invalid feedback_score. Must be -1 (downvote), 0 (neutral), or 1 (upvote)"
+            }), 400
+        
+        retriever = APP_STATE.get("rag_retriever_instance")
+        if not retriever:
+            return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
+        
+        # Update the case feedback
+        success = await retriever.update_case_feedback(case_id, feedback_score)
+        
+        if success:
+            action = "upvoted" if feedback_score == 1 else "downvoted" if feedback_score == -1 else "reset"
+            app_logger.info(f"Case {case_id} {action} by user")
+            return jsonify({
+                "status": "success", 
+                "message": f"Feedback submitted successfully",
+                "case_id": case_id,
+                "feedback_score": feedback_score
+            }), 200
+        else:
+            return jsonify({"status": "error", "message": "Failed to update feedback. Case not found."}), 404
+            
+    except Exception as e:
+        app_logger.error(f"Error submitting RAG case feedback: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 # ============================================================================
 # MCP SERVER CONFIGURATION ENDPOINTS
 # ============================================================================
