@@ -16,7 +16,7 @@
       "input_tokens": 8072,
       "output_tokens": 106
     },
-    "is_most_efficient": true,
+    "is_most_efficient": false,
     "strategy_metrics": {
       "phase_count": 2,
       "steps_per_phase": {

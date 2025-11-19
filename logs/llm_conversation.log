@@ -1,4 +1,4 @@
-2025-11-19 12:32:54,519 - --- REASON FOR CALL ---
+2025-11-19 12:52:44,630 - --- REASON FOR CALL ---
 No reason provided.
 --- RESPONSE ---
 ```json
@@ -16,19 +16,19 @@ No reason provided.
     "category": "Database Information"
   },
   "dba_resusageSummary": {
-    "category": "Resource Usage"
+    "category": "Performance"
   },
   "dba_tableSpace": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "dba_tableSqlList": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "dba_tableUsageImpact": {
-    "category": "Resource Usage"
+    "category": "Database Information"
   },
   "dba_userSqlList": {
-    "category": "User Management"
+    "category": "Database Information"
   },
   "qlty_columnSummary": {
     "category": "Data Quality"
@@ -55,16 +55,16 @@ No reason provided.
     "category": "Utilities"
   },
   "plot_line_chart": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "plot_pie_chart": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "plot_polar_chart": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "plot_radar_chart": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "base_columnDescription": {
     "category": "Database Information"
@@ -73,22 +73,22 @@ No reason provided.
     "category": "Database Information"
   },
   "base_readQuery": {
-    "category": "Query Execution"
+    "category": "Utilities"
   },
   "base_tableAffinity": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "base_tableDDL": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "base_tableList": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "base_tablePreview": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "base_tableUsage": {
-    "category": "Table Management"
+    "category": "Database Information"
   },
   "sec_rolePermissions": {
     "category": "Security"
@@ -100,28 +100,28 @@ No reason provided.
     "category": "Security"
   },
   "rag_Execute_Workflow": {
-    "category": "RAG"
+    "category": "Utilities"
   },
   "dba_databaseVersion": {
     "category": "Database Information"
   },
-  "dba_flowControl": {
-    "category": "Resource Usage"
+    "dba_flowControl": {
+    "category": "Performance"
   },
   "dba_featureUsage": {
-    "category": "Resource Usage"
+    "category": "Database Information"
   },
-  "dba_userDelay": {
-    "category": "Resource Usage"
+    "dba_userDelay": {
+    "category": "Performance"
   },
-  "dba_sessionInfo": {
-    "category": "Session Management"
+    "dba_sessionInfo": {
+    "category": "Database Information"
   },
   "dba_systemSpace": {
     "category": "Database Information"
   },
   "TDA_Charting": {
-    "category": "Visualization"
+    "category": "Data Visualization"
   },
   "TDA_CurrentDate": {
     "category": "Utilities"
@@ -145,46 +145,46 @@ No reason provided.
     "category": "Reporting"
   },
   "dba_tableArchive": {
-    "category": "Archiving"
+    "category": "Reporting"
   },
   "dba_databaseLineage": {
-    "category": "Lineage"
+    "category": "Database Information"
   },
   "dba_tableDropImpact": {
-    "category": "Impact Analysis"
+    "category": "Reporting"
   },
   "dba_databaseHealthAssessment": {
-    "category": "Health Assessment"
+    "category": "Reporting"
   },
   "dba_userActivityAnalysis": {
-    "category": "Activity Analysis"
+    "category": "Reporting"
   },
-   "dba_systemVoice": {
-    "category": "Activity Analysis"
+  "dba_systemVoice": {
+    "category": "Reporting"
   },
   "_testMyServer": {
     "category": "Testing"
   },
   "base_teradataQuery": {
-    "category": "Query Generation"
+    "category": "Utilities"
   },
   "base_query": {
-    "category": "Query Generation"
+    "category": "Utilities"
   },
   "base_tableBusinessDesc": {
-    "category": "Business Description"
+    "category": "Database Information"
   },
   "base_databaseBusinessDesc": {
-    "category": "Business Description"
+    "category": "Database Information"
   },
   "qlty_databaseQuality": {
     "category": "Data Quality"
   },
   "tdvs_tools_prompt": {
-    "category": "Vector Store"
+    "category": "Utilities"
   },
   "tdvs_rag_prompt": {
-    "category": "RAG"
+    "category": "Utilities"
   }
 }
 ```

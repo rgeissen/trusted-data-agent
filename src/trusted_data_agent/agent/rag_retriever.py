@@ -770,7 +770,16 @@ class RAGRetriever:
                         first_error_action = action
                 # --- MODIFICATION END ---
                 
-                if result_is_dict and result.get("status") == "success" and action_is_dict:
+                # --- MODIFICATION START: Accept results without explicit "success" status ---
+                # Some tools (like TDA_Charting) return data directly without a status field
+                # Consider them successful if they're not explicitly marked as errors
+                is_successful_result = (
+                    result_is_dict and 
+                    (result.get("status") == "success" or 
+                     (result.get("status") is None and "error" not in str(result).lower()))
+                )
+                
+                if is_successful_result and action_is_dict:
                     tool_name = action.get("tool_name")
                     if tool_name and tool_name != "TDA_SystemLog":
                         # --- MODIFICATION START: Use phase_number (can be None) ---
@@ -823,6 +832,16 @@ class RAGRetriever:
                              f"Completed: {completed_phases}")
             # --- MODIFICATION END ---
 
+            # --- MODIFICATION START: Convert feedback string to score ---
+            feedback_str = turn.get("feedback")
+            if feedback_str == "up":
+                user_feedback_score = 1
+            elif feedback_str == "down":
+                user_feedback_score = -1
+            else:
+                user_feedback_score = 0  # Default: no feedback yet
+            # --- MODIFICATION END ---
+
             case_study = {
                 "case_id": case_id,
                 "metadata": {
@@ -833,7 +852,7 @@ class RAGRetriever:
                     # --- MODIFICATION END ---
                     "had_plan_improvements": had_plan_improvements, "had_tactical_improvements": had_tactical_improvements,
                     "timestamp": turn.get("timestamp"),
-                    "user_feedback_score": 0,  # Default: no feedback yet (-1=downvote, 0=neutral, 1=upvote)
+                    "user_feedback_score": user_feedback_score,  # Derived from turn.feedback (-1=downvote, 0=neutral, 1=upvote)
                     "llm_config": {
                         "provider": turn.get("provider"), "model": turn.get("model"),
                         "input_tokens": turn.get("turn_input_tokens", 0), "output_tokens": turn.get("turn_output_tokens", 0)

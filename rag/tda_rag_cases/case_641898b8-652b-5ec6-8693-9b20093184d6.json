@@ -9,14 +9,14 @@
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
     "timestamp": "2025-11-19T10:50:16.449582+00:00",
-    "user_feedback_score": 0,
+    "user_feedback_score": 1,
     "llm_config": {
       "provider": "Google",
       "model": "gemini-2.0-flash",
       "input_tokens": 8121,
       "output_tokens": 107
     },
-    "is_most_efficient": false,
+    "is_most_efficient": true,
     "strategy_metrics": {
       "phase_count": 2,
       "steps_per_phase": {

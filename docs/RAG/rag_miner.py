@@ -80,13 +80,36 @@ class SessionMiner:
         # --- MODIFICATION END ---
 
         if self.force_reprocess:
-            logger.info("Force reprocess is enabled. Clearing output directory...")
+            logger.info("Force reprocess is enabled. Backing up feedback scores before clearing...")
+            
+            # Backup existing feedback scores
+            feedback_backup = {}
+            for old_case in self.output_dir.glob("case_*.json"):
+                try:
+                    with open(old_case, 'r', encoding='utf-8') as f:
+                        case_data = json.load(f)
+                    case_id = case_data.get('case_id')
+                    feedback_score = case_data.get('metadata', {}).get('user_feedback_score', 0)
+                    if feedback_score != 0:  # Only backup non-zero feedback
+                        feedback_backup[case_id] = feedback_score
+                        logger.info(f"Backed up feedback for case {case_id}: {feedback_score}")
+                except Exception as e:
+                    logger.warning(f"Failed to backup feedback from {old_case.name}: {e}")
+            
+            logger.info(f"Backed up {len(feedback_backup)} feedback scores")
+            
+            # Clear output directory
             for old_case in self.output_dir.glob("case_*.json"):
                 old_case.unlink()
             
             if chroma_cache_dir.exists():
                 logger.info(f"Flushing ChromaDB cache at {chroma_cache_dir}...")
                 shutil.rmtree(chroma_cache_dir)
+            
+            # Store feedback backup for restoration
+            self.feedback_backup = feedback_backup
+        else:
+            self.feedback_backup = {}
         
         # --- MODIFICATION START: Load configuration and initialize retriever ---
         # Load RAG collections and MCP server configuration
