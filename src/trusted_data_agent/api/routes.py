@@ -59,7 +59,10 @@ async def get_application_status():
     """
     if not APP_CONFIG.CONFIGURATION_PERSISTENCE:
         app_logger.info("Configuration persistence is disabled by environment setting. Forcing re-configuration.")
-        return jsonify({"isConfigured": False})
+        return jsonify({
+            "isConfigured": False,
+            "configurationPersistence": False
+        })
 
     is_configured = APP_CONFIG.SERVICES_CONFIGURED
     app_logger.debug(f"API endpoint /api/status checked. Current configured status: {is_configured}")
@@ -83,7 +86,8 @@ async def get_application_status():
             "model": APP_CONFIG.ACTIVE_MODEL,
             "mcp_server": { "name": APP_CONFIG.ACTIVE_MCP_SERVER_NAME },
             "rag_active": rag_active,
-            "rag_enabled": APP_CONFIG.RAG_ENABLED
+            "rag_enabled": APP_CONFIG.RAG_ENABLED,
+            "configurationPersistence": APP_CONFIG.CONFIGURATION_PERSISTENCE
         }
         app_logger.debug(f"/api/status responding with configured state: {status_payload}")
         return jsonify(status_payload)
@@ -91,7 +95,8 @@ async def get_application_status():
         status_payload = {
             "isConfigured": False,
             "rag_active": rag_active,
-            "rag_enabled": APP_CONFIG.RAG_ENABLED
+            "rag_enabled": APP_CONFIG.RAG_ENABLED,
+            "configurationPersistence": APP_CONFIG.CONFIGURATION_PERSISTENCE
         }
         app_logger.debug(f"/api/status responding with unconfigured state.")
         return jsonify(status_payload)

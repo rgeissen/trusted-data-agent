@@ -250,6 +250,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log("DEBUG: Checking server status on startup...");
         const status = await API.checkServerStatus();
         
+        // Set configuration persistence flag from server
+        if (typeof status.configurationPersistence !== 'undefined') {
+            state.configurationPersistence = status.configurationPersistence;
+            console.log(`[Config] Configuration persistence: ${state.configurationPersistence}`);
+            
+            // Show warning banner if persistence is disabled
+            const persistenceBanner = document.getElementById('persistence-warning-banner');
+            if (!state.configurationPersistence && persistenceBanner) {
+                persistenceBanner.classList.remove('hidden');
+                console.log('[Config] Showing persistence warning banner');
+            }
+            
+            // If persistence is disabled, clear any stored credentials
+            if (!state.configurationPersistence) {
+                const { clearAllCredentials } = await import('./storageUtils.js');
+                clearAllCredentials();
+                console.log('[Config] Persistence disabled - cleared all stored credentials');
+            }
+        }
+        
         // Update RAG indicator based on status
         if (DOM.ragStatusDot && state.appConfig.rag_enabled) {
             if (status.rag_active) {

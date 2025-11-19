@@ -7,9 +7,10 @@
  */
 
 import * as DOM from '../domElements.js';
-import { state } from '../state.js';
 import * as API from '../api.js';
 import * as UI from '../ui.js';
+import { state } from '../state.js';
+import { safeSetItem, safeGetItem } from '../storageUtils.js';
 import * as Utils from '../utils.js';
 import { handleLoadSession, handleStartNewSession } from './sessionManagement.js';
 // We need to import from eventHandlers for functions not yet moved
@@ -105,7 +106,7 @@ export async function finalizeConfiguration(config, switchToConversationView = t
         console.error('Conversation header element not found!');
     }
 
-    localStorage.setItem('lastSelectedProvider', config.provider);
+    safeSetItem('lastSelectedProvider', config.provider);
 
     state.currentProvider = config.provider;
     state.currentModel = config.model;
@@ -246,13 +247,13 @@ export async function handleConfigFormSubmit(e) {
     const config = Object.fromEntries(formData.entries());
 
     const mcpConfig = { server_name: config.server_name, host: config.host, port: config.port, path: config.path };
-    localStorage.setItem('mcpConfig', JSON.stringify(mcpConfig));
+    safeSetItem('mcpConfig', JSON.stringify(mcpConfig));
 
     if (config.provider === 'Amazon') {
         const awsCreds = { aws_access_key_id: config.aws_access_key_id, aws_secret_access_key: config.aws_secret_access_key, aws_region: config.aws_region };
-        localStorage.setItem('amazonApiKey', JSON.stringify(awsCreds));
+        safeSetItem('amazonApiKey', JSON.stringify(awsCreds));
     } else if (config.provider === 'Ollama') {
-        localStorage.setItem('ollamaHost', config.ollama_host);
+        safeSetItem('ollamaHost', config.ollama_host);
     } else if (config.provider === 'Azure') {
         const azureCreds = {
             azure_api_key: config.azure_api_key,
@@ -260,19 +261,19 @@ export async function handleConfigFormSubmit(e) {
             azure_deployment_name: config.azure_deployment_name,
             azure_api_version: config.azure_api_version
         };
-        localStorage.setItem('azureApiKey', JSON.stringify(azureCreds));
+        safeSetItem('azureApiKey', JSON.stringify(azureCreds));
     } else if (config.provider === 'Friendli') {
         const friendliCreds = {
             friendli_token: config.friendli_token,
             friendli_endpoint_url: config.friendli_endpoint_url
         };
-        localStorage.setItem('friendliApiKey', JSON.stringify(friendliCreds));
+        safeSetItem('friendliApiKey', JSON.stringify(friendliCreds));
     } else {
-        localStorage.setItem(`${config.provider.toLowerCase()}ApiKey`, config.apiKey);
+        safeSetItem(`${config.provider.toLowerCase()}ApiKey`, config.apiKey);
     }
 
     if (config.tts_credentials_json) {
-        localStorage.setItem('ttsCredentialsJson', config.tts_credentials_json);
+        safeSetItem('ttsCredentialsJson', config.tts_credentials_json);
     }
 
     try {

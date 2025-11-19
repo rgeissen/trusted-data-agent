@@ -22,14 +22,17 @@ This solution establishes a new standard for AI-driven data analytics, built on 
 6. [Installation and Setup Guide](#installation-and-setup-guide)
 7. [Developer Mode: Unlocking Models](#developer-mode-unlocking-models)
 8. [User Guide](#user-guide)
-9. [Context Maintenance](#context-maintenance)
-10. [Application REST API](#application-rest-api)
-11. [Real-Time Monitoring](#real-time-monitoring)
-12. [Operationalization](#operationalization)
-13. [Troubleshooting](#troubleshooting)
-14. [License](#license)
-15. [Author & Contributions](#author--contributions)
-16. [Appendix: Feature Update List](#appendix-feature-update-list)
+   - [Getting Started](#getting-started)
+   - [Using the Interface](#using-the-interface)
+   - [Advanced Context Management](#advanced-context-management)
+   - [REST API Integration](#rest-api-integration)
+   - [Real-Time Monitoring](#real-time-monitoring)
+   - [Operationalization](#operationalization)
+   - [Troubleshooting](#troubleshooting)
+9. [Docker Deployment](#docker-deployment)
+10. [License](#license)
+11. [Author & Contributions](#author--contributions)
+12. [Appendix: Feature Update List](#appendix-feature-update-list)
 
 
 ---
@@ -167,52 +170,93 @@ For a comprehensive overview of the RAG architecture, data flow, and maintenance
 
 ## How It Works: Architecture
 
-The application operates on a sophisticated client-server model, ensuring a clean separation of concerns and robust performance.
+### System Overview
+
+The Trusted Data Agent is built on a modern, asynchronous client-server architecture with four primary layers:
 
 ```
-+----------+      +-------------------------+      +------------------+      +----------------------+      +------------------+
-|          |      |                         |      |                  |      |                      |      |                  |
-| End User | <--> |  Frontend (index.html)  | <--> | Backend (Python) | <--> | Large Language Model | <--> |       MCP        |
-|          |      |    (HTML, JS, CSS)      |      |  (Quart Server)  |      |  (Reasoning Engine)  |      |  Server (Tools)  |
-|          |      |                         |      |                  |      |                      |      |                  |
-+----------+      +-------------------------+      +------------------+      +----------------------+      +------------------+
-
+┌──────────┐      ┌─────────────┐      ┌──────────┐      ┌─────┐      ┌─────────┐
+│  Browser │ SSE  │   Backend   │ HTTP │   LLM    │ HTTP │ MCP │ SQL  │ Data    │
+│   (UI)   │◄────►│   (Quart)   │─────►│ Provider │      │ Svr │─────►│ Source  │
+└──────────┘      └─────────────┘      └──────────┘      └─────┘      └─────────┘
 ```
 
-1. **Frontend (`templates/index.html`):** A sleek, single-page application built with HTML, Tailwind CSS, and vanilla JavaScript. It captures user input and uses Server-Sent Events (SSE) to render real-time updates from the backend.
+**Communication Flow:**
+1. User sends query via browser → Backend receives via REST/SSE
+2. Backend orchestrates → LLM generates plan
+3. LLM requests tools → MCP Server executes against data source
+4. Results flow back → Backend formats → Browser renders in real-time
 
-2. **Backend** (`src/trusted_data_agent/`): A high-performance asynchronous web server built with **Quart**. It serves the frontend, manages user sessions, and orchestrates the entire AI workflow.
+### Component Layers
 
-3. **Large Language Model (LLM):** The reasoning engine. The backend dynamically initializes the connection to the selected LLM provider (e.g., Google, Anthropic, Microsoft Azure, AWS Bedrock, Friendli.AI) based on user-provided credentials and sends structured prompts to the model's API.
+#### Frontend Layer
+- **Technology:** Single-page app (Vanilla JS, Tailwind CSS, HTML)
+- **Communication:** REST API for requests, Server-Sent Events (SSE) for real-time updates
+- **Key Features:** Live status monitoring, session management, context controls
+- **State Management:** Browser localStorage (respects server persistence settings)
 
-4. **MCP Server:** The **Model Context Protocol (MCP)** server acts as the secure, powerful bridge to the database, exposing functionalities as a well-defined API of "tools" for the AI agent.
+#### Backend Layer (`src/trusted_data_agent/`)
+- **Technology:** Quart (async Python web framework)
+- **Responsibilities:** 
+  - Session management and user isolation
+  - LLM orchestration with Fusion Optimizer engine
+  - Configuration management and credential handling
+  - RAG system integration
+- **Key Modules:**
+  - `api/` - REST endpoints and SSE handlers
+  - `agent/` - Executor, Formatter, and planning logic
+  - `llm/` - Multi-provider LLM connectors
+  - `mcp/` - MCP protocol client
+  - `core/` - Configuration, sessions, utilities
 
-### Code Structure
+#### LLM Integration Layer
+- **Supported Providers:** Google (Gemini), Anthropic (Claude), OpenAI, Azure OpenAI, AWS Bedrock, Friendli.AI, Ollama
+- **Authentication:** Dynamic credential handling per session
+- **Protocol:** REST API calls with structured prompts (system + user + tools)
 
-The Python source code is organized in a standard `src` layout for better maintainability and scalability.
+#### MCP Integration Layer
+- **Protocol:** Model Context Protocol - standardized tool/prompt/resource exposure
+- **Connection:** HTTP/WebSocket to MCP server
+- **Security:** Credential passthrough, no credential storage in agent
 
+### Data Flow & Session Management
+
+**Configuration Flow:**
+1. User enters credentials (LLM + MCP) → Validated by backend
+2. If `TDA_CONFIGURATION_PERSISTENCE=true`: Saved to `tda_config.json` + browser localStorage
+3. If `TDA_CONFIGURATION_PERSISTENCE=false`: Memory-only (cleared on restart)
+
+**Query Execution Flow:**
+1. User query → Backend creates/loads session
+2. Backend invokes Fusion Optimizer with context (conversation history + workflow summaries)
+3. Optimizer generates strategic plan → Executes via LLM + MCP tools
+4. Results streamed via SSE → UI updates in real-time
+5. Session persisted with turn history and summaries
+
+**Session Isolation:**
+- Each user identified by `userUUID` (browser-generated, stored in localStorage)
+- Sessions stored in `tda_sessions/{session_id}/` with conversation and workflow history
+- Multi-user Docker: Separate containers OR persistence disabled for shared container
+
+### Deployment Architectures
+
+**Single-User (Development):**
 ```
-/trusted-data-agent/
-|
-├── src/
-|   └── trusted_data_agent/    # Main Python package
-|       ├── api/               # Quart web routes
-|       ├── agent/             # Core agent logic (Executor, Formatter)
-|       ├── llm/               # LLM provider interaction
-|       ├── mcp/               # MCP server interaction
-|       ├── core/              # Config, session management, utils
-|       └── main.py            # Application entry point
-|
-├── templates/
-|   └── index.html             # Frontend UI
-|
-├── pyproject.toml             # Project definition
-├── requirements.txt
-└── ...
-
+Local Machine → Python Process → localhost:5000
 ```
 
-This structure separates concerns, making it easier to navigate and extend the application's functionality.
+**Multi-User (Production):**
+```
+Option 1: Load Balancer → Multiple Container Instances (port 5000, 5001, 5002...)
+Option 2: Shared Container → TDA_CONFIGURATION_PERSISTENCE=false (sequential access)
+```
+
+### Security Considerations
+
+- **Credentials:** LLM/MCP credentials never logged or exposed in UI
+- **Isolation:** Session data segregated by user UUID
+- **Transport:** HTTPS recommended for production (configure via reverse proxy)
+- **Configuration:** `TDA_CONFIGURATION_PERSISTENCE=false` for multi-user shared deployments
 
 ## Installation and Setup Guide
 
@@ -354,9 +398,13 @@ python -m trusted_data_agent.main --all-models
 
 ## User Guide
 
-This guide provides a walkthrough of the main features of the Trusted Data Agent UI.
+This comprehensive guide covers everything you need to know to use the Trusted Data Agent effectively, from basic operations to advanced features and automation.
 
-### 1. Initial Configuration
+---
+
+### Getting Started
+
+#### Initial Configuration
 
 Before you can interact with the agent, you must configure the connection to your services.
 
@@ -382,7 +430,11 @@ Before you can interact with the agent, you must configure the connection to you
 
 7. **Connect:** Click the **"Connect & Load"** button. The application will validate the connections and, if successful, load the agent's capabilities.
 
-### 2. The Main Interface
+---
+
+### Using the Interface
+
+#### The Main Interface
 
 The UI is divided into several key areas:
 
@@ -402,7 +454,7 @@ The UI is divided into several key areas:
 
 * **Live Status Panel (Right):** This is the transparency window. It shows a real-time log of the agent's internal monologue, the tools it decides to run, and the raw data it gets back.
 
-### 3. Asking a Question
+#### Asking Questions
 
 Simply type your request into the chat input at the bottom and press Enter.
 
@@ -410,7 +462,7 @@ Simply type your request into the chat input at the bottom and press Enter.
 
 The agent will analyze your request, display its thought process in the **Live Status** panel, execute the necessary tool (e.g., `base_tableList`), and then present the final answer in the chat window.
 
-### 4. Using Prompts Manually
+#### Using Prompts Manually
 
 You can directly trigger a multi-step workflow without typing a complex request.
 
@@ -424,7 +476,7 @@ You can directly trigger a multi-step workflow without typing a complex request.
 
 The agent will execute the entire workflow and present a structured report.
 
-### 5. Customizing the Agent's Behavior
+#### Customizing the Agent's Behavior
 
 You can change how the agent thinks and behaves by editing its core instructions.
 
@@ -438,7 +490,7 @@ You can change how the agent thinks and behaves by editing its core instructions
 
 5. Click **"Reset to Default"** to revert to the original, certified prompt for that model.
 
-### 6. Direct Chat with the LLM
+#### Direct Chat with the LLM
 
 To test the raw intelligence of a model without the agent's tool-using logic, you can use the direct chat feature.
 
@@ -446,7 +498,9 @@ To test the raw intelligence of a model without the agent's tool-using logic, yo
 
 2. A modal will appear, allowing you to have a direct, tool-less conversation with the currently configured LLM. This is useful for evaluating a model's baseline knowledge or creative capabilities.
 
-## Context Maintenance
+---
+
+### Advanced Context Management
 
 The Trusted Data Agent provides several advanced features for managing the context that is sent to the Large Language Model (LLM). Understanding and using these features can help you refine the agent's behavior, save costs by reducing token count, and get more accurate results.
 
@@ -511,7 +565,9 @@ When activated, this mode disables the **LLM Conversation History**. The agent b
     *   **Hold `Alt`** while sending a message to use it for a single query.
     *   **Press `Shift` + `Alt`** to lock the mode on for subsequent queries.
 
-## Application REST API
+---
+
+### REST API Integration
 
 The Trusted Data Agent includes a powerful, asynchronous REST API to enable programmatic control, automation, and integration into larger enterprise workflows.
 
@@ -533,7 +589,9 @@ This API exposes the core functionalities of the agent, allowing developers to b
 For complete technical details, endpoint definitions, and cURL examples, please see the full documentation:
 [**REST API Documentation (docs/RestAPI/restAPI.md)**](https://github.com/rgeissen/trusted-data-agent/blob/main/docs/RestAPI/restAPI.md)
 
-## Real-Time Monitoring
+---
+
+### Real-Time Monitoring
 
 The Trusted Data Agent's UI serves as a powerful, real-time monitoring tool that provides full visibility into all agent workloads, regardless of whether they are initiated from the user interface or the REST API. This capability is particularly valuable for developers and administrators interacting with the agent programmatically.
 
@@ -545,9 +603,11 @@ When a task is triggered via a REST call, it is not a "black box" operation. Ins
 
 This provides a level of transparency typically not available for REST API interactions, offering a "glass box" view into the agent's operations. The key benefit is that you can trigger a complex workflow through a single API call and then use the UI to visually monitor its progress, understand how it's being executed, and immediately diagnose any issues that may arise. This turns the UI into an essential tool for the development, debugging, and monitoring of any integration with the Trusted Data Agent.
 
-## Operationalization
+---
 
-### Operationalization: From Interactive UI to Automated REST API
+### Operationalization
+
+#### From Interactive UI to Automated REST API
 
 The Trusted Data Agent is designed to facilitate a seamless transition from interactive development in the UI to automated, operational workflows via its REST API. This process allows you to build, test, and refine complex data interactions in an intuitive conversational interface and then deploy them as robust, repeatable tasks.
 
@@ -594,7 +654,9 @@ A key feature of the platform is the ability to monitor REST-initiated tasks in 
 
 This hybrid approach gives you the best of both worlds: the automation and scalability of a REST API, combined with the rich, real-time monitoring and debugging capabilities of the interactive UI. It provides crucial visibility into your operationalized data workflows.
 
-## Troubleshooting
+---
+
+### Troubleshooting
 
 * **`ModuleNotFoundError`:** This error almost always means you are either (1) not in the project's root directory, or (2) you have not run `pip install -e .` successfully in your active virtual environment.
 
@@ -607,6 +669,73 @@ This hybrid approach gives you the best of both worlds: the automation and scala
   * Ensure your AWS credentials have the necessary IAM permissions (`bedrock:ListFoundationModels`, `bedrock:ListInferenceProfiles`, `bedrock-runtime:InvokeModel`).
 
   * Verify that the selected model is enabled for access in the AWS Bedrock console for your specified region.
+
+---
+
+## Docker Deployment
+
+The Trusted Data Agent can be deployed in Docker containers for production use, testing, and multi-user scenarios. The application includes built-in support for credential isolation in shared deployments.
+
+### Quick Start with Docker
+
+```bash
+# Build the image
+docker build -t trusted-data-agent:latest .
+
+# Run with persistence disabled (recommended for shared/testing environments)
+docker run -d \
+  -p 5050:5000 \
+  -e TDA_CONFIGURATION_PERSISTENCE=false \
+  -e CORS_ALLOWED_ORIGINS=https://your-domain.com \
+  trusted-data-agent:latest
+```
+
+### Multi-User Deployment Considerations
+
+When deploying for multiple users, you have two main options:
+
+#### Option 1: Shared Container (Sequential Access)
+- Set `TDA_CONFIGURATION_PERSISTENCE=false` to prevent credential persistence
+- Each user configures credentials per session
+- Credentials exist in memory only and are cleared on browser refresh
+- Best for: Testing, demos, sequential user access
+
+#### Option 2: One Container Per User (Simultaneous Access)
+- Deploy separate container instances on different ports
+- Each user gets their own isolated environment
+- Best for: Multiple simultaneous users, production deployments
+
+### Pre-configuring MCP Server
+
+You can bake MCP server configuration into the Docker image:
+
+1. **Before building**, edit `tda_config.json`:
+```json
+{
+  "mcp_servers": [
+    {
+      "name": "Your MCP Server",
+      "host": "your-host.com",
+      "port": "8888",
+      "path": "/mcp",
+      "id": "default-server-id"
+    }
+  ],
+  "active_mcp_server_id": "default-server-id"
+}
+```
+
+2. **Build the image** - MCP configuration is included
+3. **Users only need to configure LLM credentials** - much simpler onboarding!
+
+**Note:** Pre-configured MCP servers persist even with `TDA_CONFIGURATION_PERSISTENCE=false`, while user LLM credentials remain session-only.
+
+### Detailed Docker Documentation
+
+For comprehensive information on Docker deployment, credential isolation, security considerations, and troubleshooting, see:
+[**Docker Credential Isolation Guide (docs/DOCKER_CREDENTIAL_ISOLATION.md)**](docs/DOCKER_CREDENTIAL_ISOLATION.md)
+
+---
 
 ## License
 

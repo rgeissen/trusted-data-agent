@@ -8,6 +8,7 @@ import * as API from '../api.js';
 import * as UI from '../ui.js';
 import * as DOM from '../domElements.js';
 import { state } from '../state.js';
+import { safeSetItem, safeGetItem } from '../storageUtils.js';
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -186,7 +187,7 @@ class ConfigurationState {
     }
 
     saveLLMProviders() {
-        localStorage.setItem(STORAGE_KEYS.LLM_PROVIDERS, JSON.stringify(this.llmProviders));
+        safeSetItem(STORAGE_KEYS.LLM_PROVIDERS, JSON.stringify(this.llmProviders));
     }
 
     async setActiveMCP(serverId) {
@@ -206,7 +207,7 @@ class ConfigurationState {
 
     setActiveLLM(provider) {
         this.activeLLM = provider;
-        localStorage.setItem(STORAGE_KEYS.ACTIVE_LLM, provider);
+        safeSetItem(STORAGE_KEYS.ACTIVE_LLM, provider);
         updateReconnectButton();
     }
 
@@ -892,7 +893,7 @@ export async function reconnectAndLoad() {
             // Update state with current provider/model
             state.currentProvider = configData.provider;
             state.currentModel = configData.model;
-            localStorage.setItem('lastSelectedProvider', configData.provider);
+            safeSetItem('lastSelectedProvider', configData.provider);
             
             // Update status bar with provider and model info
             UI.updateStatusPromptName(configData.provider, configData.model);
