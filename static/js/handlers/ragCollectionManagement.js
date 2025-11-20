@@ -104,6 +104,18 @@ const ragCollectionLlmOptions = document.getElementById('rag-collection-llm-opti
 const ragCollectionLlmSubject = document.getElementById('rag-collection-llm-subject');
 const ragCollectionLlmCount = document.getElementById('rag-collection-llm-count');
 const ragCollectionLlmDb = document.getElementById('rag-collection-llm-db');
+const ragCollectionLlmPreviewBtn = document.getElementById('rag-collection-llm-preview-prompt');
+const ragCollectionLlmCreateContextBtn = document.getElementById('rag-collection-llm-create-context');
+const ragCollectionGenerateQuestionsBtn = document.getElementById('rag-collection-generate-questions');
+// Phase 2 result elements
+const ragCollectionContextResult = document.getElementById('rag-collection-context-result');
+const ragCollectionContextTitle = document.getElementById('rag-collection-context-title');
+const ragCollectionContextContent = document.getElementById('rag-collection-context-content');
+const ragCollectionContextClose = document.getElementById('rag-collection-context-close');
+// Phase 3 result elements
+const ragCollectionQuestionsResult = document.getElementById('rag-collection-questions-result');
+const ragCollectionQuestionsContent = document.getElementById('rag-collection-questions-content');
+const ragCollectionQuestionsCount = document.getElementById('rag-collection-questions-count');
 
 let addCollectionExampleCounter = 0;
 
@@ -665,11 +677,15 @@ if (editRagCollectionForm) {
  * - If turn succeeds more efficiently, it may become new champion
  */
 async function calculateRagImpactKPIs() {
+    console.log('[RAG KPI] ========================================');
     console.log('[RAG KPI] Starting KPI calculation...');
+    console.log('[RAG KPI] Timestamp:', new Date().toISOString());
     
     try {
         // Fetch all collections to calculate metrics
+        console.log('[RAG KPI] Fetching collections from /api/v1/rag/collections...');
         const response = await fetch('/api/v1/rag/collections');
+        console.log('[RAG KPI] Response status:', response.status);
         if (!response.ok) {
             console.error('[RAG KPI] Failed to fetch collections:', response.status, response.statusText);
             updateKPIDisplay({
@@ -905,9 +921,13 @@ async function calculateRagImpactKPIs() {
  * Update KPI display elements
  */
 function updateKPIDisplay(kpis) {
+    console.log('[RAG KPI] updateKPIDisplay called with:', kpis);
+    
     // Champion Strategies
     const healingCountEl = document.getElementById('rag-kpi-healing-count');
     const healingTrendEl = document.getElementById('rag-kpi-healing-trend');
+    console.log('[RAG KPI] Elements found - healingCount:', !!healingCountEl, 'healingTrend:', !!healingTrendEl);
+    
     if (healingCountEl) {
         healingCountEl.textContent = kpis.selfHealingEvents;
     }
@@ -1324,12 +1344,36 @@ async function checkLlmConfiguration() {
  * Handle population method radio button changes
  */
 async function handlePopulationMethodChange() {
+    const phase2Section = document.getElementById('phase-2-section');
+    const phase3Section = document.getElementById('phase-3-section');
+    const phase2Indicator = document.getElementById('phase-indicator-2');
+    const phase3Indicator = document.getElementById('phase-indicator-3');
+    
     // Hide all population options first
     if (ragCollectionTemplateOptions) {
         ragCollectionTemplateOptions.classList.add('hidden');
     }
-    if (ragCollectionLlmOptions) {
-        ragCollectionLlmOptions.classList.add('hidden');
+    
+    // Reset phases to initial state
+    if (phase2Section) {
+        phase2Section.classList.add('hidden', 'opacity-50', 'pointer-events-none');
+    }
+    if (phase3Section) {
+        phase3Section.classList.add('hidden', 'opacity-50', 'pointer-events-none');
+    }
+    if (phase2Indicator) {
+        phase2Indicator.classList.add('opacity-50');
+        phase2Indicator.querySelector('.w-8').classList.remove('bg-teradata-orange', 'text-white');
+        phase2Indicator.querySelector('.w-8').classList.add('bg-gray-600', 'text-gray-400');
+        phase2Indicator.querySelector('.text-sm').classList.remove('text-white');
+        phase2Indicator.querySelector('.text-sm').classList.add('text-gray-400');
+    }
+    if (phase3Indicator) {
+        phase3Indicator.classList.add('opacity-50');
+        phase3Indicator.querySelector('.w-8').classList.remove('bg-teradata-orange', 'text-white');
+        phase3Indicator.querySelector('.w-8').classList.add('bg-gray-600', 'text-gray-400');
+        phase3Indicator.querySelector('.text-sm').classList.remove('text-white');
+        phase3Indicator.querySelector('.text-sm').classList.add('text-gray-400');
     }
     
     // Show the selected population option
@@ -1342,8 +1386,403 @@ async function handlePopulationMethodChange() {
             addCollectionTemplateExample();
         }
     } else if (ragPopulationLlm && ragPopulationLlm.checked) {
-        ragCollectionLlmOptions.classList.remove('hidden');
+        // Show Phase 2 section for LLM workflow
+        if (phase2Section) {
+            phase2Section.classList.remove('hidden');
+            unlockPhase2();
+        }
+        // Load template configuration to show informative fields
+        await loadLlmTemplateInfo();
     }
+}
+
+/**
+ * Unlock Phase 2 (Context Generation)
+ */
+function unlockPhase2() {
+    const phase2Section = document.getElementById('phase-2-section');
+    const phase2Indicator = document.getElementById('phase-indicator-2');
+    
+    if (phase2Section) {
+        phase2Section.classList.remove('opacity-50', 'pointer-events-none');
+        phase2Section.querySelector('.w-8').classList.remove('bg-gray-600', 'text-gray-400');
+        phase2Section.querySelector('.w-8').classList.add('bg-teradata-orange', 'text-white');
+    }
+    
+    if (phase2Indicator) {
+        phase2Indicator.classList.remove('opacity-50');
+        phase2Indicator.querySelector('.w-8').classList.remove('bg-gray-600', 'text-gray-400');
+        phase2Indicator.querySelector('.w-8').classList.add('bg-teradata-orange', 'text-white');
+        phase2Indicator.querySelector('.text-sm').classList.remove('text-gray-400');
+        phase2Indicator.querySelector('.text-sm').classList.add('text-white');
+    }
+}
+
+/**
+ * Unlock Phase 3 (Question Generation)
+ */
+function unlockPhase3() {
+    console.log('[RAG unlockPhase3] Starting Phase 3 unlock...');
+    const phase3Section = document.getElementById('phase-3-section');
+    const phase3Indicator = document.getElementById('phase-indicator-3');
+    const phase2StatusBadge = document.getElementById('phase-2-status-badge');
+    const subjectDisplay = document.getElementById('phase-3-subject-display');
+    const llmSubject = document.getElementById('rag-collection-llm-subject');
+    
+    console.log('[RAG unlockPhase3] Phase 3 section found:', !!phase3Section);
+    if (phase3Section) {
+        console.log('[RAG unlockPhase3] Removing hidden, opacity-50, pointer-events-none');
+        phase3Section.classList.remove('hidden', 'opacity-50', 'pointer-events-none');
+        console.log('[RAG unlockPhase3] Phase 3 section classes after:', phase3Section.className);
+        phase3Section.querySelector('.w-8').classList.remove('bg-gray-600', 'text-gray-400');
+        phase3Section.querySelector('.w-8').classList.add('bg-teradata-orange', 'text-white');
+    }
+    
+    if (phase3Indicator) {
+        phase3Indicator.classList.remove('opacity-50');
+        phase3Indicator.querySelector('.w-8').classList.remove('bg-gray-600', 'text-gray-400');
+        phase3Indicator.querySelector('.w-8').classList.add('bg-teradata-orange', 'text-white');
+        phase3Indicator.querySelector('.text-sm').classList.remove('text-gray-400');
+        phase3Indicator.querySelector('.text-sm').classList.add('text-white');
+    }
+    
+    // Show Phase 2 completion badge
+    if (phase2StatusBadge) {
+        phase2StatusBadge.classList.remove('hidden');
+    }
+    
+    // Update subject display in Phase 3
+    if (subjectDisplay && llmSubject) {
+        subjectDisplay.textContent = llmSubject.value || 'your specified subject';
+    }
+}
+
+/**
+ * Load template configuration for LLM auto-generation informative fields
+ */
+async function loadLlmTemplateInfo() {
+    const contextToolInput = document.getElementById('rag-collection-llm-context-tool');
+    const mcpToolInput = document.getElementById('rag-collection-llm-mcp-tool');
+    
+    if (!contextToolInput || !mcpToolInput) return;
+    
+    try {
+        const response = await fetch('/api/v1/rag/templates/sql_query_v1/config');
+        if (response.ok) {
+            const result = await response.json();
+            if (result.status === 'success' && result.config) {
+                contextToolInput.value = result.config.mcp_prompt_context_generator || 'base_databaseBusinessDesc';
+                mcpToolInput.value = result.config.default_mcp_tool || 'base_readQuery';
+            } else {
+                contextToolInput.value = 'base_databaseBusinessDesc';
+                mcpToolInput.value = 'base_readQuery';
+            }
+        } else {
+            contextToolInput.value = 'base_databaseBusinessDesc';
+            mcpToolInput.value = 'base_readQuery';
+        }
+    } catch (error) {
+        console.error('Error loading template info for LLM:', error);
+        contextToolInput.value = 'base_databaseBusinessDesc';
+        mcpToolInput.value = 'base_readQuery';
+    }
+}
+
+/**
+ * Test the MCP Prompt Context Generator
+ */
+// Global variable to store generated database context
+let generatedDatabaseContext = null;
+
+/**
+ * Create database context (Phase 2 - mandatory step)
+ */
+async function createDatabaseContext() {
+    const createContextBtn = document.getElementById('rag-collection-llm-create-context');
+    const contextResult = document.getElementById('rag-collection-context-result');
+    const contextContent = document.getElementById('rag-collection-context-content');
+    const contextTitle = document.getElementById('rag-collection-context-title');
+    
+    if (!createContextBtn || !contextResult || !contextContent) return;
+    
+    // Get the MCP server selection
+    const mcpServerSelect = document.getElementById('rag-collection-mcp-server');
+    const mcpServerId = mcpServerSelect?.value?.trim();
+    
+    if (!mcpServerId) {
+        contextTitle.textContent = 'Database Context Error';
+        contextContent.textContent = 'Error: Please select an MCP server first.';
+        contextResult.classList.remove('hidden');
+        return;
+    }
+    
+    // Get the database name and context generator prompt name
+    const databaseName = ragCollectionLlmDb?.value?.trim();
+    const contextToolInput = document.getElementById('rag-collection-llm-context-tool');
+    const promptName = contextToolInput?.value?.trim() || 'base_databaseBusinessDesc';
+    
+    if (!databaseName) {
+        contextTitle.textContent = 'Database Context Error';
+        contextContent.textContent = 'Error: Please enter a database name first.';
+        contextResult.classList.remove('hidden');
+        return;
+    }
+    
+    // Show loading state
+    const originalText = createContextBtn.textContent;
+    createContextBtn.disabled = true;
+    createContextBtn.innerHTML = `
+        <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Creating...
+    `;
+    
+    try {
+        // Execute the prompt with the LLM
+        const response = await fetch(`/api/v1/prompts/${promptName}/execute`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                arguments: {
+                    database_name: databaseName
+                }
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to execute prompt: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        console.log('[RAG Phase 2] Backend response keys:', Object.keys(result));
+        console.log('[RAG Phase 2] Has response_text:', 'response_text' in result);
+        console.log('[RAG Phase 2] response_text value:', result.response_text ? `${result.response_text.length} chars` : 'EMPTY/NULL');
+        
+        contextTitle.textContent = 'Database Context Generated ✓';
+        if (result.status === 'success' && result.response) {
+            // Use the clean text response from backend (without HTML formatting)
+            const cleanContext = result.response_text || result.response;
+            
+            // Store the clean context globally for Phase 3
+            generatedDatabaseContext = cleanContext;
+            console.log('[RAG Phase 2] Database context generated');
+            console.log('[RAG Phase 2] HTML length:', result.response.length, 'Clean text length:', cleanContext.length);
+            console.log('[RAG Phase 2] Clean context preview:', cleanContext.substring(0, 500));
+            
+            // Display the full HTML response in UI for user viewing
+            contextContent.textContent = result.response;
+            contextResult.classList.remove('hidden');
+            
+            // SUCCESS: Unlock Phase 3
+            console.log('[RAG Phase 2] Unlocking Phase 3...');
+            unlockPhase3();
+            console.log('[RAG Phase 2] Phase 3 unlocked, generatedDatabaseContext is:', generatedDatabaseContext ? 'SET' : 'NULL');
+            showNotification('success', 'Database context created successfully! You can now proceed to Phase 3.');
+        } else {
+            contextContent.textContent = `Error: ${result.message || 'Failed to execute prompt'}`;
+            contextResult.classList.remove('hidden');
+            showNotification('error', 'Failed to create database context');
+        }
+        
+    } catch (error) {
+        console.error('Error creating database context:', error);
+        contextTitle.textContent = 'Database Context Error';
+        contextContent.textContent = `Error: ${error.message}`;
+        contextResult.classList.remove('hidden');
+        showNotification('error', `Context creation failed: ${error.message}`);
+    } finally {
+        // Restore button state
+        createContextBtn.disabled = false;
+        createContextBtn.innerHTML = originalText;
+    }
+}
+
+/**
+ * Generate question/SQL pairs (Phase 3)
+ */
+async function generateQuestions() {
+    console.log('[RAG Phase 3] Generate questions called');
+    console.log('[RAG Phase 3] Button exists:', !!ragCollectionGenerateQuestionsBtn);
+    console.log('[RAG Phase 3] Context exists:', !!generatedDatabaseContext);
+    console.log('[RAG Phase 3] Context length:', generatedDatabaseContext ? generatedDatabaseContext.length : 0);
+    
+    if (!ragCollectionGenerateQuestionsBtn || !generatedDatabaseContext) {
+        console.error('[RAG Phase 3] Missing requirements - button:', !!ragCollectionGenerateQuestionsBtn, 'context:', !!generatedDatabaseContext);
+        showNotification('error', 'Please complete Phase 2 (Create Context) first');
+        return;
+    }
+    
+    const subject = ragCollectionLlmSubject?.value?.trim();
+    const count = ragCollectionLlmCount?.value || 5;
+    const database = ragCollectionLlmDb?.value?.trim();
+    
+    if (!subject) {
+        showNotification('error', 'Please enter a subject/topic');
+        return;
+    }
+    
+    if (!database) {
+        showNotification('error', 'Please select a database');
+        return;
+    }
+    
+    // Show loading state
+    const originalText = ragCollectionGenerateQuestionsBtn.textContent;
+    ragCollectionGenerateQuestionsBtn.disabled = true;
+    ragCollectionGenerateQuestionsBtn.innerHTML = `
+        <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Generating...
+    `;
+    
+    try {
+        showNotification('info', `Generating ${count} question/SQL pairs for "${subject}"...`);
+        
+        // Call backend endpoint to generate questions
+        const response = await fetch('/api/v1/rag/generate-questions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-TDA-User-UUID': window.TDA_USER_UUID || 'default-user'
+            },
+            body: JSON.stringify({
+                subject: subject,
+                count: parseInt(count),
+                database_context: generatedDatabaseContext,
+                database_name: database
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'error') {
+            throw new Error(result.message || 'Failed to generate questions');
+        }
+        
+        if (!result.questions || result.questions.length === 0) {
+            throw new Error('No questions were generated');
+        }
+        
+        // Display the generated questions
+        displayGeneratedQuestions(result.questions);
+        showNotification('success', `Generated ${result.questions.length} question/SQL pairs successfully!`);
+        
+    } catch (error) {
+        console.error('Error generating questions:', error);
+        showNotification('error', `Failed to generate questions: ${error.message}`);
+    } finally {
+        // Restore button state
+        ragCollectionGenerateQuestionsBtn.disabled = false;
+        ragCollectionGenerateQuestionsBtn.innerHTML = originalText;
+    }
+}
+
+/**
+ * Display generated question/SQL pairs
+ */
+function displayGeneratedQuestions(questions) {
+    if (!ragCollectionQuestionsResult || !ragCollectionQuestionsContent || !ragCollectionQuestionsCount) return;
+    
+    // Update count badge
+    ragCollectionQuestionsCount.textContent = `${questions.length} pairs`;
+    
+    // Clear previous content
+    ragCollectionQuestionsContent.innerHTML = '';
+    
+    // Add each question/SQL pair
+    questions.forEach((item, index) => {
+        const pairDiv = document.createElement('div');
+        pairDiv.className = 'bg-gray-700/50 rounded-lg p-3 border border-gray-600';
+        pairDiv.innerHTML = `
+            <div class="flex items-start justify-between mb-2">
+                <span class="text-xs font-semibold text-blue-400">Pair ${index + 1}</span>
+            </div>
+            <div class="space-y-2">
+                <div>
+                    <label class="text-xs text-gray-400">Question:</label>
+                    <p class="text-sm text-gray-200 mt-1">${item.question}</p>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">SQL:</label>
+                    <pre class="text-xs text-green-300 bg-gray-900 rounded p-2 mt-1 overflow-x-auto">${item.sql}</pre>
+                </div>
+            </div>
+        `;
+        ragCollectionQuestionsContent.appendChild(pairDiv);
+    });
+    
+    // Show the result section
+    ragCollectionQuestionsResult.classList.remove('hidden');
+    
+    // Mark Phase 3 as completed
+    const phase3StatusBadge = document.getElementById('phase-3-status-badge');
+    if (phase3StatusBadge) {
+        phase3StatusBadge.classList.remove('hidden');
+    }
+}
+
+/**
+ * Preview the generation prompt template
+ */
+function previewGenerationPrompt() {
+    if (!ragCollectionLlmPreviewBtn || !ragCollectionContextResult || !ragCollectionContextContent || !ragCollectionContextTitle) return;
+    
+    // Get form values
+    const subject = ragCollectionLlmSubject?.value?.trim() || '';
+    const count = ragCollectionLlmCount?.value?.trim() || '5';
+    const databaseName = ragCollectionLlmDb?.value?.trim() || '';
+    
+    // Validation
+    if (!subject) {
+        ragCollectionContextTitle.textContent = 'Preview Generation Prompt';
+        ragCollectionContextContent.textContent = 'Error: Please enter a subject first.';
+        ragCollectionContextResult.classList.remove('hidden');
+        return;
+    }
+    
+    // Build the prompt template
+    const promptTemplate = `You are an expert SQL analyst and database designer. Your task is to generate realistic question/SQL query pairs for a RAG (Retrieval Augmented Generation) system.
+
+**Context:**
+{database_context}
+
+**Target Audience:** ${subject}
+
+**Task:** Generate exactly ${count} question/SQL query pairs that would be relevant for the target audience described above.
+
+**Requirements:**
+1. Each question should be a natural language question that someone from the target audience would realistically ask
+2. Each SQL query must:
+   - Be valid SQL syntax
+   - Use tables and columns from the database context provided above
+   - Actually answer the question asked
+   - Be optimized and follow best practices
+3. Questions should cover a diverse range of use cases for the target audience
+${databaseName ? `4. All queries must use the database: ${databaseName}` : ''}
+
+**Output Format:**
+Return ONLY a valid JSON array with no additional text or markdown. Each object should have exactly two fields:
+[
+  {
+    "question": "Natural language question here",
+    "sql": "SELECT ... FROM ... WHERE ..."
+  },
+  ...
+]
+
+Generate ${count} question/SQL pairs now.`;
+    
+    // Display the template
+    ragCollectionContextTitle.textContent = 'Generation Prompt Template';
+    ragCollectionContextContent.textContent = promptTemplate;
+    ragCollectionContextResult.classList.remove('hidden');
 }
 
 /**
@@ -1418,6 +1857,29 @@ if (ragCollectionTemplateAddExample) {
     ragCollectionTemplateAddExample.addEventListener('click', addCollectionTemplateExample);
 }
 
+// Event Listeners for LLM Preview and Create Context
+if (ragCollectionLlmPreviewBtn) {
+    ragCollectionLlmPreviewBtn.addEventListener('click', previewGenerationPrompt);
+}
+
+if (ragCollectionLlmCreateContextBtn) {
+    ragCollectionLlmCreateContextBtn.addEventListener('click', createDatabaseContext);
+}
+
+// Close button for context result
+if (ragCollectionContextClose) {
+    ragCollectionContextClose.addEventListener('click', () => {
+        if (ragCollectionContextResult) {
+            ragCollectionContextResult.classList.add('hidden');
+        }
+    });
+}
+
+// Event Listener for Generate Questions button
+if (ragCollectionGenerateQuestionsBtn) {
+    ragCollectionGenerateQuestionsBtn.addEventListener('click', generateQuestions);
+}
+
 // Event Listeners for SQL Template Modal
 if (sqlTemplateModalClose) {
     sqlTemplateModalClose.addEventListener('click', closeSqlTemplateModal);
@@ -1444,11 +1906,13 @@ async function editSqlTemplate() {
         if (result.status === 'success' && result.config) {
             // Populate form with loaded values
             document.getElementById('template-default-mcp-tool').value = result.config.default_mcp_tool || 'base_executeRawSQLStatement';
+            document.getElementById('template-default-mcp-context-prompt').value = result.config.default_mcp_context_prompt || 'base_tableBusinessDesc';
             document.getElementById('template-input-tokens').value = result.config.estimated_input_tokens || 150;
             document.getElementById('template-output-tokens').value = result.config.estimated_output_tokens || 180;
         } else {
             // Use defaults if load fails
             document.getElementById('template-default-mcp-tool').value = 'base_executeRawSQLStatement';
+            document.getElementById('template-default-mcp-context-prompt').value = 'base_tableBusinessDesc';
             document.getElementById('template-input-tokens').value = 150;
             document.getElementById('template-output-tokens').value = 180;
         }
@@ -1457,6 +1921,7 @@ async function editSqlTemplate() {
         showNotification('Failed to load template configuration', 'error');
         // Use defaults
         document.getElementById('template-default-mcp-tool').value = 'base_executeRawSQLStatement';
+        document.getElementById('template-default-mcp-context-prompt').value = 'base_tableBusinessDesc';
         document.getElementById('template-input-tokens').value = 150;
         document.getElementById('template-output-tokens').value = 180;
     }
@@ -1498,12 +1963,18 @@ async function handleTemplateEditorSubmit(event) {
     
     // Get form values
     const defaultMcpTool = document.getElementById('template-default-mcp-tool').value;
+    const defaultMcpContextPrompt = document.getElementById('template-default-mcp-context-prompt').value;
     const inputTokens = parseInt(document.getElementById('template-input-tokens').value) || 150;
     const outputTokens = parseInt(document.getElementById('template-output-tokens').value) || 180;
     
     // Validate
     if (!defaultMcpTool.trim()) {
         showNotification('Default MCP tool name cannot be empty', 'error');
+        return;
+    }
+    
+    if (!defaultMcpContextPrompt.trim()) {
+        showNotification('Default MCP context prompt cannot be empty', 'error');
         return;
     }
     
@@ -1514,6 +1985,7 @@ async function handleTemplateEditorSubmit(event) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 default_mcp_tool: defaultMcpTool,
+                default_mcp_context_prompt: defaultMcpContextPrompt,
                 estimated_input_tokens: inputTokens,
                 estimated_output_tokens: outputTokens
             })

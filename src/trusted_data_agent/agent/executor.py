@@ -1122,10 +1122,10 @@ class PlanExecutor:
         self._log_system_event(event_data, "llm_thought")
         yield self._format_sse(event_data, "llm_thought")
 
-        # --- MODIFICATION START: Use self.current_turn_number ---
-        # Remove the separate, buggy calculation and use the instance variable
+        # --- MODIFICATION START: Include both HTML and clean text in response ---
         yield self._format_sse({
             "final_answer": final_html,
+            "final_answer_text": self.final_summary_text,  # Clean text for LLM consumption
             "tts_payload": tts_payload,
             "source": self.source,
             "turn_id": self.current_turn_number # Use the authoritative instance variable

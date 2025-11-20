@@ -1734,6 +1734,14 @@
                                    placeholder="base_executeRawSQLStatement">
                             <p class="text-xs text-gray-400 mt-1">Default tool for SQL execution (can be overridden per case)</p>
                         </div>
+                        <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Default MCP Context Prompt</label>
+                            <input type="text" id="template-default-mcp-context-prompt" 
+                                   value="base_tableBusinessDesc"
+                                   class="w-full p-2 bg-gray-600 border border-gray-500 rounded-md focus:ring-2 focus:ring-teradata-orange outline-none text-white text-sm"
+                                   placeholder="base_tableBusinessDesc">
+                            <p class="text-xs text-gray-400 mt-1">Default prompt for gathering database context during auto-generation</p>
+                        </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
                                 <label class="block text-sm font-medium text-gray-300 mb-2">Estimated Input Tokens</label>

@@ -191,6 +191,9 @@ class RAGTemplateManager:
         if "mcp_tool_name" in input_vars:
             editable_config["default_mcp_tool"] = input_vars["mcp_tool_name"].get("default")
         
+        if "mcp_context_prompt" in input_vars:
+            editable_config["default_mcp_context_prompt"] = input_vars["mcp_context_prompt"].get("default")
+        
         return editable_config
     
     def update_template_config(self, template_id: str, config: Dict[str, Any]):

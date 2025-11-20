@@ -50,6 +50,13 @@
       "description": "MCP tool to use for SQL execution",
       "placeholder": "base_readQuery",
       "default": "base_readQuery"
+    },
+    "mcp_context_prompt": {
+      "type": "string",
+      "required": false,
+      "description": "MCP prompt to use for gathering database context during auto-generation",
+      "placeholder": "base_tableBusinessDesc",
+      "default": "base_tableBusinessDesc"
     }
   },
   "output_configuration": {

@@ -9,7 +9,7 @@ import copy # --- MODIFICATION START: Import copy ---
 
 # --- MODIFICATION START: Import generate_task_id ---
 from quart import Blueprint, current_app, jsonify, request, abort
-from trusted_data_agent.core.utils import generate_task_id
+from trusted_data_agent.core.utils import generate_task_id, _get_prompt_info
 # --- MODIFICATION END ---
 
 from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
@@ -18,6 +18,8 @@ from trusted_data_agent.agent import execution_service
 from trusted_data_agent.core import configuration_service
 
 from trusted_data_agent.agent.executor import PlanExecutor
+from langchain_mcp_adapters.prompts import load_mcp_prompt
+from trusted_data_agent.llm import handler as llm_handler
 
 rest_api_bp = Blueprint('rest_api', __name__)
 app_logger = logging.getLogger("quart.app") # Use quart logger
@@ -47,6 +49,373 @@ def _sanitize_for_json(obj):
         return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', obj)
     else:
         return obj
+
+
+@rest_api_bp.route("/v1/prompts/<prompt_name>/execute", methods=["POST"])
+async def execute_prompt(prompt_name: str):
+    """
+    Execute an MCP prompt with the LLM and return the response.
+    
+    Request body:
+    {
+        "arguments": {"database": "mydb", ...}  // Optional prompt arguments
+    }
+    
+    Returns:
+    {
+        "status": "success",
+        "prompt_text": "<rendered prompt>",
+        "response": "<LLM response>",
+        "input_tokens": 123,
+        "output_tokens": 456
+    }
+    """
+    try:
+        mcp_client = APP_STATE.get("mcp_client")
+        if not mcp_client:
+            return jsonify({
+                "status": "error",
+                "message": "MCP client not configured"
+            }), 400
+
+        server_name = APP_CONFIG.CURRENT_MCP_SERVER_NAME
+        if not server_name:
+            return jsonify({
+                "status": "error",
+                "message": "MCP server not configured"
+            }), 400
+            
+        llm_instance = APP_STATE.get('llm')
+        if not llm_instance:
+            return jsonify({
+                "status": "error",
+                "message": "LLM not configured"
+            }), 400
+
+        # Get arguments from request body
+        data = await request.get_json() or {}
+        user_arguments = data.get('arguments', {})
+        
+        # Get prompt definition to know all expected arguments
+        prompt_info = _get_prompt_info(prompt_name)
+        prompt_arguments = {}
+        
+        if prompt_info and prompt_info.get("arguments"):
+            # Build complete argument set - MCP server may require all arguments
+            for arg in prompt_info["arguments"]:
+                arg_name = arg.get("name")
+                if arg_name:
+                    if arg_name in user_arguments:
+                        # Use user-provided value
+                        prompt_arguments[arg_name] = user_arguments[arg_name]
+                    elif arg.get("required"):
+                        # Required argument missing
+                        return jsonify({
+                            "status": "error",
+                            "message": f"Required argument '{arg_name}' is missing"
+                        }), 400
+                    else:
+                        # Optional argument - use placeholder or empty string
+                        prompt_arguments[arg_name] = ""
+        else:
+            # No argument definition found, use what user provided
+            prompt_arguments = user_arguments
+        
+        # Load the prompt with arguments
+        app_logger.info(f"Executing prompt '{prompt_name}' with server '{server_name}' and arguments: {prompt_arguments}")
+        
+        try:
+            async with mcp_client.session(server_name) as temp_session:
+                if prompt_arguments:
+                    prompt_obj = await load_mcp_prompt(
+                        temp_session, name=prompt_name, arguments=prompt_arguments
+                    )
+                else:
+                    prompt_obj = await temp_session.get_prompt(name=prompt_name)
+        except Exception as e:
+            app_logger.error(f"Failed to load prompt '{prompt_name}' from MCP server: {e}", exc_info=True)
+            return jsonify({
+                "status": "error",
+                "message": f"Failed to load prompt from MCP server: {str(e)}"
+            }), 500
+        
+        if not prompt_obj:
+            return jsonify({
+                "status": "error",
+                "message": f"Prompt '{prompt_name}' not found"
+            }), 404
+        
+        # Extract prompt text (reuse existing logic from planner.py)
+        prompt_text = ""
+        if isinstance(prompt_obj, str):
+            prompt_text = prompt_obj
+        elif (isinstance(prompt_obj, list) and len(prompt_obj) > 0 and 
+              hasattr(prompt_obj[0], 'content')):
+            if isinstance(prompt_obj[0].content, str):
+                prompt_text = prompt_obj[0].content
+            elif hasattr(prompt_obj[0].content, 'text'):
+                prompt_text = prompt_obj[0].content.text
+        elif (hasattr(prompt_obj, 'messages') and 
+              isinstance(prompt_obj.messages, list) and 
+              len(prompt_obj.messages) > 0 and 
+              hasattr(prompt_obj.messages[0], 'content') and 
+              hasattr(prompt_obj.messages[0].content, 'text')):
+            prompt_text = prompt_obj.messages[0].content.text
+        elif hasattr(prompt_obj, 'text') and isinstance(prompt_obj.text, str):
+            prompt_text = prompt_obj.text
+            
+        if not prompt_text:
+            return jsonify({
+                "status": "error",
+                "message": "Could not extract text from prompt"
+            }), 500
+        
+        # Log the rendered prompt for debugging
+        app_logger.info(f"Rendered prompt text (first 200 chars):\n{prompt_text[:200]}")
+        app_logger.info(f"Arguments passed: {prompt_arguments}")
+        
+        # Create a temporary session and use the agent execution service
+        # This ensures tools are properly registered and execution is autonomous
+        temp_user_uuid = "api-prompt-executor"
+        llm_instance = APP_STATE.get("llm")
+        
+        temp_session_id = session_manager.create_session(
+            user_uuid=temp_user_uuid,
+            provider=APP_CONFIG.CURRENT_PROVIDER,
+            llm_instance=llm_instance,
+            charting_intensity="medium"
+        )
+        
+        app_logger.info(f"Executing MCP prompt '{prompt_name}' via agent execution service with temp session: {temp_session_id}")
+        
+        # Create a dummy event handler for API calls (no SSE needed)
+        async def dummy_event_handler(data, event_type):
+            app_logger.debug(f"Prompt execution event: {event_type}")
+        
+        # Execute using the agent execution service which handles tool registration properly
+        result_payload = await execution_service.run_agent_execution(
+            user_uuid=temp_user_uuid,
+            session_id=temp_session_id,
+            user_input=prompt_text,
+            event_handler=dummy_event_handler,  # Provide dummy handler instead of None
+            source='prompt_library'  # Indicates this is a prompt execution
+        )
+        
+        # Extract response and tokens from result
+        response_html = result_payload.get('final_answer', '')
+        response_text = result_payload.get('final_answer_text', '')  # Clean text without HTML
+        input_tokens = result_payload.get('total_input_tokens', 0)
+        output_tokens = result_payload.get('total_output_tokens', 0)
+        actual_provider = APP_CONFIG.CURRENT_PROVIDER
+        actual_model = APP_CONFIG.CURRENT_MODEL
+        
+        # Clean up the temporary session
+        try:
+            session_manager.delete_session(temp_user_uuid, temp_session_id)
+            app_logger.debug(f"Deleted temp session {temp_session_id}")
+        except Exception as e:
+            app_logger.warning(f"Failed to delete temp session {temp_session_id}: {e}")
+        
+        app_logger.info(f"Prompt '{prompt_name}' executed successfully. Tokens: in={input_tokens}, out={output_tokens}")
+        
+        return jsonify({
+            "status": "success",
+            "prompt_text": prompt_text,
+            "response": response_html,  # HTML formatted response for display
+            "response_text": response_text,  # Clean text for LLM consumption
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "provider": actual_provider,
+            "model": actual_model
+        })
+        
+    except Exception as e:
+        app_logger.error(f"Error executing prompt '{prompt_name}': {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@rest_api_bp.route("/v1/rag/generate-questions", methods=["POST"])
+async def generate_rag_questions():
+    """
+    Generate question/SQL pairs for RAG collection population.
+    
+    Request body:
+    {
+        "subject": "sales analysis",
+        "count": 5,
+        "database_context": "...",  // Output from Phase 2 (database context)
+        "database_name": "fitness_db"
+    }
+    
+    Returns:
+    {
+        "status": "success",
+        "questions": [
+            {"question": "What are...", "sql": "SELECT..."},
+            ...
+        ],
+        "count": 5
+    }
+    """
+    try:
+        # Get configuration
+        mcp_client = APP_STATE.get("mcp_client")
+        if not mcp_client:
+            return jsonify({
+                "status": "error",
+                "message": "MCP client not configured"
+            }), 400
+
+        llm_instance = APP_STATE.get('llm')
+        if not llm_instance:
+            return jsonify({
+                "status": "error",
+                "message": "LLM not configured"
+            }), 400
+
+        # Get parameters from request
+        data = await request.get_json() or {}
+        subject = data.get('subject', '').strip()
+        count = int(data.get('count', 5))
+        database_context = data.get('database_context', '').strip()
+        database_name = data.get('database_name', '').strip()
+        
+        if not subject:
+            return jsonify({
+                "status": "error",
+                "message": "Subject is required"
+            }), 400
+            
+        if not database_context:
+            return jsonify({
+                "status": "error",
+                "message": "Database context is required (run Phase 2 first)"
+            }), 400
+            
+        if not database_name:
+            return jsonify({
+                "status": "error",
+                "message": "Database name is required"
+            }), 400
+        
+        # Construct the prompt for generating questions
+        prompt_text = f"""You are a SQL expert helping to generate test questions and queries for a RAG system.
+
+Based on the following database context, generate {count} diverse, interesting business questions about "{subject}" along with the SQL queries that would answer them.
+
+Database Context:
+{database_context}
+
+Requirements:
+1. Generate EXACTLY {count} question/SQL pairs
+2. Questions should be natural language business questions about {subject}
+3. SQL queries must be valid for the database schema shown above
+4. Questions should vary in complexity (simple to advanced)
+5. Use the database name "{database_name}" in your queries
+6. Return your response as a valid JSON array with this exact structure:
+[
+  {{
+    "question": "What is the total revenue by product category?",
+    "sql": "SELECT ProductType, SUM(Price * StockQuantity) as TotalValue FROM {database_name}.Products GROUP BY ProductType;"
+  }},
+  ...
+]
+
+IMPORTANT: Your entire response must be ONLY the JSON array, with no other text before or after."""
+
+        # Create temporary session for execution
+        temp_user_uuid = "api-question-generator"
+        temp_session_id = session_manager.create_session(
+            user_uuid=temp_user_uuid,
+            provider=APP_CONFIG.CURRENT_PROVIDER,
+            llm_instance=llm_instance,
+            charting_intensity="medium"
+        )
+        
+        app_logger.info(f"Generating {count} RAG questions for subject '{subject}' in database '{database_name}'")
+        
+        # Create a dummy event handler for API calls
+        async def dummy_event_handler(data, event_type):
+            app_logger.debug(f"Question generation event: {event_type}")
+        
+        # Execute using the agent execution service
+        result_payload = await execution_service.run_agent_execution(
+            user_uuid=temp_user_uuid,
+            session_id=temp_session_id,
+            user_input=prompt_text,
+            event_handler=dummy_event_handler,
+            source='rag_question_generator'
+        )
+        
+        # Extract response
+        response_text = result_payload.get('final_answer', '')
+        input_tokens = result_payload.get('total_input_tokens', 0)
+        output_tokens = result_payload.get('total_output_tokens', 0)
+        
+        # Clean up the temporary session
+        try:
+            session_manager.delete_session(temp_user_uuid, temp_session_id)
+        except Exception as e:
+            app_logger.warning(f"Failed to delete temp session {temp_session_id}: {e}")
+        
+        # Parse the JSON response
+        try:
+            # Try to extract JSON if wrapped in markdown code blocks
+            json_text = response_text.strip()
+            if json_text.startswith('```json'):
+                json_text = json_text[7:]  # Remove ```json
+            elif json_text.startswith('```'):
+                json_text = json_text[3:]  # Remove ```
+            if json_text.endswith('```'):
+                json_text = json_text[:-3]  # Remove trailing ```
+            json_text = json_text.strip()
+            
+            questions = json.loads(json_text)
+            
+            if not isinstance(questions, list):
+                raise ValueError("Response is not a JSON array")
+            
+            # Validate structure
+            for q in questions:
+                if not isinstance(q, dict) or 'question' not in q or 'sql' not in q:
+                    raise ValueError("Invalid question structure")
+            
+            app_logger.info(f"Successfully generated {len(questions)} question/SQL pairs")
+            
+            return jsonify({
+                "status": "success",
+                "questions": questions,
+                "count": len(questions),
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens
+            })
+            
+        except json.JSONDecodeError as e:
+            app_logger.error(f"Failed to parse LLM response as JSON: {e}")
+            app_logger.error(f"Response was: {response_text[:500]}")
+            return jsonify({
+                "status": "error",
+                "message": "LLM did not return valid JSON",
+                "raw_response": response_text[:1000]
+            }), 500
+        except ValueError as e:
+            app_logger.error(f"Invalid question structure: {e}")
+            return jsonify({
+                "status": "error",
+                "message": str(e),
+                "raw_response": response_text[:1000]
+            }), 500
+        
+    except Exception as e:
+        app_logger.error(f"Error generating RAG questions: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
 
 @rest_api_bp.route("/v1/configure", methods=["POST"])
 async def configure_services_rest():
