@@ -1,0 +1,18 @@
+{
+  "registry_version": "1.0.0",
+  "last_updated": "2025-11-20T00:00:00Z",
+  "templates": [
+    {
+      "template_id": "sql_query_v1",
+      "template_file": "sql_query_v1.json",
+      "status": "active",
+      "display_order": 1
+    }
+  ],
+  "template_status_definitions": {
+    "active": "Template is ready for use",
+    "beta": "Template is available but still being tested",
+    "deprecated": "Template is being phased out",
+    "draft": "Template is not yet available"
+  }
+}

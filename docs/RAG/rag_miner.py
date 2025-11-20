@@ -82,25 +82,34 @@ class SessionMiner:
         if self.force_reprocess:
             logger.info("Force reprocess is enabled. Backing up feedback scores before clearing...")
             
-            # Backup existing feedback scores
+            # Backup existing feedback scores from all collection directories
             feedback_backup = {}
-            for old_case in self.output_dir.glob("case_*.json"):
-                try:
-                    with open(old_case, 'r', encoding='utf-8') as f:
-                        case_data = json.load(f)
-                    case_id = case_data.get('case_id')
-                    feedback_score = case_data.get('metadata', {}).get('user_feedback_score', 0)
-                    if feedback_score != 0:  # Only backup non-zero feedback
-                        feedback_backup[case_id] = feedback_score
-                        logger.info(f"Backed up feedback for case {case_id}: {feedback_score}")
-                except Exception as e:
-                    logger.warning(f"Failed to backup feedback from {old_case.name}: {e}")
+            for collection_dir in self.output_dir.glob("collection_*"):
+                if collection_dir.is_dir():
+                    for old_case in collection_dir.glob("case_*.json"):
+                        try:
+                            with open(old_case, 'r', encoding='utf-8') as f:
+                                case_data = json.load(f)
+                            case_id = case_data.get('case_id')
+                            feedback_score = case_data.get('metadata', {}).get('user_feedback_score', 0)
+                            if feedback_score != 0:  # Only backup non-zero feedback
+                                feedback_backup[case_id] = feedback_score
+                                logger.info(f"Backed up feedback for case {case_id}: {feedback_score}")
+                        except Exception as e:
+                            logger.warning(f"Failed to backup feedback from {old_case.name}: {e}")
             
             logger.info(f"Backed up {len(feedback_backup)} feedback scores")
             
-            # Clear output directory
-            for old_case in self.output_dir.glob("case_*.json"):
-                old_case.unlink()
+            # Clear all collection directories
+            for collection_dir in self.output_dir.glob("collection_*"):
+                if collection_dir.is_dir():
+                    for old_case in collection_dir.glob("case_*.json"):
+                        old_case.unlink()
+                    # Remove empty collection directory
+                    try:
+                        collection_dir.rmdir()
+                    except OSError:
+                        pass  # Directory not empty, that's fine
             
             if chroma_cache_dir.exists():
                 logger.info(f"Flushing ChromaDB cache at {chroma_cache_dir}...")

@@ -53,6 +53,9 @@ class RAGRetriever:
         # Initialize default collection if not already in APP_STATE
         self._ensure_default_collection()
         
+        # Migrate flat structure to nested collection directories
+        self._migrate_to_nested_structure()
+        
         # Load all active collections from APP_STATE
         self._load_active_collections()
         # --- MODIFICATION END ---
@@ -90,6 +93,69 @@ class RAGRetriever:
         """Get metadata for a specific collection by ID."""
         collections_list = APP_STATE.get("rag_collections", [])
         return next((c for c in collections_list if c["id"] == collection_id), None)
+    
+    def _get_collection_dir(self, collection_id: int) -> Path:
+        """Returns the directory path for a specific collection."""
+        return self.rag_cases_dir / f"collection_{collection_id}"
+    
+    def _ensure_collection_dir(self, collection_id: int) -> Path:
+        """Ensures the collection directory exists and validates collection_id."""
+        # Validate collection exists in APP_STATE
+        if self.get_collection_metadata(collection_id) is None:
+            raise ValueError(f"Collection ID {collection_id} does not exist in APP_STATE")
+        
+        collection_dir = self._get_collection_dir(collection_id)
+        collection_dir.mkdir(parents=True, exist_ok=True)
+        return collection_dir
+    
+    def _migrate_to_nested_structure(self):
+        """One-time migration: moves flat cases into collection subdirectories based on their metadata."""
+        # Find all flat case files in root directory (not in subdirectories)
+        flat_cases = [f for f in self.rag_cases_dir.glob("case_*.json") if f.parent == self.rag_cases_dir]
+        
+        if not flat_cases:
+            logger.debug("No flat case files found to migrate.")
+            # Ensure collection_0 exists for future cases
+            collection_0_dir = self._get_collection_dir(0)
+            collection_0_dir.mkdir(parents=True, exist_ok=True)
+            return
+        
+        logger.info(f"Migrating {len(flat_cases)} cases to nested collection structure...")
+        
+        migrated_count = 0
+        for case_file in flat_cases:
+            try:
+                # Read case to get collection_id from metadata
+                with open(case_file, 'r', encoding='utf-8') as f:
+                    case_data = json.load(f)
+                
+                # Default to collection 0 for old cases without collection_id
+                collection_id = case_data.get("metadata", {}).get("collection_id", 0)
+                
+                # Update metadata to include collection_id if missing
+                if "collection_id" not in case_data.get("metadata", {}):
+                    case_data.setdefault("metadata", {})["collection_id"] = collection_id
+                    logger.debug(f"Added collection_id={collection_id} to case {case_file.name}")
+                
+                # Create collection directory
+                collection_dir = self._get_collection_dir(collection_id)
+                collection_dir.mkdir(parents=True, exist_ok=True)
+                
+                # Move file to collection directory
+                target = collection_dir / case_file.name
+                
+                # Write updated metadata and move
+                with open(target, 'w', encoding='utf-8') as f:
+                    json.dump(case_data, f, indent=2)
+                
+                # Remove old file
+                case_file.unlink()
+                migrated_count += 1
+                
+            except Exception as e:
+                logger.error(f"Failed to migrate case {case_file.name}: {e}", exc_info=True)
+        
+        logger.info(f"Migration complete: {migrated_count} cases migrated to nested structure.")
     
     def _load_active_collections(self):
         """
@@ -354,10 +420,16 @@ class RAGRetriever:
         """
         import json
         
-        # Load case study from disk
-        case_file = self.rag_cases_dir / f"case_{case_id}.json"
-        if not case_file.exists():
-            logger.warning(f"Case file not found: {case_file}")
+        # Find case file by searching all collection directories
+        case_file = None
+        for collection_id in self.collections.keys():
+            potential_file = self._get_collection_dir(collection_id) / f"case_{case_id}.json"
+            if potential_file.exists():
+                case_file = potential_file
+                break
+        
+        if not case_file:
+            logger.warning(f"Case file not found for case_id: {case_id}")
             return False
         
         try:
@@ -481,10 +553,11 @@ class RAGRetriever:
             return
         
         collection = self.collections[collection_id]
-        logger.info(f"Starting vector store maintenance for collection '{collection_id}' at {self.rag_cases_dir}...")
+        collection_dir = self._get_collection_dir(collection_id)
+        logger.info(f"Starting vector store maintenance for collection '{collection_id}' at {collection_dir}...")
         
         # 1. Get current state from disk and DB
-        disk_case_ids = {p.stem for p in self.rag_cases_dir.glob("case_*.json")}
+        disk_case_ids = {p.stem for p in collection_dir.glob("case_*.json")}
         db_results = collection.get(include=["metadatas"])
         db_case_ids = set(db_results["ids"])
         db_metadatas = {db_results["ids"][i]: meta for i, meta in enumerate(db_results["metadatas"])}
@@ -499,7 +572,7 @@ class RAGRetriever:
         added_count = 0
         updated_count = 0
         for case_id_stem in disk_case_ids:
-            case_file = self.rag_cases_dir / f"{case_id_stem}.json"
+            case_file = collection_dir / f"{case_id_stem}.json"
             try:
                 with open(case_file, 'r', encoding='utf-8') as f:
                     case_data = json.load(f)
@@ -1051,7 +1124,7 @@ class RAGRetriever:
                     logger.info(f"Successfully demoted old case {id_to_demote} in ChromaDB.")
                     
                     # Also update the JSON file on disk
-                    old_case_file = self.rag_cases_dir / f"case_{id_to_demote}.json"
+                    old_case_file = self._get_collection_dir(collection_id) / f"case_{id_to_demote}.json"
                     if old_case_file.exists():
                         try:
                             with open(old_case_file, 'r', encoding='utf-8') as f:
@@ -1067,13 +1140,13 @@ class RAGRetriever:
                 else:
                     logger.warning(f"Could not find old case {id_to_demote} to demote it.")
             
-            # 7. Save the case study JSON to disk
-            # Ensure the directory exists before writing
-            self.rag_cases_dir.mkdir(parents=True, exist_ok=True)
-            output_path = self.rag_cases_dir / f"case_{new_case_id}.json"
+            # 7. Save the case study JSON to disk in collection directory
+            # Ensure the collection directory exists before writing
+            collection_dir = self._ensure_collection_dir(collection_id)
+            output_path = collection_dir / f"case_{new_case_id}.json"
             with open(output_path, 'w', encoding='utf-8') as f:
                 json.dump(case_study, f, indent=2)
-            logger.debug(f"Saved case study JSON to disk: {output_path.name}")
+            logger.debug(f"Saved case study JSON to disk: {output_path}")
             
             # Return the case_id so it can be stored in the session
             return new_case_id

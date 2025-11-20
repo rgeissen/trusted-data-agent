@@ -84,12 +84,51 @@ const ragCollectionNameInput = document.getElementById('rag-collection-name');
 const ragCollectionMcpServerSelect = document.getElementById('rag-collection-mcp-server');
 const ragCollectionDescriptionInput = document.getElementById('rag-collection-description');
 
+// Population Method Radio Buttons
+const ragPopulationNone = document.getElementById('rag-population-none');
+const ragPopulationTemplate = document.getElementById('rag-population-template');
+const ragPopulationLlm = document.getElementById('rag-population-llm');
+const ragPopulationLlmLabel = document.getElementById('rag-population-llm-label');
+const ragPopulationLlmBadge = document.getElementById('rag-population-llm-badge');
+
+// Template Fields
+const ragCollectionTemplateOptions = document.getElementById('rag-collection-template-options');
+const ragCollectionTemplateType = document.getElementById('rag-collection-template-type');
+const ragCollectionTemplateDb = document.getElementById('rag-collection-template-db');
+const ragCollectionTemplateTool = document.getElementById('rag-collection-template-tool');
+const ragCollectionTemplateExamples = document.getElementById('rag-collection-template-examples');
+const ragCollectionTemplateAddExample = document.getElementById('rag-collection-template-add-example');
+
+// LLM Fields
+const ragCollectionLlmOptions = document.getElementById('rag-collection-llm-options');
+const ragCollectionLlmSubject = document.getElementById('rag-collection-llm-subject');
+const ragCollectionLlmCount = document.getElementById('rag-collection-llm-count');
+const ragCollectionLlmDb = document.getElementById('rag-collection-llm-db');
+
+let addCollectionExampleCounter = 0;
+
 /**
  * Open the Add RAG Collection modal
  */
-function openAddRagCollectionModal() {
+async function openAddRagCollectionModal() {
     // Populate MCP server dropdown
     populateMcpServerDropdown();
+    
+    // Check LLM configuration and enable/disable LLM option
+    await checkLlmConfiguration();
+    
+    // Reset population method to none
+    if (ragPopulationNone) {
+        ragPopulationNone.checked = true;
+    }
+    
+    // Reset and hide all population options
+    addCollectionExampleCounter = 0;
+    ragCollectionTemplateExamples.innerHTML = '';
+    ragCollectionTemplateOptions.classList.add('hidden');
+    if (ragCollectionLlmOptions) {
+        ragCollectionLlmOptions.classList.add('hidden');
+    }
     
     // Show modal with animation
     addRagCollectionModalOverlay.classList.remove('hidden');
@@ -154,8 +193,16 @@ async function handleAddRagCollection(event) {
     
     // Get form values
     const name = ragCollectionNameInput.value.trim();
-    const mcpServerId = ragCollectionMcpServerSelect.value;  // This is now the server ID
+    const mcpServerId = ragCollectionMcpServerSelect.value;
     const description = ragCollectionDescriptionInput.value.trim();
+    
+    // Determine population method
+    let populationMethod = 'none';
+    if (ragPopulationTemplate && ragPopulationTemplate.checked) {
+        populationMethod = 'template';
+    } else if (ragPopulationLlm && ragPopulationLlm.checked) {
+        populationMethod = 'llm';
+    }
     
     // Validate
     if (!name) {
@@ -168,37 +215,139 @@ async function handleAddRagCollection(event) {
         return;
     }
     
+    // Validate template examples if template population is selected
+    let templateExamples = [];
+    if (populationMethod === 'template') {
+        const exampleDivs = ragCollectionTemplateExamples.querySelectorAll('[data-add-example-id]');
+        exampleDivs.forEach(div => {
+            const exampleId = div.dataset.addExampleId;
+            const queryInput = document.getElementById(`add-example-${exampleId}-query`);
+            const sqlInput = document.getElementById(`add-example-${exampleId}-sql`);
+            
+            if (queryInput && sqlInput && queryInput.value.trim() && sqlInput.value.trim()) {
+                templateExamples.push({
+                    user_query: queryInput.value.trim(),
+                    sql_statement: sqlInput.value.trim()
+                });
+            }
+        });
+        
+        if (templateExamples.length === 0) {
+            showNotification('error', 'Please add at least one template example');
+            return;
+        }
+    }
+    
+    // Validate LLM fields if LLM population is selected
+    let llmSubject, llmCount, llmDbName;
+    if (populationMethod === 'llm') {
+        llmSubject = ragCollectionLlmSubject.value.trim();
+        llmCount = parseInt(ragCollectionLlmCount.value, 10);
+        llmDbName = ragCollectionLlmDb.value.trim();
+        
+        if (!llmSubject) {
+            showNotification('error', 'Please provide a subject/topic for LLM generation');
+            return;
+        }
+        
+        if (!llmCount || llmCount < 1 || llmCount > 20) {
+            showNotification('error', 'Number of examples must be between 1 and 20');
+            return;
+        }
+    }
+    
     // Disable submit button
     addRagCollectionSubmit.disabled = true;
-    addRagCollectionSubmit.textContent = 'Creating...';
+    const buttonText = populationMethod === 'none' ? 'Creating...' : 'Creating & Populating...';
+    addRagCollectionSubmit.textContent = buttonText;
     
     try {
-        // Call API with mcp_server_id
-        const response = await fetch('/api/v1/rag/collections', {
+        // Step 1: Create the collection
+        const createResponse = await fetch('/api/v1/rag/collections', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 name: name,
-                mcp_server_id: mcpServerId,  // Send ID instead of name
+                mcp_server_id: mcpServerId,
                 description: description || ''
             })
         });
         
-        const data = await response.json();
+        const createData = await createResponse.json();
         
-        if (response.ok) {
-            showNotification('success', `Collection "${name}" created successfully (ID: ${data.collection_id})`);
-            
-            // Close modal
-            closeAddRagCollectionModal();
-            
-            // Refresh RAG collections list
-            await loadRagCollections();
-        } else {
-            showNotification('error', `Failed to create collection: ${data.error || 'Unknown error'}`);
+        if (!createResponse.ok) {
+            showNotification('error', `Failed to create collection: ${createData.error || 'Unknown error'}`);
+            return;
         }
+        
+        const collectionId = createData.collection_id;
+        showNotification('success', `Collection "${name}" created (ID: ${collectionId})`);
+        
+        // Step 2: Populate based on selected method
+        if (populationMethod === 'template' && templateExamples.length > 0) {
+            addRagCollectionSubmit.textContent = 'Populating with template...';
+            
+            const templatePayload = {
+                template_type: 'sql_query',
+                examples: templateExamples
+            };
+            
+            const dbName = ragCollectionTemplateDb.value.trim();
+            const toolName = ragCollectionTemplateTool.value.trim();
+            
+            if (dbName) templatePayload.database_name = dbName;
+            if (toolName) templatePayload.mcp_tool_name = toolName;
+            
+            const populateResponse = await fetch(`/api/v1/rag/collections/${collectionId}/populate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(templatePayload)
+            });
+            
+            const populateData = await populateResponse.json();
+            
+            if (populateResponse.ok && populateData.status === 'success') {
+                showNotification('success', `Populated ${populateData.results.successful} cases successfully!`);
+            } else {
+                showNotification('warning', `Collection created but population failed: ${populateData.message || 'Unknown error'}`);
+            }
+        } else if (populationMethod === 'llm') {
+            addRagCollectionSubmit.textContent = 'Generating with LLM...';
+            
+            const llmPayload = {
+                subject: llmSubject,
+                count: llmCount
+            };
+            
+            if (llmDbName) {
+                llmPayload.database_name = llmDbName;
+            }
+            
+            const autoPopulateResponse = await fetch(`/api/v1/rag/collections/${collectionId}/auto-populate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(llmPayload)
+            });
+            
+            const autoPopulateData = await autoPopulateResponse.json();
+            
+            if (autoPopulateResponse.ok && autoPopulateData.status === 'success') {
+                showNotification('success', `Auto-generated ${autoPopulateData.results.successful} cases successfully!`);
+            } else {
+                showNotification('warning', `Collection created but auto-generation failed: ${autoPopulateData.message || 'Unknown error'}`);
+            }
+        }
+        
+        // Close modal and refresh
+        closeAddRagCollectionModal();
+        await loadRagCollections();
+        
     } catch (error) {
         console.error('Error creating RAG collection:', error);
         showNotification('error', 'Failed to create collection. Check console for details.');
@@ -808,6 +957,629 @@ function updateKPIDisplay(kpis) {
     if (speedWithoutEl) {
         speedWithoutEl.textContent = `${kpis.speedWithout}s`;
     }
+}
+
+// =============================================================================
+// SQL TEMPLATE POPULATOR
+// =============================================================================
+
+// Modal Elements
+const sqlTemplateModalOverlay = document.getElementById('sql-template-populator-modal-overlay');
+const sqlTemplateModalContent = document.getElementById('sql-template-populator-modal-content');
+const sqlTemplateModalClose = document.getElementById('sql-template-populator-modal-close');
+const sqlTemplateForm = document.getElementById('sql-template-populator-form');
+const sqlTemplateCancel = document.getElementById('sql-template-populator-cancel');
+const sqlTemplateSubmit = document.getElementById('sql-template-populator-submit');
+const sqlTemplateCollectionSelect = document.getElementById('sql-template-collection-select');
+const sqlTemplateExamplesContainer = document.getElementById('sql-template-examples-container');
+const sqlTemplateAddExampleBtn = document.getElementById('sql-template-add-example');
+const sqlTemplateResults = document.getElementById('sql-template-results');
+const sqlTemplateResultsContent = document.getElementById('sql-template-results-content');
+
+let exampleCounter = 0;
+
+/**
+ * Open SQL Template Populator Modal
+ */
+window.openSqlTemplatePopulator = function() {
+    // Populate collection dropdown
+    populateCollectionDropdown();
+    
+    // Reset form
+    sqlTemplateForm.reset();
+    exampleCounter = 0;
+    sqlTemplateExamplesContainer.innerHTML = '';
+    sqlTemplateResults.classList.add('hidden');
+    
+    // Add initial example
+    addSqlExample();
+    
+    // Show modal with animation
+    sqlTemplateModalOverlay.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        sqlTemplateModalOverlay.classList.remove('opacity-0');
+        sqlTemplateModalContent.classList.remove('scale-95', 'opacity-0');
+    });
+};
+
+/**
+ * Close SQL Template Populator Modal
+ */
+function closeSqlTemplateModal() {
+    sqlTemplateModalOverlay.classList.add('opacity-0');
+    sqlTemplateModalContent.classList.add('scale-95', 'opacity-0');
+    
+    setTimeout(() => {
+        sqlTemplateModalOverlay.classList.add('hidden');
+    }, 300);
+}
+
+/**
+ * Populate collection dropdown with available collections
+ */
+function populateCollectionDropdown() {
+    if (!sqlTemplateCollectionSelect) return;
+    
+    // Clear existing options (except first)
+    sqlTemplateCollectionSelect.innerHTML = '<option value="">Select a collection...</option>';
+    
+    // Get collections from state
+    const collections = state.ragCollections || [];
+    
+    collections.forEach(collection => {
+        const option = document.createElement('option');
+        option.value = collection.id;
+        option.textContent = `${collection.name} (ID: ${collection.id})`;
+        sqlTemplateCollectionSelect.appendChild(option);
+    });
+}
+
+/**
+ * Add a new SQL example row
+ */
+function addSqlExample() {
+    exampleCounter++;
+    
+    const exampleDiv = document.createElement('div');
+    exampleDiv.className = 'bg-gray-700/50 rounded-lg p-4 space-y-3';
+    exampleDiv.dataset.exampleId = exampleCounter;
+    
+    exampleDiv.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-gray-300">Example #${exampleCounter}</span>
+            <button type="button" class="text-red-400 hover:text-red-300 text-sm" onclick="removeSqlExample(${exampleCounter})">
+                Remove
+            </button>
+        </div>
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">User Question</label>
+            <input type="text" 
+                   name="example_${exampleCounter}_query" 
+                   required
+                   class="w-full p-2 bg-gray-600 border border-gray-500 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white text-sm"
+                   placeholder="e.g., Show me all users older than 25">
+        </div>
+        <div>
+            <label class="block text-xs text-gray-400 mb-1">SQL Statement</label>
+            <textarea name="example_${exampleCounter}_sql" 
+                      required
+                      rows="3"
+                      class="w-full p-2 bg-gray-600 border border-gray-500 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white text-sm font-mono resize-none"
+                      placeholder="SELECT * FROM users WHERE age > 25"></textarea>
+        </div>
+    `;
+    
+    sqlTemplateExamplesContainer.appendChild(exampleDiv);
+}
+
+/**
+ * Remove an SQL example row
+ */
+window.removeSqlExample = function(exampleId) {
+    const exampleDiv = sqlTemplateExamplesContainer.querySelector(`[data-example-id="${exampleId}"]`);
+    if (exampleDiv) {
+        exampleDiv.remove();
+    }
+    
+    // Ensure at least one example remains
+    if (sqlTemplateExamplesContainer.children.length === 0) {
+        addSqlExample();
+    }
+};
+
+/**
+ * Handle SQL template form submission
+ */
+async function handleSqlTemplateSubmit(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(sqlTemplateForm);
+    const collectionId = formData.get('collection_id');
+    const databaseName = formData.get('database_name');
+    const mcpToolName = formData.get('mcp_tool_name') || 'base_executeRawSQLStatement';
+    
+    // Collect examples
+    const examples = [];
+    const exampleDivs = sqlTemplateExamplesContainer.querySelectorAll('[data-example-id]');
+    
+    exampleDivs.forEach((div) => {
+        const exampleId = div.dataset.exampleId;
+        const query = formData.get(`example_${exampleId}_query`);
+        const sql = formData.get(`example_${exampleId}_sql`);
+        
+        if (query && sql) {
+            examples.push({
+                user_query: query.trim(),
+                sql_statement: sql.trim()
+            });
+        }
+    });
+    
+    if (examples.length === 0) {
+        showNotification('error', 'Please add at least one example');
+        return;
+    }
+    
+    // Build request payload
+    const payload = {
+        template_type: 'sql_query',
+        examples: examples
+    };
+    
+    if (databaseName) {
+        payload.database_name = databaseName;
+    }
+    
+    if (mcpToolName) {
+        payload.mcp_tool_name = mcpToolName;
+    }
+    
+    // Disable submit button
+    sqlTemplateSubmit.disabled = true;
+    sqlTemplateSubmit.textContent = 'Populating...';
+    
+    try {
+        const response = await fetch(`/api/v1/rag/collections/${collectionId}/populate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.status === 'success') {
+            // Show results
+            sqlTemplateResults.classList.remove('hidden');
+            sqlTemplateResultsContent.innerHTML = `
+                <div class="flex items-center gap-2 text-green-400">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="font-medium">Successfully populated ${result.results.successful} cases!</span>
+                </div>
+                <div class="mt-2 text-xs space-y-1">
+                    <div>Collection: ${result.results.collection_name}</div>
+                    <div>Total Examples: ${result.results.total_examples}</div>
+                    <div>Successful: ${result.results.successful}</div>
+                    <div>Failed: ${result.results.failed}</div>
+                </div>
+            `;
+            
+            if (result.results.failed > 0 && result.results.errors) {
+                const errorsList = result.results.errors.map(err => 
+                    `<li>Example ${err.example_index}: ${err.error}</li>`
+                ).join('');
+                sqlTemplateResultsContent.innerHTML += `
+                    <div class="mt-3 text-red-400">
+                        <div class="font-medium mb-1">Errors:</div>
+                        <ul class="list-disc list-inside text-xs">${errorsList}</ul>
+                    </div>
+                `;
+            }
+            
+            showNotification('success', `Successfully populated ${result.results.successful} cases`);
+            
+            // Reload collections after a delay
+            setTimeout(() => {
+                loadRagCollections();
+                closeSqlTemplateModal();
+            }, 3000);
+            
+        } else {
+            // Show error
+            const errorMessage = result.message || 'Failed to populate collection';
+            sqlTemplateResults.classList.remove('hidden');
+            sqlTemplateResultsContent.innerHTML = `
+                <div class="flex items-center gap-2 text-red-400">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="font-medium">Error: ${errorMessage}</span>
+                </div>
+            `;
+            
+            if (result.validation_issues) {
+                const issuesList = result.validation_issues.map(issue => 
+                    `<li>Example ${issue.example_index} (${issue.field}): ${issue.issue}</li>`
+                ).join('');
+                sqlTemplateResultsContent.innerHTML += `
+                    <div class="mt-2 text-xs">
+                        <div class="font-medium mb-1">Validation Issues:</div>
+                        <ul class="list-disc list-inside">${issuesList}</ul>
+                    </div>
+                `;
+            }
+            
+            showNotification('error', errorMessage);
+        }
+        
+    } catch (error) {
+        console.error('Error populating collection:', error);
+        sqlTemplateResults.classList.remove('hidden');
+        sqlTemplateResultsContent.innerHTML = `
+            <div class="flex items-center gap-2 text-red-400">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span class="font-medium">Error: ${error.message}</span>
+            </div>
+        `;
+        showNotification('error', 'Failed to populate collection');
+    } finally {
+        sqlTemplateSubmit.disabled = false;
+        sqlTemplateSubmit.textContent = 'Populate Collection';
+    }
+}
+
+// =============================================================================
+// ADD COLLECTION TEMPLATE HELPERS
+// =============================================================================
+
+/**
+ * Add example to Add Collection modal
+ */
+function addCollectionTemplateExample() {
+    addCollectionExampleCounter++;
+    
+    const exampleDiv = document.createElement('div');
+    exampleDiv.className = 'bg-gray-600/50 rounded p-3 space-y-2';
+    exampleDiv.dataset.addExampleId = addCollectionExampleCounter;
+    
+    exampleDiv.innerHTML = `
+        <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-medium text-gray-300">Example #${addCollectionExampleCounter}</span>
+            <button type="button" class="text-red-400 hover:text-red-300 text-xs" onclick="removeCollectionTemplateExample(${addCollectionExampleCounter})">
+                Remove
+            </button>
+        </div>
+        <input type="text" 
+               id="add-example-${addCollectionExampleCounter}-query"
+               class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange outline-none text-white text-xs"
+               placeholder="User question">
+        <textarea id="add-example-${addCollectionExampleCounter}-sql"
+                  rows="2"
+                  class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange outline-none text-white text-xs font-mono resize-none"
+                  placeholder="SQL statement"></textarea>
+    `;
+    
+    ragCollectionTemplateExamples.appendChild(exampleDiv);
+}
+
+/**
+ * Remove example from Add Collection modal
+ */
+window.removeCollectionTemplateExample = function(exampleId) {
+    const exampleDiv = ragCollectionTemplateExamples.querySelector(`[data-add-example-id="${exampleId}"]`);
+    if (exampleDiv) {
+        exampleDiv.remove();
+    }
+    
+    // Ensure at least one example if template is checked
+    if (ragCollectionUseTemplateCheckbox && ragCollectionUseTemplateCheckbox.checked && 
+        ragCollectionTemplateExamples.children.length === 0) {
+        addCollectionTemplateExample();
+    }
+};
+
+/**
+ * Toggle template options visibility
+ */
+/**
+ * Check if LLM is configured and enable/disable the LLM population option
+ */
+async function checkLlmConfiguration() {
+    // Check the actual backend status to see if system is configured
+    let isLlmConfigured = false;
+    
+    try {
+        const response = await fetch('/api/status');
+        if (response.ok) {
+            const status = await response.json();
+            // System must be configured (isConfigured = true from backend)
+            isLlmConfigured = status.isConfigured === true;
+        }
+    } catch (error) {
+        console.error('Failed to check configuration status:', error);
+        isLlmConfigured = false;
+    }
+    
+    if (ragPopulationLlm && ragPopulationLlmLabel && ragPopulationLlmBadge) {
+        if (isLlmConfigured) {
+            ragPopulationLlm.disabled = false;
+            ragPopulationLlmLabel.classList.remove('opacity-50', 'cursor-not-allowed');
+            ragPopulationLlmLabel.classList.add('cursor-pointer');
+            ragPopulationLlmBadge.classList.add('hidden');
+        } else {
+            ragPopulationLlm.disabled = true;
+            ragPopulationLlmLabel.classList.add('opacity-50', 'cursor-not-allowed');
+            ragPopulationLlmLabel.classList.remove('cursor-pointer');
+            ragPopulationLlmBadge.classList.remove('hidden');
+        }
+    }
+}
+
+/**
+ * Handle population method radio button changes
+ */
+async function handlePopulationMethodChange() {
+    // Hide all population options first
+    if (ragCollectionTemplateOptions) {
+        ragCollectionTemplateOptions.classList.add('hidden');
+    }
+    if (ragCollectionLlmOptions) {
+        ragCollectionLlmOptions.classList.add('hidden');
+    }
+    
+    // Show the selected population option
+    if (ragPopulationTemplate && ragPopulationTemplate.checked) {
+        ragCollectionTemplateOptions.classList.remove('hidden');
+        // Show appropriate template fields based on selection
+        await switchTemplateFields();
+        // Add initial example if none exist (only for SQL template)
+        if (ragCollectionTemplateType.value === 'sql_query' && ragCollectionTemplateExamples.children.length === 0) {
+            addCollectionTemplateExample();
+        }
+    } else if (ragPopulationLlm && ragPopulationLlm.checked) {
+        ragCollectionLlmOptions.classList.remove('hidden');
+    }
+}
+
+/**
+ * Switch template-specific fields based on selected template type
+ */
+async function switchTemplateFields() {
+    const selectedType = ragCollectionTemplateType.value;
+    
+    // Hide all template-specific field containers
+    const allTemplateFields = document.querySelectorAll('.template-fields');
+    allTemplateFields.forEach(field => field.classList.add('hidden'));
+    
+    // Show the selected template's fields
+    if (selectedType === 'sql_query') {
+        const sqlFields = document.getElementById('rag-collection-sql-template-fields');
+        if (sqlFields) sqlFields.classList.remove('hidden');
+        
+        // Load MCP tool name from template configuration
+        await loadTemplateToolName('sql_query_v1');
+    } else if (selectedType === 'api_call') {
+        const apiFields = document.getElementById('rag-collection-api-template-fields');
+        if (apiFields) apiFields.classList.remove('hidden');
+    } else if (selectedType === 'custom') {
+        const customFields = document.getElementById('rag-collection-custom-template-fields');
+        if (customFields) customFields.classList.remove('hidden');
+    }
+}
+
+/**
+ * Load MCP tool name from template configuration
+ */
+async function loadTemplateToolName(templateId) {
+    const toolInput = document.getElementById('rag-collection-template-tool');
+    if (!toolInput) return;
+    
+    try {
+        const response = await fetch(`/api/v1/rag/templates/${templateId}/config`);
+        if (response.ok) {
+            const config = await response.json();
+            if (config.mcp_tool_name) {
+                toolInput.value = config.mcp_tool_name;
+            } else {
+                toolInput.value = 'base_readQuery'; // Fallback default
+            }
+        } else {
+            console.warn('Failed to load template config, using default');
+            toolInput.value = 'base_readQuery';
+        }
+    } catch (error) {
+        console.error('Error loading template tool name:', error);
+        toolInput.value = 'base_readQuery';
+    }
+}
+
+// Event Listeners for Population Method Radio Buttons
+if (ragPopulationNone) {
+    ragPopulationNone.addEventListener('change', handlePopulationMethodChange);
+}
+if (ragPopulationTemplate) {
+    ragPopulationTemplate.addEventListener('change', handlePopulationMethodChange);
+}
+if (ragPopulationLlm) {
+    ragPopulationLlm.addEventListener('change', handlePopulationMethodChange);
+}
+
+// Event Listeners for Template Options
+if (ragCollectionTemplateType) {
+    ragCollectionTemplateType.addEventListener('change', switchTemplateFields);
+}
+
+if (ragCollectionTemplateAddExample) {
+    ragCollectionTemplateAddExample.addEventListener('click', addCollectionTemplateExample);
+}
+
+// Event Listeners for SQL Template Modal
+if (sqlTemplateModalClose) {
+    sqlTemplateModalClose.addEventListener('click', closeSqlTemplateModal);
+}
+
+// ============================================================================
+// Template Editor Functions
+// ============================================================================
+
+/**
+ * Open the Template Editor modal for SQL template
+ */
+async function editSqlTemplate() {
+    const modal = document.getElementById('template-editor-modal-overlay');
+    const content = document.getElementById('template-editor-modal-content');
+    
+    if (!modal || !content) return;
+    
+    try {
+        // Load current configuration from backend
+        const response = await fetch('/api/v1/rag/templates/sql_query_v1/config');
+        const result = await response.json();
+        
+        if (result.status === 'success' && result.config) {
+            // Populate form with loaded values
+            document.getElementById('template-default-mcp-tool').value = result.config.default_mcp_tool || 'base_executeRawSQLStatement';
+            document.getElementById('template-input-tokens').value = result.config.estimated_input_tokens || 150;
+            document.getElementById('template-output-tokens').value = result.config.estimated_output_tokens || 180;
+        } else {
+            // Use defaults if load fails
+            document.getElementById('template-default-mcp-tool').value = 'base_executeRawSQLStatement';
+            document.getElementById('template-input-tokens').value = 150;
+            document.getElementById('template-output-tokens').value = 180;
+        }
+    } catch (error) {
+        console.error('Failed to load template configuration:', error);
+        showNotification('Failed to load template configuration', 'error');
+        // Use defaults
+        document.getElementById('template-default-mcp-tool').value = 'base_executeRawSQLStatement';
+        document.getElementById('template-input-tokens').value = 150;
+        document.getElementById('template-output-tokens').value = 180;
+    }
+    
+    // Show modal with animation
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        modal.classList.remove('opacity-0');
+        content.classList.remove('scale-95', 'opacity-0');
+        content.classList.add('scale-100', 'opacity-100');
+    });
+}
+
+/**
+ * Close the Template Editor modal
+ */
+function closeTemplateEditorModal() {
+    const modal = document.getElementById('template-editor-modal-overlay');
+    const content = document.getElementById('template-editor-modal-content');
+    
+    if (!modal || !content) return;
+    
+    // Animate out
+    modal.classList.add('opacity-0');
+    content.classList.remove('scale-100', 'opacity-100');
+    content.classList.add('scale-95', 'opacity-0');
+    
+    // Hide after animation
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 200);
+}
+
+/**
+ * Handle Template Editor form submission
+ */
+async function handleTemplateEditorSubmit(event) {
+    event.preventDefault();
+    
+    // Get form values
+    const defaultMcpTool = document.getElementById('template-default-mcp-tool').value;
+    const inputTokens = parseInt(document.getElementById('template-input-tokens').value) || 150;
+    const outputTokens = parseInt(document.getElementById('template-output-tokens').value) || 180;
+    
+    // Validate
+    if (!defaultMcpTool.trim()) {
+        showNotification('Default MCP tool name cannot be empty', 'error');
+        return;
+    }
+    
+    try {
+        // Save configuration to backend
+        const response = await fetch('/api/v1/rag/templates/sql_query_v1/config', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                default_mcp_tool: defaultMcpTool,
+                estimated_input_tokens: inputTokens,
+                estimated_output_tokens: outputTokens
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            showNotification('Template configuration updated successfully', 'success');
+            closeTemplateEditorModal();
+        } else {
+            showNotification(result.message || 'Failed to update template configuration', 'error');
+        }
+    } catch (error) {
+        console.error('Failed to save template configuration:', error);
+        showNotification('Failed to save template configuration', 'error');
+    }
+}
+
+// Event Listeners for Template Editor
+const templateEditorModalClose = document.getElementById('template-editor-modal-close');
+const templateEditorCancel = document.getElementById('template-editor-cancel');
+const templateEditorForm = document.getElementById('template-editor-form');
+
+if (templateEditorModalClose) {
+    templateEditorModalClose.addEventListener('click', closeTemplateEditorModal);
+}
+
+if (templateEditorCancel) {
+    templateEditorCancel.addEventListener('click', closeTemplateEditorModal);
+}
+
+if (templateEditorForm) {
+    templateEditorForm.addEventListener('submit', handleTemplateEditorSubmit);
+}
+
+// Event Listener for Edit SQL Template Button
+const editSqlTemplateBtn = document.getElementById('edit-sql-template-btn');
+if (editSqlTemplateBtn) {
+    editSqlTemplateBtn.addEventListener('click', (event) => {
+        event.stopPropagation(); // Prevent card click from triggering
+        editSqlTemplate();
+    });
+}
+
+// Make editSqlTemplate globally available for backwards compatibility
+window.editSqlTemplate = editSqlTemplate;
+
+if (sqlTemplateCancel) {
+    sqlTemplateCancel.addEventListener('click', closeSqlTemplateModal);
+}
+
+if (sqlTemplateModalOverlay) {
+    sqlTemplateModalOverlay.addEventListener('click', (e) => {
+        if (e.target === sqlTemplateModalOverlay) {
+            closeSqlTemplateModal();
+        }
+    });
+}
+
+if (sqlTemplateAddExampleBtn) {
+    sqlTemplateAddExampleBtn.addEventListener('click', addSqlExample);
+}
+
+if (sqlTemplateForm) {
+    sqlTemplateForm.addEventListener('submit', handleSqlTemplateSubmit);
 }
 
 // Export functions for use in other modules

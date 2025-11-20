@@ -1100,6 +1100,109 @@
                         <!-- Dynamic ChromaDB collection cards will be injected here -->
                         <div class="col-span-full text-gray-400 text-sm" id="rag-maintenance-empty-hint">Loading collections...</div>
                     </div>
+
+                    <!-- Separator between Collections and Templates -->
+                    <div class="my-8 border-t border-white/10"></div>
+
+                    <!-- Templates Section -->
+                    <div class="mb-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 class="text-2xl font-bold text-white">RAG Templates</h2>
+                                <p class="text-sm text-gray-400 mt-1">Populate collections using predefined templates</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Template Cards -->
+                        <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                            <!-- SQL Query Template Card -->
+                            <div class="glass-panel rounded-xl p-6 hover:border-[#F15F22] transition-colors cursor-pointer" onclick="openSqlTemplatePopulator()">
+                                <div class="flex items-start justify-between mb-4">
+                                    <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                                        </svg>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button id="edit-sql-template-btn" 
+                                                class="p-1.5 rounded-lg bg-gray-700/50 hover:bg-gray-600 transition-colors" 
+                                                title="Edit template settings">
+                                            <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            </svg>
+                                        </button>
+                                        <span class="px-2 py-1 bg-green-500/20 text-green-400 text-xs font-medium rounded">Ready</span>
+                                    </div>
+                                </div>
+                                <h3 class="text-lg font-bold text-white mb-2">SQL Query Template</h3>
+                                <p class="text-sm text-gray-400 mb-4">Two-phase plan: Execute SQL statement and generate report</p>
+                                <div class="space-y-2 text-xs text-gray-500">
+                                    <div class="flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span>Execute SQL + Report Generation</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span>Bulk import from examples</span>
+                                    </div>
+                                </div>
+                                <div class="mt-4 pt-4 border-t border-white/10 flex items-center justify-between">
+                                    <span class="text-xs text-gray-500">Click to populate</span>
+                                    <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <!-- Coming Soon Template Cards -->
+                            <div class="glass-panel rounded-xl p-6 opacity-50 cursor-not-allowed">
+                                <div class="flex items-start justify-between mb-4">
+                                    <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                    </div>
+                                    <span class="px-2 py-1 bg-gray-500/20 text-gray-400 text-xs font-medium rounded">Coming Soon</span>
+                                </div>
+                                <h3 class="text-lg font-bold text-white mb-2">API Request Template</h3>
+                                <p class="text-sm text-gray-400 mb-4">Multi-step API calls with data transformation</p>
+                                <div class="space-y-2 text-xs text-gray-500">
+                                    <div class="flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span>Planned for future release</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="glass-panel rounded-xl p-6 opacity-50 cursor-not-allowed">
+                                <div class="flex items-start justify-between mb-4">
+                                    <div class="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </div>
+                                    <span class="px-2 py-1 bg-gray-500/20 text-gray-400 text-xs font-medium rounded">Coming Soon</span>
+                                </div>
+                                <h3 class="text-lg font-bold text-white mb-2">Custom Template</h3>
+                                <p class="text-sm text-gray-400 mb-4">Define your own multi-phase strategy templates</p>
+                                <div class="space-y-2 text-xs text-gray-500">
+                                    <div class="flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span>Planned for future release</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1358,7 +1461,7 @@
     
     <!-- Add RAG Collection Modal -->
     <div id="add-rag-collection-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
-        <div id="add-rag-collection-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-lg p-6 transform scale-95 opacity-0">
+        <div id="add-rag-collection-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-3xl p-6 transform scale-95 opacity-0 max-h-[90vh] overflow-y-auto">
             <!-- Modal Header -->
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-2xl font-bold text-white">Add RAG Collection</h2>
@@ -1400,6 +1503,148 @@
                               class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white resize-none"
                               placeholder="Brief description of this collection's purpose..."></textarea>
                 </div>
+
+                <!-- Separator -->
+                <div class="border-t border-gray-600 pt-4"></div>
+
+                <!-- Population Options -->
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-medium text-gray-300">Collection Population</h3>
+                        <span class="text-xs text-gray-500">Optional</span>
+                    </div>
+                    <p class="text-xs text-gray-400 mb-3">Choose how to populate the collection with initial examples</p>
+                    
+                    <!-- Population Method Selection -->
+                    <div class="space-y-2 mb-4">
+                        <label class="flex items-center gap-3 p-3 bg-gray-700/30 rounded-lg border border-gray-600 cursor-pointer hover:border-teradata-orange/50 transition-colors">
+                            <input type="radio" name="population-method" value="none" id="rag-population-none" checked
+                                   class="w-4 h-4 text-teradata-orange focus:ring-2 focus:ring-teradata-orange">
+                            <div>
+                                <div class="text-sm font-medium text-gray-300">No Population</div>
+                                <div class="text-xs text-gray-400">Create empty collection</div>
+                            </div>
+                        </label>
+                        
+                        <label class="flex items-center gap-3 p-3 bg-gray-700/30 rounded-lg border border-gray-600 cursor-pointer hover:border-teradata-orange/50 transition-colors">
+                            <input type="radio" name="population-method" value="template" id="rag-population-template"
+                                   class="w-4 h-4 text-teradata-orange focus:ring-2 focus:ring-teradata-orange">
+                            <div>
+                                <div class="text-sm font-medium text-gray-300">Manual Template</div>
+                                <div class="text-xs text-gray-400">Add examples manually using a template</div>
+                            </div>
+                        </label>
+                        
+                        <label class="flex items-center gap-3 p-3 bg-gray-700/30 rounded-lg border border-gray-600 cursor-pointer hover:border-teradata-orange/50 transition-colors" id="rag-population-llm-label">
+                            <input type="radio" name="population-method" value="llm" id="rag-population-llm" disabled
+                                   class="w-4 h-4 text-teradata-orange focus:ring-2 focus:ring-teradata-orange">
+                            <div class="flex-1">
+                                <div class="text-sm font-medium text-gray-300">Auto-generate with LLM</div>
+                                <div class="text-xs text-gray-400">Let AI generate examples based on a subject</div>
+                            </div>
+                            <span id="rag-population-llm-badge" class="hidden px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded">LLM Not Configured</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Template Options (hidden by default) -->
+                    <div id="rag-collection-template-options" class="hidden space-y-4 bg-gray-700/30 rounded-lg p-4 border border-gray-600">
+                        <!-- Template Type Selection -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Template Type</label>
+                            <select id="rag-collection-template-type" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white text-sm">
+                                <option value="sql_query">SQL Query Template</option>
+                                <option value="api_call" disabled>API Call Template (Coming Soon)</option>
+                                <option value="custom" disabled>Custom Template (Coming Soon)</option>
+                            </select>
+                        </div>
+
+                        <!-- SQL Template Specific Fields -->
+                        <div id="rag-collection-sql-template-fields" class="space-y-3 template-fields">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs text-gray-400 mb-1">Database Name</label>
+                                    <input type="text" id="rag-collection-template-db" 
+                                           class="w-full p-2 bg-gray-600 border border-gray-500 rounded-md focus:ring-2 focus:ring-teradata-orange outline-none text-white text-sm"
+                                           placeholder="e.g., production_db">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-400 mb-1">MCP Tool Name</label>
+                                    <input type="text" id="rag-collection-template-tool" readonly
+                                           class="w-full p-2 bg-gray-600 border border-gray-500 rounded-md text-gray-400 text-sm"
+                                           placeholder="Loading...">
+                                    <p class="text-xs text-gray-500 mt-1">From template configuration</p>
+                                </div>
+                            </div>
+
+                            <!-- Examples -->
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="block text-xs font-medium text-gray-300">SQL Examples</label>
+                                    <button type="button" id="rag-collection-template-add-example" class="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                        </svg>
+                                        Add Example
+                                    </button>
+                                </div>
+                                <div id="rag-collection-template-examples" class="space-y-2 max-h-60 overflow-y-auto">
+                                    <!-- Examples will be added here dynamically -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- API Template Specific Fields (hidden by default) -->
+                        <div id="rag-collection-api-template-fields" class="space-y-3 template-fields hidden">
+                            <p class="text-sm text-gray-400">API Call template configuration will be available soon.</p>
+                        </div>
+
+                        <!-- Custom Template Specific Fields (hidden by default) -->
+                        <div id="rag-collection-custom-template-fields" class="space-y-3 template-fields hidden">
+                            <p class="text-sm text-gray-400">Custom template configuration will be available soon.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- LLM Auto-generation Options (hidden by default) -->
+                    <div id="rag-collection-llm-options" class="hidden space-y-4 bg-gray-700/30 rounded-lg p-4 border border-gray-600">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                                Subject / Topic <span class="text-red-400">*</span>
+                            </label>
+                            <input type="text" id="rag-collection-llm-subject" 
+                                   class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white text-sm"
+                                   placeholder="e.g., customer analytics, sales reporting, user behavior analysis">
+                            <p class="text-xs text-gray-400 mt-1">Describe the topic for which you want to generate question/SQL pairs</p>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">
+                                    Number of Examples <span class="text-red-400">*</span>
+                                </label>
+                                <input type="number" id="rag-collection-llm-count" 
+                                       value="5" min="1" max="20"
+                                       class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white text-sm">
+                                <p class="text-xs text-gray-400 mt-1">How many examples to generate (1-20)</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Database Name</label>
+                                <input type="text" id="rag-collection-llm-db" 
+                                       class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white text-sm"
+                                       placeholder="e.g., production_db">
+                                <p class="text-xs text-gray-400 mt-1">Optional: Target database context</p>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                            <div class="flex gap-2">
+                                <svg class="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <p class="text-xs text-blue-300">The LLM will analyze your subject and generate realistic question/SQL pairs. Generation may take 30-60 seconds.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 
                 <!-- Modal Footer -->
                 <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-600">
@@ -1414,6 +1659,140 @@
         </div>
     </div>
     
+    <!-- Template Editor Modal -->
+    <div id="template-editor-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
+        <div id="template-editor-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-3xl p-6 transform scale-95 opacity-0 max-h-[90vh] overflow-y-auto">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">Edit Template Configuration</h2>
+                    <p class="text-sm text-gray-400 mt-1">Customize input variables and default values</p>
+                </div>
+                <button type="button" id="template-editor-modal-close" class="p-2 rounded-full text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <form id="template-editor-form" class="space-y-6">
+                <!-- Template Info (Read-only) -->
+                <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
+                    <h3 class="text-lg font-semibold text-white mb-2">SQL Query Template</h3>
+                    <p class="text-sm text-gray-400">Two-phase strategy: Execute SQL statement and generate final report</p>
+                </div>
+
+                <!-- Input Variables Section -->
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Input Variables
+                    </h3>
+                    <p class="text-xs text-gray-400 mb-4">Variables that users must provide when using this template</p>
+                    <div class="space-y-3">
+                        <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="text-sm font-medium text-gray-300">user_query</label>
+                                <span class="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded">Required</span>
+                            </div>
+                            <p class="text-xs text-gray-400">The user's natural language question</p>
+                        </div>
+                        <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="text-sm font-medium text-gray-300">sql_statement</label>
+                                <span class="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded">Required</span>
+                            </div>
+                            <p class="text-xs text-gray-400">The SQL query to execute</p>
+                        </div>
+                        <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="text-sm font-medium text-gray-300">database_name</label>
+                                <span class="px-2 py-0.5 bg-gray-500/20 text-gray-400 text-xs rounded">Optional</span>
+                            </div>
+                            <p class="text-xs text-gray-400">Target database name (added to phase 1 arguments)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Output/Default Variables Section -->
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Auto-Generated Values
+                    </h3>
+                    <p class="text-xs text-gray-400 mb-4">Default values automatically assigned to generated cases</p>
+                    <div class="space-y-3">
+                        <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Default MCP Tool Name</label>
+                            <input type="text" id="template-default-mcp-tool" 
+                                   value="base_executeRawSQLStatement"
+                                   class="w-full p-2 bg-gray-600 border border-gray-500 rounded-md focus:ring-2 focus:ring-teradata-orange outline-none text-white text-sm"
+                                   placeholder="base_executeRawSQLStatement">
+                            <p class="text-xs text-gray-400 mt-1">Default tool for SQL execution (can be overridden per case)</p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Estimated Input Tokens</label>
+                                <input type="number" id="template-input-tokens" 
+                                       value="150" min="0" step="10"
+                                       class="w-full p-2 bg-gray-600 border border-gray-500 rounded-md focus:ring-2 focus:ring-teradata-orange outline-none text-white text-sm">
+                                <p class="text-xs text-gray-400 mt-1">Approximate tokens for planning</p>
+                            </div>
+                            <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Estimated Output Tokens</label>
+                                <input type="number" id="template-output-tokens" 
+                                       value="180" min="0" step="10"
+                                       class="w-full p-2 bg-gray-600 border border-gray-500 rounded-md focus:ring-2 focus:ring-teradata-orange outline-none text-white text-sm">
+                                <p class="text-xs text-gray-400 mt-1">Approximate response tokens</p>
+                            </div>
+                        </div>
+                        <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Session ID</label>
+                            <input type="text" readonly value="00000000-0000-0000-0000-000000000000" 
+                                   class="w-full p-2 bg-gray-600 border border-gray-500 rounded-md text-gray-400 text-sm">
+                            <p class="text-xs text-gray-400 mt-1">All template cases share this session ID</p>
+                        </div>
+                        <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="template-champion-default" checked disabled
+                                       class="w-4 h-4 rounded border-gray-600 bg-gray-700 text-teradata-orange focus:ring-2 focus:ring-teradata-orange">
+                                <span class="text-sm font-medium text-gray-300">Mark as champion by default</span>
+                            </label>
+                            <p class="text-xs text-gray-400 mt-1">Template cases start with is_most_efficient=true</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info Notice -->
+                <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                    <div class="flex gap-3">
+                        <svg class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div class="text-sm text-blue-300">
+                            <p class="font-medium mb-1">Template Configuration</p>
+                            <p class="text-xs text-blue-400">These settings control default values for all cases generated from this template. Users can still override specific values when populating collections.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="flex justify-end gap-3 pt-4 border-t border-gray-600">
+                    <button type="button" id="template-editor-cancel" class="px-4 py-2 rounded-md bg-gray-600 hover:bg-gray-500 transition-colors font-semibold text-white">
+                        Cancel
+                    </button>
+                    <button type="submit" id="template-editor-submit" class="px-4 py-2 rounded-md bg-teradata-orange hover:bg-teradata-orange-dark transition-colors font-semibold text-white">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Edit RAG Collection Modal -->
     <div id="edit-rag-collection-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
         <div id="edit-rag-collection-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-lg p-6 transform scale-95 opacity-0">
@@ -1468,6 +1847,118 @@
                     </button>
                     <button type="submit" id="edit-rag-collection-submit" class="px-4 py-2 rounded-md bg-teradata-orange hover:bg-teradata-orange-dark transition-colors font-semibold text-white">
                         Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- SQL Template Populator Modal -->
+    <div id="sql-template-populator-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
+        <div id="sql-template-populator-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-4xl p-6 transform scale-95 opacity-0 max-h-[90vh] overflow-y-auto">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">SQL Template Populator</h2>
+                    <p class="text-sm text-gray-400 mt-1">Bulk populate a collection with SQL query examples</p>
+                </div>
+                <button type="button" id="sql-template-populator-modal-close" class="p-2 rounded-full text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <form id="sql-template-populator-form" class="space-y-6">
+                <!-- Collection Selection -->
+                <div>
+                    <label for="sql-template-collection-select" class="block text-sm font-medium text-gray-300 mb-2">
+                        Target Collection <span class="text-red-400">*</span>
+                    </label>
+                    <select id="sql-template-collection-select" name="collection_id" required
+                            class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white">
+                        <option value="">Select a collection...</option>
+                        <!-- Options will be populated dynamically -->
+                    </select>
+                    <p class="mt-1 text-xs text-gray-400">Cases will be added to this collection</p>
+                </div>
+
+                <!-- Optional Fields -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="sql-template-database-name" class="block text-sm font-medium text-gray-300 mb-2">
+                            Database Name (Optional)
+                        </label>
+                        <input type="text" id="sql-template-database-name" name="database_name"
+                               class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white"
+                               placeholder="e.g., production_db">
+                    </div>
+                    <div>
+                        <label for="sql-template-mcp-tool" class="block text-sm font-medium text-gray-300 mb-2">
+                            MCP Tool Name (Optional)
+                        </label>
+                        <input type="text" id="sql-template-mcp-tool" name="mcp_tool_name"
+                               class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white"
+                               placeholder="base_executeRawSQLStatement">
+                    </div>
+                </div>
+
+                <!-- Examples Input -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-sm font-medium text-gray-300">
+                            SQL Examples <span class="text-red-400">*</span>
+                        </label>
+                        <button type="button" id="sql-template-add-example" class="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Add Example
+                        </button>
+                    </div>
+                    <div id="sql-template-examples-container" class="space-y-4">
+                        <!-- Example rows will be added dynamically -->
+                    </div>
+                    <p class="mt-2 text-xs text-gray-400">
+                        Each example consists of a user question and the corresponding SQL statement
+                    </p>
+                </div>
+
+                <!-- Instructions -->
+                <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                    <div class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div class="text-sm text-blue-300 space-y-1">
+                            <p class="font-medium">How it works:</p>
+                            <ul class="list-disc list-inside space-y-1 text-blue-400">
+                                <li>Each example creates a two-phase RAG case: Execute SQL → Generate Report</li>
+                                <li>Cases are marked as "champion" by default (is_most_efficient: true)</li>
+                                <li>The agent will use these examples for similar queries in the future</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress/Results Area (hidden initially) -->
+                <div id="sql-template-results" class="hidden">
+                    <div class="bg-gray-700 rounded-lg p-4">
+                        <h3 class="text-sm font-medium text-white mb-2">Population Results</h3>
+                        <div id="sql-template-results-content" class="text-sm text-gray-300 space-y-1">
+                            <!-- Results will be shown here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="flex justify-end gap-3 pt-4 border-t border-gray-600">
+                    <button type="button" id="sql-template-populator-cancel" class="px-4 py-2 rounded-md bg-gray-600 hover:bg-gray-500 transition-colors font-semibold text-white">
+                        Cancel
+                    </button>
+                    <button type="submit" id="sql-template-populator-submit" class="px-4 py-2 rounded-md bg-[#F15F22] hover:bg-[#D9501A] transition-colors font-semibold text-white">
+                        Populate Collection
                     </button>
                 </div>
             </form>

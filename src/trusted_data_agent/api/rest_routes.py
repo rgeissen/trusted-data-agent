@@ -771,6 +771,240 @@ async def submit_rag_case_feedback(case_id: str):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@rest_api_bp.route("/v1/rag/collections/<int:collection_id>/populate", methods=["POST"])
+async def populate_collection_from_template(collection_id: int):
+    """
+    Populate a RAG collection using a template and user-provided examples.
+    
+    Request body:
+    {
+        "template_type": "sql_query",
+        "examples": [
+            {
+                "user_query": "Show me all users older than 25",
+                "sql_statement": "SELECT * FROM users WHERE age > 25"
+            },
+            {
+                "user_query": "Count completed orders",
+                "sql_statement": "SELECT COUNT(*) FROM orders WHERE status = 'completed'"
+            }
+        ],
+        "database_name": "mydb",  // optional
+        "mcp_tool_name": "base_executeRawSQLStatement"  // optional
+    }
+    """
+    try:
+        data = await request.get_json()
+        
+        # Validate required fields
+        template_type = data.get("template_type")
+        examples_data = data.get("examples", [])
+        
+        if not template_type:
+            return jsonify({"status": "error", "message": "template_type is required"}), 400
+        
+        if not examples_data or not isinstance(examples_data, list):
+            return jsonify({"status": "error", "message": "examples must be a non-empty list"}), 400
+        
+        # Currently only SQL template is supported
+        if template_type != "sql_query":
+            return jsonify({"status": "error", "message": f"Unsupported template_type: {template_type}. Only 'sql_query' is supported."}), 400
+        
+        # Parse examples based on template type
+        if template_type == "sql_query":
+            examples = []
+            for idx, ex in enumerate(examples_data):
+                user_query = ex.get("user_query")
+                sql_statement = ex.get("sql_statement")
+                
+                if not user_query or not sql_statement:
+                    return jsonify({
+                        "status": "error", 
+                        "message": f"Example {idx+1} missing required fields (user_query, sql_statement)"
+                    }), 400
+                
+                examples.append((user_query, sql_statement))
+        
+        # Get RAG retriever
+        retriever = APP_STATE.get("rag_retriever_instance")
+        if not retriever:
+            return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
+        
+        # Import and create template generator
+        from trusted_data_agent.agent.rag_template_generator import RAGTemplateGenerator
+        generator = RAGTemplateGenerator(retriever)
+        
+        # Validate examples first
+        validation_issues = generator.validate_sql_examples(examples)
+        if validation_issues:
+            return jsonify({
+                "status": "error", 
+                "message": "Validation failed for some examples",
+                "validation_issues": validation_issues
+            }), 400
+        
+        # Populate collection
+        database_name = data.get("database_name")
+        mcp_tool_name = data.get("mcp_tool_name", "base_executeRawSQLStatement")
+        
+        app_logger.info(f"Populating collection {collection_id} with {len(examples)} SQL template examples")
+        
+        results = generator.populate_collection_from_sql_examples(
+            collection_id=collection_id,
+            examples=examples,
+            database_name=database_name,
+            mcp_tool_name=mcp_tool_name
+        )
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Successfully populated {results['successful']} cases",
+            "results": results
+        }), 200
+        
+    except ValueError as ve:
+        # Collection validation error
+        app_logger.error(f"Validation error: {ve}")
+        return jsonify({"status": "error", "message": str(ve)}), 400
+    except Exception as e:
+        app_logger.error(f"Error populating collection from template: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/rag/templates", methods=["GET"])
+async def get_rag_templates():
+    """Get information about available RAG templates."""
+    try:
+        retriever = APP_STATE.get("rag_retriever_instance")
+        if not retriever:
+            return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
+        
+        from trusted_data_agent.agent.rag_template_generator import RAGTemplateGenerator
+        generator = RAGTemplateGenerator(retriever)
+        
+        # Get info for all supported templates
+        sql_template = generator.get_template_info("sql_query")
+        
+        return jsonify({
+            "status": "success",
+            "templates": {
+                "sql_query": sql_template
+            }
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error getting RAG templates: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/rag/templates/<template_id>/config", methods=["GET"])
+async def get_rag_template_config(template_id: str):
+    """
+    Get the editable configuration for a specific template.
+    
+    Returns the current configuration values that can be customized.
+    """
+    try:
+        from trusted_data_agent.agent.rag_template_manager import get_template_manager
+        
+        template_manager = get_template_manager()
+        
+        # Get template
+        template = template_manager.get_template(template_id)
+        if not template:
+            return jsonify({
+                "status": "error",
+                "message": f"Template {template_id} not found"
+            }), 404
+        
+        # Get editable configuration
+        config = template_manager.get_template_config(template_id)
+        
+        # Get template metadata
+        metadata = {
+            "template_id": template.get("template_id"),
+            "template_name": template.get("template_name"),
+            "template_type": template.get("template_type"),
+            "description": template.get("description"),
+            "version": template.get("template_version")
+        }
+        
+        return jsonify({
+            "status": "success",
+            "template": metadata,
+            "config": config
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error getting template config: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/rag/templates/<template_id>/config", methods=["PUT"])
+async def update_rag_template_config(template_id: str):
+    """
+    Update the editable configuration for a specific template.
+    
+    Body:
+    {
+        "default_mcp_tool": "base_executeRawSQLStatement",
+        "estimated_input_tokens": 150,
+        "estimated_output_tokens": 180
+    }
+    """
+    try:
+        from trusted_data_agent.agent.rag_template_manager import get_template_manager
+        
+        data = await request.get_json()
+        
+        template_manager = get_template_manager()
+        
+        # Verify template exists
+        template = template_manager.get_template(template_id)
+        if not template:
+            return jsonify({
+                "status": "error",
+                "message": f"Template {template_id} not found"
+            }), 404
+        
+        # Update configuration
+        template_manager.update_template_config(template_id, data)
+        
+        # Get updated config
+        updated_config = template_manager.get_template_config(template_id)
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Template {template_id} configuration updated",
+            "config": updated_config
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error updating template config: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/rag/templates/list", methods=["GET"])
+async def list_rag_templates():
+    """
+    List all available templates with their metadata.
+    """
+    try:
+        from trusted_data_agent.agent.rag_template_manager import get_template_manager
+        
+        template_manager = get_template_manager()
+        templates = template_manager.list_templates()
+        
+        return jsonify({
+            "status": "success",
+            "templates": templates
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error listing templates: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 # ============================================================================
 # MCP SERVER CONFIGURATION ENDPOINTS
 # ============================================================================

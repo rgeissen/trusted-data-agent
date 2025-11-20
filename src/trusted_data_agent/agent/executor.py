@@ -146,6 +146,10 @@ class PlanExecutor:
         else:
             self.rag_retriever = None
         # --- MODIFICATION END ---
+        
+        # --- MODIFICATION START: Track which collection RAG examples came from ---
+        self.rag_source_collection_id = None  # Will be set when RAG examples are retrieved
+        # --- MODIFICATION END ---
 
 
     def _log_system_event(self, event_data: dict, event_name: str = None):
@@ -576,7 +580,17 @@ class PlanExecutor:
                 # --- Planning Phase ---
                 if self.state == self.AgentState.PLANNING:
                     # --- MODIFICATION START: Pass RAG retriever instance to Planner ---
-                    planner = Planner(self, rag_retriever_instance=self.rag_retriever, event_handler=self.event_handler)
+                    # Create a wrapped event handler that captures RAG collection info
+                    async def rag_aware_event_handler(data, event_name):
+                        if event_name == "rag_retrieval" and data and 'collection_id' in data.get('full_case_data', {}).get('metadata', {}):
+                            # Store the collection ID from the retrieved RAG case
+                            self.rag_source_collection_id = data['full_case_data']['metadata']['collection_id']
+                            app_logger.info(f"RAG example retrieved from collection {self.rag_source_collection_id}")
+                        # Pass through to the original event handler
+                        if self.event_handler:
+                            await self.event_handler(data, event_name)
+                    
+                    planner = Planner(self, rag_retriever_instance=self.rag_retriever, event_handler=rag_aware_event_handler)
                     # --- MODIFICATION END ---
                     should_replan = False
                     planning_is_disabled_history = self.disabled_history
@@ -741,7 +755,10 @@ class PlanExecutor:
                     "turn_input_tokens": self.turn_input_tokens,
                     "turn_output_tokens": self.turn_output_tokens,
                     # --- MODIFICATION START: Add session_id for RAG worker ---
-                    "session_id": self.session_id
+                    "session_id": self.session_id,
+                    # --- MODIFICATION END ---
+                    # --- MODIFICATION START: Add RAG source collection ID ---
+                    "rag_source_collection_id": self.rag_source_collection_id
                     # --- MODIFICATION END ---
                 }
                 # --- MODIFICATION END ---

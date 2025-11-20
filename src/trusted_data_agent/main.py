@@ -99,10 +99,13 @@ async def rag_processing_worker():
             
             # 3. Process the turn if RAG is enabled and the instance exists
             if retriever and turn_summary and APP_CONFIG.RAG_ENABLED:
-                app_logger.info(f"RAG worker: Processing turn {turn_summary.get('turn')} from session {turn_summary.get('session_id')}.")
+                # Get the collection ID from the turn summary (where the base RAG example came from)
+                collection_id = turn_summary.get('rag_source_collection_id')
+                collection_info = f" to collection {collection_id}" if collection_id is not None else " (no RAG base, using default)"
+                app_logger.info(f"RAG worker: Processing turn {turn_summary.get('turn')} from session {turn_summary.get('session_id')}{collection_info}.")
                 
-                # Process the turn and get the case_id
-                case_id = await retriever.process_turn_for_rag(turn_summary)
+                # Process the turn and get the case_id, passing the collection_id
+                case_id = await retriever.process_turn_for_rag(turn_summary, collection_id=collection_id)
                 
                 # If a case was created, store the case_id in the session
                 if case_id:
@@ -180,6 +183,7 @@ def create_app():
             try:
                 from pathlib import Path
                 from trusted_data_agent.agent.rag_retriever import RAGRetriever
+                from trusted_data_agent.agent.rag_template_manager import get_template_manager
                 from trusted_data_agent.core.config_manager import get_config_manager
                 
                 # Calculate paths
@@ -192,6 +196,13 @@ def create_app():
                 collections_list = config_manager.get_rag_collections()
                 APP_STATE["rag_collections"] = collections_list
                 app_logger.info(f"Pre-loaded {len(collections_list)} RAG collections from persistent config")
+                
+                # Initialize RAG template manager
+                app_logger.info("Initializing RAG Template Manager...")
+                template_manager = get_template_manager()
+                templates = template_manager.list_templates()
+                APP_STATE['rag_template_manager'] = template_manager
+                app_logger.info(f"RAG Template Manager initialized with {len(templates)} template(s): {[t['template_id'] for t in templates]}")
                 
                 # Initialize RAG retriever
                 app_logger.info(f"Initializing RAGRetriever at startup with cases dir: {rag_cases_dir}")
