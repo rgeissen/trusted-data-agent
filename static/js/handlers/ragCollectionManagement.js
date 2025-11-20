@@ -113,6 +113,7 @@ const ragCollectionLlmOptions = document.getElementById('rag-collection-llm-opti
 const ragCollectionLlmSubject = document.getElementById('rag-collection-llm-subject');
 const ragCollectionLlmCount = document.getElementById('rag-collection-llm-count');
 const ragCollectionLlmDb = document.getElementById('rag-collection-llm-db');
+const ragCollectionLlmTargetDb = document.getElementById('rag-collection-llm-target-db');
 const ragCollectionLlmPromptPreview = document.getElementById('rag-collection-llm-prompt-preview');
 const ragCollectionRefreshPromptBtn = document.getElementById('rag-collection-refresh-prompt');
 const ragCollectionGenerateContextBtn = document.getElementById('rag-collection-generate-context');
@@ -1699,6 +1700,7 @@ async function handleGenerateQuestions() {
         const subject = ragCollectionLlmSubject ? ragCollectionLlmSubject.value.trim() : '';
         const count = ragCollectionLlmCount ? parseInt(ragCollectionLlmCount.value) : 5;
         const databaseName = ragCollectionLlmDb ? ragCollectionLlmDb.value.trim() : '';
+        const targetDatabase = ragCollectionLlmTargetDb ? ragCollectionLlmTargetDb.value.trim() : 'Teradata';
         
         if (!subject) {
             showNotification('error', 'Please enter a subject');
@@ -1720,14 +1722,15 @@ async function handleGenerateQuestions() {
             <span>Generating...</span>
         `;
         
-        showNotification('info', `Generating ${count} question/SQL pairs...`);
+        showNotification('info', `Generating ${count} ${targetDatabase} question/SQL pairs...`);
         
         // Build request with database context from previous step
         const requestBody = {
             subject: subject,
             count: count,
             database_context: lastGeneratedContext.final_answer_text,
-            database_name: databaseName
+            database_name: databaseName,
+            target_database: targetDatabase
         };
         
         console.log('=== QUESTION GENERATION DEBUG ===');

@@ -444,6 +444,7 @@ async def generate_rag_questions():
         count = int(data.get('count', 5))
         database_context = data.get('database_context', '').strip()
         database_name = data.get('database_name', '').strip()
+        target_database = data.get('target_database', 'Teradata').strip()
         
         if not subject:
             return jsonify({
@@ -474,19 +475,26 @@ Database Context:
 Requirements:
 1. Generate EXACTLY {count} question/SQL pairs
 2. Questions should be natural language business questions about {subject}
-3. SQL queries must be valid for the database schema shown above
-4. Questions should vary in complexity (simple to advanced)
-5. Use the database name "{database_name}" in your queries
-6. Return your response as a valid JSON array with this exact structure:
+3. SQL queries must be valid {target_database} syntax for the database schema shown above
+4. Use {target_database}-specific SQL syntax, functions, and conventions
+5. Questions should vary in complexity (simple to advanced)
+6. Use the database name "{database_name}" in your queries
+7. Return your response as a valid JSON array with this exact structure:
 [
   {{
     "question": "What is the total revenue by product category?",
     "sql": "SELECT ProductType, SUM(Price * StockQuantity) as TotalValue FROM {database_name}.Products GROUP BY ProductType;"
   }},
-  ...
+  {{
+    "question": "Which customer has the highest order value?",
+    "sql": "SELECT CustomerID, CustomerName, MAX(OrderTotal) as MaxOrder FROM {database_name}.Orders GROUP BY CustomerID, CustomerName ORDER BY MaxOrder DESC LIMIT 1;"
+  }}
 ]
 
-IMPORTANT: Your entire response must be ONLY the JSON array, with no other text before or after."""
+IMPORTANT: 
+- Write COMPLETE SQL queries - do NOT truncate them with "..." or similar
+- Your entire response must be ONLY the JSON array, with no other text before or after
+- Include all {count} question/SQL pairs requested
 
         app_logger.info(f"Generating {count} RAG questions for subject '{subject}' in database '{database_name}'")
         

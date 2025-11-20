@@ -57,6 +57,13 @@
       "description": "MCP prompt to use for gathering database context during auto-generation",
       "placeholder": "base_databaseBusinessDesc",
       "default": "base_databaseBusinessDesc"
+    },
+    "target_database": {
+      "type": "string",
+      "required": false,
+      "description": "Target database system for SQL syntax (e.g., Teradata, PostgreSQL, MySQL)",
+      "placeholder": "Teradata",
+      "default": "Teradata"
     }
   },
   "output_configuration": {
@@ -135,7 +142,7 @@
           "sql_preview": {
             "source": "sql_statement",
             "transform": "truncate",
-            "max_length": 50
+            "max_length": 500
           }
         },
         "relevant_tools_source": "mcp_tool_name",

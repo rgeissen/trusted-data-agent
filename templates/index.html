@@ -1633,6 +1633,14 @@
                                        placeholder="e.g., production_db">
                                 <p class="text-xs text-gray-400 mt-1">Optional: Target database context</p>
                             </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Target Database System</label>
+                                <input type="text" id="rag-collection-llm-target-db" 
+                                       value="Teradata"
+                                       class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white text-sm"
+                                       placeholder="e.g., Teradata, PostgreSQL, MySQL">
+                                <p class="text-xs text-gray-400 mt-1">SQL dialect/syntax to use (default: Teradata)</p>
+                            </div>
                         </div>
                         
                         <!-- Question Generation Prompt Preview -->
@@ -2001,13 +2009,22 @@
                                placeholder="e.g., production_db">
                     </div>
                     <div>
-                        <label for="sql-template-mcp-tool" class="block text-sm font-medium text-gray-300 mb-2">
-                            MCP Tool Name (Optional)
+                        <label for="sql-template-target-database" class="block text-sm font-medium text-gray-300 mb-2">
+                            Target Database System
                         </label>
-                        <input type="text" id="sql-template-mcp-tool" name="mcp_tool_name"
+                        <input type="text" id="sql-template-target-database" name="target_database"
+                               value="Teradata"
                                class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white"
-                               placeholder="base_executeRawSQLStatement">
+                               placeholder="e.g., Teradata, PostgreSQL, MySQL">
                     </div>
+                </div>
+                <div>
+                    <label for="sql-template-mcp-tool" class="block text-sm font-medium text-gray-300 mb-2">
+                        MCP Tool Name (Optional)
+                    </label>
+                    <input type="text" id="sql-template-mcp-tool" name="mcp_tool_name"
+                           class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white"
+                           placeholder="base_executeRawSQLStatement">
                 </div>
 
                 <!-- Examples Input -->

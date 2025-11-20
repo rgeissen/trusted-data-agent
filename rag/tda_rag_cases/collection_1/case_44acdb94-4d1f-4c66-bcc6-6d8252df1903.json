@@ -1,14 +1,14 @@
 {
-  "case_id": "2fb8c0cb-cff3-4e18-9e11-01549adea113",
+  "case_id": "44acdb94-4d1f-4c66-bcc6-6d8252df1903",
   "metadata": {
     "session_id": "00000000-0000-0000-0000-000000000000",
     "turn_id": 1,
     "is_success": true,
-    "task_id": "template-task-2fb8c0cb",
+    "task_id": "template-task-44acdb94",
     "collection_id": 1,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-11-20T19:55:15.049764+00:00",
+    "timestamp": "2025-11-20T20:22:53.999108+00:00",
     "user_feedback_score": 0,
     "llm_config": {
       "provider": "Template",
@@ -30,18 +30,18 @@
     "database_name": "fitness_db"
   },
   "intent": {
-    "user_query": "What is the current value of inventory on hand for each product category, considering both quantity and price?"
+    "user_query": "Which product categories have the lowest stock levels (sum of StockQuantity), and what is their average price?"
   },
   "successful_strategy": {
     "phases": [
       {
         "phase": 1,
-        "goal": "Execute SQL query on fitness_db: SELECT ProductType, SUM(Price * StockQuantity) AS ...",
+        "goal": "Execute SQL query on fitness_db: SELECT p.ProductType, SUM(p.StockQuantity) AS TotalStock, AVG(p.Price) AS AveragePrice FROM fitness_db.Products p GROUP BY p.ProductType ORDER BY TotalStock ASC;",
         "relevant_tools": [
           "base_executeRawSQLStatement"
         ],
         "arguments": {
-          "sql": "SELECT ProductType, SUM(Price * StockQuantity) AS TotalInventoryValue FROM fitness_db.Products GROUP BY ProductType;",
+          "sql": "SELECT p.ProductType, SUM(p.StockQuantity) AS TotalStock, AVG(p.Price) AS AveragePrice FROM fitness_db.Products p GROUP BY p.ProductType ORDER BY TotalStock ASC;",
           "database_name": "fitness_db"
         }
       },
