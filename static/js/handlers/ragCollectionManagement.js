@@ -9,6 +9,15 @@ import * as DOM from '../domElements.js';
 // Note: configState is accessed via window.configState to avoid circular imports
 
 /**
+ * Escape HTML special characters to prevent XSS
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
  * Updates the RAG indicator based on current RAG status
  */
 async function updateRagIndicator() {
@@ -104,20 +113,105 @@ const ragCollectionLlmOptions = document.getElementById('rag-collection-llm-opti
 const ragCollectionLlmSubject = document.getElementById('rag-collection-llm-subject');
 const ragCollectionLlmCount = document.getElementById('rag-collection-llm-count');
 const ragCollectionLlmDb = document.getElementById('rag-collection-llm-db');
-const ragCollectionLlmPreviewBtn = document.getElementById('rag-collection-llm-preview-prompt');
-const ragCollectionLlmCreateContextBtn = document.getElementById('rag-collection-llm-create-context');
-const ragCollectionGenerateQuestionsBtn = document.getElementById('rag-collection-generate-questions');
-// Phase 2 result elements
+const ragCollectionLlmPromptPreview = document.getElementById('rag-collection-llm-prompt-preview');
+const ragCollectionRefreshPromptBtn = document.getElementById('rag-collection-refresh-prompt');
+const ragCollectionGenerateContextBtn = document.getElementById('rag-collection-generate-context');
 const ragCollectionContextResult = document.getElementById('rag-collection-context-result');
-const ragCollectionContextTitle = document.getElementById('rag-collection-context-title');
 const ragCollectionContextContent = document.getElementById('rag-collection-context-content');
 const ragCollectionContextClose = document.getElementById('rag-collection-context-close');
-// Phase 3 result elements
+const ragCollectionGenerateQuestionsBtn = document.getElementById('rag-collection-generate-questions-btn');
 const ragCollectionQuestionsResult = document.getElementById('rag-collection-questions-result');
-const ragCollectionQuestionsContent = document.getElementById('rag-collection-questions-content');
+const ragCollectionQuestionsList = document.getElementById('rag-collection-questions-list');
 const ragCollectionQuestionsCount = document.getElementById('rag-collection-questions-count');
+const ragCollectionQuestionsClose = document.getElementById('rag-collection-questions-close');
+const ragCollectionPopulateBtn = document.getElementById('rag-collection-populate-btn');
+
+// Context Result Modal Elements
+const contextResultModalOverlay = document.getElementById('context-result-modal-overlay');
+const contextResultModalContent = document.getElementById('context-result-modal-content');
+const contextResultModalClose = document.getElementById('context-result-modal-close');
+const contextResultModalOk = document.getElementById('context-result-modal-ok');
+const contextResultPromptText = document.getElementById('context-result-prompt-text');
+const contextResultFinalAnswer = document.getElementById('context-result-final-answer');
+const contextResultExecutionTrace = document.getElementById('context-result-execution-trace');
+const contextResultInputTokens = document.getElementById('context-result-input-tokens');
+const contextResultOutputTokens = document.getElementById('context-result-output-tokens');
+const contextResultTotalTokens = document.getElementById('context-result-total-tokens');
+
+// Store the last generated context and questions for the workflow
+let lastGeneratedContext = null;
+let lastGeneratedQuestions = null;
 
 let addCollectionExampleCounter = 0;
+
+/**
+ * Reload template configuration from server to get latest settings
+ */
+async function reloadTemplateConfiguration() {
+    try {
+        // Add cache-busting parameter to force fresh load
+        const response = await fetch(`/api/v1/rag/templates/sql_query_v1/config?_=${Date.now()}`);
+        if (response.ok) {
+            const configData = await response.json();
+            console.log('[Template Config] Reloaded configuration:', configData);
+            return configData;
+        } else {
+            console.warn('[Template Config] Failed to reload, status:', response.status);
+            return null;
+        }
+    } catch (error) {
+        console.error('[Template Config] Error reloading configuration:', error);
+        return null;
+    }
+}
+
+/**
+ * Generate and display the question generation prompt preview
+ */
+function refreshQuestionGenerationPrompt() {
+    if (!ragCollectionLlmPromptPreview) return;
+    
+    const subject = ragCollectionLlmSubject ? ragCollectionLlmSubject.value.trim() : '';
+    const count = ragCollectionLlmCount ? ragCollectionLlmCount.value : '5';
+    const databaseName = ragCollectionLlmDb ? ragCollectionLlmDb.value.trim() : '';
+    
+    if (!subject) {
+        ragCollectionLlmPromptPreview.value = 'Please enter a subject/topic first...';
+        return;
+    }
+    
+    if (!databaseName) {
+        ragCollectionLlmPromptPreview.value = 'Please enter a database name first...';
+        return;
+    }
+    
+    // Generate the prompt template (without actual context)
+    const promptTemplate = `You are a SQL expert helping to generate test questions and queries for a RAG system.
+
+Based on the following database context, generate ${count} diverse, interesting business questions about "${subject}" along with the SQL queries that would answer them.
+
+Database Context:
+[Database schema and table descriptions will be inserted here from Step 1]
+
+Requirements:
+1. Generate EXACTLY ${count} question/SQL pairs
+2. Questions should be natural language business questions about ${subject}
+3. SQL queries must be valid for the database schema shown above
+4. Questions should vary in complexity (simple to advanced)
+5. Use the database name "${databaseName}" in your queries
+6. Return your response as a valid JSON array with this exact structure:
+[
+  {
+    "question": "What is the total revenue by product category?",
+    "sql": "SELECT ProductType, SUM(Price * StockQuantity) as TotalValue FROM ${databaseName}.Products GROUP BY ProductType;"
+  },
+  ...
+]
+
+IMPORTANT: Your entire response must be ONLY the JSON array, with no other text before or after.`;
+    
+    ragCollectionLlmPromptPreview.value = promptTemplate;
+}
 
 /**
  * Open the Add RAG Collection modal
@@ -141,6 +235,18 @@ async function openAddRagCollectionModal() {
     if (ragCollectionLlmOptions) {
         ragCollectionLlmOptions.classList.add('hidden');
     }
+    
+    // Reset and hide context result
+    if (ragCollectionContextResult) {
+        ragCollectionContextResult.classList.add('hidden');
+    }
+    if (ragCollectionContextContent) {
+        ragCollectionContextContent.textContent = '';
+    }
+    lastGeneratedContext = null;
+    
+    // Reload template configuration to get latest default_mcp_context_prompt
+    await reloadTemplateConfiguration();
     
     // Show modal with animation
     addRagCollectionModalOverlay.classList.remove('hidden');
@@ -328,31 +434,90 @@ async function handleAddRagCollection(event) {
                 showNotification('warning', `Collection created but population failed: ${populateData.message || 'Unknown error'}`);
             }
         } else if (populationMethod === 'llm') {
-            addRagCollectionSubmit.textContent = 'Generating with LLM...';
-            
-            const llmPayload = {
-                subject: llmSubject,
-                count: llmCount
-            };
-            
-            if (llmDbName) {
-                llmPayload.database_name = llmDbName;
-            }
-            
-            const autoPopulateResponse = await fetch(`/api/v1/rag/collections/${collectionId}/auto-populate`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(llmPayload)
-            });
-            
-            const autoPopulateData = await autoPopulateResponse.json();
-            
-            if (autoPopulateResponse.ok && autoPopulateData.status === 'success') {
-                showNotification('success', `Auto-generated ${autoPopulateData.results.successful} cases successfully!`);
+            // Check if we already have generated questions
+            if (lastGeneratedQuestions && lastGeneratedQuestions.length > 0) {
+                addRagCollectionSubmit.textContent = 'Populating with generated questions...';
+                
+                // Transform questions to match backend schema: {question, sql} -> {user_query, sql_statement}
+                const transformedExamples = lastGeneratedQuestions.map(q => ({
+                    user_query: q.question,
+                    sql_statement: q.sql
+                }));
+                
+                // Use the already-generated questions
+                const templatePayload = {
+                    template_type: 'sql_query',
+                    examples: transformedExamples,
+                    database_name: llmDbName
+                };
+                
+                const populateResponse = await fetch(`/api/v1/rag/collections/${collectionId}/populate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(templatePayload)
+                });
+                
+                const populateData = await populateResponse.json();
+                
+                if (populateResponse.ok && populateData.status === 'success') {
+                    showNotification('success', `Populated ${populateData.results.successful} cases successfully!`);
+                } else {
+                    showNotification('warning', `Collection created but population failed: ${populateData.message || 'Unknown error'}`);
+                }
             } else {
-                showNotification('warning', `Collection created but auto-generation failed: ${autoPopulateData.message || 'Unknown error'}`);
+                // Fallback: Generate questions on-the-fly (if context was generated but questions weren't)
+                addRagCollectionSubmit.textContent = 'Generating questions with LLM...';
+                
+                if (!lastGeneratedContext) {
+                    showNotification('warning', 'Collection created but no context was generated. Please use Generate Context → Generate Questions workflow.');
+                } else {
+                    // Generate questions using the context
+                    const questionsPayload = {
+                        subject: llmSubject,
+                        count: llmCount,
+                        database_context: lastGeneratedContext.final_answer_text,
+                        database_name: llmDbName
+                    };
+                    
+                    const questionsResponse = await fetch('/api/v1/rag/generate-questions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(questionsPayload)
+                    });
+                    
+                    const questionsData = await questionsResponse.json();
+                    
+                    if (questionsResponse.ok && questionsData.questions) {
+                        // Now populate with these questions
+                        const templatePayload = {
+                            template_type: 'sql_query',
+                            examples: questionsData.questions,
+                            database_name: llmDbName
+                        };
+                        
+                        const populateResponse = await fetch(`/api/v1/rag/collections/${collectionId}/populate`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(templatePayload)
+                        });
+                        
+                        const populateData = await populateResponse.json();
+                        
+                        if (populateResponse.ok && populateData.status === 'success') {
+                            showNotification('success', `Auto-generated and populated ${populateData.results.successful} cases successfully!`);
+                        } else {
+                            showNotification('warning', `Questions generated but population failed: ${populateData.message || 'Unknown error'}`);
+                        }
+                    } else {
+                        showNotification('warning', `Collection created but question generation failed: ${questionsData.message || 'Unknown error'}`);
+                    }
+                }
             }
         }
         
@@ -597,6 +762,12 @@ async function refreshRagCollection(collectionId, collectionName) {
 // Event Listeners
 if (addRagCollectionBtn) {
     addRagCollectionBtn.addEventListener('click', openAddRagCollectionModal);
+}
+
+// SQL Template Card Event Listener
+const sqlTemplateCard = document.getElementById('sqlTemplateCard');
+if (sqlTemplateCard) {
+    sqlTemplateCard.addEventListener('click', () => window.openSqlTemplatePopulator());
 }
 
 if (addRagCollectionModalClose) {
@@ -1341,6 +1512,352 @@ async function checkLlmConfiguration() {
 }
 
 /**
+ * Handle Generate Context button click
+ */
+async function handleGenerateContext() {
+    try {
+        // Get the database name if provided
+        const databaseName = ragCollectionLlmDb ? ragCollectionLlmDb.value.trim() : '';
+        
+        // Get the default MCP context prompt name from template configuration (always fetch fresh)
+        let contextPromptName = 'base_databaseBusinessDesc'; // FIXED: Use correct default fallback
+        
+        try {
+            // Add cache-busting parameter to ensure fresh data
+            const configResponse = await fetch(`/api/v1/rag/templates/sql_query_v1/config?_=${Date.now()}`);
+            console.log('Config fetch response status:', configResponse.status);
+            
+            if (configResponse.ok) {
+                const responseData = await configResponse.json();
+                console.log('Full config response:', JSON.stringify(responseData, null, 2));
+                
+                // Handle both response formats: {config: {...}} or direct {...}
+                const configData = responseData.config || responseData;
+                console.log('Extracted config data:', JSON.stringify(configData, null, 2));
+                
+                if (configData.default_mcp_context_prompt) {
+                    contextPromptName = configData.default_mcp_context_prompt;
+                    console.log('✓ Using context prompt from config:', contextPromptName);
+                } else {
+                    console.warn('⚠ No default_mcp_context_prompt in config, using fallback:', contextPromptName);
+                }
+            } else {
+                console.warn('Failed to load template config, status:', configResponse.status);
+            }
+        } catch (error) {
+            console.warn('Could not load template config, using fallback prompt:', error);
+        }
+        
+        console.log('=== CONTEXT GENERATION DEBUG ===');
+        console.log('Prompt name:', contextPromptName);
+        console.log('Database name:', databaseName);
+        console.log('=================================');
+        
+        // Disable button and show loading state
+        ragCollectionGenerateContextBtn.disabled = true;
+        const originalButtonContent = ragCollectionGenerateContextBtn.innerHTML;
+        ragCollectionGenerateContextBtn.innerHTML = `
+            <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            <span>Generating...</span>
+        `;
+        
+        showNotification('info', `Executing ${contextPromptName} prompt...`);
+        
+        // Build request body with arguments
+        const requestBody = {
+            arguments: {}
+        };
+        
+        if (databaseName) {
+            requestBody.arguments.database_name = databaseName;
+        }
+        
+        // Call the execute-raw endpoint
+        const response = await fetch(`/api/v1/prompts/${contextPromptName}/execute-raw`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to execute context prompt');
+        }
+        
+        const result = await response.json();
+        
+        // Store the result for later use
+        lastGeneratedContext = result;
+        
+        // Show summary in inline result
+        if (ragCollectionContextResult && ragCollectionContextContent) {
+            const summary = result.final_answer_text || 'Context generated successfully';
+            const truncated = summary.length > 200 ? summary.substring(0, 200) + '...' : summary;
+            ragCollectionContextContent.textContent = truncated;
+            ragCollectionContextResult.classList.remove('hidden');
+        }
+        
+        // Show full result in modal
+        openContextResultModal(result);
+        
+        showNotification('success', 'Database context generated successfully');
+        
+    } catch (error) {
+        console.error('Error generating context:', error);
+        showNotification('error', `Failed to generate context: ${error.message}`);
+    } finally {
+        // Re-enable button
+        ragCollectionGenerateContextBtn.disabled = false;
+        ragCollectionGenerateContextBtn.innerHTML = `
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+            <span>Generate Context</span>
+        `;
+    }
+}
+
+/**
+ * Open the Context Result Modal
+ */
+function openContextResultModal(result) {
+    if (!contextResultModalOverlay || !contextResultModalContent) {
+        console.error('Context result modal elements not found');
+        return;
+    }
+    
+    // Populate modal with result data
+    if (contextResultPromptText) {
+        contextResultPromptText.textContent = result.prompt_text || 'N/A';
+    }
+    
+    if (contextResultFinalAnswer) {
+        contextResultFinalAnswer.textContent = result.final_answer_text || 'N/A';
+    }
+    
+    if (contextResultExecutionTrace) {
+        contextResultExecutionTrace.textContent = JSON.stringify(result.execution_trace, null, 2);
+    }
+    
+    if (contextResultInputTokens) {
+        contextResultInputTokens.textContent = result.token_usage?.input || 0;
+    }
+    
+    if (contextResultOutputTokens) {
+        contextResultOutputTokens.textContent = result.token_usage?.output || 0;
+    }
+    
+    if (contextResultTotalTokens) {
+        contextResultTotalTokens.textContent = result.token_usage?.total || 0;
+    }
+    
+    // Show modal with animation
+    contextResultModalOverlay.classList.remove('hidden');
+    
+    requestAnimationFrame(() => {
+        contextResultModalOverlay.classList.remove('opacity-0');
+        contextResultModalContent.classList.remove('scale-95', 'opacity-0');
+        contextResultModalContent.classList.add('scale-100', 'opacity-100');
+    });
+}
+
+/**
+ * Close the Context Result Modal
+ */
+function closeContextResultModal() {
+    if (!contextResultModalOverlay || !contextResultModalContent) {
+        return;
+    }
+    
+    // Animate out
+    contextResultModalOverlay.classList.add('opacity-0');
+    contextResultModalContent.classList.remove('scale-100', 'opacity-100');
+    contextResultModalContent.classList.add('scale-95', 'opacity-0');
+    
+    // Hide after animation
+    setTimeout(() => {
+        contextResultModalOverlay.classList.add('hidden');
+    }, 200);
+}
+
+/**
+ * Handle Generate Questions Button Click
+ * Uses the generated database context to create question/SQL pairs
+ */
+async function handleGenerateQuestions() {
+    try {
+        if (!lastGeneratedContext) {
+            showNotification('error', 'Please generate database context first');
+            return;
+        }
+        
+        // Get parameters
+        const subject = ragCollectionLlmSubject ? ragCollectionLlmSubject.value.trim() : '';
+        const count = ragCollectionLlmCount ? parseInt(ragCollectionLlmCount.value) : 5;
+        const databaseName = ragCollectionLlmDb ? ragCollectionLlmDb.value.trim() : '';
+        
+        if (!subject) {
+            showNotification('error', 'Please enter a subject');
+            return;
+        }
+        
+        if (!databaseName) {
+            showNotification('error', 'Please enter a database name');
+            return;
+        }
+        
+        // Disable button and show loading state
+        ragCollectionGenerateQuestionsBtn.disabled = true;
+        const originalButtonContent = ragCollectionGenerateQuestionsBtn.innerHTML;
+        ragCollectionGenerateQuestionsBtn.innerHTML = `
+            <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            <span>Generating...</span>
+        `;
+        
+        showNotification('info', `Generating ${count} question/SQL pairs...`);
+        
+        // Build request with database context from previous step
+        const requestBody = {
+            subject: subject,
+            count: count,
+            database_context: lastGeneratedContext.final_answer_text,
+            database_name: databaseName
+        };
+        
+        console.log('=== QUESTION GENERATION DEBUG ===');
+        console.log('Subject:', subject);
+        console.log('Count:', count);
+        console.log('Database:', databaseName);
+        console.log('Context length:', lastGeneratedContext.final_answer_text.length);
+        console.log('=====================================');
+        
+        // Call the generate-questions endpoint
+        const response = await fetch('/api/v1/rag/generate-questions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to generate questions');
+        }
+        
+        const result = await response.json();
+        
+        // Store questions for later use
+        lastGeneratedQuestions = result.questions;
+        
+        // Display questions preview
+        displayQuestionsPreview(result.questions);
+        
+        showNotification('success', `Generated ${result.count} questions successfully`);
+        
+    } catch (error) {
+        console.error('Error generating questions:', error);
+        showNotification('error', `Failed to generate questions: ${error.message}`);
+    } finally {
+        // Re-enable button
+        if (ragCollectionGenerateQuestionsBtn) {
+            ragCollectionGenerateQuestionsBtn.disabled = false;
+            ragCollectionGenerateQuestionsBtn.innerHTML = `
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>Generate Questions</span>
+            `;
+        }
+    }
+}
+
+/**
+ * Display generated questions in the preview area
+ */
+function displayQuestionsPreview(questions) {
+    if (!ragCollectionQuestionsList || !ragCollectionQuestionsResult) {
+        console.error('Questions preview elements not found');
+        return;
+    }
+    
+    // Update count
+    if (ragCollectionQuestionsCount) {
+        ragCollectionQuestionsCount.textContent = `${questions.length} Questions Generated`;
+    }
+    
+    // Clear previous content
+    ragCollectionQuestionsList.innerHTML = '';
+    
+    // Add each question as a preview item
+    questions.forEach((q, index) => {
+        const questionDiv = document.createElement('div');
+        questionDiv.className = 'bg-gray-900/50 rounded p-3 border border-gray-700';
+        
+        questionDiv.innerHTML = `
+            <div class="text-xs font-semibold text-purple-300 mb-1">Question ${index + 1}</div>
+            <div class="text-sm text-white mb-2">${escapeHtml(q.question)}</div>
+            <div class="text-xs text-gray-400 font-mono bg-black/30 rounded p-2 overflow-x-auto">
+                ${escapeHtml(q.sql.substring(0, 100))}${q.sql.length > 100 ? '...' : ''}
+            </div>
+        `;
+        
+        ragCollectionQuestionsList.appendChild(questionDiv);
+    });
+    
+    // Show the questions result area
+    ragCollectionQuestionsResult.classList.remove('hidden');
+}
+
+/**
+ * Handle Populate Collection Button Click
+ * Takes generated questions and populates the RAG collection
+ */
+async function handlePopulateCollection() {
+    try {
+        if (!lastGeneratedQuestions || lastGeneratedQuestions.length === 0) {
+            showNotification('error', 'No questions generated yet');
+            return;
+        }
+        
+        const databaseName = ragCollectionLlmDb ? ragCollectionLlmDb.value.trim() : '';
+        
+        if (!databaseName) {
+            showNotification('error', 'Database name is required');
+            return;
+        }
+        
+        // Hide the LLM options section
+        if (ragCollectionLlmOptions) {
+            ragCollectionLlmOptions.classList.add('hidden');
+        }
+        
+        // Scroll to the Create Collection button
+        const createButton = document.getElementById('ragCollectionAddBtn');
+        if (createButton) {
+            createButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Highlight the button briefly
+            createButton.classList.add('ring-4', 'ring-green-500');
+            setTimeout(() => {
+                createButton.classList.remove('ring-4', 'ring-green-500');
+            }, 2000);
+        }
+        
+        showNotification('success', `Questions ready! Click "Create Collection" to save with ${lastGeneratedQuestions.length} generated examples.`);
+        
+    } catch (error) {
+        console.error('Error preparing to populate collection:', error);
+        showNotification('error', `Error: ${error.message}`);
+    }
+}
+
+/**
  * Handle population method radio button changes
  */
 async function handlePopulationMethodChange() {
@@ -1376,6 +1893,11 @@ async function handlePopulationMethodChange() {
         phase3Indicator.querySelector('.text-sm').classList.add('text-gray-400');
     }
     
+    // Hide LLM options first
+    if (ragCollectionLlmOptions) {
+        ragCollectionLlmOptions.classList.add('hidden');
+    }
+    
     // Show the selected population option
     if (ragPopulationTemplate && ragPopulationTemplate.checked) {
         ragCollectionTemplateOptions.classList.remove('hidden');
@@ -1386,13 +1908,10 @@ async function handlePopulationMethodChange() {
             addCollectionTemplateExample();
         }
     } else if (ragPopulationLlm && ragPopulationLlm.checked) {
-        // Show Phase 2 section for LLM workflow
-        if (phase2Section) {
-            phase2Section.classList.remove('hidden');
-            unlockPhase2();
+        // Show LLM options
+        if (ragCollectionLlmOptions) {
+            ragCollectionLlmOptions.classList.remove('hidden');
         }
-        // Load template configuration to show informative fields
-        await loadLlmTemplateInfo();
     }
 }
 
@@ -1857,16 +2376,22 @@ if (ragCollectionTemplateAddExample) {
     ragCollectionTemplateAddExample.addEventListener('click', addCollectionTemplateExample);
 }
 
-// Event Listeners for LLM Preview and Create Context
-if (ragCollectionLlmPreviewBtn) {
-    ragCollectionLlmPreviewBtn.addEventListener('click', previewGenerationPrompt);
+// Event Listener for Generate Context button
+if (ragCollectionGenerateContextBtn) {
+    ragCollectionGenerateContextBtn.addEventListener('click', handleGenerateContext);
 }
 
-if (ragCollectionLlmCreateContextBtn) {
-    ragCollectionLlmCreateContextBtn.addEventListener('click', createDatabaseContext);
+// Event Listener for Generate Questions button
+if (ragCollectionGenerateQuestionsBtn) {
+    ragCollectionGenerateQuestionsBtn.addEventListener('click', handleGenerateQuestions);
 }
 
-// Close button for context result
+// Event Listener for Populate Collection button
+if (ragCollectionPopulateBtn) {
+    ragCollectionPopulateBtn.addEventListener('click', handlePopulateCollection);
+}
+
+// Close button for context result (small inline display)
 if (ragCollectionContextClose) {
     ragCollectionContextClose.addEventListener('click', () => {
         if (ragCollectionContextResult) {
@@ -1875,9 +2400,46 @@ if (ragCollectionContextClose) {
     });
 }
 
-// Event Listener for Generate Questions button
-if (ragCollectionGenerateQuestionsBtn) {
-    ragCollectionGenerateQuestionsBtn.addEventListener('click', generateQuestions);
+// Close button for questions result
+if (ragCollectionQuestionsClose) {
+    ragCollectionQuestionsClose.addEventListener('click', () => {
+        if (ragCollectionQuestionsResult) {
+            ragCollectionQuestionsResult.classList.add('hidden');
+        }
+    });
+}
+
+// Event Listener for Refresh Prompt button
+if (ragCollectionRefreshPromptBtn) {
+    ragCollectionRefreshPromptBtn.addEventListener('click', refreshQuestionGenerationPrompt);
+}
+
+// Auto-refresh prompt when LLM fields change
+if (ragCollectionLlmSubject) {
+    ragCollectionLlmSubject.addEventListener('input', refreshQuestionGenerationPrompt);
+}
+if (ragCollectionLlmCount) {
+    ragCollectionLlmCount.addEventListener('input', refreshQuestionGenerationPrompt);
+}
+if (ragCollectionLlmDb) {
+    ragCollectionLlmDb.addEventListener('input', refreshQuestionGenerationPrompt);
+}
+
+// Event Listeners for Context Result Modal
+if (contextResultModalClose) {
+    contextResultModalClose.addEventListener('click', closeContextResultModal);
+}
+
+if (contextResultModalOk) {
+    contextResultModalOk.addEventListener('click', closeContextResultModal);
+}
+
+if (contextResultModalOverlay) {
+    contextResultModalOverlay.addEventListener('click', (e) => {
+        if (e.target === contextResultModalOverlay) {
+            closeContextResultModal();
+        }
+    });
 }
 
 // Event Listeners for SQL Template Modal

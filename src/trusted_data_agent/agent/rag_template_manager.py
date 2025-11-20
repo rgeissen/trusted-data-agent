@@ -223,6 +223,11 @@ class RAGTemplateManager:
             if "mcp_tool_name" in input_vars:
                 input_vars["mcp_tool_name"]["default"] = config["default_mcp_tool"]
         
+        if "default_mcp_context_prompt" in config:
+            input_vars = template.get("input_variables", {})
+            if "mcp_context_prompt" in input_vars:
+                input_vars["mcp_context_prompt"]["default"] = config["default_mcp_context_prompt"]
+        
         logger.info(f"Updated runtime configuration for template {template_id}")
     
     def reload_templates(self):

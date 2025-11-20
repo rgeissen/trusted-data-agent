@@ -659,9 +659,22 @@ async def get_rag_case_details(case_id: str):
             return jsonify({"error": "Cases directory not found."}), 500
 
         file_stem = case_id if case_id.startswith('case_') else f'case_{case_id}'
+        
+        # Search in flat structure first (legacy), then in collection subdirectories
         case_path = cases_dir / f"{file_stem}.json"
         if not case_path.exists():
-            return jsonify({"error": f"Case '{file_stem}' not found."}), 404
+            # Search all collection_* subdirectories
+            found = False
+            for collection_dir in cases_dir.glob("collection_*"):
+                if collection_dir.is_dir():
+                    potential_path = collection_dir / f"{file_stem}.json"
+                    if potential_path.exists():
+                        case_path = potential_path
+                        found = True
+                        break
+            
+            if not found:
+                return jsonify({"error": f"Case '{file_stem}' not found."}), 404
 
         with open(case_path, 'r', encoding='utf-8') as f:
             case_data = json.load(f)

@@ -986,6 +986,7 @@ class RAGRetriever:
     def _prepare_chroma_metadata(self, case_study: dict) -> dict:
         """Prepares the metadata dictionary for upserting into ChromaDB."""
         # Metadata for ChromaDB *must* be flat (str, int, float, bool).
+        # ChromaDB does NOT accept None values - filter them out or convert to valid types.
         
         strategy_type = "unknown"
         if "successful_strategy" in case_study:
@@ -1000,10 +1001,8 @@ class RAGRetriever:
             "user_query": case_study["intent"]["user_query"],
             "strategy_type": strategy_type,
             "timestamp": case_study["metadata"]["timestamp"],
-            # --- MODIFICATION START: Add task_id and collection_id ---
-            "task_id": case_study["metadata"].get("task_id"),
+            "task_id": case_study["metadata"].get("task_id") or "",  # Convert None to empty string
             "collection_id": case_study["metadata"].get("collection_id", 0),
-            # --- MODIFICATION END ---
             "is_most_efficient": case_study["metadata"].get("is_most_efficient", False),
             "had_plan_improvements": case_study["metadata"].get("had_plan_improvements", False),
             "had_tactical_improvements": case_study["metadata"].get("had_tactical_improvements", False),
@@ -1012,6 +1011,10 @@ class RAGRetriever:
             # Store the full case data as a JSON string
             "full_case_data": json.dumps(case_study)
         }
+        
+        # Safety check: Remove any remaining None values (shouldn't happen, but just in case)
+        metadata = {k: v for k, v in metadata.items() if v is not None}
+        
         return metadata
 
     async def process_turn_for_rag(self, turn_summary: dict, collection_id: Optional[int] = None):

@@ -1116,7 +1116,7 @@
                         <!-- Template Cards -->
                         <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                             <!-- SQL Query Template Card -->
-                            <div class="glass-panel rounded-xl p-6 hover:border-[#F15F22] transition-colors cursor-pointer" onclick="openSqlTemplatePopulator()">
+                            <div id="sqlTemplateCard" class="glass-panel rounded-xl p-6 hover:border-[#F15F22] transition-colors cursor-pointer">
                                 <div class="flex items-start justify-between mb-4">
                                     <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -1635,6 +1635,104 @@
                             </div>
                         </div>
                         
+                        <!-- Question Generation Prompt Preview -->
+                        <div class="bg-gray-800/50 rounded-lg p-4 border border-gray-600">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="text-sm font-medium text-gray-300 flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    Question Generation Prompt (Preview)
+                                </label>
+                                <button type="button" id="rag-collection-refresh-prompt" 
+                                        class="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                                        title="Refresh prompt preview with current values">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                    Refresh
+                                </button>
+                            </div>
+                            <textarea id="rag-collection-llm-prompt-preview" 
+                                      class="w-full h-32 p-3 bg-gray-900/50 border border-gray-700 rounded text-xs font-mono text-gray-300 resize-none"
+                                      placeholder="Enter subject, count, and database above, then click Refresh to preview the prompt..."></textarea>
+                            <p class="text-xs text-gray-400 mt-2">This prompt will be sent to the LLM along with the database context. You can edit it if needed.</p>
+                        </div>
+                        
+                        <!-- Generate Context Button -->
+                        <div class="flex items-center justify-between pt-2 border-t border-gray-600">
+                            <div class="flex-1">
+                                <p class="text-xs text-gray-400">Step 1: Generate database context to help the LLM understand your schema</p>
+                            </div>
+                            <button type="button" id="rag-collection-generate-context" 
+                                    class="px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-500 transition-colors font-semibold text-white text-sm flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                </svg>
+                                <span>Generate Context</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Context Result (hidden initially) -->
+                        <div id="rag-collection-context-result" class="hidden bg-gray-800/50 rounded-lg p-4 border border-gray-600">
+                            <div class="flex items-start justify-between mb-2">
+                                <h4 class="text-sm font-semibold text-white flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Database Context Generated
+                                </h4>
+                                <button type="button" id="rag-collection-context-close" class="text-gray-400 hover:text-white">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div id="rag-collection-context-content" class="text-xs text-gray-300 font-mono bg-gray-900/50 rounded p-3 max-h-40 overflow-y-auto">
+                                <!-- Context will be displayed here -->
+                            </div>
+                            
+                            <!-- Generate Questions Button (appears after context is generated) -->
+                            <div class="mt-3 flex gap-3">
+                                <button type="button" id="rag-collection-generate-questions-btn" class="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-purple-600 hover:bg-purple-700 transition-colors font-semibold text-white text-sm">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <span>Generate Questions</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Generated Questions Preview (hidden initially) -->
+                        <div id="rag-collection-questions-result" class="hidden bg-gray-800/50 rounded-lg p-4 border border-gray-600 mt-3">
+                            <div class="flex items-start justify-between mb-3">
+                                <h4 class="text-sm font-semibold text-white flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    <span id="rag-collection-questions-count">5 Questions Generated</span>
+                                </h4>
+                                <button type="button" id="rag-collection-questions-close" class="text-gray-400 hover:text-white">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            
+                            <!-- Questions Preview List -->
+                            <div id="rag-collection-questions-list" class="space-y-2 max-h-60 overflow-y-auto mb-3">
+                                <!-- Questions will be displayed here -->
+                            </div>
+                            
+                            <!-- Populate Collection Button -->
+                            <button type="button" id="rag-collection-populate-btn" class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-green-600 hover:bg-green-700 transition-colors font-semibold text-white text-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                                </svg>
+                                <span>Populate Collection</span>
+                            </button>
+                        </div>
+                        
                         <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
                             <div class="flex gap-2">
                                 <svg class="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2043,6 +2141,83 @@
             </div>
         </div>
     </div> -->
+
+    <!-- Context Result Modal -->
+    <div id="context-result-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
+        <div id="context-result-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-4xl p-6 transform scale-95 opacity-0 max-h-[90vh] overflow-y-auto">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">Database Context Result</h2>
+                    <p class="text-sm text-gray-400 mt-1">Raw context data retrieved from MCP prompt execution</p>
+                </div>
+                <button type="button" id="context-result-modal-close" class="p-2 rounded-full text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="space-y-4">
+                <!-- Prompt Text -->
+                <div>
+                    <h3 class="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+                        </svg>
+                        Executed Prompt
+                    </h3>
+                    <div id="context-result-prompt-text" class="bg-gray-800/50 rounded-lg p-3 text-xs text-gray-300 font-mono max-h-40 overflow-y-auto"></div>
+                </div>
+
+                <!-- Final Answer -->
+                <div>
+                    <h3 class="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Final Answer
+                    </h3>
+                    <div id="context-result-final-answer" class="bg-gray-800/50 rounded-lg p-3 text-xs text-gray-300 max-h-60 overflow-y-auto whitespace-pre-wrap"></div>
+                </div>
+
+                <!-- Execution Trace -->
+                <div>
+                    <h3 class="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        Execution Trace
+                    </h3>
+                    <div id="context-result-execution-trace" class="bg-gray-800/50 rounded-lg p-3 text-xs text-gray-300 font-mono max-h-80 overflow-y-auto"></div>
+                </div>
+
+                <!-- Token Usage -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="bg-gray-800/50 rounded-lg p-3">
+                        <p class="text-xs text-gray-400 mb-1">Input Tokens</p>
+                        <p id="context-result-input-tokens" class="text-lg font-semibold text-white">0</p>
+                    </div>
+                    <div class="bg-gray-800/50 rounded-lg p-3">
+                        <p class="text-xs text-gray-400 mb-1">Output Tokens</p>
+                        <p id="context-result-output-tokens" class="text-lg font-semibold text-white">0</p>
+                    </div>
+                    <div class="bg-gray-800/50 rounded-lg p-3">
+                        <p class="text-xs text-gray-400 mb-1">Total Tokens</p>
+                        <p id="context-result-total-tokens" class="text-lg font-semibold text-white">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-600">
+                <button type="button" id="context-result-modal-ok" class="px-4 py-2 rounded-md bg-teradata-orange hover:bg-teradata-orange-dark transition-colors font-semibold text-white">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- View Prompt Modal -->
     <div id="view-prompt-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">

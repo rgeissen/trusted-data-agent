@@ -766,7 +766,14 @@ class PlanExecutor:
                 app_logger.debug(f"Saved last turn data to session {self.session_id} for user {self.user_uuid}")
 
                 # --- MODIFICATION START: Add "Producer" logic to send turn to RAG worker ---
-                if APP_CONFIG.RAG_ENABLED and APP_STATE.get('rag_processing_queue') and self.rag_retriever:
+                # Skip RAG processing for temporary API sessions (e.g., prompt execution, question generation)
+                skip_rag_for_temp_sessions = self.user_uuid in [
+                    "api-prompt-executor",
+                    "api-prompt-executor-raw",
+                    "api-question-generator"
+                ]
+                
+                if APP_CONFIG.RAG_ENABLED and APP_STATE.get('rag_processing_queue') and self.rag_retriever and not skip_rag_for_temp_sessions:
                     try:
                         app_logger.debug(f"Adding turn {self.current_turn_number} to RAG processing queue.")
                         # Add user_uuid to turn_summary for session updates
@@ -776,6 +783,8 @@ class PlanExecutor:
                     except Exception as e:
                         # Log error if queue.put fails, but don't crash the executor
                         app_logger.error(f"Failed to add turn summary to RAG processing queue: {e}", exc_info=True)
+                elif skip_rag_for_temp_sessions:
+                    app_logger.debug(f"Skipping RAG processing for temporary session user_uuid: {self.user_uuid}")
                 # --- MODIFICATION END ---
 
 
@@ -1128,6 +1137,11 @@ class PlanExecutor:
             "final_answer_text": self.final_summary_text,  # Clean text for LLM consumption
             "tts_payload": tts_payload,
             "source": self.source,
-            "turn_id": self.current_turn_number # Use the authoritative instance variable
+            "turn_id": self.current_turn_number, # Use the authoritative instance variable
+            # Raw execution data for API consumers
+            "execution_trace": self.turn_action_history,
+            "collected_data": self.structured_collected_data,
+            "turn_input_tokens": self.turn_input_tokens,
+            "turn_output_tokens": self.turn_output_tokens
         }, "final_answer")
         # --- MODIFICATION END ---

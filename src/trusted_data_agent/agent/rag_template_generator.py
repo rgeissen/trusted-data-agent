@@ -181,18 +181,28 @@ class RAGTemplateGenerator:
             
             # Get value from input
             source = var_config.get("source")
-            value = input_values.get(source, "")
             
-            # Apply transformation
-            transform = var_config.get("transform")
-            if transform == "truncate":
-                max_length = var_config.get("max_length", 50)
-                if len(str(value)) > max_length:
-                    value = str(value)[:max_length] + "..."
-            
-            # Format
-            fmt = var_config.get("format", "{" + source + "}")
-            formatted_value = fmt.replace(f"{{{source}}}", str(value))
+            # If no source is specified, this is a conditional formatting variable
+            if source is None:
+                # Use the format string directly, substituting any referenced variables
+                fmt = var_config.get("format", "")
+                formatted_value = fmt
+                # Replace any variable references in the format string
+                for input_key, input_val in input_values.items():
+                    formatted_value = formatted_value.replace(f"{{{input_key}}}", str(input_val) if input_val else "")
+            else:
+                value = input_values.get(source, "")
+                
+                # Apply transformation
+                transform = var_config.get("transform")
+                if transform == "truncate":
+                    max_length = var_config.get("max_length", 50)
+                    if len(str(value)) > max_length:
+                        value = str(value)[:max_length] + "..."
+                
+                # Format
+                fmt = var_config.get("format", "{" + source + "}")
+                formatted_value = fmt.replace(f"{{{source}}}", str(value))
             
             goal = goal.replace(f"{{{var_name}}}", formatted_value)
         

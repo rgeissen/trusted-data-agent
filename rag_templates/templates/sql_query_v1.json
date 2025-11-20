@@ -55,8 +55,8 @@
       "type": "string",
       "required": false,
       "description": "MCP prompt to use for gathering database context during auto-generation",
-      "placeholder": "base_tableBusinessDesc",
-      "default": "base_tableBusinessDesc"
+      "placeholder": "base_databaseBusinessDesc",
+      "default": "base_databaseBusinessDesc"
     }
   },
   "output_configuration": {
