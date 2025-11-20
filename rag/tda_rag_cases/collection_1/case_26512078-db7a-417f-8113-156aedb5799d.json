@@ -1,14 +1,14 @@
 {
-  "case_id": "4044588e-eb04-4aa7-814a-ece223468b5c",
+  "case_id": "26512078-db7a-417f-8113-156aedb5799d",
   "metadata": {
     "session_id": "00000000-0000-0000-0000-000000000000",
     "turn_id": 1,
     "is_success": true,
-    "task_id": "template-task-4044588e",
+    "task_id": "template-task-26512078",
     "collection_id": 1,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-11-20T20:22:54.009570+00:00",
+    "timestamp": "2025-11-20T20:57:41.340739+00:00",
     "user_feedback_score": 0,
     "llm_config": {
       "provider": "Template",
@@ -30,18 +30,18 @@
     "database_name": "fitness_db"
   },
   "intent": {
-    "user_query": "What is the monthly sales trend (total revenue) for the last 12 months?"
+    "user_query": "What is the total sales revenue for each month in the year 2023?"
   },
   "successful_strategy": {
     "phases": [
       {
         "phase": 1,
-        "goal": "Execute SQL query on fitness_db: SELECT EXTRACT(MONTH FROM SaleDate) AS SaleMonth, SUM(TotalPrice) AS MonthlyRevenue FROM fitness_db.Sales WHERE SaleDate BETWEEN ADD_MONTHS(CURRENT_DATE, -12) AND CURRENT_DATE GROUP BY 1 ORDER BY 1;",
+        "goal": "Execute SQL query on fitness_db: SELECT EXTRACT(MONTH FROM OrderDate) AS OrderMonth, SUM(OrderTotal) AS TotalRevenue FROM fitness_db.Orders WHERE EXTRACT(YEAR FROM OrderDate) = 2023 GROUP BY EXTRACT(MONTH FROM OrderDate) ORDER BY OrderMonth;",
         "relevant_tools": [
           "base_executeRawSQLStatement"
         ],
         "arguments": {
-          "sql": "SELECT EXTRACT(MONTH FROM SaleDate) AS SaleMonth, SUM(TotalPrice) AS MonthlyRevenue FROM fitness_db.Sales WHERE SaleDate BETWEEN ADD_MONTHS(CURRENT_DATE, -12) AND CURRENT_DATE GROUP BY 1 ORDER BY 1;",
+          "sql": "SELECT EXTRACT(MONTH FROM OrderDate) AS OrderMonth, SUM(OrderTotal) AS TotalRevenue FROM fitness_db.Orders WHERE EXTRACT(YEAR FROM OrderDate) = 2023 GROUP BY EXTRACT(MONTH FROM OrderDate) ORDER BY OrderMonth;",
           "database_name": "fitness_db"
         }
       },

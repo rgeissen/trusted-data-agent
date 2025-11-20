@@ -114,6 +114,7 @@ const ragCollectionLlmSubject = document.getElementById('rag-collection-llm-subj
 const ragCollectionLlmCount = document.getElementById('rag-collection-llm-count');
 const ragCollectionLlmDb = document.getElementById('rag-collection-llm-db');
 const ragCollectionLlmTargetDb = document.getElementById('rag-collection-llm-target-db');
+const ragCollectionLlmConversionRules = document.getElementById('rag-collection-llm-conversion-rules');
 const ragCollectionLlmPromptPreview = document.getElementById('rag-collection-llm-prompt-preview');
 const ragCollectionRefreshPromptBtn = document.getElementById('rag-collection-refresh-prompt');
 const ragCollectionGenerateContextBtn = document.getElementById('rag-collection-generate-context');
@@ -175,6 +176,8 @@ function refreshQuestionGenerationPrompt() {
     const subject = ragCollectionLlmSubject ? ragCollectionLlmSubject.value.trim() : '';
     const count = ragCollectionLlmCount ? ragCollectionLlmCount.value : '5';
     const databaseName = ragCollectionLlmDb ? ragCollectionLlmDb.value.trim() : '';
+    const targetDatabase = ragCollectionLlmTargetDb ? ragCollectionLlmTargetDb.value.trim() : 'Teradata';
+    const conversionRules = ragCollectionLlmConversionRules ? ragCollectionLlmConversionRules.value.trim() : '';
     
     if (!subject) {
         ragCollectionLlmPromptPreview.value = 'Please enter a subject/topic first...';
@@ -184,6 +187,14 @@ function refreshQuestionGenerationPrompt() {
     if (!databaseName) {
         ragCollectionLlmPromptPreview.value = 'Please enter a database name first...';
         return;
+    }
+    
+    // Build conversion rules section if provided
+    let conversionRulesSection = '';
+    if (conversionRules) {
+        conversionRulesSection = `
+7. CRITICAL: Follow these explicit ${targetDatabase} conversion rules:
+${conversionRules}`;
     }
     
     // Generate the prompt template (without actual context)
@@ -197,19 +208,26 @@ Database Context:
 Requirements:
 1. Generate EXACTLY ${count} question/SQL pairs
 2. Questions should be natural language business questions about ${subject}
-3. SQL queries must be valid for the database schema shown above
-4. Questions should vary in complexity (simple to advanced)
-5. Use the database name "${databaseName}" in your queries
-6. Return your response as a valid JSON array with this exact structure:
+3. SQL queries must be valid ${targetDatabase} syntax for the database schema shown above
+4. Use ${targetDatabase}-specific SQL syntax, functions, and conventions
+5. Questions should vary in complexity (simple to advanced)
+6. Use the database name "${databaseName}" in your queries${conversionRulesSection}
+7. Return your response as a valid JSON array with this exact structure:
 [
   {
     "question": "What is the total revenue by product category?",
     "sql": "SELECT ProductType, SUM(Price * StockQuantity) as TotalValue FROM ${databaseName}.Products GROUP BY ProductType;"
   },
-  ...
+  {
+    "question": "Which customer has the highest order value?",
+    "sql": "SELECT CustomerID, CustomerName, MAX(OrderTotal) as MaxOrder FROM ${databaseName}.Orders GROUP BY CustomerID, CustomerName ORDER BY MaxOrder DESC LIMIT 1;"
+  }
 ]
 
-IMPORTANT: Your entire response must be ONLY the JSON array, with no other text before or after.`;
+IMPORTANT: 
+- Write COMPLETE SQL queries - do NOT truncate them with "..." or similar
+- Your entire response must be ONLY the JSON array, with no other text before or after
+- Include all ${count} question/SQL pairs requested`;
     
     ragCollectionLlmPromptPreview.value = promptTemplate;
 }
@@ -1701,6 +1719,7 @@ async function handleGenerateQuestions() {
         const count = ragCollectionLlmCount ? parseInt(ragCollectionLlmCount.value) : 5;
         const databaseName = ragCollectionLlmDb ? ragCollectionLlmDb.value.trim() : '';
         const targetDatabase = ragCollectionLlmTargetDb ? ragCollectionLlmTargetDb.value.trim() : 'Teradata';
+        const conversionRules = ragCollectionLlmConversionRules ? ragCollectionLlmConversionRules.value.trim() : '';
         
         if (!subject) {
             showNotification('error', 'Please enter a subject');
@@ -1730,7 +1749,8 @@ async function handleGenerateQuestions() {
             count: count,
             database_context: lastGeneratedContext.final_answer_text,
             database_name: databaseName,
-            target_database: targetDatabase
+            target_database: targetDatabase,
+            conversion_rules: conversionRules
         };
         
         console.log('=== QUESTION GENERATION DEBUG ===');

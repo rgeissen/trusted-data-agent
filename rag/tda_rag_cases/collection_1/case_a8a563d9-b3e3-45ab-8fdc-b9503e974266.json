@@ -1,14 +1,14 @@
 {
-  "case_id": "6659e5ab-3e94-4ffd-9122-a508ab9d8184",
+  "case_id": "a8a563d9-b3e3-45ab-8fdc-b9503e974266",
   "metadata": {
     "session_id": "00000000-0000-0000-0000-000000000000",
     "turn_id": 1,
     "is_success": true,
-    "task_id": "template-task-6659e5ab",
+    "task_id": "template-task-a8a563d9",
     "collection_id": 1,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-11-20T20:22:53.988637+00:00",
+    "timestamp": "2025-11-20T20:57:41.362160+00:00",
     "user_feedback_score": 0,
     "llm_config": {
       "provider": "Template",
@@ -30,18 +30,18 @@
     "database_name": "fitness_db"
   },
   "intent": {
-    "user_query": "What is the average order value for sales made in the last quarter?"
+    "user_query": "What is the percentage of orders fulfilled within 7 days of the order date?"
   },
   "successful_strategy": {
     "phases": [
       {
         "phase": 1,
-        "goal": "Execute SQL query on fitness_db: SELECT AVG(TotalPrice) FROM fitness_db.Sales WHERE SaleDate BETWEEN ADD_MONTHS(CURRENT_DATE, -3) AND CURRENT_DATE;",
+        "goal": "Execute SQL query on fitness_db: SELECT CAST(SUM(CASE WHEN (ShippedDate - OrderDate) <= 7 THEN 1 ELSE 0 END) AS DECIMAL(10,2)) / COUNT(*) * 100 AS PercentageOrdersFulfilledIn7Days FROM fitness_db.Orders WHERE ShippedDate IS NOT NULL;",
         "relevant_tools": [
           "base_executeRawSQLStatement"
         ],
         "arguments": {
-          "sql": "SELECT AVG(TotalPrice) FROM fitness_db.Sales WHERE SaleDate BETWEEN ADD_MONTHS(CURRENT_DATE, -3) AND CURRENT_DATE;",
+          "sql": "SELECT CAST(SUM(CASE WHEN (ShippedDate - OrderDate) <= 7 THEN 1 ELSE 0 END) AS DECIMAL(10,2)) / COUNT(*) * 100 AS PercentageOrdersFulfilledIn7Days FROM fitness_db.Orders WHERE ShippedDate IS NOT NULL;",
           "database_name": "fitness_db"
         }
       },

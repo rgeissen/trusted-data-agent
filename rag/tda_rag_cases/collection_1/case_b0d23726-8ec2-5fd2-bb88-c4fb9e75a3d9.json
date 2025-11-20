@@ -1,0 +1,54 @@
+{
+  "case_id": "b0d23726-8ec2-5fd2-bb88-c4fb9e75a3d9",
+  "metadata": {
+    "session_id": "6bdf1926-4f63-4d83-9cfb-296d80bf8052",
+    "turn_id": 5,
+    "is_success": true,
+    "task_id": "task-630a7270-10a5-466b-8e58-255aad8e21cd",
+    "collection_id": 1,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-20T20:58:05.820505+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "input_tokens": 18543,
+      "output_tokens": 195
+    },
+    "is_most_efficient": false,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    }
+  },
+  "intent": {
+    "user_query": "What are the top 5 best-selling products by quantity sold?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Retrieve the top 5 products based on quantity sold from the SaleDetails and Products tables in the fitness_db database.",
+        "relevant_tools": [
+          "base_readQuery"
+        ],
+        "arguments": {
+          "sql": "SELECT TOP 5 p.ProductName, SUM(sd.Quantity) AS TotalQuantitySold FROM fitness_db.Products p JOIN fitness_db.SaleDetails sd ON p.ProductID = sd.ProductID GROUP BY p.ProductName ORDER BY TotalQuantitySold DESC;"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

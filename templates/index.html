@@ -1643,6 +1643,16 @@
                             </div>
                         </div>
                         
+                        <!-- Explicit Conversion Rules -->
+                        <div class="mt-4">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Explicit Conversion Rules (Optional)</label>
+                            <textarea id="rag-collection-llm-conversion-rules" 
+                                      rows="4"
+                                      class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white text-sm font-mono"
+                                      placeholder="e.g., Use CAST(column AS DATE) instead of column::DATE&#10;Use EXTRACT(YEAR FROM date_col) not YEAR(date_col)&#10;Use TOP N instead of LIMIT N"></textarea>
+                            <p class="text-xs text-gray-400 mt-1">Specific SQL syntax rules for the target database. Will be explicitly referenced in the prompt if provided.</p>
+                        </div>
+                        
                         <!-- Question Generation Prompt Preview -->
                         <div class="bg-gray-800/50 rounded-lg p-4 border border-gray-600">
                             <div class="flex items-center justify-between mb-2">

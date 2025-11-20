@@ -1,14 +1,14 @@
 {
-  "case_id": "53327a8b-609b-4873-882e-e356d547e2b4",
+  "case_id": "89ef2510-c310-4736-8737-063e469380ad",
   "metadata": {
     "session_id": "00000000-0000-0000-0000-000000000000",
     "turn_id": 1,
     "is_success": true,
-    "task_id": "template-task-53327a8b",
+    "task_id": "template-task-89ef2510",
     "collection_id": 1,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-11-20T20:22:53.962850+00:00",
+    "timestamp": "2025-11-20T20:57:41.330364+00:00",
     "user_feedback_score": 0,
     "llm_config": {
       "provider": "Template",
@@ -30,18 +30,18 @@
     "database_name": "fitness_db"
   },
   "intent": {
-    "user_query": "What are the top 5 best-selling products by quantity sold?"
+    "user_query": "What is the average time to resolve a service ticket by ticket priority?"
   },
   "successful_strategy": {
     "phases": [
       {
         "phase": 1,
-        "goal": "Execute SQL query on fitness_db: SELECT ProductID, SUM(Quantity) AS TotalQuantitySold FROM fitness_db.Sales ORDER BY TotalQuantitySold DESC LIMIT 5;",
+        "goal": "Execute SQL query on fitness_db: SELECT Priority, AVG(CAST((CloseDate - OpenDate) AS INTEGER)) AS AverageResolutionTimeDays FROM fitness_db.ServiceTickets WHERE Status = 'Closed' GROUP BY Priority;",
         "relevant_tools": [
           "base_executeRawSQLStatement"
         ],
         "arguments": {
-          "sql": "SELECT ProductID, SUM(Quantity) AS TotalQuantitySold FROM fitness_db.Sales ORDER BY TotalQuantitySold DESC LIMIT 5;",
+          "sql": "SELECT Priority, AVG(CAST((CloseDate - OpenDate) AS INTEGER)) AS AverageResolutionTimeDays FROM fitness_db.ServiceTickets WHERE Status = 'Closed' GROUP BY Priority;",
           "database_name": "fitness_db"
         }
       },

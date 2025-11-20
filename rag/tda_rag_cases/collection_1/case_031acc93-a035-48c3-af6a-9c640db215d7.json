@@ -1,14 +1,14 @@
 {
-  "case_id": "44acdb94-4d1f-4c66-bcc6-6d8252df1903",
+  "case_id": "031acc93-a035-48c3-af6a-9c640db215d7",
   "metadata": {
     "session_id": "00000000-0000-0000-0000-000000000000",
     "turn_id": 1,
     "is_success": true,
-    "task_id": "template-task-44acdb94",
+    "task_id": "template-task-031acc93",
     "collection_id": 1,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-11-20T20:22:53.999108+00:00",
+    "timestamp": "2025-11-20T20:57:41.351237+00:00",
     "user_feedback_score": 0,
     "llm_config": {
       "provider": "Template",
@@ -30,18 +30,18 @@
     "database_name": "fitness_db"
   },
   "intent": {
-    "user_query": "Which product categories have the lowest stock levels (sum of StockQuantity), and what is their average price?"
+    "user_query": "Which product categories have the lowest stock levels, and what are the names of those products?"
   },
   "successful_strategy": {
     "phases": [
       {
         "phase": 1,
-        "goal": "Execute SQL query on fitness_db: SELECT p.ProductType, SUM(p.StockQuantity) AS TotalStock, AVG(p.Price) AS AveragePrice FROM fitness_db.Products p GROUP BY p.ProductType ORDER BY TotalStock ASC;",
+        "goal": "Execute SQL query on fitness_db: SELECT p.ProductType, p.ProductName, p.StockQuantity FROM fitness_db.Products p WHERE p.StockQuantity = (SELECT MIN(StockQuantity) FROM fitness_db.Products) ;",
         "relevant_tools": [
           "base_executeRawSQLStatement"
         ],
         "arguments": {
-          "sql": "SELECT p.ProductType, SUM(p.StockQuantity) AS TotalStock, AVG(p.Price) AS AveragePrice FROM fitness_db.Products p GROUP BY p.ProductType ORDER BY TotalStock ASC;",
+          "sql": "SELECT p.ProductType, p.ProductName, p.StockQuantity FROM fitness_db.Products p WHERE p.StockQuantity = (SELECT MIN(StockQuantity) FROM fitness_db.Products) ;",
           "database_name": "fitness_db"
         }
       },

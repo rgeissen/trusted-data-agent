@@ -1,14 +1,14 @@
 {
-  "case_id": "d4b4c993-b009-47b3-a38c-e7210d0ac724",
+  "case_id": "da09a5ab-32ee-4784-b28e-d68377822c1e",
   "metadata": {
     "session_id": "00000000-0000-0000-0000-000000000000",
     "turn_id": 1,
     "is_success": true,
-    "task_id": "template-task-d4b4c993",
+    "task_id": "template-task-da09a5ab",
     "collection_id": 1,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-11-20T20:22:54.019507+00:00",
+    "timestamp": "2025-11-20T20:57:41.305698+00:00",
     "user_feedback_score": 0,
     "llm_config": {
       "provider": "Template",
@@ -30,18 +30,18 @@
     "database_name": "fitness_db"
   },
   "intent": {
-    "user_query": "Identify products that have not been sold in the last 6 months but have a stock quantity greater than 10. Show the product ID and current stock."
+    "user_query": "What are the top 5 best-selling products by quantity sold?"
   },
   "successful_strategy": {
     "phases": [
       {
         "phase": 1,
-        "goal": "Execute SQL query on fitness_db: SELECT p.ProductID, p.StockQuantity FROM fitness_db.Products p WHERE p.ProductID NOT IN (SELECT DISTINCT ProductID FROM fitness_db.Sales WHERE SaleDate >= ADD_MONTHS(CURRENT_DATE, -6)) AND p.StockQuantity > 10;",
+        "goal": "Execute SQL query on fitness_db: SELECT TOP 5 p.ProductName, SUM(oi.Quantity) AS TotalQuantitySold FROM fitness_db.Products p JOIN fitness_db.OrderItems oi ON p.ProductID = oi.ProductID GROUP BY p.ProductName ORDER BY TotalQuantitySold DESC;",
         "relevant_tools": [
           "base_executeRawSQLStatement"
         ],
         "arguments": {
-          "sql": "SELECT p.ProductID, p.StockQuantity FROM fitness_db.Products p WHERE p.ProductID NOT IN (SELECT DISTINCT ProductID FROM fitness_db.Sales WHERE SaleDate >= ADD_MONTHS(CURRENT_DATE, -6)) AND p.StockQuantity > 10;",
+          "sql": "SELECT TOP 5 p.ProductName, SUM(oi.Quantity) AS TotalQuantitySold FROM fitness_db.Products p JOIN fitness_db.OrderItems oi ON p.ProductID = oi.ProductID GROUP BY p.ProductName ORDER BY TotalQuantitySold DESC;",
           "database_name": "fitness_db"
         }
       },

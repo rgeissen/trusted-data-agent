@@ -445,6 +445,7 @@ async def generate_rag_questions():
         database_context = data.get('database_context', '').strip()
         database_name = data.get('database_name', '').strip()
         target_database = data.get('target_database', 'Teradata').strip()
+        conversion_rules = data.get('conversion_rules', '').strip()
         
         if not subject:
             return jsonify({
@@ -464,6 +465,13 @@ async def generate_rag_questions():
                 "message": "Database name is required"
             }), 400
         
+        # Build conversion rules section if provided
+        conversion_rules_section = ""
+        if conversion_rules:
+            conversion_rules_section = f"""
+7. CRITICAL: Follow these explicit {target_database} conversion rules:
+{conversion_rules}"""
+        
         # Construct the prompt for generating questions
         prompt_text = f"""You are a SQL expert helping to generate test questions and queries for a RAG system.
 
@@ -478,7 +486,7 @@ Requirements:
 3. SQL queries must be valid {target_database} syntax for the database schema shown above
 4. Use {target_database}-specific SQL syntax, functions, and conventions
 5. Questions should vary in complexity (simple to advanced)
-6. Use the database name "{database_name}" in your queries
+6. Use the database name "{database_name}" in your queries{conversion_rules_section}
 7. Return your response as a valid JSON array with this exact structure:
 [
   {{
@@ -494,7 +502,7 @@ Requirements:
 IMPORTANT: 
 - Write COMPLETE SQL queries - do NOT truncate them with "..." or similar
 - Your entire response must be ONLY the JSON array, with no other text before or after
-- Include all {count} question/SQL pairs requested
+- Include all {count} question/SQL pairs requested"""
 
         app_logger.info(f"Generating {count} RAG questions for subject '{subject}' in database '{database_name}'")
         
