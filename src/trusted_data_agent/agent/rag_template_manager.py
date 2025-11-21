@@ -22,12 +22,13 @@ class RAGTemplateManager:
     access to template metadata and configurations.
     """
     
-    def __init__(self, templates_dir: Optional[Path] = None):
+    def __init__(self, templates_dir: Optional[Path] = None, plugin_dirs: Optional[List[Path]] = None):
         """
         Initialize the template manager.
         
         Args:
             templates_dir: Path to the templates directory. If None, uses default location.
+            plugin_dirs: Additional plugin directories to scan. If None, uses default locations.
         """
         if templates_dir is None:
             # Default: rag_templates/ at project root
@@ -39,8 +40,20 @@ class RAGTemplateManager:
         self.templates_subdir = templates_dir / "templates"
         self.registry_file = templates_dir / "template_registry.json"
         
+        # Plugin directories (for modular template loading)
+        self.plugin_directories = [self.templates_subdir]  # Built-in templates
+        if plugin_dirs:
+            self.plugin_directories.extend(plugin_dirs)
+        else:
+            # Add default user/system plugin directories if they exist
+            user_plugins = Path.home() / ".tda" / "templates"
+            if user_plugins.exists():
+                self.plugin_directories.append(user_plugins)
+                logger.info(f"User plugin directory found: {user_plugins}")
+        
         self.registry: Dict[str, Any] = {}
         self.templates: Dict[str, Dict[str, Any]] = {}
+        self.plugin_manifests: Dict[str, Dict[str, Any]] = {}  # Store plugin metadata
         
         # Ensure directories exist
         self.templates_dir.mkdir(parents=True, exist_ok=True)
@@ -74,6 +87,7 @@ class RAGTemplateManager:
         for template_entry in self.registry.get("templates", []):
             template_id = template_entry.get("template_id")
             template_file = template_entry.get("template_file")
+            plugin_directory = template_entry.get("plugin_directory")
             status = template_entry.get("status", "active")
             
             # Only load active templates
@@ -81,7 +95,13 @@ class RAGTemplateManager:
                 logger.debug(f"Skipping template {template_id} with status: {status}")
                 continue
             
-            template_path = self.templates_subdir / template_file
+            # Support both old flat structure and new plugin directory structure
+            if plugin_directory:
+                template_path = self.templates_subdir / plugin_directory / "sql_query_v1.json"
+                manifest_path = self.templates_subdir / plugin_directory / "manifest.json"
+            else:
+                template_path = self.templates_subdir / template_file
+                manifest_path = None
             
             if not template_path.exists():
                 logger.error(f"Template file not found: {template_path}")
@@ -90,6 +110,27 @@ class RAGTemplateManager:
             try:
                 with open(template_path, 'r', encoding='utf-8') as f:
                     template_data = json.load(f)
+                
+                # Try to load manifest if it exists
+                if manifest_path and manifest_path.exists():
+                    try:
+                        with open(manifest_path, 'r', encoding='utf-8') as mf:
+                            manifest_data = json.load(mf)
+                            self.plugin_manifests[template_id] = manifest_data
+                            logger.info(f"Loaded plugin manifest for {template_id}: {manifest_data.get('display_name')} v{manifest_data.get('version')}")
+                    except Exception as me:
+                        logger.warning(f"Failed to load manifest for {template_id}: {me}")
+                elif not manifest_path:
+                    # Old structure - look for manifest in same directory
+                    fallback_manifest = template_path.parent / "manifest.json"
+                    if fallback_manifest.exists():
+                        try:
+                            with open(fallback_manifest, 'r', encoding='utf-8') as mf:
+                                manifest_data = json.load(mf)
+                                self.plugin_manifests[template_id] = manifest_data
+                                logger.debug(f"Loaded fallback manifest for {template_id}")
+                        except Exception as me:
+                            logger.warning(f"Failed to load fallback manifest for {template_id}: {me}")
                 
                 # Validate required fields
                 if not self._validate_template(template_data):
@@ -230,9 +271,63 @@ class RAGTemplateManager:
         
         logger.info(f"Updated runtime configuration for template {template_id}")
     
+    def discover_plugins(self) -> List[Dict[str, Any]]:
+        """
+        Discover all available plugins from configured directories.
+        
+        Returns:
+            List of plugin metadata dictionaries
+        """
+        discovered = []
+        
+        for plugin_dir in self.plugin_directories:
+            if not plugin_dir.exists():
+                continue
+                
+            logger.debug(f"Scanning plugin directory: {plugin_dir}")
+            
+            # Look for manifest.json files
+            for manifest_file in plugin_dir.rglob("manifest.json"):
+                try:
+                    with open(manifest_file, 'r', encoding='utf-8') as f:
+                        manifest = json.load(f)
+                    
+                    # Check if template file exists
+                    template_file = manifest_file.parent / manifest.get("files", {}).get("template", "")
+                    if not template_file.exists():
+                        logger.warning(f"Template file not found for manifest: {manifest_file}")
+                        continue
+                    
+                    discovered.append({
+                        "manifest": manifest,
+                        "manifest_path": str(manifest_file),
+                        "template_path": str(template_file),
+                        "plugin_dir": str(manifest_file.parent),
+                        "is_builtin": plugin_dir == self.templates_subdir
+                    })
+                    
+                except Exception as e:
+                    logger.error(f"Failed to parse manifest {manifest_file}: {e}")
+        
+        logger.info(f"Discovered {len(discovered)} plugin(s)")
+        return discovered
+    
+    def get_plugin_info(self, template_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get plugin manifest information for a template.
+        
+        Args:
+            template_id: The template identifier
+            
+        Returns:
+            Plugin manifest dictionary or None
+        """
+        return self.plugin_manifests.get(template_id)
+    
     def reload_templates(self):
         """Reload all templates from disk."""
         self.templates.clear()
+        self.plugin_manifests.clear()
         self._load_registry()
         self._load_templates()
         logger.info("Templates reloaded")

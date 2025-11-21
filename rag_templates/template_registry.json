@@ -1,12 +1,17 @@
 {
-  "registry_version": "1.0.0",
-  "last_updated": "2025-11-20T00:00:00Z",
+  "registry_version": "2.0.0",
+  "last_updated": "2025-11-21T00:00:00Z",
+  "description": "Registry of available template plugins. Templates are now organized in plugin directories.",
   "templates": [
     {
       "template_id": "sql_query_v1",
-      "template_file": "sql_query_v1.json",
+      "plugin_directory": "sql-query-basic",
+      "template_file": "sql-query-basic/sql_query_v1.json",
+      "manifest_file": "sql-query-basic/manifest.json",
       "status": "active",
-      "display_order": 1
+      "display_order": 1,
+      "category": "Database",
+      "is_builtin": true
     }
   ],
   "template_status_definitions": {

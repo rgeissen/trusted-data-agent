@@ -1,0 +1,58 @@
+{
+  "case_id": "95f80f5a-a410-4e27-bb03-edebe0383e51",
+  "metadata": {
+    "session_id": "00000000-0000-0000-0000-000000000000",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "template-task-95f80f5a",
+    "collection_id": 2,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-21T09:14:54.978328+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Template",
+      "model": "sql_template_v1",
+      "input_tokens": 150,
+      "output_tokens": 180
+    },
+    "is_most_efficient": true,
+    "template_generated": true,
+    "template_type": "sql_query",
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "database_name": "fitness_db"
+  },
+  "intent": {
+    "user_query": "What is the average order value per customer, and how many orders has each customer placed?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Execute SQL query on fitness_db: SELECT c.CustomerID, c.CustomerName, AVG(o.OrderTotal) AS AverageOrderValue, COUNT(o.OrderID) AS NumberOfOrders FROM fitness_db.Customers c JOIN fitness_db.Orders o ON c.CustomerID = o.CustomerID GROUP BY c.CustomerID, c.CustomerName;",
+        "relevant_tools": [
+          "base_executeRawSQLStatement"
+        ],
+        "arguments": {
+          "sql": "SELECT c.CustomerID, c.CustomerName, AVG(o.OrderTotal) AS AverageOrderValue, COUNT(o.OrderID) AS NumberOfOrders FROM fitness_db.Customers c JOIN fitness_db.Orders o ON c.CustomerID = o.CustomerID GROUP BY c.CustomerID, c.CustomerName;",
+          "database_name": "fitness_db"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the query results.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

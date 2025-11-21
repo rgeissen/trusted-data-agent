@@ -1552,6 +1552,132 @@ async def list_rag_templates():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@rest_api_bp.route("/v1/rag/templates/discover", methods=["GET"])
+async def discover_template_plugins():
+    """
+    Discover all available template plugins from configured directories.
+    
+    Returns information about plugins including those not yet loaded.
+    """
+    try:
+        from trusted_data_agent.agent.rag_template_manager import get_template_manager
+        
+        template_manager = get_template_manager()
+        discovered = template_manager.discover_plugins()
+        
+        return jsonify({
+            "status": "success",
+            "plugins": discovered,
+            "count": len(discovered)
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error discovering plugins: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/rag/templates/<template_id>/plugin-info", methods=["GET"])
+async def get_template_plugin_info(template_id: str):
+    """
+    Get plugin manifest information for a specific template.
+    
+    Returns the manifest.json content if available.
+    """
+    try:
+        from trusted_data_agent.agent.rag_template_manager import get_template_manager
+        
+        template_manager = get_template_manager()
+        plugin_info = template_manager.get_plugin_info(template_id)
+        
+        if not plugin_info:
+            return jsonify({
+                "status": "error",
+                "message": f"No plugin info found for template {template_id}"
+            }), 404
+        
+        return jsonify({
+            "status": "success",
+            "plugin_info": plugin_info
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error getting plugin info: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/rag/templates/reload", methods=["POST"])
+async def reload_template_plugins():
+    """
+    Hot-reload all template plugins without restarting the application.
+    
+    Useful for development and testing new templates.
+    """
+    try:
+        from trusted_data_agent.agent.rag_template_manager import get_template_manager
+        
+        template_manager = get_template_manager()
+        template_manager.reload_templates()
+        
+        templates = template_manager.list_templates()
+        
+        return jsonify({
+            "status": "success",
+            "message": "Templates reloaded successfully",
+            "count": len(templates),
+            "templates": templates
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error reloading templates: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/rag/templates/validate", methods=["POST"])
+async def validate_template_plugin():
+    """
+    Validate a template plugin package before installation.
+    
+    Request body:
+    {
+        "plugin_path": "/path/to/plugin/directory"
+    }
+    
+    Returns validation results with errors and warnings.
+    """
+    try:
+        from trusted_data_agent.agent.template_plugin_validator import validate_plugin_package
+        from pathlib import Path
+        
+        data = await request.get_json()
+        plugin_path = data.get("plugin_path")
+        
+        if not plugin_path:
+            return jsonify({
+                "status": "error",
+                "message": "plugin_path is required"
+            }), 400
+        
+        plugin_dir = Path(plugin_path)
+        if not plugin_dir.exists():
+            return jsonify({
+                "status": "error",
+                "message": f"Plugin directory not found: {plugin_path}"
+            }), 404
+        
+        is_valid, errors, warnings = validate_plugin_package(plugin_dir)
+        
+        return jsonify({
+            "status": "success",
+            "is_valid": is_valid,
+            "errors": errors,
+            "warnings": warnings
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error validating plugin: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 # ============================================================================
 # MCP SERVER CONFIGURATION ENDPOINTS
 # ============================================================================

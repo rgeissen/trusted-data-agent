@@ -1,0 +1,58 @@
+{
+  "case_id": "bb2067e4-4a80-4de6-81e3-9059d1e0f19d",
+  "metadata": {
+    "session_id": "00000000-0000-0000-0000-000000000000",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "template-task-bb2067e4",
+    "collection_id": 2,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-21T09:14:55.043455+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Template",
+      "model": "sql_template_v1",
+      "input_tokens": 150,
+      "output_tokens": 180
+    },
+    "is_most_efficient": true,
+    "template_generated": true,
+    "template_type": "sql_query",
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "database_name": "fitness_db"
+  },
+  "intent": {
+    "user_query": "What is the average resolution time for service requests, broken down by service request type, and show only service requests resolved in under 7 days?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Execute SQL query on fitness_db: SELECT ServiceType, AVG(CAST((ResolutionDate - RequestDate) AS INTEGER)) AS AverageResolutionTimeInDays FROM fitness_db.ServiceRequests WHERE (ResolutionDate - RequestDate) < 7 GROUP BY ServiceType;",
+        "relevant_tools": [
+          "base_executeRawSQLStatement"
+        ],
+        "arguments": {
+          "sql": "SELECT ServiceType, AVG(CAST((ResolutionDate - RequestDate) AS INTEGER)) AS AverageResolutionTimeInDays FROM fitness_db.ServiceRequests WHERE (ResolutionDate - RequestDate) < 7 GROUP BY ServiceType;",
+          "database_name": "fitness_db"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the query results.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "case_id": "0acae9a7-86f0-5358-8d29-2b8e64786d43",
+  "metadata": {
+    "session_id": "6bdf1926-4f63-4d83-9cfb-296d80bf8052",
+    "turn_id": 7,
+    "is_success": true,
+    "task_id": "task-137d16db-a061-464c-8819-751ae79a3928",
+    "collection_id": 2,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-21T09:15:48.694881+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "input_tokens": 20938,
+      "output_tokens": 275
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    }
+  },
+  "intent": {
+    "user_query": "What is the trend of new customer registrations over the last 3 months?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Execute SQL query on fitness_db: SELECT RegistrationDate, COUNT(*) AS NewCustomers FROM fitness_db.Customers WHERE RegistrationDate BETWEEN CURRENT_DATE - INTERVAL '3' MONTH AND CURRENT_DATE GROUP BY RegistrationDate ORDER BY RegistrationDate;",
+        "relevant_tools": [
+          "base_readQuery"
+        ],
+        "arguments": {
+          "sql": "SELECT RegistrationDate, COUNT(*) AS NewCustomers FROM fitness_db.Customers WHERE RegistrationDate BETWEEN CURRENT_DATE - INTERVAL '3' MONTH AND CURRENT_DATE GROUP BY RegistrationDate ORDER BY RegistrationDate;",
+          "database_name": "fitness_db"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the query results.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

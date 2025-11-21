@@ -1552,9 +1552,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-300 mb-2">Template Type</label>
                             <select id="rag-collection-template-type" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white text-sm">
-                                <option value="sql_query">SQL Query Template</option>
-                                <option value="api_call" disabled>API Call Template (Coming Soon)</option>
-                                <option value="custom" disabled>Custom Template (Coming Soon)</option>
+                                <option value="">Loading templates...</option>
                             </select>
                         </div>
 
@@ -1792,14 +1790,14 @@
             </div>
 
             <form id="template-editor-form" class="space-y-6">
-                <!-- Template Info (Read-only) -->
-                <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
-                    <h3 class="text-lg font-semibold text-white mb-2">SQL Query Template</h3>
-                    <p class="text-sm text-gray-400">Two-phase strategy: Execute SQL statement and generate final report</p>
+                <!-- Template Info (Dynamic) -->
+                <div id="template-editor-info" class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
+                    <h3 id="template-editor-template-name" class="text-lg font-semibold text-white mb-2">Loading...</h3>
+                    <p id="template-editor-template-description" class="text-sm text-gray-400"></p>
                 </div>
 
-                <!-- Input Variables Section -->
-                <div>
+                <!-- Input Variables Section (Dynamic) -->
+                <div id="template-editor-input-variables" class="hidden">
                     <h3 class="text-lg font-semibold text-white mb-3 flex items-center gap-2">
                         <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -1807,87 +1805,22 @@
                         Input Variables
                     </h3>
                     <p class="text-xs text-gray-400 mb-4">Variables that users must provide when using this template</p>
-                    <div class="space-y-3">
-                        <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
-                            <div class="flex items-center justify-between mb-2">
-                                <label class="text-sm font-medium text-gray-300">user_query</label>
-                                <span class="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded">Required</span>
-                            </div>
-                            <p class="text-xs text-gray-400">The user's natural language question</p>
-                        </div>
-                        <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
-                            <div class="flex items-center justify-between mb-2">
-                                <label class="text-sm font-medium text-gray-300">sql_statement</label>
-                                <span class="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded">Required</span>
-                            </div>
-                            <p class="text-xs text-gray-400">The SQL query to execute</p>
-                        </div>
-                        <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
-                            <div class="flex items-center justify-between mb-2">
-                                <label class="text-sm font-medium text-gray-300">database_name</label>
-                                <span class="px-2 py-0.5 bg-gray-500/20 text-gray-400 text-xs rounded">Optional</span>
-                            </div>
-                            <p class="text-xs text-gray-400">Target database name (added to phase 1 arguments)</p>
-                        </div>
+                    <div id="template-editor-input-vars-content" class="space-y-3">
+                        <!-- Dynamically populated -->
                     </div>
                 </div>
 
-                <!-- Output/Default Variables Section -->
-                <div>
+                <!-- Configuration Fields (Dynamic) -->
+                <div id="template-editor-config-fields">
                     <h3 class="text-lg font-semibold text-white mb-3 flex items-center gap-2">
                         <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
-                        Auto-Generated Values
+                        Configuration
                     </h3>
-                    <p class="text-xs text-gray-400 mb-4">Default values automatically assigned to generated cases</p>
-                    <div class="space-y-3">
-                        <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Default MCP Tool Name</label>
-                            <input type="text" id="template-default-mcp-tool" 
-                                   value="base_executeRawSQLStatement"
-                                   class="w-full p-2 bg-gray-600 border border-gray-500 rounded-md focus:ring-2 focus:ring-teradata-orange outline-none text-white text-sm"
-                                   placeholder="base_executeRawSQLStatement">
-                            <p class="text-xs text-gray-400 mt-1">Default tool for SQL execution (can be overridden per case)</p>
-                        </div>
-                        <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Default MCP Context Prompt</label>
-                            <input type="text" id="template-default-mcp-context-prompt" 
-                                   value="base_tableBusinessDesc"
-                                   class="w-full p-2 bg-gray-600 border border-gray-500 rounded-md focus:ring-2 focus:ring-teradata-orange outline-none text-white text-sm"
-                                   placeholder="base_tableBusinessDesc">
-                            <p class="text-xs text-gray-400 mt-1">Default prompt for gathering database context during auto-generation</p>
-                        </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Estimated Input Tokens</label>
-                                <input type="number" id="template-input-tokens" 
-                                       value="150" min="0" step="10"
-                                       class="w-full p-2 bg-gray-600 border border-gray-500 rounded-md focus:ring-2 focus:ring-teradata-orange outline-none text-white text-sm">
-                                <p class="text-xs text-gray-400 mt-1">Approximate tokens for planning</p>
-                            </div>
-                            <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Estimated Output Tokens</label>
-                                <input type="number" id="template-output-tokens" 
-                                       value="180" min="0" step="10"
-                                       class="w-full p-2 bg-gray-600 border border-gray-500 rounded-md focus:ring-2 focus:ring-teradata-orange outline-none text-white text-sm">
-                                <p class="text-xs text-gray-400 mt-1">Approximate response tokens</p>
-                            </div>
-                        </div>
-                        <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Session ID</label>
-                            <input type="text" readonly value="00000000-0000-0000-0000-000000000000" 
-                                   class="w-full p-2 bg-gray-600 border border-gray-500 rounded-md text-gray-400 text-sm">
-                            <p class="text-xs text-gray-400 mt-1">All template cases share this session ID</p>
-                        </div>
-                        <div class="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" id="template-champion-default" checked disabled
-                                       class="w-4 h-4 rounded border-gray-600 bg-gray-700 text-teradata-orange focus:ring-2 focus:ring-teradata-orange">
-                                <span class="text-sm font-medium text-gray-300">Mark as champion by default</span>
-                            </label>
-                            <p class="text-xs text-gray-400 mt-1">Template cases start with is_most_efficient=true</p>
-                        </div>
+                    <p class="text-xs text-gray-400 mb-4">Editable configuration values for this template</p>
+                    <div id="template-editor-config-content" class="space-y-3">
+                        <!-- Dynamically populated -->
                     </div>
                 </div>
 
@@ -2264,6 +2197,7 @@
 
     <script type="module" src="{{ url_for('static', filename='js/notifications.js') }}"></script>
     <script src="{{ url_for('static', filename='js/executionDashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/templateManager.js') }}"></script>
     <script type="module" src="{{ url_for('static', filename='js/main.js') }}?v=2.6"></script>
     <script type="module" src="{{ url_for('static', filename='js/handlers/ragCollectionManagement.js') }}"></script>
     <!-- RAG Case Modal -->
