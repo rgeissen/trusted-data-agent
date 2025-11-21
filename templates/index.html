@@ -23,8 +23,8 @@
                     </svg>
                 </button>
             </div>
-            <!-- Title remains -->
-            <h1 class="header-title text-xl font-bold text-white">Trusted Data Agent</h1>
+            <!-- Title - refined typography -->
+            <h1 class="header-title text-lg font-medium text-white tracking-tight">Trusted Data Agent</h1>
             <!-- GitHub Star Button -->
             <a href="https://github.com/rgeissen/trusted-data-agent" target="_blank" rel="noopener noreferrer" 
                class="flex items-center gap-x-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-md transition-all duration-200 text-sm font-medium text-gray-200 hover:text-white"
@@ -267,187 +267,245 @@
                             <main id="chat-container" class="flex-1 overflow-y-auto p-6">
                                 <!-- Welcome Screen for Unconfigured State -->
                                 <div id="welcome-screen" class="hidden h-full overflow-y-auto">
-                                    <div class="max-w-4xl mx-auto text-center space-y-8 p-4 sm:p-8 pb-20 pt-8 sm:pt-16">
-                                        <!-- Logo/Icon -->
-                                        <div class="flex justify-center">
-                                            <div class="w-16 h-16 sm:w-24 sm:h-24 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 border border-white/20">
+                                    <div class="max-w-5xl mx-auto text-center space-y-12 p-4 sm:p-8 pb-20 pt-12 sm:pt-20">
+                                        <!-- Logo/Icon with gradient glow -->
+                                        <div class="flex justify-center welcome-hero-icon">
+                                            <div class="w-20 h-20 sm:w-28 sm:h-28 glass-panel rounded-3xl flex items-center justify-center shadow-2xl flex-shrink-0 border border-white/20 welcome-icon-container">
                                                 <!-- Simple lightning bolt representing speed: "From Days to Seconds" -->
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 sm:h-14 sm:w-14" fill="#F15F22" viewBox="0 0 24 24">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 sm:h-16 sm:w-16 welcome-lightning" fill="#F15F22" viewBox="0 0 24 24">
                                                     <path d="M13 3L4 13h7l-1 7 9-10h-7l1-7z" />
                                                 </svg>
                                             </div>
                                         </div>
                                         
-                                        <!-- Heading -->
-                                        <div class="space-y-3">
-                                            <h1 class="text-4xl font-bold text-white">The Trusted Data Agent</h1>
-                                            <p class="text-xl text-gray-300">A Paradigm Shift in Data Interaction</p>
-                                            <p class="text-lg text-blue-400 font-semibold mt-2">Go from question to insight to action in seconds</p>
+                                        <!-- Heading with gradient text -->
+                                        <div class="space-y-4">
+                                            <h1 class="text-5xl sm:text-6xl font-bold text-white header-title">Trusted Data Agent</h1>
+                                            <p class="text-2xl sm:text-3xl text-gray-300 font-medium">A Paradigm Shift in Data Interaction</p>
+                                            <p class="text-xl sm:text-2xl font-bold mt-4 welcome-gradient-text">Go from question to insight to action in seconds</p>
                                         </div>
                                         
                                         <!-- Description -->
-                                        <p class="text-gray-400 text-lg leading-relaxed">
+                                        <p class="text-gray-400 text-xl leading-relaxed max-w-2xl mx-auto">
                                             To get started, configure your connection settings and experience 
-                                            a new way to interact with your data ecosystem.
+                                            a new way to interact and operate with your data ecosystem.
                                         </p>
                                         
-                                        <!-- CTA Button -->
-                                        <div class="flex flex-col items-center gap-4">
-                                            <button id="welcome-configure-btn" class="group px-8 py-4 bg-[#FF6B35] hover:bg-[#F15F22] text-white text-lg font-semibold rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105 hover:shadow-xl flex items-center gap-3">
+                                        <!-- CTA Button with glow effect -->
+                                        <div class="flex flex-col items-center gap-6 pt-4">
+                                            <button id="welcome-configure-btn" class="welcome-cta-button group relative px-10 py-5 bg-teradata-orange hover:bg-teradata-orange-dark text-white text-xl font-bold rounded-2xl shadow-2xl transition-all duration-300 transform hover:scale-105 flex items-center gap-4">
+                                                <!-- Animated glow effect -->
+                                                <div class="welcome-button-glow"></div>
                                                 <!-- Cogwheel Icon (spins during connection) -->
-                                                <svg id="welcome-cogwheel-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <svg id="welcome-cogwheel-icon" xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 relative z-10 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                 </svg>
-                                                <span id="welcome-button-text">Configure Application</span>
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <span id="welcome-button-text" class="relative z-10">Connect and Load</span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 relative z-10 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                                 </svg>
                                             </button>
                                             <div class="flex flex-col items-center gap-2">
-                                                <p class="text-sm text-gray-500 welcome-subtext">You'll need an MCP server and an LLM provider</p>
+                                                <p class="text-sm text-gray-400 welcome-subtext">(Requires MCP + Google/OpenAI/Llama/Azure AI/Ollama)</p>
                                                 <a href="#" id="welcome-reconfigure-link" class="text-sm text-gray-400 hover:text-white transition-colors hidden">
                                                     or reconfigure settings
                                                 </a>
                                             </div>
                                         </div>
                                         
-                                        <!-- Features Grid -->
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12 pt-8 border-t border-white/10">
-                                            <div class="space-y-2">
-                                                <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mx-auto">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        <!-- Features Grid with hover effects -->
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-16 pt-12 border-t border-white/10">
+                                            <div class="welcome-feature-card glass-panel p-6 rounded-2xl space-y-3 transition-all duration-300 hover:shadow-2xl group">
+                                                <div class="w-14 h-14 bg-teradata-orange/20 rounded-xl flex items-center justify-center mx-auto transition-transform duration-300 group-hover:scale-110 group-hover:bg-teradata-orange/30">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="var(--teradata-orange)" viewBox="0 0 24 24">
+                                                        <path d="M13 3L4 13h7l-1 7 9-10h-7l1-7z" />
                                                     </svg>
                                                 </div>
-                                                <h3 class="text-white font-semibold">Actionable</h3>
-                                                <p class="text-sm text-gray-400">From discovery to automation in seconds - zero friction</p>
+                                                <h3 class="text-white font-bold text-lg header-title">Actionable</h3>
+                                                <p class="text-base text-gray-400 leading-relaxed">From discovery to automation in seconds - zero friction</p>
                                             </div>
-                                            <div class="space-y-2">
-                                                <div class="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center mx-auto">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <div class="welcome-feature-card glass-panel p-6 rounded-2xl space-y-3 transition-all duration-300 hover:shadow-2xl group">
+                                                <div class="w-14 h-14 bg-[#10b981]/20 rounded-xl flex items-center justify-center mx-auto transition-transform duration-300 group-hover:scale-110 group-hover:bg-[#10b981]/30">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-[#10b981]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                     </svg>
                                                 </div>
-                                                <h3 class="text-white font-semibold">Transparent</h3>
-                                                <p class="text-sm text-gray-400">See every step - no AI black box, just clarity</p>
+                                                <h3 class="text-white font-bold text-lg header-title">Transparent</h3>
+                                                <p class="text-base text-gray-400 leading-relaxed">See every step - no AI black box, just clarity</p>
                                             </div>
-                                            <div class="space-y-2">
-                                                <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mx-auto">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <div class="welcome-feature-card glass-panel p-6 rounded-2xl space-y-3 transition-all duration-300 hover:shadow-2xl group">
+                                                <div class="w-14 h-14 bg-[#06b6d4]/20 rounded-xl flex items-center justify-center mx-auto transition-transform duration-300 group-hover:scale-110 group-hover:bg-[#06b6d4]/30">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-[#06b6d4]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
                                                     </svg>
                                                 </div>
-                                                <h3 class="text-white font-semibold">Economical</h3>
-                                                <p class="text-sm text-gray-400">Optimizer for enterprise-grade performance & efficiency</p>
+                                                <h3 class="text-white font-bold text-lg header-title">Economical</h3>
+                                                <p class="text-base text-gray-400 leading-relaxed">Optimized for enterprise-grade performance & efficiency</p>
                                             </div>
-                                            <div class="space-y-2">
-                                                <div class="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center mx-auto">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <div class="welcome-feature-card glass-panel p-6 rounded-2xl space-y-3 transition-all duration-300 hover:shadow-2xl group">
+                                                <div class="w-14 h-14 bg-[#f87171]/20 rounded-xl flex items-center justify-center mx-auto transition-transform duration-300 group-hover:scale-110 group-hover:bg-[#f87171]/30">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-[#f87171]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                                     </svg>
                                                 </div>
-                                                <h3 class="text-white font-semibold">Sovereignty</h3>
-                                                <p class="text-sm text-gray-400">Your data, your rules, your infrastructure choice</p>
+                                                <h3 class="text-white font-bold text-lg header-title">Sovereignty</h3>
+                                                <p class="text-base text-gray-400 leading-relaxed">Your data, your rules, your infrastructure choice - for Planning and Execution</p>
                                             </div>
                                         </div>
 
-                                        <!-- What's New Section -->
-                                        <div class="mt-12 pt-8 border-t border-white/10 text-left max-w-3xl mx-auto">
-                                            <h4 class="text-xl font-bold text-yellow-300 mb-4 text-center">What's New</h4>
-                                            <div class="grid md:grid-cols-2 gap-6">
-                                                <div class="space-y-3">
+                                        <!-- What's New Section - Timeline Design -->
+                                        <div class="mt-16 pt-12 border-t border-white/10 text-left max-w-4xl mx-auto">
+                                            <div class="text-center mb-10">
+                                                <h4 class="text-3xl font-bold text-white header-title mb-2">What's New</h4>
+                                                <p class="text-gray-400">Recent features and improvements</p>
+                                            </div>
+                                            <div class="grid md:grid-cols-2 gap-x-12 gap-y-6 relative">
+                                                <!-- Timeline connector line for desktop -->
+                                                <div class="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-white/10"></div>
+                                                
+                                                <div class="welcome-timeline-item glass-panel p-4 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-teradata-orange/50 border border-white/10">
                                                     <div class="flex items-start gap-3">
-                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div class="mt-1.5 w-3 h-3 rounded-full bg-teradata-orange flex-shrink-0 shadow-lg shadow-teradata-orange/50"></div>
                                                         <div>
-                                                            <p class="text-sm text-gray-300"><strong class="text-white">19-Nov-2025:</strong> Modern UI Design</p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="flex items-start gap-3">
-                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
-                                                        <div>
-                                                            <p class="text-sm text-gray-300"><strong class="text-white">15-Nov-2025:</strong> Flowise Integration</p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="flex items-start gap-3">
-                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
-                                                        <div>
-                                                            <p class="text-sm text-gray-300"><strong class="text-white">14-Nov-2025:</strong> Airflow Integration</p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="flex items-start gap-3">
-                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
-                                                        <div>
-                                                            <p class="text-sm text-gray-300"><strong class="text-white">11-Nov-2025:</strong> Self-Improving AI (RAG)</p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="flex items-start gap-3">
-                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
-                                                        <div>
-                                                            <p class="text-sm text-gray-300"><strong class="text-white">06-Nov-2025:</strong> UI Real-Time Monitoring of Rest Requests</p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="flex items-start gap-3">
-                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
-                                                        <div>
-                                                            <p class="text-sm text-gray-300"><strong class="text-white">31-Oct-2025:</strong> Fully configurable Context Management</p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="flex items-start gap-3">
-                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
-                                                        <div>
-                                                            <p class="text-sm text-gray-300"><strong class="text-white">24-Oct-2025:</strong> Turn Replay & Turn Reload Plan</p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="flex items-start gap-3">
-                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
-                                                        <div>
-                                                            <p class="text-sm text-gray-300"><strong class="text-white">24-Oct-2025:</strong> Stop Button - Immediately Stop Workflows</p>
+                                                            <p class="text-sm font-semibold text-teradata-orange">21-Nov-2025</p>
+                                                            <p class="text-base text-white font-medium">RAG Templates - Modular Plugin System</p>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div class="space-y-3">
+                                                <div class="welcome-timeline-item glass-panel p-4 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-teradata-orange/50 border border-white/10">
                                                     <div class="flex items-start gap-3">
-                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div class="mt-1.5 w-3 h-3 rounded-full bg-teradata-orange flex-shrink-0 shadow-lg shadow-teradata-orange/50"></div>
                                                         <div>
-                                                            <p class="text-sm text-gray-300"><strong class="text-white">23-Oct-2025:</strong> Robust Multi-Tool Phase Handling</p>
+                                                            <p class="text-sm font-semibold text-teradata-orange">19-Nov-2025</p>
+                                                            <p class="text-base text-white font-medium">Modern UI Design</p>
                                                         </div>
                                                     </div>
+                                                </div>
+                                                <div class="welcome-timeline-item glass-panel p-4 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-teradata-orange/50 border border-white/10">
                                                     <div class="flex items-start gap-3">
-                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div class="mt-1.5 w-3 h-3 rounded-full bg-teradata-orange flex-shrink-0 shadow-lg shadow-teradata-orange/50"></div>
                                                         <div>
-                                                            <p class="text-sm text-gray-300"><strong class="text-white">11-Oct-2025:</strong> Friendly.AI Integration</p>
+                                                            <p class="text-sm font-semibold text-teradata-orange">15-Nov-2025</p>
+                                                            <p class="text-base text-white font-medium">Flowise Integration</p>
                                                         </div>
                                                     </div>
+                                                </div>
+                                                <div class="welcome-timeline-item glass-panel p-4 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-teradata-orange/50 border border-white/10">
                                                     <div class="flex items-start gap-3">
-                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div class="mt-1.5 w-3 h-3 rounded-full bg-teradata-orange flex-shrink-0 shadow-lg shadow-teradata-orange/50"></div>
                                                         <div>
-                                                            <p class="text-sm text-gray-300"><strong class="text-white">10-Oct-2025:</strong> Context Aware Collateral Report Rendering</p>
+                                                            <p class="text-sm font-semibold text-teradata-orange">14-Nov-2025</p>
+                                                            <p class="text-base text-white font-medium">Airflow Integration</p>
                                                         </div>
                                                     </div>
+                                                </div>
+                                                <div class="welcome-timeline-item glass-panel p-4 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-teradata-orange/50 border border-white/10">
                                                     <div class="flex items-start gap-3">
-                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div class="mt-1.5 w-3 h-3 rounded-full bg-teradata-orange flex-shrink-0 shadow-lg shadow-teradata-orange/50"></div>
                                                         <div>
-                                                            <p class="text-sm text-gray-300"><strong class="text-white">19-Sep-2025:</strong> Microsoft Azure Integration</p>
+                                                            <p class="text-sm font-semibold text-teradata-orange">11-Nov-2025</p>
+                                                            <p class="text-base text-white font-medium">Self-Improving AI (RAG)</p>
                                                         </div>
                                                     </div>
+                                                </div>
+                                                <div class="welcome-timeline-item glass-panel p-4 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-teradata-orange/50 border border-white/10">
                                                     <div class="flex items-start gap-3">
-                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div class="mt-1.5 w-3 h-3 rounded-full bg-teradata-orange flex-shrink-0 shadow-lg shadow-teradata-orange/50"></div>
                                                         <div>
-                                                            <p class="text-sm text-gray-300"><strong class="text-white">18-Sep-2025:</strong> REST Interface for Engine Configuration</p>
+                                                            <p class="text-sm font-semibold text-teradata-orange">06-Nov-2025</p>
+                                                            <p class="text-base text-white font-medium">UI Real-Time Monitoring</p>
                                                         </div>
                                                     </div>
+                                                </div>
+                                                <div class="welcome-timeline-item glass-panel p-4 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-teradata-orange/50 border border-white/10">
                                                     <div class="flex items-start gap-3">
-                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div class="mt-1.5 w-3 h-3 rounded-full bg-teradata-orange flex-shrink-0 shadow-lg shadow-teradata-orange/50"></div>
                                                         <div>
-                                                            <p class="text-sm text-gray-300"><strong class="text-white">12-Sep-2025:</strong> Significant Formatting Upgrade</p>
+                                                            <p class="text-sm font-semibold text-teradata-orange">31-Oct-2025</p>
+                                                            <p class="text-base text-white font-medium">Configurable Context Management</p>
                                                         </div>
                                                     </div>
+                                                </div>
+                                                <div class="welcome-timeline-item glass-panel p-4 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-teradata-orange/50 border border-white/10">
                                                     <div class="flex items-start gap-3">
-                                                        <div class="mt-1 w-2 h-2 rounded-full bg-teradata-orange flex-shrink-0"></div>
+                                                        <div class="mt-1.5 w-3 h-3 rounded-full bg-teradata-orange flex-shrink-0 shadow-lg shadow-teradata-orange/50"></div>
                                                         <div>
-                                                            <p class="text-sm text-gray-300"><strong class="text-white">05-Sep-2025:</strong> Conversation Mode (TTS)</p>
+                                                            <p class="text-sm font-semibold text-teradata-orange">24-Oct-2025</p>
+                                                            <p class="text-base text-white font-medium">Turn Replay & Reload Plan</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="welcome-timeline-item glass-panel p-4 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-teradata-orange/50 border border-white/10">
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1.5 w-3 h-3 rounded-full bg-teradata-orange flex-shrink-0 shadow-lg shadow-teradata-orange/50"></div>
+                                                        <div>
+                                                            <p class="text-sm font-semibold text-teradata-orange">24-Oct-2025</p>
+                                                            <p class="text-base text-white font-medium">Stop Button Feature</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="welcome-timeline-item glass-panel p-4 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-teradata-orange/50 border border-white/10">
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1.5 w-3 h-3 rounded-full bg-teradata-orange flex-shrink-0 shadow-lg shadow-teradata-orange/50"></div>
+                                                        <div>
+                                                            <p class="text-sm font-semibold text-teradata-orange">23-Oct-2025</p>
+                                                            <p class="text-base text-white font-medium">Multi-Tool Phase Handling</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="welcome-timeline-item glass-panel p-4 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-teradata-orange/50 border border-white/10">
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1.5 w-3 h-3 rounded-full bg-teradata-orange flex-shrink-0 shadow-lg shadow-teradata-orange/50"></div>
+                                                        <div>
+                                                            <p class="text-sm font-semibold text-teradata-orange">11-Oct-2025</p>
+                                                            <p class="text-base text-white font-medium">Friendly.AI Integration</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="welcome-timeline-item glass-panel p-4 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-teradata-orange/50 border border-white/10">
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1.5 w-3 h-3 rounded-full bg-teradata-orange flex-shrink-0 shadow-lg shadow-teradata-orange/50"></div>
+                                                        <div>
+                                                            <p class="text-sm font-semibold text-teradata-orange">10-Oct-2025</p>
+                                                            <p class="text-base text-white font-medium">Collateral Report Rendering</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="welcome-timeline-item glass-panel p-4 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-teradata-orange/50 border border-white/10">
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1.5 w-3 h-3 rounded-full bg-teradata-orange flex-shrink-0 shadow-lg shadow-teradata-orange/50"></div>
+                                                        <div>
+                                                            <p class="text-sm font-semibold text-teradata-orange">19-Sep-2025</p>
+                                                            <p class="text-base text-white font-medium">Microsoft Azure Integration</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="welcome-timeline-item glass-panel p-4 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-teradata-orange/50 border border-white/10">
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1.5 w-3 h-3 rounded-full bg-teradata-orange flex-shrink-0 shadow-lg shadow-teradata-orange/50"></div>
+                                                        <div>
+                                                            <p class="text-sm font-semibold text-teradata-orange">18-Sep-2025</p>
+                                                            <p class="text-base text-white font-medium">REST Interface Configuration</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="welcome-timeline-item glass-panel p-4 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-teradata-orange/50 border border-white/10">
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1.5 w-3 h-3 rounded-full bg-teradata-orange flex-shrink-0 shadow-lg shadow-teradata-orange/50"></div>
+                                                        <div>
+                                                            <p class="text-sm font-semibold text-teradata-orange">12-Sep-2025</p>
+                                                            <p class="text-base text-white font-medium">Formatting Upgrade</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="welcome-timeline-item glass-panel p-4 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-teradata-orange/50 border border-white/10">
+                                                    <div class="flex items-start gap-3">
+                                                        <div class="mt-1.5 w-3 h-3 rounded-full bg-teradata-orange flex-shrink-0 shadow-lg shadow-teradata-orange/50"></div>
+                                                        <div>
+                                                            <p class="text-sm font-semibold text-teradata-orange">05-Sep-2025</p>
+                                                            <p class="text-base text-white font-medium">Conversation Mode (TTS)</p>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -455,14 +513,14 @@
                                         </div>
 
                                         <!-- LLM Leaderboard Link -->
-                                        <div class="mt-8 pt-6 border-t border-white/10 max-w-3xl mx-auto">
-                                            <div class="flex items-center justify-center gap-3 text-sm">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <div class="mt-12 pt-10 border-t border-white/10 max-w-3xl mx-auto">
+                                            <div class="glass-panel p-6 rounded-2xl flex items-center justify-center gap-4 text-base hover:border-teradata-orange/50 transition-all duration-300 border border-white/10">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-facc15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                                 </svg>
-                                                <span class="text-gray-400">View the latest LLM benchmarks:</span>
-                                                <a href="https://gorilla.cs.berkeley.edu/leaderboard.html" target="_blank" class="text-teradata-orange hover:text-orange-400 underline transition-colors">
-                                                    Gorilla Leaderboard
+                                                <span class="text-gray-300">View the latest LLM benchmarks:</span>
+                                                <a href="https://gorilla.cs.berkeley.edu/leaderboard.html" target="_blank" class="text-teradata-orange hover:text-teradata-orange-dark font-semibold underline transition-colors">
+                                                    Gorilla Leaderboard →
                                                 </a>
                                             </div>
                                         </div>

@@ -104,6 +104,18 @@ The Trusted Data Agent transcends typical data chat applications by delivering a
 
 * **Flexible Voice Modes**: Control the conversational flow with configurable modes for handling "Key Observations"—play them automatically, ask for confirmation before playing, or disable them entirely.
 
+### Self-Improving AI with Modular RAG Templates
+
+* **Intelligent Few-Shot Learning**: The RAG system automatically captures successful interactions and retrieves "champion" strategies to guide future planning, continuously improving efficiency and quality.
+
+* **Modular Template Architecture**: Extend the RAG system with custom templates for different domains (SQL queries, document Q&A, API workflows) without modifying core code.
+
+* **LLM-Assisted Auto-Generation**: Built-in workflows to automatically generate domain-specific RAG cases from database schemas, API documentation, or existing knowledge bases.
+
+* **Dynamic Template Registration**: Templates are discovered and loaded at runtime as plugins, with validation schemas and population strategies defined in standardized manifests.
+
+* **REST API Population**: Programmatically populate RAG collections with examples via the comprehensive REST API for CI/CD integration and automated knowledge base updates.
+
 ## The Heart of the Application - The Engine & its Fusion Optimizer
 
 The Trusted Data Agent is engineered to be far more than a simple LLM wrapper. Its revolutionary core is the **Fusion Optimizer**, a multi-layered engine designed for resilient, intelligent, and efficient task execution in complex enterprise environments. It transforms the agent from a mere tool into a reliable analytical partner.
@@ -165,8 +177,22 @@ The core value of this RAG implementation is its ability to automatically identi
 
 This process guides the Planner to generate higher-quality, more efficient plans based on proven, successful strategies, reducing token consumption and improving response quality without manual intervention. The entire process runs asynchronously in the background to ensure no impact on user-facing performance.
 
-For a comprehensive overview of the RAG architecture, data flow, and maintenance utilities, please see the detailed documentation:
-[**RAG System Documentation (docs/RAG/RAG.md)**](docs/RAG/RAG.md)
+### RAG Templates: Modular Plugin System (New - Nov 2025)
+
+The RAG system now features a **modular template architecture** that enables domain-specific customization and extensibility:
+
+* **Plugin-Based Design**: Templates are self-contained plugins with their own schemas, validation logic, and population strategies
+* **Template Types**: Support for SQL query templates, with extensibility for document Q&A, API workflows, and custom domains
+* **Manifest System**: Each template declares its capabilities, required fields, and validation rules via a standardized manifest
+* **Dynamic Registration**: Templates are automatically discovered and registered at runtime from the `rag_templates/` directory
+* **Programmatic & LLM-Assisted Population**: Templates can be populated via REST API with structured examples or through LLM-assisted generation in the UI
+* **Auto-Generation**: Built-in LLM workflows to automatically generate domain-specific examples from database schema or documentation
+
+This modular approach allows organizations to extend the RAG system with custom templates tailored to their specific data patterns, query types, and business domains without modifying core agent code.
+
+For a comprehensive overview of the RAG architecture, template development, and maintenance utilities, please see the detailed documentation:
+[**RAG System Documentation (docs/RAG/RAG.md)**](docs/RAG/RAG.md)  
+[**RAG Template Plugin Development (rag_templates/README.md)**](rag_templates/README.md)
 
 ## How It Works: Architecture
 
@@ -795,6 +821,7 @@ Under the AGPLv3, you are free to use, modify, and distribute this software. How
 
 This list reflects the recent enhancements and updates to the Trusted Data Agent, as shown on the application's welcome screen.
 
+*   **21-Nov-2025:** RAG Templates - Modular Plugin System
 *   **19-Nov-2025:** Modern UI Design
 *   **15-Nov-2025:** Flowise Integration
 *   **14-Nov-2025:** Airflow Integration
