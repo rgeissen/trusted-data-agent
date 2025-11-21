@@ -140,7 +140,6 @@ const loadTemplateCards = TemplateSystem.loadTemplateCards;
 async function loadTemplateCards_DEPRECATED() {
     const container = document.getElementById('rag-templates-container');
     if (!container) {
-        console.warn('[Template Cards] Container not found');
         return;
     }
     
@@ -152,7 +151,6 @@ async function loadTemplateCards_DEPRECATED() {
         }
         
         const templates = window.templateManager.getAllTemplates();
-        console.log('[Template Cards] Retrieved templates:', templates);
         
         if (!templates || templates.length === 0) {
             container.innerHTML = '<div class="col-span-full text-gray-400 text-sm">No templates available</div>';
@@ -170,7 +168,6 @@ async function loadTemplateCards_DEPRECATED() {
             }
         });
         
-        console.log(`[Template Cards] Successfully loaded ${templates.length} template cards`);
     } catch (error) {
         console.error('[Template Cards] Failed to load:', error);
         container.innerHTML = '<div class="col-span-full text-red-400 text-sm">Failed to load templates: ' + error.message + '</div>';
@@ -193,10 +190,8 @@ async function reloadTemplateConfiguration() {
         const response = await fetch(`/api/v1/rag/templates/${templateId}/config?_=${Date.now()}`);
         if (response.ok) {
             const configData = await response.json();
-            console.log('[Template Config] Reloaded configuration:', configData);
             return configData;
         } else {
-            console.warn('[Template Config] Failed to reload, status:', response.status);
             return null;
         }
     } catch (error) {
@@ -302,8 +297,11 @@ async function openAddRagCollectionModal() {
     if (ragCollectionManualFields) {
         ragCollectionManualFields.classList.add('hidden');
     }
-    if (ragCollectionLlmFields) {
-        ragCollectionLlmFields.classList.add('hidden');
+    
+    // Hide the entire LLM workflow container
+    const llmWorkflowContainer = document.getElementById('rag-collection-llm-workflow');
+    if (llmWorkflowContainer) {
+        llmWorkflowContainer.classList.add('hidden');
     }
     
     // Reset and hide context result
@@ -314,6 +312,18 @@ async function openAddRagCollectionModal() {
         ragCollectionContextContent.textContent = '';
     }
     lastGeneratedContext = null;
+    
+    // Reset and hide Step 2 section
+    const step2Section = document.getElementById('rag-collection-step2-section');
+    if (step2Section) {
+        step2Section.classList.add('hidden');
+    }
+    
+    // Reset and hide questions result
+    if (ragCollectionQuestionsResult) {
+        ragCollectionQuestionsResult.classList.add('hidden');
+    }
+    lastGeneratedQuestions = null;
     
     // Reload template configuration to get latest default_mcp_context_prompt
     await reloadTemplateConfiguration();
@@ -357,10 +367,12 @@ const populateMcpServerDropdown = () => {
 async function handleAddRagCollection(event) {
     event.preventDefault();
     
+    
     // Get form values
     const name = ragCollectionNameInput.value.trim();
     const mcpServerId = ragCollectionMcpServerSelect.value;
     const description = ragCollectionDescriptionInput.value.trim();
+    
     
     // Determine population method
     let populationMethod = 'none';
@@ -374,6 +386,7 @@ async function handleAddRagCollection(event) {
         }
     }
     
+    
     // Validate
     if (!name) {
         showNotification('error', 'Collection name is required');
@@ -385,22 +398,34 @@ async function handleAddRagCollection(event) {
         return;
     }
     
+    
     // Validate template examples if template population is selected
     let templateExamples = [];
     if (populationMethod === 'template') {
-        const exampleDivs = ragCollectionTemplateExamples.querySelectorAll('[data-add-example-id]');
-        exampleDivs.forEach(div => {
-            const exampleId = div.dataset.addExampleId;
-            const queryInput = document.getElementById(`add-example-${exampleId}-query`);
-            const sqlInput = document.getElementById(`add-example-${exampleId}-sql`);
-            
-            if (queryInput && sqlInput && queryInput.value.trim() && sqlInput.value.trim()) {
-                templateExamples.push({
-                    user_query: queryInput.value.trim(),
-                    sql_statement: sqlInput.value.trim()
-                });
-            }
-        });
+        
+        // If using LLM method with generated questions, use those
+        if (templateMethod === 'llm' && lastGeneratedQuestions && lastGeneratedQuestions.length > 0) {
+            templateExamples = lastGeneratedQuestions.map(q => ({
+                user_query: q.question,
+                sql_statement: q.sql
+            }));
+        } else {
+            // Otherwise, get examples from manual entry form
+            const exampleDivs = ragCollectionTemplateExamples.querySelectorAll('[data-add-example-id]');
+            exampleDivs.forEach(div => {
+                const exampleId = div.dataset.addExampleId;
+                const queryInput = document.getElementById(`add-example-${exampleId}-query`);
+                const sqlInput = document.getElementById(`add-example-${exampleId}-sql`);
+                
+                if (queryInput && sqlInput && queryInput.value.trim() && sqlInput.value.trim()) {
+                    templateExamples.push({
+                        user_query: queryInput.value.trim(),
+                        sql_statement: sqlInput.value.trim()
+                    });
+                }
+            });
+        }
+        
         
         if (templateExamples.length === 0) {
             showNotification('error', 'Please add at least one template example');
@@ -411,28 +436,53 @@ async function handleAddRagCollection(event) {
     // Validate LLM fields if LLM population is selected
     let llmSubject, llmCount, llmDbName;
     if (populationMethod === 'template' && templateMethod === 'llm') {
-        // Get values from dynamically created fields
-        const contextTopicEl = document.getElementById('rag-collection-llm-context-topic');
-        const numExamplesEl = document.getElementById('rag-collection-llm-num-examples');
-        const databaseNameEl = document.getElementById('rag-collection-llm-database-name');
-        
-        llmSubject = contextTopicEl ? contextTopicEl.value.trim() : '';
-        llmCount = numExamplesEl ? parseInt(numExamplesEl.value, 10) : 5;
-        llmDbName = databaseNameEl ? databaseNameEl.value.trim() : '';
-        
-        if (!llmSubject) {
-            showNotification('error', 'Please provide a context topic for question generation');
-            return;
-        }
-        
-        if (!llmCount || llmCount < 1 || llmCount > 20) {
-            showNotification('error', 'Number of examples must be between 1 and 20');
-            return;
-        }
-        
-        if (!llmDbName) {
-            showNotification('error', 'Database name is required');
-            return;
+        // If questions are already generated, skip field validation
+        if (!lastGeneratedQuestions || lastGeneratedQuestions.length === 0) {
+            
+            // Validate all number input fields first
+            const llmFieldsContainer = document.getElementById('rag-collection-llm-fields');
+            if (llmFieldsContainer) {
+                const numberInputs = llmFieldsContainer.querySelectorAll('input[type="number"]');
+                for (const input of numberInputs) {
+                    if (!validateNumberInput(input)) {
+                        showNotification('error', 'Please correct the validation errors in the form');
+                        return;
+                    }
+                }
+            }
+            
+            // Get values from dynamically created fields
+            const contextTopicEl = document.getElementById('rag-collection-llm-context-topic');
+            const numExamplesEl = document.getElementById('rag-collection-llm-num-examples');
+            const databaseNameEl = document.getElementById('rag-collection-llm-database-name');
+            
+            llmSubject = contextTopicEl ? contextTopicEl.value.trim() : '';
+            llmCount = numExamplesEl ? parseInt(numExamplesEl.value, 10) : 5;
+            llmDbName = databaseNameEl ? databaseNameEl.value.trim() : '';
+            
+            if (!llmSubject) {
+                showNotification('error', 'Please provide a context topic for question generation');
+                return;
+            }
+            
+            // Validate num_examples using its configured min/max
+            if (numExamplesEl) {
+                const min = parseInt(numExamplesEl.dataset.min) || 1;
+                const max = parseInt(numExamplesEl.dataset.max) || 1000;
+                if (!llmCount || llmCount < min || llmCount > max) {
+                    showNotification('error', `Number of examples must be between ${min} and ${max}`);
+                    return;
+                }
+            }
+            
+            if (!llmDbName) {
+                showNotification('error', 'Database name is required');
+                return;
+            }
+        } else {
+            // Use values from generated questions
+            const databaseNameEl = document.getElementById('rag-collection-llm-database-name');
+            llmDbName = databaseNameEl ? databaseNameEl.value.trim() : '';
         }
     }
     
@@ -478,11 +528,18 @@ async function handleAddRagCollection(event) {
                 examples: templateExamples
             };
             
-            const dbName = ragCollectionTemplateDb.value.trim();
-            const toolName = ragCollectionTemplateTool.value.trim();
+            // For LLM method, use the database name from LLM fields
+            if (templateMethod === 'llm' && llmDbName) {
+                templatePayload.database_name = llmDbName;
+            } else {
+                // For manual method, use values from manual form fields
+                const dbName = ragCollectionTemplateDb.value.trim();
+                const toolName = ragCollectionTemplateTool.value.trim();
+                
+                if (dbName) templatePayload.database_name = dbName;
+                if (toolName) templatePayload.mcp_tool_name = toolName;
+            }
             
-            if (dbName) templatePayload.database_name = dbName;
-            if (toolName) templatePayload.mcp_tool_name = toolName;
             
             const populateResponse = await fetch(`/api/v1/rag/collections/${collectionId}/populate`, {
                 method: 'POST',
@@ -494,110 +551,11 @@ async function handleAddRagCollection(event) {
             
             const populateData = await populateResponse.json();
             
+            
             if (populateResponse.ok && populateData.status === 'success') {
                 showNotification('success', `Populated ${populateData.results.successful} cases successfully!`);
             } else {
                 showNotification('warning', `Collection created but population failed: ${populateData.message || 'Unknown error'}`);
-            }
-        } else if (populationMethod === 'template' && templateMethod === 'llm') {
-            // Check if we already have generated questions
-            if (lastGeneratedQuestions && lastGeneratedQuestions.length > 0) {
-                addRagCollectionSubmit.textContent = 'Populating with generated questions...';
-                
-                // Transform questions to match backend schema: {question, sql} -> {user_query, sql_statement}
-                const transformedExamples = lastGeneratedQuestions.map(q => ({
-                    user_query: q.question,
-                    sql_statement: q.sql
-                }));
-                
-                // Get selected template ID from dropdown
-                const selectedTemplateId = ragCollectionTemplateType?.value || 'sql_query_v1';
-                
-                // Use the already-generated questions
-                const templatePayload = {
-                    template_type: 'sql_query',  // Keep for backward compatibility
-                    template_id: selectedTemplateId,
-                    examples: transformedExamples,
-                    database_name: llmDbName
-                };
-                
-                const populateResponse = await fetch(`/api/v1/rag/collections/${collectionId}/populate`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(templatePayload)
-                });
-                
-                const populateData = await populateResponse.json();
-                
-                if (populateResponse.ok && populateData.status === 'success') {
-                    showNotification('success', `Populated ${populateData.results.successful} cases successfully!`);
-                } else {
-                    showNotification('warning', `Collection created but population failed: ${populateData.message || 'Unknown error'}`);
-                }
-            } else {
-                // Fallback: Generate questions on-the-fly (if context was generated but questions weren't)
-                addRagCollectionSubmit.textContent = 'Generating questions with LLM...';
-                
-                if (!lastGeneratedContext) {
-                    showNotification('warning', 'Collection created but no context was generated. Please use Generate Context → Generate Questions workflow.');
-                } else {
-                    // Generate questions using the context
-                    const questionsPayload = {
-                        subject: llmSubject,
-                        count: llmCount,
-                        database_context: lastGeneratedContext.final_answer_text,
-                        database_name: llmDbName
-                    };
-                    
-                    // Add conversion rules if provided
-                    const conversionRules = ragCollectionLlmConversionRules?.value?.trim();
-                    if (conversionRules) {
-                        questionsPayload.conversion_rules = conversionRules;
-                    }
-                    
-                    const questionsResponse = await fetch('/api/v1/rag/generate-questions', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(questionsPayload)
-                    });
-                    
-                    const questionsData = await questionsResponse.json();
-                    
-                    if (questionsResponse.ok && questionsData.questions) {
-                        // Get selected template ID from dropdown
-                        const selectedTemplateId = ragCollectionTemplateType?.value || 'sql_query_v1';
-                        
-                        // Now populate with these questions
-                        const templatePayload = {
-                            template_type: 'sql_query',  // Keep for backward compatibility
-                            template_id: selectedTemplateId,
-                            examples: questionsData.questions,
-                            database_name: llmDbName
-                        };
-                        
-                        const populateResponse = await fetch(`/api/v1/rag/collections/${collectionId}/populate`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(templatePayload)
-                        });
-                        
-                        const populateData = await populateResponse.json();
-                        
-                        if (populateResponse.ok && populateData.status === 'success') {
-                            showNotification('success', `Auto-generated and populated ${populateData.results.successful} cases successfully!`);
-                        } else {
-                            showNotification('warning', `Questions generated but population failed: ${populateData.message || 'Unknown error'}`);
-                        }
-                    } else {
-                        showNotification('warning', `Collection created but question generation failed: ${questionsData.message || 'Unknown error'}`);
-                    }
-                }
             }
         }
         
@@ -936,15 +894,10 @@ if (editRagCollectionForm) {
  * - If turn succeeds more efficiently, it may become new champion
  */
 async function calculateRagImpactKPIs() {
-    console.log('[RAG KPI] ========================================');
-    console.log('[RAG KPI] Starting KPI calculation...');
-    console.log('[RAG KPI] Timestamp:', new Date().toISOString());
     
     try {
         // Fetch all collections to calculate metrics
-        console.log('[RAG KPI] Fetching collections from /api/v1/rag/collections...');
         const response = await fetch('/api/v1/rag/collections');
-        console.log('[RAG KPI] Response status:', response.status);
         if (!response.ok) {
             console.error('[RAG KPI] Failed to fetch collections:', response.status, response.statusText);
             updateKPIDisplay({
@@ -960,15 +913,11 @@ async function calculateRagImpactKPIs() {
         }
         
         const responseData = await response.json();
-        console.log('[RAG KPI] Fetched response:', responseData);
         
         // Extract collections array from response
         const collections = responseData.collections || responseData;
-        console.log('[RAG KPI] Collections array:', collections);
-        console.log('[RAG KPI] Collections type:', typeof collections, 'Is array:', Array.isArray(collections));
         
         if (!Array.isArray(collections) || collections.length === 0) {
-            console.log('[RAG KPI] No collections found, showing zero metrics');
             updateKPIDisplay({
                 selfHealingEvents: 0,
                 selfHealingTrend: 'Create collections and add cases to see metrics',
@@ -983,7 +932,6 @@ async function calculateRagImpactKPIs() {
         
         // Count collections with cases
         const collectionsWithCases = collections.filter(c => c.count && c.count > 0);
-        console.log('[RAG KPI] Collections with cases:', collectionsWithCases.length, 'of', collections.length);
         
         // Calculate total cases across all collections
         let totalCases = 0;
@@ -996,10 +944,8 @@ async function calculateRagImpactKPIs() {
         let totalTurns = 0; // Total turns across all sessions
         
         const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-        console.log('[RAG KPI] Analyzing collections for metrics...');
         
         for (const collection of collections) {
-            console.log('[RAG KPI] Processing collection:', collection.name, 'count:', collection.count);
             
             if (collection.count) {
                 totalCases += collection.count;
@@ -1010,21 +956,12 @@ async function calculateRagImpactKPIs() {
                     if (detailResponse.ok) {
                         const data = await detailResponse.json();
                         const rows = data.rows || [];
-                        console.log(`[RAG KPI] Fetched ${rows.length} rows from collection ${collection.name}`);
                         
                         rows.forEach((row, index) => {
                             // Row already has flattened metadata fields
                             
                             // Debug first row structure
                             if (index === 0) {
-                                console.log('[RAG KPI] Sample row structure:', {
-                                    id: row.id,
-                                    strategy_type: row.strategy_type,
-                                    is_most_efficient: row.is_most_efficient,
-                                    user_feedback_score: row.user_feedback_score,
-                                    output_tokens: row.output_tokens,
-                                    timestamp: row.timestamp
-                                });
                             }
                             
                             // Count champion cases (these are the ones RAG retrieves for self-healing)
@@ -1049,10 +986,8 @@ async function calculateRagImpactKPIs() {
                             }
                         });
                     } else {
-                        console.warn(`[RAG KPI] Failed to fetch rows for collection ${collection.id}:`, detailResponse.status);
                     }
                 } catch (detailError) {
-                    console.warn(`[RAG KPI] Error fetching details for collection ${collection.id}:`, detailError);
                 }
             }
         }
@@ -1065,22 +1000,11 @@ async function calculateRagImpactKPIs() {
             ragEnhancedTurns = championCases > 0 ? Math.floor(championCases * 1.5) : 0;
             totalTurns = totalCases > 0 ? totalCases : 1;
         } catch (e) {
-            console.warn('[RAG KPI] Could not calculate RAG activation rate:', e);
         }
         
-        console.log('[RAG KPI] Metrics calculated:', {
-            totalCases,
-            championCases,
-            recentCases,
-            positivelyRatedCases,
-            totalOutputTokens,
-            ragEnhancedTurns,
-            totalTurns
-        });
         
         // If no cases found, show helpful message
         if (totalCases === 0) {
-            console.log('[RAG KPI] Collections exist but no cases found yet');
             updateKPIDisplay({
                 selfHealingEvents: 0,
                 selfHealingTrend: `${collections.length} collection(s) ready - Start using the agent to accumulate cases`,
@@ -1156,7 +1080,6 @@ async function calculateRagImpactKPIs() {
             positivelyRatedCases
         };
         
-        console.log('[RAG KPI] Final KPI data:', kpiData);
         
         // Update UI
         updateKPIDisplay(kpiData);
@@ -1180,12 +1103,10 @@ async function calculateRagImpactKPIs() {
  * Update KPI display elements
  */
 function updateKPIDisplay(kpis) {
-    console.log('[RAG KPI] updateKPIDisplay called with:', kpis);
     
     // Champion Strategies
     const healingCountEl = document.getElementById('rag-kpi-healing-count');
     const healingTrendEl = document.getElementById('rag-kpi-healing-trend');
-    console.log('[RAG KPI] Elements found - healingCount:', !!healingCountEl, 'healingTrend:', !!healingTrendEl);
     
     if (healingCountEl) {
         healingCountEl.textContent = kpis.selfHealingEvents;
@@ -1653,33 +1574,22 @@ async function handleGenerateContext() {
             
             // Add cache-busting parameter to ensure fresh data
             const configResponse = await fetch(`/api/v1/rag/templates/${selectedTemplateId}/config?_=${Date.now()}`);
-            console.log('Config fetch response status:', configResponse.status);
             
             if (configResponse.ok) {
                 const responseData = await configResponse.json();
-                console.log('Full config response:', JSON.stringify(responseData, null, 2));
                 
                 // Handle both response formats: {config: {...}} or direct {...}
                 const configData = responseData.config || responseData;
-                console.log('Extracted config data:', JSON.stringify(configData, null, 2));
                 
                 if (configData.default_mcp_context_prompt) {
                     contextPromptName = configData.default_mcp_context_prompt;
-                    console.log('✓ Using context prompt from config:', contextPromptName);
                 } else {
-                    console.warn('⚠ No default_mcp_context_prompt in config, using fallback:', contextPromptName);
                 }
             } else {
-                console.warn('Failed to load template config, status:', configResponse.status);
             }
         } catch (error) {
-            console.warn('Could not load template config, using fallback prompt:', error);
         }
         
-        console.log('=== CONTEXT GENERATION DEBUG ===');
-        console.log('Prompt name:', contextPromptName);
-        console.log('Database name:', databaseName);
-        console.log('=================================');
         
         // Disable button and show loading state
         ragCollectionGenerateContextBtn.disabled = true;
@@ -1748,12 +1658,21 @@ async function handleGenerateContext() {
         // Store the result for later use
         lastGeneratedContext = result;
         
+        // Log the generated context for debugging
+        
         // Show summary in inline result
         if (ragCollectionContextResult && ragCollectionContextContent) {
             const summary = finalAnswer || 'Context generated successfully';
             const truncated = summary.length > 200 ? summary.substring(0, 200) + '...' : summary;
             ragCollectionContextContent.textContent = truncated;
             ragCollectionContextResult.classList.remove('hidden');
+            
+        }
+        
+        // Show Step 2 section
+        const step2Section = document.getElementById('rag-collection-step2-section');
+        if (step2Section) {
+            step2Section.classList.remove('hidden');
         }
         
         // Show full result in modal
@@ -1777,6 +1696,66 @@ async function handleGenerateContext() {
 }
 
 /**
+ * Extract formatted context from execution trace (same logic as backend)
+ */
+function extractQuestionGenerationContext(executionTrace) {
+    if (!executionTrace || !Array.isArray(executionTrace)) {
+        return '';
+    }
+    
+    let context = '';
+    
+    for (const traceItem of executionTrace) {
+        if (!traceItem || typeof traceItem !== 'object') continue;
+        
+        const action = traceItem.action || {};
+        const result = traceItem.result || {};
+        const toolName = action.tool_name || '';
+        
+        // Skip system log messages (clutter)
+        if (toolName === 'TDA_SystemLog') continue;
+        
+        const resultsArray = result.results || [];
+        if (!Array.isArray(resultsArray)) continue;
+        
+        for (const item of resultsArray) {
+            if (!item || typeof item !== 'object') continue;
+            
+            // Handle TDA_FinalReport
+            if (toolName === 'TDA_FinalReport') {
+                if (item.direct_answer) {
+                    context += `\n\n${item.direct_answer}`;
+                }
+                if (item.key_observations && Array.isArray(item.key_observations)) {
+                    for (const obs of item.key_observations) {
+                        if (obs && obs.text) {
+                            context += `\n- ${obs.text}`;
+                        }
+                    }
+                }
+                continue;
+            }
+            
+            // Handle TDA_LLMTask
+            if (toolName === 'TDA_LLMTask' && item.response) {
+                context += `\n\n${item.response}`;
+                continue;
+            }
+            
+            // Handle other tools - look for common fields
+            const content = item.tool_output || item.content || item['Request Text'] || '';
+            if (content && typeof content === 'string' && content.trim().length > 20) {
+                // Clean up formatting
+                const cleaned = content.replace(/\r/g, ' ').replace(/\n/g, ' ').replace(/\s+/g, ' ');
+                context += `\n\n${cleaned}`;
+            }
+        }
+    }
+    
+    return context.trim();
+}
+
+/**
  * Open the Context Result Modal
  */
 function openContextResultModal(result) {
@@ -1794,8 +1773,18 @@ function openContextResultModal(result) {
         contextResultFinalAnswer.textContent = result.final_answer_text || 'N/A';
     }
     
-    if (contextResultExecutionTrace) {
-        contextResultExecutionTrace.textContent = JSON.stringify(result.execution_trace, null, 2);
+    // Show formatted context for question generation instead of raw trace
+    const contextForQuestions = document.getElementById('context-result-question-context');
+    if (contextForQuestions) {
+        const fullContext = result.final_answer_text || '';
+        const extractedDetails = extractQuestionGenerationContext(result.execution_trace);
+        
+        let displayContext = fullContext;
+        if (extractedDetails) {
+            displayContext += '\n\n=== Detailed Schema Information ===\n' + extractedDetails;
+        }
+        
+        contextForQuestions.textContent = displayContext || 'No context extracted';
     }
     
     if (contextResultInputTokens) {
@@ -1836,6 +1825,14 @@ function closeContextResultModal() {
     // Hide after animation
     setTimeout(() => {
         contextResultModalOverlay.classList.add('hidden');
+        
+        // Scroll to show the Generate Questions button in the form
+        const generateQuestionsBtn = document.getElementById('rag-collection-generate-questions-btn');
+        if (generateQuestionsBtn) {
+            setTimeout(() => {
+                generateQuestionsBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
     }, 200);
 }
 
@@ -1885,21 +1882,17 @@ async function handleGenerateQuestions() {
         showNotification('info', `Generating ${count} ${targetDatabase} question/SQL pairs...`);
         
         // Build request with database context from previous step
+        // Include full execution trace to provide complete schema information
         const requestBody = {
             subject: subject,
             count: count,
             database_context: lastGeneratedContext.final_answer_text,
+            execution_trace: lastGeneratedContext.execution_trace, // Include full trace for schema details
             database_name: databaseName,
             target_database: targetDatabase,
             conversion_rules: conversionRules
         };
         
-        console.log('=== QUESTION GENERATION DEBUG ===');
-        console.log('Subject:', subject);
-        console.log('Count:', count);
-        console.log('Database:', databaseName);
-        console.log('Context length:', lastGeneratedContext.final_answer_text.length);
-        console.log('=====================================');
         
         // Call the generate-questions endpoint
         const response = await fetch('/api/v1/rag/generate-questions', {
@@ -1983,7 +1976,14 @@ function displayQuestionsPreview(questions) {
  * Handle Populate Collection Button Click
  * Takes generated questions and populates the RAG collection
  */
-async function handlePopulateCollection() {
+async function handlePopulateCollection(event) {
+    // Prevent any default behavior
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    
     try {
         if (!lastGeneratedQuestions || lastGeneratedQuestions.length === 0) {
             showNotification('error', 'No questions generated yet');
@@ -1994,40 +1994,57 @@ async function handlePopulateCollection() {
         const databaseNameEl = document.getElementById('rag-collection-llm-database-name');
         const databaseName = databaseNameEl ? databaseNameEl.value.trim() : '';
         
+        
         if (!databaseName) {
             showNotification('error', 'Database name is required');
             return;
         }
         
-        // Hide the context result section
-        if (ragCollectionContextResult) {
-            ragCollectionContextResult.classList.add('hidden');
-        }
-        
-        // Hide questions result
+        // Simply collapse the questions section and show success message
+        // Don't hide anything - just collapse the content
         if (ragCollectionQuestionsResult) {
-            ragCollectionQuestionsResult.classList.add('hidden');
-        }
-        
-        // Scroll within the modal to the Create Collection button
-        const createButton = document.getElementById('add-rag-collection-submit');
-        const modalContent = document.getElementById('add-rag-collection-modal-content');
-        
-        if (createButton && modalContent) {
-            // Scroll the modal content to show the button
-            createButton.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            // Collapse the questions list but keep the header visible
+            const questionsList = document.getElementById('rag-collection-questions-list');
+            const populateBtn = document.getElementById('rag-collection-populate-btn');
+            if (questionsList) {
+                questionsList.style.display = 'none';
+            }
+            if (populateBtn) {
+                populateBtn.style.display = 'none';
+            }
             
-            // Highlight the button briefly with pulsing animation
-            createButton.classList.add('ring-4', 'ring-green-400', 'animate-pulse');
-            setTimeout(() => {
-                createButton.classList.remove('ring-4', 'ring-green-400', 'animate-pulse');
-            }, 3000);
+            // Add a success message in the questions result area
+            const successMsg = document.createElement('div');
+            successMsg.className = 'bg-green-900/30 border border-green-500 rounded p-3 text-center';
+            successMsg.innerHTML = `
+                <div class="text-green-400 font-semibold mb-1">✓ ${lastGeneratedQuestions.length} Questions Ready</div>
+                <div class="text-sm text-gray-300">Scroll down and click "Create Collection" to save</div>
+            `;
+            ragCollectionQuestionsResult.appendChild(successMsg);
         }
         
-        showNotification('success', `✓ Ready to create! ${lastGeneratedQuestions.length} questions will be added to the collection. Click "Create Collection" below.`);
+        // Scroll to the Create Collection button at the bottom
+        const createButton = document.getElementById('add-rag-collection-submit');
+        if (createButton) {
+            setTimeout(() => {
+                createButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Highlight the button
+                createButton.classList.add('ring-4', 'ring-green-400', 'shadow-lg', 'shadow-green-400/50');
+                createButton.style.transform = 'scale(1.05)';
+                createButton.style.transition = 'all 0.3s ease';
+                
+                setTimeout(() => {
+                    createButton.classList.remove('ring-4', 'ring-green-400', 'shadow-lg', 'shadow-green-400/50');
+                    createButton.style.transform = 'scale(1)';
+                }, 3000);
+            }, 300);
+        }
+        
+        showNotification('success', `✓ Ready to create collection with ${lastGeneratedQuestions.length} generated question/SQL pairs!`);
         
     } catch (error) {
-        console.error('Error preparing to populate collection:', error);
+        console.error('[Populate Collection] Error:', error);
         showNotification('error', `Error: ${error.message}`);
     }
 }
@@ -2085,18 +2102,14 @@ function unlockPhase2() {
  * Unlock Phase 3 (Question Generation)
  */
 function unlockPhase3() {
-    console.log('[RAG unlockPhase3] Starting Phase 3 unlock...');
     const phase3Section = document.getElementById('phase-3-section');
     const phase3Indicator = document.getElementById('phase-indicator-3');
     const phase2StatusBadge = document.getElementById('phase-2-status-badge');
     const subjectDisplay = document.getElementById('phase-3-subject-display');
     const llmSubject = document.getElementById('rag-collection-llm-subject');
     
-    console.log('[RAG unlockPhase3] Phase 3 section found:', !!phase3Section);
     if (phase3Section) {
-        console.log('[RAG unlockPhase3] Removing hidden, opacity-50, pointer-events-none');
         phase3Section.classList.remove('hidden', 'opacity-50', 'pointer-events-none');
-        console.log('[RAG unlockPhase3] Phase 3 section classes after:', phase3Section.className);
         phase3Section.querySelector('.w-8').classList.remove('bg-gray-600', 'text-gray-400');
         phase3Section.querySelector('.w-8').classList.add('bg-teradata-orange', 'text-white');
     }
@@ -2225,9 +2238,6 @@ async function createDatabaseContext() {
         
         const result = await response.json();
         
-        console.log('[RAG Phase 2] Backend response keys:', Object.keys(result));
-        console.log('[RAG Phase 2] Has response_text:', 'response_text' in result);
-        console.log('[RAG Phase 2] response_text value:', result.response_text ? `${result.response_text.length} chars` : 'EMPTY/NULL');
         
         contextTitle.textContent = 'Database Context Generated ✓';
         if (result.status === 'success' && result.response) {
@@ -2236,18 +2246,13 @@ async function createDatabaseContext() {
             
             // Store the clean context globally for Phase 3
             generatedDatabaseContext = cleanContext;
-            console.log('[RAG Phase 2] Database context generated');
-            console.log('[RAG Phase 2] HTML length:', result.response.length, 'Clean text length:', cleanContext.length);
-            console.log('[RAG Phase 2] Clean context preview:', cleanContext.substring(0, 500));
             
             // Display the full HTML response in UI for user viewing
             contextContent.textContent = result.response;
             contextResult.classList.remove('hidden');
             
             // SUCCESS: Unlock Phase 3
-            console.log('[RAG Phase 2] Unlocking Phase 3...');
             unlockPhase3();
-            console.log('[RAG Phase 2] Phase 3 unlocked, generatedDatabaseContext is:', generatedDatabaseContext ? 'SET' : 'NULL');
             showNotification('success', 'Database context created successfully! You can now proceed to Phase 3.');
         } else {
             contextContent.textContent = `Error: ${result.message || 'Failed to execute prompt'}`;
@@ -2272,10 +2277,6 @@ async function createDatabaseContext() {
  * Generate question/SQL pairs (Phase 3)
  */
 async function generateQuestions() {
-    console.log('[RAG Phase 3] Generate questions called');
-    console.log('[RAG Phase 3] Button exists:', !!ragCollectionGenerateQuestionsBtn);
-    console.log('[RAG Phase 3] Context exists:', !!generatedDatabaseContext);
-    console.log('[RAG Phase 3] Context length:', generatedDatabaseContext ? generatedDatabaseContext.length : 0);
     
     if (!ragCollectionGenerateQuestionsBtn || !generatedDatabaseContext) {
         console.error('[RAG Phase 3] Missing requirements - button:', !!ragCollectionGenerateQuestionsBtn, 'context:', !!generatedDatabaseContext);
@@ -2465,7 +2466,6 @@ async function switchTemplateFields() {
     try {
         // Use templateManager to render manual input fields dynamically
         await window.templateManager.renderTemplateFields(selectedTemplateId, sqlFields);
-        console.log(`[Template Fields] Rendered manual fields for template: ${selectedTemplateId}`);
         
         // Render LLM auto-generate fields dynamically
         await renderLlmFieldsForTemplate(selectedTemplateId);
@@ -2476,12 +2476,49 @@ async function switchTemplateFields() {
 }
 
 /**
+ * Validate number input fields in real-time
+ */
+function validateNumberInput(inputElement) {
+    const min = parseInt(inputElement.dataset.min);
+    const max = parseInt(inputElement.dataset.max);
+    const value = parseInt(inputElement.value);
+    const errorElement = document.getElementById(`${inputElement.id}-error`);
+    
+    if (!errorElement) return;
+    
+    if (isNaN(value)) {
+        errorElement.textContent = 'Please enter a valid number';
+        errorElement.classList.remove('hidden');
+        inputElement.classList.add('border-red-500');
+        return false;
+    }
+    
+    if (value < min) {
+        errorElement.textContent = `Value must be at least ${min}`;
+        errorElement.classList.remove('hidden');
+        inputElement.classList.add('border-red-500');
+        return false;
+    }
+    
+    if (value > max) {
+        errorElement.textContent = `Value must be at most ${max}`;
+        errorElement.classList.remove('hidden');
+        inputElement.classList.add('border-red-500');
+        return false;
+    }
+    
+    // Valid input
+    errorElement.classList.add('hidden');
+    inputElement.classList.remove('border-red-500');
+    return true;
+}
+
+/**
  * Dynamically render LLM input fields from template manifest
  */
 async function renderLlmFieldsForTemplate(templateId) {
     const llmFieldsContainer = document.getElementById('rag-collection-llm-fields');
     if (!llmFieldsContainer) {
-        console.warn('[LLM Fields] Container not found');
         return;
     }
     
@@ -2513,10 +2550,19 @@ async function renderLlmFieldsForTemplate(templateId) {
             const fieldElement = document.getElementById(fieldId);
             if (fieldElement) {
                 fieldElement.addEventListener('input', refreshQuestionGenerationPrompt);
+                
+                // Add real-time validation for number inputs
+                if (fieldElement.type === 'number') {
+                    fieldElement.addEventListener('input', function() {
+                        validateNumberInput(fieldElement);
+                    });
+                    fieldElement.addEventListener('blur', function() {
+                        validateNumberInput(fieldElement);
+                    });
+                }
             }
         }
         
-        console.log(`[LLM Fields] Rendered ${Object.keys(inputVariables).length} fields for ${templateId}`);
     } catch (error) {
         console.error('[LLM Fields] Failed to render:', error);
         llmFieldsContainer.innerHTML = '<p class="text-red-400 text-sm">Error loading LLM fields</p>';
@@ -2551,7 +2597,9 @@ function createLlmInputField(varName, varConfig) {
                 <input type="number" id="${fieldId}" 
                        value="${defaultVal}" min="${min}" max="${max}"
                        class="w-full p-2 bg-gray-600 border border-gray-500 rounded-md focus:ring-2 focus:ring-teradata-orange outline-none text-white text-sm"
-                       placeholder="${placeholder}">
+                       placeholder="${placeholder}"
+                       data-min="${min}" data-max="${max}">
+                <p id="${fieldId}-error" class="text-xs text-red-400 mt-1 hidden"></p>
                 ${description ? `<p class="text-xs text-gray-400 mt-1">${description}</p>` : ''}
             </div>
         `;

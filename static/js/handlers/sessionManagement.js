@@ -165,7 +165,6 @@ export async function handleSessionRenameSave(e) {
     try {
         await renameSession(sessionId, newName);
         UI.exitSessionEditMode(inputElement, newName);
-        console.log(`Session ${sessionId} renamed to '${newName}'`);
         UI.moveSessionToTop(sessionId);
         if (state.currentSessionId === sessionId) {
             updateActiveSessionTitle(newName);
@@ -186,7 +185,6 @@ export async function renameActiveSession(newName) {
     if (!trimmed) return;
     try {
         await renameSession(state.currentSessionId, trimmed);
-        console.log(`Active session ${state.currentSessionId} renamed to '${trimmed}' via header.`);
         updateActiveSessionTitle(trimmed);
         UI.updateSessionListItemName(state.currentSessionId, trimmed);
         UI.moveSessionToTop(state.currentSessionId);
@@ -225,16 +223,13 @@ export async function handleDeleteSessionClick(deleteButton) {
                 UI.removeSessionFromList(sessionId);
 
                 if (state.currentSessionId === sessionId) {
-                    console.log('Active session deleted. Checking for remaining sessions.');
                     try {
                         const remainingSessions = await API.loadAllSessions();
                         if (remainingSessions && remainingSessions.length > 0) {
                             // The API returns sessions sorted by most recent first.
                             const nextSessionId = remainingSessions[0].id;
-                            console.log(`Switching to most recent session: ${nextSessionId}`);
                             await handleLoadSession(nextSessionId);
                         } else {
-                            console.log('No remaining sessions. Starting a new session.');
                             await handleStartNewSession();
                         }
                     } catch (error) {

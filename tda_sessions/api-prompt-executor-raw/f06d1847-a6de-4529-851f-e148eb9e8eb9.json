@@ -1,0 +1,55 @@
+{
+  "id": "f06d1847-a6de-4529-851f-e148eb9e8eb9",
+  "user_uuid": "api-prompt-executor-raw",
+  "system_prompt_template": null,
+  "charting_intensity": "medium",
+  "provider": "Google",
+  "model": "gemini-2.0-flash",
+  "models_used": [
+    "Google/gemini-2.0-flash"
+  ],
+  "session_history": [
+    {
+      "role": "user",
+      "content": "You are a Teradata DBA who is an expert in describing the business use of a database.\n\n## your role will work through the phases\nPerform the phases in order, and do not skip any phase.\n\n## Phase 0 - Get the database name from the user\n- the database name is \n\n## Phase 1 - get the list of tables\n- Use the `base_tableList` function to get the list of tables in the database.\n\n## Phase 2 - describe the tables\nFor each table, you will:\n- Use the `base_tableDDL` function to get the DDL for the table.\n- Based *only* on the DDL you just received, describe the table in a business context. **Do not use any other tools or prompts for this description step.**\n\n## Phase 3 - Describe the database\n- Describe the database in a business context based on the business descriptions of the tables. \n- The description should be a paragraph. \n\n\n## Communication guidelines:\n      - Be concise but informative in your explanations\n      - Clearly indicate which phase the process is currently in\n      - summarize the outcome of the phase before moving to the next phase\n\n## Final output guidelines:\n      - return in markdown\n      - Example:\n      ***Database Name:*** `database_name`\n\n      ***Description:*** `database_description`\n",
+      "isValid": true,
+      "turn_number": 1,
+      "source": "prompt_library_raw"
+    }
+  ],
+  "chat_object": [
+    {
+      "role": "user",
+      "content": "You are a helpful assistant.",
+      "turn_number": 0
+    },
+    {
+      "role": "model",
+      "content": "Understood.",
+      "turn_number": 0
+    },
+    {
+      "role": "user",
+      "content": "You are a Teradata DBA who is an expert in describing the business use of a database.\n\n## your role will work through the phases\nPerform the phases in order, and do not skip any phase.\n\n## Phase 0 - Get the database name from the user\n- the database name is \n\n## Phase 1 - get the list of tables\n- Use the `base_tableList` function to get the list of tables in the database.\n\n## Phase 2 - describe the tables\nFor each table, you will:\n- Use the `base_tableDDL` function to get the DDL for the table.\n- Based *only* on the DDL you just received, describe the table in a business context. **Do not use any other tools or prompts for this description step.**\n\n## Phase 3 - Describe the database\n- Describe the database in a business context based on the business descriptions of the tables. \n- The description should be a paragraph. \n\n\n## Communication guidelines:\n      - Be concise but informative in your explanations\n      - Clearly indicate which phase the process is currently in\n      - summarize the outcome of the phase before moving to the next phase\n\n## Final output guidelines:\n      - return in markdown\n      - Example:\n      ***Database Name:*** `database_name`\n\n      ***Description:*** `database_description`\n",
+      "isValid": true,
+      "turn_number": 1
+    }
+  ],
+  "name": "New Chat",
+  "created_at": "2025-11-21T14:35:55.534482",
+  "last_updated": "2025-11-21T14:36:18.757089",
+  "input_tokens": 44780,
+  "output_tokens": 1417,
+  "last_turn_data": {
+    "workflow_history": []
+  },
+  "full_context_sent": false,
+  "license_info": {
+    "holder": "GNU Affero General Public License v3.0",
+    "issued_at": "2025-11-10T19:25:00.506556+00:00",
+    "expires_at": "2026-11-10T19:25:00.506556+00:00",
+    "version": "1.5-tiered",
+    "tier": "App Developer",
+    "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
+  }
+}

@@ -10,6 +10,9 @@ import copy
 from datetime import datetime, timezone
 # --- MODIFICATION END ---
 
+# Disable tqdm progress bars from ChromaDB
+os.environ['TQDM_DISABLE'] = '1'
+
 from sentence_transformers import SentenceTransformer
 import chromadb
 from chromadb.utils import embedding_functions

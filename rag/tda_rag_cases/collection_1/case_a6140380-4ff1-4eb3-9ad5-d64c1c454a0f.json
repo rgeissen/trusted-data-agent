@@ -1,0 +1,58 @@
+{
+  "case_id": "a6140380-4ff1-4eb3-9ad5-d64c1c454a0f",
+  "metadata": {
+    "session_id": "00000000-0000-0000-0000-000000000000",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "template-task-a6140380",
+    "collection_id": 1,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-21T15:52:21.882611+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Template",
+      "model": "sql_template_v1",
+      "input_tokens": 150,
+      "output_tokens": 180
+    },
+    "is_most_efficient": true,
+    "template_generated": true,
+    "template_type": "sql_query",
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "database_name": "fitness_db"
+  },
+  "intent": {
+    "user_query": "What is the total quantity of each product sold?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Execute SQL query on fitness_db: SELECT ProductID, SUM(Quantity) AS TotalQuantitySold FROM fitness_db.SaleDetails GROUP BY ProductID;",
+        "relevant_tools": [
+          "base_readQuery"
+        ],
+        "arguments": {
+          "sql": "SELECT ProductID, SUM(Quantity) AS TotalQuantitySold FROM fitness_db.SaleDetails GROUP BY ProductID;",
+          "database_name": "fitness_db"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the query results.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

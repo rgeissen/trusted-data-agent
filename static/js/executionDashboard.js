@@ -24,7 +24,6 @@ class ExecutionDashboard {
         if (userUUID) {
             headers['X-TDA-User-UUID'] = userUUID;
         } else {
-            console.warn('User UUID not found in localStorage for dashboard API calls');
         }
         
         return headers;
@@ -34,7 +33,6 @@ class ExecutionDashboard {
      * Initialize the dashboard
      */
     async initialize() {
-        console.log('Initializing Execution Dashboard...');
         
         // Set up event listeners
         this.setupEventListeners();
@@ -57,7 +55,6 @@ class ExecutionDashboard {
         const clearSearchBtn = document.getElementById('clear-search-btn');
         
         if (searchInput) {
-            console.log('[DEBUG] Search input event listener attached');
             
             // Show/hide clear button based on input content
             const updateClearButton = () => {
@@ -67,7 +64,6 @@ class ExecutionDashboard {
             };
             
             searchInput.addEventListener('input', (e) => {
-                console.log('[DEBUG] Search input changed:', e.target.value);
                 updateClearButton();
                 this.filterAndRenderSessions();
             });
@@ -123,7 +119,6 @@ class ExecutionDashboard {
      * Refresh all dashboard data
      */
     async refreshDashboard() {
-        console.log('Refreshing dashboard data...');
         
         try {
             // Show loading state
@@ -148,7 +143,6 @@ class ExecutionDashboard {
             this.renderAnalytics();
             this.filterAndRenderSessions();
 
-            console.log('Dashboard refreshed successfully');
         } catch (error) {
             console.error('Error refreshing dashboard:', error);
             this.showErrorState(error.message);
@@ -345,8 +339,6 @@ class ExecutionDashboard {
         const filterStatus = document.getElementById('session-filter-status')?.value || 'all';
         const sortBy = document.getElementById('session-sort')?.value || 'recent';
 
-        console.log('[DEBUG] filterAndRenderSessions - searchQuery:', searchQuery);
-        console.log('[DEBUG] filterAndRenderSessions - total sessions:', this.sessionsData.length);
 
         // Filter sessions - search in both session name and questions within the session
         let filteredSessions = this.sessionsData.filter(session => {
@@ -362,12 +354,6 @@ class ExecutionDashboard {
             
             // Debug: Log first session structure to understand data
             if (session === this.sessionsData[0] && searchQuery) {
-                console.log('[DEBUG] Sample session structure:', {
-                    name: session.name,
-                    has_last_turn_data: !!session.last_turn_data,
-                    has_workflow_history: !!session.last_turn_data?.workflow_history,
-                    workflow_history_length: session.last_turn_data?.workflow_history?.length || 0
-                });
             }
             
             const matchesSearch = matchesSessionName || matchesQuestion;
@@ -375,7 +361,6 @@ class ExecutionDashboard {
             return matchesSearch && matchesStatus;
         });
 
-        console.log('[DEBUG] filterAndRenderSessions - filtered sessions:', filteredSessions.length);
 
         // Sort sessions
         filteredSessions.sort((a, b) => {
@@ -470,7 +455,6 @@ class ExecutionDashboard {
             // Load the session
             await handleLoadSession(sessionId);
             
-            console.log(`Activated session ${sessionId} in conversation view`);
         } catch (error) {
             console.error('Error activating session:', error);
             alert('Failed to activate session. Please try again.');
@@ -481,13 +465,11 @@ class ExecutionDashboard {
      * Search for sessions containing a specific question
      */
     searchForQuestion(questionText) {
-        console.log('[DEBUG] searchForQuestion called with:', questionText);
         
         // Set the search input
         const searchInput = document.getElementById('session-search');
         if (searchInput) {
             searchInput.value = questionText;
-            console.log('[DEBUG] Search input value set to:', searchInput.value);
             
             // Trigger the filter
             this.filterAndRenderSessions();
@@ -613,7 +595,6 @@ class ExecutionDashboard {
      * Open the deep dive inspector (Tier 3)
      */
     async openInspector(sessionId) {
-        console.log('Opening inspector for session:', sessionId);
         this.currentSessionId = sessionId;
 
         // Show inspector modal

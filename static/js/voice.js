@@ -22,7 +22,6 @@ if (SpeechRecognition) {
     recognition.interimResults = true;
     recognition.lang = 'en-US';
 } else {
-    console.warn("Speech Recognition API is not supported in this browser.");
     if (DOM.voiceInputButton) {
         DOM.voiceInputButton.style.display = 'none';
     }
@@ -178,7 +177,6 @@ export function startRecognition() {
         recognition.start();
         isListening = true;
     } catch (e) {
-        console.warn("Could not start recognition (it may already be running):", e.message);
     }
 }
 
@@ -198,7 +196,6 @@ export function startConfirmationRecognition(callback) {
         recognition.start();
         isListening = true;
     } catch (e) {
-        console.warn("Could not start confirmation recognition:", e.message);
         if (confirmationCallback) {
             confirmationCallback('error');
             confirmationCallback = null;

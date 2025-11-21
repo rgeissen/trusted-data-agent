@@ -21,7 +21,6 @@ function _getHeaders(includeContentType = true) {
     if (state.userUUID) {
         headers['X-TDA-User-UUID'] = state.userUUID;
     } else {
-        console.warn("User UUID not found in state when creating headers.");
     }
     return headers;
 }
@@ -93,9 +92,7 @@ export async function cancelStream(sessionId) {
 
 
 export async function synthesizeText(text) {
-    console.log("AUDIO DEBUG: synthesizeText called with text:", `"${text.substring(0,100)}..."`);
     if (!state.appConfig.voice_conversation_enabled) {
-        console.log("AUDIO DEBUG: Voice feature is disabled in app config. Skipping synthesis.");
         return null;
     }
     const response = await fetch('/api/synthesize-speech', {
@@ -105,7 +102,6 @@ export async function synthesizeText(text) {
     });
 
     if (response.ok) {
-        console.log("AUDIO DEBUG: Synthesis API call successful.");
         return await response.blob();
     } else {
         const errorData = await response.json();
@@ -117,7 +113,6 @@ export async function synthesizeText(text) {
 
 export async function checkAndUpdateDefaultPrompts() {
     if (!isPrivilegedUser()) {
-        console.log("Standard user tier. Skipping client-side prompt cache check.");
         localStorage.removeItem('userSystemPrompts');
         return;
     }
@@ -139,7 +134,6 @@ export async function checkAndUpdateDefaultPrompts() {
         const localVersion = localStorage.getItem('promptVersionHash');
 
         if (serverVersion !== localVersion) {
-            console.log('New master system prompts detected on server. Flushing non-custom local prompts.');
 
             const allPrompts = getSystemPrompts();
             const updatedPrompts = {};
@@ -152,7 +146,6 @@ export async function checkAndUpdateDefaultPrompts() {
 
             localStorage.setItem('userSystemPrompts', JSON.stringify(updatedPrompts));
         } else {
-             console.log('Local prompt cache is up to date.');
         }
 
         localStorage.setItem('promptVersionHash', serverVersion);

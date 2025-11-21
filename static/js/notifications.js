@@ -76,7 +76,6 @@ function showReconfigurationNotification(data) {
 
 export function subscribeToNotifications() {
     if (!state.userUUID) {
-        console.warn("Cannot subscribe to notifications without a user UUID.");
         // Set status to disconnected if we can't even start.
         UI.updateSSEStatus('disconnected');
         return;
@@ -85,7 +84,6 @@ export function subscribeToNotifications() {
     const eventSource = new EventSource(`/api/notifications/subscribe?user_uuid=${state.userUUID}`);
 
     eventSource.onopen = () => {
-        console.log("Notification channel opened.");
         UI.updateSSEStatus('connected');
     };
 
@@ -104,7 +102,6 @@ export function subscribeToNotifications() {
                 break;
             case 'new_session_created': {
                 const newSession = data.payload;
-                console.log("New session created via REST API:", newSession);
                 // Add the new session to the UI list, but do not make it active
                 const sessionItem = UI.addSessionToList(newSession, false);
                 DOM.sessionList.prepend(sessionItem);
@@ -112,7 +109,6 @@ export function subscribeToNotifications() {
             }
             case 'session_name_update': {
                 const { session_id, newName } = data.payload;
-                console.log(`[notifications.js] Received session_name_update: session_id=${session_id}, newName=${newName}`);
                 UI.updateSessionListItemName(session_id, newName);
                 UI.moveSessionToTop(session_id);
                 if (session_id === state.currentSessionId) {
@@ -122,8 +118,6 @@ export function subscribeToNotifications() {
             }
             case 'session_model_update': {
                 const { session_id, models_used, last_updated, provider, model, name } = data.payload;
-                console.log(`[notifications.js] Received session_model_update for session_id=${session_id}`);
-                console.log(`[notifications.js] Payload: provider=${provider}, model=${model}, models_used=`, models_used);
                 UI.updateSessionModels(session_id, models_used);
                 UI.updateSessionTimestamp(session_id, last_updated);
                 if (name) {
@@ -132,14 +126,10 @@ export function subscribeToNotifications() {
                 UI.moveSessionToTop(session_id);
 
                 if (session_id === state.currentSessionId) {
-                    console.log(`[notifications.js] Session ${session_id} is current session. Updating state.currentProvider from ${state.currentProvider} to ${provider}`);
-                    console.log(`[notifications.js] Updating state.currentModel from ${state.currentModel} to ${model}`);
                     state.currentProvider = provider;
                     state.currentModel = model;
                     UI.updateStatusPromptName();
-                    console.log(`[notifications.js] UI.updateStatusPromptName() called.`);
                 } else {
-                    console.log(`[notifications.js] Session ${session_id} is NOT current session. State not updated.`);
                 }
                 break;
             }

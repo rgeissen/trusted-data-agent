@@ -82,26 +82,19 @@ export async function finalizeConfiguration(config, switchToConversationView = t
     if (DOM.ragStatusDot) {
         // Fetch fresh status after configuration to check if RAG collections are loaded
         const status = await API.checkServerStatus();
-        console.log('RAG status after configuration:', status.rag_active, 'RAG enabled:', status.rag_enabled);
         if (status.rag_active) {
             DOM.ragStatusDot.classList.remove('disconnected');
             DOM.ragStatusDot.classList.add('connected');
-            console.log('RAG indicator set to connected');
         } else {
             DOM.ragStatusDot.classList.remove('connected');
             DOM.ragStatusDot.classList.add('disconnected');
-            console.log('RAG indicator set to disconnected - rag_active:', status.rag_active);
         }
     }
     
     // Show conversation header after successful configuration
     const conversationHeader = document.getElementById('conversation-header');
-    console.log('Attempting to show conversation header, element exists:', !!conversationHeader);
     if (conversationHeader) {
-        console.log('Conversation header classes before:', conversationHeader.className);
         conversationHeader.classList.remove('hidden');
-        console.log('Conversation header classes after:', conversationHeader.className);
-        console.log('Conversation header enabled after configuration');
     } else {
         console.error('Conversation header element not found!');
     }
@@ -115,24 +108,15 @@ export async function finalizeConfiguration(config, switchToConversationView = t
 
     // Enable panel toggle buttons after configuration
     if (DOM.toggleHistoryButton) {
-        console.log('Enabling history toggle button - before:', {
-            pointerEvents: DOM.toggleHistoryButton.style.pointerEvents,
-            opacity: DOM.toggleHistoryButton.style.opacity
-        });
         DOM.toggleHistoryButton.classList.remove('btn-disabled');
         DOM.toggleHistoryButton.style.opacity = '1';
         DOM.toggleHistoryButton.style.cursor = 'pointer';
         DOM.toggleHistoryButton.style.pointerEvents = 'auto';
-        console.log('Enabling history toggle button - after:', {
-            pointerEvents: DOM.toggleHistoryButton.style.pointerEvents,
-            opacity: DOM.toggleHistoryButton.style.opacity
-        });
         // Update icons to show expand state (since panels are collapsed)
         if (DOM.historyExpandIcon) DOM.historyExpandIcon.classList.remove('hidden');
         if (DOM.historyCollapseIcon) DOM.historyCollapseIcon.classList.add('hidden');
     }
     if (DOM.toggleStatusButton) {
-        console.log('Enabling status toggle button');
         DOM.toggleStatusButton.classList.remove('btn-disabled');
         DOM.toggleStatusButton.style.opacity = '1';
         DOM.toggleStatusButton.style.cursor = 'pointer';
@@ -142,7 +126,6 @@ export async function finalizeConfiguration(config, switchToConversationView = t
         if (DOM.statusCollapseIcon) DOM.statusCollapseIcon.classList.add('hidden');
     }
     if (DOM.toggleHeaderButton) {
-        console.log('Enabling header toggle button');
         DOM.toggleHeaderButton.classList.remove('btn-disabled');
         DOM.toggleHeaderButton.style.opacity = '1';
         DOM.toggleHeaderButton.style.cursor = 'pointer';
@@ -214,13 +197,11 @@ export async function finalizeConfiguration(config, switchToConversationView = t
     
     // Always hide welcome screen after successful configuration
     // The welcome screen is only for unconfigured state
-    console.log('finalizeConfiguration: Hiding welcome screen after configuration');
     if (window.hideWelcomeScreen) {
         window.hideWelcomeScreen();
     }
     
     if (switchToConversationView) {
-        console.log('finalizeConfiguration: Switching to conversation-view');
         handleViewSwitch('conversation-view'); // Set the default view
     }
 }

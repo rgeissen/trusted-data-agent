@@ -20,7 +20,6 @@ export function showNotification(type, message) {
 
     const statusElement = document.getElementById('header-status-message');
     if (!statusElement) {
-        console.warn('Header status message element not found');
         return;
     }
     

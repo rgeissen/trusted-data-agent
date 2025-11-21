@@ -12,7 +12,6 @@ import { showNotification } from './utils.js';
  * @param {Function} switchFieldsCallback - Callback to switch template fields
  */
 export async function initializeTemplateSystem(templateDropdown, switchFieldsCallback) {
-    console.log('[Template System] Starting initialization...');
     try {
         if (!window.templateManager) {
             console.error('[Template System] templateManager not available on window object');
@@ -21,7 +20,6 @@ export async function initializeTemplateSystem(templateDropdown, switchFieldsCal
         
         // Initialize template manager
         await window.templateManager.initialize();
-        console.log('[Template System] Template manager initialized successfully');
         
         // Populate template dropdown
         if (templateDropdown) {
@@ -30,19 +28,15 @@ export async function initializeTemplateSystem(templateDropdown, switchFieldsCal
                 includeComingSoon: true,
                 selectedTemplateId: 'sql_query_v1' // Default selection
             });
-            console.log('[Template System] Template dropdown populated');
             
             // Trigger initial field rendering
             if (switchFieldsCallback) {
                 await switchFieldsCallback();
-                console.log('[Template System] Template fields switched');
             }
         }
         
         // Load template cards dynamically
-        console.log('[Template System] Loading template cards...');
         await loadTemplateCards();
-        console.log('[Template System] Template cards loaded');
     } catch (error) {
         console.error('[Template System] Failed to initialize:', error);
         console.error('[Template System] Error stack:', error.stack);
@@ -56,7 +50,6 @@ export async function initializeTemplateSystem(templateDropdown, switchFieldsCal
 export async function loadTemplateCards() {
     const container = document.getElementById('rag-templates-container');
     if (!container) {
-        console.warn('[Template Cards] Container not found');
         return;
     }
     
@@ -68,7 +61,6 @@ export async function loadTemplateCards() {
         }
         
         const templates = window.templateManager.getAllTemplates();
-        console.log('[Template Cards] Retrieved templates:', templates);
         
         if (!templates || templates.length === 0) {
             container.innerHTML = '<div class="col-span-full text-gray-400 text-sm">No templates available</div>';
@@ -86,7 +78,6 @@ export async function loadTemplateCards() {
             }
         });
         
-        console.log(`[Template Cards] Successfully loaded ${templates.length} template cards`);
     } catch (error) {
         console.error('[Template Cards] Failed to load:', error);
         container.innerHTML = '<div class="col-span-full text-red-400 text-sm">Failed to load templates: ' + error.message + '</div>';
@@ -175,10 +166,8 @@ export async function reloadTemplateConfiguration(templateId) {
         const response = await fetch(`/api/v1/rag/templates/${id}/config?_=${Date.now()}`);
         if (response.ok) {
             const configData = await response.json();
-            console.log('[Template Config] Reloaded configuration:', configData);
             return configData;
         } else {
-            console.warn('[Template Config] Failed to reload, status:', response.status);
             return null;
         }
     } catch (error) {

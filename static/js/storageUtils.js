@@ -13,7 +13,6 @@ import { state } from './state.js';
  */
 export function safeSetItem(key, value) {
     if (!state.configurationPersistence) {
-        console.log(`[Storage] Persistence disabled - skipping localStorage.setItem('${key}')`);
         return;
     }
     try {
@@ -30,7 +29,6 @@ export function safeSetItem(key, value) {
  */
 export function safeGetItem(key) {
     if (!state.configurationPersistence) {
-        console.log(`[Storage] Persistence disabled - skipping localStorage.getItem('${key}')`);
         return null;
     }
     try {
@@ -47,7 +45,6 @@ export function safeGetItem(key) {
  */
 export function safeRemoveItem(key) {
     if (!state.configurationPersistence) {
-        console.log(`[Storage] Persistence disabled - skipping localStorage.removeItem('${key}')`);
         return;
     }
     try {
@@ -78,7 +75,6 @@ export function clearAllCredentials() {
     credentialKeys.forEach(key => {
         try {
             localStorage.removeItem(key);
-            console.log(`[Storage] Cleared credential: ${key}`);
         } catch (error) {
             console.error(`[Storage] Error clearing credential '${key}':`, error);
         }

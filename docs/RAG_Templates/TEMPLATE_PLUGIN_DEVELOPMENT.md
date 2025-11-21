@@ -2,431 +2,361 @@
 
 ## Overview
 
-This guide explains how to create, test, and distribute modular template plugins for the Trusted Data Agent (TDA). The plugin system allows community developers to create and share custom templates that can be installed on-demand.
+This guide explains how to create custom template plugins for the RAG system. Templates are modular, self-contained plugins that define strategies for generating RAG case studies.
 
-## Quick Start
+## Plugin Structure
 
-### Creating Your First Template Plugin
+```
+rag_templates/templates/
+└── my-custom-template/              # Plugin directory
+    ├── manifest.json                # Required: UI config & metadata
+    ├── my_template_v1.json          # Required: Strategy definition
+    └── README.md                    # Recommended: Documentation
+```
+
+## Step-by-Step: Create a Custom Template
+
+### 1. Create Plugin Directory
 
 ```bash
-# 1. Create plugin directory
+cd rag_templates/templates
 mkdir my-custom-template
 cd my-custom-template
+```
 
-# 2. Create manifest.json
-cat > manifest.json << 'EOF'
+### 2. Create manifest.json
+
+The manifest defines UI fields, validation rules, and metadata.
+
+**Example: Basic SQL Template**
+```json
 {
   "name": "my-custom-template",
   "version": "1.0.0",
   "template_id": "my_custom_v1",
-  "display_name": "My Custom Template",
-  "description": "A custom template for specific use cases",
+  "display_name": "My Custom SQL Template",
+  "description": "Custom template for specific SQL queries",
   "author": "Your Name",
   "license": "MIT",
-  "keywords": ["custom", "example"],
-  "files": {
-    "template": "template.json"
-  },
-  "permissions": ["mcp_tools"]
-}
-EOF
-
-# 3. Create template.json (see Template Structure below)
-
-# 4. Test locally
-python -m trusted_data_agent.tools.validate_template .
-
-# 5. Package for distribution
-tar -czf my-custom-template-1.0.0.tar.gz .
-```
-
-## Directory Structure
-
-```
-my-custom-template/
-├── manifest.json              # Required: Plugin metadata
-├── template.json              # Required: Template definition
-├── README.md                  # Recommended: Documentation
-├── LICENSE                    # Recommended: License file
-├── icon.svg                   # Optional: Template icon
-├── ui/                        # Optional: Custom UI components
-│   ├── config-panel.html
-│   └── config-panel.js
-└── validators/                # Optional: Custom validators
-    └── validator.py
-```
-
-## Manifest File (`manifest.json`)
-
-### Required Fields
-
-```json
-{
-  "name": "template-package-name",
-  "version": "1.0.0",
-  "template_id": "template_id_v1",
-  "display_name": "Human Readable Name",
-  "author": "Your Name or Organization"
-}
-```
-
-### Complete Example
-
-```json
-{
-  "name": "advanced-api-template",
-  "version": "2.0.0",
-  "template_id": "api_advanced_v2",
-  "display_name": "Advanced API Request Template",
-  "description": "Multi-step API workflow with authentication, retry logic, and error handling",
-  "author": "community-developer",
-  "license": "MIT",
-  "homepage": "https://github.com/dev/advanced-api-template",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/dev/advanced-api-template"
-  },
-  "keywords": ["api", "rest", "http", "oauth", "authentication"],
+  "keywords": ["sql", "custom"],
   "compatibility": {
-    "min_app_version": "1.5.0",
-    "max_app_version": "2.x.x"
+    "min_app_version": "1.0.0"
   },
-  "dependencies": {
-    "templates": [],
-    "python_packages": ["requests>=2.28.0"]
-  },
-  "files": {
-    "template": "template.json",
-    "ui_config": "ui/config-panel.html",
-    "ui_script": "ui/config-panel.js",
-    "icon": "icon.svg"
-  },
-  "permissions": ["network", "mcp_tools"],
-  "ui_components": {
-    "config_panel": true,
-    "preview_renderer": false
+  
+  "population_modes": {
+    "manual": {
+      "enabled": true,
+      "label": "Manual Entry",
+      "description": "Manually enter SQL examples",
+      "input_variables": {
+        "database_name": {
+          "required": true,
+          "type": "string",
+          "description": "Target database name",
+          "example": "my_database"
+        },
+        "schema_name": {
+          "required": false,
+          "type": "string",
+          "description": "Optional schema name",
+          "example": "public"
+        }
+      }
+    },
+    
+    "auto_generate": {
+      "enabled": true,
+      "label": "LLM-Assisted Generation",
+      "description": "Generate examples using LLM",
+      "input_variables": {
+        "context_topic": {
+          "required": true,
+          "type": "string",
+          "description": "Business context for generation",
+          "example": "Customer analytics and reporting",
+          "label": "Context Topic"
+        },
+        "num_examples": {
+          "required": true,
+          "type": "integer",
+          "default": 5,
+          "min": 1,
+          "max": 1000,
+          "description": "Number of examples to generate",
+          "label": "Num Examples"
+        },
+        "database_name": {
+          "required": true,
+          "type": "string",
+          "description": "Target database name",
+          "label": "Database Name"
+        }
+      }
+    }
   }
 }
 ```
 
-## Template File (`template.json`)
+### 3. Create Template JSON (Strategy)
 
-### Required Structure
+The template JSON defines the execution strategy with phases and tool calls.
 
+**Example: Two-Phase SQL Strategy**
 ```json
 {
   "template_id": "my_custom_v1",
-  "template_name": "My Custom Template",
   "template_version": "1.0.0",
-  "template_type": "custom_workflow",
-  "description": "Detailed description of what this template does",
-  "status": "active",
-  "input_variables": {
-    "user_query": {
-      "type": "string",
-      "required": true,
-      "description": "The user's question"
-    },
-    "custom_param": {
-      "type": "string",
-      "required": false,
-      "description": "Optional parameter",
-      "default": "default_value"
-    }
-  },
-  "output_configuration": {
-    "session_id": {
-      "type": "constant",
-      "value": "00000000-0000-0000-0000-000000000000"
-    },
-    "llm_config": {
-      "provider": {"type": "constant", "value": "Template"},
-      "model": {"type": "constant", "value": "my_custom_v1"}
-    }
-  },
+  "template_name": "My Custom SQL Template",
   "strategy_template": {
-    "phase_count": 2,
+    "strategy_name": "Custom SQL Query Strategy",
+    "strategy_description": "Execute SQL query and generate report",
+    
     "phases": [
       {
-        "phase": 1,
-        "goal_template": "Execute custom action: {custom_param}",
-        "relevant_tools": ["mcp_tool_name"],
-        "arguments": {
-          "param1": {"source": "custom_param"}
-        }
+        "phase_number": 1,
+        "phase_name": "Execute Query",
+        "phase_description": "Execute the SQL query against the database",
+        "tool": "base_readQuery",
+        "arguments": [
+          {
+            "name": "sql",
+            "type": "sql_statement",
+            "required": true,
+            "description": "The SQL query to execute (must include database name)"
+          }
+        ]
       },
       {
-        "phase": 2,
-        "goal": "Generate final report",
-        "relevant_tools": ["TDA_FinalReport"],
-        "arguments": {}
+        "phase_number": 2,
+        "phase_name": "Generate Report",
+        "phase_description": "Generate natural language report from results",
+        "tool": "TDA_FinalReport",
+        "arguments": [
+          {
+            "name": "user_query",
+            "type": "user_query",
+            "required": true,
+            "description": "The original user question"
+          }
+        ]
       }
-    ]
+    ],
+    
+    "output_config": {
+      "format": "structured_json",
+      "include_metadata": true
+    }
   }
 }
 ```
 
-## Testing Your Template
+### 4. Register Template
 
-### 1. Local Validation
+Add your template to `rag_templates/template_registry.json`:
 
-```bash
-# Validate manifest and template structure
-python -c "
-from trusted_data_agent.agent.template_plugin_validator import validate_plugin_package
-from pathlib import Path
-
-is_valid, errors, warnings = validate_plugin_package(Path('.'))
-print(f'Valid: {is_valid}')
-if errors:
-    print('Errors:', errors)
-if warnings:
-    print('Warnings:', warnings)
-"
-```
-
-### 2. Install Locally
-
-```bash
-# Copy to user plugin directory
-mkdir -p ~/.tda/templates/my-custom-template
-cp -r ./* ~/.tda/templates/my-custom-template/
-
-# Reload templates via API
-curl -X POST http://localhost:8080/api/v1/rag/templates/reload
-```
-
-### 3. Test via API
-
-```bash
-# List all templates (should include yours)
-curl http://localhost:8080/api/v1/rag/templates/list
-
-# Get your template info
-curl http://localhost:8080/api/v1/rag/templates/my_custom_v1/plugin-info
-
-# Test population
-curl -X POST http://localhost:8080/api/v1/rag/collections/1/populate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "template_type": "custom_workflow",
-    "examples": [{
-      "user_query": "Test question",
-      "custom_param": "test_value"
-    }]
-  }'
-```
-
-## Distribution
-
-### Option 1: GitHub Repository
-
-```bash
-# 1. Create GitHub repo
-git init
-git add .
-git commit -m "Initial commit"
-git remote add origin https://github.com/yourusername/template-name
-git push -u origin main
-
-# 2. Create release
-git tag -a v1.0.0 -m "Version 1.0.0"
-git push origin v1.0.0
-
-# 3. Users can install via:
-# (Future feature)
-tda-template install https://github.com/yourusername/template-name
-```
-
-### Option 2: Package Archive
-
-```bash
-# Create distributable archive
-tar -czf my-template-1.0.0.tar.gz \
-  manifest.json \
-  template.json \
-  README.md \
-  LICENSE \
-  icon.svg
-
-# Users can install via:
-# (Future feature)
-tda-template install my-template-1.0.0.tar.gz
-```
-
-### Option 3: Template Marketplace
-
-(Coming soon - submit to central marketplace)
-
-## Advanced Features
-
-### Custom UI Components
-
-Create custom configuration panels for your template:
-
-**ui/config-panel.html:**
-```html
-<div class="custom-template-config">
-    <label>Custom Setting</label>
-    <input type="text" id="custom-setting" />
-    <button onclick="saveCustomConfig()">Save</button>
-</div>
-```
-
-**ui/config-panel.js:**
-```javascript
-function saveCustomConfig() {
-    const value = document.getElementById('custom-setting').value;
-    fetch(`/api/v1/rag/templates/my_custom_v1/config`, {
-        method: 'PUT',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({custom_setting: value})
-    });
+```json
+{
+  "templates": [
+    {
+      "template_id": "my_custom_v1",
+      "template_file": "my-custom-template/my_template_v1.json",
+      "plugin_directory": "my-custom-template",
+      "status": "active",
+      "priority": 10
+    }
+  ]
 }
 ```
 
-### Custom Validators
+### 5. Restart Server
 
-Create Python validators for input validation:
-
-**validators/validator.py:**
-```python
-def validate_input(input_data):
-    """
-    Validate template input data.
-    
-    Args:
-        input_data: Dictionary of input values
-        
-    Returns:
-        Tuple of (is_valid, errors)
-    """
-    errors = []
-    
-    if 'custom_param' in input_data:
-        value = input_data['custom_param']
-        if len(value) > 100:
-            errors.append("custom_param must be <= 100 characters")
-    
-    return len(errors) == 0, errors
-```
-
-## Security Considerations
-
-### Permissions
-
-Declare all required permissions in manifest:
-- `database_access`: Query databases
-- `mcp_tools`: Use MCP tools
-- `file_system`: Read/write files
-- `network`: Make HTTP requests
-
-### Code Scanning
-
-Templates are automatically scanned for:
-- Use of `eval()`, `exec()`
-- File write operations
-- Subprocess execution
-- Unsafe JavaScript patterns
-
-### Best Practices
-
-1. ✅ **Minimize permissions**: Only request what you need
-2. ✅ **Validate inputs**: Use custom validators
-3. ✅ **Document clearly**: README with examples
-4. ✅ **Version properly**: Follow semantic versioning
-5. ✅ **Test thoroughly**: Include test cases
-6. ❌ **Never** include hardcoded credentials
-7. ❌ **Avoid** arbitrary code execution
-8. ❌ **Don't** access files outside plugin directory
-
-## API Reference
-
-### Discover Plugins
 ```bash
-GET /api/v1/rag/templates/discover
+python -m trusted_data_agent.main
 ```
 
-Returns all discovered plugins including unloaded ones.
+Your template will now appear in the UI!
 
-### Get Plugin Info
-```bash
-GET /api/v1/rag/templates/{template_id}/plugin-info
+## Field Types & Validation
+
+### Input Variable Types
+
+| Type | Description | Validation |
+|------|-------------|------------|
+| `string` | Text input | N/A |
+| `integer` | Numeric input | `min`, `max` |
+| `number` | Float input | `min`, `max` |
+| `boolean` | Checkbox | N/A |
+
+### Validation Properties
+
+```json
+{
+  "field_name": {
+    "required": true,           // Field is mandatory
+    "type": "integer",          // Data type
+    "default": 5,               // Default value
+    "min": 1,                   // Minimum value (numbers)
+    "max": 1000,                // Maximum value (numbers)
+    "description": "Help text", // Tooltip/help text
+    "label": "Display Name",    // UI label
+    "example": "example_value"  // Placeholder text
+  }
+}
 ```
 
-Returns manifest.json content for a template.
+## Argument Types
 
-### Reload Templates
-```bash
-POST /api/v1/rag/templates/reload
+Templates define arguments for each phase. Common types:
+
+| Type | Used In | Description |
+|------|---------|-------------|
+| `sql_statement` | Phase 1 | SQL query to execute |
+| `user_query` | Phase 2 | Original user question |
+| `context` | Any | Additional context |
+| `schema_info` | Any | Schema metadata |
+
+## Advanced: Multi-Phase Templates
+
+### Three-Phase Example: Document + SQL + Report
+
+```json
+{
+  "phases": [
+    {
+      "phase_number": 1,
+      "phase_description": "Retrieve relevant documentation",
+      "tool": "retrieve_documentation",
+      "arguments": [
+        {
+          "name": "query",
+          "type": "user_query",
+          "required": true
+        }
+      ]
+    },
+    {
+      "phase_number": 2,
+      "phase_description": "Execute SQL query",
+      "tool": "base_readQuery",
+      "arguments": [
+        {
+          "name": "sql",
+          "type": "sql_statement",
+          "required": true
+        }
+      ]
+    },
+    {
+      "phase_number": 3,
+      "phase_description": "Generate final report",
+      "tool": "TDA_FinalReport",
+      "arguments": [
+        {
+          "name": "user_query",
+          "type": "user_query",
+          "required": true
+        }
+      ]
+    }
+  ]
+}
 ```
 
-Hot-reload all templates without restart.
+## Best Practices
 
-### Validate Plugin
-```bash
-POST /api/v1/rag/templates/validate
-Body: {"plugin_path": "/path/to/plugin"}
+### ✅ DO
+
+- **Use descriptive IDs**: `customer_analytics_v1` not `template1`
+- **Version your templates**: Increment version for breaking changes
+- **Validate inputs**: Set appropriate min/max for numeric fields
+- **Document clearly**: Add comprehensive descriptions
+- **Test thoroughly**: Try both manual and auto-generate modes
+- **Keep it simple**: Start with 2-phase templates
+
+### ❌ DON'T
+
+- **Duplicate arguments**: Phase 1 should only have necessary args (not database_name if it's in SQL)
+- **Hardcode values**: Use input variables instead
+- **Skip validation**: Always set min/max for numeric inputs
+- **Use generic names**: Be specific about what the template does
+- **Forget to restart**: Server must restart to load new templates
+
+## Common Patterns
+
+### Pattern 1: Simple Query
+
+```
+Phase 1: Execute SQL
+Phase 2: Format Results
 ```
 
-Validate plugin before installation.
+### Pattern 2: Query with Context
 
-## Examples
+```
+Phase 1: Retrieve documentation/schema
+Phase 2: Execute SQL with context
+Phase 3: Generate enriched report
+```
 
-See the `examples/` directory for complete template examples:
-- `examples/sql-query-basic/` - Simple SQL template
-- `examples/api-rest-advanced/` - API with authentication
-- `examples/custom-workflow/` - Multi-step workflow
+### Pattern 3: Multi-Step Workflow
+
+```
+Phase 1: Authenticate/Setup
+Phase 2: Execute primary action
+Phase 3: Post-process results
+Phase 4: Generate report
+```
 
 ## Troubleshooting
 
-### Template Not Loading
+### Template Not Appearing in UI
 
-1. Check manifest.json syntax:
-   ```bash
-   python -m json.tool manifest.json
-   ```
-
-2. Validate template structure:
-   ```bash
-   curl -X POST http://localhost:8080/api/v1/rag/templates/validate \
-     -d '{"plugin_path": "/path/to/template"}'
-   ```
-
-3. Check application logs:
-   ```bash
-   tail -f logs/app.log | grep template
-   ```
+1. Check `template_registry.json` syntax
+2. Verify `template_id` matches in all files
+3. Ensure `plugin_directory` path is correct
+4. Restart the server
+5. Check browser console for errors
 
 ### Validation Errors
 
-Common issues:
-- Missing required manifest fields
-- Invalid version format (must be X.Y.Z)
-- Invalid template_id format (must be lowercase_v1)
-- Template file not found
-- Security scan warnings
+1. Verify all `required` fields are provided
+2. Check min/max ranges for numeric fields
+3. Ensure field types match (`integer` vs `string`)
+4. Restart server after manifest changes
 
-## Contributing
+### Generated Questions Poor Quality
 
-To contribute templates to the official collection:
+1. Make context_topic more specific
+2. Provide better schema information
+3. Reduce num_examples for higher quality
+4. Review and manually edit generated cases
 
-1. Follow this development guide
-2. Ensure all validations pass
-3. Include comprehensive README
-4. Add test cases
-5. Submit pull request to main repository
+## Migration from Legacy Templates
+
+If you have old templates at the root level:
+
+1. Create plugin directory: `templates/my-template/`
+2. Move template JSON into plugin directory
+3. Create manifest.json with UI configuration
+4. Update template_registry.json
+5. Remove old root-level template file
+6. Restart server
+
+**Key Changes:**
+- Database name removed from Phase 1 arguments (embed in SQL)
+- Manifest now required for UI integration
+- Plugin directory structure required
+- Validation rules in manifest, not hardcoded
+
+## Example Templates
+
+See existing templates for reference:
+- `sql-query-basic/` - Basic SQL with business context
+- `sql-query-doc-context/` - SQL with document retrieval
 
 ## Support
 
-- Documentation: https://github.com/rgeissen/trusted-data-agent/docs
-- Issues: https://github.com/rgeissen/trusted-data-agent/issues
-- Discussions: https://github.com/rgeissen/trusted-data-agent/discussions
-
-## License
-
-Template plugins can use any OSI-approved license. Common choices:
-- MIT - Permissive
-- Apache-2.0 - Permissive with patent protection
-- GPL-3.0 - Copyleft
-- AGPL-3.0 - Strong copyleft (matches TDA core)
+For questions or issues:
+- GitHub: https://github.com/rgeissen/trusted-data-agent
+- Check server logs for template loading errors
+- Validate JSON syntax in manifest and template files

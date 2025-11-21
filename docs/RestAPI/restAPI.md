@@ -6,7 +6,18 @@ Welcome to the Trusted Data Agent (TDA) REST API. This API provides a programmat
 
 The API is designed around an **asynchronous task-based architecture**. This pattern is ideal for handling potentially long-running agent processes in a robust and scalable way. Instead of holding a connection open while the agent works, you initiate a task and then poll a status endpoint to get progress updates and the final result. You can also cancel a running task if needed.
 
+### Key Features
+
+- **Asynchronous Query Execution**: Submit queries and poll for results without holding connections
+- **RAG Collection Management**: Create and manage collections of query patterns for context-aware responses
+- **Template-Based Population**: Use modular templates to automatically generate RAG case studies
+- **LLM-Assisted Generation**: Generate question/SQL pairs automatically from database schemas
+- **MCP Server Integration**: Connect to multiple Model Context Protocol servers for data access
+- **Session Management**: Maintain conversation context across multiple queries
+
 This document provides a comprehensive guide to all available endpoints and data models.
+
+**For detailed RAG template documentation, see**: `docs/RAG_Templates/README.md`
 
 ## 2. Authentication
 
@@ -372,6 +383,207 @@ Submit user feedback (upvote/downvote) for a RAG case.
 * **Error Response**:
     * **Code**: `400 Bad Request` (invalid feedback_score)
     * **Code**: `404 Not Found` (case not found)
+
+### 3.6A. RAG Template System
+
+The RAG Template System enables automatic generation of RAG case studies through modular templates with LLM-assisted question generation.
+
+#### 3.6A.1. List Available Templates
+
+Get all registered RAG templates.
+
+* **Endpoint**: `GET /v1/rag/templates`
+* **Method**: `GET`
+* **Success Response**:
+    * **Code**: `200 OK`
+    * **Content**:
+        ```json
+        {
+          "status": "success",
+          "templates": [
+            {
+              "template_id": "sql_query_v1",
+              "display_name": "SQL Query Template - Business Context",
+              "description": "Two-phase strategy: Execute SQL and generate report",
+              "version": "1.0.0",
+              "status": "active"
+            },
+            {
+              "template_id": "sql_query_doc_context_v1",
+              "display_name": "SQL Query Template - Document Context",
+              "description": "Three-phase strategy with document retrieval",
+              "version": "1.0.0",
+              "status": "active"
+            }
+          ]
+        }
+        ```
+
+#### 3.6A.2. Get Template Plugin Info
+
+Get detailed configuration for a specific template including manifest and UI field definitions.
+
+* **Endpoint**: `GET /v1/rag/templates/{template_id}/plugin-info`
+* **Method**: `GET`
+* **URL Parameters**:
+    * `template_id` (string, required): The template identifier (e.g., `sql_query_v1`)
+* **Success Response**:
+    * **Code**: `200 OK`
+    * **Content**:
+        ```json
+        {
+          "status": "success",
+          "template_id": "sql_query_v1",
+          "plugin_info": {
+            "name": "sql-query-basic",
+            "version": "1.0.0",
+            "display_name": "SQL Query Template - Business Context",
+            "description": "Two-phase strategy...",
+            "population_modes": {
+              "manual": {
+                "enabled": true,
+                "input_variables": {
+                  "database_name": {
+                    "required": true,
+                    "type": "string",
+                    "description": "Target database name"
+                  }
+                }
+              },
+              "auto_generate": {
+                "enabled": true,
+                "input_variables": {
+                  "context_topic": {
+                    "required": true,
+                    "type": "string",
+                    "description": "Business context for generation"
+                  },
+                  "num_examples": {
+                    "required": true,
+                    "type": "integer",
+                    "default": 5,
+                    "min": 1,
+                    "max": 1000,
+                    "description": "Number of question/SQL pairs to generate"
+                  }
+                }
+              }
+            }
+          }
+        }
+        ```
+
+#### 3.6A.3. Generate Questions (LLM-Assisted)
+
+Generate question/SQL pairs using LLM based on schema context and business requirements.
+
+* **Endpoint**: `POST /v1/rag/generate-questions`
+* **Method**: `POST`
+* **Body**:
+    ```json
+    {
+      "template_id": "sql_query_v1",
+      "execution_context": "CREATE TABLE customers (id INT, name VARCHAR(100), email VARCHAR(100), status VARCHAR(20));\nCREATE TABLE orders (id INT, customer_id INT, total DECIMAL(10,2), created_at TIMESTAMP);",
+      "subject": "Customer analytics and order reporting",
+      "count": 10,
+      "database_name": "sales_db"
+    }
+    ```
+    * `template_id`: Template to use for generation
+    * `execution_context`: Database schema information (from HELP TABLE, DESCRIBE, etc.)
+    * `subject`: Business context topic for question generation
+    * `count`: Number of question/SQL pairs to generate (1-1000)
+    * `database_name`: Target database name
+* **Success Response**:
+    * **Code**: `200 OK`
+    * **Content**:
+        ```json
+        {
+          "status": "success",
+          "questions": [
+            {
+              "user_query": "Show all active customers",
+              "sql_statement": "SELECT * FROM sales_db.customers WHERE status = 'active';"
+            },
+            {
+              "user_query": "Count total orders by customer",
+              "sql_statement": "SELECT customer_id, COUNT(*) as order_count FROM sales_db.orders GROUP BY customer_id;"
+            }
+          ],
+          "input_tokens": 1234,
+          "output_tokens": 567
+        }
+        ```
+* **Error Response**:
+    * **Code**: `400 Bad Request` (invalid parameters)
+    * **Code**: `500 Internal Server Error` (LLM generation failed)
+
+#### 3.6A.4. Populate Collection from Template
+
+Populate a RAG collection with generated or manual examples using a template.
+
+* **Endpoint**: `POST /v1/rag/collections/{collection_id}/populate`
+* **Method**: `POST`
+* **URL Parameters**:
+    * `collection_id` (integer, required): The collection ID
+* **Body**:
+    ```json
+    {
+      "template_type": "sql_query",
+      "examples": [
+        {
+          "user_query": "Show all active customers",
+          "sql_statement": "SELECT * FROM sales_db.customers WHERE status = 'active';"
+        },
+        {
+          "user_query": "Count total orders",
+          "sql_statement": "SELECT COUNT(*) FROM sales_db.orders;"
+        }
+      ],
+      "database_name": "sales_db",
+      "mcp_tool_name": "base_readQuery"
+    }
+    ```
+    * `template_type`: Currently only `"sql_query"` supported
+    * `examples`: Array of question/SQL pairs
+    * `database_name`: Optional database context
+    * `mcp_tool_name`: Optional MCP tool override (default: `base_readQuery`)
+* **Success Response**:
+    * **Code**: `200 OK`
+    * **Content**:
+        ```json
+        {
+          "status": "success",
+          "message": "Successfully populated 2 cases",
+          "results": {
+            "total_examples": 2,
+            "successful": 2,
+            "failed": 0,
+            "case_ids": [
+              "abc123-def456-ghi789",
+              "xyz789-uvw456-rst123"
+            ],
+            "errors": []
+          }
+        }
+        ```
+* **Error Response**:
+    * **Code**: `400 Bad Request` (validation errors)
+        ```json
+        {
+          "status": "error",
+          "message": "Validation failed for some examples",
+          "validation_issues": [
+            {
+              "example_index": 0,
+              "field": "sql_statement",
+              "issue": "SQL statement is empty or invalid"
+            }
+          ]
+        }
+        ```
+    * **Code**: `404 Not Found` (collection not found)
+    * **Code**: `500 Internal Server Error` (population failed)
 
 ### 3.7. MCP Server Management
 

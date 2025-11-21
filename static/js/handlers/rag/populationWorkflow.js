@@ -43,11 +43,16 @@ export async function handleTemplateMethodChange(elements) {
         addExampleCallback
     } = elements;
     
-    if (!manualFields || !llmFields) return;
+    if (!manualFields) return;
+    
+    // Get the LLM workflow container
+    const llmWorkflowContainer = document.getElementById('rag-collection-llm-workflow');
     
     // Hide both method sections first
     manualFields.classList.add('hidden');
-    llmFields.classList.add('hidden');
+    if (llmWorkflowContainer) {
+        llmWorkflowContainer.classList.add('hidden');
+    }
     
     // Show the selected method fields
     if (templateMethodManual && templateMethodManual.checked) {
@@ -58,7 +63,9 @@ export async function handleTemplateMethodChange(elements) {
             addExampleCallback();
         }
     } else if (templateMethodLlm && templateMethodLlm.checked) {
-        llmFields.classList.remove('hidden');
+        if (llmWorkflowContainer) {
+            llmWorkflowContainer.classList.remove('hidden');
+        }
     }
 }
 

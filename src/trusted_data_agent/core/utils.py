@@ -67,7 +67,6 @@ def get_tts_client():
     prevent unnecessary errors in the log. It prioritizes credentials
     provided via the UI, falling back to environment variables.
     """
-    app_logger.debug("Attempting to get TTS client.")
     if texttospeech is None:
         app_logger.warning("The 'google-cloud-texttospeech' library is not installed. Voice features will be disabled.")
         return None
@@ -76,7 +75,6 @@ def get_tts_client():
 
     # --- 1. Prioritize UI-provided credentials ---
     if tts_creds_json_str:
-        app_logger.debug("Attempting to initialize TTS client from UI-provided JSON credentials.")
         try:
             credentials_info = json.loads(tts_creds_json_str)
             credentials = service_account.Credentials.from_service_account_info(credentials_info)
@@ -92,7 +90,6 @@ def get_tts_client():
     
     # --- 2. Fallback to environment variables, but check first ---
     elif os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-        app_logger.debug("No UI credentials found. Attempting to initialize TTS client using environment variables.")
         try:
             client = texttospeech.TextToSpeechClient()
             app_logger.info("Successfully initialized Google Cloud TTS client using environment variables.")
@@ -126,11 +123,9 @@ def synthesize_speech(client, text: str) -> bytes | None:
     )
 
     try:
-        app_logger.debug(f"Requesting speech synthesis for text: '{text[:80]}...'")
         response = client.synthesize_speech(
             input=synthesis_input, voice=voice, audio_config=audio_config
         )
-        app_logger.debug("Speech synthesis successful.")
         return response.audio_content
     except Exception as e:
         app_logger.error(f"Google Cloud TTS API call failed: {e}", exc_info=True)

@@ -21,20 +21,16 @@ import { subscribeToNotifications } from './notifications.js';
  * Generates a new UUID if one is not found.
  */
 function ensureUserUUID() {
-    console.log("ensureUserUUID: Checking for existing UUID...");
     let userUUID = null;
     try {
         userUUID = localStorage.getItem('tdaUserUUID');
         if (userUUID) {
-            console.log("ensureUserUUID: Found existing User UUID:", userUUID);
         } else {
             userUUID = crypto.randomUUID();
-            console.log("ensureUserUUID: Generated New User UUID:", userUUID);
             localStorage.setItem('tdaUserUUID', userUUID);
             // Verify it was set
             const storedUUID = localStorage.getItem('tdaUserUUID');
             if (storedUUID === userUUID) {
-                console.log("ensureUserUUID: Successfully stored new UUID.");
             } else {
                 console.error("ensureUserUUID: Failed to store UUID in localStorage!");
                 // Optionally alert the user or fallback to temporary UUID
@@ -45,7 +41,6 @@ function ensureUserUUID() {
         console.error("ensureUserUUID: Error accessing localStorage:", e);
         // Fallback: Generate a temporary UUID if localStorage fails
         userUUID = userUUID || crypto.randomUUID(); // Use existing if generated before error
-        console.warn("ensureUserUUID: Using temporary User UUID for this session:", userUUID);
         alert("Warning: Cannot access local storage. Session history will not persist across browser sessions.");
     }
     // Set the state regardless
@@ -64,7 +59,6 @@ async function fetchGitHubStarCount() {
     const starCountElement = document.getElementById('github-star-count');
     const starIconElement = document.getElementById('github-star-icon');
     
-    console.log('fetchGitHubStarCount: Starting...', { starCountElement, starIconElement });
     
     if (!starCountElement) {
         console.error('fetchGitHubStarCount: star count element not found');
@@ -72,7 +66,6 @@ async function fetchGitHubStarCount() {
     }
 
     try {
-        console.log('fetchGitHubStarCount: Fetching from GitHub API...');
         const response = await fetch('https://api.github.com/repos/rgeissen/trusted-data-agent', {
             method: 'GET',
             headers: {
@@ -81,11 +74,9 @@ async function fetchGitHubStarCount() {
             mode: 'cors'
         });
         
-        console.log('fetchGitHubStarCount: Response status:', response.status);
         
         if (response.ok) {
             const data = await response.json();
-            console.log('fetchGitHubStarCount: API response data:', data);
             const starCount = data.stargazers_count || 0;
             // Format the number with comma separators
             starCountElement.textContent = starCount.toLocaleString('en-US');
@@ -101,11 +92,8 @@ async function fetchGitHubStarCount() {
                 }
             }
             
-            console.log('GitHub star count fetched successfully:', starCount);
         } else {
-            console.warn('Failed to fetch GitHub star count. Status:', response.status, 'Status Text:', response.statusText);
             const errorText = await response.text();
-            console.warn('Error response:', errorText);
             starCountElement.textContent = '-';
         }
     } catch (error) {
@@ -125,14 +113,12 @@ function hideWelcomeScreen() {
     const chatLog = document.getElementById('chat-log');
     const chatFooter = document.getElementById('chat-footer');
     
-    console.log('hideWelcomeScreen called', { welcomeScreen, chatLog, chatFooter });
     if (welcomeScreen && chatLog) {
         welcomeScreen.classList.add('hidden');
         chatLog.classList.remove('hidden');
         if (chatFooter) {
             chatFooter.classList.remove('hidden');
         }
-        console.log('Welcome screen hidden, chat log and footer shown');
     }
 }
 
@@ -152,7 +138,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     ensureUserUUID(); // Get/Set the User UUID right away
-    console.log("DOMContentLoaded: User UUID ensured:", state.userUUID);
     subscribeToNotifications();
 
     // Fetch GitHub star count - DEACTIVATED to conserve API credits
@@ -187,9 +172,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize Execution Dashboard
     if (window.ExecutionDashboard) {
         window.executionDashboard = new window.ExecutionDashboard();
-        console.log('Execution Dashboard initialized');
     } else {
-        console.warn('ExecutionDashboard class not found');
     }
 
     // Initialize new configuration UI (async - loads MCP servers from backend)
@@ -201,7 +184,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         const res = await fetch('/app-config');
         state.appConfig = await res.json();
-        console.log('License Info:', state.appConfig.license_info);
 
         await API.checkAndUpdateDefaultPrompts();
 
@@ -247,26 +229,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     DOM.toggleHeaderButton.style.pointerEvents = 'none';
 
     try {
-        console.log("DEBUG: Checking server status on startup...");
         const status = await API.checkServerStatus();
         
         // Set configuration persistence flag from server
         if (typeof status.configurationPersistence !== 'undefined') {
             state.configurationPersistence = status.configurationPersistence;
-            console.log(`[Config] Configuration persistence: ${state.configurationPersistence}`);
             
             // Show warning banner if persistence is disabled
             const persistenceBanner = document.getElementById('persistence-warning-banner');
             if (!state.configurationPersistence && persistenceBanner) {
                 persistenceBanner.classList.remove('hidden');
-                console.log('[Config] Showing persistence warning banner');
             }
             
             // If persistence is disabled, clear any stored credentials
             if (!state.configurationPersistence) {
                 const { clearAllCredentials } = await import('./storageUtils.js');
                 clearAllCredentials();
-                console.log('[Config] Persistence disabled - cleared all stored credentials');
             }
         }
         
@@ -282,7 +260,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (status.isConfigured) {
-            console.log("DEBUG: Server is already configured. Proceeding with setup.", status);
 
             // NOTE: With new config UI, we don't need to pre-fill old form fields
             // The configurationHandler manages its own state via localStorage
@@ -297,13 +274,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentConfig.mcp_server = status.mcp_server;
             await finalizeConfiguration(currentConfig, true);
 
-            console.log("DEBUG: Configuration finalized. Session loading is handled by finalizeConfiguration.");
 
             // handleViewSwitch is now called inside finalizeConfiguration
 
 
         } else {
-            console.log("DEBUG: Server is not configured. Showing welcome screen.");
             // The new configuration UI handles its own state
             // No need to pre-fill old form fields
             const savedTtsCreds = localStorage.getItem('ttsCredentialsJson');
@@ -463,7 +438,6 @@ async function showWelcomeScreen() {
         welcomeBtn.addEventListener('click', async () => {
             if (hasSavedConfig) {
                 // User has saved config - connect and load automatically
-                console.log('Connect and Load: Automatically configuring with saved settings...');
                 
                 // Show spinning cogwheel and update button text
                 if (welcomeCogwheel) {
@@ -486,7 +460,6 @@ async function showWelcomeScreen() {
                     // 5. Switch to conversation view
                     await reconnectAndLoad();
                     
-                    console.log('Configuration completed via reconnectAndLoad');
                 } catch (error) {
                     console.error('Error during auto-configuration:', error);
                     // reconnectAndLoad handles its own error notifications

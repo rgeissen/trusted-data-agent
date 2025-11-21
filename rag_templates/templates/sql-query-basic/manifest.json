@@ -73,7 +73,7 @@
           "type": "integer",
           "default": 5,
           "min": 1,
-          "max": 20,
+          "max": 1000,
           "description": "Number of question/SQL pairs to generate"
         }
       }

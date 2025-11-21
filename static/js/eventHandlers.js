@@ -95,7 +95,6 @@ async function processStream(responseBody) {
                         }
                     } else if (eventName === 'context_state_update') {
                          // Currently no specific UI update needed, but could add visual feedback here
-                        console.log("Context state update:", eventData);
                     } else if (eventName === 'token_update') {
                         UI.updateTokenDisplay(eventData);
                         if (eventData.call_id && state.currentProvider !== 'Amazon') {
@@ -230,7 +229,6 @@ async function processStream(responseBody) {
         }
     }
     if (buffer.trim()) {
-        console.warn("Stream ended with unprocessed buffer:", buffer);
     }
 }
 
@@ -261,7 +259,6 @@ export async function handleStreamRequest(endpoint, body) {
         if (!body.is_replay) {
             UI.addMessage('user', body.message, null, true, 'text');
         } else {
-             console.log("Replay initiated, skipping adding user message again.");
         }
     } else {
         UI.addMessage('user', `Executing prompt: ${body.prompt_name}`, null, true, 'text');
@@ -309,15 +306,12 @@ export async function handleChatSubmit(e, source = 'text') {
 }
 
 async function handleStopExecutionClick() {
-    console.log("Stop button clicked.");
     if (!state.currentSessionId) {
-        console.warn("Cannot stop execution: No active session ID.");
         return;
     }
     if(DOM.stopExecutionButton) DOM.stopExecutionButton.disabled = true;
     try {
         const result = await API.cancelStream(state.currentSessionId);
-        console.log("Cancellation request result:", result);
     } catch (error) {
         console.error("Error sending cancellation request:", error);
         UI.addMessage('assistant', `Error trying to stop execution: ${error.message}`);
@@ -354,7 +348,6 @@ async function handleReloadPlanClick(element) {
     try {
         // Fetch the full turn details (plan + trace)
         const turnData = await API.fetchTurnDetails(sessionId, turnId);
-        console.log("Fetched Turn Details:", turnData);
 
         // Check if data is valid
         if (!turnData || (!turnData.original_plan && !turnData.execution_trace)) {
@@ -421,7 +414,6 @@ export async function handleReplayQueryClick(buttonEl) {
         }
 
         const displayMessage = `🔄 Replaying **query** from Turn ${turnId}: ${originalQuery}`;
-        console.log(`Replaying QUERY from Turn ${turnId}: "${originalQuery}"`);
         // Add a message indicating a *query* replay
         UI.addMessage('user', displayMessage, null, true, 'text');
 
@@ -472,7 +464,6 @@ async function handleReplayPlanClick(buttonEl) {
         }
 
         const displayMessage = `🔄 Replaying **plan** from Turn ${turnId}: ${originalQuery}`;
-        console.log(`Replaying PLAN from Turn ${turnId} (Query: "${originalQuery}")`);
         // Add a message indicating a *plan* replay
         UI.addMessage('user', displayMessage, null, true, 'text');
 
@@ -497,7 +488,6 @@ async function handleReplayPlanClick(buttonEl) {
  */
 async function handleContextPurgeClick() {
     if (!state.currentSessionId) {
-        console.warn("Context purge click ignored: No active session ID.");
         return;
     }
 
@@ -511,7 +501,6 @@ async function handleContextPurgeClick() {
                 await API.purgeSessionMemory(state.currentSessionId);
                 // Blink the dot on success
                 UI.blinkContextDot();
-                console.log(`Agent memory purged for session ${state.currentSessionId}`);
                 
                 // --- START NEW LOGIC ---
                 // Visually invalidate all existing turns in the DOM
@@ -527,7 +516,6 @@ async function handleContextPurgeClick() {
                     avatar.title = avatar.title.replace(' (Archived Context)', '') + ' (Archived Context)';
                 });
                 
-                console.log(`Applied .context-invalid style to ${allBadges.length} existing turn badges.`);
                 // --- END NEW LOGIC ---
 
             } catch (error) {
@@ -1158,7 +1146,6 @@ export async function handleSessionRenameSave(e) {
     try {
         await renameSession(sessionId, newName);
         UI.exitSessionEditMode(inputElement, newName);
-        console.log(`Session ${sessionId} renamed to '${newName}'`);
         UI.moveSessionToTop(sessionId);
     } catch (error) {
         console.error(`Failed to rename session ${sessionId}:`, error);
@@ -1502,7 +1489,6 @@ export function initializeEventListeners() {
         if (state.lastRagCaseData) {
             UI.showRagCaseModal(state.lastRagCaseData);
         } else {
-            console.log("No RAG case data available to display.");
         }
     });
 
@@ -1621,7 +1607,6 @@ export function initializeEventListeners() {
                     caseFeedbackBtn.classList.add('text-[#F15F22]', 'bg-gray-800/60');
                 }
                 
-                console.log(`Case feedback updated: turn ${turnId}, vote ${newVote}`);
             } catch (error) {
                 console.error('Failed to update case feedback:', error);
                 alert(`Error updating feedback: ${error.message}`);

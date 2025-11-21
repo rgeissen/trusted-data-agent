@@ -171,8 +171,6 @@ async def execute_prompt(prompt_name: str):
             }), 500
         
         # Log the rendered prompt for debugging
-        app_logger.info(f"Rendered prompt text (first 200 chars):\n{prompt_text[:200]}")
-        app_logger.info(f"Arguments passed: {prompt_arguments}")
         
         # Create a temporary session and use the agent execution service
         # This ensures tools are properly registered and execution is autonomous
@@ -190,7 +188,7 @@ async def execute_prompt(prompt_name: str):
         
         # Create a dummy event handler for API calls (no SSE needed)
         async def dummy_event_handler(data, event_type):
-            app_logger.debug(f"Prompt execution event: {event_type}")
+            pass
         
         # Execute using the agent execution service which handles tool registration properly
         result_payload = await execution_service.run_agent_execution(
@@ -212,7 +210,6 @@ async def execute_prompt(prompt_name: str):
         # Clean up the temporary session
         try:
             session_manager.delete_session(temp_user_uuid, temp_session_id)
-            app_logger.debug(f"Deleted temp session {temp_session_id}")
         except Exception as e:
             app_logger.warning(f"Failed to delete temp session {temp_session_id}: {e}")
         
@@ -353,7 +350,7 @@ async def execute_prompt_raw(prompt_name: str):
         
         # Dummy event handler
         async def dummy_event_handler(data, event_type):
-            app_logger.debug(f"Event: {event_type}")
+            pass
         
         # Execute via agent execution service
         result_payload = await execution_service.run_agent_execution(
@@ -443,9 +440,82 @@ async def generate_rag_questions():
         subject = data.get('subject', '').strip()
         count = int(data.get('count', 5))
         database_context = data.get('database_context', '').strip()
+        execution_trace = data.get('execution_trace', [])  # Get full execution trace if provided
         database_name = data.get('database_name', '').strip()
         target_database = data.get('target_database', 'Teradata').strip()
         conversion_rules = data.get('conversion_rules', '').strip()
+        
+        # Extract meaningful content from execution trace
+        # Skip TDA_SystemLog (clutter), extract everything else
+        schema_details = ""
+        if execution_trace and isinstance(execution_trace, list):
+            for trace_item in execution_trace:
+                if not isinstance(trace_item, dict):
+                    continue
+                    
+                action = trace_item.get('action', {})
+                result = trace_item.get('result', {})
+                tool_name = action.get('tool_name', '')
+                
+                # Skip system log messages (clutter) - only hardcoded TDA_ function
+                if tool_name == 'TDA_SystemLog':
+                    continue
+                
+                if not isinstance(result, dict):
+                    continue
+                    
+                results_array = result.get('results', [])
+                if not results_array or not isinstance(results_array, list):
+                    continue
+                
+                for item in results_array:
+                    if not isinstance(item, dict):
+                        continue
+                    
+                    # Extract any text fields that look meaningful
+                    # Check for common field names in order of preference
+                    content = None
+                    
+                    # First priority: structured outputs from TDA tools
+                    if tool_name == 'TDA_FinalReport':
+                        direct_answer = item.get('direct_answer', '')
+                        if direct_answer:
+                            schema_details += f"\n\n{direct_answer}"
+                        
+                        key_observations = item.get('key_observations', [])
+                        if key_observations:
+                            for obs in key_observations:
+                                if isinstance(obs, dict):
+                                    text = obs.get('text', '')
+                                    if text:
+                                        schema_details += f"\n- {text}"
+                        continue
+                    
+                    if tool_name == 'TDA_LLMTask':
+                        content = item.get('response', '')
+                    
+                    # Second priority: common MCP tool output fields
+                    if not content:
+                        content = item.get('tool_output', '')
+                    if not content:
+                        content = item.get('content', '')
+                    if not content:
+                        content = item.get('Request Text', '')
+                    
+                    # Add the content if it's substantial
+                    if content and isinstance(content, str) and len(content.strip()) > 20:
+                        # Clean up formatting
+                        cleaned = content.replace('\r', ' ').replace('\n', ' ')
+                        cleaned = ' '.join(cleaned.split())
+                        schema_details += f"\n\n{cleaned}"
+        
+        # Combine context with extracted schema details
+        full_context = database_context
+        if schema_details:
+            full_context = f"{database_context}\n\n=== Detailed Schema Information ===\n{schema_details}"
+            app_logger.info(f"Extracted schema details from execution trace ({len(schema_details)} chars)")
+        else:
+            app_logger.warning("No schema details extracted from execution trace - questions may be less accurate")
         
         if not subject:
             return jsonify({
@@ -469,8 +539,9 @@ async def generate_rag_questions():
         conversion_rules_section = ""
         if conversion_rules:
             conversion_rules_section = f"""
-7. CRITICAL: Follow these explicit {target_database} conversion rules:
-{conversion_rules}"""
+10. CRITICAL: Follow these explicit {target_database} conversion rules:
+{conversion_rules}
+"""
         
         # Construct the prompt for generating questions
         prompt_text = f"""You are a SQL expert helping to generate test questions and queries for a RAG system.
@@ -478,7 +549,7 @@ async def generate_rag_questions():
 Based on the following database context, generate {count} diverse, interesting business questions about "{subject}" along with the SQL queries that would answer them.
 
 Database Context:
-{database_context}
+{full_context}
 
 Requirements:
 1. Generate EXACTLY {count} question/SQL pairs
@@ -486,8 +557,11 @@ Requirements:
 3. SQL queries must be valid {target_database} syntax for the database schema shown above
 4. Use {target_database}-specific SQL syntax, functions, and conventions
 5. Questions should vary in complexity (simple to advanced)
-6. Use the database name "{database_name}" in your queries{conversion_rules_section}
-7. Return your response as a valid JSON array with this exact structure:
+6. Use the database name "{database_name}" in your queries
+7. CRITICAL: ONLY use tables and columns that are explicitly listed in the Database Context above
+8. CRITICAL: Do NOT make assumptions about table names or column names - only use what you see in the schema
+9. CRITICAL: Do NOT create joins between tables unless you can verify both tables exist in the schema{conversion_rules_section}
+11. Return your response as a valid JSON array with this exact structure:
 [
   {{
     "question": "What is the total revenue by product category?",
@@ -502,9 +576,11 @@ Requirements:
 IMPORTANT: 
 - Write COMPLETE SQL queries - do NOT truncate them with "..." or similar
 - Your entire response must be ONLY the JSON array, with no other text before or after
-- Include all {count} question/SQL pairs requested"""
+- Include all {count} question/SQL pairs requested
+- VALIDATE that every table and column in your SQL actually exists in the Database Context above
+- If the schema shows only one table, write queries for that single table only"""
 
-        app_logger.info(f"Generating {count} RAG questions for subject '{subject}' in database '{database_name}'")
+        app_logger.info(f"Generating {count} RAG questions for subject '{subject}' in database '{database_name}' (context: {len(full_context)} chars)")
         
         # Call LLM directly using the handler to avoid agent execution framework and TDA_FinalReport validation
         from trusted_data_agent.llm import handler as llm_handler
@@ -620,9 +696,7 @@ async def configure_services_rest():
 
         # Broadcast to all active notification queues
         all_queues = [q for user_queues in APP_STATE.get("notification_queues", {}).values() for q in user_queues]
-        app_logger.info(f"Found {len(all_queues)} active notification queues.")
         if all_queues:
-            app_logger.info(f"Broadcasting reconfiguration notification to {len(all_queues)} client(s).")
             for queue in all_queues:
                 asyncio.create_task(queue.put(notification))
         # --- MODIFICATION END ---
@@ -671,7 +745,6 @@ async def create_session():
             # Broadcast to all active notification queues for this user
             notification_queues = APP_STATE.get("notification_queues", {}).get(user_uuid, set())
             if notification_queues:
-                app_logger.info(f"Broadcasting new_session_created notification to {len(notification_queues)} client(s) for user {user_uuid}.")
                 notification = {
                     "type": "new_session_created",
                     "payload": notification_payload
@@ -757,7 +830,6 @@ async def execute_query(session_id: str):
                         "type": "status_indicator_update",
                         "payload": canonical_event # canonical_event already contains target and state
                     }
-                    app_logger.debug(f"REST API: Emitting status_indicator_update for task {task_id}: {notification}")
                 # --- MODIFICATION END ---
                 elif event_type == "session_name_update":
                     notification = {
@@ -832,7 +904,6 @@ async def execute_query(session_id: str):
                             "final_answer": final_result_payload.get("final_answer")
                         }
                     }
-                    app_logger.info(f"Sending rest_task_complete notification for user {user_uuid}")
                     for queue in notification_queues:
                         asyncio.create_task(queue.put(completion_notification))
 
@@ -1334,12 +1405,10 @@ async def populate_collection_from_template(collection_id: int):
     """
     try:
         data = await request.get_json()
-        app_logger.info(f"Populate collection {collection_id} - Received request with data keys: {list(data.keys())}")
         
         # Validate required fields
         template_type = data.get("template_type")
         examples_data = data.get("examples", [])
-        app_logger.info(f"Template type: {template_type}, Examples count: {len(examples_data)}")
         
         if not template_type:
             return jsonify({"status": "error", "message": "template_type is required"}), 400
@@ -1388,9 +1457,7 @@ async def populate_collection_from_template(collection_id: int):
         database_name = data.get("database_name")
         mcp_tool_name = data.get("mcp_tool_name", "base_readQuery")
         
-        app_logger.info(f"Populating collection {collection_id} with {len(examples)} SQL template examples")
-        app_logger.info(f"Database name: {database_name}, MCP tool: {mcp_tool_name}")
-        app_logger.info(f"Examples preview: {examples[:2] if len(examples) >= 2 else examples}")
+        app_logger.info(f"Populating collection {collection_id} with {len(examples)} examples")
         
         results = generator.populate_collection_from_sql_examples(
             collection_id=collection_id,

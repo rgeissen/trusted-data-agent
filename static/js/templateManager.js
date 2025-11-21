@@ -19,7 +19,6 @@ class TemplateManager {
     async initialize() {
         try {
             await this.loadTemplates();
-            console.log(`Loaded ${this.templates.length} template(s)`);
         } catch (error) {
             console.error('Failed to initialize template manager:', error);
             throw error;

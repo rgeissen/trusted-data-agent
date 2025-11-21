@@ -65,7 +65,6 @@ async def get_application_status():
         })
 
     is_configured = APP_CONFIG.SERVICES_CONFIGURED
-    app_logger.debug(f"API endpoint /api/status checked. Current configured status: {is_configured}")
 
     # Check RAG status
     rag_retriever = APP_STATE.get('rag_retriever_instance')
@@ -89,7 +88,6 @@ async def get_application_status():
             "rag_enabled": APP_CONFIG.RAG_ENABLED,
             "configurationPersistence": APP_CONFIG.CONFIGURATION_PERSISTENCE
         }
-        app_logger.debug(f"/api/status responding with configured state: {status_payload}")
         return jsonify(status_payload)
     else:
         status_payload = {
@@ -98,7 +96,6 @@ async def get_application_status():
             "rag_enabled": APP_CONFIG.RAG_ENABLED,
             "configurationPersistence": APP_CONFIG.CONFIGURATION_PERSISTENCE
         }
-        app_logger.debug(f"/api/status responding with unconfigured state.")
         return jsonify(status_payload)
 
 @api_bp.route("/simple_chat", methods=["POST"])
@@ -208,7 +205,6 @@ async def text_to_speech():
     """
     Converts text to speech using Google Cloud TTS.
     """
-    app_logger.debug("/api/synthesize-speech endpoint hit.")
     if not APP_CONFIG.VOICE_CONVERSATION_ENABLED:
         app_logger.warning("Voice conversation feature is disabled by config. Aborting text-to-speech request.")
         return jsonify({"error": "Voice conversation feature is disabled."}), 403
@@ -732,7 +728,6 @@ async def get_rag_case_details(case_id: str):
 async def get_sessions():
     """Returns a list of all active chat sessions for the requesting user."""
     user_uuid = _get_user_uuid_from_request()
-    app_logger.info(f"GET /sessions endpoint hit for user {user_uuid}")
     sessions = session_manager.get_all_sessions(user_uuid=user_uuid)
     return jsonify(sessions)
 
@@ -827,7 +822,6 @@ async def purge_memory(session_id: str):
 async def get_turn_plan(session_id: str, turn_id: int):
     """Retrieves the original plan for a specific turn in a session."""
     user_uuid = _get_user_uuid_from_request()
-    app_logger.info(f"GET /plan request for session {session_id}, turn {turn_id}, user {user_uuid}")
     session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
     if not session_data:
         return jsonify({"error": "Session not found"}), 404
@@ -849,7 +843,6 @@ async def get_turn_plan(session_id: str, turn_id: int):
 async def get_turn_details(session_id: str, turn_id: int):
     """Retrieves the full details (plan and trace) for a specific turn."""
     user_uuid = _get_user_uuid_from_request()
-    app_logger.info(f"GET /details request for session {session_id}, turn {turn_id}, user {user_uuid}")
     session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
     if not session_data:
         return jsonify({"error": "Session not found"}), 404
@@ -880,7 +873,6 @@ async def get_turn_details(session_id: str, turn_id: int):
 async def get_turn_query(session_id: str, turn_id: int):
     """Retrieves the original user query for a specific turn in a session."""
     user_uuid = _get_user_uuid_from_request()
-    app_logger.info(f"GET /query request for session {session_id}, turn {turn_id}, user {user_uuid}")
     session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
     if not session_data:
         return jsonify({"error": "Session not found"}), 404

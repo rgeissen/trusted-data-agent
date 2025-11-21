@@ -29,7 +29,6 @@ function showNotification(type, message) {
 
     const statusElement = document.getElementById('header-status-message');
     if (!statusElement) {
-        console.warn('Header status message element not found');
         return;
     }
     
@@ -800,10 +799,6 @@ export async function reconnectAndLoad() {
     const mcpServer = configState.getActiveMCPServer();
     const llmProvider = configState.getActiveLLMProvider();
 
-    console.log('[DEBUG] reconnectAndLoad - activeMCP:', configState.activeMCP);
-    console.log('[DEBUG] reconnectAndLoad - mcpServers:', configState.mcpServers);
-    console.log('[DEBUG] reconnectAndLoad - mcpServer:', mcpServer);
-    console.log('[DEBUG] reconnectAndLoad - llmProvider:', llmProvider);
 
     // Validate that both MCP server and LLM provider are configured
     if (!mcpServer) {
@@ -853,7 +848,6 @@ export async function reconnectAndLoad() {
             charting_intensity: document.getElementById('charting-intensity')?.value || 'none'
         };
 
-        console.log('[DEBUG] reconnectAndLoad - configData being sent:', configData);
 
         const response = await fetch('/configure', {
             method: 'POST',
@@ -878,15 +872,12 @@ export async function reconnectAndLoad() {
             // Update RAG indicator - check if RAG is active after configuration
             if (DOM.ragStatusDot) {
                 const status = await API.checkServerStatus();
-                console.log('RAG status after reconnectAndLoad:', status.rag_active, 'RAG enabled:', status.rag_enabled);
                 if (status.rag_active) {
                     DOM.ragStatusDot.classList.remove('disconnected');
                     DOM.ragStatusDot.classList.add('connected');
-                    console.log('RAG indicator set to connected');
                 } else {
                     DOM.ragStatusDot.classList.remove('connected');
                     DOM.ragStatusDot.classList.add('disconnected');
-                    console.log('RAG indicator set to disconnected - rag_active:', status.rag_active);
                 }
             }
             
@@ -900,7 +891,6 @@ export async function reconnectAndLoad() {
             
             // Enable panel toggle buttons after configuration
             if (DOM.toggleHistoryButton) {
-                console.log('Enabling history toggle button');
                 DOM.toggleHistoryButton.classList.remove('btn-disabled');
                 DOM.toggleHistoryButton.style.opacity = '1';
                 DOM.toggleHistoryButton.style.cursor = 'pointer';
@@ -909,7 +899,6 @@ export async function reconnectAndLoad() {
                 if (DOM.historyCollapseIcon) DOM.historyCollapseIcon.classList.add('hidden');
             }
             if (DOM.toggleStatusButton) {
-                console.log('Enabling status toggle button');
                 DOM.toggleStatusButton.classList.remove('btn-disabled');
                 DOM.toggleStatusButton.style.opacity = '1';
                 DOM.toggleStatusButton.style.cursor = 'pointer';
@@ -918,7 +907,6 @@ export async function reconnectAndLoad() {
                 if (DOM.statusCollapseIcon) DOM.statusCollapseIcon.classList.add('hidden');
             }
             if (DOM.toggleHeaderButton) {
-                console.log('Enabling header toggle button');
                 DOM.toggleHeaderButton.classList.remove('btn-disabled');
                 DOM.toggleHeaderButton.style.opacity = '1';
                 DOM.toggleHeaderButton.style.cursor = 'pointer';
@@ -929,12 +917,8 @@ export async function reconnectAndLoad() {
             
             // Show conversation header after successful configuration
             const conversationHeader = document.getElementById('conversation-header');
-            console.log('[DEBUG] reconnectAndLoad - Showing conversation header, element exists:', !!conversationHeader);
             if (conversationHeader) {
-                console.log('[DEBUG] reconnectAndLoad - Header classes before:', conversationHeader.className);
                 conversationHeader.classList.remove('hidden');
-                console.log('[DEBUG] reconnectAndLoad - Header classes after:', conversationHeader.className);
-                console.log('[DEBUG] reconnectAndLoad - Conversation header enabled');
             } else {
                 console.error('[DEBUG] reconnectAndLoad - Conversation header element not found!');
             }
@@ -943,7 +927,6 @@ export async function reconnectAndLoad() {
             const topButtonsContainer = document.getElementById('top-buttons-container');
             if (topButtonsContainer) {
                 topButtonsContainer.classList.remove('hidden');
-                console.log('[DEBUG] reconnectAndLoad - Panel toggle buttons shown');
             }
             
             // Load MCP resources (tools, prompts, resources)
@@ -1071,5 +1054,4 @@ export async function initializeConfigurationUI() {
         reconnectBtn.addEventListener('click', reconnectAndLoad);
     }
 
-    console.log('[ConfigurationHandler] UI initialized');
 }

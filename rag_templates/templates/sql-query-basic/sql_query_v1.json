@@ -149,11 +149,7 @@
         "arguments": {
           "sql": {
             "source": "sql_statement",
-            "description": "The SQL query to execute"
-          },
-          "database_name": {
-            "source": "database_name",
-            "condition": "if database_name"
+            "description": "The SQL query to execute (includes database name)"
           }
         }
       },

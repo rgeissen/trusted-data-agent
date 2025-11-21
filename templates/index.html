@@ -1534,15 +1534,16 @@
                             </div>
                         </div>
 
-                        <!-- Auto-generate with LLM Fields (dynamically generated from template manifest) -->
-                        <div id="rag-collection-llm-fields" class="hidden space-y-3">
-                            <!-- Fields will be dynamically generated based on template's population_modes.auto_generate.input_variables -->
-                        </div>
-                    </div>
-                        
-                        <!-- Question Generation Prompt Preview -->
-                        <div class="bg-gray-800/50 rounded-lg p-4 border border-gray-600">
-                            <div class="flex items-center justify-between mb-2">
+                        <!-- LLM Workflow Container (hidden when not using LLM generation) -->
+                        <div id="rag-collection-llm-workflow" class="hidden space-y-4">
+                            <!-- Auto-generate with LLM Fields (dynamically generated from template manifest) -->
+                            <div id="rag-collection-llm-fields" class="space-y-3">
+                                <!-- Fields will be dynamically generated based on template's population_modes.auto_generate.input_variables -->
+                            </div>
+                            
+                            <!-- Question Generation Prompt Preview -->
+                            <div class="bg-gray-800/50 rounded-lg p-4 border border-gray-600">
+                                <div class="flex items-center justify-between mb-2">
                                 <label class="text-sm font-medium text-gray-300 flex items-center gap-2">
                                     <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -1558,19 +1559,20 @@
                                     Refresh
                                 </button>
                             </div>
-                            <textarea id="rag-collection-llm-prompt-preview" 
-                                      class="w-full h-32 p-3 bg-gray-900/50 border border-gray-700 rounded text-xs font-mono text-gray-300 resize-none"
-                                      placeholder="Enter subject, count, and database above, then click Refresh to preview the prompt..."></textarea>
-                            <p class="text-xs text-gray-400 mt-2">This prompt will be sent to the LLM along with the database context. You can edit it if needed.</p>
-                        </div>
+                                <textarea id="rag-collection-llm-prompt-preview" 
+                                          class="w-full h-32 p-3 bg-gray-900/50 border border-gray-700 rounded text-xs font-mono text-gray-300 resize-none"
+                                          placeholder="Enter subject, count, and database above, then click Refresh to preview the prompt..."></textarea>
+                                <p class="text-xs text-gray-400 mt-2">This prompt will be sent to the LLM along with the database context. You can edit it if needed.</p>
+                            </div>
                         
                         <!-- Generate Context Button -->
-                        <div class="flex items-center justify-between pt-2 border-t border-gray-600">
-                            <div class="flex-1">
-                                <p class="text-xs text-gray-400">Step 1: Generate database context to help the LLM understand your schema</p>
+                        <div class="pt-3 border-t border-gray-600">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div class="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">1</div>
+                                <p class="text-sm font-semibold text-blue-300">Generate database context to help the LLM understand your schema</p>
                             </div>
                             <button type="button" id="rag-collection-generate-context" 
-                                    class="px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-500 transition-colors font-semibold text-white text-sm flex items-center gap-2">
+                                    class="w-full px-4 py-3 rounded-md bg-blue-600 hover:bg-blue-500 transition-colors font-semibold text-white text-sm flex items-center justify-center gap-2 shadow-lg">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                                 </svg>
@@ -1587,6 +1589,9 @@
                                     </svg>
                                     Database Context Generated
                                 </h4>
+                                <button type="button" id="rag-collection-view-full-context" class="text-xs px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white mr-2">
+                                    View Full Context
+                                </button>
                                 <button type="button" id="rag-collection-context-close" class="text-gray-400 hover:text-white">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -1594,18 +1599,22 @@
                                 </button>
                             </div>
                             <div id="rag-collection-context-content" class="text-xs text-gray-300 font-mono bg-gray-900/50 rounded p-3 max-h-40 overflow-y-auto">
-                                <!-- Context will be displayed here -->
+                                <!-- Context summary will be displayed here -->
                             </div>
-                            
-                            <!-- Generate Questions Button (appears after context is generated) -->
-                            <div class="mt-3 flex gap-3">
-                                <button type="button" id="rag-collection-generate-questions-btn" class="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-purple-600 hover:bg-purple-700 transition-colors font-semibold text-white text-sm">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    <span>Generate Questions</span>
-                                </button>
+                        </div>
+                        
+                        <!-- Step 2: Generate Questions Button (appears after context is generated) -->
+                        <div id="rag-collection-step2-section" class="hidden mt-4 pt-4 border-t-2 border-purple-500/30 bg-purple-900/10 rounded-lg p-4">
+                            <div class="flex items-center gap-2 mb-3">
+                                <div class="w-6 h-6 rounded-full bg-purple-600 flex items-center justify-center text-white text-xs font-bold">2</div>
+                                <p class="text-sm font-semibold text-purple-300">Generate question/SQL pairs from the database context</p>
                             </div>
+                            <button type="button" id="rag-collection-generate-questions-btn" class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md bg-purple-600 hover:bg-purple-700 transition-colors font-semibold text-white text-sm shadow-lg">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span>Generate Questions</span>
+                            </button>
                         </div>
                         
                         <!-- Generated Questions Preview (hidden initially) -->
@@ -1646,6 +1655,8 @@
                                 <p class="text-xs text-blue-300">The LLM will analyze your subject and generate realistic question/SQL pairs. Generation may take 30-60 seconds.</p>
                             </div>
                         </div>
+                        </div>
+                        <!-- End LLM Workflow Container -->
                     </div>
                 </div>
                 
@@ -2031,15 +2042,16 @@
                     <div id="context-result-final-answer" class="bg-gray-800/50 rounded-lg p-3 text-xs text-gray-300 max-h-60 overflow-y-auto whitespace-pre-wrap"></div>
                 </div>
 
-                <!-- Execution Trace -->
+                <!-- Context for Question Generation -->
                 <div>
                     <h3 class="text-sm font-semibold text-white mb-2 flex items-center gap-2">
-                        <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
-                        Execution Trace
+                        Context for Question Generation
+                        <span class="text-xs text-gray-400">(What will be sent to the LLM)</span>
                     </h3>
-                    <div id="context-result-execution-trace" class="bg-gray-800/50 rounded-lg p-3 text-xs text-gray-300 font-mono max-h-80 overflow-y-auto"></div>
+                    <div id="context-result-question-context" class="bg-gray-800/50 rounded-lg p-3 text-xs text-gray-300 max-h-80 overflow-y-auto whitespace-pre-wrap"></div>
                 </div>
 
                 <!-- Token Usage -->

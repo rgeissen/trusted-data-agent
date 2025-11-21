@@ -137,8 +137,8 @@ export function addMessage(role, content, turnId = null, isValid = true, source 
         icon.addEventListener('mousedown', startPress);
         icon.addEventListener('mouseup', cancelPress);
         icon.addEventListener('mouseleave', cancelPress);
-        icon.addEventListener('touchstart', startPress);
-        icon.addEventListener('touchend', cancelPress);
+        icon.addEventListener('touchstart', startPress, { passive: true });
+        icon.addEventListener('touchend', cancelPress, { passive: true });
     }
 
     // This logic is now handled by the badge.
@@ -521,7 +521,6 @@ function _renderToolIntentDetails(details) {
                 </div>
             `;
         } catch (e) {
-            console.warn("Could not stringify arguments for tool intent:", details.arguments);
             argsHtml = `<div class="status-kv-item"><div class="status-kv-key">Args</div><div class="status-kv-value text-red-400">[Error displaying arguments]</div></div>`;
         }
     }
@@ -924,7 +923,6 @@ export function moveSessionToTop(sessionId) {
         sessionItem.remove();
         // Prepend it to the session list
         DOM.sessionList.prepend(sessionItem);
-        console.log(`UI Updated: Session ${sessionId} moved to top.`);
     }
 }
 
@@ -1173,7 +1171,6 @@ export function highlightResource(resourceName, type) {
             }, 350);
         }
     } else {
-        console.warn(`Could not find category for resource '${resourceName}' of type '${type}'. Highlight failed.`);
     }
 }
 
@@ -1270,19 +1267,14 @@ export function addSessionToList(session, isActive = false) {
  * @param {string} newName - The new name for the session.
  */
 export function updateSessionListItemName(sessionId, newName) {
-    console.log(`[ui.js] updateSessionListItemName called with sessionId=${sessionId}, newName=${newName}`);
     const sessionItem = document.getElementById(`session-${sessionId}`);
     if (sessionItem) {
-        console.log(`[ui.js] Found sessionItem for sessionId=${sessionId}`);
         const nameSpan = sessionItem.querySelector('.session-name-span');
         if (nameSpan) {
             nameSpan.textContent = newName;
-            console.log(`[ui.js] UI Updated: Session item ${sessionId} name changed to '${newName}'`);
         } else {
-            console.warn(`[ui.js] Could not find name span within session item ${sessionId}`);
         }
     } else {
-        console.warn(`[ui.js] Could not find session item ${sessionId} in the list to update name.`);
     }
 }
 
@@ -1452,9 +1444,7 @@ export function removeSessionFromList(sessionId) {
     const sessionItem = document.getElementById(`session-${sessionId}`);
     if (sessionItem) {
         sessionItem.remove();
-        console.log(`UI Updated: Removed session item ${sessionId} from list.`);
     } else {
-        console.warn(`Could not find session item ${sessionId} in the list to remove.`);
     }
 }
 
@@ -1635,9 +1625,7 @@ export function updateVoiceModeUI() {
     DOM.voiceInputButton.title = tooltipText;
 
     if (isActive) {
-        console.log("Voice mode activated.");
     } else {
-        console.log("Voice mode deactivated.");
     }
 }
 
@@ -1787,25 +1775,19 @@ export function toggleSideNav() {
  * @param {string} viewId - The ID of the view to switch to (e.g., 'conversation-view').
  */
 export function handleViewSwitch(viewId) {
-    console.log(`[UI DEBUG] handleViewSwitch called with viewId: ${viewId}`);
 
     // 1. Log all app views found
     const appViews = document.querySelectorAll('.app-view');
-    console.log('[UI DEBUG] Found app views:', appViews);
 
     // 2. Hide all views
     appViews.forEach(view => {
-        console.log(`[UI DEBUG] Hiding view:`, view.id);
         view.classList.remove('active');
     });
 
     // 3. Show the selected view
     const viewToShow = document.getElementById(viewId);
     if (viewToShow) {
-        console.log(`[UI DEBUG] Found view to show:`, viewToShow.id);
-        console.log(`[UI DEBUG] Current classes for ${viewToShow.id}:`, viewToShow.className);
         viewToShow.classList.add('active');
-        console.log(`[UI DEBUG] New classes for ${viewToShow.id}:`, viewToShow.className);
     } else {
         console.error(`[UI DEBUG] View with ID '${viewId}' not found!`);
     }
@@ -1814,21 +1796,16 @@ export function handleViewSwitch(viewId) {
     if (DOM.viewSwitchButtons) {
         DOM.viewSwitchButtons.forEach(button => {
             const isActive = button.dataset.view === viewId;
-            console.log(`[UI DEBUG] Updating button ${button.dataset.view}: active=${isActive}`);
             button.classList.toggle('active', isActive);
         });
     } else {
-        console.warn('[UI DEBUG] DOM.viewSwitchButtons not found.');
     }
 
     // 5. Final check
     setTimeout(() => {
         const activeViews = document.querySelectorAll('.app-view.active');
-        console.log('[UI DEBUG] Final check: Active views are:', activeViews);
         if (activeViews.length > 1) {
-            console.warn('[UI DEBUG] Multiple views are active!', activeViews);
         } else if (activeViews.length === 0) {
-            console.warn('[UI DEBUG] No view is active!');
         } else if (activeViews[0].id !== viewId) {
             console.error(`[UI DEBUG] WRONG VIEW IS ACTIVE! Expected ${viewId}, but found ${activeViews[0].id}`);
         }
@@ -2350,7 +2327,6 @@ function renderCaseTrace() {
  */
 export function copySessionIdToClipboard(sessionId) {
     navigator.clipboard.writeText(sessionId).then(() => {
-        console.log(`Session ID ${sessionId} copied to clipboard.`);
     }).catch(err => {
         console.error('Failed to copy session ID:', err);
     });

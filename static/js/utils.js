@@ -171,7 +171,6 @@ export function copyTableToClipboard(button) {
     try {
         const data = JSON.parse(dataStr);
         if (!Array.isArray(data) || data.length === 0 || typeof data[0] !== 'object') {
-            console.warn("Table data is empty or not in the expected format (array of objects).");
             return;
         }
 
@@ -257,7 +256,6 @@ export function renderChart(containerId, spec) {
 export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIcon) {
     // ... (no changes in this function) ...
     const toggle = (isOpen) => {
-        console.log('Toggle called for panel:', panel.id, 'isOpen:', isOpen);
         const isCollapsed = !isOpen;
         panel.classList.toggle('collapsed', isCollapsed);
         if (collapseIcon) collapseIcon.classList.toggle('hidden', isCollapsed);
@@ -266,7 +264,6 @@ export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIc
     };
 
     button.addEventListener('click', (e) => {
-        console.log('Panel toggle button clicked:', button.id, 'pointerEvents:', button.style.pointerEvents);
         toggle(panel.classList.contains('collapsed'));
     });
     if (checkbox) {

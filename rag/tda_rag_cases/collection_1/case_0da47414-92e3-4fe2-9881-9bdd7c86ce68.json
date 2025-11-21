@@ -1,0 +1,58 @@
+{
+  "case_id": "0da47414-92e3-4fe2-9881-9bdd7c86ce68",
+  "metadata": {
+    "session_id": "00000000-0000-0000-0000-000000000000",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "template-task-0da47414",
+    "collection_id": 1,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-21T14:43:02.122683+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Template",
+      "model": "sql_template_v1",
+      "input_tokens": 150,
+      "output_tokens": 180
+    },
+    "is_most_efficient": true,
+    "template_generated": true,
+    "template_type": "sql_query",
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "database_name": "fitness_db"
+  },
+  "intent": {
+    "user_query": "Which products are most frequently purchased together in the same order?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Execute SQL query on fitness_db: SELECT  p1.ProductName AS Product1, p2.ProductName AS Product2, COUNT(*) AS Frequency FROM  fitness_db.OrderItems oi1 JOIN  fitness_db.OrderItems oi2 ON oi1.OrderID = oi2.OrderID AND oi1.ProductID < oi2.ProductID JOIN  fitness_db.Products p1 ON oi1.ProductID = p1.ProductID JOIN  fitness_db.Products p2 ON oi2.ProductID = p2.ProductID GROUP BY  p1.ProductName, p2.ProductName ORDER BY  Frequency DESC TOP 5;",
+        "relevant_tools": [
+          "base_readQuery"
+        ],
+        "arguments": {
+          "sql": "SELECT  p1.ProductName AS Product1, p2.ProductName AS Product2, COUNT(*) AS Frequency FROM  fitness_db.OrderItems oi1 JOIN  fitness_db.OrderItems oi2 ON oi1.OrderID = oi2.OrderID AND oi1.ProductID < oi2.ProductID JOIN  fitness_db.Products p1 ON oi1.ProductID = p1.ProductID JOIN  fitness_db.Products p2 ON oi2.ProductID = p2.ProductID GROUP BY  p1.ProductName, p2.ProductName ORDER BY  Frequency DESC TOP 5;",
+          "database_name": "fitness_db"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the query results.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

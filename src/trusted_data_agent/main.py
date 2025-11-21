@@ -15,6 +15,7 @@ import hypercorn.asyncio
 from hypercorn.config import Config
 
 os.environ["LANGCHAIN_TRACING_V2"] = "false"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"  # Silence tokenizers warnings
 
 # --- Logging Setup (from your original file) ---
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -42,6 +43,11 @@ root_logger.setLevel(logging.INFO)
 # root_logger.setLevel(logging.DEBUG)
 # --- MODIFICATION END ---
 
+# Silence verbose third-party loggers
+logging.getLogger('chromadb.telemetry.product.posthog').setLevel(logging.WARNING)
+logging.getLogger('sentence_transformers').setLevel(logging.WARNING)
+logging.getLogger('rag_template_manager').setLevel(logging.WARNING)
+logging.getLogger('rag_retriever').setLevel(logging.WARNING)
 
 app_logger = logging.getLogger("quart.app")
 # --- MODIFICATION START: Set Quart App Logger Level to INFO ---
@@ -117,7 +123,6 @@ async def rag_processing_worker():
                     if session_id and turn_id and user_uuid:
                         try:
                             session_manager.add_case_id_to_turn(user_uuid, session_id, turn_id, case_id)
-                            app_logger.debug(f"Stored case_id {case_id} for turn {turn_id}")
                         except Exception as e:
                             app_logger.error(f"Failed to store case_id {case_id} in session: {e}")
                 
