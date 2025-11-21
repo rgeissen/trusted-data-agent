@@ -38,8 +38,7 @@
           "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT SalesPersonID, SUM(TotalAmount) AS TotalSales FROM fitness_db.Sales GROUP BY SalesPersonID;",
-          "database_name": "fitness_db"
+          "sql": "SELECT SalesPersonID, SUM(TotalAmount) AS TotalSales FROM fitness_db.Sales GROUP BY SalesPersonID;"
         }
       },
       {

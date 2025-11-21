@@ -41,8 +41,7 @@
           "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT c.CustomerID, c.CustomerName, COUNT(o.OrderID) AS NumberOfOrders FROM fitness_db.Customers c JOIN fitness_db.Orders o ON c.CustomerID = o.CustomerID GROUP BY c.CustomerID, c.CustomerName ORDER BY NumberOfOrders DESC TOP 1;",
-          "database_name": "fitness_db"
+          "sql": "SELECT c.CustomerID, c.CustomerName, COUNT(o.OrderID) AS NumberOfOrders FROM fitness_db.Customers c JOIN fitness_db.Orders o ON c.CustomerID = o.CustomerID GROUP BY c.CustomerID, c.CustomerName ORDER BY NumberOfOrders DESC TOP 1;"
         }
       },
       {

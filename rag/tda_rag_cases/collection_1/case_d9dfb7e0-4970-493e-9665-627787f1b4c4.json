@@ -41,8 +41,7 @@
           "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT ProductName, SUM(StockQuantity) AS TotalStock FROM fitness_db.Products GROUP BY ProductName;",
-          "database_name": "fitness_db"
+          "sql": "SELECT ProductName, SUM(StockQuantity) AS TotalStock FROM fitness_db.Products GROUP BY ProductName;"
         }
       },
       {

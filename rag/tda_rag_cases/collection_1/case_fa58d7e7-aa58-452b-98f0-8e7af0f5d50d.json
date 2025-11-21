@@ -41,8 +41,7 @@
           "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT EXTRACT(MONTH FROM OrderDate) AS OrderMonth, SUM(OrderTotal) AS TotalSales FROM fitness_db.Orders GROUP BY EXTRACT(MONTH FROM OrderDate) ORDER BY OrderMonth;",
-          "database_name": "fitness_db"
+          "sql": "SELECT EXTRACT(MONTH FROM OrderDate) AS OrderMonth, SUM(OrderTotal) AS TotalSales FROM fitness_db.Orders GROUP BY EXTRACT(MONTH FROM OrderDate) ORDER BY OrderMonth;"
         }
       },
       {

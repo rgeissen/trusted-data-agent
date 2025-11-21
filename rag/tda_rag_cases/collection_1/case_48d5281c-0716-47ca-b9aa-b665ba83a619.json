@@ -41,8 +41,7 @@
           "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT c.CustomerSegment, AVG(o.OrderTotal) AS AverageOrderValue FROM fitness_db.Customers c JOIN fitness_db.Orders o ON c.CustomerID = o.CustomerID GROUP BY c.CustomerSegment;",
-          "database_name": "fitness_db"
+          "sql": "SELECT c.CustomerSegment, AVG(o.OrderTotal) AS AverageOrderValue FROM fitness_db.Customers c JOIN fitness_db.Orders o ON c.CustomerID = o.CustomerID GROUP BY c.CustomerSegment;"
         }
       },
       {

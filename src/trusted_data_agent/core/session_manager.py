@@ -54,17 +54,41 @@ def _get_session_path(user_uuid: str, session_id: str) -> Path | None:
 
     return SESSIONS_DIR / safe_user_uuid / f"{safe_session_id}.json"
 
+def _find_session_path(user_uuid: str, session_id: str) -> Path | None:
+    """Finds the path to a session file, respecting SESSIONS_FILTER_BY_USER."""
+    safe_session_id = "".join(c for c in session_id if c.isalnum() or c in ['-', '_'])
+
+    if APP_CONFIG.SESSIONS_FILTER_BY_USER:
+        # Look only in the specified user's directory
+        path = _get_session_path(user_uuid, session_id)
+        if path and path.is_file():
+            return path
+        return None
+    else:
+        # Search all user directories for the session file
+        app_logger.debug(f"Session filtering is off. Searching for session '{safe_session_id}' in all user directories.")
+        for user_dir in SESSIONS_DIR.iterdir():
+            if user_dir.is_dir():
+                potential_path = user_dir / f"{safe_session_id}.json"
+                if potential_path.is_file():
+                    app_logger.debug(f"Found session '{safe_session_id}' in directory '{user_dir}'.")
+                    return potential_path
+        return None
+
 def _load_session(user_uuid: str, session_id: str) -> dict | None:
     """Loads session data from a file."""
-    session_path = _get_session_path(user_uuid, session_id)
+    session_path = _find_session_path(user_uuid, session_id)
     if not session_path:
+        app_logger.warning(f"Session file not found for session_id: {session_id}")
         return None
+
     app_logger.debug(f"Attempting to load session from: {session_path}")
     try:
+        # The check is technically redundant if _find_session_path finds something, but good for safety
         if session_path.is_file():
             with open(session_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                app_logger.debug(f"Successfully loaded session '{session_id}' for user '{user_uuid}'.")
+                app_logger.debug(f"Successfully loaded session '{session_id}' (owned by {data.get('user_uuid')}) for requesting user '{user_uuid}'.")
                 return data
         else:
             app_logger.warning(f"Session file not found at: {session_path}")
@@ -266,10 +290,10 @@ def get_all_sessions(user_uuid: str) -> list[dict]:
 
 def delete_session(user_uuid: str, session_id: str) -> bool:
     """Deletes a session file from the filesystem."""
-    session_path = _get_session_path(user_uuid, session_id)
+    session_path = _find_session_path(user_uuid, session_id)
     if not session_path:
-        app_logger.error(f"Cannot delete session '{session_id}' for user '{user_uuid}': Invalid path generated.")
-        return False # Indicate failure due to invalid path
+        app_logger.error(f"Cannot delete session '{session_id}' for user '{user_uuid}': Session not found.")
+        return False # Indicate failure due to not finding the session
 
     app_logger.info(f"Attempting to delete session file: {session_path}")
     try:
@@ -278,6 +302,7 @@ def delete_session(user_uuid: str, session_id: str) -> bool:
             app_logger.info(f"Successfully deleted session file: {session_path}")
             return True # Indicate success
         else:
+            # This case should ideally not be hit if _find_session_path is correct
             app_logger.warning(f"Session file not found for deletion: {session_path}. Treating as success (already gone).")
             return True # Indicate success (idempotent delete)
     except OSError as e:

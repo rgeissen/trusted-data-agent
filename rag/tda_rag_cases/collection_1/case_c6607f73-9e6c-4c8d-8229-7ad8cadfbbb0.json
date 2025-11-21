@@ -41,8 +41,7 @@
           "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT p.ProductType, SUM(s.SaleAmount) AS TotalRevenue FROM fitness_db.Sales s JOIN fitness_db.Products p ON s.ProductID = p.ProductID GROUP BY p.ProductType;",
-          "database_name": "fitness_db"
+          "sql": "SELECT p.ProductType, SUM(s.SaleAmount) AS TotalRevenue FROM fitness_db.Sales s JOIN fitness_db.Products p ON s.ProductID = p.ProductID GROUP BY p.ProductType;"
         }
       },
       {

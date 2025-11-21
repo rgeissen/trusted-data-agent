@@ -41,8 +41,7 @@
           "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT  p1.ProductName AS Product1, p2.ProductName AS Product2, COUNT(*) AS Frequency FROM  fitness_db.OrderItems oi1 JOIN  fitness_db.OrderItems oi2 ON oi1.OrderID = oi2.OrderID AND oi1.ProductID < oi2.ProductID JOIN  fitness_db.Products p1 ON oi1.ProductID = p1.ProductID JOIN  fitness_db.Products p2 ON oi2.ProductID = p2.ProductID GROUP BY  p1.ProductName, p2.ProductName ORDER BY  Frequency DESC TOP 5;",
-          "database_name": "fitness_db"
+          "sql": "SELECT  p1.ProductName AS Product1, p2.ProductName AS Product2, COUNT(*) AS Frequency FROM  fitness_db.OrderItems oi1 JOIN  fitness_db.OrderItems oi2 ON oi1.OrderID = oi2.OrderID AND oi1.ProductID < oi2.ProductID JOIN  fitness_db.Products p1 ON oi1.ProductID = p1.ProductID JOIN  fitness_db.Products p2 ON oi2.ProductID = p2.ProductID GROUP BY  p1.ProductName, p2.ProductName ORDER BY  Frequency DESC TOP 5;"
         }
       },
       {

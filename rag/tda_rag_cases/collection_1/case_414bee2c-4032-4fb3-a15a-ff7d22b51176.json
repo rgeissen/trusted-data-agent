@@ -41,8 +41,7 @@
           "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT AVG(Rating) AS AverageRating FROM fitness_db.CustomerService;",
-          "database_name": "fitness_db"
+          "sql": "SELECT AVG(Rating) AS AverageRating FROM fitness_db.CustomerService;"
         }
       },
       {

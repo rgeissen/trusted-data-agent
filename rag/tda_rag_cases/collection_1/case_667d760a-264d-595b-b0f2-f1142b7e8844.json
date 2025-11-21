@@ -1,24 +1,22 @@
 {
-  "case_id": "79d77d00-fbcd-4a47-a01a-37a926bbeb7b",
+  "case_id": "667d760a-264d-595b-b0f2-f1142b7e8844",
   "metadata": {
-    "session_id": "00000000-0000-0000-0000-000000000000",
-    "turn_id": 1,
+    "session_id": "66add749-677e-4b54-b846-f3c4b9ba9db5",
+    "turn_id": 6,
     "is_success": true,
-    "task_id": "template-task-79d77d00",
+    "task_id": "task-643cd976-81c4-4197-a94d-2058806fdd53",
     "collection_id": 1,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-11-21T15:38:57.427998+00:00",
+    "timestamp": "2025-11-21T20:57:56.718986+00:00",
     "user_feedback_score": 0,
     "llm_config": {
-      "provider": "Template",
-      "model": "sql_template_v1",
-      "input_tokens": 150,
-      "output_tokens": 180
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "input_tokens": 19314,
+      "output_tokens": 220
     },
-    "is_most_efficient": true,
-    "template_generated": true,
-    "template_type": "sql_query",
+    "is_most_efficient": false,
     "strategy_metrics": {
       "phase_count": 2,
       "steps_per_phase": {
@@ -26,11 +24,10 @@
         "2": 1
       },
       "total_steps": 2
-    },
-    "database_name": "fitness_db"
+    }
   },
   "intent": {
-    "user_query": "What is the total sales amount by customer?"
+    "user_query": "What is the total sales amount for each customer?"
   },
   "successful_strategy": {
     "phases": [

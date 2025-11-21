@@ -41,8 +41,7 @@
           "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT TOP 5 SaleID, TotalAmount FROM fitness_db.Sales ORDER BY TotalAmount DESC;",
-          "database_name": "fitness_db"
+          "sql": "SELECT TOP 5 SaleID, TotalAmount FROM fitness_db.Sales ORDER BY TotalAmount DESC;"
         }
       },
       {

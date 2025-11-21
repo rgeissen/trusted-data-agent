@@ -41,8 +41,7 @@
           "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT ProductType, SUM(Price * StockQuantity) AS TotalValue FROM fitness_db.Products GROUP BY ProductType;",
-          "database_name": "fitness_db"
+          "sql": "SELECT ProductType, SUM(Price * StockQuantity) AS TotalValue FROM fitness_db.Products GROUP BY ProductType;"
         }
       },
       {

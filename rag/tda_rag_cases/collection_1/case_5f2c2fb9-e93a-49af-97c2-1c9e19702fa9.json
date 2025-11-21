@@ -41,8 +41,7 @@
           "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT Rating, COUNT(*) AS RatingCount FROM fitness_db.CustomerService GROUP BY Rating ORDER BY Rating;",
-          "database_name": "fitness_db"
+          "sql": "SELECT Rating, COUNT(*) AS RatingCount FROM fitness_db.CustomerService GROUP BY Rating ORDER BY Rating;"
         }
       },
       {

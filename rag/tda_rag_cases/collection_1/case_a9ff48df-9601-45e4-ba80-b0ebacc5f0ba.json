@@ -41,8 +41,7 @@
           "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT TOP 5 ProductID, UnitPrice FROM fitness_db.SaleDetails ORDER BY UnitPrice DESC;",
-          "database_name": "fitness_db"
+          "sql": "SELECT TOP 5 ProductID, UnitPrice FROM fitness_db.SaleDetails ORDER BY UnitPrice DESC;"
         }
       },
       {
