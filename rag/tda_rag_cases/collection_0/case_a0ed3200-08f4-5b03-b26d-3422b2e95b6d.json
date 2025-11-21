@@ -5,7 +5,7 @@
     "turn_id": 6,
     "is_success": true,
     "task_id": "task-f0a5f2a2-9959-4dd7-8d0a-97db42b1af50",
-    "collection_id": 1,
+    "collection_id": 0,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
     "timestamp": "2025-11-20T20:59:32.655521+00:00",
@@ -16,7 +16,7 @@
       "input_tokens": 19278,
       "output_tokens": 180
     },
-    "is_most_efficient": false,
+    "is_most_efficient": true,
     "strategy_metrics": {
       "phase_count": 2,
       "steps_per_phase": {

@@ -185,19 +185,24 @@ class RAGTemplateManager:
     def list_templates(self) -> List[Dict[str, Any]]:
         """
         Get a list of all templates with basic metadata.
+        Prefers display_name from manifest over template_name from template data.
         
         Returns:
             List of template metadata dictionaries
         """
         templates_list = []
         for template_id, template_data in self.templates.items():
+            # Get manifest data if available
+            manifest = self.plugin_manifests.get(template_id, {})
+            
             templates_list.append({
                 "template_id": template_id,
                 "template_name": template_data.get("template_name"),
+                "display_name": manifest.get("display_name", template_data.get("template_name")),
                 "template_type": template_data.get("template_type"),
-                "description": template_data.get("description"),
+                "description": manifest.get("description", template_data.get("description")),
                 "status": template_data.get("status", "active"),
-                "version": template_data.get("template_version")
+                "version": manifest.get("version", template_data.get("template_version"))
             })
         
         return templates_list

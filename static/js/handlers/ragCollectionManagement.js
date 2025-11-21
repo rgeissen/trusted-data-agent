@@ -166,10 +166,105 @@ async function initializeTemplateSystem() {
             // Trigger initial field rendering
             await switchTemplateFields();
         }
+        
+        // Load template cards dynamically
+        await loadTemplateCards();
     } catch (error) {
         console.error('[Template System] Failed to initialize:', error);
         showNotification('error', 'Failed to load templates');
     }
+}
+
+/**
+ * Load template cards dynamically from backend
+ */
+async function loadTemplateCards() {
+    const container = document.getElementById('rag-templates-container');
+    if (!container) return;
+    
+    try {
+        const templates = window.templateManager.getAllTemplates();
+        
+        if (!templates || templates.length === 0) {
+            container.innerHTML = '<div class="col-span-full text-gray-400 text-sm">No templates available</div>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        templates.forEach((template, index) => {
+            const card = createTemplateCard(template, index);
+            container.appendChild(card);
+        });
+        
+        console.log(`[Template Cards] Loaded ${templates.length} template cards`);
+    } catch (error) {
+        console.error('[Template Cards] Failed to load:', error);
+        container.innerHTML = '<div class="col-span-full text-red-400 text-sm">Failed to load templates</div>';
+    }
+}
+
+/**
+ * Create a template card element
+ */
+function createTemplateCard(template, index) {
+    const card = document.createElement('div');
+    card.className = 'glass-panel rounded-xl p-6 hover:border-[#F15F22] transition-colors cursor-pointer';
+    card.setAttribute('data-template-id', template.template_id);
+    
+    // Icon colors array
+    const iconColors = ['blue', 'purple', 'green', 'orange', 'pink', 'indigo'];
+    const colorIndex = index % iconColors.length;
+    const color = iconColors[colorIndex];
+    
+    card.innerHTML = `
+        <div class="flex items-start justify-between mb-4">
+            <div class="w-12 h-12 bg-${color}-500/20 rounded-lg flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-${color}-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    ${getTemplateIcon(template.template_type)}
+                </svg>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="px-2 py-1 bg-green-500/20 text-green-400 text-xs font-medium rounded">Ready</span>
+            </div>
+        </div>
+        <h3 class="text-lg font-bold text-white mb-2">${template.display_name || template.template_name}</h3>
+        <p class="text-sm text-gray-400 mb-4">${template.description || 'No description available'}</p>
+        <div class="space-y-2 text-xs text-gray-500">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>Template ID: ${template.template_id}</span>
+            </div>
+        </div>
+        <div class="mt-4 pt-4 border-t border-white/10 flex items-center justify-between">
+            <span class="text-xs text-gray-500">Click to populate</span>
+            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+        </div>
+    `;
+    
+    // Add click handler
+    card.addEventListener('click', () => {
+        window.openSqlTemplatePopulator();
+    });
+    
+    return card;
+}
+
+/**
+ * Get SVG path for template icon based on type
+ */
+function getTemplateIcon(templateType) {
+    const icons = {
+        'sql_query': '<path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />',
+        'api_request': '<path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />',
+        'default': '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />'
+    };
+    
+    return icons[templateType] || icons['default'];
 }
 
 /**
@@ -822,10 +917,18 @@ if (addRagCollectionBtn) {
     addRagCollectionBtn.addEventListener('click', openAddRagCollectionModal);
 }
 
-// SQL Template Card Event Listener
+// SQL Template Card Event Listeners
 const sqlTemplateCard = document.getElementById('sqlTemplateCard');
 if (sqlTemplateCard) {
     sqlTemplateCard.addEventListener('click', () => window.openSqlTemplatePopulator());
+}
+
+const sqlDocContextTemplateCard = document.getElementById('sqlDocContextTemplateCard');
+if (sqlDocContextTemplateCard) {
+    sqlDocContextTemplateCard.addEventListener('click', () => {
+        // For now, open the same modal but we could create a document-specific one later
+        window.openSqlTemplatePopulator();
+    });
 }
 
 if (addRagCollectionModalClose) {
@@ -1240,6 +1343,14 @@ window.openSqlTemplatePopulator = async function() {
     // Add initial example
     addSqlExample();
     
+    // Load template config to set placeholder
+    const selectedTemplateId = ragCollectionTemplateType?.value || 'sql_query_v1';
+    const templateConfig = await window.templateManager.getTemplateConfig(selectedTemplateId);
+    const mcpToolInput = document.getElementById('sql-template-mcp-tool');
+    if (mcpToolInput && templateConfig?.default_mcp_tool) {
+        mcpToolInput.placeholder = templateConfig.default_mcp_tool;
+    }
+    
     // Show modal with animation
     sqlTemplateModalOverlay.classList.remove('hidden');
     requestAnimationFrame(() => {
@@ -1361,7 +1472,14 @@ async function handleSqlTemplateSubmit(e) {
     const formData = new FormData(sqlTemplateForm);
     const collectionId = formData.get('collection_id');
     const databaseName = formData.get('database_name');
-    const mcpToolName = formData.get('mcp_tool_name') || 'base_executeRawSQLStatement';
+    
+    // Get MCP tool name from form or load default from template config
+    let mcpToolName = formData.get('mcp_tool_name');
+    if (!mcpToolName) {
+        const selectedTemplateId = ragCollectionTemplateType?.value || 'sql_query_v1';
+        const templateConfig = await window.templateManager.getTemplateConfig(selectedTemplateId);
+        mcpToolName = templateConfig?.default_mcp_tool || 'base_readQuery';
+    }
     
     // Collect examples
     const examples = [];

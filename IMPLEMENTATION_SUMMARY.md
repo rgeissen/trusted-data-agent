@@ -56,7 +56,7 @@ rag/tda_rag_cases/
     {
       "phase": 1,
       "goal": "Execute SQL statement",
-      "relevant_tools": ["base_executeRawSQLStatement"],
+      "relevant_tools": ["base_readQuery"],
       "arguments": {"sql_statement": "..."}
     },
     {
@@ -101,7 +101,7 @@ rag/tda_rag_cases/
     }
   ],
   "database_name": "mydb",
-  "mcp_tool_name": "base_executeRawSQLStatement"
+  "mcp_tool_name": "base_readQuery"
 }
 ```
 

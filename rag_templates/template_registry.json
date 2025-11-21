@@ -12,6 +12,16 @@
       "display_order": 1,
       "category": "Database",
       "is_builtin": true
+    },
+    {
+      "template_id": "sql_query_doc_context_v1",
+      "plugin_directory": "sql-query-doc-context",
+      "template_file": "sql-query-doc-context/sql_query_doc_context_v1.json",
+      "manifest_file": "sql-query-doc-context/manifest.json",
+      "status": "active",
+      "display_order": 2,
+      "category": "Database",
+      "is_builtin": true
     }
   ],
   "template_status_definitions": {

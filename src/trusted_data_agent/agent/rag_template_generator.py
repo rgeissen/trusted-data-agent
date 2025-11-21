@@ -277,7 +277,7 @@ class RAGTemplateGenerator:
         collection_id: int,
         examples: List[Tuple[str, str]],
         database_name: Optional[str] = None,
-        mcp_tool_name: str = "base_executeRawSQLStatement"
+        mcp_tool_name: str = "base_readQuery"
     ) -> Dict[str, Any]:
         """
         Populate a RAG collection with multiple SQL examples.
@@ -418,14 +418,14 @@ class RAGTemplateGenerator:
         """
         templates = {
             "sql_query": {
-                "name": "SQL Query Template",
+                "name": "SQL Query Template - Business Context",
                 "description": "Two-phase plan for executing SQL queries and generating reports",
                 "phases": [
                     {
                         "phase": 1,
                         "description": "Execute SQL statement using MCP tool",
                         "required_inputs": ["sql_statement"],
-                        "default_tool": "base_executeRawSQLStatement"
+                        "default_tool": "base_readQuery"
                     },
                     {
                         "phase": 2,

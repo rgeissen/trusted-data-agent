@@ -10,7 +10,7 @@ The Template Editor Modal has been successfully refactored to be fully modular a
 #### Template Info Section
 **Before:**
 ```html
-<h3 class="text-lg font-semibold text-white mb-2">SQL Query Template</h3>
+<h3 class="text-lg font-semibold text-white mb-2">SQL Query Template - Business Context</h3>
 <p class="text-sm text-gray-400">Two-phase plan: Execute SQL, generate report</p>
 ```
 
@@ -43,7 +43,7 @@ The Template Editor Modal has been successfully refactored to be fully modular a
 **Before:**
 ```html
 <!-- Hardcoded fields -->
-<input id="template-default-mcp-tool" value="base_executeRawSQLStatement">
+<input id="template-default-mcp-tool" value="base_readQuery">
 <input id="template-default-mcp-context-prompt" value="base_tableBusinessDesc">
 <input id="template-input-tokens" type="number" value="150">
 <input id="template-output-tokens" type="number" value="180">
@@ -263,7 +263,7 @@ Clear cache → Close modal → Show success notification
 
 ### Basic Functionality
 - [ ] Click "Edit Template" button - modal opens
-- [ ] Template name displays correctly (e.g., "SQL Query Template")
+- [ ] Template name displays correctly (e.g., "SQL Query Template - Business Context")
 - [ ] Template description populates
 - [ ] Input variables badges render with required indicators
 - [ ] Configuration fields render with correct values

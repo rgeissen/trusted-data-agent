@@ -26,9 +26,9 @@ rag/tda_rag_cases/
 
 ## Supported Templates
 
-### SQL Query Template
+### SQL Query Template - Business Context
 
-The SQL Query Template creates a two-phase plan:
+The SQL Query Template - Business Context creates a two-phase plan:
 - **Phase 1**: Execute SQL statement using an MCP tool
 - **Phase 2**: Generate final report with TDA_FinalReport
 
@@ -48,14 +48,14 @@ GET /api/v1/rag/templates
   "status": "success",
   "templates": {
     "sql_query": {
-      "name": "SQL Query Template",
+      "name": "SQL Query Template - Business Context",
       "description": "Two-phase plan for executing SQL queries and generating reports",
       "phases": [
         {
           "phase": 1,
           "description": "Execute SQL statement using MCP tool",
           "required_inputs": ["sql_statement"],
-          "default_tool": "base_executeRawSQLStatement"
+          "default_tool": "base_readQuery"
         },
         {
           "phase": 2,
@@ -97,13 +97,13 @@ Content-Type: application/json
     }
   ],
   "database_name": "mydb",
-  "mcp_tool_name": "base_executeRawSQLStatement"
+  "mcp_tool_name": "base_readQuery"
 }
 ```
 
 **Optional Fields:**
 - `database_name` (string): Database context for metadata
-- `mcp_tool_name` (string): MCP tool to use for SQL execution (default: `base_executeRawSQLStatement`)
+- `mcp_tool_name` (string): MCP tool to use for SQL execution (default: `base_readQuery`)
 
 **Response:**
 ```json

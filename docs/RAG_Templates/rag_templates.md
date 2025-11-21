@@ -49,7 +49,7 @@ Identifies and describes the template:
 ```json
 {
   "template_id": "sql_query_v1",
-  "template_name": "SQL Query Template",
+  "template_name": "SQL Query Template - Business Context",
   "template_version": "1.0.0",
   "template_type": "sql_query",
   "description": "Two-phase strategy: Execute SQL statement and generate final report",

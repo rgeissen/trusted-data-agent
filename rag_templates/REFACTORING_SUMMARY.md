@@ -2,7 +2,7 @@
 
 ## What Changed
 
-The SQL Query Template has been refactored into a proper modular plugin structure, serving as the **prototype** and **reference implementation** for the new plugin system.
+The SQL Query Template - Business Context has been refactored into a proper modular plugin structure, serving as the **prototype** and **reference implementation** for the new plugin system.
 
 ## Before → After
 
@@ -272,7 +272,7 @@ curl -X POST http://localhost:8080/api/v1/rag/collections/1/populate \
 
 ## Summary
 
-The SQL Query Template is now a **complete, modular plugin** that serves as:
+The SQL Query Template - Business Context is now a **complete, modular plugin** that serves as:
 - ✅ Reference implementation for plugin structure
 - ✅ Copy-paste template for new plugins
 - ✅ Documentation standard for all plugins

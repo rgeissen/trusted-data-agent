@@ -38,7 +38,7 @@ Created a comprehensive JavaScript class to handle:
 - Changed template dropdown from hardcoded options to dynamic loading:
   ```html
   <!-- BEFORE -->
-  <option value="sql_query">SQL Query Template</option>
+  <option value="sql_query">SQL Query Template - Business Context</option>
   <option value="api_call" disabled>API Call Template (Coming Soon)</option>
   
   <!-- AFTER -->

@@ -1,4 +1,4 @@
-# SQL Query Template Plugin
+# SQL Query Template - Business Context Plugin
 
 ## Overview
 
@@ -61,7 +61,7 @@ Content-Type: application/json
 
 1. Open "Manage RAG Collections"
 2. Select "Auto-generate with LLM"
-3. Choose "SQL Query Template"
+3. Choose "SQL Query Template - Business Context"
 4. Configure:
    - Subject/Topic
    - Database Name
@@ -92,7 +92,7 @@ PUT /api/v1/rag/templates/sql_query_v1/config
 Content-Type: application/json
 
 {
-  "default_mcp_tool": "base_executeRawSQLStatement",
+  "default_mcp_tool": "base_readQuery",
   "default_mcp_context_prompt": "base_databaseBusinessDesc",
   "estimated_input_tokens": 150,
   "estimated_output_tokens": 180
@@ -186,7 +186,7 @@ Use proper table name casing: schema.Table not schema.table
 ### Optimization Tips
 
 1. Use `base_readQuery` for read-only queries (more efficient)
-2. Use `base_executeRawSQLStatement` for write operations
+2. Use `base_readQuery` for write operations
 3. Batch similar queries in single collection
 4. Cache database context for repeated use
 

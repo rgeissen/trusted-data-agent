@@ -37,7 +37,7 @@ wc -l static/js/templateManager.js
 **Expected Results**:
 - Console shows: `[Template System] Initialized successfully`
 - Console shows: `Loaded X template(s)` (where X >= 1)
-- Template dropdown shows "SQL Query Template" (not "Loading templates...")
+- Template dropdown shows "SQL Query Template - Business Context" (not "Loading templates...")
 - No JavaScript errors in console
 
 **Success Criteria**: ✅ Templates load without errors
@@ -53,10 +53,10 @@ wc -l static/js/templateManager.js
 3. Look at Template Type dropdown
 
 **Expected Results**:
-- Dropdown shows at least "SQL Query Template"
+- Dropdown shows at least "SQL Query Template - Business Context"
 - Dropdown shows "API Call Template (Coming Soon)" - disabled
 - Dropdown shows "Custom Template (Coming Soon)" - disabled
-- SQL Query Template is selected by default
+- SQL Query Template - Business Context is selected by default
 
 **Success Criteria**: ✅ Dropdown populated from API, not hardcoded
 
@@ -68,7 +68,7 @@ wc -l static/js/templateManager.js
 **Steps**:
 1. In Add RAG Collection modal
 2. Select "Auto-generate with LLM" option
-3. Select "SQL Query Template" from dropdown
+3. Select "SQL Query Template - Business Context" from dropdown
 4. Observe rendered fields
 
 **Expected Results**:
@@ -89,7 +89,7 @@ wc -l static/js/templateManager.js
 1. In Add RAG Collection modal
 2. Select "Auto-generate with LLM" option
 3. Open DevTools Network tab
-4. Select "SQL Query Template" from dropdown
+4. Select "SQL Query Template - Business Context" from dropdown
 5. Check network requests
 
 **Expected Results**:
@@ -168,7 +168,7 @@ wc -l static/js/templateManager.js
 
 **Steps**:
 1. In RAG Collections section
-2. Click "Edit" on SQL Query Template card
+2. Click "Edit" on SQL Query Template - Business Context card
 3. Modify "Default MCP Tool Name"
 4. Modify token estimates
 5. Click "Save Template Configuration"
@@ -209,7 +209,7 @@ wc -l static/js/templateManager.js
 **Steps**:
 1. Add RAG Collection modal
 2. Select "Auto-generate with LLM"
-3. Select "SQL Query Template"
+3. Select "SQL Query Template - Business Context"
 4. Note the fields displayed
 5. If other templates are available, switch to them
 

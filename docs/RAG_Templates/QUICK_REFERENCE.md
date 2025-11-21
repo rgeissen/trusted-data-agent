@@ -48,7 +48,7 @@ rag/tda_rag_cases/
 
 ## 🔧 Template Types
 
-### SQL Query Template
+### SQL Query Template - Business Context
 **Use for:** Database queries that need SQL execution + report generation
 
 **Required fields:**
@@ -57,7 +57,7 @@ rag/tda_rag_cases/
 
 **Optional fields:**
 - `database_name`: Context (stored in metadata)
-- `mcp_tool_name`: Tool name (default: `base_executeRawSQLStatement`)
+- `mcp_tool_name`: Tool name (default: `base_readQuery`)
 
 ## ✅ Validation Rules
 

@@ -9,7 +9,7 @@ rag_templates/
 ├── README.md                      # This file
 ├── template_registry.json         # Template registry and metadata
 └── templates/                     # Individual template definitions
-    ├── sql_query_v1.json         # SQL Query Template
+    ├── sql_query_v1.json         # SQL Query Template - Business Context
     ├── api_request_v1.json       # (Future) API Request Template
     └── custom_workflow_v1.json   # (Future) Custom Workflow Template
 ```
@@ -115,7 +115,7 @@ Template configurations can be edited at runtime via the UI:
 4. **Document Examples**: Include usage examples in the template
 5. **Test Before Activating**: Use `"status": "beta"` for testing, then promote to `"active"`
 
-## Example: SQL Query Template
+## Example: SQL Query Template - Business Context
 
 See `templates/sql_query_v1.json` for a complete example of a production-ready template.
 

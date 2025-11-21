@@ -24,7 +24,7 @@ def populate_collection_with_sql_examples(
     collection_id: int,
     examples: List[Tuple[str, str]],
     database_name: str = None,
-    mcp_tool_name: str = "base_executeRawSQLStatement"
+    mcp_tool_name: str = "base_readQuery"
 ):
     """
     Populate a RAG collection with SQL template examples.
@@ -116,7 +116,7 @@ def main():
     )
     parser.add_argument(
         "--tool",
-        default="base_executeRawSQLStatement",
+        default="base_readQuery",
         help="MCP tool name for SQL execution"
     )
     

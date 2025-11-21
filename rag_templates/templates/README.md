@@ -6,7 +6,7 @@ This directory contains example template plugins demonstrating the modular plugi
 
 ### sql-query-basic
 
-The **SQL Query Template** - a complete, production-ready example showing:
+The **SQL Query Template - Business Context** - a complete, production-ready example showing:
 
 ✅ **Plugin Directory Structure:**
 ```

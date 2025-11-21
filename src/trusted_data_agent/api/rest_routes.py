@@ -1329,7 +1329,7 @@ async def populate_collection_from_template(collection_id: int):
             }
         ],
         "database_name": "mydb",  // optional
-        "mcp_tool_name": "base_executeRawSQLStatement"  // optional
+        "mcp_tool_name": "base_readQuery"  // optional
     }
     """
     try:
@@ -1386,7 +1386,7 @@ async def populate_collection_from_template(collection_id: int):
         
         # Populate collection
         database_name = data.get("database_name")
-        mcp_tool_name = data.get("mcp_tool_name", "base_executeRawSQLStatement")
+        mcp_tool_name = data.get("mcp_tool_name", "base_readQuery")
         
         app_logger.info(f"Populating collection {collection_id} with {len(examples)} SQL template examples")
         app_logger.info(f"Database name: {database_name}, MCP tool: {mcp_tool_name}")
@@ -1494,7 +1494,7 @@ async def update_rag_template_config(template_id: str):
     
     Body:
     {
-        "default_mcp_tool": "base_executeRawSQLStatement",
+        "default_mcp_tool": "base_readQuery",
         "estimated_input_tokens": 150,
         "estimated_output_tokens": 180
     }

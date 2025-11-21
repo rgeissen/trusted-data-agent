@@ -2,7 +2,7 @@
   "name": "sql-query-basic",
   "version": "1.0.0",
   "template_id": "sql_query_v1",
-  "display_name": "SQL Query Template",
+  "display_name": "SQL Query Template - Business Context",
   "description": "Two-phase strategy: Execute SQL statement and generate final report. Supports multiple databases with configurable MCP tools and LLM-assisted question generation.",
   "author": "TDA Core Team",
   "license": "MIT",
