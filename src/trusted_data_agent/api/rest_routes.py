@@ -1906,22 +1906,41 @@ async def get_sessions_analytics():
     try:
         user_uuid = _get_user_uuid_from_request()
         from pathlib import Path
+        from trusted_data_agent.core.config import APP_CONFIG
         
         project_root = Path(__file__).resolve().parents[3]
-        sessions_root = project_root / 'tda_sessions' / user_uuid
-        rag_cases_dir = project_root / 'rag' / 'tda_rag_cases'
+        sessions_base = project_root / 'tda_sessions'
         
-        if not sessions_root.exists():
-            return jsonify({
-                "total_sessions": 0,
-                "total_tokens": {"input": 0, "output": 0, "total": 0},
-                "success_rate": 0,
-                "estimated_cost": 0,
-                "model_distribution": {},
-                "top_expensive_queries": [],
-                "top_expensive_questions": [],
-                "velocity_data": []
-            }), 200
+        # Determine which sessions to scan based on filter setting
+        if APP_CONFIG.SESSIONS_FILTER_BY_USER:
+            # User-specific mode
+            sessions_root = sessions_base / user_uuid
+            if not sessions_root.exists():
+                return jsonify({
+                    "total_sessions": 0,
+                    "total_tokens": {"input": 0, "output": 0, "total": 0},
+                    "success_rate": 0,
+                    "estimated_cost": 0,
+                    "model_distribution": {},
+                    "top_expensive_queries": [],
+                    "top_expensive_questions": [],
+                    "velocity_data": []
+                }), 200
+            scan_dirs = [sessions_root]
+        else:
+            # All users mode
+            if not sessions_base.exists():
+                return jsonify({
+                    "total_sessions": 0,
+                    "total_tokens": {"input": 0, "output": 0, "total": 0},
+                    "success_rate": 0,
+                    "estimated_cost": 0,
+                    "model_distribution": {},
+                    "top_expensive_queries": [],
+                    "top_expensive_questions": [],
+                    "velocity_data": []
+                }), 200
+            scan_dirs = [d for d in sessions_base.iterdir() if d.is_dir()]
         
         # Initialize analytics
         total_sessions = 0
@@ -1934,66 +1953,67 @@ async def get_sessions_analytics():
         expensive_queries = []
         expensive_questions = []
         
-        # Scan all session files
-        for session_file in sessions_root.glob('*.json'):
-            try:
-                with open(session_file, 'r', encoding='utf-8') as f:
-                    session_data = json.load(f)
-                
-                total_sessions += 1
-                total_input_tokens += session_data.get('input_tokens', 0)
-                total_output_tokens += session_data.get('output_tokens', 0)
-                
-                # Track model usage
-                models_used = session_data.get('models_used', [])
-                for model in models_used:
-                    model_usage[model] = model_usage.get(model, 0) + 1
-                
-                # Analyze workflow history
-                workflow_history = session_data.get('last_turn_data', {}).get('workflow_history', [])
-                for turn in workflow_history:
-                    if turn.get('isValid', True):
-                        total_turns += 1
-                        # Simple success heuristic: has final_summary and no critical errors
-                        if turn.get('final_summary'):
-                            successful_turns += 1
-                        
-                        # Track expensive individual questions
-                        user_query = turn.get('user_query', '')
-                        turn_tokens = (turn.get('turn_input_tokens', 0) + 
-                                     turn.get('turn_output_tokens', 0))
-                        
-                        if turn_tokens > 0 and user_query:
-                            expensive_questions.append({
-                                "query": user_query[:60] + "..." if len(user_query) > 60 else user_query,
-                                "tokens": turn_tokens,
-                                "session_id": session_data.get('id', 'unknown')[:8]
-                            })
-                
-                # Track expensive sessions (tokens are at session level, not turn level)
-                session_tokens = session_data.get('input_tokens', 0) + session_data.get('output_tokens', 0)
-                session_name = session_data.get('name', 'Unnamed Session')
-                
-                if session_tokens > 0:
-                    expensive_queries.append({
-                        "query": session_name[:60] + "..." if len(session_name) > 60 else session_name,
-                        "tokens": session_tokens,
-                        "session_id": session_data.get('id', 'unknown')[:8]
-                    })
-                
-                # Track velocity (sessions per hour)
-                created_at = session_data.get('created_at')
-                if created_at:
-                    try:
-                        dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                        hour_key = dt.strftime('%Y-%m-%d %H:00')
-                        sessions_by_hour[hour_key] = sessions_by_hour.get(hour_key, 0) + 1
-                    except:
-                        pass
-                        
-            except Exception as e:
-                app_logger.warning(f"Error processing session file {session_file.name}: {e}")
-                continue
+        # Scan all session files from determined directories
+        for session_dir in scan_dirs:
+            for session_file in session_dir.glob('*.json'):
+                try:
+                    with open(session_file, 'r', encoding='utf-8') as f:
+                        session_data = json.load(f)
+                    
+                    total_sessions += 1
+                    total_input_tokens += session_data.get('input_tokens', 0)
+                    total_output_tokens += session_data.get('output_tokens', 0)
+                    
+                    # Track model usage
+                    models_used = session_data.get('models_used', [])
+                    for model in models_used:
+                        model_usage[model] = model_usage.get(model, 0) + 1
+                    
+                    # Analyze workflow history
+                    workflow_history = session_data.get('last_turn_data', {}).get('workflow_history', [])
+                    for turn in workflow_history:
+                        if turn.get('isValid', True):
+                            total_turns += 1
+                            # Simple success heuristic: has final_summary and no critical errors
+                            if turn.get('final_summary'):
+                                successful_turns += 1
+                            
+                            # Track expensive individual questions
+                            user_query = turn.get('user_query', '')
+                            turn_tokens = (turn.get('turn_input_tokens', 0) + 
+                                         turn.get('turn_output_tokens', 0))
+                            
+                            if turn_tokens > 0 and user_query:
+                                expensive_questions.append({
+                                    "query": user_query[:60] + "..." if len(user_query) > 60 else user_query,
+                                    "tokens": turn_tokens,
+                                    "session_id": session_data.get('id', 'unknown')[:8]
+                                })
+                    
+                    # Track expensive sessions (tokens are at session level, not turn level)
+                    session_tokens = session_data.get('input_tokens', 0) + session_data.get('output_tokens', 0)
+                    session_name = session_data.get('name', 'Unnamed Session')
+                    
+                    if session_tokens > 0:
+                        expensive_queries.append({
+                            "query": session_name[:60] + "..." if len(session_name) > 60 else session_name,
+                            "tokens": session_tokens,
+                            "session_id": session_data.get('id', 'unknown')[:8]
+                        })
+                    
+                    # Track velocity (sessions per hour)
+                    created_at = session_data.get('created_at')
+                    if created_at:
+                        try:
+                            dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                            hour_key = dt.strftime('%Y-%m-%d %H:00')
+                            sessions_by_hour[hour_key] = sessions_by_hour.get(hour_key, 0) + 1
+                        except:
+                            pass
+                            
+                except Exception as e:
+                    app_logger.warning(f"Error processing session file {session_file.name}: {e}")
+                    continue
         
         # Calculate metrics
         total_tokens_val = total_input_tokens + total_output_tokens
@@ -2051,6 +2071,7 @@ async def get_sessions_list():
     try:
         user_uuid = _get_user_uuid_from_request()
         from pathlib import Path
+        from trusted_data_agent.core.config import APP_CONFIG
         
         # Get query parameters
         search_query = request.args.get('search', '').lower()
@@ -2061,89 +2082,100 @@ async def get_sessions_list():
         offset = int(request.args.get('offset', 0))
         
         project_root = Path(__file__).resolve().parents[3]
-        sessions_root = project_root / 'tda_sessions' / user_uuid
-        rag_cases_dir = project_root / 'rag' / 'tda_rag_cases'
+        sessions_base = project_root / 'tda_sessions'
         
-        if not sessions_root.exists():
-            return jsonify({"sessions": [], "total": 0}), 200
+        # Determine which sessions to scan based on filter setting
+        if APP_CONFIG.SESSIONS_FILTER_BY_USER:
+            # User-specific mode
+            sessions_root = sessions_base / user_uuid
+            if not sessions_root.exists():
+                return jsonify({"sessions": [], "total": 0}), 200
+            scan_dirs = [sessions_root]
+        else:
+            # All users mode
+            if not sessions_base.exists():
+                return jsonify({"sessions": [], "total": 0}), 200
+            scan_dirs = [d for d in sessions_base.iterdir() if d.is_dir()]
         
         sessions = []
         
-        # Load all sessions
-        for session_file in sessions_root.glob('*.json'):
-            try:
-                with open(session_file, 'r', encoding='utf-8') as f:
-                    session_data = json.load(f)
-                
-                session_id = session_data.get('id')
-                name = session_data.get('name', 'Unnamed Session')
-                created_at = session_data.get('created_at', '')
-                last_updated = session_data.get('last_updated', '')
-                provider = session_data.get('provider', 'Unknown')
-                model = session_data.get('model', 'Unknown')
-                input_tokens = session_data.get('input_tokens', 0)
-                output_tokens = session_data.get('output_tokens', 0)
-                
-                # Analyze workflow
-                workflow_history = session_data.get('last_turn_data', {}).get('workflow_history', [])
-                turn_count = len([t for t in workflow_history if t.get('isValid', True)])
-                
-                # Determine status
-                has_errors = False
-                all_successful = True
-                for turn in workflow_history:
-                    if not turn.get('isValid', True):
+        # Load all sessions from determined directories
+        for session_dir in scan_dirs:
+            for session_file in session_dir.glob('*.json'):
+                try:
+                    with open(session_file, 'r', encoding='utf-8') as f:
+                        session_data = json.load(f)
+                    
+                    session_id = session_data.get('id')
+                    name = session_data.get('name', 'Unnamed Session')
+                    created_at = session_data.get('created_at', '')
+                    last_updated = session_data.get('last_updated', '')
+                    provider = session_data.get('provider', 'Unknown')
+                    model = session_data.get('model', 'Unknown')
+                    input_tokens = session_data.get('input_tokens', 0)
+                    output_tokens = session_data.get('output_tokens', 0)
+                    
+                    # Analyze workflow
+                    workflow_history = session_data.get('last_turn_data', {}).get('workflow_history', [])
+                    turn_count = len([t for t in workflow_history if t.get('isValid', True)])
+                    
+                    # Determine status
+                    has_errors = False
+                    all_successful = True
+                    for turn in workflow_history:
+                        if not turn.get('isValid', True):
+                            continue
+                        if not turn.get('final_summary'):
+                            all_successful = False
+                        # Check for errors in execution trace
+                        exec_trace = turn.get('execution_trace', [])
+                        for entry in exec_trace:
+                            if isinstance(entry, dict):
+                                result = entry.get('result', {})
+                                if isinstance(result, dict) and result.get('status') == 'error':
+                                    has_errors = True
+                    
+                    if all_successful and not has_errors and turn_count > 0:
+                        status = 'success'
+                    elif turn_count > 0:
+                        status = 'partial' if all_successful else 'failed'
+                    else:
+                        status = 'empty'
+                    
+                    # Check for RAG enhancement
+                    rag_cases_dir = project_root / 'rag' / 'tda_rag_cases'
+                    has_rag = False
+                    if rag_cases_dir.exists():
+                        for case_file in rag_cases_dir.glob(f'case_*-{session_id[:8]}*.json'):
+                            has_rag = True
+                            break
+                    
+                    # Apply filters (but not search - let client handle that for flexibility)
+                    if filter_status != 'all' and status != filter_status:
                         continue
-                    if not turn.get('final_summary'):
-                        all_successful = False
-                    # Check for errors in execution trace
-                    exec_trace = turn.get('execution_trace', [])
-                    for entry in exec_trace:
-                        if isinstance(entry, dict):
-                            result = entry.get('result', {})
-                            if isinstance(result, dict) and result.get('status') == 'error':
-                                has_errors = True
-                
-                if all_successful and not has_errors and turn_count > 0:
-                    status = 'success'
-                elif turn_count > 0:
-                    status = 'partial' if all_successful else 'failed'
-                else:
-                    status = 'empty'
-                
-                # Check for RAG enhancement
-                has_rag = False
-                if rag_cases_dir.exists():
-                    for case_file in rag_cases_dir.glob(f'case_*-{session_id[:8]}*.json'):
-                        has_rag = True
-                        break
-                
-                # Apply filters (but not search - let client handle that for flexibility)
-                if filter_status != 'all' and status != filter_status:
+                    if filter_model != 'all' and filter_model not in f"{provider}/{model}":
+                        continue
+                    
+                    sessions.append({
+                        "id": session_id,
+                        "name": name,
+                        "created_at": created_at,
+                        "last_updated": last_updated,
+                        "provider": provider,
+                        "model": model,
+                        "turn_count": turn_count,
+                        "total_tokens": input_tokens + output_tokens,
+                        "status": status,
+                        "has_rag": has_rag,
+                        "has_errors": has_errors,
+                        "last_turn_data": {
+                            "workflow_history": workflow_history
+                        }
+                    })
+                    
+                except Exception as e:
+                    app_logger.warning(f"Error processing session {session_file.name}: {e}")
                     continue
-                if filter_model != 'all' and filter_model not in f"{provider}/{model}":
-                    continue
-                
-                sessions.append({
-                    "id": session_id,
-                    "name": name,
-                    "created_at": created_at,
-                    "last_updated": last_updated,
-                    "provider": provider,
-                    "model": model,
-                    "turn_count": turn_count,
-                    "total_tokens": input_tokens + output_tokens,
-                    "status": status,
-                    "has_rag": has_rag,
-                    "has_errors": has_errors,
-                    "last_turn_data": {
-                        "workflow_history": workflow_history
-                    }
-                })
-                
-            except Exception as e:
-                app_logger.warning(f"Error processing session {session_file.name}: {e}")
-                continue
         
         # Sort sessions
         if sort_by == 'recent':

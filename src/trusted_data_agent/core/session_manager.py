@@ -204,38 +204,54 @@ def get_session(user_uuid: str, session_id: str) -> dict | None:
     return session_data
 
 def get_all_sessions(user_uuid: str) -> list[dict]:
-    app_logger.debug(f"Getting all sessions for user '{user_uuid}'.")
-    user_session_dir = SESSIONS_DIR / "".join(c for c in user_uuid if c.isalnum() or c in ['-', '_'])
-    app_logger.debug(f"Scanning directory: {user_session_dir}")
+    from trusted_data_agent.core.config import APP_CONFIG
+    
+    app_logger.debug(f"Getting all sessions for user '{user_uuid}'. Filter by user: {APP_CONFIG.SESSIONS_FILTER_BY_USER}")
     session_summaries = []
-    if not user_session_dir.is_dir():
-        app_logger.warning(f"User session directory not found: {user_session_dir}. Returning empty list.")
-        return [] # Return empty list if user directory doesn't exist
-
-    for session_file in user_session_dir.glob("*.json"):
-        app_logger.debug(f"Found potential session file: {session_file.name}")
-        try:
-            with open(session_file, 'r', encoding='utf-8') as f:
-                # Load only necessary fields for summary to improve performance
-                data = json.load(f)
-                summary = {
-                    "id": data.get("id", session_file.stem),
-                    "name": data.get("name", "Unnamed Session"),
-                    "created_at": data.get("created_at", "Unknown"),
-                    "models_used": data.get("models_used", []),
-                    "last_updated": data.get("last_updated", data.get("created_at", "Unknown"))
-                }
-                app_logger.debug(f"Loaded summary for {session_file.name}: models_used={summary['models_used']}")
-                session_summaries.append(summary)
-                app_logger.debug(f"Successfully loaded summary for {session_file.name}.")
-        except (json.JSONDecodeError, OSError, KeyError) as e:
-            app_logger.error(f"Error loading summary from session file '{session_file}': {e}", exc_info=False) # Keep log concise
-            # Optionally add a placeholder or skip corrupted files
-            session_summaries.append({
-                 "id": session_file.stem,
-                 "name": f"Error Loading ({session_file.stem})",
-                 "created_at": "Unknown"
-            })
+    
+    # Determine which directories to scan based on filter setting
+    if APP_CONFIG.SESSIONS_FILTER_BY_USER:
+        # User-specific mode: scan only the user's directory
+        user_session_dir = SESSIONS_DIR / "".join(c for c in user_uuid if c.isalnum() or c in ['-', '_'])
+        app_logger.debug(f"Scanning user-specific directory: {user_session_dir}")
+        if not user_session_dir.is_dir():
+            app_logger.warning(f"User session directory not found: {user_session_dir}. Returning empty list.")
+            return []
+        scan_dirs = [user_session_dir]
+    else:
+        # All users mode: scan all subdirectories
+        app_logger.debug(f"Scanning all user directories in: {SESSIONS_DIR}")
+        if not SESSIONS_DIR.is_dir():
+            app_logger.warning(f"Sessions directory not found: {SESSIONS_DIR}. Returning empty list.")
+            return []
+        scan_dirs = [d for d in SESSIONS_DIR.iterdir() if d.is_dir()]
+    
+    # Scan all determined directories
+    for session_dir in scan_dirs:
+        for session_file in session_dir.glob("*.json"):
+            app_logger.debug(f"Found potential session file: {session_file.name}")
+            try:
+                with open(session_file, 'r', encoding='utf-8') as f:
+                    # Load only necessary fields for summary to improve performance
+                    data = json.load(f)
+                    summary = {
+                        "id": data.get("id", session_file.stem),
+                        "name": data.get("name", "Unnamed Session"),
+                        "created_at": data.get("created_at", "Unknown"),
+                        "models_used": data.get("models_used", []),
+                        "last_updated": data.get("last_updated", data.get("created_at", "Unknown"))
+                    }
+                    app_logger.debug(f"Loaded summary for {session_file.name}: models_used={summary['models_used']}")
+                    session_summaries.append(summary)
+                    app_logger.debug(f"Successfully loaded summary for {session_file.name}.")
+            except (json.JSONDecodeError, OSError, KeyError) as e:
+                app_logger.error(f"Error loading summary from session file '{session_file}': {e}", exc_info=False) # Keep log concise
+                # Optionally add a placeholder or skip corrupted files
+                session_summaries.append({
+                     "id": session_file.stem,
+                     "name": f"Error Loading ({session_file.stem})",
+                     "created_at": "Unknown"
+                })
 
 
     def sort_key(session):
