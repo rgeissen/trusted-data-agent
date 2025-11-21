@@ -45,6 +45,44 @@
     "preview_renderer": false,
     "file_upload": true
   },
+  "population_modes": {
+    "manual": {
+      "supported": true,
+      "description": "User manually enters question/SQL pairs with document context through the template interface",
+      "required_fields": ["user_query", "sql_statement", "context_topic", "document_content"]
+    },
+    "auto_generate": {
+      "supported": true,
+      "requires_llm": true,
+      "requires_pdf": true,
+      "description": "LLM generates question/SQL pairs from technical documentation (DBA guides, performance docs, operational manuals)",
+      "input_variables": {
+        "context_topic": {
+          "required": true,
+          "description": "Technical domain or documentation topic",
+          "example": "database performance tuning, index optimization, query best practices"
+        },
+        "document_content": {
+          "required": true,
+          "description": "Technical documentation content (from PDFs, manuals, or guides)",
+          "example": "DBA guide sections, performance tuning documentation, best practices"
+        },
+        "database_name": {
+          "required": false,
+          "description": "Target database name",
+          "example": "production_db, teradata_prod"
+        },
+        "num_examples": {
+          "required": true,
+          "type": "integer",
+          "default": 5,
+          "min": 1,
+          "max": 20,
+          "description": "Number of question/SQL pairs to generate"
+        }
+      }
+    }
+  },
   "metadata": {
     "category": "Database",
     "difficulty": "intermediate",

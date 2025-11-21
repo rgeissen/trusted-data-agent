@@ -97,7 +97,9 @@ class RAGTemplateManager:
             
             # Support both old flat structure and new plugin directory structure
             if plugin_directory:
-                template_path = self.templates_subdir / plugin_directory / "sql_query_v1.json"
+                # Extract just the filename from template_file if it contains path
+                template_filename = Path(template_file).name if template_file else f"{template_id}.json"
+                template_path = self.templates_subdir / plugin_directory / template_filename
                 manifest_path = self.templates_subdir / plugin_directory / "manifest.json"
             else:
                 template_path = self.templates_subdir / template_file

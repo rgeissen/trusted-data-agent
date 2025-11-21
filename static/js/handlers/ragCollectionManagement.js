@@ -93,40 +93,50 @@ const ragCollectionNameInput = document.getElementById('rag-collection-name');
 const ragCollectionMcpServerSelect = document.getElementById('rag-collection-mcp-server');
 const ragCollectionDescriptionInput = document.getElementById('rag-collection-description');
 
-// Population Method Radio Buttons
+// Level 1: Population Decision Radio Buttons
 const ragPopulationNone = document.getElementById('rag-population-none');
-const ragPopulationTemplate = document.getElementById('rag-population-template');
-const ragPopulationLlm = document.getElementById('rag-population-llm');
-const ragPopulationLlmLabel = document.getElementById('rag-population-llm-label');
-const ragPopulationLlmBadge = document.getElementById('rag-population-llm-badge');
+const ragPopulationWithTemplate = document.getElementById('rag-population-with-template');
 
-// Template Fields
+// Level 2: Template Population Options
 const ragCollectionTemplateOptions = document.getElementById('rag-collection-template-options');
 const ragCollectionTemplateType = document.getElementById('rag-collection-template-type');
+
+// Level 2: Population Method (Manual vs Auto-generate)
+const ragTemplateMethodManual = document.getElementById('rag-template-method-manual');
+const ragTemplateMethodLlm = document.getElementById('rag-template-method-llm');
+const ragTemplateMethodLlmLabel = document.getElementById('rag-template-method-llm-label');
+const ragTemplateMethodLlmBadge = document.getElementById('rag-template-method-llm-badge');
+
+// Manual Entry Fields
+const ragCollectionManualFields = document.getElementById('rag-collection-manual-fields');
 const ragCollectionTemplateDb = document.getElementById('rag-collection-template-db');
 const ragCollectionTemplateTool = document.getElementById('rag-collection-template-tool');
 const ragCollectionTemplateExamples = document.getElementById('rag-collection-template-examples');
 const ragCollectionTemplateAddExample = document.getElementById('rag-collection-template-add-example');
 
-// LLM Fields
-const ragCollectionLlmOptions = document.getElementById('rag-collection-llm-options');
-const ragCollectionLlmSubject = document.getElementById('rag-collection-llm-subject');
-const ragCollectionLlmCount = document.getElementById('rag-collection-llm-count');
+// Auto-generate with LLM Fields
+const ragCollectionLlmFields = document.getElementById('rag-collection-llm-fields');
+const ragCollectionLlmContextTopic = document.getElementById('rag-collection-llm-context-topic');
+const ragCollectionLlmDocumentContent = document.getElementById('rag-collection-llm-document-content');
 const ragCollectionLlmDb = document.getElementById('rag-collection-llm-db');
-const ragCollectionLlmTargetDb = document.getElementById('rag-collection-llm-target-db');
-const ragCollectionLlmConversionRules = document.getElementById('rag-collection-llm-conversion-rules');
-const ragCollectionLlmPromptPreview = document.getElementById('rag-collection-llm-prompt-preview');
-const ragCollectionRefreshPromptBtn = document.getElementById('rag-collection-refresh-prompt');
-const ragCollectionGenerateContextBtn = document.getElementById('rag-collection-generate-context');
-const ragCollectionContextResult = document.getElementById('rag-collection-context-result');
-const ragCollectionContextContent = document.getElementById('rag-collection-context-content');
-const ragCollectionContextClose = document.getElementById('rag-collection-context-close');
-const ragCollectionGenerateQuestionsBtn = document.getElementById('rag-collection-generate-questions-btn');
-const ragCollectionQuestionsResult = document.getElementById('rag-collection-questions-result');
-const ragCollectionQuestionsList = document.getElementById('rag-collection-questions-list');
-const ragCollectionQuestionsCount = document.getElementById('rag-collection-questions-count');
-const ragCollectionQuestionsClose = document.getElementById('rag-collection-questions-close');
-const ragCollectionPopulateBtn = document.getElementById('rag-collection-populate-btn');
+const ragCollectionLlmCount = document.getElementById('rag-collection-llm-count');
+
+// Legacy LLM workflow elements (removed from UI, kept for compatibility)
+const ragCollectionGenerateContextBtn = null;
+const ragCollectionGenerateQuestionsBtn = null;
+const ragCollectionPopulateBtn = null;
+const ragCollectionRefreshPromptBtn = null;
+const ragCollectionContextResult = null;
+const ragCollectionContextContent = null;
+const ragCollectionContextClose = null;
+const ragCollectionQuestionsResult = null;
+const ragCollectionQuestionsList = null;
+const ragCollectionQuestionsCount = null;
+const ragCollectionQuestionsClose = null;
+const ragCollectionLlmSubject = null;
+const ragCollectionLlmTargetDb = null;
+const ragCollectionLlmConversionRules = null;
+const ragCollectionLlmPromptPreview = null;
 
 // Context Result Modal Elements
 const contextResultModalOverlay = document.getElementById('context-result-modal-overlay');
@@ -150,10 +160,16 @@ let addCollectionExampleCounter = 0;
  * Initialize template system on page load
  */
 async function initializeTemplateSystem() {
+    console.log('[Template System] Starting initialization...');
     try {
+        if (!window.templateManager) {
+            console.error('[Template System] templateManager not available on window object');
+            return;
+        }
+        
         // Initialize template manager
         await window.templateManager.initialize();
-        console.log('[Template System] Initialized successfully');
+        console.log('[Template System] Template manager initialized successfully');
         
         // Populate template dropdown
         if (ragCollectionTemplateType) {
@@ -162,16 +178,21 @@ async function initializeTemplateSystem() {
                 includeComingSoon: true,
                 selectedTemplateId: 'sql_query_v1' // Default selection
             });
+            console.log('[Template System] Template dropdown populated');
             
             // Trigger initial field rendering
             await switchTemplateFields();
+            console.log('[Template System] Template fields switched');
         }
         
         // Load template cards dynamically
+        console.log('[Template System] Loading template cards...');
         await loadTemplateCards();
+        console.log('[Template System] Template cards loaded');
     } catch (error) {
         console.error('[Template System] Failed to initialize:', error);
-        showNotification('error', 'Failed to load templates');
+        console.error('[Template System] Error stack:', error.stack);
+        showNotification('error', 'Failed to load templates: ' + error.message);
     }
 }
 
@@ -180,10 +201,20 @@ async function initializeTemplateSystem() {
  */
 async function loadTemplateCards() {
     const container = document.getElementById('rag-templates-container');
-    if (!container) return;
+    if (!container) {
+        console.warn('[Template Cards] Container not found');
+        return;
+    }
     
     try {
+        if (!window.templateManager) {
+            console.error('[Template Cards] templateManager not initialized');
+            container.innerHTML = '<div class="col-span-full text-red-400 text-sm">Template manager not initialized</div>';
+            return;
+        }
+        
         const templates = window.templateManager.getAllTemplates();
+        console.log('[Template Cards] Retrieved templates:', templates);
         
         if (!templates || templates.length === 0) {
             container.innerHTML = '<div class="col-span-full text-gray-400 text-sm">No templates available</div>';
@@ -193,14 +224,18 @@ async function loadTemplateCards() {
         container.innerHTML = '';
         
         templates.forEach((template, index) => {
-            const card = createTemplateCard(template, index);
-            container.appendChild(card);
+            try {
+                const card = createTemplateCard(template, index);
+                container.appendChild(card);
+            } catch (cardError) {
+                console.error(`[Template Cards] Failed to create card for template ${template.template_id}:`, cardError);
+            }
         });
         
-        console.log(`[Template Cards] Loaded ${templates.length} template cards`);
+        console.log(`[Template Cards] Successfully loaded ${templates.length} template cards`);
     } catch (error) {
         console.error('[Template Cards] Failed to load:', error);
-        container.innerHTML = '<div class="col-span-full text-red-400 text-sm">Failed to load templates</div>';
+        container.innerHTML = '<div class="col-span-full text-red-400 text-sm">Failed to load templates: ' + error.message + '</div>';
     }
 }
 
@@ -371,10 +406,17 @@ async function openAddRagCollectionModal() {
     
     // Reset and hide all population options
     addCollectionExampleCounter = 0;
-    ragCollectionTemplateExamples.innerHTML = '';
-    ragCollectionTemplateOptions.classList.add('hidden');
-    if (ragCollectionLlmOptions) {
-        ragCollectionLlmOptions.classList.add('hidden');
+    if (ragCollectionTemplateExamples) {
+        ragCollectionTemplateExamples.innerHTML = '';
+    }
+    if (ragCollectionTemplateOptions) {
+        ragCollectionTemplateOptions.classList.add('hidden');
+    }
+    if (ragCollectionManualFields) {
+        ragCollectionManualFields.classList.add('hidden');
+    }
+    if (ragCollectionLlmFields) {
+        ragCollectionLlmFields.classList.add('hidden');
     }
     
     // Reset and hide context result
@@ -457,10 +499,14 @@ async function handleAddRagCollection(event) {
     
     // Determine population method
     let populationMethod = 'none';
-    if (ragPopulationTemplate && ragPopulationTemplate.checked) {
+    let templateMethod = 'manual';
+    
+    if (ragPopulationWithTemplate && ragPopulationWithTemplate.checked) {
         populationMethod = 'template';
-    } else if (ragPopulationLlm && ragPopulationLlm.checked) {
-        populationMethod = 'llm';
+        // Determine if manual or auto-generate
+        if (ragTemplateMethodLlm && ragTemplateMethodLlm.checked) {
+            templateMethod = 'llm';
+        }
     }
     
     // Validate
@@ -1692,17 +1738,18 @@ async function checkLlmConfiguration() {
         isLlmConfigured = false;
     }
     
-    if (ragPopulationLlm && ragPopulationLlmLabel && ragPopulationLlmBadge) {
+    if (ragTemplateMethodLlm && ragTemplateMethodLlmLabel && ragTemplateMethodLlmBadge) {
         if (isLlmConfigured) {
-            ragPopulationLlm.disabled = false;
-            ragPopulationLlmLabel.classList.remove('opacity-50', 'cursor-not-allowed');
-            ragPopulationLlmLabel.classList.add('cursor-pointer');
-            ragPopulationLlmBadge.classList.add('hidden');
+            ragTemplateMethodLlm.disabled = false;
+            ragTemplateMethodLlmLabel.classList.remove('opacity-50', 'cursor-not-allowed');
+            ragTemplateMethodLlmLabel.classList.add('cursor-pointer');
+            ragTemplateMethodLlmBadge.classList.add('hidden');
         } else {
-            ragPopulationLlm.disabled = true;
-            ragPopulationLlmLabel.classList.add('opacity-50', 'cursor-not-allowed');
-            ragPopulationLlmLabel.classList.remove('cursor-pointer');
-            ragPopulationLlmBadge.classList.remove('hidden');
+            ragTemplateMethodLlm.disabled = true;
+            ragTemplateMethodLlmLabel.classList.add('opacity-50', 'cursor-not-allowed');
+            ragTemplateMethodLlmLabel.classList.remove('cursor-pointer');
+            ragTemplateMethodLlmBadge.classList.remove('hidden');
+            ragTemplateMethodLlmBadge.textContent = 'LLM Not Configured';
         }
     }
 }
@@ -2063,58 +2110,43 @@ async function handlePopulateCollection() {
 /**
  * Handle population method radio button changes
  */
-async function handlePopulationMethodChange() {
-    const phase2Section = document.getElementById('phase-2-section');
-    const phase3Section = document.getElementById('phase-3-section');
-    const phase2Indicator = document.getElementById('phase-indicator-2');
-    const phase3Indicator = document.getElementById('phase-indicator-3');
+/**
+ * Level 1: Handle population decision (None vs With Template)
+ */
+async function handlePopulationDecisionChange() {
+    if (!ragCollectionTemplateOptions) return;
     
-    // Hide all population options first
-    if (ragCollectionTemplateOptions) {
-        ragCollectionTemplateOptions.classList.add('hidden');
-    }
+    // Hide template options by default
+    ragCollectionTemplateOptions.classList.add('hidden');
     
-    // Reset phases to initial state
-    if (phase2Section) {
-        phase2Section.classList.add('hidden', 'opacity-50', 'pointer-events-none');
-    }
-    if (phase3Section) {
-        phase3Section.classList.add('hidden', 'opacity-50', 'pointer-events-none');
-    }
-    if (phase2Indicator) {
-        phase2Indicator.classList.add('opacity-50');
-        phase2Indicator.querySelector('.w-8').classList.remove('bg-teradata-orange', 'text-white');
-        phase2Indicator.querySelector('.w-8').classList.add('bg-gray-600', 'text-gray-400');
-        phase2Indicator.querySelector('.text-sm').classList.remove('text-white');
-        phase2Indicator.querySelector('.text-sm').classList.add('text-gray-400');
-    }
-    if (phase3Indicator) {
-        phase3Indicator.classList.add('opacity-50');
-        phase3Indicator.querySelector('.w-8').classList.remove('bg-teradata-orange', 'text-white');
-        phase3Indicator.querySelector('.w-8').classList.add('bg-gray-600', 'text-gray-400');
-        phase3Indicator.querySelector('.text-sm').classList.remove('text-white');
-        phase3Indicator.querySelector('.text-sm').classList.add('text-gray-400');
-    }
-    
-    // Hide LLM options first
-    if (ragCollectionLlmOptions) {
-        ragCollectionLlmOptions.classList.add('hidden');
-    }
-    
-    // Show the selected population option
-    if (ragPopulationTemplate && ragPopulationTemplate.checked) {
+    // Show template options if "Populate with Template" is selected
+    if (ragPopulationWithTemplate && ragPopulationWithTemplate.checked) {
         ragCollectionTemplateOptions.classList.remove('hidden');
-        // Show appropriate template fields based on selection
+        // Load templates if not already loaded
         await switchTemplateFields();
+    }
+}
+
+/**
+ * Level 2: Handle template population method (Manual vs Auto-generate)
+ */
+async function handleTemplateMethodChange() {
+    if (!ragCollectionManualFields || !ragCollectionLlmFields) return;
+    
+    // Hide both method sections first
+    ragCollectionManualFields.classList.add('hidden');
+    ragCollectionLlmFields.classList.add('hidden');
+    
+    // Show the selected method fields
+    if (ragTemplateMethodManual && ragTemplateMethodManual.checked) {
+        ragCollectionManualFields.classList.remove('hidden');
         // Add initial example if none exist (only for SQL template)
-        if (ragCollectionTemplateType.value === 'sql_query' && ragCollectionTemplateExamples.children.length === 0) {
+        const templateType = ragCollectionTemplateType.value;
+        if (templateType.includes('sql_query') && ragCollectionTemplateExamples && ragCollectionTemplateExamples.children.length === 0) {
             addCollectionTemplateExample();
         }
-    } else if (ragPopulationLlm && ragPopulationLlm.checked) {
-        // Show LLM options
-        if (ragCollectionLlmOptions) {
-            ragCollectionLlmOptions.classList.remove('hidden');
-        }
+    } else if (ragTemplateMethodLlm && ragTemplateMethodLlm.checked) {
+        ragCollectionLlmFields.classList.remove('hidden');
     }
 }
 
@@ -2552,20 +2584,32 @@ async function loadTemplateToolName(templateId) {
     }
 }
 
-// Event Listeners for Population Method Radio Buttons
+// Level 1: Event Listeners for Population Decision (None vs With Template)
 if (ragPopulationNone) {
-    ragPopulationNone.addEventListener('change', handlePopulationMethodChange);
+    ragPopulationNone.addEventListener('change', handlePopulationDecisionChange);
 }
-if (ragPopulationTemplate) {
-    ragPopulationTemplate.addEventListener('change', handlePopulationMethodChange);
+if (ragPopulationWithTemplate) {
+    ragPopulationWithTemplate.addEventListener('change', handlePopulationDecisionChange);
 }
-if (ragPopulationLlm) {
-    ragPopulationLlm.addEventListener('change', handlePopulationMethodChange);
+
+// Level 2: Event Listeners for Template Population Method (Manual vs Auto-generate)
+if (ragTemplateMethodManual) {
+    ragTemplateMethodManual.addEventListener('change', handleTemplateMethodChange);
+}
+if (ragTemplateMethodLlm) {
+    ragTemplateMethodLlm.addEventListener('change', handleTemplateMethodChange);
 }
 
 // Event Listeners for Template Options
 if (ragCollectionTemplateType) {
-    ragCollectionTemplateType.addEventListener('change', switchTemplateFields);
+    ragCollectionTemplateType.addEventListener('change', async () => {
+        await switchTemplateFields();
+        // Reset to manual method when template changes
+        if (ragTemplateMethodManual) {
+            ragTemplateMethodManual.checked = true;
+            await handleTemplateMethodChange();
+        }
+    });
 }
 
 if (ragCollectionTemplateAddExample) {

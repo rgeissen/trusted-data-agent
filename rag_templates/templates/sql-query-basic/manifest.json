@@ -42,6 +42,43 @@
     "config_panel": false,
     "preview_renderer": false
   },
+  "population_modes": {
+    "manual": {
+      "supported": true,
+      "description": "User manually enters question/SQL pairs through the template populator interface",
+      "required_fields": ["user_query", "sql_statement"]
+    },
+    "auto_generate": {
+      "supported": true,
+      "requires_llm": true,
+      "description": "LLM generates question/SQL pairs from business context and requirements",
+      "input_variables": {
+        "context_topic": {
+          "required": true,
+          "description": "Business domain or subject area for generated queries",
+          "example": "customer analytics, sales reporting, inventory management"
+        },
+        "document_content": {
+          "required": false,
+          "description": "Optional business documentation or requirements for context",
+          "example": "Business requirements document, user stories, or domain guidelines"
+        },
+        "database_name": {
+          "required": false,
+          "description": "Target database name",
+          "example": "production_db, analytics_warehouse"
+        },
+        "num_examples": {
+          "required": true,
+          "type": "integer",
+          "default": 5,
+          "min": 1,
+          "max": 20,
+          "description": "Number of question/SQL pairs to generate"
+        }
+      }
+    }
+  },
   "metadata": {
     "category": "Database",
     "difficulty": "beginner",

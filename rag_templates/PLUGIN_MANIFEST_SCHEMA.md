@@ -144,6 +144,86 @@ The `manifest.json` file describes metadata, dependencies, and configuration for
         "preview_renderer": {
           "type": "boolean",
           "description": "Has custom preview renderer"
+        },
+        "file_upload": {
+          "type": "boolean",
+          "description": "Supports file upload (e.g., PDFs for context)"
+        }
+      }
+    },
+    "population_modes": {
+      "type": "object",
+      "description": "Supported methods for populating RAG collections with this template",
+      "properties": {
+        "manual": {
+          "type": "object",
+          "properties": {
+            "supported": {
+              "type": "boolean",
+              "description": "Whether manual entry mode is supported"
+            },
+            "description": {
+              "type": "string",
+              "description": "Description of manual entry workflow"
+            },
+            "required_fields": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Required template variables for manual entry"
+            }
+          }
+        },
+        "auto_generate": {
+          "type": "object",
+          "properties": {
+            "supported": {
+              "type": "boolean",
+              "description": "Whether LLM auto-generation is supported"
+            },
+            "requires_llm": {
+              "type": "boolean",
+              "description": "Whether LLM configuration is required"
+            },
+            "requires_pdf": {
+              "type": "boolean",
+              "description": "Whether PDF processing capabilities are required"
+            },
+            "description": {
+              "type": "string",
+              "description": "Description of auto-generation workflow"
+            },
+            "input_variables": {
+              "type": "object",
+              "description": "Input variables required for auto-generation",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "required": {
+                    "type": "boolean"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": ["string", "integer", "boolean", "file"]
+                  },
+                  "default": {},
+                  "min": {
+                    "type": "number"
+                  },
+                  "max": {
+                    "type": "number"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "example": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -187,6 +267,43 @@ The `manifest.json` file describes metadata, dependencies, and configuration for
   "ui_components": {
     "config_panel": false,
     "preview_renderer": false
+  },
+  "population_modes": {
+    "manual": {
+      "supported": true,
+      "description": "User manually enters question/SQL pairs through the template interface",
+      "required_fields": ["user_query", "sql_statement"]
+    },
+    "auto_generate": {
+      "supported": true,
+      "requires_llm": true,
+      "description": "LLM generates question/SQL pairs from business context",
+      "input_variables": {
+        "context_topic": {
+          "required": true,
+          "description": "Business domain or subject area",
+          "example": "customer analytics, sales reporting"
+        },
+        "document_content": {
+          "required": false,
+          "description": "Optional business documentation for context",
+          "example": "Business requirements, user stories"
+        },
+        "database_name": {
+          "required": false,
+          "description": "Target database name",
+          "example": "production_db"
+        },
+        "num_examples": {
+          "required": true,
+          "type": "integer",
+          "default": 5,
+          "min": 1,
+          "max": 20,
+          "description": "Number of question/SQL pairs to generate"
+        }
+      }
+    }
   }
 }
 ```
@@ -267,6 +384,48 @@ Templates with manifests can be:
 - Installed from local directory
 - Hot-reloaded without app restart
 
+## Population Modes
+
+Templates can support two modes for populating RAG collections:
+
+### 1. Manual Entry Mode
+User manually enters question/answer pairs through the template interface.
+- **Use case**: Precision control, custom examples, small datasets
+- **Workflow**: User fills in template variables for each example
+- **Required**: List of required template fields in `required_fields`
+
+### 2. Auto-generate Mode
+LLM automatically generates question/answer pairs from provided context.
+- **Use case**: Rapid prototyping, large datasets, documentation-driven
+- **Workflow**: User provides context (topic, documents, etc.) → LLM generates examples
+- **Required**: LLM configuration, `input_variables` specification
+
+### Population Flow (UI)
+```
+Add RAG Collection
+  ├─ Step 1: Collection Details (name, description, MCP server)
+  ├─ Step 2: Population Decision
+  │    ├─ Option A: No Population (empty collection)
+  │    └─ Option B: Populate with Template
+  │         ├─ Select Template Type
+  │         └─ Step 3: Population Method
+  │              ├─ Manual Entry → Fill template fields
+  │              └─ Auto-generate → Provide context + LLM generates
+  └─ Create Collection
+```
+
+### Example: SQL Template with Both Modes
+
+**Manual Mode:**
+- User enters: `user_query`, `sql_statement`, `database_name`
+- Creates individual RAG cases one by one
+- Good for: Verified examples, edge cases, compliance-critical queries
+
+**Auto-generate Mode:**
+- User enters: `context_topic` (e.g., "customer analytics"), `document_content` (optional)
+- LLM generates: 5-20 question/SQL pairs based on context
+- Good for: Training data, documentation coverage, initial seeding
+
 ## Validation
 
 The application validates manifests on load:
@@ -275,6 +434,7 @@ The application validates manifests on load:
 - File paths exist
 - Dependencies resolvable
 - Permissions declared
+- Population modes configuration valid
 
 ## Security Considerations
 
