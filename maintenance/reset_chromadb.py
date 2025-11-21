@@ -7,7 +7,7 @@ This is safe because all RAG data is stored in JSON files - ChromaDB is just a v
 import shutil
 from pathlib import Path
 
-project_root = Path(__file__).resolve().parent
+project_root = Path(__file__).resolve().parent.parent  # Go up from maintenance/ to project root
 chromadb_dir = project_root / '.chromadb_rag_cache'
 
 print("=" * 70)

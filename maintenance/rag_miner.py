@@ -47,12 +47,13 @@ logging.basicConfig(
 logger = logging.getLogger("rag_miner")
 
 class SessionMiner:
-    def __init__(self, sessions_dir: str | Path, output_dir: str | Path, force_reprocess: bool = False):
+    def __init__(self, sessions_dir: str | Path, output_dir: str | Path, force_reprocess: bool = False, rebuild_only: bool = False):
         self.sessions_dir = Path(sessions_dir).resolve()
         self.output_dir = Path(output_dir).resolve()
         self.force_reprocess = force_reprocess
+        self.rebuild_only = rebuild_only
         
-        if not self.sessions_dir.exists():
+        if not rebuild_only and not self.sessions_dir.exists():
              logger.error(f"Sessions directory not found at: {self.sessions_dir}")
              
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -139,6 +140,22 @@ class SessionMiner:
         logger.info(f"Miner initialized RAGRetriever with {len(self.retriever.collections)} active collection(s).")
         # --- MODIFICATION END ---
 
+        # --- NEW: Rebuild-only mode ---
+        if self.rebuild_only:
+            logger.info("--- REBUILD MODE: Loading ChromaDB from existing JSON case files ---")
+            collection_ids = list(self.retriever.collections.keys())
+            if not collection_ids:
+                logger.warning("No active collections found. Enable collections in tda_config.json first.")
+                return
+            
+            for collection_id in collection_ids:
+                logger.info(f"Rebuilding collection {collection_id}...")
+                self.retriever._maintain_vector_store(collection_id)
+            
+            logger.info("Rebuild complete!")
+            return
+        # --- END REBUILD MODE ---
+
         session_files = list(self.sessions_dir.rglob("*.json"))
         logger.info(f"Found {len(session_files)} potential session files.")
 
@@ -199,16 +216,17 @@ if __name__ == '__main__':
     DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "rag" / "tda_rag_cases"
     # --- MODIFICATION END ---
 
-    parser = argparse.ArgumentParser(description="Extract RAG case studies from TDA session logs.")
+    parser = argparse.ArgumentParser(description="Extract RAG case studies from TDA session logs or rebuild ChromaDB from existing cases.")
     parser.add_argument("--sessions_dir", type=str, default=str(DEFAULT_SESSIONS_DIR), 
                         help=f"Path to input sessions directory (default: {DEFAULT_SESSIONS_DIR})")
     parser.add_argument("--output_dir", type=str, default=str(DEFAULT_OUTPUT_DIR), 
                         help=f"Path to output case studies directory (default: {DEFAULT_OUTPUT_DIR})")
     parser.add_argument("--force", action="store_true", help="Force reprocessing of all turns.")
+    parser.add_argument("--rebuild", action="store_true", help="Rebuild ChromaDB from existing JSON case files (skips session processing).")
 
     args = parser.parse_args()
 
     # --- MODIFICATION START: Run the async main function ---
-    miner = SessionMiner(args.sessions_dir, args.output_dir, force_reprocess=args.force)
+    miner = SessionMiner(args.sessions_dir, args.output_dir, force_reprocess=args.force, rebuild_only=args.rebuild)
     asyncio.run(miner.run())
     # --- MODIFICATION END ---

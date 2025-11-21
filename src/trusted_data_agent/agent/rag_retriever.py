@@ -61,6 +61,9 @@ class RAGRetriever:
         
         # Load all active collections from APP_STATE
         self._load_active_collections()
+        
+        # Auto-rebuild ChromaDB from JSON files if collections are empty
+        self._auto_rebuild_if_needed()
         # --- MODIFICATION END ---
 
     def _ensure_default_collection(self):
@@ -198,6 +201,25 @@ class RAGRetriever:
                 )
                 self.collections[coll_id] = collection
                 logger.info(f"Loaded collection '{coll_id}' (ChromaDB: '{coll_name}', MCP Server ID: '{coll_mcp_server_id}')")
+            except KeyError as e:
+                if "'_type'" in str(e):
+                    logger.error(f"Collection '{coll_id}' has corrupted metadata (missing _type field). Attempting to delete and recreate...")
+                    try:
+                        # Try to delete the corrupted collection
+                        self.client.delete_collection(name=coll_name)
+                        logger.info(f"Deleted corrupted collection '{coll_name}'")
+                        # Recreate it
+                        collection = self.client.create_collection(
+                            name=coll_name,
+                            embedding_function=self.embedding_function,
+                            metadata={"hnsw:space": "cosine"}
+                        )
+                        self.collections[coll_id] = collection
+                        logger.info(f"Successfully recreated collection '{coll_id}' (ChromaDB: '{coll_name}')")
+                    except Exception as delete_error:
+                        logger.error(f"Failed to recover collection '{coll_id}': {delete_error}. Run maintenance/reset_chromadb.py to fix.", exc_info=True)
+                else:
+                    logger.error(f"Failed to load collection '{coll_id}': {e}", exc_info=True)
             except Exception as e:
                 logger.error(f"Failed to load collection '{coll_id}': {e}", exc_info=True)
         
@@ -219,6 +241,34 @@ class RAGRetriever:
                 self._maintain_vector_store(coll_id)
         else:
             logger.info("RAG_REFRESH_ON_STARTUP is False. Using cached vector stores.")
+    
+    def _auto_rebuild_if_needed(self):
+        """
+        Automatically rebuilds ChromaDB from JSON files if collections are empty
+        but JSON case files exist. This ensures a fresh git clone can automatically
+        populate ChromaDB without manual intervention.
+        """
+        for coll_id, collection in self.collections.items():
+            try:
+                # Check if collection is empty in ChromaDB
+                count = collection.count()
+                
+                # Check if JSON files exist on disk
+                collection_dir = self._get_collection_dir(coll_id)
+                json_files = list(collection_dir.glob("case_*.json"))
+                
+                # If ChromaDB is empty but JSON files exist, rebuild
+                if count == 0 and len(json_files) > 0:
+                    logger.info(f"Collection '{coll_id}' is empty but {len(json_files)} JSON case files found. Auto-rebuilding...")
+                    self._maintain_vector_store(coll_id)
+                    logger.info(f"Auto-rebuild complete for collection '{coll_id}'")
+                elif count == 0 and len(json_files) == 0:
+                    logger.debug(f"Collection '{coll_id}' is empty and no JSON files found (new collection)")
+                else:
+                    logger.debug(f"Collection '{coll_id}' has {count} documents in ChromaDB")
+                    
+            except Exception as e:
+                logger.error(f"Failed to auto-rebuild collection '{coll_id}': {e}", exc_info=True)
     
     def add_collection(self, name: str, description: str = "", mcp_server_id: Optional[str] = None) -> Optional[int]:
         """

@@ -113,9 +113,73 @@ python src/trusted_data_agent/rag_miner.py
     *   It will **DELETE all case files** from `rag/tda_rag_cases/`.
     *   It will **DELETE the entire .chromadb_rag_cache/ directory**, wiping the vector database.
     *   Use this if you suspect the RAG store is corrupted or you want to rebuild it from scratch using only the data in `tda_sessions`.
+*   `--rebuild`:
+    *   **NEW**: Rebuilds ChromaDB from existing JSON case files without processing sessions.
+    *   Scans `rag/tda_rag_cases/collection_*/case_*.json` files and loads them into ChromaDB.
+    *   Useful after running `maintenance/reset_chromadb.py` or when ChromaDB is corrupted but JSON files are intact.
+    *   Does not touch session data - only rebuilds the vector index from your existing cases.
+    *   Example: `python maintenance/rag_miner.py --rebuild`
 *   `--sessions_dir <path>`:
     *   Tells the miner to look in a different directory for session logs.
     *   Default: `tda_sessions/` [cite: src/trusted_data_agent/rag_miner.py]
 *   `--output_dir <path>`:
     *   Tells the miner to save the `case_*.json` files to a different directory.
     *   Default: `rag/tda_rag_cases/` [cite: src/trusted_data_agent/rag_miner.py]
+
+## 5. ChromaDB Recovery: reset_chromadb.py
+
+### When to Use
+
+If you encounter ChromaDB errors like `KeyError: '_type'` or other database corruption issues, you can safely reset the vector database without losing your RAG data.
+
+### How It Works
+
+The `reset_chromadb.py` script [cite: maintenance/reset_chromadb.py] deletes the `.chromadb_rag_cache/` directory. This is safe because:
+
+*   **Your actual RAG data is stored in JSON files** in `rag/tda_rag_cases/collection_*/`
+*   ChromaDB is just a **vector index cache** for fast similarity searches
+*   The index can be rebuilt from the JSON files
+
+### Usage
+
+```bash
+# From the project root
+python maintenance/reset_chromadb.py
+
+# Follow the prompts - type 'yes' to confirm deletion
+```
+
+### Recovery Steps
+
+After resetting ChromaDB, you have two options to rebuild the vector index:
+
+**Option 1: Using rag_miner.py (Recommended)**
+```bash
+# Rebuild from existing case files
+python maintenance/rag_miner.py --rebuild
+```
+
+**Option 2: Using the API**
+```bash
+# Start the application
+python -m src.trusted_data_agent.main
+
+# In another terminal, refresh each collection
+curl -X POST http://localhost:8000/api/v1/rag/collections/0/refresh
+curl -X POST http://localhost:8000/api/v1/rag/collections/1/refresh
+```
+
+### What Gets Preserved
+
+✅ **Preserved** (stored in JSON files):
+- All case studies and their metadata
+- User queries and SQL statements
+- Execution plans and strategies
+- User feedback scores
+- Efficiency metrics (token counts)
+- Collection assignments
+
+❌ **Lost** (will be regenerated):
+- Vector embeddings
+- ChromaDB indexes
+- Similarity search optimizations

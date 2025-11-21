@@ -1,0 +1,75 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ChromaDB Cache (exclude - will be rebuilt)
+.chromadb_rag_cache/
+
+# Logs
+logs/
+*.log
+
+# Session data (optional - exclude if contains sensitive data)
+# tda_sessions/
+
+# Sensitive data
+*.key
+*.pem
+*.env
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Keep RAG case files (these can be shared)
+!rag/tda_rag_cases/

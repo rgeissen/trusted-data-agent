@@ -1289,11 +1289,11 @@ button[data-action="delete-mcp"]:hover {
 .welcome-cta-button {
     position: relative;
     overflow: hidden;
-    box-shadow: 0 10px 40px rgba(241, 95, 34, 0.4);
+    box-shadow: 0 4px 12px rgba(241, 95, 34, 0.3);
 }
 
 .welcome-cta-button:hover {
-    box-shadow: 0 15px 50px rgba(241, 95, 34, 0.6);
+    box-shadow: 0 6px 20px rgba(241, 95, 34, 0.4);
 }
 
 /* Animated glow effect behind button */
