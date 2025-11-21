@@ -58,10 +58,10 @@
           "description": "Business domain or subject area for generated queries",
           "example": "customer analytics, sales reporting, inventory management"
         },
-        "document_content": {
+        "conversion_rules": {
           "required": false,
-          "description": "Optional business documentation or requirements for context",
-          "example": "Business requirements document, user stories, or domain guidelines"
+          "description": "SQL dialect conversion rules for target database",
+          "example": "Use TOP instead of LIMIT, convert boolean true/false to 1/0"
         },
         "database_name": {
           "required": false,
