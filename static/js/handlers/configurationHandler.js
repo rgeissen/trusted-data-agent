@@ -787,12 +787,29 @@ function saveLLMProvider(provider) {
     showNotification('success', `${LLM_PROVIDER_TEMPLATES[provider].name} configuration saved`);
 }
 
+function updateProfilesTab() {
+    const profilesTab = document.querySelector('.config-tab[data-tab="profiles-tab"]');
+    if (!profilesTab) return;
+
+    const mcpConfigured = configState.mcpServers.length > 0;
+    const llmConfigured = Object.values(configState.llmProviders).some(p => p.configured);
+
+    if (mcpConfigured && llmConfigured) {
+        profilesTab.disabled = false;
+        profilesTab.classList.remove('opacity-50', 'cursor-not-allowed');
+    } else {
+        profilesTab.disabled = true;
+        profilesTab.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+}
+
 export function updateReconnectButton() {
     const btn = document.getElementById('reconnect-and-load-btn');
     if (!btn) return;
 
     const canReconnect = configState.canReconnect();
     btn.disabled = !canReconnect;
+    updateProfilesTab();
 }
 
 export async function reconnectAndLoad() {
