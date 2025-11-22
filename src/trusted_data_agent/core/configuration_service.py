@@ -142,7 +142,17 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
 
             # --- 2. MCP Client Validation ---
             mcp_server_config = config_data.get("mcp_server", {})
-            mcp_server_url = f"http://{mcp_server_config.get('host')}:{mcp_server_config.get('port')}{mcp_server_config.get('path')}"
+            host = mcp_server_config.get('host')
+            port = mcp_server_config.get('port')
+            path = mcp_server_config.get('path')
+            
+            # Validate MCP server configuration
+            if not host or not port or not path:
+                raise ValueError(f"Incomplete MCP server configuration: host={host}, port={port}, path={path}")
+            
+            mcp_server_url = f"http://{host}:{port}{path}"
+            app_logger.info(f"Connecting to MCP server at: {mcp_server_url}")
+            
             temp_server_configs = {server_name: {"url": mcp_server_url, "transport": "streamable_http"}}
             temp_mcp_client = MultiServerMCPClient(temp_server_configs)
             async with temp_mcp_client.session(server_name) as temp_session:
@@ -256,6 +266,14 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             # --- 4. Load and Classify Capabilities (The Automatic Step) ---
             await mcp_adapter.load_and_categorize_mcp_resources(APP_STATE)
             APP_CONFIG.MCP_SERVER_CONNECTED = True
+            
+            # --- 4a. Load Enabled/Disabled Tools/Prompts from Active Profile ---
+            # Note: This will be fully populated when a profile is activated
+            # For now, just initialize with empty lists since no profile is active yet during initial config
+            config_manager = get_config_manager()
+            APP_STATE["disabled_tools"] = []
+            APP_STATE["disabled_prompts"] = []
+            app_logger.info("Initialized empty disabled lists. These will be populated when a profile is activated.")
             
             APP_CONFIG.CHART_MCP_CONNECTED = True
 

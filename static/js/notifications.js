@@ -117,8 +117,8 @@ export function subscribeToNotifications() {
                 break;
             }
             case 'session_model_update': {
-                const { session_id, models_used, last_updated, provider, model, name } = data.payload;
-                UI.updateSessionModels(session_id, models_used);
+                const { session_id, models_used, profile_tags_used, last_updated, provider, model, name } = data.payload;
+                UI.updateSessionModels(session_id, models_used, profile_tags_used);
                 UI.updateSessionTimestamp(session_id, last_updated);
                 if (name) {
                     UI.updateSessionListItemName(session_id, name);

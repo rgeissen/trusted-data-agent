@@ -2019,6 +2019,174 @@ async def get_mcp_resources_for_server():
 
 
 # ============================================================================
+# LLM CONFIGURATION ENDPOINTS
+# ============================================================================
+
+@rest_api_bp.route("/v1/llm/configurations", methods=["GET"])
+async def get_llm_configurations():
+    """Get all LLM configurations."""
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        
+        configurations = config_manager.get_llm_configurations()
+        active_config_id = config_manager.get_active_llm_configuration_id()
+        
+        return jsonify({
+            "status": "success",
+            "configurations": configurations,
+            "active_configuration_id": active_config_id
+        }), 200
+    except Exception as e:
+        app_logger.error(f"Error getting LLM configurations: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/llm/configurations", methods=["POST"])
+async def create_llm_configuration():
+    """Create a new LLM configuration."""
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        
+        data = await request.get_json()
+        
+        # Validate required fields
+        if not all(k in data for k in ["id", "provider", "name", "model", "credentials"]):
+            return jsonify({
+                "status": "error",
+                "message": "Missing required fields: id, provider, name, model, credentials"
+            }), 400
+        
+        # Validate name uniqueness
+        configurations = config_manager.get_llm_configurations()
+        if any(c.get("name") == data["name"] for c in configurations):
+            return jsonify({
+                "status": "error",
+                "message": f"Configuration name '{data['name']}' is already in use."
+            }), 400
+        
+        # Validate ID uniqueness
+        if any(c.get("id") == data["id"] for c in configurations):
+            return jsonify({
+                "status": "error",
+                "message": "Configuration ID already exists."
+            }), 400
+        
+        success = config_manager.add_llm_configuration(data)
+        
+        if success:
+            app_logger.info(f"Created LLM configuration: {data['name']}")
+            return jsonify({
+                "status": "success",
+                "message": "LLM configuration created successfully",
+                "configuration": data
+            }), 201
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "Failed to create LLM configuration"
+            }), 500
+            
+    except Exception as e:
+        app_logger.error(f"Error creating LLM configuration: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/llm/configurations/<config_id>", methods=["PUT"])
+async def update_llm_configuration(config_id: str):
+    """Update an existing LLM configuration."""
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        
+        data = await request.get_json()
+        
+        # If name is being updated, check uniqueness
+        if "name" in data:
+            configurations = config_manager.get_llm_configurations()
+            if any(c.get("name") == data["name"] and c.get("id") != config_id for c in configurations):
+                return jsonify({
+                    "status": "error",
+                    "message": f"Configuration name '{data['name']}' is already in use."
+                }), 400
+        
+        success = config_manager.update_llm_configuration(config_id, data)
+        
+        if success:
+            app_logger.info(f"Updated LLM configuration: {config_id}")
+            return jsonify({
+                "status": "success",
+                "message": "LLM configuration updated successfully"
+            }), 200
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "LLM configuration not found"
+            }), 404
+            
+    except Exception as e:
+        app_logger.error(f"Error updating LLM configuration: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/llm/configurations/<config_id>", methods=["DELETE"])
+async def delete_llm_configuration(config_id: str):
+    """Delete an LLM configuration."""
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        
+        success, error_message = config_manager.remove_llm_configuration(config_id)
+        
+        if success:
+            app_logger.info(f"Deleted LLM configuration: {config_id}")
+            return jsonify({
+                "status": "success",
+                "message": "LLM configuration deleted successfully"
+            }), 200
+        else:
+            return jsonify({
+                "status": "error",
+                "message": error_message or "Failed to delete LLM configuration"
+            }), 400 if error_message and "assigned" in error_message else 404
+            
+    except Exception as e:
+        app_logger.error(f"Error deleting LLM configuration: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/llm/configurations/<config_id>/activate", methods=["POST"])
+async def activate_llm_configuration(config_id: str):
+    """Set an LLM configuration as the active configuration."""
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        
+        # Verify configuration exists
+        configurations = config_manager.get_llm_configurations()
+        configuration = next((c for c in configurations if c.get("id") == config_id), None)
+        
+        if not configuration:
+            return jsonify({"status": "error", "message": "LLM configuration not found"}), 404
+        
+        success = config_manager.set_active_llm_configuration_id(config_id)
+        
+        if success:
+            app_logger.info(f"Activated LLM configuration: {config_id}")
+            return jsonify({
+                "status": "success",
+                "message": "LLM configuration activated successfully"
+            }), 200
+        else:
+            return jsonify({"status": "error", "message": "Failed to activate LLM configuration"}), 500
+            
+    except Exception as e:
+        app_logger.error(f"Error activating LLM configuration: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ============================================================================
 # PROFILE CONFIGURATION ENDPOINTS
 # ============================================================================
 
@@ -2085,6 +2253,7 @@ async def update_profile(profile_id: str):
     """Update an existing profile configuration."""
     try:
         from trusted_data_agent.core.config_manager import get_config_manager
+        from trusted_data_agent.core.config import APP_STATE
         config_manager = get_config_manager()
         
         data = await request.get_json()
@@ -2100,10 +2269,27 @@ async def update_profile(profile_id: str):
             if any(p.get("tag") == tag and p.get("id") != profile_id for p in profiles):
                 return jsonify({"status": "error", "message": f"Tag '{tag}' is already in use."}), 400
 
+        # Check if this profile is currently active for consumption
+        active_profile_ids = config_manager.get_active_for_consumption_profile_ids()
+        is_active = profile_id in active_profile_ids
+        
         success = config_manager.update_profile(profile_id, data)
         
         if success:
             app_logger.info(f"Updated profile: {profile_id}")
+            
+            # If this profile is active for consumption, update APP_STATE
+            if is_active and active_profile_ids:
+                primary_profile_id = active_profile_ids[0]
+                APP_STATE["disabled_tools"] = config_manager.get_profile_disabled_tools(primary_profile_id)
+                APP_STATE["disabled_prompts"] = config_manager.get_profile_disabled_prompts(primary_profile_id)
+                
+                app_logger.info(f"Profile {profile_id} is active - updated APP_STATE with {len(APP_STATE['disabled_tools'])} disabled tools and {len(APP_STATE['disabled_prompts'])} disabled prompts")
+                
+                # Regenerate contexts to reflect the updated disabled lists
+                from trusted_data_agent.core.utils import _regenerate_contexts
+                _regenerate_contexts()
+            
             return jsonify({
                 "status": "success",
                 "message": "Profile updated successfully"
@@ -2176,9 +2362,10 @@ async def set_default_profile(profile_id: str):
 
 @rest_api_bp.route("/v1/profiles/set_active_for_consumption", methods=["POST"])
 async def set_active_for_consumption_profiles():
-    """Set the list of profiles active for consumption."""
+    """Set the list of profiles active for consumption and update APP_STATE with enabled/disabled lists."""
     try:
         from trusted_data_agent.core.config_manager import get_config_manager
+        from trusted_data_agent.core.config import APP_STATE
         config_manager = get_config_manager()
         
         data = await request.get_json()
@@ -2186,11 +2373,32 @@ async def set_active_for_consumption_profiles():
         
         success = config_manager.set_active_for_consumption_profile_ids(profile_ids)
         
-        if success:
+        if success and profile_ids:
+            # Update APP_STATE with disabled lists from the first active profile
+            # (For simplicity, we use the first profile's settings)
+            primary_profile_id = profile_ids[0]
+            APP_STATE["disabled_tools"] = config_manager.get_profile_disabled_tools(primary_profile_id)
+            APP_STATE["disabled_prompts"] = config_manager.get_profile_disabled_prompts(primary_profile_id)
+            
             app_logger.info(f"Set active for consumption profiles: {profile_ids}")
+            app_logger.info(f"Updated APP_STATE with {len(APP_STATE['disabled_tools'])} disabled tools and {len(APP_STATE['disabled_prompts'])} disabled prompts from profile {primary_profile_id}")
+            
+            # Regenerate contexts to reflect the new disabled lists
+            from trusted_data_agent.core.utils import _regenerate_contexts
+            _regenerate_contexts()
+            
             return jsonify({
                 "status": "success",
                 "message": "Active for consumption profiles set successfully"
+            }), 200
+        elif success:
+            # No active profiles - clear disabled lists
+            APP_STATE["disabled_tools"] = []
+            APP_STATE["disabled_prompts"] = []
+            app_logger.info("Cleared active for consumption profiles and disabled lists")
+            return jsonify({
+                "status": "success",
+                "message": "Active for consumption profiles cleared successfully"
             }), 200
         else:
             return jsonify({"status": "error", "message": "Failed to set active for consumption profiles"}), 500

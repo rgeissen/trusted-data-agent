@@ -188,9 +188,8 @@ async function saveClassificationSetting(enabled) {
 class ConfigurationState {
     constructor() {
         this.mcpServers = [];
-        this.llmProviders = this.loadLLMProviders();
-        this.activeMCP = null;
-        this.activeLLM = localStorage.getItem(STORAGE_KEYS.ACTIVE_LLM);
+        this.llmConfigurations = [];
+        this.activeLLM = null;
         this.profiles = [];
         this.activeProfileId = null;
         this.initialized = false;
@@ -199,8 +198,81 @@ class ConfigurationState {
     async initialize() {
         if (this.initialized) return;
         await this.loadMCPServers();
+        await this.loadLLMConfigurations();
+        await this.migrateLegacyLLMProviders();
         await this.loadProfiles();
         this.initialized = true;
+    }
+
+    /**
+     * Migrate legacy localStorage LLM providers to backend configurations
+     */
+    async migrateLegacyLLMProviders() {
+        try {
+            // Check if there are any legacy providers in localStorage
+            const legacyProvidersJSON = safeGetItem(STORAGE_KEYS.LLM_PROVIDERS);
+            if (!legacyProvidersJSON) return; // Nothing to migrate
+
+            const legacyProviders = JSON.parse(legacyProvidersJSON);
+            const providerKeys = Object.keys(legacyProviders);
+            
+            if (providerKeys.length === 0) {
+                // Clean up empty legacy data
+                localStorage.removeItem(STORAGE_KEYS.LLM_PROVIDERS);
+                localStorage.removeItem(STORAGE_KEYS.ACTIVE_LLM);
+                return;
+            }
+
+            console.log('Migrating legacy LLM providers:', providerKeys);
+
+            // Track migration results
+            const migrationResults = [];
+
+            // Migrate each provider to a new configuration
+            for (const providerKey of providerKeys) {
+                const legacyConfig = legacyProviders[providerKey];
+                if (!legacyConfig || !legacyConfig.model) continue; // Skip incomplete configs
+
+                const configData = {
+                    name: `${providerKey} (Migrated)`,
+                    provider: providerKey,
+                    model: legacyConfig.model,
+                    credentials: legacyConfig.credentials || {}
+                };
+
+                // Add listingMethod for Amazon if it exists
+                if (providerKey === 'Amazon' && legacyConfig.listingMethod) {
+                    configData.credentials.listingMethod = legacyConfig.listingMethod;
+                }
+
+                try {
+                    const result = await this.addLLMConfiguration(configData);
+                    if (result) {
+                        migrationResults.push({ provider: providerKey, success: true, id: result.id });
+                        console.log(`Migrated ${providerKey} configuration:`, result);
+                    }
+                } catch (error) {
+                    console.error(`Failed to migrate ${providerKey}:`, error);
+                    migrationResults.push({ provider: providerKey, success: false, error: error.message });
+                }
+            }
+
+            // Note: We don't set an active LLM anymore since active state is now
+            // determined by profiles. Users will need to update their profiles to
+            // use the migrated configurations.
+
+            // Clean up localStorage after successful migration
+            localStorage.removeItem(STORAGE_KEYS.LLM_PROVIDERS);
+            localStorage.removeItem(STORAGE_KEYS.ACTIVE_LLM);
+
+            const successCount = migrationResults.filter(r => r.success).length;
+            if (successCount > 0) {
+                showNotification('success', `Migrated ${successCount} LLM configuration(s) to new system`);
+            }
+        } catch (error) {
+            console.error('Error during LLM provider migration:', error);
+            // Don't fail initialization if migration fails
+        }
     }
 
     async loadProfiles() {
@@ -273,21 +345,21 @@ class ConfigurationState {
         // Kept for compatibility
     }
 
-    loadLLMProviders() {
-        const stored = localStorage.getItem(STORAGE_KEYS.LLM_PROVIDERS);
-        if (stored) {
-            return JSON.parse(stored);
+    async loadLLMConfigurations() {
+        try {
+            const response = await fetch('/api/v1/llm/configurations');
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                this.llmConfigurations = result.configurations || [];
+                this.activeLLM = result.active_configuration_id;
+                return this.llmConfigurations;
+            }
+        } catch (error) {
+            console.error('Failed to load LLM configurations:', error);
+            this.llmConfigurations = [];
         }
-        // Initialize with default empty configs for each provider
-        const providers = {};
-        Object.keys(LLM_PROVIDER_TEMPLATES).forEach(key => {
-            providers[key] = { provider: key, configured: false, model: null, credentials: {} };
-        });
-        return providers;
-    }
-
-    saveLLMProviders() {
-        safeSetItem(STORAGE_KEYS.LLM_PROVIDERS, JSON.stringify(this.llmProviders));
+        return this.llmConfigurations;
     }
 
     async setActiveMCP(serverId) {
@@ -305,10 +377,19 @@ class ConfigurationState {
         }
     }
 
-    setActiveLLM(provider) {
-        this.activeLLM = provider;
-        safeSetItem(STORAGE_KEYS.ACTIVE_LLM, provider);
-        updateReconnectButton();
+    async setActiveLLM(configId) {
+        try {
+            const response = await fetch(`/api/v1/llm/configurations/${configId}/activate`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                this.activeLLM = configId;
+                updateReconnectButton();
+            }
+        } catch (error) {
+            console.error('Failed to set active LLM configuration:', error);
+        }
     }
 
     async addMCPServer(server) {
@@ -383,23 +464,89 @@ class ConfigurationState {
         return false;
     }
 
-    updateLLMProvider(provider, data) {
-        this.llmProviders[provider] = { ...this.llmProviders[provider], ...data, configured: true };
-        this.saveLLMProviders();
+    async addLLMConfiguration(configuration) {
+        configuration.id = configuration.id || generateId();
+        
+        try {
+            const response = await fetch('/api/v1/llm/configurations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(configuration)
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                await this.loadLLMConfigurations();
+                return result.configuration; // Return the full configuration object with ID
+            } else {
+                const errorData = await response.json();
+                console.error('Failed to add LLM configuration:', errorData);
+                throw new Error(errorData.message || 'Failed to add LLM configuration');
+            }
+        } catch (error) {
+            console.error('Failed to add LLM configuration:', error);
+            throw error;
+        }
+    }
+
+    async removeLLMConfiguration(configId) {
+        try {
+            const response = await fetch(`/api/v1/llm/configurations/${configId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                this.llmConfigurations = this.llmConfigurations.filter(c => c.id !== configId);
+                if (this.activeLLM === configId) {
+                    this.activeLLM = null;
+                }
+                return { success: true };
+            } else {
+                const errorData = await response.json();
+                return { 
+                    success: false, 
+                    error: errorData.message || 'Failed to remove LLM configuration' 
+                };
+            }
+        } catch (error) {
+            console.error('Failed to remove LLM configuration:', error);
+            return { 
+                success: false, 
+                error: error.message || 'Failed to remove LLM configuration' 
+            };
+        }
+    }
+
+    async updateLLMConfiguration(configId, updates) {
+        try {
+            const response = await fetch(`/api/v1/llm/configurations/${configId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates)
+            });
+            
+            if (response.ok) {
+                await this.loadLLMConfigurations();
+                return true;
+            }
+        } catch (error) {
+            console.error('Failed to update LLM configuration:', error);
+        }
+        return false;
     }
 
     getActiveMCPServer() {
         return this.mcpServers.find(s => s.id === this.activeMCP);
     }
 
-    getActiveLLMProvider() {
-        return this.activeLLM ? this.llmProviders[this.activeLLM] : null;
+    getActiveLLMConfiguration() {
+        return this.llmConfigurations.find(c => c.id === this.activeLLM);
     }
 
     canReconnect() {
         const mcpServer = this.getActiveMCPServer();
-        const llmProvider = this.getActiveLLMProvider();
-        return !!(mcpServer && llmProvider && llmProvider.configured && llmProvider.model);
+        const llmConfig = this.getActiveLLMConfiguration();
+        return !!(mcpServer && llmConfig && llmConfig.model);
     }
 }
 
@@ -425,17 +572,40 @@ export function renderMCPServers() {
         return;
     }
 
-    container.innerHTML = configState.mcpServers.map(server => `
-        <div class="bg-white/5 border ${server.id === configState.activeMCP ? 'border-[#F15F22]' : 'border-white/10'} rounded-lg p-4" data-mcp-id="${server.id}">
-            <div class="flex items-start justify-between">
-                <div class="flex items-start gap-3 flex-1">
-                    <input type="radio" name="active-mcp" value="${server.id}" ${server.id === configState.activeMCP ? 'checked' : ''} 
-                        class="mt-1 h-4 w-4 border-gray-300 text-[#F15F22] focus:ring-[#F15F22]" data-action="select-mcp">
-                    <div class="flex-1">
-                        <h4 class="font-semibold text-white mb-2">${escapeHtml(server.name)}</h4>
-                        <div class="text-sm text-gray-400 space-y-1">
-                            <p><span class="font-medium">Host:</span> ${escapeHtml(server.host)}:${escapeHtml(server.port)}</p>
-                            <p><span class="font-medium">Path:</span> ${escapeHtml(server.path)}</p>
+    // Determine which servers are used by profiles
+    const defaultProfile = configState.profiles.find(p => p.id === configState.defaultProfileId);
+    const activeProfiles = configState.profiles.filter(p => 
+        configState.activeForConsumptionProfileIds.includes(p.id)
+    );
+
+    container.innerHTML = configState.mcpServers.map(server => {
+        // Check if this server is used by default profile
+        const isDefault = defaultProfile?.mcpServerId === server.id;
+        
+        // Check if this server is used by any active profile
+        const isActive = activeProfiles.some(p => p.mcpServerId === server.id);
+        
+        // Build status badges
+        let statusBadges = '';
+        if (isDefault) {
+            statusBadges += '<span class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-blue-500 text-white rounded-full">Default</span>';
+        }
+        if (isActive) {
+            statusBadges += '<span class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-green-500 text-white rounded-full ml-2">Active</span>';
+        }
+
+        return `
+            <div class="bg-gradient-to-br from-white/10 to-white/5 border-2 ${isActive ? 'border-[#F15F22]' : 'border-white/10'} rounded-xl p-4 hover:border-white/20 transition-all duration-200" data-mcp-id="${server.id}">
+                <div class="flex items-center justify-between gap-4">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                            <h4 class="text-base font-bold text-white truncate">${escapeHtml(server.name)}</h4>
+                            ${statusBadges}
+                        </div>
+                        <div class="text-sm text-gray-400">
+                            <span class="font-medium text-gray-300">Host:</span> ${escapeHtml(server.host)}:${escapeHtml(server.port)} 
+                            <span class="mx-2">•</span> 
+                            <span class="font-medium text-gray-300">Path:</span> ${escapeHtml(server.path)}
                         </div>
                         ${server.testStatus ? `
                             <div class="mt-2 text-sm ${server.testStatus === 'success' ? 'text-green-400' : 'text-red-400'}">
@@ -443,38 +613,29 @@ export function renderMCPServers() {
                             </div>
                         ` : ''}
                     </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button type="button" data-action="test-mcp" data-server-id="${server.id}" 
-                        class="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 rounded transition-colors text-white">
-                        Test
-                    </button>
-                    <button type="button" data-action="edit-mcp" data-server-id="${server.id}" 
-                        class="px-3 py-1 text-sm bg-gray-600 hover:bg-gray-700 rounded transition-colors text-white">
-                        Edit
-                    </button>
-                    <button type="button" data-action="delete-mcp" data-server-id="${server.id}" 
-                        class="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 rounded transition-colors text-white">
-                        Delete
-                    </button>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <button type="button" data-action="test-mcp" data-server-id="${server.id}" 
+                            class="px-3 py-1.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-white">
+                            Test
+                        </button>
+                        <button type="button" data-action="edit-mcp" data-server-id="${server.id}" 
+                            class="px-3 py-1.5 text-sm font-medium bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-white">
+                            Edit
+                        </button>
+                        <button type="button" data-action="delete-mcp" data-server-id="${server.id}" 
+                            class="px-3 py-1.5 text-sm font-medium bg-gray-700 hover:bg-red-600 rounded-lg transition-colors text-red-400 hover:text-white">
+                            Delete
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 
     attachMCPEventListeners();
 }
 
 function attachMCPEventListeners() {
-    // Select MCP radio buttons
-    document.querySelectorAll('[data-action="select-mcp"]').forEach(radio => {
-        radio.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                configState.setActiveMCP(e.target.value);
-                renderMCPServers(); // Re-render to update active state
-            }
-        });
-    });
 
     // Test MCP button
     document.querySelectorAll('[data-action="test-mcp"]').forEach(btn => {
@@ -513,40 +674,74 @@ function attachMCPEventListeners() {
 }
 
 // ============================================================================
-// UI RENDERING - LLM PROVIDERS
+// UI RENDERING - LLM CONFIGURATIONS
 // ============================================================================
 export function renderLLMProviders() {
     const container = document.getElementById('llm-providers-container');
     if (!container) return;
 
-    container.innerHTML = Object.entries(LLM_PROVIDER_TEMPLATES).map(([key, template]) => {
-        const providerData = configState.llmProviders[key];
-        const isActive = configState.activeLLM === key;
-        const isConfigured = providerData && providerData.configured;
-        const modelName = providerData && providerData.model ? providerData.model : 'Not configured';
+    if (configState.llmConfigurations.length === 0) {
+        container.innerHTML = `
+            <div class="col-span-full text-center text-gray-400 py-8">
+                <p>No LLM configurations found. Click "Add Configuration" to get started.</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Determine which configurations are used by profiles
+    const defaultProfile = configState.profiles.find(p => p.id === configState.defaultProfileId);
+    const activeProfiles = configState.profiles.filter(p => 
+        configState.activeForConsumptionProfileIds.includes(p.id)
+    );
+
+    container.innerHTML = configState.llmConfigurations.map(config => {
+        // Check if this configuration is used by default profile
+        const isDefault = defaultProfile?.llmConfigurationId === config.id;
+        
+        // Check if this configuration is used by any active profile
+        const isActive = activeProfiles.some(p => p.llmConfigurationId === config.id);
+        
+        // Build status badges
+        let statusBadges = '';
+        if (isDefault) {
+            statusBadges += '<span class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-blue-500 text-white rounded-full">Default</span>';
+        }
+        if (isActive) {
+            statusBadges += '<span class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-green-500 text-white rounded-full ml-2">Active</span>';
+        }
 
         return `
-            <div class="bg-white/5 border ${isActive ? 'border-[#F15F22]' : 'border-white/10'} rounded-lg overflow-hidden" data-llm-provider="${key}">
-                <div class="p-4 cursor-pointer hover:bg-white/5 transition-colors" data-action="toggle-llm-details">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="flex items-center gap-3">
-                            <input type="radio" name="active-llm" value="${key}" ${isActive ? 'checked' : ''} 
-                                class="h-4 w-4 border-gray-300 text-[#F15F22] focus:ring-[#F15F22]" data-action="select-llm">
-                            <h4 class="font-semibold text-white">${escapeHtml(template.name)}</h4>
-                        </div>
-                        <div class="w-5 h-5 text-gray-400 transition-transform" data-chevron>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                            </svg>
+            <div class="bg-gradient-to-br from-white/10 to-white/5 border-2 ${isActive ? 'border-[#F15F22]' : 'border-white/10'} rounded-xl p-5 hover:border-white/20 transition-all duration-200" data-llm-config-id="${config.id}">
+                <div class="flex flex-col gap-4">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-3">
+                                <h4 class="text-lg font-bold text-white">${escapeHtml(config.name)}</h4>
+                                ${statusBadges}
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex items-center gap-2 text-sm">
+                                    <span class="font-semibold text-gray-300">Provider:</span>
+                                    <span class="text-gray-400">${escapeHtml(config.provider)}</span>
+                                </div>
+                                <div class="flex items-center gap-2 text-sm">
+                                    <span class="font-semibold text-gray-300">Model:</span>
+                                    <span class="text-gray-400">${escapeHtml(config.model)}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="text-sm text-gray-400">
-                        <span class="font-medium">Model:</span> ${escapeHtml(modelName)}
+                    <div class="flex items-center gap-2 pt-2 border-t border-white/10">
+                        <button type="button" data-action="edit-llm" data-config-id="${config.id}" 
+                            class="flex-1 px-4 py-2 text-sm font-medium bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-white">
+                            Edit
+                        </button>
+                        <button type="button" data-action="delete-llm" data-config-id="${config.id}" 
+                            class="flex-1 px-4 py-2 text-sm font-medium bg-gray-700 hover:bg-red-600 rounded-lg transition-colors text-red-400 hover:text-white">
+                            Delete
+                        </button>
                     </div>
-                    ${isConfigured ? '<div class="mt-2 text-xs text-green-400">✓ Configured</div>' : '<div class="mt-2 text-xs text-gray-500">Not configured</div>'}
-                </div>
-                <div class="llm-provider-details hidden bg-black/20 p-4 border-t border-white/10">
-                    <div id="llm-${key}-form-container"></div>
                 </div>
             </div>
         `;
@@ -556,121 +751,291 @@ export function renderLLMProviders() {
 }
 
 function attachLLMEventListeners() {
-    // Select LLM radio buttons
-    document.querySelectorAll('[data-action="select-llm"]').forEach(radio => {
-        radio.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                configState.setActiveLLM(e.target.value);
-                renderLLMProviders(); // Re-render to update active state
-            }
+    // Edit LLM button
+    document.querySelectorAll('[data-action="edit-llm"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const configId = e.target.dataset.configId;
+            showLLMConfigurationModal(configId);
         });
-        // Prevent event bubbling to toggle
-        radio.addEventListener('click', (e) => e.stopPropagation());
     });
 
-    // Toggle LLM provider details
-    document.querySelectorAll('[data-action="toggle-llm-details"]').forEach(toggle => {
-        toggle.addEventListener('click', (e) => {
-            // Don't toggle if clicking radio button
-            if (e.target.closest('[data-action="select-llm"]')) return;
+    // Delete LLM button
+    document.querySelectorAll('[data-action="delete-llm"]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const configId = e.target.dataset.configId;
+            const config = configState.llmConfigurations.find(c => c.id === configId);
             
-            const card = toggle.closest('[data-llm-provider]');
-            const provider = card.dataset.llmProvider;
-            const details = card.querySelector('.llm-provider-details');
-            const chevron = card.querySelector('[data-chevron]');
-            
-            if (details.classList.contains('hidden')) {
-                details.classList.remove('hidden');
-                chevron.style.transform = 'rotate(180deg)';
-                renderLLMProviderForm(provider);
-            } else {
-                details.classList.add('hidden');
-                chevron.style.transform = 'rotate(0deg)';
+            if (config && confirm(`Are you sure you want to delete "${config.name}"?`)) {
+                const result = await configState.removeLLMConfiguration(configId);
+                if (result.success) {
+                    showNotification('success', 'LLM configuration deleted successfully');
+                    renderLLMProviders();
+                    updateReconnectButton();
+                } else {
+                    showNotification('error', result.error);
+                }
             }
         });
     });
 }
 
-function renderLLMProviderForm(provider) {
-    const container = document.getElementById(`llm-${provider}-form-container`);
-    if (!container) return;
+// Placeholder for LLM configuration modal (to be implemented)
+export function showLLMConfigurationModal(configId = null) {
+    const config = configId ? configState.llmConfigurations.find(c => c.id === configId) : null;
+    const isEdit = !!config;
+    const selectedProvider = config?.provider || 'Google';
 
-    const template = LLM_PROVIDER_TEMPLATES[provider];
-    const providerData = configState.llmProviders[provider] || {};
+    // Build provider options
+    const providerOptions = Object.keys(LLM_PROVIDER_TEMPLATES)
+        .map(key => `<option value="${key}" ${key === selectedProvider ? 'selected' : ''}>${LLM_PROVIDER_TEMPLATES[key].name}</option>`)
+        .join('');
 
-    let formHTML = '<div class="space-y-4">';
-
-    // Render fields
-    template.fields.forEach(field => {
-        const value = providerData.credentials?.[field.id] || '';
-        formHTML += `
-            <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1">${escapeHtml(field.label)}</label>
-                <input type="${field.type}" 
-                    data-field="${field.id}" 
-                    value="${escapeHtml(value)}" 
-                    placeholder="${escapeHtml(field.placeholder)}" 
-                    ${field.required ? 'required' : ''}
-                    class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none">
-            </div>
-        `;
-    });
-
-    // Extra fields (like AWS listing method)
-    if (template.extra?.listingMethod) {
-        formHTML += '<div><label class="block text-sm font-medium text-gray-300 mb-2">Model Listing Method</label><div class="flex items-center gap-6">';
-        template.extra.listingMethod.forEach(option => {
-            const checked = providerData.listingMethod === option.value || (option.default && !providerData.listingMethod);
-            formHTML += `
-                <div class="flex items-center">
-                    <input id="listing-${option.id}" name="listing_method_${provider}" type="radio" value="${option.value}" 
-                        ${checked ? 'checked' : ''} 
-                        data-field="listingMethod"
-                        class="h-4 w-4 border-gray-300 text-[#F15F22] focus:ring-[#F15F22]">
-                    <label for="listing-${option.id}" class="ml-2 text-sm text-gray-300">${escapeHtml(option.label)}</label>
+    const modalHTML = `
+        <div id="llm-config-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div class="glass-panel rounded-xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <h3 class="text-xl font-bold text-white mb-4">${isEdit ? 'Edit' : 'Add'} LLM Configuration</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Configuration Name</label>
+                        <input type="text" id="llm-modal-name" value="${config ? escapeHtml(config.name) : ''}" 
+                            placeholder="e.g., Production GPT-4" 
+                            class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Provider</label>
+                        <select id="llm-modal-provider" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none" ${isEdit ? 'disabled' : ''}>
+                            ${providerOptions}
+                        </select>
+                        ${isEdit ? '<p class="text-xs text-gray-400 mt-1">Provider cannot be changed after creation</p>' : ''}
+                    </div>
+                    <div id="llm-modal-credentials-container">
+                        <!-- Credentials fields will be inserted here -->
+                    </div>
+                    <div id="llm-modal-model-container">
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Model</label>
+                        <div class="flex items-center gap-2">
+                            <select id="llm-modal-model" class="flex-1 p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none">
+                                <option value="">-- Select a model --</option>
+                                ${config?.model ? `<option value="${escapeHtml(config.model)}" selected>${escapeHtml(config.model)}</option>` : ''}
+                            </select>
+                            <button type="button" id="llm-modal-refresh-models" 
+                                class="p-2 bg-gray-600 hover:bg-gray-500 rounded-md transition-colors">
+                                <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.667 0l3.181-3.183m-4.991-2.691L7.985 5.356m0 0v4.992m0 0h4.992m0 0l3.181-3.183a8.25 8.25 0 0111.667 0l3.181 3.183" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 pt-4">
+                        <button id="llm-modal-cancel" class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md transition-colors text-white">
+                            Cancel
+                        </button>
+                        <button id="llm-modal-save" class="flex-1 px-4 py-2 bg-[#F15F22] hover:bg-[#D9501A] rounded-md transition-colors text-white font-medium">
+                            ${isEdit ? 'Update' : 'Add'}
+                        </button>
+                    </div>
                 </div>
-            `;
-        });
-        formHTML += '</div></div>';
-    }
-
-    // Model selection
-    formHTML += `
-        <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Model</label>
-            <div class="flex items-center gap-2">
-                <select data-field="model" class="flex-1 p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none">
-                    <option value="">-- Select a model --</option>
-                    ${providerData.model ? `<option value="${escapeHtml(providerData.model)}" selected>${escapeHtml(providerData.model)}</option>` : ''}
-                </select>
-                <button type="button" data-action="refresh-models" data-provider="${provider}" 
-                    class="p-2 bg-gray-600 hover:bg-gray-500 rounded-md transition-colors">
-                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.667 0l3.181-3.183m-4.991-2.691L7.985 5.356m0 0v4.992m0 0h4.992m0 0l3.181-3.183a8.25 8.25 0 0111.667 0l3.181 3.183" />
-                    </svg>
-                </button>
             </div>
         </div>
     `;
 
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const modal = document.getElementById('llm-config-modal');
+    const providerSelect = modal.querySelector('#llm-modal-provider');
+    const credentialsContainer = modal.querySelector('#llm-modal-credentials-container');
+    const refreshBtn = modal.querySelector('#llm-modal-refresh-models');
+    const modelSelect = modal.querySelector('#llm-modal-model');
+
+    // Function to render credential fields based on selected provider
+    function renderCredentialFields(provider) {
+        const template = LLM_PROVIDER_TEMPLATES[provider];
+        if (!template) return;
+
+        let html = '';
+
+        // Render regular credential fields
+        template.fields.forEach(field => {
+            const value = config?.credentials?.[field.id] || '';
+            html += `
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">${escapeHtml(field.label)}</label>
+                    <input type="${field.type}" 
+                        data-credential="${field.id}" 
+                        value="${escapeHtml(value)}" 
+                        placeholder="${escapeHtml(field.placeholder)}" 
+                        ${field.required ? 'required' : ''}
+                        class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none">
+                </div>
+            `;
+        });
+
+        // Render extra fields (like AWS listing method)
+        if (template.extra?.listingMethod) {
+            html += '<div><label class="block text-sm font-medium text-gray-300 mb-2">Model Listing Method</label><div class="flex items-center gap-6">';
+            template.extra.listingMethod.forEach(option => {
+                const checked = config?.listingMethod === option.value || (option.default && !config?.listingMethod);
+                html += `
+                    <div class="flex items-center">
+                        <input id="listing-${option.id}" name="listing_method" type="radio" value="${option.value}" 
+                            ${checked ? 'checked' : ''} 
+                            data-credential="listingMethod"
+                            class="h-4 w-4 border-gray-300 text-[#F15F22] focus:ring-[#F15F22]">
+                        <label for="listing-${option.id}" class="ml-2 text-sm text-gray-300">${escapeHtml(option.label)}</label>
+                    </div>
+                `;
+            });
+            html += '</div></div>';
+        }
+
+        credentialsContainer.innerHTML = html;
+    }
+
+    // Function to refresh models
+    async function refreshModels() {
+        const provider = providerSelect.value;
+        const credentials = {};
+        
+        // Collect credentials
+        credentialsContainer.querySelectorAll('[data-credential]').forEach(input => {
+            const field = input.dataset.credential;
+            if (input.type === 'radio') {
+                if (input.checked) {
+                    credentials[field] = input.value;
+                }
+            } else {
+                credentials[field] = input.value;
+            }
+        });
+
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = '<svg class="w-5 h-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+
+        try {
+            const response = await fetch('/models', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider, ...credentials })
+            });
+
+            const data = await response.json();
+
+            if (data.models && data.models.length > 0) {
+                const certifiedModels = data.models.filter(model => {
+                    return typeof model === 'string' || model.certified !== false;
+                });
+                const firstCertifiedModel = certifiedModels.length > 0 
+                    ? (typeof certifiedModels[0] === 'string' ? certifiedModels[0] : certifiedModels[0].name)
+                    : null;
+                
+                modelSelect.innerHTML = '<option value="">-- Select a model --</option>' + 
+                    data.models.map(model => {
+                        const modelName = typeof model === 'string' ? model : model.name;
+                        const certified = typeof model === 'object' ? model.certified : true;
+                        const label = certified ? modelName : `${modelName} (support evaluated)`;
+                        const selected = modelName === firstCertifiedModel ? 'selected' : '';
+                        return `<option value="${escapeHtml(modelName)}" ${!certified ? 'disabled' : ''} ${selected}>${escapeHtml(label)}</option>`;
+                    }).join('');
+                
+                showNotification('success', `Found ${data.models.length} models${firstCertifiedModel ? ` - selected ${firstCertifiedModel}` : ''}`);
+            } else {
+                showNotification('warning', 'No models found');
+            }
+        } catch (error) {
+            showNotification('error', `Failed to fetch models: ${error.message}`);
+        } finally {
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = '<svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.667 0l3.181-3.183m-4.991-2.691L7.985 5.356m0 0v4.992m0 0h4.992m0 0l3.181-3.183a8.25 8.25 0 0111.667 0l3.181 3.183" /></svg>';
+        }
+    }
+
+    // Initial render of credential fields
+    renderCredentialFields(selectedProvider);
+
+    // Provider change handler (only for new configs)
+    if (!isEdit) {
+        providerSelect.addEventListener('change', () => {
+            renderCredentialFields(providerSelect.value);
+            // Clear model selection when provider changes
+            modelSelect.innerHTML = '<option value="">-- Select a model --</option>';
+        });
+    }
+
+    // Refresh models button
+    refreshBtn.addEventListener('click', refreshModels);
+
+    // Cancel button
+    modal.querySelector('#llm-modal-cancel').addEventListener('click', () => modal.remove());
+
     // Save button
-    formHTML += `
-        <button type="button" data-action="save-llm-provider" data-provider="${provider}" 
-            class="w-full px-4 py-2 bg-[#F15F22] hover:bg-[#D9501A] rounded-md transition-colors text-white font-medium">
-            Save Configuration
-        </button>
-    `;
+    modal.querySelector('#llm-modal-save').addEventListener('click', async () => {
+        const name = modal.querySelector('#llm-modal-name').value.trim();
+        const provider = providerSelect.value;
+        const model = modelSelect.value;
+        
+        if (!name) {
+            showNotification('error', 'Configuration name is required');
+            return;
+        }
 
-    formHTML += '</div>';
-    container.innerHTML = formHTML;
+        if (!model) {
+            showNotification('error', 'Please select a model');
+            return;
+        }
 
-    // Attach event listeners
-    container.querySelector('[data-action="refresh-models"]').addEventListener('click', () => refreshModels(provider));
-    container.querySelector('[data-action="save-llm-provider"]').addEventListener('click', () => saveLLMProvider(provider));
+        // Collect credentials
+        const credentials = {};
+        credentialsContainer.querySelectorAll('[data-credential]').forEach(input => {
+            const field = input.dataset.credential;
+            if (input.type === 'radio') {
+                if (input.checked) {
+                    credentials[field] = input.value;
+                }
+            } else {
+                credentials[field] = input.value;
+            }
+        });
+
+        // Validate required fields
+        const template = LLM_PROVIDER_TEMPLATES[provider];
+        const missingFields = template.fields.filter(f => f.required && !credentials[f.id]);
+        if (missingFields.length > 0) {
+            showNotification('error', `Missing required fields: ${missingFields.map(f => f.label).join(', ')}`);
+            return;
+        }
+
+        const configData = {
+            name,
+            provider,
+            model,
+            credentials
+        };
+
+        try {
+            let success;
+            if (isEdit) {
+                success = await configState.updateLLMConfiguration(configId, configData);
+            } else {
+                const result = await configState.addLLMConfiguration(configData);
+                success = result !== null && result !== undefined;
+            }
+
+            if (success) {
+                renderLLMProviders();
+                modal.remove();
+                showNotification('success', `LLM configuration ${isEdit ? 'updated' : 'added'} successfully`);
+            }
+        } catch (error) {
+            showNotification('error', `Failed to ${isEdit ? 'update' : 'add'} configuration: ${error.message}`);
+        }
+    });
 }
 
+// Old LLM provider form functions removed - now using LLM configurations
+// renderLLMProviderForm, refreshModels, saveLLMProvider are deprecated
+
 // ============================================================================
-// ACTION HANDLERS
+// ACTION HANDLERS - MCP SERVERS
 // ============================================================================
 export function showMCPServerModal(serverId = null) {
     const server = serverId ? configState.mcpServers.find(s => s.id === serverId) : null;
@@ -794,106 +1159,15 @@ async function testMCPConnection(serverId) {
     }
 }
 
-async function refreshModels(provider) {
-    const container = document.getElementById(`llm-${provider}-form-container`);
-    if (!container) return;
-
-    const btn = container.querySelector('[data-action="refresh-models"]');
-    const select = container.querySelector('[data-field="model"]');
-    
-    // Collect current form data
-    const credentials = {};
-    container.querySelectorAll('[data-field]').forEach(input => {
-        const field = input.dataset.field;
-        if (field && field !== 'model') {
-            credentials[field] = input.value;
-        }
-    });
-
-    btn.disabled = true;
-    btn.innerHTML = '<svg class="w-5 h-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
-
-    try {
-        const response = await fetch('/models', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ provider, ...credentials })
-        });
-
-        const data = await response.json();
-
-        if (data.models && data.models.length > 0) {
-            // Find first certified model for auto-selection
-            const certifiedModels = data.models.filter(model => {
-                return typeof model === 'string' || model.certified !== false;
-            });
-            const firstCertifiedModel = certifiedModels.length > 0 
-                ? (typeof certifiedModels[0] === 'string' ? certifiedModels[0] : certifiedModels[0].name)
-                : null;
-            
-            select.innerHTML = '<option value="">-- Select a model --</option>' + 
-                data.models.map(model => {
-                    const modelName = typeof model === 'string' ? model : model.name;
-                    const certified = typeof model === 'object' ? model.certified : true;
-                    const label = certified ? modelName : `${modelName} (support evaluated)`;
-                    const selected = modelName === firstCertifiedModel ? 'selected' : '';
-                    return `<option value="${escapeHtml(modelName)}" ${!certified ? 'disabled' : ''} ${selected}>${escapeHtml(label)}</option>`;
-                }).join('');
-            
-            // Update the provider's model in state if auto-selected
-            if (firstCertifiedModel) {
-                const currentProvider = configState.llmProviders[provider] || {};
-                currentProvider.model = firstCertifiedModel;
-            }
-            
-            showNotification('success', `Found ${data.models.length} models${firstCertifiedModel ? ` - selected ${firstCertifiedModel}` : ''}`);
-        } else {
-            showNotification('warning', 'No models found');
-        }
-    } catch (error) {
-        showNotification('error', `Failed to fetch models: ${error.message}`);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.667 0l3.181-3.183m-4.991-2.691L7.985 5.356m0 0v4.992m0 0h4.992m0 0l3.181-3.183a8.25 8.25 0 0111.667 0l3.181 3.183" /></svg>';
-    }
-}
-
-function saveLLMProvider(provider) {
-    const container = document.getElementById(`llm-${provider}-form-container`);
-    if (!container) return;
-
-    const credentials = {};
-    let model = null;
-    let listingMethod = null;
-
-    container.querySelectorAll('[data-field]').forEach(input => {
-        const field = input.dataset.field;
-        if (field === 'model') {
-            model = input.value;
-        } else if (field === 'listingMethod' && input.checked) {
-            listingMethod = input.value;
-        } else if (field) {
-            credentials[field] = input.value;
-        }
-    });
-
-    if (!model) {
-        showNotification('error', 'Please select a model');
-        return;
-    }
-
-    configState.updateLLMProvider(provider, { credentials, model, listingMethod });
-    renderLLMProviders();
-    updateReconnectButton(); // Update button state after saving
-    showNotification('success', `${LLM_PROVIDER_TEMPLATES[provider].name} configuration saved`);
-}
-
+// ============================================================================
+// UI UPDATE HELPERS
+// ============================================================================
 function updateProfilesTab() {
     const profilesTab = document.querySelector('.config-tab[data-tab="profiles-tab"]');
     if (!profilesTab) return;
 
     const mcpConfigured = configState.mcpServers.length > 0;
-    const llmConfigured = Object.values(configState.llmProviders).some(p => p.configured);
+    const llmConfigured = configState.llmConfigurations.length > 0;
 
     if (mcpConfigured && llmConfigured) {
         profilesTab.disabled = false;
@@ -910,7 +1184,8 @@ export function updateReconnectButton() {
 
     const canReconnect = configState.canReconnect();
     btn.disabled = !canReconnect;
-    updateProfilesTab();
+    btn.classList.toggle('opacity-50', !canReconnect);
+    btn.classList.toggle('cursor-not-allowed', !canReconnect);
 }
 
 export async function reconnectAndLoad() {
@@ -923,21 +1198,24 @@ export async function reconnectAndLoad() {
 
     // Set the active MCP and LLM based on the default profile
     await configState.setActiveMCP(defaultProfile.mcpServerId);
-    configState.setActiveLLM(defaultProfile.llmProvider);
+    await configState.setActiveLLM(defaultProfile.llmConfigurationId);
 
     const mcpServer = configState.getActiveMCPServer();
-    const llmProvider = configState.getActiveLLMProvider();
+    const llmConfig = configState.getActiveLLMConfiguration();
 
-    // ... rest of the function
-    
-    // Validate that both MCP server and LLM provider are configured
+    console.log('[DEBUG] reconnectAndLoad - All mcpServers:', configState.mcpServers);
+    console.log('[DEBUG] reconnectAndLoad - activeMCP:', configState.activeMCP);
+    console.log('[DEBUG] reconnectAndLoad - mcpServer:', mcpServer);
+    console.log('[DEBUG] reconnectAndLoad - llmConfig:', llmConfig);
+
+    // Validate that both MCP server and LLM configuration are configured
     if (!mcpServer) {
         showNotification('error', 'Please configure and select an MCP Server first (go to MCP Servers tab)');
         return;
     }
 
-    if (!llmProvider) {
-        showNotification('error', 'Please configure and select an LLM Provider first (go to LLM Providers tab)');
+    if (!llmConfig) {
+        showNotification('error', 'Please configure and select an LLM Configuration first (go to LLM Providers tab)');
         return;
     }
 
@@ -947,8 +1225,8 @@ export async function reconnectAndLoad() {
         return;
     }
 
-    if (!llmProvider.credentials || Object.keys(llmProvider.credentials).length === 0) {
-        showNotification('error', 'LLM Provider credentials are missing or incomplete');
+    if (!llmConfig.credentials || Object.keys(llmConfig.credentials).length === 0) {
+        showNotification('error', 'LLM Configuration credentials are missing or incomplete');
         return;
     }
 
@@ -964,16 +1242,28 @@ export async function reconnectAndLoad() {
     statusDiv.innerHTML = '<span class="text-gray-400">Initializing connection...</span>';
 
     try {
-        const configData = {
-            provider: llmProvider.provider,
-            model: llmProvider.model,
-            credentials: llmProvider.credentials,
-            server_name: mcpServer.name,
-            server_id: mcpServer.id, // Add unique server ID
+        console.log('[DEBUG] mcpServer properties:', {
+            id: mcpServer.id,
+            name: mcpServer.name,
             host: mcpServer.host,
             port: mcpServer.port,
-            path: mcpServer.path,
-            listing_method: llmProvider.listingMethod || 'foundation_models',
+            path: mcpServer.path
+        });
+        
+        const configData = {
+            provider: llmConfig.provider,
+            model: llmConfig.model,
+            credentials: llmConfig.credentials,
+            server_name: mcpServer.name,
+            server_id: mcpServer.id,
+            mcp_server: {
+                id: mcpServer.id,
+                name: mcpServer.name,
+                host: mcpServer.host,
+                port: mcpServer.port,
+                path: mcpServer.path
+            },
+            listing_method: llmConfig.listingMethod || 'foundation_models',
             tts_credentials_json: document.getElementById('tts-credentials-json')?.value || '',
             charting_intensity: document.getElementById('charting-intensity')?.value || 'none'
         };
@@ -990,6 +1280,17 @@ export async function reconnectAndLoad() {
         if (result.status === 'success') {
             statusDiv.innerHTML = '<span class="text-green-400">✓ ' + escapeHtml(result.message) + '</span>';
             showNotification('success', result.message);
+            
+            // Activate the default profile to load its enabled/disabled tools and prompts
+            const defaultProfile = configState.profiles.find(p => p.id === configState.defaultProfileId);
+            if (defaultProfile) {
+                try {
+                    await API.setActiveForConsumptionProfiles([defaultProfile.id]);
+                    console.log('[DEBUG] Activated default profile after successful connection');
+                } catch (error) {
+                    console.error('Failed to activate default profile:', error);
+                }
+            }
             
             // Update status indicators
             DOM.mcpStatusDot.classList.remove('disconnected');
@@ -1198,10 +1499,18 @@ function renderProfiles() {
                         </div>
                     </div>
                     <div class="flex-1">
-                        <h4 class="font-semibold text-white mb-1">@${escapeHtml(profile.tag)}</h4>
+                        <div class="flex items-center gap-2 mb-1">
+                            <h4 class="font-semibold text-white">${escapeHtml(profile.name || profile.tag)}</h4>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-semibold bg-[#F15F22]/20 text-[#F15F22] border border-[#F15F22]/30">
+                                @${escapeHtml(profile.tag)}
+                            </span>
+                        </div>
                         <p class="text-sm text-gray-400 mb-3">${escapeHtml(profile.description)}</p>
                         <div class="text-sm text-gray-400 space-y-1">
-                            <p><span class="font-medium">LLM:</span> ${escapeHtml(profile.llmProvider)} / ${escapeHtml(configState.llmProviders[profile.llmProvider]?.model || 'N/A')}</p>
+                            <p><span class="font-medium">LLM:</span> ${(() => {
+                                const llmConfig = configState.llmConfigurations.find(c => c.id === profile.llmConfigurationId);
+                                return llmConfig ? `${escapeHtml(llmConfig.provider)} / ${escapeHtml(llmConfig.model)}` : 'N/A';
+                            })()}</p>
                             <p><span class="font-medium">MCP:</span> ${escapeHtml(configState.mcpServers.find(s => s.id === profile.mcpServerId)?.name || 'Unknown')}</p>
                         </div>
                         <div class="mt-2 text-xs" id="test-results-${profile.id}"></div>
@@ -1234,7 +1543,16 @@ function attachProfileEventListeners() {
         btn.addEventListener('click', async (e) => {
             const profileId = e.currentTarget.dataset.profileId;
             await configState.setDefaultProfile(profileId);
+            
+            // Auto-activate the default profile if it's not already active
+            if (!configState.activeForConsumptionProfileIds.includes(profileId)) {
+                const activeIds = [...configState.activeForConsumptionProfileIds, profileId];
+                await configState.setActiveForConsumptionProfiles(activeIds);
+            }
+            
             renderProfiles();
+            renderLLMProviders(); // Re-render to update default/active badges
+            renderMCPServers(); // Re-render to update default/active badges
         });
     });
 
@@ -1243,17 +1561,73 @@ function attachProfileEventListeners() {
         checkbox.addEventListener('change', async (e) => {
             const profileId = e.target.dataset.profileId;
             const isChecked = e.target.checked;
+            
+            // Prevent deactivating the default profile
+            if (!isChecked && profileId === configState.defaultProfileId) {
+                e.target.checked = true; // Revert the checkbox
+                showNotification('error', 'Cannot deactivate the default profile. Set a different profile as default first.');
+                return;
+            }
+            
             let activeIds = configState.activeForConsumptionProfileIds;
 
             if (isChecked) {
-                if (!activeIds.includes(profileId)) {
-                    activeIds.push(profileId);
+                // Test the profile before activating
+                const resultsContainer = document.getElementById(`test-results-${profileId}`);
+                if (resultsContainer) {
+                    resultsContainer.innerHTML = `<span class="text-yellow-400">Testing before activation...</span>`;
+                }
+                
+                try {
+                    const result = await API.testProfile(profileId);
+                    const allSuccessful = Object.values(result.results).every(r => r.status === 'success');
+                    
+                    let testResultsHTML = '';
+                    for (const [key, value] of Object.entries(result.results)) {
+                        const statusClass = value.status === 'success' ? 'text-green-400' : 'text-red-400';
+                        testResultsHTML += `<p class="${statusClass}">${value.message}</p>`;
+                    }
+                    
+                    if (allSuccessful) {
+                        // Tests passed - activate the profile
+                        if (!activeIds.includes(profileId)) {
+                            activeIds.push(profileId);
+                        }
+                        await configState.setActiveForConsumptionProfiles(activeIds);
+                        renderProfiles();
+                        renderLLMProviders(); // Re-render to update default/active badges
+                        renderMCPServers(); // Re-render to update default/active badges
+                        showNotification('success', 'Profile tested successfully and activated');
+                        
+                        // Re-apply test results after render
+                        const newResultsContainer = document.getElementById(`test-results-${profileId}`);
+                        if (newResultsContainer) {
+                            newResultsContainer.innerHTML = testResultsHTML;
+                        }
+                    } else {
+                        // Tests failed - revert checkbox and show results
+                        e.target.checked = false;
+                        if (resultsContainer) {
+                            resultsContainer.innerHTML = testResultsHTML;
+                        }
+                        showNotification('error', 'Profile tests failed. Cannot activate profile.');
+                    }
+                } catch (error) {
+                    // Test error - revert checkbox
+                    e.target.checked = false;
+                    if (resultsContainer) {
+                        resultsContainer.innerHTML = `<span class="text-red-400">Test failed: ${error.message}</span>`;
+                    }
+                    showNotification('error', `Failed to test profile: ${error.message}`);
                 }
             } else {
+                // Deactivating - no test needed
                 activeIds = activeIds.filter(id => id !== profileId);
+                await configState.setActiveForConsumptionProfiles(activeIds);
+                renderProfiles();
+                renderLLMProviders(); // Re-render to update default/active badges
+                renderMCPServers(); // Re-render to update default/active badges
             }
-            await configState.setActiveForConsumptionProfiles(activeIds);
-            renderProfiles();
         });
     });
     
@@ -1321,6 +1695,8 @@ function attachProfileEventListeners() {
             if (confirm(`Are you sure you want to delete profile "${profileName}"?`)) {
                 await configState.removeProfile(profileId);
                 renderProfiles();
+                renderLLMProviders(); // Re-render to update default/active badges
+                renderMCPServers(); // Re-render to update default/active badges
                 showNotification('success', 'Profile deleted successfully');
             }
         });
@@ -1336,11 +1712,10 @@ async function showProfileModal(profileId = null) {
 
     modal.querySelector('#profile-modal-title').textContent = isEdit ? 'Edit Profile' : 'Add Profile';
 
-    // Populate LLM providers
+    // Populate LLM configurations
     const llmSelect = modal.querySelector('#profile-modal-llm-provider');
-    llmSelect.innerHTML = Object.keys(configState.llmProviders)
-        .filter(key => configState.llmProviders[key].configured)
-        .map(key => `<option value="${key}" ${profile?.llmProvider === key ? 'selected' : ''}>${LLM_PROVIDER_TEMPLATES[key].name}</option>`)
+    llmSelect.innerHTML = configState.llmConfigurations
+        .map(config => `<option value="${config.id}" ${profile?.llmConfigurationId === config.id ? 'selected' : ''}>${escapeHtml(config.name)}</option>`)
         .join('');
 
     // Populate MCP servers
@@ -1421,21 +1796,104 @@ async function showProfileModal(profileId = null) {
         </label>
     `).join('') || '<span class="text-gray-400">No RAG collections found.</span>';
 
-    // Set profile tag and description
-    modal.querySelector('#profile-modal-tag').value = profile ? profile.tag : '';
+    // Set profile name, tag and description
+    modal.querySelector('#profile-modal-name').value = profile ? (profile.name || '') : '';
+    modal.querySelector('#profile-modal-tag').value = profile ? (profile.tag || '').replace('@', '') : '';
     modal.querySelector('#profile-modal-description').value = profile ? profile.description : '';
+
+    // Tag generation function
+    function generateTag() {
+        const llmConfig = configState.llmConfigurations.find(c => c.id === llmSelect.value);
+        const mcpServer = configState.mcpServers.find(s => s.id === mcpSelect.value);
+        
+        if (!llmConfig || !mcpServer) return '';
+        
+        // Extract characters from provider, model, and server
+        const providerPart = (llmConfig.provider || '').substring(0, 2).toUpperCase();
+        const modelPart = (llmConfig.model || '').substring(0, 2).toUpperCase();
+        const serverPart = (mcpServer.name || '').substring(0, 1).toUpperCase();
+        
+        let tag = (providerPart + modelPart + serverPart).substring(0, 5);
+        
+        // Ensure uniqueness
+        let suffix = '';
+        let counter = 1;
+        while (configState.profiles.some(p => p.id !== profileId && p.tag === tag + suffix)) {
+            suffix = counter.toString();
+            counter++;
+        }
+        
+        return tag + suffix;
+    }
+
+    // Auto-generate tag on configuration change (only for new profiles)
+    if (!isEdit) {
+        const autoGenerate = () => {
+            const tagInput = modal.querySelector('#profile-modal-tag');
+            if (!tagInput.value) {
+                tagInput.value = generateTag();
+            }
+        };
+        llmSelect.addEventListener('change', autoGenerate);
+        mcpSelect.addEventListener('change', autoGenerate);
+        
+        // Initial generation
+        autoGenerate();
+    }
+
+    // Manual tag generation button
+    const generateTagBtn = modal.querySelector('#profile-modal-generate-tag');
+    if (generateTagBtn) {
+        generateTagBtn.onclick = () => {
+            modal.querySelector('#profile-modal-tag').value = generateTag();
+        };
+    }
+
+    // Force uppercase on tag input
+    const tagInput = modal.querySelector('#profile-modal-tag');
+    tagInput.addEventListener('input', (e) => {
+        e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 5);
+    });
 
     // Show the modal
     modal.classList.remove('hidden');
 
+    // Attach event listeners for uncheck all buttons
+    const toolsUncheckBtn = modal.querySelector('#profile-modal-tools-uncheck-all');
+    const promptsUncheckBtn = modal.querySelector('#profile-modal-prompts-uncheck-all');
+    
+    if (toolsUncheckBtn) {
+        toolsUncheckBtn.onclick = () => {
+            toolsContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+        };
+    }
+    
+    if (promptsUncheckBtn) {
+        promptsUncheckBtn.onclick = () => {
+            promptsContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+        };
+    }
+
     // Attach event listeners for save/cancel
     modal.querySelector('#profile-modal-cancel').onclick = () => modal.classList.add('hidden');
     modal.querySelector('#profile-modal-save').onclick = async () => {
-        const tag = modal.querySelector('#profile-modal-tag').value.trim();
+        const name = modal.querySelector('#profile-modal-name').value.trim();
+        const tag = modal.querySelector('#profile-modal-tag').value.trim().toUpperCase();
         const description = modal.querySelector('#profile-modal-description').value.trim();
+
+        if (!name) {
+            showNotification('error', 'Profile name is required');
+            return;
+        }
 
         if (!tag) {
             showNotification('error', 'Profile tag is required');
+            return;
+        }
+
+        // Validate tag uniqueness
+        if (configState.profiles.some(p => p.id !== profileId && p.tag === tag)) {
+            showNotification('error', `Tag "${tag}" is already in use. Please choose a different tag.`);
             return;
         }
         
@@ -1446,9 +1904,10 @@ async function showProfileModal(profileId = null) {
 
         const profileData = {
             id: profile ? profile.id : `profile-${generateId()}`,
+            name,
             tag,
             description,
-            llmProvider: llmSelect.value,
+            llmConfigurationId: llmSelect.value,
             mcpServerId: mcpSelect.value,
             tools: selectedTools.length === allTools.length ? ['*'] : selectedTools,
             prompts: selectedPrompts.length === allPrompts.length ? ['*'] : selectedPrompts,
@@ -1464,6 +1923,8 @@ async function showProfileModal(profileId = null) {
             }
 
             renderProfiles();
+            renderLLMProviders(); // Re-render to update default/active badges
+            renderMCPServers(); // Re-render to update default/active badges
             modal.classList.add('hidden');
             showNotification('success', `Profile ${isEdit ? 'updated' : 'added'} successfully`);
         } catch (error) {
@@ -1492,6 +1953,12 @@ export async function initializeConfigurationUI() {
     const addMCPBtn = document.getElementById('add-mcp-server-btn');
     if (addMCPBtn) {
         addMCPBtn.addEventListener('click', () => showMCPServerModal());
+    }
+
+    // Add LLM configuration button
+    const addLLMConfigBtn = document.getElementById('add-llm-config-btn');
+    if (addLLMConfigBtn) {
+        addLLMConfigBtn.addEventListener('click', () => showLLMConfigurationModal());
     }
 
     // Add Profile button

@@ -37,7 +37,8 @@ body {
 .table-container::-webkit-scrollbar,
 #prompt-editor-textarea::-webkit-scrollbar,
 #system-prompt-popup-text::-webkit-scrollbar,
-#chat-modal-log::-webkit-scrollbar {
+#chat-modal-log::-webkit-scrollbar,
+.custom-scrollbar::-webkit-scrollbar {
     width: 6px;
 }
 #chat-container::-webkit-scrollbar-track,
@@ -47,7 +48,8 @@ body {
 .table-container::-webkit-scrollbar-track,
 #prompt-editor-textarea::-webkit-scrollbar-track,
 #system-prompt-popup-text::-webkit-scrollbar-track,
-#chat-modal-log::-webkit-scrollbar-track {
+#chat-modal-log::-webkit-scrollbar-track,
+.custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
 }
 #chat-container::-webkit-scrollbar-thumb,
@@ -57,7 +59,8 @@ body {
 .table-container::-webkit-scrollbar-thumb,
 #prompt-editor-textarea::-webkit-scrollbar-thumb,
 #system-prompt-popup-text::-webkit-scrollbar-thumb,
-#chat-modal-log::-webkit-scrollbar-thumb {
+#chat-modal-log::-webkit-scrollbar-thumb,
+.custom-scrollbar::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.2);
     border-radius: 3px;
 }
@@ -295,8 +298,8 @@ details.resource-selected > summary {
 
 
 .session-item.active {
-    background-color: var(--teradata-orange-dark);
-    box-shadow: 0 0 12px 2px rgba(241, 95, 34, 0.3);
+    background-color: rgba(241, 95, 34, 0.15);
+    box-shadow: 0 0 12px 2px rgba(241, 95, 34, 0.2);
     border-left: 4px solid var(--teradata-orange);
 }
 
@@ -945,6 +948,33 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     word-break: break-all;
 }
 
+/* Selected Case Details - Scrollable Area */
+#rag-selected-case-details {
+    height: 35vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 0.5rem;
+}
+
+/* Custom scrollbar for selected case details */
+#rag-selected-case-details::-webkit-scrollbar {
+    width: 8px;
+}
+
+#rag-selected-case-details::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+#rag-selected-case-details::-webkit-scrollbar-thumb {
+    background: rgba(241, 95, 34, 0.3);
+    border-radius: 4px;
+}
+
+#rag-selected-case-details::-webkit-scrollbar-thumb:hover {
+    background: rgba(241, 95, 34, 0.5);
+}
+
 /* --- MODIFICATION START: Styles for New Platform Layout --- */
 /* Base style for the new vertical side navigation */
 #app-side-nav {
@@ -1445,34 +1475,122 @@ button[data-action="delete-mcp"]:hover {
 }
 
 #rag-suggestions-container {
-    background: linear-gradient(to bottom, rgba(40, 40, 40, 0.95), rgba(30, 30, 30, 0.95));
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 16px;
-    max-height: 220px;
+    background: linear-gradient(135deg, rgba(40, 40, 45, 0.88), rgba(30, 30, 35, 0.92));
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(241, 95, 34, 0.15);
+    border-radius: 12px;
+    max-height: 240px;
     overflow-y: auto;
+    overflow-x: hidden;
     z-index: 10;
     width: 100%;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        0 2px 8px rgba(241, 95, 34, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .rag-suggestion-item {
-    padding: 14px 20px;
-    color: #e5e7eb; /* gray-200 */
+    padding: 11px 18px;
+    color: #e5e7eb;
     cursor: pointer;
-    transition: background-color 0.25s ease-in-out, color 0.25s ease-in-out;
-    font-size: 0.9rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.875rem;
+    font-weight: 400;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    position: relative;
+    overflow: hidden;
+}
+
+.rag-suggestion-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, var(--teradata-orange), rgba(241, 95, 34, 0.3));
+    transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .rag-suggestion-item:last-child {
     border-bottom: none;
 }
 
-.rag-suggestion-item:hover {
-    background-color: var(--teradata-orange);
-    color: white;
+.rag-suggestion-item:hover,
+.rag-suggestion-item.rag-suggestion-highlighted {
+    background: linear-gradient(90deg, rgba(241, 95, 34, 0.15), rgba(241, 95, 34, 0.05));
+    color: #ffffff;
+    padding-left: 22px;
+    font-weight: 500;
+}
+
+.rag-suggestion-item:hover::before,
+.rag-suggestion-item.rag-suggestion-highlighted::before {
+    width: 3px;
+}
+
+.rag-suggestion-item:first-child {
+    border-top-left-radius: 11px;
+    border-top-right-radius: 11px;
+}
+
+.rag-suggestion-item:last-child {
+    border-bottom-left-radius: 11px;
+    border-bottom-right-radius: 11px;
+}
+
+/* Custom checkbox styling for profile modal */
+#profile-modal input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid rgba(156, 163, 175, 0.4); /* gray-400 with opacity */
+    border-radius: 3px;
+    background-color: rgba(31, 41, 55, 0.3); /* gray-800 with low opacity */
+    cursor: pointer;
+    position: relative;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+#profile-modal input[type="checkbox"]:hover {
+    border-color: rgba(156, 163, 175, 0.6);
+    background-color: rgba(31, 41, 55, 0.5);
+}
+
+#profile-modal input[type="checkbox"]:checked {
+    background-color: rgba(107, 114, 128, 0.6); /* gray-500 with opacity */
+    border-color: rgba(156, 163, 175, 0.8);
+}
+
+#profile-modal input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 5px;
+    height: 9px;
+    border: solid rgba(229, 231, 235, 0.9); /* gray-200 */
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+#profile-modal label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.25rem 0;
+    color: rgba(229, 231, 235, 0.85); /* gray-200 with slight transparency */
+    font-size: 0.875rem;
+    transition: color 0.15s ease;
+}
+
+#profile-modal label:hover {
+    color: rgba(229, 231, 235, 1);
 }
 
 .sr-only {

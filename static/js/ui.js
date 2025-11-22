@@ -1244,17 +1244,38 @@ export function addSessionToList(session, isActive = false) {
     }
     contentWrapper.appendChild(lastUpdatedSpan);
 
-    const modelsDiv = document.createElement('div');
-    modelsDiv.className = 'session-models text-xs text-gray-400 mt-1 flex flex-wrap gap-1';
-    if (session.models_used && Array.isArray(session.models_used)) {
+    // Display profile tags (preferred) or fall back to models_used
+    const tagsDiv = document.createElement('div');
+    tagsDiv.className = 'session-models text-xs text-gray-400 mt-1 flex flex-wrap gap-1';
+    
+    // Debug logging
+    console.log('[DEBUG] Session data:', {
+        id: session.id,
+        profile_tags_used: session.profile_tags_used,
+        models_used: session.models_used,
+        has_profile_tags: session.profile_tags_used && Array.isArray(session.profile_tags_used) && session.profile_tags_used.length > 0
+    });
+    
+    // Prefer profile_tags_used over models_used
+    if (session.profile_tags_used && Array.isArray(session.profile_tags_used) && session.profile_tags_used.length > 0) {
+        console.log('[DEBUG] Using profile tags:', session.profile_tags_used);
+        session.profile_tags_used.forEach(tag => {
+            const tagSpan = document.createElement('span');
+            tagSpan.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-semibold bg-[#F15F22]/20 text-[#F15F22] border border-[#F15F22]/30';
+            tagSpan.textContent = `@${tag}`;
+            tagsDiv.appendChild(tagSpan);
+        });
+    } else if (session.models_used && Array.isArray(session.models_used) && session.models_used.length > 0) {
+        console.log('[DEBUG] Falling back to models_used:', session.models_used);
+        // Fallback to models_used for backwards compatibility
         session.models_used.forEach(modelString => {
             const modelSpan = document.createElement('span');
             modelSpan.className = 'inline-block bg-gray-700 rounded-full px-2 py-0.5 text-xs font-medium text-gray-300';
             modelSpan.textContent = modelString;
-            modelsDiv.appendChild(modelSpan);
+            tagsDiv.appendChild(modelSpan);
         });
     }
-    contentWrapper.appendChild(modelsDiv);
+    contentWrapper.appendChild(tagsDiv);
 
     sessionItem.appendChild(contentWrapper);
 
@@ -1278,25 +1299,35 @@ export function updateSessionListItemName(sessionId, newName) {
     }
 }
 
-export function updateSessionModels(sessionId, models_used) {
+export function updateSessionModels(sessionId, models_used, profile_tags_used = null) {
     const sessionItem = document.getElementById(`session-${sessionId}`);
     if (sessionItem) {
-        let modelsDiv = sessionItem.querySelector('.session-models');
-        if (!modelsDiv) {
-            modelsDiv = document.createElement('div');
-            modelsDiv.className = 'session-models text-xs text-gray-400 mt-1 flex flex-wrap gap-1';
+        let tagsDiv = sessionItem.querySelector('.session-models');
+        if (!tagsDiv) {
+            tagsDiv = document.createElement('div');
+            tagsDiv.className = 'session-models text-xs text-gray-400 mt-1 flex flex-wrap gap-1';
             const contentWrapper = sessionItem.querySelector('.w-full');
             if(contentWrapper) {
-                contentWrapper.appendChild(modelsDiv);
+                contentWrapper.appendChild(tagsDiv);
             }
         }
-        modelsDiv.innerHTML = ''; // Clear existing models
-        if (models_used && Array.isArray(models_used)) {
+        tagsDiv.innerHTML = ''; // Clear existing tags/models
+        
+        // Prefer profile_tags_used over models_used
+        if (profile_tags_used && Array.isArray(profile_tags_used) && profile_tags_used.length > 0) {
+            profile_tags_used.forEach(tag => {
+                const tagSpan = document.createElement('span');
+                tagSpan.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-semibold bg-[#F15F22]/20 text-[#F15F22] border border-[#F15F22]/30';
+                tagSpan.textContent = `@${tag}`;
+                tagsDiv.appendChild(tagSpan);
+            });
+        } else if (models_used && Array.isArray(models_used) && models_used.length > 0) {
+            // Fallback to models_used for backwards compatibility
             models_used.forEach(modelString => {
                 const modelSpan = document.createElement('span');
                 modelSpan.className = 'inline-block bg-gray-700 rounded-full px-2 py-0.5 text-xs font-medium text-gray-300';
                 modelSpan.textContent = modelString;
-                modelsDiv.appendChild(modelSpan);
+                tagsDiv.appendChild(modelSpan);
             });
         }
 

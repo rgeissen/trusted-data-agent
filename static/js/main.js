@@ -17,11 +17,37 @@ import { initializeVoiceRecognition } from './voice.js';
 import { subscribeToNotifications } from './notifications.js';
 
 async function initializeRAGAutoCompletion() {
-    let allQuestions = [];
     const suggestionsContainer = document.getElementById('rag-suggestions-container');
     const userInput = document.getElementById('user-input');
+    let debounceTimer = null;
+    let currentSuggestions = [];
+    let selectedIndex = -1;
+
+    function highlightSuggestion(index) {
+        const items = suggestionsContainer.querySelectorAll('.rag-suggestion-item');
+        items.forEach((item, idx) => {
+            if (idx === index) {
+                item.classList.add('rag-suggestion-highlighted');
+            } else {
+                item.classList.remove('rag-suggestion-highlighted');
+            }
+        });
+    }
+
+    function selectSuggestion(index) {
+        if (index >= 0 && index < currentSuggestions.length) {
+            userInput.value = currentSuggestions[index];
+            suggestionsContainer.innerHTML = '';
+            suggestionsContainer.classList.add('hidden');
+            currentSuggestions = [];
+            selectedIndex = -1;
+        }
+    }
 
     function showSuggestions(questionsToShow) {
+        currentSuggestions = questionsToShow;
+        selectedIndex = questionsToShow.length > 0 ? 0 : -1;
+
         if (questionsToShow.length === 0) {
             suggestionsContainer.innerHTML = '';
             suggestionsContainer.classList.add('hidden');
@@ -29,40 +55,86 @@ async function initializeRAGAutoCompletion() {
         }
 
         suggestionsContainer.innerHTML = '';
-        questionsToShow.slice(0, 5).forEach(q => {
-            const suggestionItem = document.createElement('div'); // Use div instead of button
+        questionsToShow.forEach((q, index) => {
+            const suggestionItem = document.createElement('div');
             suggestionItem.className = 'rag-suggestion-item';
+            if (index === 0) {
+                suggestionItem.classList.add('rag-suggestion-highlighted');
+            }
             suggestionItem.textContent = q;
             suggestionItem.addEventListener('mousedown', (e) => {
                 e.preventDefault();
-                userInput.value = q;
-                suggestionsContainer.innerHTML = '';
-                suggestionsContainer.classList.add('hidden');
+                selectSuggestion(index);
                 userInput.focus();
+            });
+            suggestionItem.addEventListener('mouseenter', () => {
+                selectedIndex = index;
+                highlightSuggestion(index);
             });
             suggestionsContainer.appendChild(suggestionItem);
         });
         suggestionsContainer.classList.remove('hidden');
     }
 
-    if (suggestionsContainer && userInput) {
-        allQuestions = await API.fetchRAGQuestions();
+    async function fetchAndShowSuggestions(queryText) {
+        if (!queryText || queryText.length < 2) {
+            showSuggestions([]);
+            return;
+        }
+
+        // Get active profile ID from configState
+        const profileId = window.configState?.defaultProfileId || null;
         
+        // Fetch semantically ranked questions from backend
+        const questions = await API.fetchRAGQuestions(queryText, profileId, 5);
+        showSuggestions(questions);
+    }
+
+    if (suggestionsContainer && userInput) {
         userInput.addEventListener('focus', () => {
-            const inputValue = userInput.value.toLowerCase();
-            if (inputValue.length > 0) { // Only show on focus if there is already text
-                 const filteredQuestions = allQuestions.filter(q => q.toLowerCase().includes(inputValue));
-                showSuggestions(filteredQuestions);
+            const inputValue = userInput.value.trim();
+            if (inputValue.length >= 2) {
+                fetchAndShowSuggestions(inputValue);
             }
         });
 
         userInput.addEventListener('input', () => {
-            const inputValue = userInput.value.toLowerCase();
-            if (inputValue.length > 0) {
-                const filteredQuestions = allQuestions.filter(q => q.toLowerCase().includes(inputValue));
-                showSuggestions(filteredQuestions);
+            const inputValue = userInput.value.trim();
+            
+            // Clear previous timer
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+            }
+            
+            if (inputValue.length >= 2) {
+                // Debounce API calls (300ms delay)
+                debounceTimer = setTimeout(() => {
+                    fetchAndShowSuggestions(inputValue);
+                }, 300);
             } else {
-                showSuggestions([]); // Clear suggestions when input is empty
+                showSuggestions([]);
+            }
+        });
+
+        userInput.addEventListener('keydown', (e) => {
+            if (currentSuggestions.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedIndex = (selectedIndex + 1) % currentSuggestions.length;
+                highlightSuggestion(selectedIndex);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedIndex = (selectedIndex - 1 + currentSuggestions.length) % currentSuggestions.length;
+                highlightSuggestion(selectedIndex);
+            } else if (e.key === 'Tab' && selectedIndex >= 0) {
+                e.preventDefault();
+                selectSuggestion(selectedIndex);
+            } else if (e.key === 'Escape') {
+                suggestionsContainer.innerHTML = '';
+                suggestionsContainer.classList.add('hidden');
+                currentSuggestions = [];
+                selectedIndex = -1;
             }
         });
 
@@ -70,6 +142,8 @@ async function initializeRAGAutoCompletion() {
             setTimeout(() => {
                 suggestionsContainer.innerHTML = '';
                 suggestionsContainer.classList.add('hidden');
+                currentSuggestions = [];
+                selectedIndex = -1;
             }, 150);
         });
     }
@@ -441,8 +515,8 @@ async function showWelcomeScreen() {
                 if (activeServer) {
                     const mcpName = activeServer.name || 'Unknown Server';
                     
-                    // Get the active LLM provider from ConfigurationState
-                    const activeLLM = await configState.getActiveLLMProvider();
+                    // Get the active LLM configuration from ConfigurationState
+                    const activeLLM = configState.getActiveLLMConfiguration();
                     
                     if (activeLLM) {
                         const llmProvider = activeLLM.provider || 'Unknown Provider';

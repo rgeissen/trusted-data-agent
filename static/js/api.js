@@ -372,8 +372,14 @@ export async function fetchTurnDetails(sessionId, turnId) {
 }
 // --- MODIFICATION END ---
 
-export async function fetchRAGQuestions() {
-    const res = await fetch('/api/questions', { headers: _getHeaders(false) });
+export async function fetchRAGQuestions(queryText = '', profileId = null, limit = 10) {
+    const params = new URLSearchParams();
+    if (queryText) params.append('query', queryText);
+    if (profileId) params.append('profile_id', profileId);
+    if (limit) params.append('limit', limit.toString());
+    
+    const url = `/api/questions${params.toString() ? '?' + params.toString() : ''}`;
+    const res = await fetch(url, { headers: _getHeaders(false) });
     if (!res.ok) {
         return [];
     }

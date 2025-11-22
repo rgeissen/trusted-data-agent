@@ -994,6 +994,7 @@ class RAGRetriever:
                     "user_feedback_score": user_feedback_score,  # Derived from turn.feedback (-1=downvote, 0=neutral, 1=upvote)
                     "llm_config": {
                         "provider": turn.get("provider"), "model": turn.get("model"),
+                        "profile_tag": turn.get("profile_tag"),  # Add profile tag
                         "input_tokens": turn.get("turn_input_tokens", 0), "output_tokens": turn.get("turn_output_tokens", 0)
                     },
                 },

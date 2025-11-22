@@ -96,6 +96,7 @@ class RAGTemplateGenerator:
             "llm_config": {
                 "provider": output_config.get("llm_config", {}).get("provider", {}).get("value", "Template"),
                 "model": output_config.get("llm_config", {}).get("model", {}).get("value", template_id),
+                "profile_tag": output_config.get("llm_config", {}).get("profile_tag", {}).get("value", None),
                 "input_tokens": config.get("estimated_input_tokens", 150),
                 "output_tokens": config.get("estimated_output_tokens", 180)
             },

@@ -101,12 +101,44 @@ async def get_application_status():
 @api_bp.route("/api/questions")
 async def get_rag_questions():
     """
-    Returns a list of unique questions from the RAG knowledge base.
+    Returns semantically relevant questions from the RAG knowledge base.
+    Supports profile-based filtering and semantic ranking.
+    
+    Query parameters:
+    - query: Search text for semantic matching (optional, returns all if empty)
+    - profile_id: Profile ID for collection filtering (optional)
+    - limit: Maximum number of results (default: 10)
     """
-    questions = set()
+    from trusted_data_agent.core.config_manager import get_config_manager
+    
+    query_text = request.args.get('query', '').strip()
+    profile_id = request.args.get('profile_id', '').strip()
+    limit = int(request.args.get('limit', 10))
+    
     retriever = APP_STATE.get('rag_retriever_instance')
-    if retriever:
-        for collection in retriever.collections.values():
+    if not retriever:
+        return jsonify({"questions": []})
+    
+    # Determine which collections to query based on profile
+    allowed_collection_ids = None
+    if profile_id:
+        config_manager = get_config_manager()
+        profiles = config_manager.get_profiles()
+        profile = next((p for p in profiles if p.get("id") == profile_id), None)
+        
+        if profile:
+            autocomplete_collections = profile.get("autocompleteCollections", ["*"])
+            if autocomplete_collections != ["*"]:
+                allowed_collection_ids = set(autocomplete_collections)
+    
+    # If no query text, fall back to getting all unique questions (filtered by profile)
+    if not query_text:
+        questions = set()
+        for coll_id, collection in retriever.collections.items():
+            # Skip if profile filtering is active and this collection isn't allowed
+            if allowed_collection_ids is not None and coll_id not in allowed_collection_ids:
+                continue
+                
             try:
                 results = collection.get(include=["metadatas"])
                 for metadata in results.get("metadatas", []):
@@ -114,8 +146,50 @@ async def get_rag_questions():
                         questions.add(metadata["user_query"])
             except Exception as e:
                 app_logger.error(f"Error getting documents from collection {collection.name}: {e}")
-
-    return jsonify({"questions": sorted(list(questions))})
+        
+        return jsonify({"questions": sorted(list(questions))[:limit]})
+    
+    # Semantic search: query each allowed collection and aggregate results
+    all_results = []
+    for coll_id, collection in retriever.collections.items():
+        # Skip if profile filtering is active and this collection isn't allowed
+        if allowed_collection_ids is not None and coll_id not in allowed_collection_ids:
+            continue
+            
+        try:
+            results = collection.query(
+                query_texts=[query_text],
+                n_results=limit,
+                include=["metadatas", "distances"]
+            )
+            
+            # Extract questions with their similarity scores
+            if results and results.get("metadatas") and results["metadatas"][0]:
+                for idx, metadata in enumerate(results["metadatas"][0]):
+                    if "user_query" in metadata:
+                        distance = results["distances"][0][idx] if results.get("distances") else 0
+                        all_results.append({
+                            "question": metadata["user_query"],
+                            "distance": distance,
+                            "collection_id": coll_id
+                        })
+        except Exception as e:
+            app_logger.error(f"Error querying collection {collection.name}: {e}")
+    
+    # Sort by distance (lower is better for cosine/L2 distance) and deduplicate
+    all_results.sort(key=lambda x: x["distance"])
+    seen_questions = set()
+    unique_questions = []
+    
+    for result in all_results:
+        question = result["question"]
+        if question not in seen_questions:
+            seen_questions.add(question)
+            unique_questions.append(question)
+            if len(unique_questions) >= limit:
+                break
+    
+    return jsonify({"questions": unique_questions})
 
 
 @api_bp.route("/simple_chat", methods=["POST"])
@@ -749,6 +823,10 @@ async def get_sessions():
     """Returns a list of all active chat sessions for the requesting user."""
     user_uuid = _get_user_uuid_from_request()
     sessions = session_manager.get_all_sessions(user_uuid=user_uuid)
+    # Ensure profile_tags_used is included for each session
+    for session in sessions:
+        if 'profile_tags_used' not in session:
+            session['profile_tags_used'] = []
     return jsonify(sessions)
 
 @api_bp.route("/session/<session_id>", methods=["GET"])
@@ -772,6 +850,9 @@ async def get_session_history(session_id):
             "input_tokens": session_data.get("input_tokens", 0),
             "output_tokens": session_data.get("output_tokens", 0),
             "models_used": session_data.get("models_used", []),
+            "profile_tags_used": session_data.get("profile_tags_used", []),
+            "provider": session_data.get("provider"),
+            "model": session_data.get("model"),
             "feedback_by_turn": feedback_by_turn  # Add feedback data
         }
         return jsonify(response_data)
@@ -944,18 +1025,31 @@ async def new_session():
     charting_intensity = data.get("charting_intensity", APP_CONFIG.DEFAULT_CHARTING_INTENSITY) if APP_CONFIG.CHARTING_ENABLED else "none"
     system_prompt_template = data.get("system_prompt")
 
+    # Get profile tag from active profile
+    from trusted_data_agent.core.config_manager import get_config_manager
+    config_manager = get_config_manager()
+    active_profile_ids = config_manager.get_active_for_consumption_profile_ids()
+    profile_tag = None
+    if active_profile_ids:
+        profiles = config_manager.get_profiles()
+        active_profile = next((p for p in profiles if p.get("id") == active_profile_ids[0]), None)
+        if active_profile:
+            profile_tag = active_profile.get("tag")
+
     try:
         session_id = session_manager.create_session(
             user_uuid=user_uuid,
             provider=APP_CONFIG.CURRENT_PROVIDER,
             llm_instance=APP_STATE.get('llm'),
             charting_intensity=charting_intensity,
-            system_prompt_template=system_prompt_template
+            system_prompt_template=system_prompt_template,
+            profile_tag=profile_tag
         )
-        app_logger.info(f"Created new session: {session_id} for user {user_uuid} provider {APP_CONFIG.CURRENT_PROVIDER}.")
+        app_logger.info(f"Created new session: {session_id} for user {user_uuid} with profile_tag {profile_tag}.")
         return jsonify({
             "id": session_id, 
             "name": "New Chat", 
+            "profile_tags_used": [],
             "models_used": []
         })
     except Exception as e:
@@ -1018,6 +1112,9 @@ async def configure_services():
     host_keys = ["ollama_host", "ollamaHost", "host"]
     ollama_host_value = next((creds.get(key) or data_from_ui.get(key) for key in host_keys if creds.get(key) or data_from_ui.get(key)), None)
 
+    # Get MCP server config - support both nested and flat formats
+    mcp_server_data = data_from_ui.get("mcp_server", {})
+    
     service_config_data = {
         "provider": data_from_ui.get("provider"),
         "model": data_from_ui.get("model"),
@@ -1037,11 +1134,11 @@ async def configure_services():
             "friendli_endpoint_url": creds.get("friendli_endpoint_url") or data_from_ui.get("friendli_endpoint_url")
         },
         "mcp_server": {
-            "name": data_from_ui.get("server_name"),
-            "id": data_from_ui.get("server_id"),  # Add server ID
-            "host": data_from_ui.get("host"),
-            "port": data_from_ui.get("port"),
-            "path": data_from_ui.get("path")
+            "name": mcp_server_data.get("name") or data_from_ui.get("server_name"),
+            "id": mcp_server_data.get("id") or data_from_ui.get("server_id"),
+            "host": mcp_server_data.get("host") or data_from_ui.get("host"),
+            "port": mcp_server_data.get("port") or data_from_ui.get("port"),
+            "path": mcp_server_data.get("path") or data_from_ui.get("path")
         }
     }
     service_config_data["credentials"] = {k: v for k, v in service_config_data["credentials"].items() if v is not None}
@@ -1134,7 +1231,18 @@ async def ask_stream():
             yield PlanExecutor._format_sse({"error": "Session not found or invalid."}, "error")
         return Response(error_gen(), mimetype="text/event-stream")
 
-    session_manager.update_models_used(user_uuid=user_uuid, session_id=session_id, provider=APP_CONFIG.CURRENT_PROVIDER, model=APP_CONFIG.CURRENT_MODEL)
+    # Get profile tag from active profile
+    from trusted_data_agent.core.config_manager import get_config_manager
+    config_manager = get_config_manager()
+    active_profile_ids = config_manager.get_active_for_consumption_profile_ids()
+    profile_tag = None
+    if active_profile_ids:
+        profiles = config_manager.get_profiles()
+        active_profile = next((p for p in profiles if p.get("id") == active_profile_ids[0]), None)
+        if active_profile:
+            profile_tag = active_profile.get("tag")
+
+    session_manager.update_models_used(user_uuid=user_uuid, session_id=session_id, provider=APP_CONFIG.CURRENT_PROVIDER, model=APP_CONFIG.CURRENT_MODEL, profile_tag=profile_tag)
 
     # --- MODIFICATION START: Generate task_id for interactive sessions ---
     task_id = generate_task_id()

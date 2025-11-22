@@ -121,12 +121,13 @@ def _save_session(user_uuid: str, session_id: str, session_data: dict):
             notification_payload = {
                 "session_id": session_id,
                 "models_used": session_data.get("models_used", []),
+                "profile_tags_used": session_data.get("profile_tags_used", []),
                 "last_updated": session_data.get("last_updated"),
                 "provider": session_data.get("provider"),
                 "model": session_data.get("model"),
                 "name": session_data.get("name", "Unnamed Session"),
             }
-            app_logger.debug(f"_save_session sending notification for session {session_id}: provider={notification_payload['provider']}, model={notification_payload['model']}")
+            app_logger.debug(f"_save_session sending notification for session {session_id}: provider={notification_payload['provider']}, model={notification_payload['model']}, profile_tags_used={notification_payload['profile_tags_used']}")
             notification = {
                 "type": "session_model_update",
                 "payload": notification_payload
@@ -143,7 +144,7 @@ def _save_session(user_uuid: str, session_id: str, session_data: dict):
 
 # --- Public Session Management Functions ---
 
-def create_session(user_uuid: str, provider: str, llm_instance: any, charting_intensity: str, system_prompt_template: str | None = None) -> str:
+def create_session(user_uuid: str, provider: str, llm_instance: any, charting_intensity: str, system_prompt_template: str | None = None, profile_tag: str | None = None) -> str:
     session_id = generate_session_id()
     app_logger.info(f"Attempting to create session '{session_id}' for user '{user_uuid}'.")
 
@@ -164,9 +165,11 @@ def create_session(user_uuid: str, provider: str, llm_instance: any, charting_in
         "user_uuid": user_uuid, # Store user UUID for potential later use/verification
         "system_prompt_template": system_prompt_template,
         "charting_intensity": charting_intensity,
-        "provider": provider, # --- Store the provider used for this session
-        "model": APP_CONFIG.CURRENT_MODEL, # --- Store the model used for this session
-        "models_used": [], # --- Initialize as empty for a new session
+        "provider": provider, # --- Store the provider used for this session (for backwards compatibility)
+        "model": APP_CONFIG.CURRENT_MODEL, # --- Store the model used for this session (for backwards compatibility)
+        "profile_tag": profile_tag, # --- Store the profile tag used for this session
+        "profile_tags_used": [], # --- Initialize as empty for a new session
+        "models_used": [], # --- Keep for backwards compatibility
         "session_history": [], # UI history (messages added via add_message_to_histories)
         "chat_object": chat_history_for_file, # Store serializable history for LLM context
         "name": "New Chat",
@@ -263,9 +266,10 @@ def get_all_sessions(user_uuid: str) -> list[dict]:
                         "name": data.get("name", "Unnamed Session"),
                         "created_at": data.get("created_at", "Unknown"),
                         "models_used": data.get("models_used", []),
+                        "profile_tags_used": data.get("profile_tags_used", []),
                         "last_updated": data.get("last_updated", data.get("created_at", "Unknown"))
                     }
-                    app_logger.debug(f"Loaded summary for {session_file.name}: models_used={summary['models_used']}")
+                    app_logger.debug(f"Loaded summary for {session_file.name}: models_used={summary['models_used']}, profile_tags_used={summary['profile_tags_used']}")
                     session_summaries.append(summary)
                     app_logger.debug(f"Successfully loaded summary for {session_file.name}.")
             except (json.JSONDecodeError, OSError, KeyError) as e:
@@ -428,22 +432,32 @@ def update_token_count(user_uuid: str, session_id: str, input_tokens: int, outpu
         app_logger.warning(f"Could not update tokens: Session {session_id} not found for user {user_uuid}.")
 
 
-def update_models_used(user_uuid: str, session_id: str, provider: str, model: str):
-    """Adds the current model to the list of models used in the session."""
-    app_logger.debug(f"update_models_used called for session {session_id} with provider={provider}, model={model}")
+def update_models_used(user_uuid: str, session_id: str, provider: str, model: str, profile_tag: str | None = None):
+    """Adds the current model/profile to the list used in the session."""
+    app_logger.debug(f"update_models_used called for session {session_id} with provider={provider}, model={model}, profile_tag={profile_tag}")
     session_data = _load_session(user_uuid, session_id)
     if session_data:
+        # Keep models_used for backwards compatibility
         models_used = session_data.get('models_used', [])
         model_string = f"{provider}/{model}"
         if model_string not in models_used:
             models_used.append(model_string)
             session_data['models_used'] = models_used
 
-        # --- MODIFICATION START: Update top-level provider and model ---
+        # Add profile tag to profile_tags_used
+        if profile_tag:
+            profile_tags_used = session_data.get('profile_tags_used', [])
+            if profile_tag not in profile_tags_used:
+                profile_tags_used.append(profile_tag)
+                session_data['profile_tags_used'] = profile_tags_used
+
+        # --- MODIFICATION START: Update top-level fields ---
         app_logger.debug(f"Updating session_data provider from {session_data.get('provider')} to {provider}")
         app_logger.debug(f"Updating session_data model from {session_data.get('model')} to {model}")
+        app_logger.debug(f"Updating session_data profile_tag from {session_data.get('profile_tag')} to {profile_tag}")
         session_data['provider'] = provider
         session_data['model'] = model
+        session_data['profile_tag'] = profile_tag
         # --- MODIFICATION END ---
 
         if not _save_session(user_uuid, session_id, session_data):

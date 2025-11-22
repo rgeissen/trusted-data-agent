@@ -129,8 +129,8 @@ export async function handleLoadSession(sessionId, isNewSession = false) {
         }
 
         // --- MODIFICATION START ---
-        // Explicitly update the models for the loaded session in the UI
-        UI.updateSessionModels(sessionId, data.models_used);
+        // Explicitly update the models/profile tags for the loaded session in the UI
+        UI.updateSessionModels(sessionId, data.models_used, data.profile_tags_used);
         // This will reset the status display to the globally configured model
         UI.updateStatusPromptName(data.provider, data.model);
         // --- MODIFICATION END ---

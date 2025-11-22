@@ -64,20 +64,9 @@ class AppConfig:
 
 
     # --- Initial State Configuration ---
-    INITIALLY_DISABLED_PROMPTS = [
-        "base_query",
-        "qlty_databaseQuality",
-        "dba_databaseLineage",
-        "base_tableBusinessDesc",
-        "base_databaseBusinessDesc",
-        "dba_databaseHealthAssessment",
-        "dba_userActivityAnalysis",
-        "dba_systemVoice",
-        "dba_tableArchive",
-        "dba_tableDropImpact",
-        "_testMyServer"
-    ]
-    INITIALLY_DISABLED_TOOLS = ["sales_top_customers", "plot_line_chart","plot_pie_chart", "plot_polar_chart", "plot_radar_chart", "sql_Analyze_Cluster_Stats", "rag_Execute_Workflow","sql_Execute_Full_Pipeline", "sql_Retrieve_Cluster_Queries"] # A list of tool names to be disabled by default on application startup.
+    # Note: INITIALLY_DISABLED_PROMPTS and INITIALLY_DISABLED_TOOLS have been moved to tda_config.json
+    # Each MCP server configuration now contains "initially_disabled_tools" and "initially_disabled_prompts" arrays
+    # Use config_manager.get_initially_disabled_tools() and config_manager.get_initially_disabled_prompts() to access them
 
     # --- Tool & Argument Parsing Logic ---
     TOOL_SCOPE_HIERARCHY = [
@@ -128,8 +117,9 @@ APP_STATE = {
     "constraints_context": "",
 
     # Runtime lists of currently disabled capabilities
-    "disabled_prompts": list(APP_CONFIG.INITIALLY_DISABLED_PROMPTS),
-    "disabled_tools": list(APP_CONFIG.INITIALLY_DISABLED_TOOLS),
+    # These are populated from tda_config.json at startup via config_manager
+    "disabled_prompts": [],
+    "disabled_tools": [],
 
     # Validated license information
     "license_info": None,

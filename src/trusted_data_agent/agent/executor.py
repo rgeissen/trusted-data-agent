@@ -742,6 +742,17 @@ class PlanExecutor:
             if self.state != self.AgentState.ERROR and self.execution_depth == 0:
             # --- MODIFICATION END ---
                 # --- MODIFICATION START: Include model/provider and use self.current_turn_number ---
+                # Get profile tag from active profile
+                from trusted_data_agent.core.config_manager import get_config_manager
+                config_manager = get_config_manager()
+                active_profile_ids = config_manager.get_active_for_consumption_profile_ids()
+                profile_tag = None
+                if active_profile_ids:
+                    profiles = config_manager.get_profiles()
+                    active_profile = next((p for p in profiles if p.get("id") == active_profile_ids[0]), None)
+                    if active_profile:
+                        profile_tag = active_profile.get("tag")
+                
                 turn_summary = {
                     "turn": self.current_turn_number, # Use the authoritative instance variable
                     "user_query": self.original_user_input, # Store the original query
@@ -749,8 +760,9 @@ class PlanExecutor:
                     "execution_trace": self.turn_action_history,
                     "final_summary": self.final_summary_text,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "provider": self.current_provider, # Add snapshot of provider
-                    "model": self.current_model,       # Add snapshot of model
+                    "provider": self.current_provider, # Add snapshot of provider (for backwards compatibility)
+                    "model": self.current_model,       # Add snapshot of model (for backwards compatibility)
+                    "profile_tag": profile_tag,        # Add snapshot of profile tag
                     "task_id": self.task_id,            # Add the task_id
                     "turn_input_tokens": self.turn_input_tokens,
                     "turn_output_tokens": self.turn_output_tokens,

@@ -61,6 +61,8 @@ class ConfigManager:
             "rag_collections": [],  # Empty - default collection created by RAGRetriever
             "mcp_servers": [],  # MCP server configurations
             "active_mcp_server_id": None,  # ID of currently active MCP server
+            "llm_configurations": [],  # LLM configuration settings
+            "active_llm_configuration_id": None,  # ID of currently active LLM configuration
             "profiles": [],  # Profile configurations
             "default_profile_id": None,  # ID of the default profile
             "active_for_consumption_profile_ids": []  # IDs of profiles active for consumption
@@ -352,6 +354,132 @@ class ConfigManager:
         config = self.load_config()
         config["active_mcp_server_id"] = server_id
         return self.save_config(config)
+    
+    def get_all_mcp_tools(self, mcp_server_id: Optional[str] = None) -> list:
+        """
+        Get the list of all available tools for a specific MCP server.
+        If no server_id provided, uses the active MCP server.
+        
+        Args:
+            mcp_server_id: Optional MCP server ID
+            
+        Returns:
+            List of all available tool names from the MCP server
+        """
+        if not mcp_server_id:
+            mcp_server_id = self.get_active_mcp_server_id()
+        
+        if not mcp_server_id:
+            return []
+        
+        config = self.load_config()
+        mcp_servers = config.get("mcp_servers", [])
+        
+        for server in mcp_servers:
+            if server.get("id") == mcp_server_id:
+                return server.get("all_tools", [])
+        
+        return []
+    
+    def get_all_mcp_prompts(self, mcp_server_id: Optional[str] = None) -> list:
+        """
+        Get the list of all available prompts for a specific MCP server.
+        If no server_id provided, uses the active MCP server.
+        
+        Args:
+            mcp_server_id: Optional MCP server ID
+            
+        Returns:
+            List of all available prompt names from the MCP server
+        """
+        if not mcp_server_id:
+            mcp_server_id = self.get_active_mcp_server_id()
+        
+        if not mcp_server_id:
+            return []
+        
+        config = self.load_config()
+        mcp_servers = config.get("mcp_servers", [])
+        
+        for server in mcp_servers:
+            if server.get("id") == mcp_server_id:
+                return server.get("all_prompts", [])
+        
+        return []
+    
+    def get_profile_enabled_tools(self, profile_id: str) -> list:
+        """
+        Get the list of enabled tools for a specific profile.
+        
+        Args:
+            profile_id: Profile ID
+            
+        Returns:
+            List of enabled tool names for this profile
+        """
+        profiles = self.get_profiles()
+        for profile in profiles:
+            if profile.get("id") == profile_id:
+                return profile.get("enabled_tools", [])
+        return []
+    
+    def get_profile_enabled_prompts(self, profile_id: str) -> list:
+        """
+        Get the list of enabled prompts for a specific profile.
+        
+        Args:
+            profile_id: Profile ID
+            
+        Returns:
+            List of enabled prompt names for this profile
+        """
+        profiles = self.get_profiles()
+        for profile in profiles:
+            if profile.get("id") == profile_id:
+                return profile.get("enabled_prompts", [])
+        return []
+    
+    def get_profile_disabled_tools(self, profile_id: str) -> list:
+        """
+        Dynamically calculate disabled tools for a profile.
+        This is the set difference: all_tools - enabled_tools
+        
+        Args:
+            profile_id: Profile ID
+            
+        Returns:
+            List of disabled tool names for this profile
+        """
+        profile = next((p for p in self.get_profiles() if p.get("id") == profile_id), None)
+        if not profile:
+            return []
+        
+        mcp_server_id = profile.get("mcpServerId")
+        all_tools = set(self.get_all_mcp_tools(mcp_server_id))
+        enabled_tools = set(self.get_profile_enabled_tools(profile_id))
+        
+        return list(all_tools - enabled_tools)
+    
+    def get_profile_disabled_prompts(self, profile_id: str) -> list:
+        """
+        Dynamically calculate disabled prompts for a profile.
+        This is the set difference: all_prompts - enabled_prompts
+        
+        Args:
+            profile_id: Profile ID
+            
+        Returns:
+            List of disabled prompt names for this profile
+        """
+        profile = next((p for p in self.get_profiles() if p.get("id") == profile_id), None)
+        if not profile:
+            return []
+        
+        mcp_server_id = profile.get("mcpServerId")
+        all_prompts = set(self.get_all_mcp_prompts(mcp_server_id))
+        enabled_prompts = set(self.get_profile_enabled_prompts(profile_id))
+        
+        return list(all_prompts - enabled_prompts)
 
     # ========================================================================
     # PROFILE CONFIGURATION METHODS
@@ -482,6 +610,132 @@ class ConfigManager:
         """
         config = self.load_config()
         config["active_for_consumption_profile_ids"] = profile_ids
+        return self.save_config(config)
+
+    # ========================================================================
+    # LLM CONFIGURATION METHODS
+    # ========================================================================
+
+    def get_llm_configurations(self) -> list:
+        """
+        Get all LLM configurations.
+        
+        Returns:
+            List of LLM configuration dictionaries
+        """
+        config = self.load_config()
+        return config.get("llm_configurations", [])
+
+    def save_llm_configurations(self, configurations: list) -> bool:
+        """
+        Save LLM configurations.
+        
+        Args:
+            configurations: List of LLM configuration dictionaries
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        config = self.load_config()
+        config["llm_configurations"] = configurations
+        return self.save_config(config)
+
+    def add_llm_configuration(self, configuration: Dict[str, Any]) -> bool:
+        """
+        Add a new LLM configuration.
+        
+        Args:
+            configuration: LLM configuration dictionary
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        configurations = self.get_llm_configurations()
+        configurations.append(configuration)
+        return self.save_llm_configurations(configurations)
+
+    def update_llm_configuration(self, config_id: str, updates: Dict[str, Any]) -> bool:
+        """
+        Update an existing LLM configuration.
+        
+        Args:
+            config_id: Unique ID of the configuration to update
+            updates: Dictionary of fields to update
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        configurations = self.get_llm_configurations()
+        configuration = next((c for c in configurations if c.get("id") == config_id), None)
+        
+        if not configuration:
+            app_logger.warning(f"LLM configuration with ID {config_id} not found for update")
+            return False
+        
+        configuration.update(updates)
+        return self.save_llm_configurations(configurations)
+
+    def remove_llm_configuration(self, config_id: str) -> tuple[bool, Optional[str]]:
+        """
+        Remove an LLM configuration.
+        Prevents deletion if any profiles are assigned to this configuration.
+        
+        Args:
+            config_id: Unique ID of the configuration to remove
+            
+        Returns:
+            Tuple of (success: bool, error_message: Optional[str])
+            If successful, error_message is None
+            If failed, error_message contains the reason
+        """
+        # Check if any profiles are assigned to this configuration
+        profiles = self.get_profiles()
+        assigned_profiles = [
+            p for p in profiles 
+            if p.get("llmConfigurationId") == config_id
+        ]
+        
+        if assigned_profiles:
+            profile_tags = [p.get("tag", "Unknown") for p in assigned_profiles]
+            tags_list = ", ".join(profile_tags)
+            error_msg = f"Cannot delete LLM configuration: {len(assigned_profiles)} profile(s) assigned: {tags_list}"
+            app_logger.warning(f"{error_msg} (Config ID: {config_id})")
+            return False, error_msg
+        
+        configurations = self.get_llm_configurations()
+        original_count = len(configurations)
+        configurations = [c for c in configurations if c.get("id") != config_id]
+        
+        if len(configurations) == original_count:
+            error_msg = "LLM configuration not found"
+            app_logger.warning(f"LLM configuration with ID {config_id} not found for removal")
+            return False, error_msg
+        
+        success = self.save_llm_configurations(configurations)
+        return success, None if success else "Failed to save configuration"
+
+    def get_active_llm_configuration_id(self) -> Optional[str]:
+        """
+        Get the ID of the currently active LLM configuration.
+        
+        Returns:
+            Active LLM configuration ID or None
+        """
+        config = self.load_config()
+        return config.get("active_llm_configuration_id")
+
+    def set_active_llm_configuration_id(self, config_id: Optional[str]) -> bool:
+        """
+        Set the active LLM configuration ID.
+        
+        Args:
+            config_id: ID of the configuration to set as active, or None to clear
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        config = self.load_config()
+        config["active_llm_configuration_id"] = config_id
         return self.save_config(config)
 
 

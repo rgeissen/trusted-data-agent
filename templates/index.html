@@ -1297,12 +1297,17 @@
                             <div class="space-y-6">
                                 <!-- Section 2: LLM Providers -->
                                 <div class="glass-panel rounded-xl p-6">
-                                    <div class="mb-6">
-                                        <h3 class="text-xl font-bold text-white">Configure LLM Providers</h3>
-                                        <p class="text-sm text-gray-400 mt-1">Select and configure your preferred Language Model provider</p>
+                                    <div class="flex justify-between items-center mb-6">
+                                        <div>
+                                            <h3 class="text-xl font-bold text-white">Configure LLM Providers</h3>
+                                            <p class="text-sm text-gray-400 mt-1">Create and manage LLM configurations with different models and credentials</p>
+                                        </div>
+                                        <button type="button" id="add-llm-config-btn" class="px-4 py-2 bg-[#F15F22] hover:bg-[#D9501A] rounded-md transition-colors text-white font-medium text-sm">
+                                            + Add Configuration
+                                        </button>
                                     </div>
                                     <div id="llm-providers-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        <!-- LLM provider cards will be dynamically added here -->
+                                        <!-- LLM configuration cards will be dynamically added here -->
                                     </div>
                                 </div>
                             </div>
@@ -2223,50 +2228,150 @@
     </div>
 
     <!-- Add/Edit Profile Modal -->
-    <div id="profile-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
-        <div class="glass-panel rounded-xl p-6 max-w-2xl w-full mx-4">
-            <h3 class="text-xl font-bold text-white mb-4" id="profile-modal-title">Add Profile</h3>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-1">Unique Tag</label>
-                    <input type="text" id="profile-modal-tag" placeholder="e.g., @default" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-1">Description</label>
-                    <textarea id="profile-modal-description" rows="2" placeholder="A short description of the profile's purpose." class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none"></textarea>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-1">LLM Provider</label>
-                    <select id="profile-modal-llm-provider" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none"></select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-1">MCP Server</label>
-                    <select id="profile-modal-mcp-server" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none"></select>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
+    <div id="profile-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="glass-panel rounded-lg p-0 max-w-3xl w-full mx-4 shadow-xl overflow-hidden">
+            <!-- Modal Header -->
+            <div class="bg-gray-800/80 border-b border-gray-700/50 px-6 py-4">
+                <h3 class="text-lg font-semibold text-gray-100" id="profile-modal-title">Edit Profile</h3>
+                <p class="text-gray-400 text-xs mt-1">Configure your agent profile with LLM, tools, and resources</p>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6 space-y-5 max-h-[calc(100vh-250px)] overflow-y-auto">
+                <!-- Basic Info Section -->
+                <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-1">Tools</label>
-                        <div id="profile-modal-tools" class="max-h-40 overflow-y-auto p-2 bg-gray-800 rounded-md border border-gray-600"></div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1.5">
+                            Profile Name
+                        </label>
+                        <input type="text" id="profile-modal-name" placeholder="e.g., Production Environment" 
+                               class="w-full px-3 py-2 bg-gray-800/40 border border-gray-700/50 rounded-md 
+                                      focus:ring-1 focus:ring-gray-500 focus:border-gray-500 outline-none transition-all
+                                      placeholder-gray-600 text-gray-200 text-sm hover:border-gray-600/50">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-1">Prompts</label>
-                        <div id="profile-modal-prompts" class="max-h-40 overflow-y-auto p-2 bg-gray-800 rounded-md border border-gray-600"></div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1.5">
+                            Profile Tag <span class="text-gray-500 text-xs">(editable)</span>
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 flex items-center gap-2 px-3 py-2 bg-gray-800/40 border border-gray-700/50 rounded-md 
+                                        hover:border-gray-600/50 transition-all">
+                                <span class="text-[#F15F22] font-mono text-sm">@</span>
+                                <input type="text" id="profile-modal-tag" placeholder="PRODU" maxlength="5"
+                                       class="flex-1 bg-transparent border-none outline-none text-gray-200 text-sm font-mono uppercase"
+                                       style="text-transform: uppercase;">
+                            </div>
+                            <button id="profile-modal-generate-tag" 
+                                    class="px-3 py-2 bg-gray-700/40 hover:bg-gray-700/60 border border-gray-600/50 rounded-md 
+                                           text-gray-300 text-xs font-medium transition-all whitespace-nowrap"
+                                    title="Generate tag from configuration">
+                                ↻ Generate
+                            </button>
+                        </div>
                     </div>
-                </div>
-                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-1">RAG Collections</label>
-                        <div id="profile-modal-rag-collections" class="max-h-40 overflow-y-auto p-2 bg-gray-800 rounded-md border border-gray-600"></div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-1">Autocomplete Collections</label>
-                        <div id="profile-modal-autocomplete-collections" class="max-h-40 overflow-y-auto p-2 bg-gray-800 rounded-md border border-gray-600"></div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1.5">
+                            Description
+                        </label>
+                        <textarea id="profile-modal-description" rows="2" placeholder="A short description of the profile's purpose..." 
+                                  class="w-full px-3 py-2 bg-gray-800/40 border border-gray-700/50 rounded-md 
+                                         focus:ring-1 focus:ring-gray-500 focus:border-gray-500 outline-none transition-all
+                                         placeholder-gray-600 text-gray-200 text-sm hover:border-gray-600/50 resize-none"></textarea>
                     </div>
                 </div>
-                <div class="flex gap-3 pt-4">
-                    <button id="profile-modal-cancel" class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md transition-colors text-white">Cancel</button>
-                    <button id="profile-modal-save" class="flex-1 px-4 py-2 bg-[#F15F22] hover:bg-[#D9501A] rounded-md transition-colors text-white font-medium">Save</button>
+
+                <!-- Provider Configuration Section -->
+                <div class="border-t border-gray-800/50 pt-5">
+                    <h4 class="text-sm font-medium text-gray-300 mb-3">
+                        Provider Configuration
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1.5">LLM Configuration</label>
+                            <select id="profile-modal-llm-provider" 
+                                    class="w-full px-3 py-2 bg-gray-800/40 border border-gray-700/50 rounded-md 
+                                           focus:ring-1 focus:ring-gray-500 focus:border-gray-500 outline-none transition-all
+                                           text-gray-200 text-sm hover:border-gray-600/50 cursor-pointer"></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1.5">MCP Server</label>
+                            <select id="profile-modal-mcp-server" 
+                                    class="w-full px-3 py-2 bg-gray-800/40 border border-gray-700/50 rounded-md 
+                                           focus:ring-1 focus:ring-gray-500 focus:border-gray-500 outline-none transition-all
+                                           text-gray-200 text-sm hover:border-gray-600/50 cursor-pointer"></select>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- MCP Resources Section -->
+                <div class="border-t border-gray-800/50 pt-5">
+                    <h4 class="text-sm font-medium text-gray-300 mb-3">
+                        MCP Resources
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="block text-xs font-medium text-gray-400">Available Tools</label>
+                                <button id="profile-modal-tools-uncheck-all" 
+                                        class="px-2 py-0.5 text-xs text-gray-400 hover:text-gray-200 
+                                               hover:bg-gray-700/30 rounded transition-all">
+                                    Uncheck All
+                                </button>
+                            </div>
+                            <div id="profile-modal-tools" 
+                                 class="max-h-40 overflow-y-auto px-3 py-2 bg-gray-800/20 border border-gray-700/30 rounded-md 
+                                        hover:border-gray-700/40 transition-all custom-scrollbar"></div>
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="block text-xs font-medium text-gray-400">Available Prompts</label>
+                                <button id="profile-modal-prompts-uncheck-all" 
+                                        class="px-2 py-0.5 text-xs text-gray-400 hover:text-gray-200 
+                                               hover:bg-gray-700/30 rounded transition-all">
+                                    Uncheck All
+                                </button>
+                            </div>
+                            <div id="profile-modal-prompts" 
+                                 class="max-h-40 overflow-y-auto px-3 py-2 bg-gray-800/20 border border-gray-700/30 rounded-md 
+                                        hover:border-gray-700/40 transition-all custom-scrollbar"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RAG Collections Section -->
+                <div class="border-t border-gray-800/50 pt-5">
+                    <h4 class="text-sm font-medium text-gray-300 mb-3">
+                        RAG Collections
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1.5">Query Collections</label>
+                            <div id="profile-modal-rag-collections" 
+                                 class="max-h-40 overflow-y-auto px-3 py-2 bg-gray-800/20 border border-gray-700/30 rounded-md 
+                                        hover:border-gray-700/40 transition-all custom-scrollbar"></div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1.5">Autocomplete Collections</label>
+                            <div id="profile-modal-autocomplete-collections" 
+                                 class="max-h-40 overflow-y-auto px-3 py-2 bg-gray-800/20 border border-gray-700/30 rounded-md 
+                                        hover:border-gray-700/40 transition-all custom-scrollbar"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="bg-gray-800/40 border-t border-gray-700/50 px-6 py-4 flex gap-3">
+                <button id="profile-modal-cancel" 
+                        class="flex-1 px-4 py-2 bg-gray-700/30 hover:bg-gray-700/50 rounded-md transition-all 
+                               text-gray-300 text-sm font-medium border border-gray-600/30 hover:border-gray-600/50">
+                    Cancel
+                </button>
+                <button id="profile-modal-save" 
+                        class="flex-1 px-4 py-2 bg-[#F15F22]/90 hover:bg-[#F15F22] rounded-md transition-all 
+                               text-white text-sm font-medium shadow-sm">
+                    Save Profile
+                </button>
             </div>
         </div>
     </div>

@@ -58,6 +58,7 @@ async def run_agent_execution(
         await event_handler({
             "session_id": session_id,
             "models_used": session_data.get("models_used", []),
+            "profile_tags_used": session_data.get("profile_tags_used", []),
             "last_updated": session_data.get("last_updated", session_data.get("created_at"))
         }, "session_model_update")
 
