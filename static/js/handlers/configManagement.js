@@ -98,6 +98,12 @@ export async function finalizeConfiguration(config, switchToConversationView = t
     } else {
         console.error('Conversation header element not found!');
     }
+    
+    // Show panel toggle buttons container after configuration
+    const topButtonsContainer = document.getElementById('top-buttons-container');
+    if (topButtonsContainer) {
+        topButtonsContainer.classList.remove('hidden');
+    }
 
     safeSetItem('lastSelectedProvider', config.provider);
 

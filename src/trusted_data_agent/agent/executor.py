@@ -68,7 +68,7 @@ class PlanExecutor:
         return None
 
     # --- MODIFICATION START: Add plan_to_execute and is_replay ---
-    def __init__(self, session_id: str, user_uuid: str, original_user_input: str, dependencies: dict, active_prompt_name: str = None, prompt_arguments: dict = None, execution_depth: int = 0, disabled_history: bool = False, previous_turn_data: dict = None, force_history_disable: bool = False, source: str = "text", is_delegated_task: bool = False, force_final_summary: bool = False, plan_to_execute: list = None, is_replay: bool = False, task_id: str = None, event_handler=None):
+    def __init__(self, session_id: str, user_uuid: str, original_user_input: str, dependencies: dict, active_prompt_name: str = None, prompt_arguments: dict = None, execution_depth: int = 0, disabled_history: bool = False, previous_turn_data: dict = None, force_history_disable: bool = False, source: str = "text", is_delegated_task: bool = False, force_final_summary: bool = False, plan_to_execute: list = None, is_replay: bool = False, task_id: str = None, profile_override_id: str = None, event_handler=None):
         self.session_id = session_id
         self.user_uuid = user_uuid
         self.event_handler = event_handler
@@ -77,7 +77,18 @@ class PlanExecutor:
         self.dependencies = dependencies
         self.state = self.AgentState.PLANNING
 
-        # --- MODIFICATION START: Snapshot model and provider for this turn ---
+        # --- MODIFICATION START: Store profile override and setup temporary context ---
+        self.profile_override_id = profile_override_id
+        self.original_llm = None  # Will store original LLM if overridden
+        self.original_mcp_tools = None  # Will store original tools if overridden
+        self.original_mcp_prompts = None  # Will store original prompts if overridden
+        self.original_provider = None  # Will store original provider if overridden
+        self.original_model = None  # Will store original model if overridden
+        self.original_structured_tools = None  # Will store original structured_tools if overridden
+        self.original_structured_prompts = None  # Will store original structured_prompts if overridden
+        self.original_provider_details = {}  # Will store provider-specific config (Friendli, Azure, AWS)
+        
+        # Snapshot model and provider for this turn
         self.current_model = APP_CONFIG.CURRENT_MODEL
         self.current_provider = APP_CONFIG.CURRENT_PROVIDER
         # --- MODIFICATION END ---
@@ -547,6 +558,172 @@ class PlanExecutor:
         app_logger.info(f"PlanExecutor initialized for turn: {self.current_turn_number}")
         # --- MODIFICATION END ---
 
+        # --- MODIFICATION START: Setup temporary profile override if requested ---
+        temp_llm_instance = None
+        temp_mcp_client = None
+        
+        # Debug log to verify profile_override_id is being passed
+        if self.profile_override_id:
+            app_logger.info(f"🔍 Profile override detected: {self.profile_override_id}")
+        else:
+            app_logger.info(f"ℹ️  No profile override - using default profile configuration")
+        
+        if self.profile_override_id:
+            try:
+                from trusted_data_agent.core.config_manager import get_config_manager
+                from langchain_mcp_adapters.client import MultiServerMCPClient
+                import boto3
+                
+                config_manager = get_config_manager()
+                profiles = config_manager.get_profiles()
+                override_profile = next((p for p in profiles if p.get("id") == self.profile_override_id), None)
+                
+                if not override_profile:
+                    app_logger.warning(f"Profile override ID {self.profile_override_id} not found. Using default profile.")
+                else:
+                    # Store original state BEFORE logging (to capture default profile info)
+                    self.original_llm = APP_STATE.get('llm')
+                    self.original_mcp_tools = APP_STATE.get('mcp_tools')
+                    self.original_mcp_prompts = APP_STATE.get('mcp_prompts')
+                    self.original_structured_tools = APP_STATE.get('structured_tools')
+                    self.original_structured_prompts = APP_STATE.get('structured_prompts')
+                    self.original_provider = APP_CONFIG.CURRENT_PROVIDER
+                    self.original_model = APP_CONFIG.CURRENT_MODEL
+                    
+                    # Save provider-specific details
+                    if self.original_provider == "Friendli":
+                        self.original_provider_details['friendli'] = getattr(APP_CONFIG, 'CURRENT_FRIENDLI_DETAILS', None)
+                    elif self.original_provider == "Azure":
+                        self.original_provider_details['azure'] = getattr(APP_CONFIG, 'CURRENT_AZURE_DEPLOYMENT_DETAILS', None)
+                    elif self.original_provider == "Amazon":
+                        self.original_provider_details['aws_region'] = getattr(APP_CONFIG, 'CURRENT_AWS_REGION', None)
+                        self.original_provider_details['aws_model_provider'] = getattr(APP_CONFIG, 'CURRENT_MODEL_PROVIDER_IN_PROFILE', None)
+                    original_provider = self.original_provider
+                    original_model = self.original_model
+                    
+                    app_logger.info(f"\n{'='*80}")
+                    app_logger.info(f"🔄 TEMPORARY PROFILE SWITCH INITIATED")
+                    app_logger.info(f"From: Default Profile (Provider: {original_provider}, Model: {original_model})")
+                    app_logger.info(f"To: {override_profile.get('name', 'Unknown')} (Tag: @{override_profile.get('tag', 'N/A')}, ID: {self.profile_override_id})")
+                    app_logger.info(f"{'='*80}\n")
+                    
+                    # Get override profile's LLM configuration
+                    override_llm_config_id = override_profile.get('llmConfigurationId')
+                    if override_llm_config_id:
+                        llm_configs = config_manager.get_llm_configurations()
+                        override_llm_config = next((cfg for cfg in llm_configs if cfg['id'] == override_llm_config_id), None)
+                        
+                        if override_llm_config:
+                            provider = override_llm_config.get('provider')
+                            model = override_llm_config.get('model')
+                            credentials = override_llm_config.get('credentials', {})
+                            
+                            app_logger.info(f"📝 Creating temporary LLM instance")
+                            app_logger.info(f"   Provider: {provider}")
+                            app_logger.info(f"   Model: {model}")
+                            app_logger.info(f"   Config ID: {override_llm_config_id}")
+                            
+                            # Create temporary LLM instance using shared factory
+                            from trusted_data_agent.llm.client_factory import create_llm_client, get_provider_config_details
+                            
+                            temp_llm_instance = await create_llm_client(provider, model, credentials)
+                            
+                            # Update APP_CONFIG and executor's cached values for this turn
+                            APP_CONFIG.CURRENT_PROVIDER = provider
+                            APP_CONFIG.CURRENT_MODEL = model
+                            self.current_provider = provider
+                            self.current_model = model
+                            
+                            # Apply provider-specific configuration details
+                            provider_details = get_provider_config_details(provider, model, credentials)
+                            for key, value in provider_details.items():
+                                setattr(APP_CONFIG, key, value)
+                            
+                            APP_STATE['llm'] = temp_llm_instance
+                            app_logger.info(f"✅ LLM instance created and configured successfully")
+                    
+                    # Get override profile's MCP server configuration
+                    override_mcp_server_id = override_profile.get('mcpServerId')
+                    if override_mcp_server_id:
+                        mcp_servers = config_manager.get_mcp_servers()
+                        override_mcp_server = next((srv for srv in mcp_servers if srv['id'] == override_mcp_server_id), None)
+                        
+                        if override_mcp_server:
+                            server_name = override_mcp_server.get('name')
+                            host = override_mcp_server.get('host')
+                            port = override_mcp_server.get('port')
+                            path = override_mcp_server.get('path')
+                            
+                            app_logger.info(f"🔧 Creating temporary MCP client")
+                            app_logger.info(f"   Server: {server_name}")
+                            app_logger.info(f"   URL: http://{host}:{port}{path}")
+                            
+                            mcp_server_url = f"http://{host}:{port}{path}"
+                            temp_server_configs = {server_name: {"url": mcp_server_url, "transport": "streamable_http"}}
+                            temp_mcp_client = MultiServerMCPClient(temp_server_configs)
+                            
+                            # Load and process tools using the same method as configuration_service
+                            from langchain_mcp_adapters.tools import load_mcp_tools
+                            async with temp_mcp_client.session(server_name) as session:
+                                all_processed_tools = await load_mcp_tools(session)
+                            
+                            # Get enabled tool and prompt names for this profile
+                            enabled_tool_names = set(config_manager.get_profile_enabled_tools(self.profile_override_id))
+                            enabled_prompt_names = set(config_manager.get_profile_enabled_prompts(self.profile_override_id))
+                            
+                            # Filter to only enabled tools (prompts handled separately via original structure)
+                            filtered_tools = [tool for tool in all_processed_tools if tool.name in enabled_tool_names]
+                            
+                            # Convert to dictionary with tool names as keys (matching normal structure)
+                            filtered_tools_dict = {tool.name: tool for tool in filtered_tools}
+                            
+                            # For prompts, filter the original mcp_prompts dict
+                            filtered_prompts_dict = {name: prompt for name, prompt in self.original_mcp_prompts.items() 
+                                                    if name in enabled_prompt_names}
+                            
+                            # Rebuild structured_tools to only include filtered tools
+                            # Keep the original structure but filter the tool lists
+                            filtered_structured_tools = {}
+                            
+                            for category, tools_list in (self.original_structured_tools or {}).items():
+                                filtered_category_tools = [
+                                    tool_info for tool_info in tools_list 
+                                    if tool_info['name'] in enabled_tool_names or tool_info['name'].startswith('TDA_')
+                                ]
+                                if filtered_category_tools:
+                                    filtered_structured_tools[category] = filtered_category_tools
+                            
+                            # Rebuild structured_prompts to only include filtered prompts
+                            filtered_structured_prompts = {}
+                            
+                            for category, prompts_list in (self.original_structured_prompts or {}).items():
+                                filtered_category_prompts = [
+                                    prompt_info for prompt_info in prompts_list 
+                                    if prompt_info['name'] in enabled_prompt_names
+                                ]
+                                if filtered_category_prompts:
+                                    filtered_structured_prompts[category] = filtered_category_prompts
+                            
+                            APP_STATE['mcp_client'] = temp_mcp_client
+                            APP_STATE['mcp_tools'] = filtered_tools_dict
+                            APP_STATE['mcp_prompts'] = filtered_prompts_dict
+                            APP_STATE['structured_tools'] = filtered_structured_tools
+                            APP_STATE['structured_prompts'] = filtered_structured_prompts
+                            
+                            app_logger.info(f"✅ MCP client created successfully")
+                            app_logger.info(f"   Tools enabled: {len(filtered_tools_dict)} (processed with load_mcp_tools)")
+                            app_logger.info(f"   Prompts enabled: {len(filtered_prompts_dict)}")
+                            app_logger.info(f"   Categories in structured_tools: {len(filtered_structured_tools)}")
+                            app_logger.info(f"   Categories in structured_prompts: {len(filtered_structured_prompts)}")
+                            app_logger.info(f"\n{'='*80}")
+                            app_logger.info(f"✨ Profile override applied successfully - executing with temporary context")
+                            app_logger.info(f"{'='*80}\n")
+                    
+            except Exception as e:
+                app_logger.error(f"Failed to apply profile override: {e}", exc_info=True)
+                # Continue with default profile if override fails
+        # --- MODIFICATION END ---
+
         try:
             # --- MODIFICATION START: Handle Replay ---
             if self.plan_to_execute:
@@ -735,6 +912,78 @@ class PlanExecutor:
             yield self._format_sse(event_data, "error")
 
         finally:
+            # --- MODIFICATION START: Restore original MCP/LLM state if profile was overridden ---
+            if self.profile_override_id:
+                try:
+                    from trusted_data_agent.core.config_manager import get_config_manager
+                    config_manager = get_config_manager()
+                    default_profile_id = config_manager.get_default_profile_id()
+                    default_profile_name = "Default Profile"
+                    if default_profile_id:
+                        profiles = config_manager.get_profiles()
+                        default_profile = next((p for p in profiles if p.get("id") == default_profile_id), None)
+                        if default_profile:
+                            default_profile_name = f"{default_profile.get('name')} (Tag: @{default_profile.get('tag', 'N/A')})"
+                    
+                    app_logger.info(f"\n{'='*80}")
+                    app_logger.info(f"🔙 REVERTING TO DEFAULT PROFILE")
+                    app_logger.info(f"Restoring: {default_profile_name}")
+                    
+                    if self.original_llm is not None:
+                        APP_STATE['llm'] = self.original_llm
+                        if self.original_provider:
+                            APP_CONFIG.CURRENT_PROVIDER = self.original_provider
+                        if self.original_model:
+                            APP_CONFIG.CURRENT_MODEL = self.original_model
+                        
+                        # Restore provider-specific details
+                        if self.original_provider == "Friendli" and 'friendli' in self.original_provider_details:
+                            APP_CONFIG.CURRENT_FRIENDLI_DETAILS = self.original_provider_details['friendli']
+                        elif self.original_provider == "Azure" and 'azure' in self.original_provider_details:
+                            APP_CONFIG.CURRENT_AZURE_DEPLOYMENT_DETAILS = self.original_provider_details['azure']
+                        elif self.original_provider == "Amazon":
+                            if 'aws_region' in self.original_provider_details:
+                                APP_CONFIG.CURRENT_AWS_REGION = self.original_provider_details['aws_region']
+                            if 'aws_model_provider' in self.original_provider_details:
+                                APP_CONFIG.CURRENT_MODEL_PROVIDER_IN_PROFILE = self.original_provider_details['aws_model_provider']
+                        
+                        app_logger.info(f"✅ Restored original LLM instance")
+                        app_logger.info(f"   Provider: {self.original_provider}")
+                        app_logger.info(f"   Model: {self.original_model}")
+                    
+                    if self.original_mcp_tools is not None:
+                        APP_STATE['mcp_tools'] = self.original_mcp_tools
+                        app_logger.info(f"✅ Restored original MCP tools ({len(self.original_mcp_tools)} tools)")
+                    
+                    if self.original_mcp_prompts is not None:
+                        APP_STATE['mcp_prompts'] = self.original_mcp_prompts
+                        app_logger.info(f"✅ Restored original MCP prompts ({len(self.original_mcp_prompts)} prompts)")
+                    
+                    if self.original_structured_tools is not None:
+                        APP_STATE['structured_tools'] = self.original_structured_tools
+                        app_logger.info(f"✅ Restored original structured_tools ({len(self.original_structured_tools)} categories)")
+                    
+                    if self.original_structured_prompts is not None:
+                        APP_STATE['structured_prompts'] = self.original_structured_prompts
+                        app_logger.info(f"✅ Restored original structured_prompts ({len(self.original_structured_prompts)} categories)")
+                    
+                    # Close temporary MCP client if created
+                    if temp_mcp_client:
+                        try:
+                            # Note: MultiServerMCPClient may not have explicit close method
+                            # But context managers handle cleanup automatically
+                            pass
+                        except Exception as cleanup_error:
+                            app_logger.warning(f"⚠️  Error closing temporary MCP client: {cleanup_error}")
+                    
+                    app_logger.info(f"{'='*80}")
+                    app_logger.info(f"✅ Successfully reverted to default profile")
+                    app_logger.info(f"{'='*80}\n")
+                    
+                except Exception as restore_error:
+                    app_logger.error(f"❌ Error restoring original state after profile override: {restore_error}", exc_info=True)
+            # --- MODIFICATION END ---
+            
             # --- Cleanup Phase (Always runs) ---
             # --- MODIFICATION START: Only top-level executor (depth 0) saves history ---
             # Update history only if the execution wasn't cancelled, errored,

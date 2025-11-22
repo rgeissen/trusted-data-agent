@@ -1222,6 +1222,9 @@ async def ask_stream():
     is_replay = data.get("is_replay", False) # Boolean flag
     display_message = data.get("display_message") # Optional message for history
     # --- MODIFICATION END ---
+    # --- MODIFICATION START: Receive optional profile override ---
+    profile_override_id = data.get("profile_override_id") # Profile ID for temporary override
+    # --- MODIFICATION END ---
 
 
     session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
@@ -1231,16 +1234,25 @@ async def ask_stream():
             yield PlanExecutor._format_sse({"error": "Session not found or invalid."}, "error")
         return Response(error_gen(), mimetype="text/event-stream")
 
-    # Get profile tag from active profile
+    # Get profile tag from active profile or override
     from trusted_data_agent.core.config_manager import get_config_manager
     config_manager = get_config_manager()
-    active_profile_ids = config_manager.get_active_for_consumption_profile_ids()
-    profile_tag = None
-    if active_profile_ids:
+    
+    # Determine which profile to use
+    if profile_override_id:
+        # Use override profile temporarily
         profiles = config_manager.get_profiles()
-        active_profile = next((p for p in profiles if p.get("id") == active_profile_ids[0]), None)
-        if active_profile:
-            profile_tag = active_profile.get("tag")
+        override_profile = next((p for p in profiles if p.get("id") == profile_override_id), None)
+        profile_tag = override_profile.get("tag") if override_profile else None
+    else:
+        # Use default profile
+        default_profile_id = config_manager.get_default_profile_id()
+        if default_profile_id:
+            profiles = config_manager.get_profiles()
+            default_profile = next((p for p in profiles if p.get("id") == default_profile_id), None)
+            profile_tag = default_profile.get("tag") if default_profile else None
+        else:
+            profile_tag = None
 
     session_manager.update_models_used(user_uuid=user_uuid, session_id=session_id, provider=APP_CONFIG.CURRENT_PROVIDER, model=APP_CONFIG.CURRENT_MODEL, profile_tag=profile_tag)
 
@@ -1289,7 +1301,8 @@ async def ask_stream():
                         plan_to_execute=plan_to_execute, # Pass the plan
                         is_replay=is_replay, # Pass the flag
                         display_message=display_message, # Pass the display message
-                        task_id=task_id # Pass the generated task_id
+                        task_id=task_id, # Pass the generated task_id
+                        profile_override_id=profile_override_id # Pass the profile override
                     )
                 )
                 # --- MODIFICATION END ---

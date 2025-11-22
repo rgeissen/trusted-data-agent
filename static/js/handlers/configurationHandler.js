@@ -281,6 +281,15 @@ class ConfigurationState {
             this.profiles = profiles || [];
             this.defaultProfileId = default_profile_id;
             this.activeForConsumptionProfileIds = active_for_consumption_profile_ids || [];
+            
+            // Initialize session header with default profile
+            if (this.defaultProfileId && typeof window.updateSessionHeaderProfile === 'function') {
+                const defaultProfile = this.profiles.find(p => p.id === this.defaultProfileId);
+                if (defaultProfile) {
+                    window.updateSessionHeaderProfile(defaultProfile, null);
+                }
+            }
+            
             return this.profiles;
         } catch (error) {
             console.error('Failed to load profiles:', error);
@@ -595,7 +604,7 @@ export function renderMCPServers() {
         }
 
         return `
-            <div class="bg-gradient-to-br from-white/10 to-white/5 border-2 ${isActive ? 'border-[#F15F22]' : 'border-white/10'} rounded-xl p-4 hover:border-white/20 transition-all duration-200" data-mcp-id="${server.id}">
+            <div class="bg-gradient-to-br from-white/10 to-white/5 border-2 border-white/10 rounded-xl p-4 hover:border-white/20 transition-all duration-200" data-mcp-id="${server.id}">
                 <div class="flex items-center justify-between gap-4">
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1">
@@ -712,7 +721,7 @@ export function renderLLMProviders() {
         }
 
         return `
-            <div class="bg-gradient-to-br from-white/10 to-white/5 border-2 ${isActive ? 'border-[#F15F22]' : 'border-white/10'} rounded-xl p-5 hover:border-white/20 transition-all duration-200" data-llm-config-id="${config.id}">
+            <div class="bg-gradient-to-br from-white/10 to-white/5 border-2 border-white/10 rounded-xl p-5 hover:border-white/20 transition-all duration-200" data-llm-config-id="${config.id}">
                 <div class="flex flex-col gap-4">
                     <div class="flex items-start justify-between">
                         <div class="flex-1">
@@ -1203,11 +1212,6 @@ export async function reconnectAndLoad() {
     const mcpServer = configState.getActiveMCPServer();
     const llmConfig = configState.getActiveLLMConfiguration();
 
-    console.log('[DEBUG] reconnectAndLoad - All mcpServers:', configState.mcpServers);
-    console.log('[DEBUG] reconnectAndLoad - activeMCP:', configState.activeMCP);
-    console.log('[DEBUG] reconnectAndLoad - mcpServer:', mcpServer);
-    console.log('[DEBUG] reconnectAndLoad - llmConfig:', llmConfig);
-
     // Validate that both MCP server and LLM configuration are configured
     if (!mcpServer) {
         showNotification('error', 'Please configure and select an MCP Server first (go to MCP Servers tab)');
@@ -1242,14 +1246,6 @@ export async function reconnectAndLoad() {
     statusDiv.innerHTML = '<span class="text-gray-400">Initializing connection...</span>';
 
     try {
-        console.log('[DEBUG] mcpServer properties:', {
-            id: mcpServer.id,
-            name: mcpServer.name,
-            host: mcpServer.host,
-            port: mcpServer.port,
-            path: mcpServer.path
-        });
-        
         const configData = {
             provider: llmConfig.provider,
             model: llmConfig.model,
@@ -1281,16 +1277,8 @@ export async function reconnectAndLoad() {
             statusDiv.innerHTML = '<span class="text-green-400">✓ ' + escapeHtml(result.message) + '</span>';
             showNotification('success', result.message);
             
-            // Activate the default profile to load its enabled/disabled tools and prompts
-            const defaultProfile = configState.profiles.find(p => p.id === configState.defaultProfileId);
-            if (defaultProfile) {
-                try {
-                    await API.setActiveForConsumptionProfiles([defaultProfile.id]);
-                    console.log('[DEBUG] Activated default profile after successful connection');
-                } catch (error) {
-                    console.error('Failed to activate default profile:', error);
-                }
-            }
+            // Don't override active profiles - they are already loaded from backend configuration
+            // The active_for_consumption_profile_ids should persist from the saved config
             
             // Update status indicators
             DOM.mcpStatusDot.classList.remove('disconnected');
@@ -1350,8 +1338,6 @@ export async function reconnectAndLoad() {
             const conversationHeader = document.getElementById('conversation-header');
             if (conversationHeader) {
                 conversationHeader.classList.remove('hidden');
-            } else {
-                console.error('[DEBUG] reconnectAndLoad - Conversation header element not found!');
             }
             
             // Show panel toggle buttons after configuration
@@ -1501,15 +1487,27 @@ function renderProfiles() {
                     <div class="flex-1">
                         <div class="flex items-center gap-2 mb-1">
                             <h4 class="font-semibold text-white">${escapeHtml(profile.name || profile.tag)}</h4>
+                            ${profile.color ? `
+                            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-mono font-semibold border" 
+                                  style="background: linear-gradient(135deg, ${profile.color}30, ${profile.color}15); border-color: ${profile.color}50; color: ${profile.color};">
+                                <span class="w-2 h-2 rounded-full" style="background: ${profile.color};"></span>
+                                @${escapeHtml(profile.tag)}
+                            </span>
+                            ` : `
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-semibold bg-[#F15F22]/20 text-[#F15F22] border border-[#F15F22]/30">
                                 @${escapeHtml(profile.tag)}
                             </span>
+                            `}
                         </div>
                         <p class="text-sm text-gray-400 mb-3">${escapeHtml(profile.description)}</p>
                         <div class="text-sm text-gray-400 space-y-1">
                             <p><span class="font-medium">LLM:</span> ${(() => {
                                 const llmConfig = configState.llmConfigurations.find(c => c.id === profile.llmConfigurationId);
-                                return llmConfig ? `${escapeHtml(llmConfig.provider)} / ${escapeHtml(llmConfig.model)}` : 'N/A';
+                                if (llmConfig) {
+                                    const providerDisplay = profile.providerName || llmConfig.provider;
+                                    return `<span style="color: ${profile.color || '#9ca3af'};">${escapeHtml(providerDisplay)}</span> / ${escapeHtml(llmConfig.model)}`;
+                                }
+                                return 'N/A';
                             })()}</p>
                             <p><span class="font-medium">MCP:</span> ${escapeHtml(configState.mcpServers.find(s => s.id === profile.mcpServerId)?.name || 'Unknown')}</p>
                         </div>
@@ -1553,6 +1551,9 @@ function attachProfileEventListeners() {
             renderProfiles();
             renderLLMProviders(); // Re-render to update default/active badges
             renderMCPServers(); // Re-render to update default/active badges
+            updateReconnectButton(); // Update Reconnect & Load button state
+            
+            showNotification('success', 'Default profile updated. Click "Reconnect & Load" to apply changes.');
         });
     });
 

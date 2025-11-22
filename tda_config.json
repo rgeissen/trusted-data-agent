@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "created_at": "2025-11-18T15:42:02.792618+00:00",
-  "last_modified": "2025-11-22T17:08:58.328918+00:00",
+  "last_modified": "2025-11-22T21:59:45.091290+00:00",
   "enable_mcp_classification": true,
   "rag_collections": [
     {
@@ -16,10 +16,10 @@
     {
       "id": 1,
       "name": "Fitness DB - Customer Experience / Product Marketing / Sales Reporting",
-      "collection_name": "tda_rag_coll_1_2e159a",
+      "collection_name": "tda_rag_coll_1_f6a2bc",
       "mcp_server_id": "1763483266562-a6kulj4xc",
       "enabled": true,
-      "created_at": "2025-11-21T16:16:35.855254+00:00",
+      "created_at": "2025-11-22T17:45:02.620710+00:00",
       "description": ""
     }
   ],
@@ -95,20 +95,22 @@
       "name": "Google Flash",
       "provider": "Google",
       "model": "gemini-2.0-flash",
-      "credentials": {
-        "apiKey": "AIzaSyABM1d9IkWiLj6yRfJFU8urLpamb_Fzbok"
-      },
+      "credentials": {},
       "id": "1763819257473-ivpnukbbe"
     },
     {
       "name": "Friendli - Gemma",
       "provider": "Friendli",
       "model": "google/gemma-3-27b-it",
-      "credentials": {
-        "friendli_token": "flp_svawfj4GFKujK4aKIo2LQhLYxVZj0cbGAOwrLi3i9y59f",
-        "friendli_endpoint_url": ""
-      },
+      "credentials": {},
       "id": "1763819257483-fluhef2vk"
+    },
+    {
+      "name": "OpenAI - 4omini",
+      "provider": "OpenAI",
+      "model": "gpt-4o-mini",
+      "credentials": {},
+      "id": "1763832180990-t4s6q1lhy"
     }
   ],
   "active_llm_configuration_id": "1763819257473-ivpnukbbe",
@@ -208,10 +210,40 @@
       "llmConfigurationId": "1763819257473-ivpnukbbe",
       "mcpServerId": "1763483266562-a6kulj4xc",
       "tools": [
-        "*"
+        "dba_databaseSpace",
+        "dba_resusageSummary",
+        "dba_tableSpace",
+        "dba_tableSqlList",
+        "dba_tableUsageImpact",
+        "dba_userSqlList",
+        "qlty_columnSummary",
+        "qlty_distinctCategories",
+        "qlty_missingValues",
+        "qlty_negativeValues",
+        "qlty_rowsWithMissingValues",
+        "qlty_standardDeviation",
+        "qlty_univariateStatistics",
+        "base_columnDescription",
+        "base_databaseList",
+        "base_readQuery",
+        "base_tableAffinity",
+        "base_tableDDL",
+        "base_tableList",
+        "base_tablePreview",
+        "base_tableUsage",
+        "sec_rolePermissions",
+        "sec_userDbPermissions",
+        "sec_userRoles",
+        "rag_Execute_Workflow",
+        "dba_databaseVersion",
+        "dba_flowControl",
+        "dba_featureUsage",
+        "dba_userDelay",
+        "dba_sessionInfo",
+        "dba_systemSpace"
       ],
       "prompts": [
-        "*"
+        "base_teradataQuery"
       ],
       "ragCollections": [
         "*"
@@ -257,11 +289,62 @@
         "tdvs_rag_prompt",
         "tdvs_tools_prompt"
       ]
+    },
+    {
+      "id": "profile-1763832288606-e7s3t60hi",
+      "name": "OpenAI - 4oMini",
+      "tag": "OPGPT",
+      "description": "",
+      "llmConfigurationId": "1763832180990-t4s6q1lhy",
+      "mcpServerId": "1763483266562-a6kulj4xc",
+      "tools": [
+        "dba_databaseSpace",
+        "dba_resusageSummary",
+        "dba_tableSpace",
+        "dba_tableSqlList",
+        "dba_tableUsageImpact",
+        "dba_userSqlList",
+        "qlty_columnSummary",
+        "qlty_distinctCategories",
+        "qlty_missingValues",
+        "qlty_negativeValues",
+        "qlty_rowsWithMissingValues",
+        "qlty_standardDeviation",
+        "qlty_univariateStatistics",
+        "base_columnDescription",
+        "base_databaseList",
+        "base_readQuery",
+        "base_tableAffinity",
+        "base_tableDDL",
+        "base_tableList",
+        "base_tablePreview",
+        "base_tableUsage",
+        "sec_rolePermissions",
+        "sec_userDbPermissions",
+        "sec_userRoles",
+        "dba_databaseVersion",
+        "dba_flowControl",
+        "dba_featureUsage",
+        "dba_userDelay",
+        "dba_sessionInfo",
+        "dba_systemSpace"
+      ],
+      "prompts": [
+        "base_teradataQuery"
+      ],
+      "ragCollections": [
+        "*"
+      ],
+      "autocompleteCollections": [
+        "*"
+      ]
     }
   ],
   "active_profile_id": null,
   "default_profile_id": "profile-1763820446672-zy475d5rc",
   "active_for_consumption_profile_ids": [
-    "profile-1763820446672-zy475d5rc"
+    "profile-1763820446672-zy475d5rc",
+    "profile-1763813333208-zoyjhhnzv",
+    "profile-1763832288606-e7s3t60hi"
   ]
 }

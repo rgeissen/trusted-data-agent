@@ -11,7 +11,7 @@ class AppConfig:
     These values are typically set at startup and rarely change during runtime.
     """
     # --- Feature Flags & Behavior ---
-    CONFIGURATION_PERSISTENCE = os.environ.get('TDA_CONFIGURATION_PERSISTENCE', 'true').lower() != 'false'
+    CONFIGURATION_PERSISTENCE = os.environ.get('TDA_CONFIGURATION_PERSISTENCE', 'true').lower() == 'true'
     ALL_MODELS_UNLOCKED = False # If True, bypasses model certification checks, allowing all models from a provider to be used.
     CHARTING_ENABLED = True # Master switch to enable or disable the agent's ability to generate charts.
     DEFAULT_CHARTING_INTENSITY = "medium" # Controls how proactively the agent suggests charts. Options: "none", "medium", "heavy".

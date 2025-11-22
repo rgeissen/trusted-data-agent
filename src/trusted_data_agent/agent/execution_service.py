@@ -39,7 +39,8 @@ async def run_agent_execution(
     plan_to_execute: list = None, # Added optional plan
     is_replay: bool = False, # Added replay flag
     display_message: str = None, # Added optional display message for replays
-    task_id: str = None # Add task_id parameter here
+    task_id: str = None, # Add task_id parameter here
+    profile_override_id: str = None # Add profile override parameter
 ):
 # --- MODIFICATION END ---
     """
@@ -95,6 +96,7 @@ async def run_agent_execution(
             plan_to_execute=plan_to_execute, # Pass the plan
             is_replay=is_replay, # Pass the flag
             task_id=task_id, # Pass the task_id here
+            profile_override_id=profile_override_id, # Pass the profile override
             event_handler=event_handler
         )
         # --- MODIFICATION END ---

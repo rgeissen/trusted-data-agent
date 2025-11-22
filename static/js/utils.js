@@ -254,14 +254,38 @@ export function renderChart(containerId, spec) {
 
 
 export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIcon) {
-    // ... (no changes in this function) ...
-    const toggle = (isOpen) => {
+    // Generate a unique storage key based on panel ID
+    const storageKey = panel.id ? `panelState_${panel.id}` : null;
+    
+    const toggle = (isOpen, saveState = true) => {
         const isCollapsed = !isOpen;
         panel.classList.toggle('collapsed', isCollapsed);
         if (collapseIcon) collapseIcon.classList.toggle('hidden', isCollapsed);
         if (expandIcon) expandIcon.classList.toggle('hidden', !isCollapsed);
         if (checkbox) checkbox.checked = isOpen;
+        
+        // Save state to localStorage
+        if (saveState && storageKey) {
+            try {
+                localStorage.setItem(storageKey, isOpen ? 'open' : 'collapsed');
+            } catch (e) {
+                console.warn('Failed to save panel state:', e);
+            }
+        }
     };
+
+    // Restore state from localStorage on initialization
+    if (storageKey) {
+        try {
+            const savedState = localStorage.getItem(storageKey);
+            if (savedState !== null) {
+                const isOpen = savedState === 'open';
+                toggle(isOpen, false); // Don't save again during initialization
+            }
+        } catch (e) {
+            console.warn('Failed to restore panel state:', e);
+        }
+    }
 
     button.addEventListener('click', (e) => {
         toggle(panel.classList.contains('collapsed'));

@@ -16,12 +16,66 @@ import { handleViewSwitch } from './ui.js';
 import { initializeVoiceRecognition } from './voice.js';
 import { subscribeToNotifications } from './notifications.js';
 
+// Session header profile display
+function updateSessionHeaderProfile(defaultProfile, overrideProfile) {
+    const headerDefaultProfile = document.getElementById('header-default-profile');
+    const headerDefaultProfileTag = document.getElementById('header-default-profile-tag');
+    const headerOverrideProfile = document.getElementById('header-override-profile');
+    const headerOverrideProfileTag = document.getElementById('header-override-profile-tag');
+    
+    // Helper to convert hex to rgba
+    const hexToRgba = (hex, alpha) => {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+    
+    // Update default profile
+    if (defaultProfile && defaultProfile.tag) {
+        headerDefaultProfileTag.textContent = `@${defaultProfile.tag}`;
+        if (defaultProfile.color && defaultProfile.colorSecondary) {
+            const color1 = hexToRgba(defaultProfile.color, 0.3);
+            const color2 = hexToRgba(defaultProfile.color, 0.15);
+            const borderColor = hexToRgba(defaultProfile.color, 0.5);
+            headerDefaultProfile.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
+            headerDefaultProfile.style.borderColor = borderColor;
+        }
+        headerDefaultProfile.classList.remove('hidden');
+    } else {
+        headerDefaultProfile.classList.add('hidden');
+    }
+    
+    // Update override profile
+    if (overrideProfile && overrideProfile.tag) {
+        headerOverrideProfileTag.textContent = `@${overrideProfile.tag}`;
+        if (overrideProfile.color && overrideProfile.colorSecondary) {
+            const color1 = hexToRgba(overrideProfile.color, 0.3);
+            const color2 = hexToRgba(overrideProfile.color, 0.15);
+            const borderColor = hexToRgba(overrideProfile.color, 0.15);
+            headerOverrideProfile.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
+            headerOverrideProfile.style.borderColor = borderColor;
+        }
+        headerOverrideProfile.classList.remove('hidden');
+    } else {
+        headerOverrideProfile.classList.add('hidden');
+    }
+}
+
+// Make it globally accessible
+window.updateSessionHeaderProfile = updateSessionHeaderProfile;
+
 async function initializeRAGAutoCompletion() {
     const suggestionsContainer = document.getElementById('rag-suggestions-container');
+    const profileTagSelector = document.getElementById('profile-tag-selector');
+    const activeProfileTag = document.getElementById('active-profile-tag');
     const userInput = document.getElementById('user-input');
     let debounceTimer = null;
     let currentSuggestions = [];
     let selectedIndex = -1;
+    let currentProfiles = [];
+    let profileSelectedIndex = -1;
+    let isShowingProfileSelector = false;
 
     function highlightSuggestion(index) {
         const items = suggestionsContainer.querySelectorAll('.rag-suggestion-item');
@@ -34,13 +88,189 @@ async function initializeRAGAutoCompletion() {
         });
     }
 
+    function highlightProfile(index) {
+        const items = profileTagSelector.querySelectorAll('.profile-tag-item');
+        items.forEach((item, idx) => {
+            if (idx === index) {
+                item.classList.add('profile-tag-highlighted');
+            } else {
+                item.classList.remove('profile-tag-highlighted');
+            }
+        });
+    }
+
     function selectSuggestion(index) {
         if (index >= 0 && index < currentSuggestions.length) {
-            userInput.value = currentSuggestions[index];
+            const currentValue = userInput.value;
+            const tagMatch = currentValue.match(/^@(\w+)\s/);
+            
+            if (tagMatch) {
+                // Preserve the @TAG prefix
+                userInput.value = tagMatch[0] + currentSuggestions[index];
+            } else {
+                userInput.value = currentSuggestions[index];
+            }
+            
             suggestionsContainer.innerHTML = '';
             suggestionsContainer.classList.add('hidden');
             currentSuggestions = [];
             selectedIndex = -1;
+        }
+    }
+
+    let activeTagPrefix = '';
+    let isUpdatingInput = false;
+    
+    // Expose activeTagPrefix to window for access by other modules
+    Object.defineProperty(window, 'activeTagPrefix', {
+        get: () => activeTagPrefix,
+        set: (value) => { activeTagPrefix = value; }
+    });
+
+    function showActiveTagBadge(profile) {
+        activeProfileTag.innerHTML = `
+            <span style="font-size: 13px;">@${profile.tag}</span>
+            <span class="tag-remove" title="Remove profile override">×</span>
+        `;
+        
+        // Apply provider color
+        if (profile.color && profile.colorSecondary) {
+            const hexToRgba = (hex, alpha) => {
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            };
+            const color1 = hexToRgba(profile.color, 0.25);
+            const color2 = hexToRgba(profile.colorSecondary, 0.15);
+            activeProfileTag.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
+            activeProfileTag.style.boxShadow = `0 2px 10px ${hexToRgba(profile.color, 0.2)}`;
+        }
+        
+        activeProfileTag.classList.remove('hidden');
+        userInput.classList.add('has-tag');
+        
+        // Store the tag prefix and remove it from visible input
+        const currentValue = userInput.value;
+        const tagMatch = currentValue.match(/^@\w+\s/);
+        if (tagMatch) {
+            activeTagPrefix = tagMatch[0];
+            isUpdatingInput = true;
+            userInput.value = currentValue.substring(tagMatch[0].length);
+            isUpdatingInput = false;
+        }
+        
+        // Add click handler for remove button
+        const removeBtn = activeProfileTag.querySelector('.tag-remove');
+        removeBtn.addEventListener('click', () => {
+            activeTagPrefix = '';
+            hideActiveTagBadge();
+            userInput.focus();
+        });
+        
+        // Update session header to show override (keep default profile visible)
+        const defaultProfileId = window.configState?.defaultProfileId;
+        const defaultProfile = defaultProfileId && window.configState?.profiles 
+            ? window.configState.profiles.find(p => p.id === defaultProfileId)
+            : null;
+        updateSessionHeaderProfile(defaultProfile, profile);
+    }
+
+    function hideActiveTagBadge() {
+        activeProfileTag.innerHTML = '';
+        activeProfileTag.classList.add('hidden');
+        userInput.classList.remove('has-tag');
+        
+        // Clear session header override and restore default
+        const defaultProfileId = window.configState?.defaultProfileId;
+        if (defaultProfileId && window.configState?.profiles) {
+            const defaultProfile = window.configState.profiles.find(p => p.id === defaultProfileId);
+            updateSessionHeaderProfile(defaultProfile, null);
+        }
+    }
+
+    function updateTagBadge() {
+        if (isUpdatingInput) return;
+        
+        // Check if we have an active tag
+        if (activeTagPrefix) {
+            // Tag is active, badge should be showing
+            return;
+        }
+        
+        // Check if input starts with @TAG
+        const inputValue = userInput.value;
+        const tagMatch = inputValue.match(/^@(\w+)\s/);
+        
+        if (tagMatch && window.configState?.profiles) {
+            const tag = tagMatch[1].toUpperCase();
+            const profile = window.configState.profiles.find(p => p.tag === tag);
+            if (profile) {
+                showActiveTagBadge(profile);
+                return;
+            }
+        }
+        
+        // No valid tag found, hide badge
+        if (!activeTagPrefix) {
+            hideActiveTagBadge();
+        }
+    }
+
+    function selectProfile(index) {
+        if (index >= 0 && index < currentProfiles.length) {
+            const profile = currentProfiles[index];
+            
+            // Clear the input (remove the @ or partial tag)
+            isUpdatingInput = true;
+            userInput.value = '';
+            isUpdatingInput = false;
+            
+            // Set up the badge and store the tag prefix
+            activeTagPrefix = `@${profile.tag} `;
+            activeProfileTag.innerHTML = `
+                <span style="font-size: 13px;">@${profile.tag}</span>
+                <span class="tag-remove" title="Remove profile override">×</span>
+            `;
+            
+            // Apply provider color
+            if (profile.color && profile.colorSecondary) {
+                const hexToRgba = (hex, alpha) => {
+                    const r = parseInt(hex.slice(1, 3), 16);
+                    const g = parseInt(hex.slice(3, 5), 16);
+                    const b = parseInt(hex.slice(5, 7), 16);
+                    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                };
+                const color1 = hexToRgba(profile.color, 0.25);
+                const color2 = hexToRgba(profile.colorSecondary, 0.15);
+                activeProfileTag.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
+                activeProfileTag.style.boxShadow = `0 2px 10px ${hexToRgba(profile.color, 0.2)}`;
+            }
+            
+            activeProfileTag.classList.remove('hidden');
+            userInput.classList.add('has-tag');
+            
+            // Add click handler for remove button
+            const removeBtn = activeProfileTag.querySelector('.tag-remove');
+            removeBtn.addEventListener('click', () => {
+                activeTagPrefix = '';
+                hideActiveTagBadge();
+                userInput.focus();
+            });
+            
+            // Update session header to show override (keep default profile visible)
+            const defaultProfileId = window.configState?.defaultProfileId;
+            const defaultProfile = defaultProfileId && window.configState?.profiles 
+                ? window.configState.profiles.find(p => p.id === defaultProfileId)
+                : null;
+            updateSessionHeaderProfile(defaultProfile, profile);
+            
+            profileTagSelector.innerHTML = '';
+            profileTagSelector.classList.add('hidden');
+            currentProfiles = [];
+            profileSelectedIndex = -1;
+            isShowingProfileSelector = false;
+            userInput.focus();
         }
     }
 
@@ -76,14 +306,127 @@ async function initializeRAGAutoCompletion() {
         suggestionsContainer.classList.remove('hidden');
     }
 
+    function showProfileSelector(profiles) {
+        currentProfiles = profiles;
+        const defaultProfileId = window.configState?.defaultProfileId;
+        
+        // Set initial selection to first non-default profile
+        if (profiles.length > 0) {
+            const firstSelectableIndex = profiles.findIndex(p => p.id !== defaultProfileId);
+            profileSelectedIndex = firstSelectableIndex >= 0 ? firstSelectableIndex : -1;
+        } else {
+            profileSelectedIndex = -1;
+        }
+        
+        isShowingProfileSelector = true;
+
+        if (profiles.length === 0) {
+            profileTagSelector.innerHTML = '';
+            profileTagSelector.classList.add('hidden');
+            return;
+        }
+
+        profileTagSelector.innerHTML = '';
+        
+        profiles.forEach((profile, index) => {
+            const isDefault = profile.id === defaultProfileId;
+            const profileItem = document.createElement('div');
+            profileItem.className = 'profile-tag-item';
+            
+            // Make default profile non-selectable
+            if (isDefault) {
+                profileItem.classList.add('profile-tag-disabled');
+                profileItem.style.opacity = '0.6';
+                profileItem.style.cursor = 'not-allowed';
+            } else if (index === 1 || (index === 0 && !isDefault)) {
+                // Highlight first selectable profile
+                profileItem.classList.add('profile-tag-highlighted');
+            }
+
+            const header = document.createElement('div');
+            header.className = 'profile-tag-header';
+
+            const badge = document.createElement('span');
+            badge.className = 'profile-tag-badge';
+            badge.textContent = `@${profile.tag}`;
+            
+            // Apply provider color
+            if (profile.color && profile.colorSecondary) {
+                badge.style.background = `linear-gradient(135deg, ${profile.color}40, ${profile.color}25)`;
+                badge.style.borderColor = `${profile.color}50`;
+            }
+
+            const name = document.createElement('span');
+            name.className = 'profile-tag-name';
+            name.textContent = profile.name;
+
+            // Add default indicator if this is the default profile
+            if (isDefault) {
+                const defaultIndicator = document.createElement('span');
+                defaultIndicator.className = 'profile-default-indicator';
+                defaultIndicator.textContent = '★ Default';
+                defaultIndicator.title = 'Default Profile (already active)';
+                header.appendChild(badge);
+                header.appendChild(name);
+                header.appendChild(defaultIndicator);
+            } else {
+                header.appendChild(badge);
+                header.appendChild(name);
+            }
+            
+            profileItem.appendChild(header);
+
+            if (profile.description) {
+                const description = document.createElement('div');
+                description.className = 'profile-tag-description';
+                description.textContent = profile.description;
+                profileItem.appendChild(description);
+            }
+
+            // Only add click handlers for non-default profiles
+            if (!isDefault) {
+                profileItem.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    selectProfile(index);
+                });
+                profileItem.addEventListener('mouseenter', () => {
+                    profileSelectedIndex = index;
+                    highlightProfile(index);
+                });
+            }
+
+            profileTagSelector.appendChild(profileItem);
+        });
+        profileTagSelector.classList.remove('hidden');
+    }
+
+    function hideProfileSelector() {
+        profileTagSelector.innerHTML = '';
+        profileTagSelector.classList.add('hidden');
+        currentProfiles = [];
+        profileSelectedIndex = -1;
+        isShowingProfileSelector = false;
+    }
+
     async function fetchAndShowSuggestions(queryText) {
         if (!queryText || queryText.length < 2) {
             showSuggestions([]);
             return;
         }
 
-        // Get active profile ID from configState
-        const profileId = window.configState?.defaultProfileId || null;
+        // Check if query starts with @TAG for profile override
+        let profileId = window.configState?.defaultProfileId || null;
+        const tagMatch = queryText.match(/^@(\w+)\s/);
+        
+        if (tagMatch && window.configState?.profiles) {
+            const tag = tagMatch[1].toUpperCase();
+            const overrideProfile = window.configState.profiles.find(p => p.tag === tag);
+            if (overrideProfile) {
+                profileId = overrideProfile.id;
+                // Remove @TAG from query for autocomplete search
+                queryText = queryText.substring(tagMatch[0].length);
+            }
+        }
         
         // Fetch semantically ranked questions from backend
         const questions = await API.fetchRAGQuestions(queryText, profileId, 5);
@@ -99,17 +442,67 @@ async function initializeRAGAutoCompletion() {
         });
 
         userInput.addEventListener('input', () => {
-            const inputValue = userInput.value.trim();
+            const inputValue = userInput.value;
+            
+            // Don't update tag badge if we're in the middle of programmatic changes
+            if (!isUpdatingInput) {
+                // Only try to detect and show badge if we don't already have an active tag
+                if (!activeTagPrefix) {
+                    updateTagBadge();
+                }
+            }
             
             // Clear previous timer
             if (debounceTimer) {
                 clearTimeout(debounceTimer);
             }
+
+            // Check if user typed @ at the start (profile tag selector)
+            // But only if we don't have an active tag badge already
+            if (!activeTagPrefix && (inputValue === '@' || (inputValue.startsWith('@') && !inputValue.includes(' ')))) {
+                hideProfileSelector();
+                showSuggestions([]);
+                
+                // Show only active profiles with tags
+                const profiles = window.configState?.profiles || [];
+                const activeIds = window.configState?.activeForConsumptionProfileIds || [];
+                const defaultProfileId = window.configState?.defaultProfileId;
+                
+                const activeProfilesWithTags = profiles.filter(p => 
+                    p.tag && activeIds.includes(p.id)
+                );
+                
+                // Sort profiles: default first, then others
+                const sortedProfiles = activeProfilesWithTags.sort((a, b) => {
+                    if (a.id === defaultProfileId) return -1;
+                    if (b.id === defaultProfileId) return 1;
+                    return 0;
+                });
+                
+                if (inputValue === '@') {
+                    // Show all active profiles
+                    showProfileSelector(sortedProfiles);
+                } else {
+                    // Filter active profiles by partial tag match
+                    const partialTag = inputValue.substring(1).toUpperCase();
+                    const filteredProfiles = sortedProfiles.filter(p => 
+                        p.tag.toUpperCase().startsWith(partialTag)
+                    );
+                    showProfileSelector(filteredProfiles);
+                }
+                return;
+            }
+
+            // Hide profile selector if we're past the tag selection phase
+            if (isShowingProfileSelector) {
+                hideProfileSelector();
+            }
             
-            if (inputValue.length >= 2) {
+            const trimmedValue = inputValue.trim();
+            if (trimmedValue.length >= 2) {
                 // Debounce API calls (300ms delay)
                 debounceTimer = setTimeout(() => {
-                    fetchAndShowSuggestions(inputValue);
+                    fetchAndShowSuggestions(trimmedValue);
                 }, 300);
             } else {
                 showSuggestions([]);
@@ -117,6 +510,49 @@ async function initializeRAGAutoCompletion() {
         });
 
         userInput.addEventListener('keydown', (e) => {
+            // Handle backspace to remove active profile tag
+            if (e.key === 'Backspace' && activeTagPrefix && userInput.value === '') {
+                e.preventDefault();
+                activeTagPrefix = '';
+                hideActiveTagBadge();
+                return;
+            }
+            
+            // Handle profile selector navigation
+            if (isShowingProfileSelector && currentProfiles.length > 0) {
+                const defaultProfileId = window.configState?.defaultProfileId;
+                
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    let nextIndex = (profileSelectedIndex + 1) % currentProfiles.length;
+                    // Skip default profile
+                    while (nextIndex < currentProfiles.length && currentProfiles[nextIndex].id === defaultProfileId) {
+                        nextIndex = (nextIndex + 1) % currentProfiles.length;
+                    }
+                    profileSelectedIndex = nextIndex;
+                    highlightProfile(profileSelectedIndex);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    let prevIndex = (profileSelectedIndex - 1 + currentProfiles.length) % currentProfiles.length;
+                    // Skip default profile
+                    while (prevIndex >= 0 && currentProfiles[prevIndex].id === defaultProfileId) {
+                        prevIndex = (prevIndex - 1 + currentProfiles.length) % currentProfiles.length;
+                    }
+                    profileSelectedIndex = prevIndex;
+                    highlightProfile(profileSelectedIndex);
+                } else if ((e.key === 'Tab' || e.key === 'Enter') && profileSelectedIndex >= 0) {
+                    e.preventDefault();
+                    // Only select if not default profile
+                    if (currentProfiles[profileSelectedIndex].id !== defaultProfileId) {
+                        selectProfile(profileSelectedIndex);
+                    }
+                } else if (e.key === 'Escape') {
+                    hideProfileSelector();
+                }
+                return;
+            }
+
+            // Handle autocomplete navigation
             if (currentSuggestions.length === 0) return;
 
             if (e.key === 'ArrowDown') {
@@ -144,6 +580,7 @@ async function initializeRAGAutoCompletion() {
                 suggestionsContainer.classList.add('hidden');
                 currentSuggestions = [];
                 selectedIndex = -1;
+                hideProfileSelector();
             }, 150);
         });
     }

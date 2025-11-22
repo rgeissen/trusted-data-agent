@@ -68,6 +68,28 @@ class ConfigManager:
             "active_for_consumption_profile_ids": []  # IDs of profiles active for consumption
         }
     
+    def _strip_credentials(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Remove all credentials from configuration for security when persistence is disabled.
+        
+        Args:
+            config: Configuration dictionary
+            
+        Returns:
+            Configuration dictionary with credentials removed
+        """
+        import copy
+        config = copy.deepcopy(config)
+        
+        # Strip credentials from LLM configurations
+        if "llm_configurations" in config:
+            for llm_config in config["llm_configurations"]:
+                if "credentials" in llm_config:
+                    llm_config["credentials"] = {}
+        
+        app_logger.info("Stripped credentials from configuration (persistence disabled)")
+        return config
+    
     def load_config(self) -> Dict[str, Any]:
         """
         Load configuration from tda_config.json.
@@ -96,6 +118,9 @@ class ConfigManager:
                     f"got {schema_version}. Using existing config as-is."
                 )
             
+            # Note: Credentials should never exist in tda_config.json as they are always
+            # stripped during save_config(). This is a defense-in-depth measure in case
+            # the file was manually edited or came from an older version.
             app_logger.info(f"Loaded configuration from {self.config_path}")
             return config
             
@@ -118,6 +143,10 @@ class ConfigManager:
         """
         Save configuration to tda_config.json.
         
+        SECURITY: Credentials are NEVER saved to tda_config.json.
+        They are always stripped before saving, regardless of CONFIGURATION_PERSISTENCE setting.
+        Credentials should only exist in browser localStorage.
+        
         Args:
             config: Configuration dictionary to save
             
@@ -125,6 +154,9 @@ class ConfigManager:
             True if successful, False otherwise
         """
         try:
+            # SECURITY: Always strip credentials before saving
+            config = self._strip_credentials(config)
+            
             # Update last_modified timestamp
             config["last_modified"] = datetime.now(timezone.utc).isoformat()
             
@@ -139,7 +171,7 @@ class ConfigManager:
             # Atomic rename
             temp_path.replace(self.config_path)
             
-            app_logger.info(f"Saved configuration to {self.config_path}")
+            app_logger.info(f"Saved configuration to {self.config_path} (credentials stripped)")
             return True
             
         except Exception as e:

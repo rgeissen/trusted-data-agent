@@ -1261,8 +1261,38 @@ export function addSessionToList(session, isActive = false) {
         console.log('[DEBUG] Using profile tags:', session.profile_tags_used);
         session.profile_tags_used.forEach(tag => {
             const tagSpan = document.createElement('span');
-            tagSpan.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-semibold bg-[#F15F22]/20 text-[#F15F22] border border-[#F15F22]/30';
-            tagSpan.textContent = `@${tag}`;
+            tagSpan.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono font-semibold';
+            
+            // Find profile by tag to get color
+            const profile = window.configState?.profiles?.find(p => p.tag === tag);
+            if (profile && profile.color) {
+                // Helper to convert hex to rgba
+                const hexToRgba = (hex, alpha) => {
+                    const r = parseInt(hex.slice(1, 3), 16);
+                    const g = parseInt(hex.slice(3, 5), 16);
+                    const b = parseInt(hex.slice(5, 7), 16);
+                    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                };
+                const color1 = hexToRgba(profile.color, 0.3);
+                const color2 = hexToRgba(profile.color, 0.15);
+                const borderColor = hexToRgba(profile.color, 0.5);
+                tagSpan.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
+                tagSpan.style.borderColor = borderColor;
+                tagSpan.style.color = profile.color;
+                tagSpan.style.border = '1px solid';
+                // Add color dot
+                const dot = document.createElement('span');
+                dot.className = 'w-1.5 h-1.5 rounded-full';
+                dot.style.background = profile.color;
+                tagSpan.appendChild(dot);
+            } else {
+                // Fallback to orange if no color
+                tagSpan.className += ' bg-[#F15F22]/20 text-[#F15F22] border border-[#F15F22]/30';
+            }
+            
+            const text = document.createElement('span');
+            text.textContent = `@${tag}`;
+            tagSpan.appendChild(text);
             tagsDiv.appendChild(tagSpan);
         });
     } else if (session.models_used && Array.isArray(session.models_used) && session.models_used.length > 0) {
@@ -1317,8 +1347,38 @@ export function updateSessionModels(sessionId, models_used, profile_tags_used = 
         if (profile_tags_used && Array.isArray(profile_tags_used) && profile_tags_used.length > 0) {
             profile_tags_used.forEach(tag => {
                 const tagSpan = document.createElement('span');
-                tagSpan.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-semibold bg-[#F15F22]/20 text-[#F15F22] border border-[#F15F22]/30';
-                tagSpan.textContent = `@${tag}`;
+                tagSpan.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono font-semibold';
+                
+                // Find profile by tag to get color
+                const profile = window.configState?.profiles?.find(p => p.tag === tag);
+                if (profile && profile.color) {
+                    // Helper to convert hex to rgba
+                    const hexToRgba = (hex, alpha) => {
+                        const r = parseInt(hex.slice(1, 3), 16);
+                        const g = parseInt(hex.slice(3, 5), 16);
+                        const b = parseInt(hex.slice(5, 7), 16);
+                        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                    };
+                    const color1 = hexToRgba(profile.color, 0.3);
+                    const color2 = hexToRgba(profile.color, 0.15);
+                    const borderColor = hexToRgba(profile.color, 0.5);
+                    tagSpan.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
+                    tagSpan.style.borderColor = borderColor;
+                    tagSpan.style.color = profile.color;
+                    tagSpan.style.border = '1px solid';
+                    // Add color dot
+                    const dot = document.createElement('span');
+                    dot.className = 'w-1.5 h-1.5 rounded-full';
+                    dot.style.background = profile.color;
+                    tagSpan.appendChild(dot);
+                } else {
+                    // Fallback to orange if no color
+                    tagSpan.className += ' bg-[#F15F22]/20 text-[#F15F22] border border-[#F15F22]/30';
+                }
+                
+                const text = document.createElement('span');
+                text.textContent = `@${tag}`;
+                tagSpan.appendChild(text);
                 tagsDiv.appendChild(tagSpan);
             });
         } else if (models_used && Array.isArray(models_used) && models_used.length > 0) {

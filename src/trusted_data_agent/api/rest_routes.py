@@ -2195,11 +2195,25 @@ async def get_profiles():
     """Get all profile configurations."""
     try:
         from trusted_data_agent.core.config_manager import get_config_manager
+        from trusted_data_agent.core.provider_colors import get_provider_color, get_provider_from_llm_config
         config_manager = get_config_manager()
         
         profiles = config_manager.get_profiles()
         default_profile_id = config_manager.get_default_profile_id()
         active_for_consumption_profile_ids = config_manager.get_active_for_consumption_profile_ids()
+        
+        # Enrich profiles with color information based on provider
+        llm_configurations = config_manager.get_llm_configurations()
+        for profile in profiles:
+            llm_config_id = profile.get("llmConfigurationId")
+            if llm_config_id:
+                llm_config = next((c for c in llm_configurations if c.get("id") == llm_config_id), None)
+                if llm_config:
+                    provider = get_provider_from_llm_config(llm_config)
+                    colors = get_provider_color(provider)
+                    profile["color"] = colors["primary"]
+                    profile["colorSecondary"] = colors["secondary"]
+                    profile["providerName"] = colors["name"]
         
         return jsonify({
             "status": "success",

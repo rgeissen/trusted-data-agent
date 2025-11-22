@@ -432,29 +432,59 @@ This comprehensive guide covers everything you need to know to use the Trusted D
 
 #### Initial Configuration
 
-Before you can interact with the agent, you must configure the connection to your services.
+The Trusted Data Agent uses a modern, modular configuration system that separates infrastructure (MCP Servers, LLM Providers) from usage patterns (Profiles). This architecture provides maximum flexibility for different use cases.
 
-1. **Open the App:** After running the application, navigate to `http://12.0.0.1:5000` in your browser. The **Configuration** modal will appear automatically.
+##### Step 1: Configure MCP Servers
 
-2. **MCP Server:** Enter the **Host**, **Port**, and **Path** for your running MCP Server.
+1. **Open the App:** After running the application, navigate to `http://127.0.0.1:5000` in your browser.
 
-3. **LLM Provider:** Select your desired LLM Provider (e.g., Google, Anthropic, OpenAI, Microsoft, Friendli.AI, Ollama).
+2. **Open Configuration Panel:** Click the gear icon to open the configuration modal.
 
-4. **Credentials:**
+3. **MCP Servers Tab:** Configure one or more MCP Server connections:
+   - **Name:** A friendly identifier for this server (e.g., "Production Database", "Dev Environment")
+   - **Host:** The hostname or IP address of your MCP Server
+   - **Port:** The port number (e.g., 8888)
+   - **Path:** The endpoint path (e.g., /mcp)
 
-   * For cloud providers, enter your **API Key**.
+4. **Save:** Click "Add MCP Server" to save. You can configure multiple servers for different environments.
 
-* For **Azure**, provide your **Endpoint URL**, **API Key**, **API Version**, and **Deployment Name**.
+##### Step 2: Configure LLM Providers
 
-* For AWS, provide your **Access Key ID**, **Secret Access Key**, and **Region**.
+1. **LLM Providers Tab:** Configure one or more LLM provider connections:
+   - **Name:** A descriptive name (e.g., "Google Gemini 2.0", "Claude Sonnet")
+   - **Provider:** Select from Google, Anthropic, OpenAI, Azure, AWS Bedrock, Friendli.AI, or Ollama
+   - **Model:** Choose a specific model from the provider
+   - **Credentials:** Enter required authentication details:
+     - **Cloud providers:** API Key
+     - **Azure:** Endpoint URL, API Key, API Version, Deployment Name
+     - **AWS:** Access Key ID, Secret Access Key, Region
+     - **Ollama:** Host URL (e.g., `http://localhost:11434`)
 
-* For Ollama, provide the **Host URL** (e.g., `http://localhost:11434`).
+2. **Fetch Models:** Click the refresh icon to retrieve available models from your provider.
 
-5. **Fetch Models:** Click the refresh icon next to the model dropdown to fetch a list of available models from your provider.
+3. **Save:** Click "Add LLM Configuration" to save. You can configure multiple LLM providers to compare performance.
 
-6. **Select a Model:** Choose a specific model from the dropdown list.
+##### Step 3: Create Profiles
 
-7. **Connect:** Click the **"Connect & Load"** button. The application will validate the connections and, if successful, load the agent's capabilities.
+Profiles combine an MCP Server with an LLM Provider to create named configurations for different use cases.
+
+1. **Profiles Tab:** After configuring at least one MCP Server and one LLM Provider, create profiles:
+   - **Profile Name:** Descriptive name (e.g., "Production Analysis", "Cost-Optimized Research")
+   - **Tag:** Short identifier for quick selection (e.g., "PROD", "COST") - used for temporary overrides
+   - **MCP Server:** Select which MCP Server this profile uses
+   - **LLM Provider:** Select which LLM configuration this profile uses
+   - **Description:** Optional details about when to use this profile
+   - **Set as Default:** Mark one profile as the default for all queries
+
+2. **Active for Consumption:** Toggle which profiles are available for temporary override selection (see below).
+
+3. **Save:** Click "Add Profile" to create the profile.
+
+##### Step 4: Connect and Load
+
+1. Click the **"Reconnect & Load"** button to activate your default profile.
+
+2. The application will validate connections, load capabilities from the MCP Server, and prepare the agent for interaction.
 
 ---
 
@@ -486,7 +516,44 @@ Simply type your request into the chat input at the bottom and press Enter.
 
 * **Example:** `"What tables are in the DEMO_DB database?"`
 
-The agent will analyze your request, display its thought process in the **Live Status** panel, execute the necessary tool (e.g., `base_tableList`), and then present the final answer in the chat window.
+The agent will analyze your request using your **default profile**, display its thought process in the **Live Status** panel, execute the necessary tool (e.g., `base_tableList`), and then present the final answer in the chat window.
+
+#### Temporary Profile Override
+
+The profile system allows you to temporarily switch to a different LLM provider for a single query without changing your default configuration. This is powerful for:
+- **Testing:** Compare how different LLMs handle the same question
+- **Cost Optimization:** Use cheaper models for simple queries, premium models for complex analysis
+- **Specialized Tasks:** Route specific query types to models optimized for that domain
+
+**How to Use Profile Override:**
+
+1. **Type `@` in the question box** - A dropdown appears showing all profiles marked as "Active for Consumption"
+
+2. **Select a profile** - The default profile appears first (non-selectable), followed by available alternatives:
+   - Use **arrow keys** to navigate
+   - Press **Tab** or **Enter** to select
+   - Or **click** on a profile
+
+3. **Profile badge appears** - A colored badge shows the active override profile with the provider color
+
+4. **Type your question** - The query will be executed using the selected profile's LLM provider
+
+5. **Remove override** - Click the **×** on the badge or press **Backspace** (when input is empty) to revert to the default profile
+
+**Visual Indicators:**
+- **Question Box Badge:** Shows the temporary override profile with provider-specific colors
+- **Session Header:** Displays both the default profile (★ icon) and override profile (⚡ icon with subtle animation)
+- **Color Coding:** Each LLM provider has a distinct color (Google=blue, Anthropic=purple, OpenAI=green, etc.)
+
+**Example Workflow:**
+```
+1. Default: "Google Gemini 2.0" profile
+2. Type: @CLAUDE <Tab>
+3. Badge shows: @CLAUDE (purple)
+4. Ask: "Analyze the performance metrics"
+5. Query uses Claude instead of Gemini
+6. Click × to return to default
+```
 
 #### Using Prompts Manually
 
@@ -821,6 +888,7 @@ Under the AGPLv3, you are free to use, modify, and distribute this software. How
 
 This list reflects the recent enhancements and updates to the Trusted Data Agent, as shown on the application's welcome screen.
 
+*   **22-Nov-2025:** Profile System - Modular Configuration & Temporary Overrides
 *   **21-Nov-2025:** RAG Templates - Modular Plugin System
 *   **19-Nov-2025:** Modern UI Design
 *   **15-Nov-2025:** Flowise Integration

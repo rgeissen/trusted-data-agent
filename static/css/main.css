@@ -1474,7 +1474,63 @@ button[data-action="delete-mcp"]:hover {
     }
 }
 
-#rag-suggestions-container {
+/* Active profile tag badge in question box */
+#active-profile-tag {
+    position: absolute;
+    top: 10px;
+    left: 14px;
+    z-index: 10;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    /* Background color applied dynamically via JavaScript based on provider */
+    border-radius: 14px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: white;
+    text-transform: uppercase;
+    font-family: 'Monaco', 'Courier New', monospace;
+    /* Box shadow applied dynamically via JavaScript based on provider color */
+    animation: tagPulse 2s ease-in-out infinite;
+}
+
+#active-profile-tag:not(.hidden) {
+    display: inline-flex;
+}
+
+#active-profile-tag .tag-remove {
+    cursor: pointer;
+    opacity: 0.9;
+    font-size: 16px;
+    font-weight: bold;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    margin-left: 2px;
+}
+
+#active-profile-tag .tag-remove:hover {
+    opacity: 1;
+    transform: scale(1.2);
+}
+
+@keyframes tagPulse {
+    0%, 100% {
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    }
+    50% {
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+    }
+}
+
+/* Adjust user input padding when tag badge is active */
+#user-input.has-tag {
+    padding-left: 110px !important;
+}
+
+/* RAG suggestions and profile tag selector shared base styling */
+#rag-suggestions-container,
+#profile-tag-selector {
     background: linear-gradient(135deg, rgba(40, 40, 45, 0.88), rgba(30, 30, 35, 0.92));
     backdrop-filter: blur(16px) saturate(180%);
     -webkit-backdrop-filter: blur(16px) saturate(180%);
@@ -1489,6 +1545,10 @@ button[data-action="delete-mcp"]:hover {
         0 8px 32px rgba(0, 0, 0, 0.3),
         0 2px 8px rgba(241, 95, 34, 0.1),
         inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+#profile-tag-selector {
+    max-height: 280px;
 }
 
 .rag-suggestion-item {
@@ -1539,6 +1599,123 @@ button[data-action="delete-mcp"]:hover {
 .rag-suggestion-item:last-child {
     border-bottom-left-radius: 11px;
     border-bottom-right-radius: 11px;
+}
+
+/* Profile tag selector items */
+.profile-tag-item {
+    padding: 14px 18px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    position: relative;
+    overflow: hidden;
+}
+
+.profile-tag-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, var(--teradata-orange), rgba(241, 95, 34, 0.3));
+    transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.profile-tag-item:last-child {
+    border-bottom: none;
+}
+
+.profile-tag-item:hover,
+.profile-tag-item.profile-tag-highlighted {
+    background: linear-gradient(90deg, rgba(241, 95, 34, 0.15), rgba(241, 95, 34, 0.05));
+    padding-left: 22px;
+}
+
+.profile-tag-item:hover::before,
+.profile-tag-item.profile-tag-highlighted::before {
+    width: 3px;
+}
+
+.profile-tag-item:first-child {
+    border-top-left-radius: 11px;
+    border-top-right-radius: 11px;
+}
+
+.profile-tag-item:last-child {
+    border-bottom-left-radius: 11px;
+    border-bottom-right-radius: 11px;
+}
+
+.profile-tag-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.profile-tag-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 10px;
+    /* Background and border colors applied dynamically via JavaScript based on provider */
+    /* Fallback if dynamic colors not available: */
+    background: linear-gradient(135deg, rgba(241, 95, 34, 0.25), rgba(241, 95, 34, 0.15));
+    border: 1px solid rgba(241, 95, 34, 0.3);
+    border-radius: 6px;
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    font-family: 'Space Grotesk', monospace;
+    text-transform: uppercase;
+}
+
+.profile-tag-name {
+    color: #e5e7eb;
+    font-size: 0.9rem;
+    font-weight: 500;
+    flex: 1;
+}
+
+.profile-tag-description {
+    color: #9ca3af;
+    font-size: 0.8rem;
+    font-weight: 400;
+    line-height: 1.4;
+    margin-top: 2px;
+}
+
+.profile-tag-item:hover .profile-tag-name,
+.profile-tag-item.profile-tag-highlighted .profile-tag-name {
+    color: #ffffff;
+}
+
+.profile-tag-item:hover .profile-tag-badge,
+.profile-tag-item.profile-tag-highlighted .profile-tag-badge {
+    background: linear-gradient(135deg, rgba(241, 95, 34, 0.4), rgba(241, 95, 34, 0.25));
+    border-color: rgba(241, 95, 34, 0.5);
+}
+
+.profile-default-indicator {
+    color: #fbbf24;
+    font-size: 1rem;
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    animation: pulse-star 2s ease-in-out infinite;
+}
+
+@keyframes pulse-star {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
 }
 
 /* Custom checkbox styling for profile modal */
@@ -1604,3 +1781,48 @@ button[data-action="delete-mcp"]:hover {
   white-space: nowrap;
   border-width: 0;
 }
+
+/* Header Profile Badges */
+#header-default-profile,
+#header-override-profile {
+    font-family: 'Space Grotesk', monospace;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#header-default-profile:not(.hidden),
+#header-override-profile:not(.hidden) {
+    display: flex !important;
+}
+
+#header-default-profile {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+}
+
+#header-override-profile {
+    border-width: 2px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Animated border for override badge */
+@keyframes borderShift {
+    0% {
+        border-color: rgba(255, 255, 255, 0.4);
+        box-shadow: 0 0 16px rgba(255, 255, 255, 0.3);
+    }
+    50% {
+        border-color: rgba(255, 255, 255, 0.7);
+        box-shadow: 0 0 24px rgba(255, 255, 255, 0.5);
+    }
+    100% {
+        border-color: rgba(255, 255, 255, 0.4);
+        box-shadow: 0 0 16px rgba(255, 255, 255, 0.3);
+    }
+}
+
+.animate-pulse-border {
+    animation: borderShift 2s ease-in-out infinite;
+}
+
+/* Dynamic provider colors will be applied via inline styles */

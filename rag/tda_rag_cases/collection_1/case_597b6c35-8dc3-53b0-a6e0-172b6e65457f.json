@@ -1,0 +1,55 @@
+{
+  "case_id": "597b6c35-8dc3-53b0-a6e0-172b6e65457f",
+  "metadata": {
+    "session_id": "027a9163-df22-44c0-81a4-6db3f93147e2",
+    "turn_id": 7,
+    "is_success": true,
+    "task_id": "task-2e99af25-a461-43bd-a60c-c43244ee0661",
+    "collection_id": 1,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-22T17:48:57.204218+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "profile_tag": "GOGET",
+      "input_tokens": 21228,
+      "output_tokens": 150
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    }
+  },
+  "intent": {
+    "user_query": "What is the total number of customers?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Execute SQL query on fitness_db: SELECT COUNT(CustomerID) FROM fitness_db.Customers;",
+        "relevant_tools": [
+          "base_readQuery"
+        ],
+        "arguments": {
+          "sql": "SELECT COUNT(CustomerID) FROM fitness_db.Customers;"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the query results.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

@@ -295,12 +295,42 @@ export async function handleStreamRequest(endpoint, body) {
 
 export async function handleChatSubmit(e, source = 'text') {
     e.preventDefault();
-    const message = DOM.userInput.value.trim();
+    
+    // Get the active tag prefix from main.js if badge is showing
+    const activeTagPrefix = window.activeTagPrefix || '';
+    const rawMessage = DOM.userInput.value.trim();
+    
+    // Reconstruct full message with tag if badge was active
+    const message = activeTagPrefix ? activeTagPrefix + rawMessage : rawMessage;
+    
     if (!message || !state.currentSessionId) return;
+    
+    // Check for @TAG profile override
+    let profileOverrideId = null;
+    let cleanedMessage = message;
+    const tagMatch = message.match(/^@(\w+)\s+(.+)/);
+    
+    if (tagMatch && window.configState?.profiles) {
+        const tag = tagMatch[1].toUpperCase();
+        console.log('🔍 Tag detected:', tag);
+        const overrideProfile = window.configState.profiles.find(p => p.tag === tag);
+        if (overrideProfile) {
+            profileOverrideId = overrideProfile.id;
+            cleanedMessage = tagMatch[2]; // Strip @TAG from message
+            console.log(`✅ Profile override found: ${overrideProfile.name} (${profileOverrideId})`);
+            console.log(`📝 Cleaned message: "${cleanedMessage}"`);
+        } else {
+            console.log(`❌ No profile found with tag: ${tag}`);
+        }
+    } else {
+        console.log('ℹ️  No @TAG detected or profiles not loaded');
+    }
+    
     handleStreamRequest('/ask_stream', {
-        message,
+        message: cleanedMessage,
         session_id: state.currentSessionId,
-        source: source
+        source: source,
+        profile_override_id: profileOverrideId
         // is_replay is implicitly false here
     });
 }
