@@ -1,0 +1,54 @@
+{
+  "case_id": "525af3e4-9432-581f-8530-3c578f562493",
+  "metadata": {
+    "session_id": "d875ebfb-0425-46a8-86cd-a0f960d5e21e",
+    "turn_id": 5,
+    "is_success": true,
+    "task_id": "task-93061a14-ab07-4db6-a3b0-f21ae213de02",
+    "collection_id": 1,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-22T10:46:39.312713+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "input_tokens": 18085,
+      "output_tokens": 146
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    }
+  },
+  "intent": {
+    "user_query": "What are the distinct cities where customers are located?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Execute SQL query on fitness_db: SELECT DISTINCT City FROM fitness_db.Customers;",
+        "relevant_tools": [
+          "base_readQuery"
+        ],
+        "arguments": {
+          "sql": "SELECT DISTINCT City FROM fitness_db.Customers;"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the query results.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

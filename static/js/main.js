@@ -50,9 +50,7 @@ async function initializeRAGAutoCompletion() {
         
         userInput.addEventListener('focus', () => {
             const inputValue = userInput.value.toLowerCase();
-            if (inputValue.length === 0) {
-                showSuggestions(allQuestions);
-            } else {
+            if (inputValue.length > 0) { // Only show on focus if there is already text
                  const filteredQuestions = allQuestions.filter(q => q.toLowerCase().includes(inputValue));
                 showSuggestions(filteredQuestions);
             }
@@ -64,7 +62,7 @@ async function initializeRAGAutoCompletion() {
                 const filteredQuestions = allQuestions.filter(q => q.toLowerCase().includes(inputValue));
                 showSuggestions(filteredQuestions);
             } else {
-                showSuggestions(allQuestions);
+                showSuggestions([]); // Clear suggestions when input is empty
             }
         });
 
