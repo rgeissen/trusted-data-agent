@@ -141,13 +141,64 @@ class ConfigurationState {
         this.llmProviders = this.loadLLMProviders();
         this.activeMCP = null;
         this.activeLLM = localStorage.getItem(STORAGE_KEYS.ACTIVE_LLM);
+        this.profiles = [];
+        this.activeProfileId = null;
         this.initialized = false;
     }
 
     async initialize() {
         if (this.initialized) return;
         await this.loadMCPServers();
+        await this.loadProfiles();
         this.initialized = true;
+    }
+
+    async loadProfiles() {
+        try {
+            const { profiles, default_profile_id, active_for_consumption_profile_ids } = await API.getProfiles();
+            this.profiles = profiles || [];
+            this.defaultProfileId = default_profile_id;
+            this.activeForConsumptionProfileIds = active_for_consumption_profile_ids || [];
+            return this.profiles;
+        } catch (error) {
+            console.error('Failed to load profiles:', error);
+            this.profiles = [];
+        }
+        return this.profiles;
+    }
+    
+    async addProfile(profile) {
+        const newProfile = await API.addProfile(profile);
+        this.profiles.push(newProfile.profile);
+        return newProfile.profile;
+    }
+
+    async updateProfile(profileId, updates) {
+        const updatedProfile = await API.updateProfile(profileId, updates);
+        const index = this.profiles.findIndex(p => p.id === profileId);
+        if (index !== -1) {
+            this.profiles[index] = { ...this.profiles[index], ...updates };
+        }
+        return updatedProfile;
+    }
+
+    async removeProfile(profileId) {
+        await API.deleteProfile(profileId);
+        this.profiles = this.profiles.filter(p => p.id !== profileId);
+        if (this.defaultProfileId === profileId) {
+            this.defaultProfileId = null;
+        }
+        this.activeForConsumptionProfileIds = this.activeForConsumptionProfileIds.filter(id => id !== profileId);
+    }
+
+    async setDefaultProfile(profileId) {
+        await API.setDefaultProfile(profileId);
+        this.defaultProfileId = profileId;
+    }
+
+    async setActiveForConsumptionProfiles(profileIds) {
+        await API.setActiveForConsumptionProfiles(profileIds);
+        this.activeForConsumptionProfileIds = profileIds;
     }
 
     async loadMCPServers() {
@@ -813,10 +864,22 @@ export function updateReconnectButton() {
 }
 
 export async function reconnectAndLoad() {
+    const defaultProfile = configState.profiles.find(p => p.id === configState.defaultProfileId);
+
+    if (!defaultProfile) {
+        showNotification('error', 'Please set a default profile before connecting.');
+        return;
+    }
+
+    // Set the active MCP and LLM based on the default profile
+    await configState.setActiveMCP(defaultProfile.mcpServerId);
+    configState.setActiveLLM(defaultProfile.llmProvider);
+
     const mcpServer = configState.getActiveMCPServer();
     const llmProvider = configState.getActiveLLMProvider();
 
-
+    // ... rest of the function
+    
     // Validate that both MCP server and LLM provider are configured
     if (!mcpServer) {
         showNotification('error', 'Please configure and select an MCP Server first (go to MCP Servers tab)');
@@ -1048,6 +1111,318 @@ function initializeConfigTabs() {
     });
 }
 
+// ============================================================================
+// UI RENDERING - PROFILES
+// ============================================================================
+
+function renderProfiles() {
+    const container = document.getElementById('profiles-container');
+    if (!container) return;
+
+    if (configState.profiles.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-gray-400 py-8">
+                <p>No profiles configured. Click "Add Profile" to get started.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = configState.profiles.map(profile => {
+        const isDefault = profile.id === configState.defaultProfileId;
+        const isActiveForConsumption = configState.activeForConsumptionProfileIds.includes(profile.id);
+
+        return `
+        <div class="bg-white/5 border ${isDefault ? 'border-[#F15F22]' : 'border-white/10'} rounded-lg p-4" data-profile-id="${profile.id}">
+            <div class="flex items-start justify-between">
+                <div class="flex items-start gap-3 flex-1">
+                    <div class="flex flex-col items-center gap-2">
+                        <button title="Set as Default" data-action="set-default-profile" data-profile-id="${profile.id}" class="p-1 rounded-full ${isDefault ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400'}">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/></svg>
+                        </button>
+                        <div class="flex items-center" title="Active for Consumption">
+                           <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" data-action="toggle-active-consumption" data-profile-id="${profile.id}" ${isActiveForConsumption ? 'checked' : ''} class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-800/50 border border-gray-500 rounded-full peer peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teradata-orange"></div>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-white mb-1">@${escapeHtml(profile.tag)}</h4>
+                        <p class="text-sm text-gray-400 mb-3">${escapeHtml(profile.description)}</p>
+                        <div class="text-sm text-gray-400 space-y-1">
+                            <p><span class="font-medium">LLM:</span> ${escapeHtml(profile.llmProvider)} / ${escapeHtml(configState.llmProviders[profile.llmProvider]?.model || 'N/A')}</p>
+                            <p><span class="font-medium">MCP:</span> ${escapeHtml(configState.mcpServers.find(s => s.id === profile.mcpServerId)?.name || 'Unknown')}</p>
+                        </div>
+                        <div class="mt-2 text-xs" id="test-results-${profile.id}"></div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" data-action="test-profile" data-profile-id="${profile.id}" 
+                        class="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 rounded transition-colors text-white">
+                        Test
+                    </button>
+                    <button type="button" data-action="edit-profile" data-profile-id="${profile.id}" 
+                        class="px-3 py-1 text-sm bg-gray-600 hover:bg-gray-700 rounded transition-colors text-white">
+                        Edit
+                    </button>
+                    <button type="button" data-action="delete-profile" data-profile-id="${profile.id}" 
+                        class="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 rounded transition-colors text-white">
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    `}).join('');
+
+    attachProfileEventListeners();
+}
+
+function attachProfileEventListeners() {
+    // Set Default Profile button
+    document.querySelectorAll('[data-action="set-default-profile"]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const profileId = e.currentTarget.dataset.profileId;
+            await configState.setDefaultProfile(profileId);
+            renderProfiles();
+        });
+    });
+
+    // Toggle Active for Consumption checkbox
+    document.querySelectorAll('[data-action="toggle-active-consumption"]').forEach(checkbox => {
+        checkbox.addEventListener('change', async (e) => {
+            const profileId = e.target.dataset.profileId;
+            const isChecked = e.target.checked;
+            let activeIds = configState.activeForConsumptionProfileIds;
+
+            if (isChecked) {
+                if (!activeIds.includes(profileId)) {
+                    activeIds.push(profileId);
+                }
+            } else {
+                activeIds = activeIds.filter(id => id !== profileId);
+            }
+            await configState.setActiveForConsumptionProfiles(activeIds);
+            renderProfiles();
+        });
+    });
+    
+    // Test Profile button
+    document.querySelectorAll('[data-action="test-profile"]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const profileId = e.target.dataset.profileId;
+            const resultsContainer = document.getElementById(`test-results-${profileId}`);
+            resultsContainer.innerHTML = `<span class="text-yellow-400">Testing...</span>`;
+            try {
+                const result = await API.testProfile(profileId);
+                let html = '';
+                const all_successful = Object.values(result.results).every(r => r.status === 'success');
+                
+                for (const [key, value] of Object.entries(result.results)) {
+                    const statusClass = value.status === 'success' ? 'text-green-400' : 'text-red-400';
+                    html += `<p class="${statusClass}">${value.message}</p>`;
+                }
+                resultsContainer.innerHTML = html;
+
+                // Update checkbox
+                let activeIds = [...configState.activeForConsumptionProfileIds];
+                if (all_successful) {
+                    if (!activeIds.includes(profileId)) {
+                        activeIds.push(profileId);
+                    }
+                } else {
+                    activeIds = activeIds.filter(id => id !== profileId);
+                }
+                await configState.setActiveForConsumptionProfiles(activeIds);
+
+                const checkbox = document.querySelector(`input[data-action="toggle-active-consumption"][data-profile-id="${profileId}"]`);
+                if (checkbox) {
+                    checkbox.checked = all_successful;
+                }
+
+            } catch (error) {
+                resultsContainer.innerHTML = `<span class="text-red-400">${error.message}</span>`;
+                // Also uncheck on API error
+                let activeIds = configState.activeForConsumptionProfileIds.filter(id => id !== profileId);
+                await configState.setActiveForConsumptionProfiles(activeIds);
+                const checkbox = document.querySelector(`input[data-action="toggle-active-consumption"][data-profile-id="${profileId}"]`);
+                if (checkbox) {
+                    checkbox.checked = false;
+                }
+            }
+        });
+    });
+
+    // Edit Profile button
+    document.querySelectorAll('[data-action="edit-profile"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const profileId = e.target.dataset.profileId;
+            showProfileModal(profileId);
+        });
+    });
+
+    // Delete Profile button
+    document.querySelectorAll('[data-action="delete-profile"]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const profileId = e.target.dataset.profileId;
+            const profile = configState.profiles.find(p => p.id === profileId);
+            const profileName = profile ? profile.name : 'this profile';
+            
+            if (confirm(`Are you sure you want to delete profile "${profileName}"?`)) {
+                await configState.removeProfile(profileId);
+                renderProfiles();
+                showNotification('success', 'Profile deleted successfully');
+            }
+        });
+    });
+}
+
+async function showProfileModal(profileId = null) {
+    const profile = profileId ? configState.profiles.find(p => p.id === profileId) : null;
+    const isEdit = !!profile;
+
+    const modal = document.getElementById('profile-modal');
+    if (!modal) return;
+
+    modal.querySelector('#profile-modal-title').textContent = isEdit ? 'Edit Profile' : 'Add Profile';
+
+    // Populate LLM providers
+    const llmSelect = modal.querySelector('#profile-modal-llm-provider');
+    llmSelect.innerHTML = Object.keys(configState.llmProviders)
+        .filter(key => configState.llmProviders[key].configured)
+        .map(key => `<option value="${key}" ${profile?.llmProvider === key ? 'selected' : ''}>${LLM_PROVIDER_TEMPLATES[key].name}</option>`)
+        .join('');
+
+    // Populate MCP servers
+    const mcpSelect = modal.querySelector('#profile-modal-mcp-server');
+    mcpSelect.innerHTML = configState.mcpServers
+        .map(server => `<option value="${server.id}" ${profile?.mcpServerId === server.id ? 'selected' : ''}>${escapeHtml(server.name)}</option>`)
+        .join('');
+
+    const toolsContainer = modal.querySelector('#profile-modal-tools');
+    const promptsContainer = modal.querySelector('#profile-modal-prompts');
+    let allTools = [];
+    let allPrompts = [];
+
+    async function populateResources(mcpServerId) {
+        const server = configState.mcpServers.find(s => s.id === mcpServerId);
+        if (!server) {
+            toolsContainer.innerHTML = '<span class="text-gray-400">Select an MCP server.</span>';
+            promptsContainer.innerHTML = '<span class="text-gray-400">Select an MCP server.</span>';
+            return;
+        }
+
+        toolsContainer.innerHTML = '<span class="text-gray-400">Loading...</span>';
+        promptsContainer.innerHTML = '<span class="text-gray-400">Loading...</span>';
+
+        try {
+            const resources = await API.fetchResourcesForServer(server);
+            allTools = Object.values(resources.tools || {}).flat().map(t => t.name);
+            allPrompts = Object.values(resources.prompts || {}).flat().map(p => p.name);
+
+            toolsContainer.innerHTML = allTools.map(tool => `
+                <label class="flex items-center gap-2 text-sm text-gray-300">
+                    <input type="checkbox" value="${escapeHtml(tool)}" ${profile?.tools?.includes(tool) || profile?.tools?.includes('*') || !profile ? 'checked' : ''}>
+                    ${escapeHtml(tool)}
+                </label>
+            `).join('') || '<span class="text-gray-400">No tools found.</span>';
+
+            promptsContainer.innerHTML = allPrompts.map(prompt => `
+                <label class="flex items-center gap-2 text-sm text-gray-300">
+                    <input type="checkbox" value="${escapeHtml(prompt)}" ${profile?.prompts?.includes(prompt) || profile?.prompts?.includes('*') || !profile ? 'checked' : ''}>
+                    ${escapeHtml(prompt)}
+                </label>
+            `).join('') || '<span class="text-gray-400">No prompts found.</span>';
+        } catch (error) {
+            toolsContainer.innerHTML = `<span class="text-red-400">Error: ${error.message}</span>`;
+            promptsContainer.innerHTML = `<span class="text-red-400">Error: ${error.message}</span>`;
+        }
+    }
+    
+    mcpSelect.onchange = () => populateResources(mcpSelect.value);
+
+    // Initial population
+    const initialMcpId = profile ? profile.mcpServerId : (configState.mcpServers[0]?.id || null);
+    if (initialMcpId) {
+        populateResources(initialMcpId);
+    } else {
+        toolsContainer.innerHTML = '<span class="text-gray-400">No MCP servers configured.</span>';
+        promptsContainer.innerHTML = '<span class="text-gray-400">No MCP servers configured.</span>';
+    }
+
+
+    // Populate RAG collections
+    const ragContainer = modal.querySelector('#profile-modal-rag-collections');
+    const autocompleteContainer = modal.querySelector('#profile-modal-autocomplete-collections');
+    
+    const { collections: ragCollections } = await API.getRagCollections();
+    
+    ragContainer.innerHTML = ragCollections.map(coll => `
+        <label class="flex items-center gap-2 text-sm text-gray-300">
+            <input type="checkbox" value="${coll.id}" ${profile?.ragCollections?.includes(coll.id) || profile?.ragCollections?.includes('*') || !profile ? 'checked' : ''}>
+            ${escapeHtml(coll.name)}
+        </label>
+    `).join('') || '<span class="text-gray-400">No RAG collections found.</span>';
+
+    autocompleteContainer.innerHTML = ragCollections.map(coll => `
+        <label class="flex items-center gap-2 text-sm text-gray-300">
+            <input type="checkbox" value="${coll.id}" ${profile?.autocompleteCollections?.includes(coll.id) || profile?.autocompleteCollections?.includes('*') || !profile ? 'checked' : ''}>
+            ${escapeHtml(coll.name)}
+        </label>
+    `).join('') || '<span class="text-gray-400">No RAG collections found.</span>';
+
+    // Set profile tag and description
+    modal.querySelector('#profile-modal-tag').value = profile ? profile.tag : '';
+    modal.querySelector('#profile-modal-description').value = profile ? profile.description : '';
+
+    // Show the modal
+    modal.classList.remove('hidden');
+
+    // Attach event listeners for save/cancel
+    modal.querySelector('#profile-modal-cancel').onclick = () => modal.classList.add('hidden');
+    modal.querySelector('#profile-modal-save').onclick = async () => {
+        const tag = modal.querySelector('#profile-modal-tag').value.trim();
+        const description = modal.querySelector('#profile-modal-description').value.trim();
+
+        if (!tag) {
+            showNotification('error', 'Profile tag is required');
+            return;
+        }
+        
+        const selectedTools = Array.from(toolsContainer.querySelectorAll('input:checked')).map(cb => cb.value);
+        const selectedPrompts = Array.from(promptsContainer.querySelectorAll('input:checked')).map(cb => cb.value);
+        const selectedRag = Array.from(ragContainer.querySelectorAll('input:checked')).map(cb => parseInt(cb.value));
+        const selectedAutocomplete = Array.from(autocompleteContainer.querySelectorAll('input:checked')).map(cb => parseInt(cb.value));
+
+        const profileData = {
+            id: profile ? profile.id : `profile-${generateId()}`,
+            tag,
+            description,
+            llmProvider: llmSelect.value,
+            mcpServerId: mcpSelect.value,
+            tools: selectedTools.length === allTools.length ? ['*'] : selectedTools,
+            prompts: selectedPrompts.length === allPrompts.length ? ['*'] : selectedPrompts,
+            ragCollections: selectedRag.length === ragCollections.length ? ['*'] : selectedRag,
+            autocompleteCollections: selectedAutocomplete.length === ragCollections.length ? ['*'] : selectedAutocomplete,
+        };
+
+        try {
+            if (isEdit) {
+                await configState.updateProfile(profileId, profileData);
+            } else {
+                await configState.addProfile(profileData);
+            }
+
+            renderProfiles();
+            modal.classList.add('hidden');
+            showNotification('success', `Profile ${isEdit ? 'updated' : 'added'} successfully`);
+        } catch (error) {
+            showNotification('error', error.message);
+        }
+    };
+}
+
+
 export async function initializeConfigurationUI() {
     // Initialize tabs
     initializeConfigTabs();
@@ -1057,12 +1432,71 @@ export async function initializeConfigurationUI() {
     
     renderMCPServers();
     renderLLMProviders();
+    renderProfiles();
     updateReconnectButton();
 
     // Add MCP server button
     const addMCPBtn = document.getElementById('add-mcp-server-btn');
     if (addMCPBtn) {
         addMCPBtn.addEventListener('click', () => showMCPServerModal());
+    }
+
+    // Add Profile button
+    const addProfileBtn = document.getElementById('add-profile-btn');
+    if (addProfileBtn) {
+        addProfileBtn.addEventListener('click', () => showProfileModal());
+    }
+
+    // Test All Profiles button
+    const testAllProfilesBtn = document.getElementById('test-all-profiles-btn');
+    if (testAllProfilesBtn) {
+        testAllProfilesBtn.addEventListener('click', async () => {
+            let activeIds = [...configState.activeForConsumptionProfileIds];
+            for (const profile of configState.profiles) {
+                const profileId = profile.id;
+                const resultsContainer = document.getElementById(`test-results-${profileId}`);
+                if (resultsContainer) {
+                    resultsContainer.innerHTML = `<span class="text-yellow-400">Testing...</span>`;
+                    try {
+                        const result = await API.testProfile(profileId);
+                        let html = '';
+                        const all_successful = Object.values(result.results).every(r => r.status === 'success');
+
+                        for (const [key, value] of Object.entries(result.results)) {
+                            const statusClass = value.status === 'success' ? 'text-green-400' : 'text-red-400';
+                            html += `<p class="${statusClass}">${value.message}</p>`;
+                        }
+                        resultsContainer.innerHTML = html;
+
+                        // Update activeIds list based on result
+                        if (all_successful) {
+                            if (!activeIds.includes(profileId)) {
+                                activeIds.push(profileId);
+                            }
+                        } else {
+                            activeIds = activeIds.filter(id => id !== profileId);
+                        }
+                        
+                        // Manually update the toggle switch state
+                        const checkbox = document.querySelector(`input[data-action="toggle-active-consumption"][data-profile-id="${profileId}"]`);
+                        if (checkbox) {
+                            checkbox.checked = all_successful;
+                        }
+
+                    } catch (error) {
+                        resultsContainer.innerHTML = `<span class="text-red-400">${error.message}</span>`;
+                        // Also uncheck on API error
+                        activeIds = activeIds.filter(id => id !== profileId);
+                        const checkbox = document.querySelector(`input[data-action="toggle-active-consumption"][data-profile-id="${profileId}"]`);
+                        if (checkbox) {
+                            checkbox.checked = false;
+                        }
+                    }
+                }
+            }
+            // Save the final state of all active profiles once at the end
+            await configState.setActiveForConsumptionProfiles(activeIds);
+        });
     }
 
     // Reconnect button

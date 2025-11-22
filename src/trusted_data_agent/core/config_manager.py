@@ -60,7 +60,10 @@ class ConfigManager:
             "last_modified": datetime.now(timezone.utc).isoformat(),
             "rag_collections": [],  # Empty - default collection created by RAGRetriever
             "mcp_servers": [],  # MCP server configurations
-            "active_mcp_server_id": None  # ID of currently active MCP server
+            "active_mcp_server_id": None,  # ID of currently active MCP server
+            "profiles": [],  # Profile configurations
+            "default_profile_id": None,  # ID of the default profile
+            "active_for_consumption_profile_ids": []  # IDs of profiles active for consumption
         }
     
     def load_config(self) -> Dict[str, Any]:
@@ -348,6 +351,137 @@ class ConfigManager:
         """
         config = self.load_config()
         config["active_mcp_server_id"] = server_id
+        return self.save_config(config)
+
+    # ========================================================================
+    # PROFILE CONFIGURATION METHODS
+    # ========================================================================
+
+    def get_profiles(self) -> list:
+        """
+        Get all profile configurations.
+        
+        Returns:
+            List of profile configuration dictionaries
+        """
+        config = self.load_config()
+        return config.get("profiles", [])
+
+    def save_profiles(self, profiles: list) -> bool:
+        """
+        Save profile configurations.
+        
+        Args:
+            profiles: List of profile configuration dictionaries
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        config = self.load_config()
+        config["profiles"] = profiles
+        return self.save_config(config)
+
+    def add_profile(self, profile: Dict[str, Any]) -> bool:
+        """
+        Add a new profile configuration.
+        
+        Args:
+            profile: Profile configuration dictionary
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        profiles = self.get_profiles()
+        profiles.append(profile)
+        return self.save_profiles(profiles)
+
+    def update_profile(self, profile_id: str, updates: Dict[str, Any]) -> bool:
+        """
+        Update an existing profile configuration.
+        
+        Args:
+            profile_id: Unique ID of the profile to update
+            updates: Dictionary of fields to update
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        profiles = self.get_profiles()
+        profile = next((p for p in profiles if p.get("id") == profile_id), None)
+        
+        if not profile:
+            app_logger.warning(f"Profile with ID {profile_id} not found for update")
+            return False
+        
+        profile.update(updates)
+        return self.save_profiles(profiles)
+
+    def remove_profile(self, profile_id: str) -> bool:
+        """
+        Remove a profile configuration.
+        
+        Args:
+            profile_id: Unique ID of the profile to remove
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        profiles = self.get_profiles()
+        original_count = len(profiles)
+        profiles = [p for p in profiles if p.get("id") != profile_id]
+        
+        if len(profiles) == original_count:
+            app_logger.warning(f"Profile with ID {profile_id} not found for removal")
+            return False
+        
+        return self.save_profiles(profiles)
+
+    def get_default_profile_id(self) -> Optional[str]:
+        """
+        Get the ID of the currently default profile.
+        
+        Returns:
+            Default profile ID or None
+        """
+        config = self.load_config()
+        return config.get("default_profile_id")
+
+    def set_default_profile_id(self, profile_id: Optional[str]) -> bool:
+        """
+        Set the default profile ID.
+        
+        Args:
+            profile_id: ID of the profile to set as default, or None to clear
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        config = self.load_config()
+        config["default_profile_id"] = profile_id
+        return self.save_config(config)
+
+    def get_active_for_consumption_profile_ids(self) -> list:
+        """
+        Get the IDs of the profiles active for consumption.
+        
+        Returns:
+            List of active profile IDs
+        """
+        config = self.load_config()
+        return config.get("active_for_consumption_profile_ids", [])
+
+    def set_active_for_consumption_profile_ids(self, profile_ids: list) -> bool:
+        """
+        Set the IDs of the profiles active for consumption.
+        
+        Args:
+            profile_ids: List of profile IDs to set as active
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        config = self.load_config()
+        config["active_for_consumption_profile_ids"] = profile_ids
         return self.save_config(config)
 
 

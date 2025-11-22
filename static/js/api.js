@@ -435,3 +435,113 @@ export async function updateTurnFeedback(sessionId, turnId, vote) {
 }
 // --- MODIFICATION END ---
 
+// ============================================================================
+// PROFILE MANAGEMENT API
+// ============================================================================
+
+export async function getProfiles() {
+    const res = await fetch('/api/v1/profiles', { headers: _getHeaders(false) });
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to fetch profiles');
+    }
+    return await res.json();
+}
+
+export async function addProfile(profile) {
+    const res = await fetch('/api/v1/profiles', {
+        method: 'POST',
+        headers: _getHeaders(),
+        body: JSON.stringify(profile)
+    });
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to add profile');
+    }
+    return await res.json();
+}
+
+export async function updateProfile(profileId, updates) {
+    const res = await fetch(`/api/v1/profiles/${profileId}`, {
+        method: 'PUT',
+        headers: _getHeaders(),
+        body: JSON.stringify(updates)
+    });
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to update profile');
+    }
+    return await res.json();
+}
+
+export async function deleteProfile(profileId) {
+    const res = await fetch(`/api/v1/profiles/${profileId}`, {
+        method: 'DELETE',
+        headers: _getHeaders(false)
+    });
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to delete profile');
+    }
+    return await res.json();
+}
+
+export async function setDefaultProfile(profileId) {
+    const res = await fetch(`/api/v1/profiles/${profileId}/set_default`, {
+        method: 'POST',
+        headers: _getHeaders(false)
+    });
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to set default profile');
+    }
+    return await res.json();
+}
+
+export async function setActiveForConsumptionProfiles(profileIds) {
+    const res = await fetch('/api/v1/profiles/set_active_for_consumption', {
+        method: 'POST',
+        headers: _getHeaders(),
+        body: JSON.stringify({ profile_ids: profileIds })
+    });
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to set active for consumption profiles');
+    }
+    return await res.json();
+}
+
+export async function testProfile(profileId) {
+    const res = await fetch(`/api/v1/profiles/${profileId}/test`, {
+        method: 'POST',
+        headers: _getHeaders(false)
+    });
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to test profile');
+    }
+    return await res.json();
+}
+
+export async function fetchResourcesForServer(mcpServer) {
+    const res = await fetch('/api/v1/mcp/resources', {
+        method: 'POST',
+        headers: _getHeaders(),
+        body: JSON.stringify(mcpServer)
+    });
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to fetch resources for server');
+    }
+    return await res.json();
+}
+
+export async function getRagCollections() {
+    const res = await fetch('/api/v1/rag/collections', { headers: _getHeaders(false) });
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to fetch RAG collections');
+    }
+    return await res.json();
+}
+

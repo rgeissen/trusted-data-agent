@@ -1312,13 +1312,21 @@
                         <div id="profiles-tab" class="config-tab-content hidden">
                             <div class="space-y-6">
                                 <div class="glass-panel rounded-xl p-6">
-                                    <div class="mb-6">
-                                        <h3 class="text-xl font-bold text-white">Configure Profiles</h3>
-                                        <p class="text-sm text-gray-400 mt-1">Create and manage profiles for different configurations</p>
-                                    </div>
+                                    <div class="flex justify-between items-center mb-6">
+                                        <div>
+                                            <h3 class="text-xl font-bold text-white">Configure Profiles</h3>
+                                            <p class="text-sm text-gray-400 mt-1">Create and manage profiles for different configurations</p>
+                                        </div>
+                                                        <div class="flex items-center gap-2">
+                                                            <button type="button" id="test-all-profiles-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md transition-colors text-white font-medium text-sm">
+                                                                Test All Profiles
+                                                            </button>
+                                                            <button type="button" id="add-profile-btn" class="px-4 py-2 bg-[#F15F22] hover:bg-[#D9501A] rounded-md transition-colors text-white font-medium text-sm">
+                                                                + Add Profile
+                                                            </button>
+                                                        </div>                                    </div>
                                     <div id="profiles-container" class="space-y-4">
                                         <!-- Profile cards will be dynamically added here -->
-                                        <p class="text-gray-400">Please configure at least one MCP Server and one LLM Provider to create a profile.</p>
                                     </div>
                                 </div>
                             </div>
@@ -2205,5 +2213,53 @@
         </div>
     </div>
 
+    <!-- Add/Edit Profile Modal -->
+    <div id="profile-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="glass-panel rounded-xl p-6 max-w-2xl w-full mx-4">
+            <h3 class="text-xl font-bold text-white mb-4" id="profile-modal-title">Add Profile</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Unique Tag</label>
+                    <input type="text" id="profile-modal-tag" placeholder="e.g., @default" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Description</label>
+                    <textarea id="profile-modal-description" rows="2" placeholder="A short description of the profile's purpose." class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">LLM Provider</label>
+                    <select id="profile-modal-llm-provider" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none"></select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">MCP Server</label>
+                    <select id="profile-modal-mcp-server" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none"></select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Tools</label>
+                        <div id="profile-modal-tools" class="max-h-40 overflow-y-auto p-2 bg-gray-800 rounded-md border border-gray-600"></div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Prompts</label>
+                        <div id="profile-modal-prompts" class="max-h-40 overflow-y-auto p-2 bg-gray-800 rounded-md border border-gray-600"></div>
+                    </div>
+                </div>
+                 <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">RAG Collections</label>
+                        <div id="profile-modal-rag-collections" class="max-h-40 overflow-y-auto p-2 bg-gray-800 rounded-md border border-gray-600"></div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Autocomplete Collections</label>
+                        <div id="profile-modal-autocomplete-collections" class="max-h-40 overflow-y-auto p-2 bg-gray-800 rounded-md border border-gray-600"></div>
+                    </div>
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button id="profile-modal-cancel" class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md transition-colors text-white">Cancel</button>
+                    <button id="profile-modal-save" class="flex-1 px-4 py-2 bg-[#F15F22] hover:bg-[#D9501A] rounded-md transition-colors text-white font-medium">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

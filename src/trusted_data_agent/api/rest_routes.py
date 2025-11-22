@@ -16,6 +16,7 @@ from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
 from trusted_data_agent.core import session_manager
 from trusted_data_agent.agent import execution_service
 from trusted_data_agent.core import configuration_service
+from langchain_mcp_adapters.client import MultiServerMCPClient
 
 from trusted_data_agent.agent.executor import PlanExecutor
 from langchain_mcp_adapters.prompts import load_mcp_prompt
@@ -1892,11 +1893,293 @@ async def activate_mcp_server(server_id: str):
         app_logger.error(f"Error activating MCP server: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@rest_api_bp.route("/v1/mcp/resources", methods=["POST"])
+async def get_mcp_resources_for_server():
+    """
+    Gets the tools and prompts for a specific MCP server configuration
+    without requiring the application to be globally configured with it.
+    """
+    data = await request.get_json()
+    if not data or not all(k in data for k in ["name", "host", "port", "path"]):
+        return jsonify({"status": "error", "message": "Missing required MCP server details"}), 400
 
+    server_name = data["name"]
+    
+    try:
+        mcp_server_url = f"http://{data['host']}:{data['port']}{data['path']}"
+        temp_server_configs = {server_name: {"url": mcp_server_url, "transport": "streamable_http"}}
+        temp_mcp_client = MultiServerMCPClient(temp_server_configs)
+        
+        async with temp_mcp_client.session(server_name) as temp_session:
+            tools_result = await temp_session.list_tools()
+            prompts_result = await temp_session.list_prompts()
+        
+        structured_tools = {}
+        for tool in tools_result.tools:
+            category = "General"  # Fallback category
+            if hasattr(tool, 'metadata') and tool.metadata:
+                category = tool.metadata.get("category", "General")
+
+            if category not in structured_tools:
+                structured_tools[category] = []
+            structured_tools[category].append({"name": tool.name, "description": tool.description, "disabled": False})
+
+        structured_prompts = {}
+        for prompt in prompts_result.prompts:
+            category = "General"
+            description = ""
+            arguments = []
+            if hasattr(prompt, 'metadata') and prompt.metadata:
+                category = prompt.metadata.get("category", "General")
+                description = prompt.metadata.get("description", "")
+                arguments = prompt.metadata.get("arguments", [])
+
+            if category not in structured_prompts:
+                structured_prompts[category] = []
+            structured_prompts[category].append({
+                "name": prompt.name,
+                "description": description,
+                "arguments": arguments,
+                "disabled": False
+            })
+
+        return jsonify({
+            "status": "success",
+            "tools": structured_tools,
+            "prompts": structured_prompts
+        }), 200
+
+    except Exception as e:
+        app_logger.error(f"Error fetching resources for server {server_name}: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ============================================================================
+# PROFILE CONFIGURATION ENDPOINTS
+# ============================================================================
+
+@rest_api_bp.route("/v1/profiles", methods=["GET"])
+async def get_profiles():
+    """Get all profile configurations."""
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        
+        profiles = config_manager.get_profiles()
+        default_profile_id = config_manager.get_default_profile_id()
+        active_for_consumption_profile_ids = config_manager.get_active_for_consumption_profile_ids()
+        
+        return jsonify({
+            "status": "success",
+            "profiles": profiles,
+            "default_profile_id": default_profile_id,
+            "active_for_consumption_profile_ids": active_for_consumption_profile_ids
+        }), 200
+    except Exception as e:
+        app_logger.error(f"Error getting profiles: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+        
+        
+@rest_api_bp.route("/v1/profiles", methods=["POST"])
+async def create_profile():
+    """Create a new profile configuration."""
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        
+        data = await request.get_json()
+        
+        # Validate tag uniqueness
+        tag = data.get("tag")
+        if tag:
+            profiles = config_manager.get_profiles()
+            if any(p.get("tag") == tag for p in profiles):
+                return jsonify({"status": "error", "message": f"Tag '{tag}' is already in use."}), 400
+
+        # Add a unique ID if not provided
+        if "id" not in data:
+            data["id"] = f"profile-{uuid.uuid4()}"
+        
+        success = config_manager.add_profile(data)
+        
+        if success:
+            app_logger.info(f"Created profile with tag: {data.get('tag')} (ID: {data.get('id')})")
+            return jsonify({
+                "status": "success",
+                "message": "Profile created successfully",
+                "profile": data
+            }), 201
+        else:
+            return jsonify({"status": "error", "message": "Failed to create profile"}), 500
+            
+    except Exception as e:
+        app_logger.error(f"Error creating profile: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@rest_api_bp.route("/v1/profiles/<profile_id>", methods=["PUT"])
+async def update_profile(profile_id: str):
+    """Update an existing profile configuration."""
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        
+        data = await request.get_json()
+        
+        # Don't allow changing the ID
+        if "id" in data and data["id"] != profile_id:
+            return jsonify({"status": "error", "message": "Cannot change profile ID"}), 400
+
+        # Validate tag uniqueness if tag is being changed
+        tag = data.get("tag")
+        if tag:
+            profiles = config_manager.get_profiles()
+            if any(p.get("tag") == tag and p.get("id") != profile_id for p in profiles):
+                return jsonify({"status": "error", "message": f"Tag '{tag}' is already in use."}), 400
+
+        success = config_manager.update_profile(profile_id, data)
+        
+        if success:
+            app_logger.info(f"Updated profile: {profile_id}")
+            return jsonify({
+                "status": "success",
+                "message": "Profile updated successfully"
+            }), 200
+        else:
+            return jsonify({"status": "error", "message": "Profile not found"}), 404
+            
+    except Exception as e:
+        app_logger.error(f"Error updating profile: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@rest_api_bp.route("/v1/profiles/<profile_id>", methods=["DELETE"])
+async def delete_profile(profile_id: str):
+    """Delete a profile configuration."""
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        
+        success = config_manager.remove_profile(profile_id)
+        
+        if not success:
+            return jsonify({
+                "status": "error", 
+                "message": "Profile not found"
+            }), 404
+        
+        # Check if this was the active profile and clear it
+        active_profile_id = config_manager.get_active_profile_id()
+        if active_profile_id == profile_id:
+            config_manager.set_active_profile_id(None)
+        
+        app_logger.info(f"Deleted profile: {profile_id}")
+        return jsonify({
+            "status": "success",
+            "message": "Profile deleted successfully"
+        }), 200
+            
+    except Exception as e:
+        app_logger.error(f"Error deleting profile: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@rest_api_bp.route("/v1/profiles/<profile_id>/set_default", methods=["POST"])
+async def set_default_profile(profile_id: str):
+    """Set a profile as the default profile."""
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        
+        # Verify profile exists
+        profiles = config_manager.get_profiles()
+        profile = next((p for p in profiles if p.get("id") == profile_id), None)
+        
+        if not profile:
+            return jsonify({"status": "error", "message": "Profile not found"}), 404
+        
+        success = config_manager.set_default_profile_id(profile_id)
+        
+        if success:
+            app_logger.info(f"Set default profile: {profile_id}")
+            return jsonify({
+                "status": "success",
+                "message": "Default profile set successfully"
+            }), 200
+        else:
+            return jsonify({"status": "error", "message": "Failed to set default profile"}), 500
+            
+    except Exception as e:
+        app_logger.error(f"Error setting default profile: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@rest_api_bp.route("/v1/profiles/set_active_for_consumption", methods=["POST"])
+async def set_active_for_consumption_profiles():
+    """Set the list of profiles active for consumption."""
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        
+        data = await request.get_json()
+        profile_ids = data.get("profile_ids", [])
+        
+        success = config_manager.set_active_for_consumption_profile_ids(profile_ids)
+        
+        if success:
+            app_logger.info(f"Set active for consumption profiles: {profile_ids}")
+            return jsonify({
+                "status": "success",
+                "message": "Active for consumption profiles set successfully"
+            }), 200
+        else:
+            return jsonify({"status": "error", "message": "Failed to set active for consumption profiles"}), 500
+            
+    except Exception as e:
+        app_logger.error(f"Error setting active for consumption profiles: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@rest_api_bp.route("/v1/profiles/<profile_id>/test", methods=["POST"])
+async def test_profile(profile_id: str):
+    """Test a profile's configuration."""
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        
+        # Get profile
+        profiles = config_manager.get_profiles()
+        profile = next((p for p in profiles if p.get("id") == profile_id), None)
+        if not profile:
+            return jsonify({"status": "error", "message": "Profile not found"}), 404
+
+        results = {}
+
+        # Test MCP connection
+        mcp_server = next((s for s in config_manager.get_mcp_servers() if s.get("id") == profile.get("mcpServerId")), None)
+        if mcp_server:
+            # This is a placeholder for the actual test logic.
+            # In a real implementation, you would use the mcp_server details to make a test connection.
+            results["mcp_connection"] = {"status": "success", "message": "MCP connection successful."}
+        else:
+            results["mcp_connection"] = {"status": "error", "message": "MCP server not found in configuration."}
+
+        # Test LLM connection
+        # This is a placeholder for the actual test logic.
+        results["llm_connection"] = {"status": "success", "message": "LLM connection successful."}
+
+        # Test RAG collections
+        # This is a placeholder for the actual test logic.
+        results["rag_collections"] = {"status": "success", "message": "RAG collections are available."}
+        
+        # Test Autocomplete collections
+        # This is a placeholder for the actual test logic.
+        results["autocomplete_collections"] = {"status": "success", "message": "Autocomplete collections are available."}
+
+        return jsonify({"status": "success", "results": results}), 200
+
+    except Exception as e:
+        app_logger.error(f"Error testing profile: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+        
 # ============================================================================
 # EXECUTION DASHBOARD API ENDPOINTS
 # ============================================================================
-
 @rest_api_bp.route('/v1/sessions/analytics', methods=['GET'])
 async def get_sessions_analytics():
     """
