@@ -133,6 +133,56 @@ const LLM_PROVIDER_TEMPLATES = {
 };
 
 // ============================================================================
+// MCP CLASSIFICATION SETTING
+// ============================================================================
+
+/**
+ * Load the MCP classification setting from the backend
+ */
+async function loadClassificationSetting() {
+    try {
+        const response = await fetch('/api/v1/config/classification', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            const checkbox = document.getElementById('enable-mcp-classification');
+            if (checkbox) {
+                checkbox.checked = result.enable_mcp_classification;
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load classification setting:', error);
+    }
+}
+
+/**
+ * Save the MCP classification setting to the backend
+ */
+async function saveClassificationSetting(enabled) {
+    try {
+        const response = await fetch('/api/v1/config/classification', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enable_mcp_classification: enabled })
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            showNotification('success', result.message);
+        } else {
+            const error = await response.json();
+            showNotification('error', error.message || 'Failed to save classification setting');
+        }
+    } catch (error) {
+        console.error('Failed to save classification setting:', error);
+        showNotification('error', 'Failed to save classification setting');
+    }
+}
+
+// ============================================================================
 // STATE MANAGEMENT
 // ============================================================================
 class ConfigurationState {
@@ -1434,6 +1484,9 @@ export async function initializeConfigurationUI() {
     renderLLMProviders();
     renderProfiles();
     updateReconnectButton();
+    
+    // Load MCP classification setting
+    await loadClassificationSetting();
 
     // Add MCP server button
     const addMCPBtn = document.getElementById('add-mcp-server-btn');
@@ -1503,6 +1556,14 @@ export async function initializeConfigurationUI() {
     const reconnectBtn = document.getElementById('reconnect-and-load-btn');
     if (reconnectBtn) {
         reconnectBtn.addEventListener('click', reconnectAndLoad);
+    }
+    
+    // MCP Classification toggle
+    const classificationCheckbox = document.getElementById('enable-mcp-classification');
+    if (classificationCheckbox) {
+        classificationCheckbox.addEventListener('change', async (e) => {
+            await saveClassificationSetting(e.target.checked);
+        });
     }
 
 }

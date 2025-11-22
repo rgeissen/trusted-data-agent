@@ -21,6 +21,7 @@ class AppConfig:
     ENABLE_SQL_CONSOLIDATION_REWRITE = False # If True, enables an LLM-based plan rewrite rule to consolidate sequential SQL queries.
     GRANTED_PROMPTS_FOR_EFFICIENCY_REPLANNING = ["base_teradataQuery"] # A list of complex prompts that are exempt from the "Re-planning for Efficiency" optimization.
     CONDENSE_SYSTEMPROMPT_HISTORY = True # If True, sends a condensed list of tools/prompts in the system prompt for subsequent turns in a conversation to save tokens.
+    ENABLE_MCP_CLASSIFICATION = True # If True, uses LLM to classify MCP tools/prompts into categories. If False, uses single categories ('All Tools', 'All Prompts', 'All Resources') for faster configuration.
 
 
     # --- Connection & Model State ---

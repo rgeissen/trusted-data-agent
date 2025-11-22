@@ -707,6 +707,70 @@ async def configure_services_rest():
         # so a 400-level error is more appropriate than a 500.
         return jsonify(result), 400
 
+
+@rest_api_bp.route("/v1/config/classification", methods=["GET", "PUT"])
+async def manage_classification_setting():
+    """
+    GET: Returns the current enable_mcp_classification setting.
+    PUT: Updates the enable_mcp_classification setting in tda_config.json and APP_CONFIG.
+    
+    PUT Request body:
+    {
+        "enable_mcp_classification": true/false
+    }
+    
+    Returns:
+    {
+        "status": "success",
+        "enable_mcp_classification": true/false
+    }
+    """
+    from trusted_data_agent.core.config_manager import get_config_manager
+    config_manager = get_config_manager()
+    
+    if request.method == "GET":
+        # Return current setting
+        return jsonify({
+            "status": "success",
+            "enable_mcp_classification": APP_CONFIG.ENABLE_MCP_CLASSIFICATION
+        }), 200
+    
+    elif request.method == "PUT":
+        # Update setting
+        data = await request.get_json()
+        if data is None or "enable_mcp_classification" not in data:
+            return jsonify({
+                "status": "error",
+                "message": "Request body must contain 'enable_mcp_classification' field"
+            }), 400
+        
+        enable_classification = bool(data["enable_mcp_classification"])
+        
+        # Load current config
+        config = config_manager.load_config()
+        
+        # Update the setting
+        config["enable_mcp_classification"] = enable_classification
+        
+        # Save to file
+        if not config_manager.save_config(config):
+            return jsonify({
+                "status": "error",
+                "message": "Failed to save configuration to file"
+            }), 500
+        
+        # Update runtime config
+        APP_CONFIG.ENABLE_MCP_CLASSIFICATION = enable_classification
+        
+        app_logger.info(f"MCP Classification setting updated to: {enable_classification}")
+        
+        return jsonify({
+            "status": "success",
+            "enable_mcp_classification": enable_classification,
+            "message": f"Classification {'enabled' if enable_classification else 'disabled'}. Changes will take effect on next configuration."
+        }), 200
+
+
 @rest_api_bp.route("/v1/sessions", methods=["POST"])
 async def create_session():
     """Creates a new conversation session *for the requesting user*."""

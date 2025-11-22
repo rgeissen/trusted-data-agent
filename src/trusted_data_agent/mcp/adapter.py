@@ -316,39 +316,51 @@ async def load_and_categorize_mcp_resources(STATE: dict):
 
         capabilities_list_str = "\n".join(all_capabilities)
 
-        classification_prompt = (
-            "You are a helpful assistant that analyzes a list of technical capabilities (tools and prompts) and classifies them. "
-            "For each capability, you must determine a single user-friendly 'category' for a UI. "
-            "Example categories might be 'Data Quality', 'Table Management', 'Performance', 'Utilities', 'Database Information', etc. Be concise and consistent.\n\n"
-            "Your response MUST be a single, valid JSON object. The keys of this object must be the capability names, "
-            "and the value for each key must be another JSON object containing only the 'category' you determined.\n\n"
-            "Example format:\n"
-            "{\n"
-            '  "capability_name_1": {"category": "Some Category"},\n'
-            '  "capability_name_2": {"category": "Another Category"}\n'
-            "}\n\n"
-            f"--- Capability List ---\n{capabilities_list_str}"
-        )
-        categorization_system_prompt = "You are an expert assistant that only responds with valid JSON."
+        # --- Check if MCP classification is enabled ---
+        skip_classification = not APP_CONFIG.ENABLE_MCP_CLASSIFICATION
+        
+        if skip_classification:
+            app_logger.info("MCP classification is disabled. Using single-category structure for faster configuration.")
+            # Use empty dict - we'll assign default categories below
+            classified_data = {}
+        else:
+            app_logger.info("MCP classification is enabled. Calling LLM to categorize capabilities...")
+            classification_prompt = (
+                "You are a helpful assistant that analyzes a list of technical capabilities (tools and prompts) and classifies them. "
+                "For each capability, you must determine a single user-friendly 'category' for a UI. "
+                "Example categories might be 'Data Quality', 'Table Management', 'Performance', 'Utilities', 'Database Information', etc. Be concise and consistent.\n\n"
+                "Your response MUST be a single, valid JSON object. The keys of this object must be the capability names, "
+                "and the value for each key must be another JSON object containing only the 'category' you determined.\n\n"
+                "Example format:\n"
+                "{\n"
+                '  "capability_name_1": {"category": "Some Category"},\n'
+                '  "capability_name_2": {"category": "Another Category"}\n'
+                "}\n\n"
+                f"--- Capability List ---\n{capabilities_list_str}"
+            )
+            categorization_system_prompt = "You are an expert assistant that only responds with valid JSON."
 
-        classified_capabilities_str, _, _, _, _ = await llm_handler.call_llm_api(
-            llm_instance, classification_prompt, raise_on_error=True,
-            system_prompt_override=categorization_system_prompt
-        )
+            classified_capabilities_str, _, _, _, _ = await llm_handler.call_llm_api(
+                llm_instance, classification_prompt, raise_on_error=True,
+                system_prompt_override=categorization_system_prompt
+            )
 
-        match = re.search(r'\{.*\}', classified_capabilities_str, re.DOTALL)
-        if match is None:
-            raise ValueError(f"LLM failed to return a valid JSON for capability classification. Response: '{classified_capabilities_str}'")
+            match = re.search(r'\{.*\}', classified_capabilities_str, re.DOTALL)
+            if match is None:
+                raise ValueError(f"LLM failed to return a valid JSON for capability classification. Response: '{classified_capabilities_str}'")
 
-        cleaned_str = match.group(0)
-        classified_data = json.loads(cleaned_str)
+            cleaned_str = match.group(0)
+            classified_data = json.loads(cleaned_str)
 
         STATE['structured_tools'] = {}
         disabled_tools_list = STATE.get("disabled_tools", [])
 
         for tool in loaded_tools:
-            classification = classified_data.get(tool.name, {})
-            category = classification.get("category", "Uncategorized")
+            if skip_classification:
+                category = "All Tools"
+            else:
+                classification = classified_data.get(tool.name, {})
+                category = classification.get("category", "Uncategorized")
 
             if category not in STATE['structured_tools']:
                 STATE['structured_tools'][category] = []
@@ -401,8 +413,11 @@ async def load_and_categorize_mcp_resources(STATE: dict):
 
         if loaded_prompts:
             for prompt_obj in loaded_prompts:
-                classification = classified_data.get(prompt_obj.name, {})
-                category = classification.get("category", "UncategorDized")
+                if skip_classification:
+                    category = "All Prompts"
+                else:
+                    classification = classified_data.get(prompt_obj.name, {})
+                    category = classification.get("category", "Uncategorized")
 
                 if category not in STATE['structured_prompts']:
                     STATE['structured_prompts'][category] = []
@@ -432,8 +447,11 @@ async def load_and_categorize_mcp_resources(STATE: dict):
         STATE['structured_resources'] = {} # Initialize the structure
         if loaded_resources:
             for resource_obj in loaded_resources:
-                classification = classified_data.get(resource_obj.name, {})
-                category = classification.get("category", "Uncategorized")
+                if skip_classification:
+                    category = "All Resources"
+                else:
+                    classification = classified_data.get(resource_obj.name, {})
+                    category = classification.get("category", "Uncategorized")
 
                 if category not in STATE['structured_resources']:
                     STATE['structured_resources'][category] = []

@@ -183,6 +183,16 @@ def create_app():
         """
         app_logger.info("Application starting up... Launching background tasks.")
         
+        # Load configuration from tda_config.json and apply to APP_CONFIG
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        loaded_config = config_manager.load_config()
+        
+        # Load enable_mcp_classification setting (defaults to True if not present)
+        enable_classification = loaded_config.get("enable_mcp_classification", True)
+        APP_CONFIG.ENABLE_MCP_CLASSIFICATION = enable_classification
+        app_logger.info(f"MCP Classification setting loaded from config: {enable_classification}")
+        
         # Initialize RAG early if enabled - independent of LLM/MCP configuration
         if APP_CONFIG.RAG_ENABLED:
             try:
