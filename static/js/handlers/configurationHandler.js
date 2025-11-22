@@ -62,6 +62,32 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+/**
+ * Load credentials from localStorage for a given provider
+ * @param {string} provider - The LLM provider name
+ * @returns {object} - The credentials object
+ */
+function loadCredentialsFromLocalStorage(provider) {
+    const storageKey = `${provider.toLowerCase()}ApiKey`;
+    
+    // Special case for Ollama
+    if (provider === 'Ollama') {
+        const host = localStorage.getItem('ollamaHost');
+        return host ? { ollama_host: host } : {};
+    }
+    
+    const stored = localStorage.getItem(storageKey);
+    if (!stored) return {};
+    
+    try {
+        // Try parsing as JSON (for multi-field providers)
+        return JSON.parse(stored);
+    } catch {
+        // If not JSON, assume it's a simple apiKey string
+        return { apiKey: stored };
+    }
+}
+
 // ============================================================================
 // STORAGE KEYS
 // ============================================================================
@@ -865,7 +891,31 @@ export function showLLMConfigurationModal(configId = null) {
 
         // Render regular credential fields
         template.fields.forEach(field => {
-            const value = config?.credentials?.[field.id] || '';
+            // Try to get value from config (backend), fall back to localStorage
+            let value = config?.credentials?.[field.id] || '';
+            
+            // If no value from backend, try localStorage based on provider
+            if (!value) {
+                // Special case for Ollama host
+                if (provider === 'Ollama' && field.id === 'ollama_host') {
+                    value = localStorage.getItem('ollamaHost') || 'http://localhost:11434';
+                } else {
+                    const storageKey = `${provider.toLowerCase()}ApiKey`;
+                    const stored = localStorage.getItem(storageKey);
+                    if (stored) {
+                        try {
+                            const parsed = JSON.parse(stored);
+                            value = parsed[field.id] || '';
+                        } catch {
+                            // Not JSON, might be simple string for apiKey field
+                            if (field.id === 'apiKey') {
+                                value = stored;
+                            }
+                        }
+                    }
+                }
+            }
+            
             html += `
                 <div>
                     <label class="block text-sm font-medium text-gray-300 mb-1">${escapeHtml(field.label)}</label>
@@ -1030,6 +1080,26 @@ export function showLLMConfigurationModal(configId = null) {
             }
 
             if (success) {
+                // Save credentials to localStorage for future use
+                const storageKey = `${provider.toLowerCase()}ApiKey`;
+                try {
+                    // For providers with multiple fields, store as JSON object
+                    if (Object.keys(credentials).length > 1) {
+                        localStorage.setItem(storageKey, JSON.stringify(credentials));
+                    } else if (credentials.apiKey) {
+                        // For simple apiKey, store as plain string
+                        localStorage.setItem(storageKey, credentials.apiKey);
+                    } else if (credentials.ollama_host) {
+                        // For Ollama, store host separately for backward compatibility
+                        localStorage.setItem('ollamaHost', credentials.ollama_host);
+                    } else {
+                        // Store the whole credentials object
+                        localStorage.setItem(storageKey, JSON.stringify(credentials));
+                    }
+                } catch (e) {
+                    console.error('Failed to save credentials to localStorage:', e);
+                }
+                
                 renderLLMProviders();
                 modal.remove();
                 showNotification('success', `LLM configuration ${isEdit ? 'updated' : 'added'} successfully`);
@@ -1229,10 +1299,16 @@ export async function reconnectAndLoad() {
         return;
     }
 
-    if (!llmConfig.credentials || Object.keys(llmConfig.credentials).length === 0) {
-        showNotification('error', 'LLM Configuration credentials are missing or incomplete');
+    // Load credentials from localStorage and merge with config
+    // Since credentials are never stored in tda_config.json, we need to get them from browser storage
+    const credentialsFromStorage = loadCredentialsFromLocalStorage(llmConfig.provider);
+    if (!credentialsFromStorage || Object.keys(credentialsFromStorage).length === 0) {
+        showNotification('error', 'LLM Configuration credentials are missing. Please edit the configuration and enter your credentials.');
         return;
     }
+    
+    // Merge credentials from localStorage into llmConfig
+    llmConfig.credentials = credentialsFromStorage;
 
     const btn = document.getElementById('reconnect-and-load-btn');
     const btnText = document.getElementById('reconnect-button-text');
