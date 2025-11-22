@@ -98,6 +98,26 @@ async def get_application_status():
         }
         return jsonify(status_payload)
 
+@api_bp.route("/api/questions")
+async def get_rag_questions():
+    """
+    Returns a list of unique questions from the RAG knowledge base.
+    """
+    questions = set()
+    retriever = APP_STATE.get('rag_retriever_instance')
+    if retriever:
+        for collection in retriever.collections.values():
+            try:
+                results = collection.get(include=["metadatas"])
+                for metadata in results.get("metadatas", []):
+                    if "user_query" in metadata:
+                        questions.add(metadata["user_query"])
+            except Exception as e:
+                app_logger.error(f"Error getting documents from collection {collection.name}: {e}")
+
+    return jsonify({"questions": sorted(list(questions))})
+
+
 @api_bp.route("/simple_chat", methods=["POST"])
 async def simple_chat():
     """

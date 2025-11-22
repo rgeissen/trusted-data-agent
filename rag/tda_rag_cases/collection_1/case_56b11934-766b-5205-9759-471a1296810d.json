@@ -1,0 +1,54 @@
+{
+  "case_id": "56b11934-766b-5205-9759-471a1296810d",
+  "metadata": {
+    "session_id": "d875ebfb-0425-46a8-86cd-a0f960d5e21e",
+    "turn_id": 2,
+    "is_success": true,
+    "task_id": "task-ad0dbbe4-060f-4c33-97a1-15662554d7fc",
+    "collection_id": 1,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-22T10:31:47.611597+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "input_tokens": 13712,
+      "output_tokens": 154
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    }
+  },
+  "intent": {
+    "user_query": "How many customers do not have an email address?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Execute SQL query on fitness_db: SELECT COUNT(*) FROM fitness_db.Customers WHERE Email IS NULL;",
+        "relevant_tools": [
+          "base_readQuery"
+        ],
+        "arguments": {
+          "sql": "SELECT COUNT(*) FROM fitness_db.Customers WHERE Email IS NULL;"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the query results.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

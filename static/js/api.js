@@ -372,6 +372,15 @@ export async function fetchTurnDetails(sessionId, turnId) {
 }
 // --- MODIFICATION END ---
 
+export async function fetchRAGQuestions() {
+    const res = await fetch('/api/questions', { headers: _getHeaders(false) });
+    if (!res.ok) {
+        return [];
+    }
+    const data = await res.json();
+    return data.questions || [];
+}
+
 // --- MODIFICATION START: Add purgeSessionMemory function ---
 /**
  * Sends a request to the backend to purge the agent's memory (`chat_object`)

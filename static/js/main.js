@@ -16,6 +16,67 @@ import { handleViewSwitch } from './ui.js';
 import { initializeVoiceRecognition } from './voice.js';
 import { subscribeToNotifications } from './notifications.js';
 
+async function initializeRAGAutoCompletion() {
+    let allQuestions = [];
+    const suggestionsContainer = document.getElementById('rag-suggestions-container');
+    const userInput = document.getElementById('user-input');
+
+    function showSuggestions(questionsToShow) {
+        if (questionsToShow.length === 0) {
+            suggestionsContainer.innerHTML = '';
+            suggestionsContainer.classList.add('hidden');
+            return;
+        }
+
+        suggestionsContainer.innerHTML = '';
+        questionsToShow.slice(0, 5).forEach(q => {
+            const suggestionItem = document.createElement('div'); // Use div instead of button
+            suggestionItem.className = 'rag-suggestion-item';
+            suggestionItem.textContent = q;
+            suggestionItem.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                userInput.value = q;
+                suggestionsContainer.innerHTML = '';
+                suggestionsContainer.classList.add('hidden');
+                userInput.focus();
+            });
+            suggestionsContainer.appendChild(suggestionItem);
+        });
+        suggestionsContainer.classList.remove('hidden');
+    }
+
+    if (suggestionsContainer && userInput) {
+        allQuestions = await API.fetchRAGQuestions();
+        
+        userInput.addEventListener('focus', () => {
+            const inputValue = userInput.value.toLowerCase();
+            if (inputValue.length === 0) {
+                showSuggestions(allQuestions);
+            } else {
+                 const filteredQuestions = allQuestions.filter(q => q.toLowerCase().includes(inputValue));
+                showSuggestions(filteredQuestions);
+            }
+        });
+
+        userInput.addEventListener('input', () => {
+            const inputValue = userInput.value.toLowerCase();
+            if (inputValue.length > 0) {
+                const filteredQuestions = allQuestions.filter(q => q.toLowerCase().includes(inputValue));
+                showSuggestions(filteredQuestions);
+            } else {
+                showSuggestions(allQuestions);
+            }
+        });
+
+        userInput.addEventListener('blur', () => {
+            setTimeout(() => {
+                suggestionsContainer.innerHTML = '';
+                suggestionsContainer.classList.add('hidden');
+            }, 150);
+        });
+    }
+}
+
 /**
  * Ensures a user UUID exists in localStorage and application state.
  * Generates a new UUID if one is not found.
@@ -139,6 +200,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     ensureUserUUID(); // Get/Set the User UUID right away
     subscribeToNotifications();
+    initializeRAGAutoCompletion();
 
     // Fetch GitHub star count - DEACTIVATED to conserve API credits
     // fetchGitHubStarCount();

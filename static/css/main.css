@@ -1443,3 +1443,34 @@ button[data-action="delete-mcp"]:hover {
         font-size: 1rem;
     }
 }
+
+#rag-suggestions-container {
+    background: linear-gradient(to bottom, rgba(40, 40, 40, 0.95), rgba(30, 30, 30, 0.95));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 16px;
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 10;
+    width: 100%;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.rag-suggestion-item {
+    padding: 14px 20px;
+    color: #e5e7eb; /* gray-200 */
+    cursor: pointer;
+    transition: background-color 0.25s ease-in-out, color 0.25s ease-in-out;
+    font-size: 0.9rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rag-suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.rag-suggestion-item:hover {
+    background-color: var(--teradata-orange);
+    color: white;
+}

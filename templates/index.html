@@ -536,7 +536,8 @@
                             </main>
 
                             <footer id="chat-footer" class="p-4">
-                                <div class="max-w-4xl mx-auto">
+                                <div class="max-w-4xl mx-auto relative">
+                                    <div id="rag-suggestions-container" class="absolute bottom-full mb-2 w-full hidden"></div>
                                     <form id="chat-form" class="flex items-center gap-3 glass-panel rounded-xl p-2">
                                         <input type="text" id="user-input" placeholder="Ask about databases, tables, users..."
                                             class="flex-1 p-3 bg-transparent border-none rounded-lg focus:outline-none text-white placeholder-gray-400"
