@@ -1405,47 +1405,195 @@ button[data-action="delete-mcp"]:hover {
     background: rgba(241, 95, 34, 0.05);
 }
 
-/* Staggered fade-in animation for welcome screen elements */
+/* ============================================================================
+   REFINED WELCOME SCREEN - INDUSTRIAL DESIGN
+   ============================================================================ */
+
+/* Enhanced hero icon with depth and glow */
 #welcome-screen .welcome-hero-icon {
-    animation: welcomeFadeInUp 0.6s ease-out 0.1s both, welcomeFloat 3s ease-in-out 0.7s infinite;
+    animation: welcomeFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both, 
+               welcomeFloat 4s ease-in-out 1s infinite;
 }
 
+#welcome-screen .welcome-icon-container {
+    background: linear-gradient(135deg, rgba(241, 95, 34, 0.15) 0%, rgba(241, 95, 34, 0.05) 100%);
+    box-shadow: 0 10px 40px rgba(241, 95, 34, 0.2),
+                0 0 60px rgba(241, 95, 34, 0.15) inset;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#welcome-screen .welcome-icon-container:hover {
+    transform: scale(1.05) translateY(-4px);
+    box-shadow: 0 20px 60px rgba(241, 95, 34, 0.35),
+                0 0 80px rgba(241, 95, 34, 0.2) inset;
+}
+
+#welcome-screen .welcome-lightning {
+    filter: drop-shadow(0 0 20px rgba(241, 95, 34, 0.5));
+    animation: pulse-subtle 3s ease-in-out infinite;
+}
+
+@keyframes pulse-subtle {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+/* Enhanced typography hierarchy */
 #welcome-screen h1 {
-    animation: welcomeFadeInUp 0.6s ease-out 0.2s both;
+    animation: welcomeFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+    background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    text-shadow: 0 2px 40px rgba(255, 255, 255, 0.1);
 }
 
 #welcome-screen p {
-    animation: welcomeFadeInUp 0.6s ease-out 0.3s both;
+    animation: welcomeFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+    letter-spacing: -0.01em;
 }
 
+/* Gradient text for tagline */
+#welcome-screen .welcome-gradient-text {
+    background: linear-gradient(135deg, #F15F22 0%, #FF7A47 50%, #F15F22 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: welcomeFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both,
+               shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0%, 100% { background-position: 0% center; }
+    50% { background-position: 100% center; }
+}
+
+/* Enhanced CTA button with sophisticated effects */
 #welcome-screen .welcome-cta-button {
-    animation: welcomeFadeInUp 0.6s ease-out 0.4s both;
+    animation: welcomeFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+    background: linear-gradient(135deg, #F15F22 0%, #D9501A 100%);
+    box-shadow: 0 10px 30px rgba(241, 95, 34, 0.3),
+                0 0 0 0 rgba(241, 95, 34, 0.4);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+#welcome-screen .welcome-cta-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s ease;
+}
+
+#welcome-screen .welcome-cta-button:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 15px 45px rgba(241, 95, 34, 0.5),
+                0 0 0 8px rgba(241, 95, 34, 0.15);
+}
+
+#welcome-screen .welcome-cta-button:hover::before {
+    left: 100%;
+}
+
+#welcome-screen .welcome-cta-button:active {
+    transform: translateY(0) scale(0.98);
+    transition-duration: 0.1s;
+}
+
+/* Enhanced feature cards with refined glass morphism */
+#welcome-screen .welcome-feature-card {
+    background: linear-gradient(135deg, 
+                                rgba(255, 255, 255, 0.08) 0%, 
+                                rgba(255, 255, 255, 0.02) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+#welcome-screen .welcome-feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(241, 95, 34, 0.5), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#welcome-screen .welcome-feature-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    background: linear-gradient(135deg, 
+                                rgba(255, 255, 255, 0.12) 0%, 
+                                rgba(255, 255, 255, 0.04) 100%);
+    border-color: rgba(241, 95, 34, 0.3);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2),
+                0 0 60px rgba(241, 95, 34, 0.1);
+}
+
+#welcome-screen .welcome-feature-card:hover::before {
+    opacity: 1;
+}
+
+/* Staggered sophisticated animations */
 #welcome-screen .welcome-feature-card:nth-child(1) {
-    animation: welcomeFadeInUp 0.6s ease-out 0.5s both;
+    animation: welcomeFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
 }
 
 #welcome-screen .welcome-feature-card:nth-child(2) {
-    animation: welcomeFadeInUp 0.6s ease-out 0.6s both;
+    animation: welcomeFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both;
 }
 
 #welcome-screen .welcome-feature-card:nth-child(3) {
-    animation: welcomeFadeInUp 0.6s ease-out 0.7s both;
+    animation: welcomeFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.7s both;
 }
 
 #welcome-screen .welcome-feature-card:nth-child(4) {
-    animation: welcomeFadeInUp 0.6s ease-out 0.8s both;
+    animation: welcomeFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.8s both;
 }
 
+/* Refined animation keyframes with sophisticated easing */
 @keyframes welcomeFadeInUp {
-    from {
+    0% {
         opacity: 0;
-        transform: translateY(30px);
+        transform: translateY(40px) scale(0.95);
+        filter: blur(4px);
     }
-    to {
+    100% {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+    }
+}
+
+@keyframes welcomeFloat {
+    0%, 100% {
+        transform: translateY(0) rotate(0deg);
+    }
+    25% {
+        transform: translateY(-10px) rotate(1deg);
+    }
+    50% {
+        transform: translateY(-5px) rotate(0deg);
+    }
+    75% {
+        transform: translateY(-10px) rotate(-1deg);
     }
 }
 
