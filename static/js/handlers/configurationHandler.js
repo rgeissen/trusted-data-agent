@@ -891,29 +891,16 @@ export function showLLMConfigurationModal(configId = null) {
 
         // Render regular credential fields
         template.fields.forEach(field => {
-            // Try to get value from config (backend), fall back to localStorage
-            let value = config?.credentials?.[field.id] || '';
+            let value = '';
             
-            // If no value from backend, try localStorage based on provider
-            if (!value) {
-                // Special case for Ollama host
-                if (provider === 'Ollama' && field.id === 'ollama_host') {
-                    value = localStorage.getItem('ollamaHost') || 'http://localhost:11434';
-                } else {
-                    const storageKey = `${provider.toLowerCase()}ApiKey`;
-                    const stored = localStorage.getItem(storageKey);
-                    if (stored) {
-                        try {
-                            const parsed = JSON.parse(stored);
-                            value = parsed[field.id] || '';
-                        } catch {
-                            // Not JSON, might be simple string for apiKey field
-                            if (field.id === 'apiKey') {
-                                value = stored;
-                            }
-                        }
-                    }
-                }
+            // First, try to get value from localStorage (always preferred for credentials)
+            const storedCredentials = loadCredentialsFromLocalStorage(provider);
+            value = storedCredentials[field.id] || '';
+            
+            // If still no value, try to get from config (backend) as fallback
+            // This handles the case where credentials were saved to backend (when persistence was on)
+            if (!value && config?.credentials) {
+                value = config.credentials[field.id] || '';
             }
             
             html += `

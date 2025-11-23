@@ -812,11 +812,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 persistenceBanner.classList.remove('hidden');
             }
             
-            // If persistence is disabled, clear any stored credentials
-            if (!state.configurationPersistence) {
-                const { clearAllCredentials } = await import('./storageUtils.js');
-                clearAllCredentials();
-            }
+            // Note: Credentials are ALWAYS stored in localStorage regardless of persistence setting
+            // When persistence is disabled, localStorage is the ONLY place credentials are stored
+            // When persistence is enabled, credentials are in backend AND localStorage
         }
         
         // Update RAG indicator based on status
