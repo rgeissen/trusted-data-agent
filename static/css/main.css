@@ -130,9 +130,40 @@ body {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
+    font-weight: 700;
     line-height: 1;
     overflow: hidden;
+    position: relative;
+    letter-spacing: 0.02em;
+}
+
+/* Add subtle shine effect to all avatars */
+.avatar::after,
+.message-bubble .bg-gray-700::after,
+.message-bubble .bg-\[#F15F22\]::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+        to bottom right,
+        rgba(255, 255, 255, 0.15) 0%,
+        rgba(255, 255, 255, 0.05) 40%,
+        transparent 60%
+    );
+    transform: rotate(-45deg);
+    pointer-events: none;
+}
+
+/* Ensure text appears above shine effect */
+.avatar > *,
+.message-bubble .bg-gray-700 > *,
+.message-bubble .bg-\[#F15F22\] > * {
+    position: relative;
+    z-index: 1;
 }
 
 .avatar:hover,
@@ -144,28 +175,72 @@ body {
     border-color: rgba(59, 130, 246, 0.6);
 }
 
-/* User avatar - orange theme */
+/* User avatar - refined orange theme */
 .message-bubble.user .avatar,
 .message-bubble .bg-gray-700 {
     background: linear-gradient(135deg, #F15F22 0%, #D9501A 100%) !important;
-    border-color: rgba(241, 95, 34, 0.4);
-    box-shadow: 0 4px 12px rgba(241, 95, 34, 0.25),
-                0 0 20px rgba(241, 95, 34, 0.15) inset;
+    border-color: rgba(241, 95, 34, 0.5) !important;
+    box-shadow: 0 4px 16px rgba(241, 95, 34, 0.35),
+                0 0 24px rgba(241, 95, 34, 0.2) inset,
+                0 1px 0 rgba(255, 255, 255, 0.1) inset !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Add radial highlight for depth */
+.message-bubble .bg-gray-700::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.2) 0%, transparent 60%);
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 0;
 }
 
 .message-bubble.user .avatar:hover,
 .message-bubble .bg-gray-700:hover {
-    box-shadow: 0 6px 16px rgba(241, 95, 34, 0.35),
-                0 0 30px rgba(241, 95, 34, 0.2) inset;
-    border-color: rgba(241, 95, 34, 0.6);
+    box-shadow: 0 6px 20px rgba(241, 95, 34, 0.45),
+                0 0 32px rgba(241, 95, 34, 0.25) inset,
+                0 1px 0 rgba(255, 255, 255, 0.15) inset !important;
+    border-color: rgba(241, 95, 34, 0.7) !important;
 }
 
-/* Assistant avatar - keep original orange */
-.message-bubble .bg-\[#F15F22\] {
+/* Assistant avatar - enhanced with modern styling */
+.message-bubble .bg-\[#F15F22\],
+.assistant-avatar {
     background: linear-gradient(135deg, #F15F22 0%, #D9501A 100%) !important;
-    border-color: rgba(241, 95, 34, 0.4);
-    box-shadow: 0 4px 12px rgba(241, 95, 34, 0.25),
-                0 0 20px rgba(241, 95, 34, 0.15) inset;
+    border-color: rgba(241, 95, 34, 0.5) !important;
+    box-shadow: 0 4px 16px rgba(241, 95, 34, 0.35),
+                0 0 24px rgba(241, 95, 34, 0.2) inset,
+                0 1px 0 rgba(255, 255, 255, 0.1) inset !important;
+    position: relative;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.message-bubble .bg-\[#F15F22\]::before,
+.assistant-avatar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.2) 0%, transparent 60%);
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+.message-bubble .bg-\[#F15F22\]:hover,
+.assistant-avatar:hover {
+    box-shadow: 0 6px 20px rgba(241, 95, 34, 0.45),
+                0 0 32px rgba(241, 95, 34, 0.25) inset,
+                0 1px 0 rgba(255, 255, 255, 0.15) inset !important;
+    border-color: rgba(241, 95, 34, 0.7) !important;
 }
 
 /* Refined message entrance animation */
@@ -1923,23 +1998,54 @@ button[data-action="delete-mcp"]:hover {
     padding-left: 110px !important;
 }
 
-/* RAG suggestions and profile tag selector shared base styling */
+/* RAG suggestions and profile tag selector shared base styling - enhanced */
 #rag-suggestions-container,
 #profile-tag-selector {
-    background: linear-gradient(135deg, rgba(40, 40, 45, 0.88), rgba(30, 30, 35, 0.92));
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
-    border: 1px solid rgba(241, 95, 34, 0.15);
-    border-radius: 12px;
+    background: linear-gradient(135deg, 
+        rgba(30, 41, 59, 0.95) 0%, 
+        rgba(15, 23, 42, 0.98) 100%);
+    backdrop-filter: var(--glass-blur-strong) saturate(180%);
+    -webkit-backdrop-filter: var(--glass-blur-strong) saturate(180%);
+    border: 1px solid rgba(241, 95, 34, 0.2);
+    border-radius: var(--radius-lg);
     max-height: 240px;
     overflow-y: auto;
     overflow-x: hidden;
     z-index: 10;
     width: 100%;
     box-shadow: 
-        0 8px 32px rgba(0, 0, 0, 0.3),
-        0 2px 8px rgba(241, 95, 34, 0.1),
-        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        var(--shadow-3xl),
+        0 0 0 1px rgba(241, 95, 34, 0.1) inset,
+        0 1px 0 rgba(255, 255, 255, 0.08) inset;
+    position: relative;
+    animation: slideInUp 0.2s var(--ease-out-expo);
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Top accent line for dropdown */
+#rag-suggestions-container::before,
+#profile-tag-selector::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(241, 95, 34, 0.6) 50%, 
+        transparent 100%);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
 #profile-tag-selector {
@@ -1947,17 +2053,19 @@ button[data-action="delete-mcp"]:hover {
 }
 
 .rag-suggestion-item {
-    padding: 11px 18px;
-    color: #e5e7eb;
+    padding: 12px 20px;
+    color: var(--text-primary);
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    font-size: 0.875rem;
+    transition: all var(--duration-300) var(--ease-out-expo);
+    font-size: var(--type-sm);
     font-weight: 400;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     position: relative;
     overflow: hidden;
+    letter-spacing: 0.01em;
 }
 
+/* Left accent bar */
 .rag-suggestion-item::before {
     content: '';
     position: absolute;
@@ -1965,8 +2073,25 @@ button[data-action="delete-mcp"]:hover {
     top: 0;
     height: 100%;
     width: 0;
-    background: linear-gradient(90deg, var(--teradata-orange), rgba(241, 95, 34, 0.3));
-    transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    background: linear-gradient(180deg, 
+        var(--teradata-orange) 0%, 
+        rgba(241, 95, 34, 0.5) 100%);
+    box-shadow: 0 0 12px rgba(241, 95, 34, 0.4);
+    transition: width var(--duration-300) var(--ease-out-expo);
+}
+
+/* Hover gradient overlay */
+.rag-suggestion-item::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, 
+        rgba(241, 95, 34, 0.12) 0%, 
+        rgba(241, 95, 34, 0.04) 50%,
+        transparent 100%);
+    opacity: 0;
+    transition: opacity var(--duration-300) var(--ease-out-expo);
+    pointer-events: none;
 }
 
 .rag-suggestion-item:last-child {
@@ -1975,15 +2100,22 @@ button[data-action="delete-mcp"]:hover {
 
 .rag-suggestion-item:hover,
 .rag-suggestion-item.rag-suggestion-highlighted {
-    background: linear-gradient(90deg, rgba(241, 95, 34, 0.15), rgba(241, 95, 34, 0.05));
+    background: rgba(241, 95, 34, 0.08);
     color: #ffffff;
-    padding-left: 22px;
+    padding-left: 24px;
     font-weight: 500;
+    transform: translateX(2px);
+    border-left: 1px solid rgba(241, 95, 34, 0.15);
 }
 
 .rag-suggestion-item:hover::before,
 .rag-suggestion-item.rag-suggestion-highlighted::before {
-    width: 3px;
+    width: 4px;
+}
+
+.rag-suggestion-item:hover::after,
+.rag-suggestion-item.rag-suggestion-highlighted::after {
+    opacity: 1;
 }
 
 .rag-suggestion-item:first-child {
@@ -1996,16 +2128,17 @@ button[data-action="delete-mcp"]:hover {
     border-bottom-right-radius: 11px;
 }
 
-/* Profile tag selector items */
+/* Profile tag selector items - enhanced */
 .profile-tag-item {
-    padding: 14px 18px;
+    padding: 14px 20px;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    transition: all var(--duration-300) var(--ease-out-expo);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     position: relative;
     overflow: hidden;
 }
 
+/* Left accent bar */
 .profile-tag-item::before {
     content: '';
     position: absolute;
@@ -2013,8 +2146,25 @@ button[data-action="delete-mcp"]:hover {
     top: 0;
     height: 100%;
     width: 0;
-    background: linear-gradient(90deg, var(--teradata-orange), rgba(241, 95, 34, 0.3));
-    transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    background: linear-gradient(180deg, 
+        var(--teradata-orange) 0%, 
+        rgba(241, 95, 34, 0.5) 100%);
+    box-shadow: 0 0 12px rgba(241, 95, 34, 0.4);
+    transition: width var(--duration-300) var(--ease-out-expo);
+}
+
+/* Hover gradient overlay */
+.profile-tag-item::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, 
+        rgba(241, 95, 34, 0.12) 0%, 
+        rgba(241, 95, 34, 0.04) 50%,
+        transparent 100%);
+    opacity: 0;
+    transition: opacity var(--duration-300) var(--ease-out-expo);
+    pointer-events: none;
 }
 
 .profile-tag-item:last-child {
@@ -2023,13 +2173,20 @@ button[data-action="delete-mcp"]:hover {
 
 .profile-tag-item:hover,
 .profile-tag-item.profile-tag-highlighted {
-    background: linear-gradient(90deg, rgba(241, 95, 34, 0.15), rgba(241, 95, 34, 0.05));
-    padding-left: 22px;
+    background: rgba(241, 95, 34, 0.08);
+    padding-left: 24px;
+    transform: translateX(2px);
+    border-left: 1px solid rgba(241, 95, 34, 0.15);
 }
 
 .profile-tag-item:hover::before,
 .profile-tag-item.profile-tag-highlighted::before {
-    width: 3px;
+    width: 4px;
+}
+
+.profile-tag-item:hover::after,
+.profile-tag-item.profile-tag-highlighted::after {
+    opacity: 1;
 }
 
 .profile-tag-item:first-child {
@@ -2053,18 +2210,30 @@ button[data-action="delete-mcp"]:hover {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 3px 10px;
+    padding: 4px 12px;
     /* Background and border colors applied dynamically via JavaScript based on provider */
     /* Fallback if dynamic colors not available: */
-    background: linear-gradient(135deg, rgba(241, 95, 34, 0.25), rgba(241, 95, 34, 0.15));
-    border: 1px solid rgba(241, 95, 34, 0.3);
-    border-radius: 6px;
+    background: linear-gradient(135deg, rgba(241, 95, 34, 0.3), rgba(241, 95, 34, 0.18));
+    border: 1px solid rgba(241, 95, 34, 0.4);
+    border-radius: var(--radius-md);
     color: #ffffff;
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.5px;
+    font-size: var(--type-xs);
+    font-weight: 700;
+    letter-spacing: 0.06em;
     font-family: 'Space Grotesk', monospace;
     text-transform: uppercase;
+    box-shadow: 
+        0 2px 8px rgba(241, 95, 34, 0.2),
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    transition: all var(--duration-200) var(--ease-out-expo);
+}
+
+.profile-tag-item:hover .profile-tag-badge {
+    transform: scale(1.05);
+    box-shadow: 
+        0 4px 12px rgba(241, 95, 34, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.15) inset;
 }
 
 .profile-tag-name {
