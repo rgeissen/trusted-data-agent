@@ -2714,12 +2714,20 @@ async def get_sessions_analytics():
 async def get_sessions_list():
     """
     Get list of all sessions with metadata for the execution dashboard.
-    Query params: search, sort, filter_status, filter_model, limit, offset
+    Query params: search, sort, filter_status, filter_model, limit, offset, all_users
     """
     try:
-        user_uuid = _get_user_uuid_from_request()
         from pathlib import Path
         from trusted_data_agent.core.config import APP_CONFIG
+        from trusted_data_agent.auth.middleware import get_current_user
+        
+        # Get authenticated user (for auth-enabled mode) or UUID from header (legacy mode)
+        current_user = get_current_user()
+        if current_user:
+            user_uuid = current_user.user_uuid
+            app_logger.info(f"Fetching sessions for user: {user_uuid}")
+        else:
+            user_uuid = _get_user_uuid_from_request()
         
         # Get query parameters
         search_query = request.args.get('search', '').lower()
@@ -2728,22 +2736,41 @@ async def get_sessions_list():
         filter_model = request.args.get('filter_model', 'all')
         limit = int(request.args.get('limit', 100))
         offset = int(request.args.get('offset', 0))
+        all_users = request.args.get('all_users', 'false').lower() == 'true'
+        
+        # Check if user has VIEW_ALL_SESSIONS feature when requesting all users
+        if all_users:
+            from trusted_data_agent.auth.features import get_user_features, Feature
+            
+            # If we have an authenticated user, check their features
+            if current_user:
+                user_features = get_user_features(current_user)
+                if Feature.VIEW_ALL_SESSIONS not in user_features:
+                    app_logger.warning(f"User {user_uuid} attempted to view all sessions without permission")
+                    return jsonify({"status": "error", "message": "Insufficient permissions to view all sessions"}), 403
+            else:
+                # No authentication - deny all_users mode
+                app_logger.warning(f"Unauthenticated request attempted to view all sessions")
+                return jsonify({"status": "error", "message": "Authentication required to view all sessions"}), 401
         
         project_root = Path(__file__).resolve().parents[3]
         sessions_base = project_root / 'tda_sessions'
         
-        # Determine which sessions to scan based on filter setting
-        if APP_CONFIG.SESSIONS_FILTER_BY_USER:
+        # Determine which sessions to scan based on all_users parameter or filter setting
+        if all_users or not APP_CONFIG.SESSIONS_FILTER_BY_USER:
+            # All users mode
+            app_logger.info(f"Fetching all users' sessions (all_users={all_users}, SESSIONS_FILTER_BY_USER={APP_CONFIG.SESSIONS_FILTER_BY_USER})")
+            if not sessions_base.exists():
+                return jsonify({"sessions": [], "total": 0}), 200
+            scan_dirs = [d for d in sessions_base.iterdir() if d.is_dir()]
+            app_logger.info(f"Scanning {len(scan_dirs)} user directories")
+        else:
             # User-specific mode
+            app_logger.info(f"Fetching sessions for user: {user_uuid}")
             sessions_root = sessions_base / user_uuid
             if not sessions_root.exists():
                 return jsonify({"sessions": [], "total": 0}), 200
             scan_dirs = [sessions_root]
-        else:
-            # All users mode
-            if not sessions_base.exists():
-                return jsonify({"sessions": [], "total": 0}), 200
-            scan_dirs = [d for d in sessions_base.iterdir() if d.is_dir()]
         
         sessions = []
         
@@ -2862,28 +2889,45 @@ async def get_session_details(session_id: str):
     Returns: complete session data with timeline, execution traces, RAG associations
     """
     try:
-        user_uuid = _get_user_uuid_from_request()
         from pathlib import Path
         from trusted_data_agent.core.config import APP_CONFIG
+        from trusted_data_agent.auth.middleware import get_current_user
+        from trusted_data_agent.auth.features import get_user_features, Feature
+        
+        # Get authenticated user (for auth-enabled mode) or UUID from header (legacy mode)
+        current_user = get_current_user()
+        if current_user:
+            user_uuid = current_user.user_uuid
+            # Check if user has VIEW_ALL_SESSIONS feature
+            user_features = get_user_features(current_user)
+            can_view_all = Feature.VIEW_ALL_SESSIONS in user_features
+        else:
+            user_uuid = _get_user_uuid_from_request()
+            can_view_all = False
         
         project_root = Path(__file__).resolve().parents[3]
         sessions_base = project_root / 'tda_sessions'
         rag_cases_dir = project_root / 'rag' / 'tda_rag_cases'
         
-        # Find session file - respect SESSIONS_FILTER_BY_USER setting
+        # Find session file - check user's own directory first, then all if permitted
         session_file = None
-        if APP_CONFIG.SESSIONS_FILTER_BY_USER:
-            # User-specific mode: look only in user's directory
+        if user_uuid:
+            # Try user's own directory first
             session_file = sessions_base / user_uuid / f"{session_id}.json"
-            if not session_file.exists():
+            if session_file.exists():
+                app_logger.debug(f"Found session {session_id} in user's directory")
+            else:
                 session_file = None
-        else:
-            # All users mode: search all user directories
+        
+        # If not found in user's directory and they have permission, search all directories
+        if not session_file and (can_view_all or not APP_CONFIG.SESSIONS_FILTER_BY_USER):
+            app_logger.debug(f"Searching all directories for session {session_id}")
             for user_dir in sessions_base.iterdir():
                 if user_dir.is_dir():
                     potential_path = user_dir / f"{session_id}.json"
                     if potential_path.exists():
                         session_file = potential_path
+                        app_logger.debug(f"Found session {session_id} in directory {user_dir.name}")
                         break
         
         if not session_file or not session_file.exists():

@@ -74,7 +74,7 @@
             <!-- User Menu (Authentication) -->
             <div id="user-menu-container" class="menu-item relative hidden">
                 <button id="user-menu-button" class="flex items-center gap-x-2 p-2 text-gray-300 hover:text-white transition-colors rounded-md hover:bg-white/10" title="User Menu">
-                    <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-[#F15F22] to-[#D9501A] flex items-center justify-center text-white font-bold text-sm shadow-lg ring-2 ring-white/20">
                         <span id="user-avatar-initial">?</span>
                     </div>
                     <span id="user-display-name" class="text-sm font-medium hidden md:block">Guest</span>
@@ -922,6 +922,23 @@
                                             </svg>
                                         </button>
                                     </div>
+                                    
+                                    <!-- View All Sessions Toggle (Developer/Admin Only) -->
+                                    <div id="view-all-sessions-container" class="hidden">
+                                        <label class="flex items-center gap-3 px-4 py-2 bg-white/5 border border-white/10 rounded-lg cursor-pointer hover:bg-white/10 transition-all group">
+                                            <div class="relative">
+                                                <input type="checkbox" id="view-all-sessions-toggle" class="sr-only peer">
+                                                <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-teradata-orange rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teradata-orange"></div>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <svg class="w-4 h-4 text-gray-400 group-hover:text-teradata-orange transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                                </svg>
+                                                <span class="text-sm text-white font-medium">View All Users' Sessions</span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    
                                     <select id="session-filter-status" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-teradata-orange transition-colors">
                                         <option value="all">All Status</option>
                                         <option value="success">Success</option>
@@ -2913,7 +2930,7 @@
                 const token = authClient.getToken();
                 if (!token) return;
                 
-                const response = await fetch('/api/v1/admin/panes', {
+                const response = await fetch('/api/v1/auth/me/panes', {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }

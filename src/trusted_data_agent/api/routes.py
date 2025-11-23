@@ -860,11 +860,38 @@ async def get_rag_case_details(case_id: str):
 
 @api_bp.route("/sessions", methods=["GET"])
 async def get_sessions():
-    """Returns a list of all active chat sessions for the requesting user."""
+    """Returns a list of all active chat sessions for the requesting user.
+    
+    Query Parameters:
+        all_users (bool): If true and user has VIEW_ALL_SESSIONS feature, returns sessions from all users
+    """
     user_uuid = _get_user_uuid_from_request()
     if not user_uuid:
         return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
-    sessions = session_manager.get_all_sessions(user_uuid=user_uuid)
+    
+    # Check if requesting all users' sessions
+    all_users = request.args.get('all_users', 'false').lower() == 'true'
+    
+    if all_users:
+        # Check if user has VIEW_ALL_SESSIONS feature
+        from trusted_data_agent.auth.service import get_user_features
+        from trusted_data_agent.auth.features import Feature
+        
+        user_features = get_user_features(user_uuid)
+        if Feature.VIEW_ALL_SESSIONS not in user_features:
+            return jsonify({"status": "error", "message": "Insufficient permissions to view all sessions"}), 403
+        
+        # Temporarily override filter setting to get all sessions
+        from trusted_data_agent.core.config import APP_CONFIG
+        original_filter = APP_CONFIG.SESSIONS_FILTER_BY_USER
+        try:
+            APP_CONFIG.SESSIONS_FILTER_BY_USER = False
+            sessions = session_manager.get_all_sessions(user_uuid=user_uuid)
+        finally:
+            APP_CONFIG.SESSIONS_FILTER_BY_USER = original_filter
+    else:
+        sessions = session_manager.get_all_sessions(user_uuid=user_uuid)
+    
     # Ensure profile_tags_used is included for each session
     for session in sessions:
         if 'profile_tags_used' not in session:

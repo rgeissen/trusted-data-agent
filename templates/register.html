@@ -6,17 +6,96 @@
     <title>Register - Trusted Data Agent</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/static/css/main.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(241, 95, 34, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: pulse 8s ease-in-out infinite;
+        }
+        
+        body::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: -10%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: pulse 10s ease-in-out infinite reverse;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1) translate(0, 0); opacity: 1; }
+            50% { transform: scale(1.1) translate(20px, -20px); opacity: 0.8; }
+        }
+        
+        .register-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #F15F22 0%, #D9501A 100%);
+            box-shadow: 0 10px 25px -5px rgba(241, 95, 34, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px -5px rgba(241, 95, 34, 0.4);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .input-field {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .input-field:focus {
+            background: rgba(15, 23, 42, 0.8);
+            border-color: #F15F22;
+            box-shadow: 0 0 0 3px rgba(241, 95, 34, 0.1);
+        }
+    </style>
 </head>
-<body class="bg-gray-900 min-h-screen flex items-center justify-center py-12">
-    <div class="max-w-md w-full mx-4">
+<body class="flex items-center justify-center py-12 p-4">
+    <div class="max-w-md w-full mx-4 relative z-10">
         <!-- Logo/Header -->
         <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-white mb-2">Trusted Data Agent</h1>
-            <p class="text-gray-400">Create your account</p>
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#F15F22] to-[#D9501A] shadow-xl mb-4">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+            </div>
+            <h1 class="text-4xl font-bold text-white mb-2">Join Us Today</h1>
+            <p class="text-slate-400 text-lg">Create your account to get started</p>
         </div>
 
         <!-- Register Card -->
-        <div class="bg-gray-800 rounded-lg shadow-xl p-8">
+        <div class="register-card rounded-2xl shadow-2xl p-8">
             <!-- Alert Messages -->
             <div id="alert-container" class="mb-4 hidden">
                 <div id="alert-message" class="p-4 rounded-lg text-sm"></div>
@@ -26,7 +105,7 @@
             <form id="register-form" class="space-y-5">
                 <!-- Username -->
                 <div>
-                    <label for="username" class="block text-sm font-medium text-gray-300 mb-2">
+                    <label for="username" class="block text-sm font-semibold text-slate-200 mb-2">
                         Username *
                     </label>
                     <input
@@ -37,15 +116,15 @@
                         autocomplete="username"
                         pattern="[a-zA-Z0-9_]{3,30}"
                         title="3-30 characters, letters, numbers, and underscores only"
-                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        class="input-field w-full px-4 py-3 rounded-lg text-white placeholder-slate-500 focus:outline-none"
                         placeholder="Choose a username"
                     >
-                    <p class="mt-1 text-xs text-gray-400">3-30 characters, letters, numbers, and underscores only</p>
+                    <p class="mt-1 text-xs text-slate-400">3-30 characters, letters, numbers, and underscores only</p>
                 </div>
 
                 <!-- Email -->
                 <div>
-                    <label for="email" class="block text-sm font-medium text-gray-300 mb-2">
+                    <label for="email" class="block text-sm font-semibold text-slate-200 mb-2">
                         Email *
                     </label>
                     <input
@@ -54,14 +133,14 @@
                         name="email"
                         required
                         autocomplete="email"
-                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        class="input-field w-full px-4 py-3 rounded-lg text-white placeholder-slate-500 focus:outline-none"
                         placeholder="your@email.com"
                     >
                 </div>
 
                 <!-- Display Name -->
                 <div>
-                    <label for="display_name" class="block text-sm font-medium text-gray-300 mb-2">
+                    <label for="display_name" class="block text-sm font-semibold text-slate-200 mb-2">
                         Display Name
                     </label>
                     <input
@@ -70,14 +149,14 @@
                         name="display_name"
                         autocomplete="name"
                         maxlength="100"
-                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        class="input-field w-full px-4 py-3 rounded-lg text-white placeholder-slate-500 focus:outline-none"
                         placeholder="Your full name (optional)"
                     >
                 </div>
 
                 <!-- Password -->
                 <div>
-                    <label for="password" class="block text-sm font-medium text-gray-300 mb-2">
+                    <label for="password" class="block text-sm font-semibold text-slate-200 mb-2">
                         Password *
                     </label>
                     <input
@@ -86,33 +165,33 @@
                         name="password"
                         required
                         autocomplete="new-password"
-                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        class="input-field w-full px-4 py-3 rounded-lg text-white placeholder-slate-500 focus:outline-none"
                         placeholder="Create a strong password"
                     >
                     <div id="password-requirements" class="mt-2 text-xs space-y-1">
-                        <p class="text-gray-400">Password must contain:</p>
+                        <p class="text-slate-400">Password must contain:</p>
                         <div class="flex items-center gap-2">
-                            <span id="req-length" class="text-gray-500">○</span>
-                            <span class="text-gray-400">At least 8 characters</span>
+                            <span id="req-length" class="text-slate-500">○</span>
+                            <span class="text-slate-400">At least 8 characters</span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <span id="req-uppercase" class="text-gray-500">○</span>
-                            <span class="text-gray-400">One uppercase letter</span>
+                            <span id="req-uppercase" class="text-slate-500">○</span>
+                            <span class="text-slate-400">One uppercase letter</span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <span id="req-lowercase" class="text-gray-500">○</span>
-                            <span class="text-gray-400">One lowercase letter</span>
+                            <span id="req-lowercase" class="text-slate-500">○</span>
+                            <span class="text-slate-400">One lowercase letter</span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <span id="req-number" class="text-gray-500">○</span>
-                            <span class="text-gray-400">One number</span>
+                            <span id="req-number" class="text-slate-500">○</span>
+                            <span class="text-slate-400">One number</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Confirm Password -->
                 <div>
-                    <label for="confirm_password" class="block text-sm font-medium text-gray-300 mb-2">
+                    <label for="confirm_password" class="block text-sm font-semibold text-slate-200 mb-2">
                         Confirm Password *
                     </label>
                     <input
@@ -121,7 +200,7 @@
                         name="confirm_password"
                         required
                         autocomplete="new-password"
-                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        class="input-field w-full px-4 py-3 rounded-lg text-white placeholder-slate-500 focus:outline-none"
                         placeholder="Confirm your password"
                     >
                     <p id="password-match-message" class="mt-1 text-xs hidden"></p>
@@ -132,11 +211,11 @@
                     <button
                         type="submit"
                         id="register-button"
-                        class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                        class="btn-primary w-full text-white font-semibold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F15F22] focus:ring-offset-2 focus:ring-offset-slate-900"
                     >
-                        <span id="register-button-text">Create account</span>
+                        <span id="register-button-text">Create Account</span>
                         <span id="register-button-spinner" class="hidden">
-                            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <svg class="animate-spin h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
@@ -145,45 +224,33 @@
                 </div>
             </form>
 
-            <!-- Divider -->
-            <div class="mt-6">
-                <div class="relative">
-                    <div class="absolute inset-0 flex items-center">
-                        <div class="w-full border-t border-gray-600"></div>
-                    </div>
-                    <div class="relative flex justify-center text-sm">
-                        <span class="px-2 bg-gray-800 text-gray-400">Already have an account?</span>
-                    </div>
-                </div>
-            </div>
-
             <!-- Login Link -->
-            <div class="mt-6 text-center">
-                <a href="/login" class="text-blue-400 hover:text-blue-300 text-sm font-medium">
-                    Sign in instead
-                </a>
+            <div class="mt-8 text-center">
+                <p class="text-slate-400 text-sm">
+                    Already have an account?
+                    <a href="/login" class="text-[#F15F22] hover:text-[#D9501A] font-semibold transition-colors">
+                        Sign in instead
+                    </a>
+                </p>
             </div>
         </div>
-
-        <!-- Back to Home -->
-        <div class="mt-6 text-center">
-            <a href="/" class="text-gray-400 hover:text-gray-300 text-sm">
-                ← Back to home
-            </a>
+        
+        <!-- Footer -->
+        <div class="mt-8 text-center">
+            <p class="text-slate-500 text-xs">
+                © 2024 Trusted Data Agent. All rights reserved.
+            </p>
         </div>
     </div>
 
     <script src="/static/js/auth.js"></script>
     <script>
-        // Initialize auth client
         const auth = new AuthClient();
 
-        // Check if already logged in
         if (auth.isAuthenticated()) {
             window.location.href = '/';
         }
 
-        // Password strength validation
         const passwordInput = document.getElementById('password');
         const confirmPasswordInput = document.getElementById('confirm_password');
         const passwordMatchMessage = document.getElementById('password-match-message');
@@ -191,20 +258,18 @@
         passwordInput.addEventListener('input', () => {
             const password = passwordInput.value;
             
-            // Check requirements
             document.getElementById('req-length').textContent = password.length >= 8 ? '✓' : '○';
-            document.getElementById('req-length').className = password.length >= 8 ? 'text-green-500' : 'text-gray-500';
+            document.getElementById('req-length').className = password.length >= 8 ? 'text-green-400' : 'text-slate-500';
             
             document.getElementById('req-uppercase').textContent = /[A-Z]/.test(password) ? '✓' : '○';
-            document.getElementById('req-uppercase').className = /[A-Z]/.test(password) ? 'text-green-500' : 'text-gray-500';
+            document.getElementById('req-uppercase').className = /[A-Z]/.test(password) ? 'text-green-400' : 'text-slate-500';
             
             document.getElementById('req-lowercase').textContent = /[a-z]/.test(password) ? '✓' : '○';
-            document.getElementById('req-lowercase').className = /[a-z]/.test(password) ? 'text-green-500' : 'text-gray-500';
+            document.getElementById('req-lowercase').className = /[a-z]/.test(password) ? 'text-green-400' : 'text-slate-500';
             
             document.getElementById('req-number').textContent = /[0-9]/.test(password) ? '✓' : '○';
-            document.getElementById('req-number').className = /[0-9]/.test(password) ? 'text-green-500' : 'text-gray-500';
+            document.getElementById('req-number').className = /[0-9]/.test(password) ? 'text-green-400' : 'text-slate-500';
             
-            // Check password match
             checkPasswordMatch();
         });
 
@@ -223,14 +288,13 @@
             
             if (password === confirmPassword) {
                 passwordMatchMessage.textContent = '✓ Passwords match';
-                passwordMatchMessage.className = 'mt-1 text-xs text-green-500';
+                passwordMatchMessage.className = 'mt-1 text-xs text-green-400';
             } else {
                 passwordMatchMessage.textContent = '✗ Passwords do not match';
-                passwordMatchMessage.className = 'mt-1 text-xs text-red-500';
+                passwordMatchMessage.className = 'mt-1 text-xs text-red-400';
             }
         }
 
-        // Handle registration form submission
         document.getElementById('register-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -240,7 +304,6 @@
             const confirmPassword = confirmPasswordInput.value;
             const displayName = document.getElementById('display_name').value;
             
-            // Validate passwords match
             if (password !== confirmPassword) {
                 showAlert('Passwords do not match', 'error');
                 return;
@@ -250,7 +313,6 @@
             const buttonText = document.getElementById('register-button-text');
             const buttonSpinner = document.getElementById('register-button-spinner');
             
-            // Show loading state
             registerButton.disabled = true;
             buttonText.classList.add('hidden');
             buttonSpinner.classList.remove('hidden');
@@ -260,20 +322,15 @@
                 
                 if (result.success) {
                     showAlert('Account created successfully! Redirecting to login...', 'success');
-                    
-                    // Redirect to login page after a short delay
                     setTimeout(() => {
                         window.location.href = '/login?registered=true';
                     }, 1500);
                 } else {
-                    // Show validation errors
                     if (result.errors && result.errors.length > 0) {
                         showAlert(result.errors.join(', '), 'error');
                     } else {
                         showAlert(result.message || 'Registration failed. Please try again.', 'error');
                     }
-                    
-                    // Reset button state
                     registerButton.disabled = false;
                     buttonText.classList.remove('hidden');
                     buttonSpinner.classList.add('hidden');
@@ -281,8 +338,6 @@
             } catch (error) {
                 console.error('Registration error:', error);
                 showAlert('An unexpected error occurred. Please try again.', 'error');
-                
-                // Reset button state
                 registerButton.disabled = false;
                 buttonText.classList.remove('hidden');
                 buttonSpinner.classList.add('hidden');
@@ -296,16 +351,12 @@
             container.classList.remove('hidden');
             alertMessage.textContent = message;
             
-            // Set colors based on type
             if (type === 'success') {
-                alertMessage.className = 'p-4 rounded-lg text-sm bg-green-900 text-green-200 border border-green-700';
+                alertMessage.className = 'p-4 rounded-lg text-sm bg-green-500/10 border border-green-500/50 text-green-300 backdrop-blur-sm';
             } else if (type === 'error') {
-                alertMessage.className = 'p-4 rounded-lg text-sm bg-red-900 text-red-200 border border-red-700';
-            } else {
-                alertMessage.className = 'p-4 rounded-lg text-sm bg-blue-900 text-blue-200 border border-blue-700';
+                alertMessage.className = 'p-4 rounded-lg text-sm bg-red-500/10 border border-red-500/50 text-red-300 backdrop-blur-sm';
             }
             
-            // Auto-hide success messages
             if (type === 'success') {
                 setTimeout(() => {
                     container.classList.add('hidden');

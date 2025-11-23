@@ -9,6 +9,8 @@ class ExecutionDashboard {
         this.sessionsData = [];
         this.analyticsData = null;
         this.velocityChart = null;
+        this.viewAllSessions = false;
+        this.hasViewAllSessionsFeature = false;
     }
 
     /**
@@ -38,6 +40,8 @@ class ExecutionDashboard {
      * Initialize the dashboard
      */
     async initialize() {
+        // Check if user has VIEW_ALL_SESSIONS feature
+        await this.checkViewAllSessionsFeature();
         
         // Set up event listeners
         this.setupEventListeners();
@@ -54,6 +58,16 @@ class ExecutionDashboard {
         document.getElementById('refresh-dashboard-btn')?.addEventListener('click', () => {
             this.refreshDashboard();
         });
+        
+        // View all sessions toggle (only for users with feature)
+        const viewAllToggle = document.getElementById('view-all-sessions-toggle');
+        if (viewAllToggle) {
+            viewAllToggle.addEventListener('change', (e) => {
+                console.log('[ExecutionDashboard] Toggle changed to:', e.target.checked);
+                this.viewAllSessions = e.target.checked;
+                this.refreshDashboard();
+            });
+        }
 
         // Search input
         const searchInput = document.getElementById('session-search');
@@ -131,18 +145,31 @@ class ExecutionDashboard {
             
             // Load analytics and sessions in parallel
             const headers = this._getHeaders();
+            
+            // Build sessions URL with all_users parameter if enabled
+            const sessionsUrl = this.viewAllSessions 
+                ? '/api/v1/sessions?limit=100&all_users=true'
+                : '/api/v1/sessions?limit=100';
+            
+            console.log('[ExecutionDashboard] Fetching sessions with URL:', sessionsUrl);
+            console.log('[ExecutionDashboard] View all sessions enabled:', this.viewAllSessions);
+            
             const [analyticsResponse, sessionsResponse] = await Promise.all([
                 fetch('/api/v1/sessions/analytics', { method: 'GET', headers: headers }),
-                fetch('/api/v1/sessions?limit=100', { method: 'GET', headers: headers })
+                fetch(sessionsUrl, { method: 'GET', headers: headers })
             ]);
 
             if (!analyticsResponse.ok || !sessionsResponse.ok) {
+                console.error('[ExecutionDashboard] API error - analytics:', analyticsResponse.status, 'sessions:', sessionsResponse.status);
                 throw new Error('Failed to fetch dashboard data');
             }
 
             this.analyticsData = await analyticsResponse.json();
             const sessionsData = await sessionsResponse.json();
-            this.sessionsData = sessionsData.sessions || [];
+            console.log('[ExecutionDashboard] Raw sessions response:', sessionsData);
+            
+            this.sessionsData = Array.isArray(sessionsData) ? sessionsData : (sessionsData.sessions || []);
+            console.log('[ExecutionDashboard] Processed sessions count:', this.sessionsData.length);
 
             // Render all sections
             this.renderAnalytics();
@@ -843,6 +870,36 @@ Tokens: ${c.output_tokens || 0}
         } catch (error) {
             console.error('Export failed:', error);
             alert('Failed to export report: ' + error.message);
+        }
+    }
+
+    /**
+     * Check if user has VIEW_ALL_SESSIONS feature
+     */
+    async checkViewAllSessionsFeature() {
+        try {
+            const headers = this._getHeaders();
+            const response = await fetch('/api/v1/auth/me/features', { headers });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.status === 'success' && data.features) {
+                    this.hasViewAllSessionsFeature = data.features.includes('view_all_sessions');
+                    
+                    // Show/hide the toggle based on feature availability
+                    const toggleContainer = document.getElementById('view-all-sessions-container');
+                    if (toggleContainer) {
+                        if (this.hasViewAllSessionsFeature) {
+                            toggleContainer.classList.remove('hidden');
+                        } else {
+                            toggleContainer.classList.add('hidden');
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error checking VIEW_ALL_SESSIONS feature:', error);
+            this.hasViewAllSessionsFeature = false;
         }
     }
 

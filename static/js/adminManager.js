@@ -159,7 +159,7 @@ const AdminManager = {
     async loadUsers() {
         try {
             const token = localStorage.getItem('tda_auth_token');
-            const response = await fetch('/api/v1/admin/users', {
+            const response = await fetch('/api/v1/admin/users?active_only=true', {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -598,6 +598,14 @@ const AdminManager = {
             const token = localStorage.getItem('tda_auth_token');
             const isEdit = !!userId;
             
+            // Validate required fields for new user
+            if (!isEdit) {
+                if (!formData.username || !formData.email || !formData.password) {
+                    this.showNotification('Please fill in all required fields (username, email, password)', 'error');
+                    return;
+                }
+            }
+            
             const url = isEdit ? `/api/v1/admin/users/${userId}` : '/api/v1/admin/users';
             const method = isEdit ? 'PATCH' : 'POST';
             
@@ -612,6 +620,8 @@ const AdminManager = {
                 payload.password = formData.password;
             }
             
+            console.log('[AdminManager] Saving user:', { method, url, payload: { ...payload, password: '***' } });
+            
             const response = await fetch(url, {
                 method,
                 headers: {
@@ -622,6 +632,7 @@ const AdminManager = {
             });
             
             const data = await response.json();
+            console.log('[AdminManager] Save user response:', data);
             
             if (data.status === 'success') {
                 this.showNotification(isEdit ? 'User updated successfully' : 'User created successfully', 'success');

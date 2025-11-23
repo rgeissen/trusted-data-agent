@@ -973,7 +973,7 @@ async function showWelcomeScreen() {
     
     // Update button text based on whether user has saved configurations
     if (welcomeBtnText) {
-        const buttonText = hasSavedConfig ? 'Connect and Load' : 'Configure Application';
+        const buttonText = hasSavedConfig ? 'Start Conversation' : 'Configure Application';
         welcomeBtnText.textContent = buttonText;
     }
     
@@ -1038,9 +1038,9 @@ async function showWelcomeScreen() {
                         welcomeCogwheel.classList.remove('animate-spin');
                     }
                     if (welcomeBtnText) {
-                        welcomeBtnText.textContent = hasSavedConfig ? 'Connect and Load' : 'Configure Application';
+                        welcomeBtnText.textContent = hasSavedConfig ? 'Start Conversation' : 'Configure Application';
                     }
-                    welcomeBtn.disabled = false;
+                    welcomeBtn.disabled = false;    
                 }
             } else {
                 // No saved config - go to credentials view

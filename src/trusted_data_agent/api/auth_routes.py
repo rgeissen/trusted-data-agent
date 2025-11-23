@@ -471,6 +471,47 @@ async def get_user_features_endpoint(current_user):
     }), 200
 
 
+@auth_bp.route('/me/panes', methods=['GET'])
+@require_auth
+async def get_user_panes(current_user):
+    """
+    Get pane visibility configuration for current user based on their tier.
+    
+    Returns list of panes visible to the user's tier level.
+    
+    Requires: Authorization header with Bearer token
+    
+    Response:
+        200: Pane configuration
+        401: Not authenticated
+        500: Server error
+    """
+    try:
+        from trusted_data_agent.auth.models import PaneVisibility
+        
+        with get_db_session() as session:
+            # Get all pane configurations
+            panes = session.query(PaneVisibility).order_by(PaneVisibility.display_order).all()
+            
+            # If no panes exist, use defaults
+            if not panes:
+                # Import the initialization function
+                from trusted_data_agent.api.admin_routes import initialize_default_panes
+                panes = initialize_default_panes(session)
+            
+            panes_data = [pane.to_dict() for pane in panes]
+        
+        return jsonify({
+            "status": "success",
+            "panes": panes_data,
+            "user_tier": current_user.profile_tier
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Failed to get panes for user: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @auth_bp.route('/refresh', methods=['POST'])
 @require_auth
 async def refresh_token(current_user):
