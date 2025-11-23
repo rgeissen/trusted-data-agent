@@ -62,7 +62,7 @@ class AppConfig:
     RAG_DEFAULT_COLLECTION_NAME = "default_collection" # ChromaDB collection name for default collection (ID 0)
     
     # Session & Analytics Configuration
-    SESSIONS_FILTER_BY_USER = os.environ.get('TDA_SESSIONS_FILTER_BY_USER', 'true').lower() == 'true' # If True, execution dashboard shows only current user's sessions. If False, shows all sessions.
+    SESSIONS_FILTER_BY_USER = os.environ.get('TDA_SESSIONS_FILTER_BY_USER', 'true').lower() == 'true' # If True, execution dashboard shows only current user's sessions. If False, shows all sessions. Note: User tier always filtered, Developer+ can override.
 
 
     # --- Initial State Configuration ---

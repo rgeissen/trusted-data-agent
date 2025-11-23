@@ -294,6 +294,7 @@ async def list_users():
                     'display_name': user.display_name,
                     'is_active': user.is_active,
                     'is_admin': user.is_admin,
+                    'profile_tier': user.profile_tier,
                     'created_at': user.created_at.isoformat(),
                     'last_login_at': user.last_login_at.isoformat() if user.last_login_at else None,
                     'failed_login_attempts': user.failed_login_attempts
@@ -356,6 +357,7 @@ async def manage_user(user_id: str):
                         'full_name': user.full_name,
                         'is_active': user.is_active,
                         'is_admin': user.is_admin,
+                        'profile_tier': user.profile_tier,
                         'created_at': user.created_at.isoformat(),
                         'updated_at': user.updated_at.isoformat(),
                         'last_login_at': user.last_login_at.isoformat() if user.last_login_at else None,
@@ -395,7 +397,20 @@ async def manage_user(user_id: str):
                 
                 if 'is_admin' in data:
                     user.is_admin = bool(data['is_admin'])
+                    # Sync profile_tier with is_admin for backward compatibility
+                    if user.is_admin:
+                        user.profile_tier = 'admin'
                     changes.append(f"is_admin={user.is_admin}")
+                
+                if 'profile_tier' in data:
+                    from trusted_data_agent.auth.admin import PROFILE_TIER_USER, PROFILE_TIER_DEVELOPER, PROFILE_TIER_ADMIN
+                    new_tier = data['profile_tier'].lower()
+                    valid_tiers = [PROFILE_TIER_USER, PROFILE_TIER_DEVELOPER, PROFILE_TIER_ADMIN]
+                    if new_tier in valid_tiers:
+                        user.profile_tier = new_tier
+                        # Sync is_admin flag
+                        user.is_admin = (new_tier == PROFILE_TIER_ADMIN)
+                        changes.append(f"profile_tier={new_tier}")
                 
                 if 'display_name' in data:
                     user.display_name = data['display_name']
@@ -500,6 +515,102 @@ async def unlock_user(user_id: str):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@admin_api_bp.route("/v1/admin/users/<user_id>/tier", methods=["PATCH"])
+@require_admin
+async def change_user_tier(user_id: str):
+    """
+    Change user's profile tier (admin only).
+    
+    Profile tiers:
+    - user: Basic access (default)
+    - developer: Advanced features (RAG, templates, testing)
+    - admin: Full system access
+    
+    POST body:
+    {
+        "profile_tier": "developer"
+    }
+    
+    Returns:
+    {
+        "status": "success",
+        "message": "User promoted to developer tier",
+        "user": {
+            "id": "...",
+            "username": "...",
+            "profile_tier": "developer"
+        }
+    }
+    """
+    from trusted_data_agent.auth.admin import PROFILE_TIER_USER, PROFILE_TIER_DEVELOPER, PROFILE_TIER_ADMIN
+    
+    admin_user = get_current_user_from_request()
+    
+    # Prevent self-modification
+    if not can_manage_user(admin_user, user_id):
+        return jsonify({
+            "status": "error",
+            "message": "Cannot modify your own profile tier"
+        }), 403
+    
+    data = await request.get_json()
+    
+    if not data or 'profile_tier' not in data:
+        return jsonify({
+            "status": "error",
+            "message": "Request body must contain 'profile_tier' field"
+        }), 400
+    
+    new_tier = data['profile_tier'].lower()
+    valid_tiers = [PROFILE_TIER_USER, PROFILE_TIER_DEVELOPER, PROFILE_TIER_ADMIN]
+    
+    if new_tier not in valid_tiers:
+        return jsonify({
+            "status": "error",
+            "message": f"Invalid profile tier. Must be one of: {', '.join(valid_tiers)}"
+        }), 400
+    
+    try:
+        with get_db_session() as session:
+            user = session.query(User).filter_by(id=user_id).first()
+            
+            if not user:
+                return jsonify({"status": "error", "message": "User not found"}), 404
+            
+            old_tier = user.profile_tier
+            user.profile_tier = new_tier
+            
+            # Sync is_admin flag for backward compatibility
+            user.is_admin = (new_tier == PROFILE_TIER_ADMIN)
+            
+            user.updated_at = datetime.now(timezone.utc)
+            
+            # Log admin action
+            audit.log_admin_action(
+                admin_user.id,
+                "tier_change",
+                user.id,
+                f"Changed profile tier: {old_tier} -> {new_tier}"
+            )
+            
+            action = "promoted" if valid_tiers.index(new_tier) > valid_tiers.index(old_tier) else "changed"
+            
+            return jsonify({
+                "status": "success",
+                "message": f"User {action} to {new_tier} tier",
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "profile_tier": user.profile_tier,
+                    "is_admin": user.is_admin
+                }
+            }), 200
+            
+    except Exception as e:
+        logger.error(f"Failed to change user tier: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @admin_api_bp.route("/v1/admin/stats", methods=["GET"])
 @require_admin
 async def get_admin_stats():
@@ -538,6 +649,15 @@ async def get_admin_stats():
             # Recent audit events
             recent_audits = session.query(AuditLog).filter(AuditLog.timestamp >= day_ago).count()
             
+            # Profile tier distribution
+            from sqlalchemy import func
+            tier_counts = session.query(
+                User.profile_tier, 
+                func.count(User.id)
+            ).group_by(User.profile_tier).all()
+            
+            tier_distribution = {tier: count for tier, count in tier_counts}
+            
             return jsonify({
                 "status": "success",
                 "stats": {
@@ -547,7 +667,8 @@ async def get_admin_stats():
                     "locked_users": locked_users,
                     "recent_logins_24h": recent_logins,
                     "recent_registrations_7d": recent_registrations,
-                    "recent_audit_events_24h": recent_audits
+                    "recent_audit_events_24h": recent_audits,
+                    "tier_distribution": tier_distribution
                 }
             }), 200
             

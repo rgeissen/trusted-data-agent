@@ -41,6 +41,7 @@ class User(Base):
     # Security fields
     is_active = Column(Boolean, default=True, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
+    profile_tier = Column(String(20), default='user', nullable=False)  # user, developer, admin
     failed_login_attempts = Column(Integer, default=0, nullable=False)
     locked_until = Column(DateTime(timezone=True), nullable=True)
     
@@ -63,7 +64,8 @@ class User(Base):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None,
             'is_active': self.is_active,
-            'is_admin': self.is_admin
+            'is_admin': self.is_admin,
+            'profile_tier': self.profile_tier
         }
         
         if include_sensitive:
