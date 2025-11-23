@@ -173,19 +173,23 @@ export async function finalizeConfiguration(config, switchToConversationView = t
             console.log('[DEBUG] First session profile_tags_used:', sessions[0].profile_tags_used);
             console.log('[DEBUG] First session models_used:', sessions[0].models_used);
         }
+        
+        // Filter out archived sessions from the conversation view selector
+        const activeSessions = sessions ? sessions.filter(s => !s.archived) : [];
+        
         DOM.sessionList.innerHTML = '';
-        if (sessions && Array.isArray(sessions) && sessions.length > 0) {
-            sessions.forEach((session) => {
+        if (activeSessions && Array.isArray(activeSessions) && activeSessions.length > 0) {
+            activeSessions.forEach((session) => {
                 const isActive = session.id === currentSessionId;
                 const sessionItem = UI.addSessionToList(session, isActive);
                 DOM.sessionList.appendChild(sessionItem);
             });
-            // If the previously active session still exists, ensure it is loaded.
-            // Otherwise, load the most recent session.
-            const sessionToLoad = sessions.find(s => s.id === currentSessionId) ? currentSessionId : sessions[0].id;
+            // If the previously active session still exists and is not archived, ensure it is loaded.
+            // Otherwise, load the most recent active session.
+            const sessionToLoad = activeSessions.find(s => s.id === currentSessionId) ? currentSessionId : activeSessions[0].id;
             await handleLoadSession(sessionToLoad);
         } else {
-            // No sessions exist, create a new one
+            // No active sessions exist, create a new one
             await handleStartNewSession();
         }
     } catch (sessionError) {

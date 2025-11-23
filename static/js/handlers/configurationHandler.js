@@ -849,12 +849,12 @@ export function showLLMConfigurationModal(configId = null) {
                     <div id="llm-modal-model-container">
                         <label class="block text-sm font-medium text-gray-300 mb-1">Model</label>
                         <div class="flex items-center gap-2">
-                            <select id="llm-modal-model" class="flex-1 p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none">
+                            <select id="llm-modal-model" class="flex-1 min-w-0 p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none">
                                 <option value="">-- Select a model --</option>
                                 ${config?.model ? `<option value="${escapeHtml(config.model)}" selected>${escapeHtml(config.model)}</option>` : ''}
                             </select>
                             <button type="button" id="llm-modal-refresh-models" 
-                                class="p-2 bg-gray-600 hover:bg-gray-500 rounded-md transition-colors">
+                                class="flex-shrink-0 p-2 bg-gray-600 hover:bg-gray-500 rounded-md transition-colors">
                                 <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.667 0l3.181-3.183m-4.991-2.691L7.985 5.356m0 0v4.992m0 0h4.992m0 0l3.181-3.183a8.25 8.25 0 0111.667 0l3.181 3.183" />
                                 </svg>
@@ -987,14 +987,28 @@ export function showLLMConfigurationModal(configId = null) {
                     ? (typeof certifiedModels[0] === 'string' ? certifiedModels[0] : certifiedModels[0].name)
                     : null;
                 
-                modelSelect.innerHTML = '<option value="">-- Select a model --</option>' + 
-                    data.models.map(model => {
-                        const modelName = typeof model === 'string' ? model : model.name;
-                        const certified = typeof model === 'object' ? model.certified : true;
-                        const label = certified ? modelName : `${modelName} (support evaluated)`;
-                        const selected = modelName === firstCertifiedModel ? 'selected' : '';
-                        return `<option value="${escapeHtml(modelName)}" ${!certified ? 'disabled' : ''} ${selected}>${escapeHtml(label)}</option>`;
-                    }).join('');
+                // Clear and rebuild options without affecting select element styling
+                modelSelect.innerHTML = '';
+                
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = '-- Select a model --';
+                modelSelect.appendChild(defaultOption);
+                
+                data.models.forEach(model => {
+                    const modelName = typeof model === 'string' ? model : model.name;
+                    const certified = typeof model === 'object' ? model.certified : true;
+                    const label = certified ? modelName : `${modelName} (support evaluated)`;
+                    const selected = modelName === firstCertifiedModel;
+                    
+                    const option = document.createElement('option');
+                    option.value = modelName;
+                    option.textContent = label;
+                    if (!certified) option.disabled = true;
+                    if (selected) option.selected = true;
+                    
+                    modelSelect.appendChild(option);
+                });
                 
                 showNotification('success', `Found ${data.models.length} models${firstCertifiedModel ? ` - selected ${firstCertifiedModel}` : ''}`);
             } else {
