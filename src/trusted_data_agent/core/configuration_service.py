@@ -1,6 +1,7 @@
 # src/trusted_data_agent/core/configuration_service.py
 import logging
 import httpx
+import os
 # --- MODIFICATION START: Import Path ---
 from pathlib import Path
 # --- MODIFICATION END ---
@@ -24,9 +25,20 @@ from trusted_data_agent.core.config import (
 from trusted_data_agent.llm import handler as llm_handler
 from trusted_data_agent.mcp import adapter as mcp_adapter
 from trusted_data_agent.core.utils import unwrap_exception, _regenerate_contexts
-# --- MODIFICATION START: Import RAGRetriever and config_manager ---
+# --- MODIFICATION START: Import RAGRetriever, config_manager, and encryption ---
 from trusted_data_agent.agent.rag_retriever import RAGRetriever
 from trusted_data_agent.core.config_manager import get_config_manager
+
+# Import encryption module if authentication is enabled
+if os.environ.get('TDA_AUTH_ENABLED', 'false').lower() == 'true':
+    try:
+        from trusted_data_agent.auth import encryption, audit
+        ENCRYPTION_AVAILABLE = True
+    except ImportError:
+        ENCRYPTION_AVAILABLE = False
+        app_logger.warning("Auth module not available - credential encryption disabled")
+else:
+    ENCRYPTION_AVAILABLE = False
 # --- MODIFICATION END ---
 
 app_logger = logging.getLogger("quart.app")
@@ -337,3 +349,123 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             return {"status": "error", "message": f"Configuration failed: {error_message}"}
         finally:
             app_logger.info("Configuration lock released.")
+
+
+# ==============================================================================
+# CREDENTIAL STORAGE HELPERS (Phase 4)
+# ==============================================================================
+
+async def store_credentials_for_provider(user_id: str, provider: str, credentials: dict) -> dict:
+    """
+    Store encrypted credentials for a provider.
+    
+    Args:
+        user_id: User's unique identifier
+        provider: Provider name (Amazon, Google, etc.)
+        credentials: Dictionary of credential key-value pairs
+        
+    Returns:
+        dict: {"status": "success"/"error", "message": str}
+    """
+    if not ENCRYPTION_AVAILABLE:
+        return {"status": "error", "message": "Credential encryption not available"}
+    
+    try:
+        # Filter out empty/None values
+        filtered_creds = {k: v for k, v in credentials.items() if v}
+        
+        if not filtered_creds:
+            return {"status": "error", "message": "No valid credentials provided"}
+        
+        result = encryption.encrypt_credentials(user_id, provider, filtered_creds)
+        
+        if result:
+            # Log the credential storage
+            audit.log_credential_change(user_id, provider, "stored")
+            app_logger.info(f"Stored encrypted credentials for user {user_id}, provider {provider}")
+            return {"status": "success", "message": f"Credentials stored securely for {provider}"}
+        else:
+            return {"status": "error", "message": "Failed to encrypt credentials"}
+            
+    except Exception as e:
+        app_logger.error(f"Failed to store credentials: {e}", exc_info=True)
+        return {"status": "error", "message": str(e)}
+
+
+async def retrieve_credentials_for_provider(user_id: str, provider: str) -> dict:
+    """
+    Retrieve decrypted credentials for a provider.
+    
+    Args:
+        user_id: User's unique identifier
+        provider: Provider name
+        
+    Returns:
+        dict: {"status": "success"/"error", "credentials": dict or None, "message": str}
+    """
+    if not ENCRYPTION_AVAILABLE:
+        return {"status": "error", "credentials": None, "message": "Credential encryption not available"}
+    
+    try:
+        credentials = encryption.decrypt_credentials(user_id, provider)
+        
+        if credentials:
+            app_logger.info(f"Retrieved credentials for user {user_id}, provider {provider}")
+            return {"status": "success", "credentials": credentials}
+        else:
+            return {"status": "success", "credentials": None, "message": "No stored credentials found"}
+            
+    except Exception as e:
+        app_logger.error(f"Failed to retrieve credentials: {e}", exc_info=True)
+        return {"status": "error", "credentials": None, "message": str(e)}
+
+
+async def delete_credentials_for_provider(user_id: str, provider: str) -> dict:
+    """
+    Delete stored credentials for a provider.
+    
+    Args:
+        user_id: User's unique identifier
+        provider: Provider name
+        
+    Returns:
+        dict: {"status": "success"/"error", "message": str}
+    """
+    if not ENCRYPTION_AVAILABLE:
+        return {"status": "error", "message": "Credential encryption not available"}
+    
+    try:
+        result = encryption.delete_credentials(user_id, provider)
+        
+        if result:
+            audit.log_credential_change(user_id, provider, "deleted")
+            app_logger.info(f"Deleted credentials for user {user_id}, provider {provider}")
+            return {"status": "success", "message": f"Credentials deleted for {provider}"}
+        else:
+            return {"status": "error", "message": "Credentials not found or already deleted"}
+            
+    except Exception as e:
+        app_logger.error(f"Failed to delete credentials: {e}", exc_info=True)
+        return {"status": "error", "message": str(e)}
+
+
+async def list_user_providers(user_id: str) -> dict:
+    """
+    List all providers with stored credentials for a user.
+    
+    Args:
+        user_id: User's unique identifier
+        
+    Returns:
+        dict: {"status": "success"/"error", "providers": list, "message": str}
+    """
+    if not ENCRYPTION_AVAILABLE:
+        return {"status": "error", "providers": [], "message": "Credential encryption not available"}
+    
+    try:
+        providers = encryption.list_user_providers(user_id)
+        return {"status": "success", "providers": providers}
+            
+    except Exception as e:
+        app_logger.error(f"Failed to list providers: {e}", exc_info=True)
+        return {"status": "error", "providers": [], "message": str(e)}
