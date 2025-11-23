@@ -462,3 +462,205 @@ def user_has_all_features_in_group(user, group_name: str) -> bool:
     
     features = FEATURE_GROUPS[group_name]
     return all(user_has_feature(user, feature) for feature in features)
+
+
+def get_feature_info() -> list:
+    """
+    Get detailed information about all features for admin UI.
+    
+    Returns:
+        List of feature dictionaries with metadata
+    """
+    feature_categories = {
+        # Core Execution
+        Feature.EXECUTE_PROMPTS: ("Core Execution", "Execute AI prompts"),
+        Feature.USE_MCP_TOOLS: ("Core Execution", "Use Model Context Protocol tools"),
+        Feature.VIEW_EXECUTION_RESULTS: ("Core Execution", "View execution results"),
+        
+        # Session Management
+        Feature.VIEW_OWN_SESSIONS: ("Session Management", "View own session history"),
+        Feature.DELETE_OWN_SESSIONS: ("Session Management", "Delete own sessions"),
+        Feature.EXPORT_OWN_SESSIONS: ("Session Management", "Export own sessions"),
+        Feature.VIEW_ALL_SESSIONS: ("Session Management", "View all users' sessions"),
+        Feature.EXPORT_ALL_SESSIONS: ("Session Management", "Export all sessions"),
+        Feature.SESSION_ANALYTICS: ("Session Management", "Advanced session analytics"),
+        
+        # Credentials
+        Feature.STORE_CREDENTIALS: ("Credentials", "Store encrypted credentials"),
+        Feature.USE_STORED_CREDENTIALS: ("Credentials", "Use auto-load credentials"),
+        Feature.DELETE_OWN_CREDENTIALS: ("Credentials", "Delete own credentials"),
+        Feature.VIEW_ALL_CREDENTIALS: ("Credentials", "View all users' credentials"),
+        Feature.DELETE_ANY_CREDENTIALS: ("Credentials", "Delete any user's credentials"),
+        
+        # Configuration
+        Feature.BASIC_CONFIGURATION: ("Configuration", "Basic settings configuration"),
+        Feature.SELECT_PROVIDER: ("Configuration", "Choose AI provider"),
+        Feature.SELECT_MODEL: ("Configuration", "Choose AI model"),
+        Feature.SELECT_MCP_SERVER: ("Configuration", "Choose MCP server"),
+        Feature.ADVANCED_CONFIGURATION: ("Configuration", "Advanced settings"),
+        Feature.CONFIGURE_OPTIMIZATION: ("Configuration", "Optimization settings"),
+        Feature.CONFIGURE_RAG_SETTINGS: ("Configuration", "RAG configuration"),
+        Feature.CONFIGURE_MCP_SERVERS: ("Configuration", "MCP server management"),
+        Feature.MODIFY_GLOBAL_CONFIG: ("Configuration", "System-wide settings"),
+        Feature.CONFIGURE_SECURITY: ("Configuration", "Security settings"),
+        Feature.CONFIGURE_AUTHENTICATION: ("Configuration", "Authentication settings"),
+        
+        # RAG Management
+        Feature.CREATE_RAG_COLLECTIONS: ("RAG Management", "Create RAG collections"),
+        Feature.EDIT_RAG_COLLECTIONS: ("RAG Management", "Edit RAG collections"),
+        Feature.DELETE_RAG_COLLECTIONS: ("RAG Management", "Delete RAG collections"),
+        Feature.REFRESH_RAG_COLLECTIONS: ("RAG Management", "Refresh vector store"),
+        Feature.VIEW_RAG_STATISTICS: ("RAG Management", "View RAG statistics"),
+        
+        # Templates
+        Feature.CREATE_TEMPLATES: ("Templates", "Create new templates"),
+        Feature.EDIT_TEMPLATES: ("Templates", "Edit existing templates"),
+        Feature.DELETE_TEMPLATES: ("Templates", "Delete templates"),
+        Feature.TEST_TEMPLATES: ("Templates", "Test template functionality"),
+        Feature.PUBLISH_TEMPLATES: ("Templates", "Publish templates"),
+        
+        # User Management
+        Feature.VIEW_ALL_USERS: ("User Management", "View all users"),
+        Feature.CREATE_USERS: ("User Management", "Create new users"),
+        Feature.EDIT_USERS: ("User Management", "Edit user details"),
+        Feature.DELETE_USERS: ("User Management", "Delete/deactivate users"),
+        Feature.UNLOCK_USERS: ("User Management", "Unlock locked accounts"),
+        Feature.CHANGE_USER_TIERS: ("User Management", "Change user profile tiers"),
+        
+        # Profile & Audit
+        Feature.VIEW_OWN_AUDIT_LOGS: ("Audit & Profile", "View own audit logs"),
+        Feature.VIEW_ALL_AUDIT_LOGS: ("Audit & Profile", "View all audit logs"),
+        Feature.UPDATE_OWN_PROFILE: ("Audit & Profile", "Update own profile"),
+        Feature.CHANGE_OWN_PASSWORD: ("Audit & Profile", "Change own password"),
+        
+        # System Admin
+        Feature.VIEW_SYSTEM_STATS: ("System Administration", "View system statistics"),
+        Feature.MONITOR_PERFORMANCE: ("System Administration", "Monitor system performance"),
+        Feature.VIEW_ERROR_LOGS: ("System Administration", "View error logs"),
+        Feature.MANAGE_DATABASE: ("System Administration", "Database administration"),
+        Feature.RUN_MIGRATIONS: ("System Administration", "Run schema migrations"),
+        Feature.BACKUP_DATABASE: ("System Administration", "Database backups"),
+        Feature.MANAGE_FEATURE_FLAGS: ("System Administration", "Control feature availability"),
+        Feature.MANAGE_ENCRYPTION_KEYS: ("System Administration", "Encryption key management"),
+        Feature.MANAGE_AUDIT_SETTINGS: ("System Administration", "Audit settings"),
+        Feature.EXPORT_COMPLIANCE_REPORTS: ("System Administration", "Compliance reporting"),
+        
+        # Import/Export
+        Feature.EXPORT_CONFIGURATIONS: ("Import/Export", "Export configurations"),
+        Feature.IMPORT_CONFIGURATIONS: ("Import/Export", "Import configurations"),
+        Feature.BULK_OPERATIONS: ("Import/Export", "Bulk operations"),
+        
+        # Developer Tools
+        Feature.VIEW_DEBUG_LOGS: ("Developer Tools", "View debug logs"),
+        Feature.ACCESS_API_DOCUMENTATION: ("Developer Tools", "API documentation access"),
+        Feature.USE_DEVELOPER_CONSOLE: ("Developer Tools", "Developer console"),
+        Feature.TEST_MCP_CONNECTIONS: ("Developer Tools", "Test MCP connections"),
+        Feature.VIEW_MCP_DIAGNOSTICS: ("Developer Tools", "View MCP diagnostics"),
+        
+        # UI Features
+        Feature.USE_VOICE_CONVERSATION: ("UI Features", "Voice conversation"),
+        Feature.USE_CHARTING: ("UI Features", "Charting functionality"),
+        Feature.BASIC_UI_ACCESS: ("UI Features", "Basic UI access"),
+    }
+    
+    features_list = []
+    for feature in Feature:
+        category, description = feature_categories.get(feature, ("Other", ""))
+        required_tier = FEATURE_TIER_MAP.get(feature, PROFILE_TIER_USER)
+        
+        # Convert enum name to display name
+        display_name = feature.value.replace('_', ' ').title()
+        
+        features_list.append({
+            "name": feature.value,
+            "display_name": display_name,
+            "required_tier": required_tier,
+            "category": category,
+            "description": description
+        })
+    
+    return sorted(features_list, key=lambda x: (x["category"], x["name"]))
+
+
+def get_default_feature_tier_map():
+    """
+    Get the default feature-to-tier mappings.
+    Used for resetting feature configurations.
+    
+    Returns:
+        Dictionary mapping Feature enum to tier string
+    """
+    # This is the original default mapping
+    return {
+        # USER TIER (19 features)
+        Feature.EXECUTE_PROMPTS: PROFILE_TIER_USER,
+        Feature.USE_MCP_TOOLS: PROFILE_TIER_USER,
+        Feature.VIEW_EXECUTION_RESULTS: PROFILE_TIER_USER,
+        Feature.VIEW_OWN_SESSIONS: PROFILE_TIER_USER,
+        Feature.DELETE_OWN_SESSIONS: PROFILE_TIER_USER,
+        Feature.EXPORT_OWN_SESSIONS: PROFILE_TIER_USER,
+        Feature.STORE_CREDENTIALS: PROFILE_TIER_USER,
+        Feature.USE_STORED_CREDENTIALS: PROFILE_TIER_USER,
+        Feature.DELETE_OWN_CREDENTIALS: PROFILE_TIER_USER,
+        Feature.BASIC_CONFIGURATION: PROFILE_TIER_USER,
+        Feature.SELECT_PROVIDER: PROFILE_TIER_USER,
+        Feature.SELECT_MODEL: PROFILE_TIER_USER,
+        Feature.SELECT_MCP_SERVER: PROFILE_TIER_USER,
+        Feature.VIEW_OWN_AUDIT_LOGS: PROFILE_TIER_USER,
+        Feature.UPDATE_OWN_PROFILE: PROFILE_TIER_USER,
+        Feature.CHANGE_OWN_PASSWORD: PROFILE_TIER_USER,
+        Feature.USE_VOICE_CONVERSATION: PROFILE_TIER_USER,
+        Feature.USE_CHARTING: PROFILE_TIER_USER,
+        Feature.BASIC_UI_ACCESS: PROFILE_TIER_USER,
+        
+        # DEVELOPER TIER (25 features)
+        Feature.VIEW_ALL_SESSIONS: PROFILE_TIER_DEVELOPER,
+        Feature.EXPORT_ALL_SESSIONS: PROFILE_TIER_DEVELOPER,
+        Feature.SESSION_ANALYTICS: PROFILE_TIER_DEVELOPER,
+        Feature.CREATE_RAG_COLLECTIONS: PROFILE_TIER_DEVELOPER,
+        Feature.EDIT_RAG_COLLECTIONS: PROFILE_TIER_DEVELOPER,
+        Feature.DELETE_RAG_COLLECTIONS: PROFILE_TIER_DEVELOPER,
+        Feature.REFRESH_RAG_COLLECTIONS: PROFILE_TIER_DEVELOPER,
+        Feature.VIEW_RAG_STATISTICS: PROFILE_TIER_DEVELOPER,
+        Feature.CREATE_TEMPLATES: PROFILE_TIER_DEVELOPER,
+        Feature.EDIT_TEMPLATES: PROFILE_TIER_DEVELOPER,
+        Feature.DELETE_TEMPLATES: PROFILE_TIER_DEVELOPER,
+        Feature.TEST_TEMPLATES: PROFILE_TIER_DEVELOPER,
+        Feature.PUBLISH_TEMPLATES: PROFILE_TIER_DEVELOPER,
+        Feature.TEST_MCP_CONNECTIONS: PROFILE_TIER_DEVELOPER,
+        Feature.VIEW_MCP_DIAGNOSTICS: PROFILE_TIER_DEVELOPER,
+        Feature.CONFIGURE_MCP_SERVERS: PROFILE_TIER_DEVELOPER,
+        Feature.ADVANCED_CONFIGURATION: PROFILE_TIER_DEVELOPER,
+        Feature.CONFIGURE_OPTIMIZATION: PROFILE_TIER_DEVELOPER,
+        Feature.CONFIGURE_RAG_SETTINGS: PROFILE_TIER_DEVELOPER,
+        Feature.EXPORT_CONFIGURATIONS: PROFILE_TIER_DEVELOPER,
+        Feature.IMPORT_CONFIGURATIONS: PROFILE_TIER_DEVELOPER,
+        Feature.BULK_OPERATIONS: PROFILE_TIER_DEVELOPER,
+        Feature.VIEW_DEBUG_LOGS: PROFILE_TIER_DEVELOPER,
+        Feature.ACCESS_API_DOCUMENTATION: PROFILE_TIER_DEVELOPER,
+        Feature.USE_DEVELOPER_CONSOLE: PROFILE_TIER_DEVELOPER,
+        
+        # ADMIN TIER (22 features)
+        Feature.VIEW_ALL_USERS: PROFILE_TIER_ADMIN,
+        Feature.CREATE_USERS: PROFILE_TIER_ADMIN,
+        Feature.EDIT_USERS: PROFILE_TIER_ADMIN,
+        Feature.DELETE_USERS: PROFILE_TIER_ADMIN,
+        Feature.UNLOCK_USERS: PROFILE_TIER_ADMIN,
+        Feature.CHANGE_USER_TIERS: PROFILE_TIER_ADMIN,
+        Feature.VIEW_ALL_CREDENTIALS: PROFILE_TIER_ADMIN,
+        Feature.DELETE_ANY_CREDENTIALS: PROFILE_TIER_ADMIN,
+        Feature.MODIFY_GLOBAL_CONFIG: PROFILE_TIER_ADMIN,
+        Feature.MANAGE_FEATURE_FLAGS: PROFILE_TIER_ADMIN,
+        Feature.CONFIGURE_SECURITY: PROFILE_TIER_ADMIN,
+        Feature.VIEW_SYSTEM_STATS: PROFILE_TIER_ADMIN,
+        Feature.VIEW_ALL_AUDIT_LOGS: PROFILE_TIER_ADMIN,
+        Feature.MONITOR_PERFORMANCE: PROFILE_TIER_ADMIN,
+        Feature.VIEW_ERROR_LOGS: PROFILE_TIER_ADMIN,
+        Feature.MANAGE_DATABASE: PROFILE_TIER_ADMIN,
+        Feature.RUN_MIGRATIONS: PROFILE_TIER_ADMIN,
+        Feature.BACKUP_DATABASE: PROFILE_TIER_ADMIN,
+        Feature.MANAGE_ENCRYPTION_KEYS: PROFILE_TIER_ADMIN,
+        Feature.CONFIGURE_AUTHENTICATION: PROFILE_TIER_ADMIN,
+        Feature.MANAGE_AUDIT_SETTINGS: PROFILE_TIER_ADMIN,
+        Feature.EXPORT_COMPLIANCE_REPORTS: PROFILE_TIER_ADMIN,
+    }

@@ -108,7 +108,7 @@ clearAllCredentials();
 1. Remove or set `TDA_CONFIGURATION_PERSISTENCE=true`
 2. Start container
 3. Configure MCP and LLM
-4. **Refresh browser** → Should show "Connect and Load" button
+4. **Refresh browser** → Should show "Start Conversation" button
 5. Click to auto-reconnect with saved credentials
 
 ## Deployment Recommendations
@@ -145,7 +145,7 @@ import { clearAllCredentials } from './storageUtils.js';
 clearAllCredentials();
 ```
 
-### Problem: Getting "Connect and Load" Button When Persistence is Disabled
+### Problem: Getting "Start Conversation" Button When Persistence is Disabled
 **Solution**: 
 1. Verify `TDA_CONFIGURATION_PERSISTENCE=false` in docker-compose.yml
 2. Restart container: `docker-compose restart`

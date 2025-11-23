@@ -176,6 +176,12 @@
                     </svg>
                     <span class="nav-link-text font-semibold">Credentials</span>
                 </a>
+                <a href="#" id="view-switch-admin" data-view="admin-view" class="view-switch-button hidden flex items-center gap-x-3 px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="nav-link-text font-semibold">Administration</span>
+                </a>
             </div>
         </nav>
 
@@ -376,7 +382,7 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                 </svg>
-                                                <span id="welcome-button-text" class="relative z-10">Connect and Load</span>
+                                                <span id="welcome-button-text" class="relative z-10">Start Conversation</span>
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 relative z-10 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                                 </svg>
@@ -1492,13 +1498,433 @@
             </div>
             <!-- --- MODIFICATION END: Credentials View --- -->
 
+            <!-- VIEW: Administration -->
+            <div id="admin-view" class="app-view w-full h-full flex flex-col p-6">
+                <div class="w-full max-w-7xl mx-auto flex flex-col h-full">
+                    <!-- Page Header -->
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold text-white">Administration</h2>
+                    </div>
+
+                    <!-- Tab Navigation -->
+                    <div class="flex gap-2 border-b border-white/10 mb-6">
+                        <button class="admin-tab active px-6 py-3 text-sm font-medium transition-all border-b-2 border-[#F15F22] text-white" data-tab="user-management-tab">
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                                User Management
+                            </div>
+                        </button>
+                        <button class="admin-tab px-6 py-3 text-sm font-medium text-gray-400 hover:text-white transition-all border-b-2 border-transparent hover:border-white/20" data-tab="pane-config-tab">
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
+                                </svg>
+                                Pane Configuration
+                            </div>
+                        </button>
+                        <button class="admin-tab px-6 py-3 text-sm font-medium text-gray-400 hover:text-white transition-all border-b-2 border-transparent hover:border-white/20" data-tab="feature-config-tab">
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                                Feature Configuration
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Tab Content Container -->
+                    <div class="flex-1 overflow-y-auto">
+                        <!-- Tab 1: User Management -->
+                        <div id="user-management-tab" class="admin-tab-content active">
+                            <div class="space-y-6">
+                                <div class="glass-panel rounded-xl p-6">
+                                    <div class="flex justify-between items-center mb-6">
+                                        <div>
+                                            <h3 class="text-xl font-bold text-white">User Tier Management</h3>
+                                            <p class="text-sm text-gray-400 mt-1">Assign users to profile tiers (User, Developer, Admin)</p>
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <button type="button" id="create-user-btn" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-md transition-colors text-white font-medium text-sm">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                                                </svg>
+                                                Create User
+                                            </button>
+                                            <button type="button" id="refresh-users-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md transition-colors text-white font-medium text-sm">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                </svg>
+                                                Refresh
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Users Table -->
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-sm text-left">
+                                            <thead class="text-xs uppercase bg-gray-700/50 text-gray-400">
+                                                <tr>
+                                                    <th class="px-6 py-3">Username</th>
+                                                    <th class="px-6 py-3">Email</th>
+                                                    <th class="px-6 py-3">Current Tier</th>
+                                                    <th class="px-6 py-3">Features</th>
+                                                    <th class="px-6 py-3">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="users-table-body" class="divide-y divide-gray-700">
+                                                <!-- Users will be dynamically loaded here -->
+                                                <tr>
+                                                    <td colspan="5" class="px-6 py-8 text-center text-gray-400">
+                                                        <svg class="animate-spin h-8 w-8 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                        </svg>
+                                                        Loading users...
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Tier Statistics -->
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div class="glass-panel rounded-xl p-6">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <p class="text-sm text-gray-400">User Tier</p>
+                                                <p id="user-tier-count" class="text-3xl font-bold text-white mt-2">0</p>
+                                            </div>
+                                            <div class="p-3 bg-blue-500/20 rounded-lg">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="glass-panel rounded-xl p-6">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <p class="text-sm text-gray-400">Developer Tier</p>
+                                                <p id="developer-tier-count" class="text-3xl font-bold text-white mt-2">0</p>
+                                            </div>
+                                            <div class="p-3 bg-purple-500/20 rounded-lg">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="glass-panel rounded-xl p-6">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <p class="text-sm text-gray-400">Admin Tier</p>
+                                                <p id="admin-tier-count" class="text-3xl font-bold text-white mt-2">0</p>
+                                            </div>
+                                            <div class="p-3 bg-red-500/20 rounded-lg">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab 2: Feature Configuration -->
+                        <div id="feature-config-tab" class="admin-tab-content hidden">
+                            <div class="space-y-6">
+                                <div class="glass-panel rounded-xl p-6">
+                                    <div class="flex justify-between items-center mb-6">
+                                        <div>
+                                            <h3 class="text-xl font-bold text-white">Feature-to-Tier Configuration</h3>
+                                            <p class="text-sm text-gray-400 mt-1">Configure which tier is required for each feature</p>
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <button type="button" id="reset-features-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md transition-colors text-white font-medium text-sm">
+                                                Reset to Defaults
+                                            </button>
+                                            <button type="button" id="save-features-btn" class="px-4 py-2 bg-[#F15F22] hover:bg-[#D9501A] rounded-md transition-colors text-white font-medium text-sm">
+                                                Save Changes
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Feature Configuration Table -->
+                                    <div class="mb-6">
+                                        <div class="flex items-center gap-4 mb-4">
+                                            <input type="text" id="feature-search" placeholder="Search features..." class="flex-1 max-w-md p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none text-white">
+                                            <select id="feature-filter-tier" class="p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none text-white">
+                                                <option value="">All Tiers</option>
+                                                <option value="user">User Tier</option>
+                                                <option value="developer">Developer Tier</option>
+                                                <option value="admin">Admin Tier</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
+                                        <table class="w-full text-sm text-left">
+                                            <thead class="text-xs uppercase bg-gray-700/50 text-gray-400 sticky top-0">
+                                                <tr>
+                                                    <th class="px-6 py-3">Feature</th>
+                                                    <th class="px-6 py-3">Description</th>
+                                                    <th class="px-6 py-3">Required Tier</th>
+                                                    <th class="px-6 py-3">Category</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="features-table-body" class="divide-y divide-gray-700">
+                                                <!-- Features will be dynamically loaded here -->
+                                                <tr>
+                                                    <td colspan="4" class="px-6 py-8 text-center text-gray-400">
+                                                        <svg class="animate-spin h-8 w-8 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                        </svg>
+                                                        Loading features...
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Feature Statistics by Tier -->
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div class="glass-panel rounded-xl p-6">
+                                        <h4 class="text-sm font-medium text-gray-400 mb-3">User Tier Features</h4>
+                                        <p id="user-features-count" class="text-2xl font-bold text-blue-400">0</p>
+                                        <p class="text-xs text-gray-500 mt-1">Basic access features</p>
+                                    </div>
+                                    <div class="glass-panel rounded-xl p-6">
+                                        <h4 class="text-sm font-medium text-gray-400 mb-3">Developer Tier Features</h4>
+                                        <p id="developer-features-count" class="text-2xl font-bold text-purple-400">0</p>
+                                        <p class="text-xs text-gray-500 mt-1">Advanced features</p>
+                                    </div>
+                                    <div class="glass-panel rounded-xl p-6">
+                                        <h4 class="text-sm font-medium text-gray-400 mb-3">Admin Tier Features</h4>
+                                        <p id="admin-features-count" class="text-2xl font-bold text-red-400">0</p>
+                                        <p class="text-xs text-gray-500 mt-1">System administration</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab 3: Pane Configuration -->
+                        <div id="pane-config-tab" class="admin-tab-content hidden">
+                            <div class="space-y-6">
+                                <div class="glass-panel rounded-xl p-6">
+                                    <div class="flex justify-between items-center mb-6">
+                                        <div>
+                                            <h3 class="text-xl font-bold text-white">Pane Visibility Configuration</h3>
+                                            <p class="text-sm text-gray-400 mt-1">Configure which tiers can access which panes</p>
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <button type="button" id="reset-panes-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md transition-colors text-white font-medium text-sm">
+                                                Reset to Defaults
+                                            </button>
+                                            <button type="button" id="refresh-panes-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md transition-colors text-white font-medium text-sm">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                </svg>
+                                                Refresh
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Pane Configuration Table -->
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-sm text-left">
+                                            <thead class="text-xs uppercase bg-gray-700/50 text-gray-400">
+                                                <tr>
+                                                    <th class="px-6 py-3">Pane Name</th>
+                                                    <th class="px-6 py-3">Description</th>
+                                                    <th class="px-6 py-3 text-center">
+                                                        <div class="flex items-center justify-center gap-2">
+                                                            <span class="inline-block w-2 h-2 rounded-full bg-blue-400"></span>
+                                                            User
+                                                        </div>
+                                                    </th>
+                                                    <th class="px-6 py-3 text-center">
+                                                        <div class="flex items-center justify-center gap-2">
+                                                            <span class="inline-block w-2 h-2 rounded-full bg-purple-400"></span>
+                                                            Developer
+                                                        </div>
+                                                    </th>
+                                                    <th class="px-6 py-3 text-center">
+                                                        <div class="flex items-center justify-center gap-2">
+                                                            <span class="inline-block w-2 h-2 rounded-full bg-red-400"></span>
+                                                            Admin
+                                                        </div>
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="panes-table-body" class="divide-y divide-gray-700">
+                                                <!-- Panes will be dynamically loaded here -->
+                                                <tr>
+                                                    <td colspan="5" class="px-6 py-8 text-center text-gray-400">
+                                                        <svg class="animate-spin h-8 w-8 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                        </svg>
+                                                        Loading panes...
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Info Panel -->
+                                <div class="glass-panel rounded-xl p-6">
+                                    <div class="flex items-start gap-3">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <div>
+                                            <h4 class="text-sm font-bold text-white mb-2">About Pane Visibility</h4>
+                                            <p class="text-sm text-gray-400 mb-3">Control which user tiers can see and access different panes in the application. Users will only see panes they have access to based on their assigned tier.</p>
+                                            <ul class="text-sm text-gray-400 space-y-1 list-disc list-inside">
+                                                <li><span class="text-blue-400 font-semibold">User Tier</span>: Basic users with limited access</li>
+                                                <li><span class="text-purple-400 font-semibold">Developer Tier</span>: Advanced users with development features</li>
+                                                <li><span class="text-red-400 font-semibold">Admin Tier</span>: Full system access and administration</li>
+                                            </ul>
+                                            <p class="text-xs text-gray-500 mt-3">Note: The Administration pane is always visible to admins only.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- --- END: Administration View --- -->
+
         </main>
     </div>
     <!-- Main content wrapper closing div -->
 
 
-    <!-- Modals (Chat, Info, Config, Prompt Editor, Confirmation, Prompt View, System Prompt Popup) -->
+    <!-- Modals (Chat, Info, Config, Prompt Editor, Confirmation, Prompt View, System Prompt Popup, User Management) -->
     <!-- All modals remain at the end of <body> to overlay all views -->
+    
+    <!-- Change Password Modal -->
+    <div id="change-password-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
+        <div class="glass-panel rounded-xl shadow-2xl w-full max-w-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white">Change Password</h3>
+                <button type="button" id="change-password-modal-close" class="p-2 rounded-full text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <form id="change-password-form" class="space-y-4">
+                <div>
+                    <label for="current-password" class="block text-sm font-medium text-gray-300 mb-2">Current Password</label>
+                    <input type="password" id="current-password" required
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter current password">
+                </div>
+                
+                <div>
+                    <label for="new-password" class="block text-sm font-medium text-gray-300 mb-2">New Password</label>
+                    <input type="password" id="new-password" required
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter new password">
+                    <p class="text-xs text-gray-400 mt-1">Minimum 8 characters</p>
+                </div>
+                
+                <div>
+                    <label for="confirm-password" class="block text-sm font-medium text-gray-300 mb-2">Confirm New Password</label>
+                    <input type="password" id="confirm-password" required
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Confirm new password">
+                </div>
+                
+                <div class="flex gap-2 pt-4">
+                    <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md transition-colors text-white font-medium">
+                        Change Password
+                    </button>
+                    <button type="button" id="change-password-form-cancel" class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md transition-colors text-white font-medium">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- User Management Modal -->
+    <div id="user-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
+        <div class="glass-panel rounded-xl shadow-2xl w-full max-w-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="user-modal-title" class="text-xl font-bold text-white">Create User</h3>
+                <button type="button" id="user-modal-close" class="p-2 rounded-full text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <form id="user-form" class="space-y-4">
+                <input type="hidden" id="user-form-id" value="">
+                
+                <div>
+                    <label for="user-form-username" class="block text-sm font-medium text-gray-300 mb-2">Username</label>
+                    <input type="text" id="user-form-username" required
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter username">
+                </div>
+                
+                <div>
+                    <label for="user-form-email" class="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                    <input type="email" id="user-form-email" required
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter email">
+                </div>
+                
+                <div>
+                    <label for="user-form-display-name" class="block text-sm font-medium text-gray-300 mb-2">Display Name</label>
+                    <input type="text" id="user-form-display-name"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter display name (optional)">
+                </div>
+                
+                <div id="user-form-password-container">
+                    <label for="user-form-password" class="block text-sm font-medium text-gray-300 mb-2">
+                        Password <span id="password-optional-text" class="text-xs text-gray-500">(leave blank to keep current)</span>
+                    </label>
+                    <input type="password" id="user-form-password" required
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter password">
+                    <p class="text-xs text-gray-400 mt-1">Minimum 8 characters</p>
+                </div>
+                
+                <div>
+                    <label for="user-form-tier" class="block text-sm font-medium text-gray-300 mb-2">Profile Tier</label>
+                    <select id="user-form-tier" required
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="user">User</option>
+                        <option value="developer">Developer</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                
+                <div class="flex gap-2 pt-4">
+                    <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md transition-colors text-white font-medium">
+                        Save
+                    </button>
+                    <button type="button" id="user-form-cancel" class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md transition-colors text-white font-medium">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Chat Modal -->
     <div id="chat-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
@@ -2290,6 +2716,7 @@
     <script type="module" src="{{ url_for('static', filename='js/notifications.js') }}"></script>
     <script src="{{ url_for('static', filename='js/executionDashboard.js') }}"></script>
     <script src="{{ url_for('static', filename='js/templateManager.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/adminManager.js') }}"></script>
     <script type="module" src="{{ url_for('static', filename='js/main.js') }}?v=2.6"></script>
     <script type="module" src="{{ url_for('static', filename='js/handlers/ragCollectionManagement.js') }}"></script>
     <!-- RAG Case Modal -->
@@ -2468,6 +2895,88 @@
         // Initialize authentication
         const authClient = new AuthClient();
         
+        // Global pane visibility cache
+        let paneVisibilityCache = null;
+        
+        /**
+         * Update pane visibility based on user tier and configuration
+         */
+        async function updatePaneVisibility(userTier = null) {
+            try {
+                // Get user tier if not provided
+                if (!userTier) {
+                    const user = authClient.getUser();
+                    userTier = user?.profile_tier || 'user';
+                }
+                
+                // Fetch pane visibility configuration
+                const token = authClient.getToken();
+                if (!token) return;
+                
+                const response = await fetch('/api/v1/admin/panes', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    console.warn('Could not fetch pane visibility config, using defaults');
+                    return;
+                }
+                
+                const data = await response.json();
+                if (data.status !== 'success' || !data.panes) {
+                    console.warn('Invalid pane visibility response');
+                    return;
+                }
+                
+                paneVisibilityCache = data.panes;
+                
+                // Apply visibility to each pane
+                const paneMap = {
+                    'conversation': 'view-switch-conversation',
+                    'executions': 'view-switch-executions',
+                    'rag-maintenance': 'view-switch-rag-maintenance',
+                    'marketplace': 'view-switch-rag-marketplace',
+                    'credentials': 'view-switch-credentials',
+                    'admin': 'view-switch-admin'
+                };
+                
+                data.panes.forEach(pane => {
+                    const elementId = paneMap[pane.pane_id];
+                    if (!elementId) return;
+                    
+                    const paneElement = document.getElementById(elementId);
+                    if (!paneElement) return;
+                    
+                    // Determine if pane should be visible for this tier
+                    let isVisible = false;
+                    if (userTier === 'admin') {
+                        isVisible = pane.visible_to_admin;
+                    } else if (userTier === 'developer') {
+                        isVisible = pane.visible_to_developer;
+                    } else {
+                        isVisible = pane.visible_to_user;
+                    }
+                    
+                    // Show or hide pane
+                    if (isVisible) {
+                        paneElement.classList.remove('hidden');
+                    } else {
+                        paneElement.classList.add('hidden');
+                    }
+                });
+                
+                console.log(`[PaneVisibility] Updated for ${userTier} tier`);
+                
+            } catch (error) {
+                console.error('Error updating pane visibility:', error);
+            }
+        }
+        
+        // Make updatePaneVisibility globally accessible
+        window.updatePaneVisibility = updatePaneVisibility;
+        
         // Update UI based on authentication state
         function updateAuthUI() {
             const isAuth = authClient.isAuthenticated();
@@ -2488,11 +2997,69 @@
                 document.getElementById('user-menu-name').textContent = user.display_name || user.username;
                 document.getElementById('user-menu-email').textContent = user.email;
                 
+                // Check if user has admin privileges and show/hide admin menu
+                const adminMenuItem = document.getElementById('view-switch-admin');
+                if (adminMenuItem) {
+                    // Always check /me endpoint to get current tier and validate token
+                    fetch('/api/v1/auth/me', {
+                        headers: {
+                            'Authorization': `Bearer ${authClient.getToken()}`
+                        }
+                    })
+                    .then(res => {
+                        if (res.status === 401) {
+                            // Token is invalid or expired, clear session and redirect
+                            console.log('Token invalid, clearing session');
+                            authClient.clearSession();
+                            window.location.href = '/login';
+                            return null;
+                        }
+                        return res.json();
+                    })
+                    .then(data => {
+                        if (!data) return; // Already handled redirect above
+                        
+                        if (data.status === 'success' && data.user) {
+                            // Update cached user data with current info from server
+                            authClient.setSession(authClient.getToken(), data.user);
+                            
+                            // Check if user is admin tier or has is_admin flag
+                            if (data.user.profile_tier === 'admin' || data.user.is_admin) {
+                                adminMenuItem.classList.remove('hidden');
+                            } else {
+                                adminMenuItem.classList.add('hidden');
+                            }
+                            
+                            // Update pane visibility based on user tier
+                            updatePaneVisibility(data.user.profile_tier);
+                        } else {
+                            adminMenuItem.classList.add('hidden');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error checking admin status:', err);
+                        // On network error, try to use cached user data
+                        if (user.profile_tier === 'admin' || user.is_admin) {
+                            adminMenuItem.classList.remove('hidden');
+                        } else {
+                            adminMenuItem.classList.add('hidden');
+                        }
+                        // Still try to update pane visibility with cached tier
+                        updatePaneVisibility(user.profile_tier);
+                    });
+                }
+                
                 console.log('Authenticated as:', user.username);
             } else {
                 // Show login button
                 userMenuContainer.classList.add('hidden');
                 loginButtonContainer.classList.remove('hidden');
+                
+                // Hide admin menu
+                const adminMenuItem = document.getElementById('view-switch-admin');
+                if (adminMenuItem) {
+                    adminMenuItem.classList.add('hidden');
+                }
                 
                 console.log('Not authenticated');
             }
@@ -2507,7 +3074,7 @@
         
         if (userMenuButton && userDropdownMenu) {
             userMenuButton.addEventListener('click', () => {
-                userDropdownMenu.classList.toggle('show');
+                userDropdownMenu.classList.toggle('open');
             });
         }
         
@@ -2529,11 +3096,72 @@
             });
         }
         
-        // Handle change password button (placeholder)
+        // Handle change password button
         const changePasswordButton = document.getElementById('user-change-password-button');
         if (changePasswordButton) {
             changePasswordButton.addEventListener('click', () => {
-                alert('Password change feature coming soon!');
+                document.getElementById('change-password-modal-overlay').classList.remove('hidden');
+            });
+        }
+        
+        // Handle change password modal
+        const changePasswordModalClose = document.getElementById('change-password-modal-close');
+        const changePasswordFormCancel = document.getElementById('change-password-form-cancel');
+        const changePasswordForm = document.getElementById('change-password-form');
+        
+        if (changePasswordModalClose) {
+            changePasswordModalClose.addEventListener('click', () => {
+                document.getElementById('change-password-modal-overlay').classList.add('hidden');
+                changePasswordForm.reset();
+            });
+        }
+        
+        if (changePasswordFormCancel) {
+            changePasswordFormCancel.addEventListener('click', () => {
+                document.getElementById('change-password-modal-overlay').classList.add('hidden');
+                changePasswordForm.reset();
+            });
+        }
+        
+        if (changePasswordForm) {
+            changePasswordForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const currentPassword = document.getElementById('current-password').value;
+                const newPassword = document.getElementById('new-password').value;
+                const confirmPassword = document.getElementById('confirm-password').value;
+                
+                if (newPassword !== confirmPassword) {
+                    alert('New passwords do not match!');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/api/v1/auth/change-password', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${authClient.getToken()}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            current_password: currentPassword,
+                            new_password: newPassword
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        alert('Password changed successfully!');
+                        document.getElementById('change-password-modal-overlay').classList.add('hidden');
+                        changePasswordForm.reset();
+                    } else {
+                        alert(data.message || 'Failed to change password');
+                    }
+                } catch (error) {
+                    console.error('Error changing password:', error);
+                    alert('Failed to change password. Please try again.');
+                }
             });
         }
         
@@ -2541,10 +3169,16 @@
         document.addEventListener('click', (e) => {
             if (userMenuButton && userDropdownMenu) {
                 if (!userMenuButton.contains(e.target) && !userDropdownMenu.contains(e.target)) {
-                    userDropdownMenu.classList.remove('show');
+                    userDropdownMenu.classList.remove('open');
                 }
             }
         });
+        
+        // Initialize AdminManager
+        if (typeof AdminManager !== 'undefined') {
+            AdminManager.init();
+            window.AdminManager = AdminManager; // Make it available globally
+        }
     </script>
 </body>
 </html>

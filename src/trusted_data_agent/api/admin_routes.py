@@ -244,25 +244,114 @@ async def get_my_audit_logs():
 # ADMIN USER MANAGEMENT ENDPOINTS
 # ==============================================================================
 
-@admin_api_bp.route("/v1/admin/users", methods=["GET"])
+@admin_api_bp.route("/v1/admin/users", methods=["GET", "POST"])
 @require_admin
-async def list_users():
+async def manage_users():
     """
-    List all users (admin only).
+    Manage users (admin only).
     
+    GET - List all users:
     Query params:
     - limit: Number of records (default 50)
     - offset: Skip records (default 0)
     - search: Search by username or email
     - active_only: Filter active users (default false)
     
+    POST - Create new user:
+    Body:
+    {
+        "username": "newuser",
+        "email": "user@example.com",
+        "password": "password123",
+        "display_name": "New User",
+        "profile_tier": "user"
+    }
+    
     Returns:
     {
         "status": "success",
-        "users": [...],
+        "users": [...] or "user": {...},
         "total": 25
     }
     """
+    if request.method == "POST":
+        # Create new user
+        admin_user = get_current_user_from_request()
+        data = await request.get_json()
+        
+        required_fields = ['username', 'email', 'password']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    "status": "error",
+                    "message": f"Missing required field: {field}"
+                }), 400
+        
+        try:
+            import uuid
+            
+            with get_db_session() as session:
+                # Check if username already exists
+                existing = session.query(User).filter_by(username=data['username']).first()
+                if existing:
+                    return jsonify({
+                        "status": "error",
+                        "message": "Username already exists"
+                    }), 400
+                
+                # Check if email already exists
+                existing_email = session.query(User).filter_by(email=data['email']).first()
+                if existing_email:
+                    return jsonify({
+                        "status": "error",
+                        "message": "Email already exists"
+                    }), 400
+                
+                # Create new user
+                new_user = User(
+                    id=str(uuid.uuid4()),
+                    user_uuid=str(uuid.uuid4()),
+                    username=data['username'],
+                    email=data['email'],
+                    password_hash=hash_password(data['password']),
+                    display_name=data.get('display_name', data['username']),
+                    full_name=data.get('full_name'),
+                    profile_tier=data.get('profile_tier', 'user'),
+                    is_admin=(data.get('profile_tier', 'user') == 'admin'),
+                    is_active=True,
+                    failed_login_attempts=0,
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc)
+                )
+                
+                session.add(new_user)
+                session.commit()
+                
+                # Log admin action
+                audit.log_admin_action(
+                    admin_user.id,
+                    "user_create",
+                    new_user.id,
+                    f"Created user {new_user.username}"
+                )
+                
+                return jsonify({
+                    "status": "success",
+                    "message": "User created successfully",
+                    "user": {
+                        "id": new_user.id,
+                        "username": new_user.username,
+                        "email": new_user.email,
+                        "display_name": new_user.display_name,
+                        "profile_tier": new_user.profile_tier
+                    }
+                }), 201
+                
+        except Exception as e:
+            logger.error(f"Failed to create user: {e}", exc_info=True)
+            return jsonify({"status": "error", "message": str(e)}), 500
+    
+    # GET - List users
     limit = int(request.args.get('limit', 50))
     offset = int(request.args.get('offset', 0))
     search = request.args.get('search')
@@ -284,8 +373,15 @@ async def list_users():
             total = query.count()
             users = query.order_by(User.created_at.desc()).offset(offset).limit(limit).all()
             
+            # Get current user for comparison
+            current_user = get_current_user_from_request()
+            
             user_list = []
             for user in users:
+                # Get feature count for this user's tier
+                from trusted_data_agent.auth.features import get_user_features
+                user_features = get_user_features(user)
+                
                 user_list.append({
                     'id': user.id,
                     'user_uuid': user.user_uuid,
@@ -295,6 +391,8 @@ async def list_users():
                     'is_active': user.is_active,
                     'is_admin': user.is_admin,
                     'profile_tier': user.profile_tier,
+                    'feature_count': len(user_features),
+                    'is_current_user': current_user and user.id == current_user.id,
                     'created_at': user.created_at.isoformat(),
                     'last_login_at': user.last_login_at.isoformat() if user.last_login_at else None,
                     'failed_login_attempts': user.failed_login_attempts
@@ -415,6 +513,33 @@ async def manage_user(user_id: str):
                 if 'display_name' in data:
                     user.display_name = data['display_name']
                     changes.append(f"display_name={user.display_name}")
+                
+                if 'email' in data:
+                    # Check if email is already taken by another user
+                    existing = session.query(User).filter_by(email=data['email']).first()
+                    if existing and existing.id != user_id:
+                        return jsonify({
+                            "status": "error",
+                            "message": "Email already in use"
+                        }), 400
+                    user.email = data['email']
+                    changes.append(f"email={user.email}")
+                
+                if 'username' in data:
+                    # Check if username is already taken by another user
+                    existing = session.query(User).filter_by(username=data['username']).first()
+                    if existing and existing.id != user_id:
+                        return jsonify({
+                            "status": "error",
+                            "message": "Username already in use"
+                        }), 400
+                    user.username = data['username']
+                    changes.append(f"username={user.username}")
+                
+                if 'password' in data and data['password']:
+                    # Admin can reset user password
+                    user.password_hash = hash_password(data['password'])
+                    changes.append("password=***")
                 
                 user.updated_at = datetime.now(timezone.utc)
                 
@@ -675,3 +800,446 @@ async def get_admin_stats():
     except Exception as e:
         logger.error(f"Failed to get stats: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ==============================================================================
+# FEATURE MANAGEMENT ENDPOINTS
+# ==============================================================================
+
+@admin_api_bp.route("/v1/admin/features", methods=["GET"])
+@require_admin
+async def get_all_features():
+    """
+    Get all features with their tier mappings and metadata.
+    
+    Returns:
+    {
+        "status": "success",
+        "features": [
+            {
+                "name": "execute_prompts",
+                "display_name": "Execute Prompts",
+                "required_tier": "user",
+                "category": "Core Execution",
+                "description": "Execute AI prompts"
+            },
+            ...
+        ],
+        "feature_count_by_tier": {
+            "user": 19,
+            "developer": 25,
+            "admin": 22
+        }
+    }
+    """
+    try:
+        from trusted_data_agent.auth.features import (
+            Feature, FEATURE_TIER_MAP, get_feature_info
+        )
+        from trusted_data_agent.auth.admin import PROFILE_TIER_USER, PROFILE_TIER_DEVELOPER, PROFILE_TIER_ADMIN
+        
+        feature_info = get_feature_info()
+        
+        # Count features by tier (features exclusive to that tier)
+        tier_counts = {
+            PROFILE_TIER_USER: 0,
+            PROFILE_TIER_DEVELOPER: 0,
+            PROFILE_TIER_ADMIN: 0
+        }
+        
+        for feature_name, tier in FEATURE_TIER_MAP.items():
+            tier_counts[tier] = tier_counts.get(tier, 0) + 1
+        
+        return jsonify({
+            "status": "success",
+            "features": feature_info,
+            "feature_count_by_tier": tier_counts
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Failed to get features: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_api_bp.route("/v1/admin/features/<feature_name>/tier", methods=["PATCH"])
+@require_admin
+async def update_feature_tier(feature_name: str):
+    """
+    Update the required tier for a specific feature.
+    
+    Request body:
+    {
+        "required_tier": "developer"  // "user", "developer", or "admin"
+    }
+    
+    Returns:
+    {
+        "status": "success",
+        "feature": "create_rag_collections",
+        "old_tier": "developer",
+        "new_tier": "admin"
+    }
+    """
+    try:
+        from trusted_data_agent.auth.features import Feature, FEATURE_TIER_MAP
+        from trusted_data_agent.auth.admin import (
+            PROFILE_TIER_USER, PROFILE_TIER_DEVELOPER, PROFILE_TIER_ADMIN, TIER_HIERARCHY
+        )
+        
+        data = await request.get_json()
+        new_tier = data.get("required_tier")
+        
+        if not new_tier or new_tier not in TIER_HIERARCHY:
+            return jsonify({
+                "status": "error",
+                "message": f"Invalid tier. Must be one of: {', '.join(TIER_HIERARCHY)}"
+            }), 400
+        
+        # Find the feature
+        feature_enum = None
+        for f in Feature:
+            if f.value == feature_name:
+                feature_enum = f
+                break
+        
+        if not feature_enum:
+            return jsonify({
+                "status": "error",
+                "message": f"Feature '{feature_name}' not found"
+            }), 404
+        
+        old_tier = FEATURE_TIER_MAP.get(feature_enum)
+        
+        # Update the feature tier mapping (in-memory)
+        FEATURE_TIER_MAP[feature_enum] = new_tier
+        
+        # Log the change
+        current_user = get_current_user_from_request()
+        audit.log_audit_event(
+            user_id=current_user.id if current_user else None,
+            action='feature_tier_changed',
+            details=f"Changed feature '{feature_name}' tier from '{old_tier}' to '{new_tier}'",
+            success=True,
+            resource=f'/api/v1/admin/features/{feature_name}/tier',
+            metadata={
+                "feature": feature_name,
+                "old_tier": old_tier,
+                "new_tier": new_tier
+            }
+        )
+        
+        return jsonify({
+            "status": "success",
+            "feature": feature_name,
+            "old_tier": old_tier,
+            "new_tier": new_tier,
+            "message": "Feature tier updated successfully"
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Failed to update feature tier: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_api_bp.route("/v1/admin/features/reset", methods=["POST"])
+@require_admin
+async def reset_feature_tiers():
+    """
+    Reset all feature tiers to their default values.
+    
+    Returns:
+    {
+        "status": "success",
+        "message": "Feature tiers reset to defaults",
+        "reset_count": 66
+    }
+    """
+    try:
+        from trusted_data_agent.auth.features import Feature, FEATURE_TIER_MAP, get_default_feature_tier_map
+        
+        # Get default mappings
+        default_map = get_default_feature_tier_map()
+        
+        # Reset all features
+        reset_count = 0
+        for feature, default_tier in default_map.items():
+            if FEATURE_TIER_MAP.get(feature) != default_tier:
+                FEATURE_TIER_MAP[feature] = default_tier
+                reset_count += 1
+        
+        # Log the reset
+        current_user = get_current_user_from_request()
+        audit.log_audit_event(
+            user_id=current_user.id if current_user else None,
+            action='features_reset',
+            details=f"Reset all feature tiers to defaults ({reset_count} changes)",
+            success=True,
+            resource='/api/v1/admin/features/reset',
+            metadata={"reset_count": reset_count}
+        )
+        
+        return jsonify({
+            "status": "success",
+            "message": "Feature tiers reset to defaults",
+            "reset_count": reset_count
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Failed to reset feature tiers: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ==============================================================================
+# PANE VISIBILITY MANAGEMENT
+# ==============================================================================
+
+@admin_api_bp.route('/v1/admin/panes', methods=['GET'])
+@require_admin
+async def get_panes():
+    """
+    Get all pane visibility configurations.
+    
+    Returns list of panes with tier visibility settings.
+    
+    Example Response:
+    {
+        "status": "success",
+        "panes": [
+            {
+                "id": "uuid",
+                "pane_id": "conversation",
+                "pane_name": "Conversations",
+                "visible_to_user": true,
+                "visible_to_developer": true,
+                "visible_to_admin": true,
+                "description": "Chat interface for conversations",
+                "display_order": 1
+            },
+            ...
+        ]
+    }
+    """
+    try:
+        from trusted_data_agent.auth.models import PaneVisibility
+        
+        with get_db_session() as session:
+            # Get all pane configurations
+            panes = session.query(PaneVisibility).order_by(PaneVisibility.display_order).all()
+            
+            # If no panes exist, initialize with defaults
+            if not panes:
+                panes = initialize_default_panes(session)
+            
+            panes_data = [pane.to_dict() for pane in panes]
+        
+        return jsonify({
+            "status": "success",
+            "panes": panes_data
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Failed to get panes: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_api_bp.route('/v1/admin/panes/<pane_id>/visibility', methods=['PATCH'])
+@require_admin
+async def update_pane_visibility(pane_id: str):
+    """
+    Update visibility settings for a specific pane.
+    
+    Request Body:
+    {
+        "visible_to_user": true,
+        "visible_to_developer": true,
+        "visible_to_admin": true
+    }
+    
+    Returns updated pane configuration.
+    """
+    try:
+        from trusted_data_agent.auth.models import PaneVisibility
+        
+        data = await request.get_json()
+        
+        with get_db_session() as session:
+            # Get pane
+            pane = session.query(PaneVisibility).filter_by(pane_id=pane_id).first()
+            if not pane:
+                return jsonify({
+                    "status": "error",
+                    "message": f"Pane '{pane_id}' not found"
+                }), 404
+            
+            # Update visibility flags
+            if 'visible_to_user' in data:
+                pane.visible_to_user = bool(data['visible_to_user'])
+            if 'visible_to_developer' in data:
+                pane.visible_to_developer = bool(data['visible_to_developer'])
+            if 'visible_to_admin' in data:
+                pane.visible_to_admin = bool(data['visible_to_admin'])
+            
+            # Admin pane must always be visible to admins
+            if pane_id == 'admin':
+                pane.visible_to_admin = True
+            
+            pane_dict = pane.to_dict()
+        
+        # Log the change
+        current_user = get_current_user_from_request()
+        audit.log_audit_event(
+            user_id=current_user.id if current_user else None,
+            action='pane_visibility_updated',
+            details=f"Updated visibility for pane '{pane_id}'",
+            success=True,
+            resource=f'/api/v1/admin/panes/{pane_id}/visibility',
+            metadata=pane_dict
+        )
+        
+        return jsonify({
+            "status": "success",
+            "pane": pane_dict
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Failed to update pane visibility: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_api_bp.route('/v1/admin/panes/reset', methods=['POST'])
+@require_admin
+async def reset_panes():
+    """
+    Reset all pane visibility settings to defaults.
+    
+    Default Configuration:
+    - admin: admin only
+    - developer: developer + admin
+    - user: all tiers
+    
+    Returns:
+    {
+        "status": "success",
+        "message": "Pane visibility reset to defaults",
+        "panes": [...]
+    }
+    """
+    try:
+        from trusted_data_agent.auth.models import PaneVisibility
+        
+        with get_db_session() as session:
+            # Delete all existing panes
+            session.query(PaneVisibility).delete()
+            session.commit()
+            
+            # Recreate with defaults
+            panes = initialize_default_panes(session)
+            panes_data = [pane.to_dict() for pane in panes]
+        
+        # Log the reset
+        current_user = get_current_user_from_request()
+        audit.log_audit_event(
+            user_id=current_user.id if current_user else None,
+            action='panes_reset',
+            details="Reset all pane visibility to defaults",
+            success=True,
+            resource='/api/v1/admin/panes/reset'
+        )
+        
+        return jsonify({
+            "status": "success",
+            "message": "Pane visibility reset to defaults",
+            "panes": panes_data
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Failed to reset panes: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+def initialize_default_panes(session):
+    """
+    Initialize pane visibility with default configuration.
+    
+    Default Configuration:
+    - Conversations: all tiers
+    - Marketplace: all tiers
+    - Credentials: all tiers
+    - Executions: developer + admin
+    - RAG Maintenance: developer + admin
+    - Administration: admin only
+    
+    Args:
+        session: SQLAlchemy session
+        
+    Returns:
+        List of created PaneVisibility objects
+    """
+    from trusted_data_agent.auth.models import PaneVisibility
+    
+    default_panes = [
+        {
+            'pane_id': 'conversation',
+            'pane_name': 'Conversations',
+            'description': 'Chat interface for conversations',
+            'display_order': 1,
+            'visible_to_user': True,
+            'visible_to_developer': True,
+            'visible_to_admin': True
+        },
+        {
+            'pane_id': 'executions',
+            'pane_name': 'Executions',
+            'description': 'Execution dashboard and history',
+            'display_order': 2,
+            'visible_to_user': False,
+            'visible_to_developer': True,
+            'visible_to_admin': True
+        },
+        {
+            'pane_id': 'rag-maintenance',
+            'pane_name': 'RAG Maintenance',
+            'description': 'Manage RAG collections and templates',
+            'display_order': 3,
+            'visible_to_user': False,
+            'visible_to_developer': True,
+            'visible_to_admin': True
+        },
+        {
+            'pane_id': 'marketplace',
+            'pane_name': 'Marketplace',
+            'description': 'Browse and install RAG templates',
+            'display_order': 4,
+            'visible_to_user': True,
+            'visible_to_developer': True,
+            'visible_to_admin': True
+        },
+        {
+            'pane_id': 'credentials',
+            'pane_name': 'Credentials',
+            'description': 'Configure LLM and MCP credentials',
+            'display_order': 5,
+            'visible_to_user': True,
+            'visible_to_developer': True,
+            'visible_to_admin': True
+        },
+        {
+            'pane_id': 'admin',
+            'pane_name': 'Administration',
+            'description': 'User and system administration',
+            'display_order': 6,
+            'visible_to_user': False,
+            'visible_to_developer': False,
+            'visible_to_admin': True
+        }
+    ]
+    
+    panes = []
+    for pane_data in default_panes:
+        pane = PaneVisibility(**pane_data)
+        session.add(pane)
+        panes.append(pane)
+    
+    session.commit()
+    
+    return panes

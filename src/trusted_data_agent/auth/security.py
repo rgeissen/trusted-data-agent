@@ -279,7 +279,13 @@ def check_user_lockout(user: User) -> tuple[bool, Optional[datetime]]:
     
     now = datetime.now(timezone.utc)
     
-    if user.locked_until > now:
+    # Handle both timezone-aware and naive datetimes
+    locked_until = user.locked_until
+    if locked_until.tzinfo is None:
+        # Make naive datetime aware (assume UTC)
+        locked_until = locked_until.replace(tzinfo=timezone.utc)
+    
+    if locked_until > now:
         return True, user.locked_until
     
     # Lockout expired, clear it

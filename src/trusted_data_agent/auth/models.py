@@ -218,3 +218,43 @@ class PasswordResetToken(Base):
         """Check if reset token is still valid."""
         now = datetime.now(timezone.utc)
         return not self.used and self.expires_at > now
+
+
+class PaneVisibility(Base):
+    """Pane visibility configuration for tier-based access control."""
+    
+    __tablename__ = 'pane_visibility'
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    pane_id = Column(String(50), nullable=False, unique=True, index=True)  # conversation, executions, rag-maintenance, marketplace, credentials, admin
+    pane_name = Column(String(100), nullable=False)  # Display name
+    
+    # Tier visibility flags
+    visible_to_user = Column(Boolean, default=True, nullable=False)
+    visible_to_developer = Column(Boolean, default=True, nullable=False)
+    visible_to_admin = Column(Boolean, default=True, nullable=False)
+    
+    # Metadata
+    description = Column(String(255), nullable=True)
+    display_order = Column(Integer, default=0, nullable=False)
+    
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    def __repr__(self):
+        return f"<PaneVisibility(pane_id='{self.pane_id}', user={self.visible_to_user}, dev={self.visible_to_developer}, admin={self.visible_to_admin})>"
+    
+    def to_dict(self):
+        """Convert pane visibility to dictionary for API responses."""
+        return {
+            'id': self.id,
+            'pane_id': self.pane_id,
+            'pane_name': self.pane_name,
+            'visible_to_user': self.visible_to_user,
+            'visible_to_developer': self.visible_to_developer,
+            'visible_to_admin': self.visible_to_admin,
+            'description': self.description,
+            'display_order': self.display_order,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }

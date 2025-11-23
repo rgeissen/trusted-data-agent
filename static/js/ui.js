@@ -1923,6 +1923,16 @@ export function handleViewSwitch(viewId) {
             console.error('[UI DEBUG] ExecutionDashboard not initialized');
         }
     }
+    
+    // 8. If switching to Admin view, load users and features
+    if (viewId === 'admin-view') {
+        if (window.AdminManager) {
+            window.AdminManager.loadUsers();
+            window.AdminManager.loadFeatures();
+        } else {
+            console.error('[UI DEBUG] AdminManager not initialized');
+        }
+    }
 }
 
 /**

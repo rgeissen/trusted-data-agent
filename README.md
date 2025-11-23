@@ -480,9 +480,9 @@ Profiles combine an MCP Server with an LLM Provider to create named configuratio
 
 3. **Save:** Click "Add Profile" to create the profile.
 
-##### Step 4: Connect and Load
+##### Step 4: Start Conversation
 
-1. Click the **"Reconnect & Load"** button to activate your default profile.
+1. Click the **"Start Conversation"** button to activate your default profile.
 
 2. The application will validate connections, load capabilities from the MCP Server, and prepare the agent for interaction.
 

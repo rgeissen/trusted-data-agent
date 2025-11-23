@@ -1006,7 +1006,7 @@ async function showWelcomeScreen() {
     if (welcomeBtn && !welcomeBtn.dataset._wired) {
         welcomeBtn.addEventListener('click', async () => {
             if (hasSavedConfig) {
-                // User has saved config - connect and load automatically
+                // User has saved config - start conversation automatically
                 
                 // Show spinning cogwheel and update button text
                 if (welcomeCogwheel) {
