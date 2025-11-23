@@ -25,12 +25,17 @@ logger = logging.getLogger("quart.app")
 
 
 def _get_user_uuid_from_request():
-    """Extract user UUID from request (from auth token or header)."""
+    """
+    Extract user ID from request (from auth token or header).
+    
+    IMPORTANT: Returns user.id (database primary key), NOT user.user_uuid.
+    The user.id is required for foreign key constraints in user_credentials table.
+    """
     user = get_current_user_from_request()
     if user:
-        return user.user_uuid
+        return user.id  # Return database ID, not user_uuid
     
-    # Fallback to header
+    # Fallback to header (for non-auth mode compatibility)
     return request.headers.get("X-TDA-User-UUID")
 
 

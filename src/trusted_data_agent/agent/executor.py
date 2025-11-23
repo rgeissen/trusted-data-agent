@@ -25,7 +25,7 @@ from trusted_data_agent.core.config import (
 )
 # --- MODIFICATION END ---
 from trusted_data_agent.agent.response_models import CanonicalResponse, PromptReportResponse
-from trusted_data_agent.mcp import adapter as mcp_adapter
+from trusted_data_agent.mcp_adapter import adapter as mcp_adapter
 
 
 # Refactored components

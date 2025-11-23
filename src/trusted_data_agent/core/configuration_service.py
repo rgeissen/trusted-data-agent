@@ -23,7 +23,7 @@ from trusted_data_agent.core.config import (
     set_user_server_configs
 )
 from trusted_data_agent.llm import handler as llm_handler
-from trusted_data_agent.mcp import adapter as mcp_adapter
+from trusted_data_agent.mcp_adapter import adapter as mcp_adapter
 from trusted_data_agent.core.utils import unwrap_exception, _regenerate_contexts
 # --- MODIFICATION START: Import RAGRetriever, config_manager, and encryption ---
 from trusted_data_agent.agent.rag_retriever import RAGRetriever
@@ -86,6 +86,21 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             
             # --- 1. LLM Client Validation ---
             credentials = config_data.get("credentials", {})
+            use_stored_credentials = config_data.get("use_stored_credentials", False)
+            
+            # --- PHASE 4: Auto-load stored credentials if requested ---
+            if use_stored_credentials and user_uuid and ENCRYPTION_AVAILABLE:
+                app_logger.info(f"Attempting to load stored credentials for provider: {provider}")
+                stored_result = await retrieve_credentials_for_provider(user_uuid, provider)
+                
+                if stored_result.get("credentials"):
+                    # Merge stored credentials with provided credentials (provided takes precedence)
+                    stored_creds = stored_result["credentials"]
+                    credentials = {**stored_creds, **credentials}
+                    app_logger.info(f"Loaded {len(stored_creds)} stored credential fields for {provider}")
+                else:
+                    app_logger.info(f"No stored credentials found for {provider}, using provided credentials")
+            # --- END PHASE 4 ---
             if provider == "Google":
                 genai.configure(api_key=credentials.get("apiKey"))
                 temp_llm_instance = genai.GenerativeModel(model)
@@ -180,6 +195,19 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             app_logger.info("MCP server connection validated successfully.")
 
             app_logger.info("All validations passed. Committing configuration to application state.")
+            
+            # --- PHASE 4: Optionally save credentials after successful validation ---
+            save_credentials = config_data.get("save_credentials", False)
+            if save_credentials and user_uuid and ENCRYPTION_AVAILABLE and not use_stored_credentials:
+                # Only save if not using already-stored credentials
+                try:
+                    save_result = await store_credentials_for_provider(user_uuid, provider, credentials)
+                    if save_result.get("status") == "success":
+                        app_logger.info(f"Saved validated credentials for {provider}")
+                except Exception as e:
+                    # Don't fail configuration if credential save fails
+                    app_logger.warning(f"Failed to save credentials: {e}")
+            # --- END PHASE 4 ---
             
             # --- 3. Commit to Global State (with per-user isolation support) ---
             set_user_provider(provider, user_uuid)

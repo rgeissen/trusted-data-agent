@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Tuple, Dict, Any, List
 from abc import ABC, abstractmethod
 
 from trusted_data_agent.core import session_manager
-from trusted_data_agent.mcp import adapter as mcp_adapter
+from trusted_data_agent.mcp_adapter import adapter as mcp_adapter
 from trusted_data_agent.core.config import APP_CONFIG, AppConfig
 from trusted_data_agent.agent.prompts import (
     ERROR_RECOVERY_PROMPT,

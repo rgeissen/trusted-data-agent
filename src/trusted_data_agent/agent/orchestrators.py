@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 import re
 
-from trusted_data_agent.mcp import adapter as mcp_adapter
+from trusted_data_agent.mcp_adapter import adapter as mcp_adapter
 from trusted_data_agent.llm import handler as llm_handler
 from trusted_data_agent.core.config import AppConfig
 from trusted_data_agent.core.utils import get_argument_by_canonical_name

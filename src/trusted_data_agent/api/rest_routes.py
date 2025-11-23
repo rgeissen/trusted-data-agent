@@ -720,6 +720,54 @@ async def configure_services_rest():
         return jsonify(result), 400
 
 
+@rest_api_bp.route("/v1/config/stored-credentials", methods=["GET"])
+async def get_stored_credentials_info():
+    """
+    Get information about stored credentials for the current user.
+    Does not return actual credential values, only metadata.
+    
+    Returns:
+    {
+        "status": "success",
+        "has_stored_credentials": true,
+        "providers": ["Amazon", "Google"],
+        "credentials_available": {
+            "Amazon": ["aws_access_key_id", "aws_secret_access_key", "aws_region"],
+            "Google": ["apiKey"]
+        }
+    }
+    """
+    user_uuid = _get_user_uuid_from_request()
+    if not user_uuid:
+        return jsonify({"status": "error", "message": "Authentication required"}), 401
+    
+    try:
+        result = await configuration_service.list_user_providers(user_uuid)
+        
+        if result["status"] != "success":
+            return jsonify(result), 500
+        
+        providers = result.get("providers", [])
+        credentials_available = {}
+        
+        # Get credential keys for each provider (without values)
+        for provider in providers:
+            cred_result = await configuration_service.retrieve_credentials_for_provider(user_uuid, provider)
+            if cred_result.get("credentials"):
+                credentials_available[provider] = list(cred_result["credentials"].keys())
+        
+        return jsonify({
+            "status": "success",
+            "has_stored_credentials": len(providers) > 0,
+            "providers": providers,
+            "credentials_available": credentials_available
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Failed to get stored credentials info: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @rest_api_bp.route("/v1/config/classification", methods=["GET", "PUT"])
 async def manage_classification_setting():
     """
