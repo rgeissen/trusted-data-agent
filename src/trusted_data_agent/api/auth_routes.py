@@ -405,6 +405,8 @@ async def get_current_user_info(current_user):
         200: User information
         401: Not authenticated
     """
+    from trusted_data_agent.auth.admin import get_user_tier
+    
     return jsonify({
         'status': 'success',
         'user': {
@@ -414,10 +416,58 @@ async def get_current_user_info(current_user):
             'display_name': current_user.display_name,
             'email': current_user.email,
             'is_admin': current_user.is_admin,
+            'profile_tier': get_user_tier(current_user),
             'is_active': current_user.is_active,
             'created_at': current_user.created_at.isoformat(),
             'last_login_at': current_user.last_login_at.isoformat() if current_user.last_login_at else None
         }
+    }), 200
+
+
+@auth_bp.route('/me/features', methods=['GET'])
+@require_auth
+async def get_user_features_endpoint(current_user):
+    """
+    Get all features available to the current user based on their profile tier.
+    
+    Requires: Authorization header with Bearer token
+    
+    Response:
+        200: {
+            "status": "success",
+            "profile_tier": "developer",
+            "features": ["execute_prompts", "view_own_sessions", ...],
+            "feature_groups": {
+                "session_management": true,
+                "rag_management": true,
+                ...
+            },
+            "feature_count": 35
+        }
+        401: Not authenticated
+    """
+    from trusted_data_agent.auth.features import (
+        get_user_features,
+        get_user_tier,
+        FEATURE_GROUPS,
+        user_has_feature_group
+    )
+    
+    tier = get_user_tier(current_user)
+    features = get_user_features(current_user)
+    feature_list = sorted([f.value for f in features])
+    
+    # Check feature group access
+    feature_groups = {}
+    for group_name in FEATURE_GROUPS.keys():
+        feature_groups[group_name] = user_has_feature_group(current_user, group_name)
+    
+    return jsonify({
+        'status': 'success',
+        'profile_tier': tier,
+        'features': feature_list,
+        'feature_groups': feature_groups,
+        'feature_count': len(feature_list)
     }), 200
 
 

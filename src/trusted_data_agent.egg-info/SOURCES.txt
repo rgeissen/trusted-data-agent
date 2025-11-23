@@ -30,6 +30,7 @@ src/trusted_data_agent/auth/admin.py
 src/trusted_data_agent/auth/audit.py
 src/trusted_data_agent/auth/database.py
 src/trusted_data_agent/auth/encryption.py
+src/trusted_data_agent/auth/features.py
 src/trusted_data_agent/auth/middleware.py
 src/trusted_data_agent/auth/models.py
 src/trusted_data_agent/auth/rate_limiter.py

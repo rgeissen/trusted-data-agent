@@ -1,4 +1,3 @@
-"""
 """Admin utilities and permission checks for Phase 4.
 
 Provides admin-only functionality including user management,
