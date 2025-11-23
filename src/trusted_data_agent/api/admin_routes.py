@@ -1450,6 +1450,19 @@ async def get_expert_settings():
                 'max_execution_steps': APP_CONFIG.MAX_EXECUTION_STEPS if hasattr(APP_CONFIG, 'MAX_EXECUTION_STEPS') else 25,
                 'tool_call_timeout': APP_CONFIG.TOOL_CALL_TIMEOUT if hasattr(APP_CONFIG, 'TOOL_CALL_TIMEOUT') else 60
             },
+            'performance': {
+                'context_max_rows': APP_CONFIG.CONTEXT_DISTILLATION_MAX_ROWS,
+                'context_max_chars': APP_CONFIG.CONTEXT_DISTILLATION_MAX_CHARS,
+                'description_threshold': APP_CONFIG.DETAILED_DESCRIPTION_THRESHOLD
+            },
+            'agent_behavior': {
+                'allow_synthesis': APP_CONFIG.ALLOW_SYNTHESIS_FROM_HISTORY,
+                'force_sub_summary': APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY,
+                'condense_prompts': APP_CONFIG.CONDENSE_SYSTEMPROMPT_HISTORY
+            },
+            'query_optimization': {
+                'enable_sql_consolidation': APP_CONFIG.ENABLE_SQL_CONSOLIDATION_REWRITE
+            },
             'security': {
                 'session_timeout': APP_CONFIG.SESSION_TIMEOUT_HOURS if hasattr(APP_CONFIG, 'SESSION_TIMEOUT_HOURS') else 24,
                 'token_expiry': APP_CONFIG.TOKEN_EXPIRY_HOURS if hasattr(APP_CONFIG, 'TOKEN_EXPIRY_HOURS') else 168
@@ -1506,6 +1519,32 @@ async def save_expert_settings():
                 APP_CONFIG.MAX_EXECUTION_STEPS = int(agent['max_execution_steps'])
             if 'tool_call_timeout' in agent:
                 APP_CONFIG.TOOL_CALL_TIMEOUT = int(agent['tool_call_timeout'])
+        
+        # Update performance settings
+        if 'performance' in data:
+            perf = data['performance']
+            if 'context_max_rows' in perf:
+                APP_CONFIG.CONTEXT_DISTILLATION_MAX_ROWS = int(perf['context_max_rows'])
+            if 'context_max_chars' in perf:
+                APP_CONFIG.CONTEXT_DISTILLATION_MAX_CHARS = int(perf['context_max_chars'])
+            if 'description_threshold' in perf:
+                APP_CONFIG.DETAILED_DESCRIPTION_THRESHOLD = int(perf['description_threshold'])
+        
+        # Update agent behavior settings
+        if 'agent_behavior' in data:
+            behavior = data['agent_behavior']
+            if 'allow_synthesis' in behavior:
+                APP_CONFIG.ALLOW_SYNTHESIS_FROM_HISTORY = bool(behavior['allow_synthesis'])
+            if 'force_sub_summary' in behavior:
+                APP_CONFIG.SUB_PROMPT_FORCE_SUMMARY = bool(behavior['force_sub_summary'])
+            if 'condense_prompts' in behavior:
+                APP_CONFIG.CONDENSE_SYSTEMPROMPT_HISTORY = bool(behavior['condense_prompts'])
+        
+        # Update query optimization settings
+        if 'query_optimization' in data:
+            query_opt = data['query_optimization']
+            if 'enable_sql_consolidation' in query_opt:
+                APP_CONFIG.ENABLE_SQL_CONSOLIDATION_REWRITE = bool(query_opt['enable_sql_consolidation'])
         
         # Update security settings
         if 'security' in data:
@@ -1617,7 +1656,12 @@ async def get_app_config():
             'config': {
                 'rag_enabled': APP_CONFIG.RAG_ENABLED,
                 'voice_conversation_enabled': APP_CONFIG.VOICE_CONVERSATION_ENABLED,
-                'charting_enabled': APP_CONFIG.CHARTING_ENABLED
+                'charting_enabled': APP_CONFIG.CHARTING_ENABLED,
+                'rag_config': {
+                    'refresh_on_startup': APP_CONFIG.RAG_REFRESH_ON_STARTUP,
+                    'num_examples': APP_CONFIG.RAG_NUM_EXAMPLES,
+                    'embedding_model': APP_CONFIG.RAG_EMBEDDING_MODEL
+                }
             }
         }), 200
     except Exception as e:
@@ -1650,13 +1694,31 @@ async def save_app_config():
             APP_CONFIG.CHARTING_ENABLED = bool(data['charting_enabled'])
             logger.info(f"Charting enabled: {APP_CONFIG.CHARTING_ENABLED}")
         
+        # Update RAG configuration
+        if 'rag_config' in data:
+            rag_config = data['rag_config']
+            if 'refresh_on_startup' in rag_config:
+                APP_CONFIG.RAG_REFRESH_ON_STARTUP = bool(rag_config['refresh_on_startup'])
+                logger.info(f"RAG refresh on startup: {APP_CONFIG.RAG_REFRESH_ON_STARTUP}")
+            if 'num_examples' in rag_config:
+                APP_CONFIG.RAG_NUM_EXAMPLES = int(rag_config['num_examples'])
+                logger.info(f"RAG num examples: {APP_CONFIG.RAG_NUM_EXAMPLES}")
+            if 'embedding_model' in rag_config:
+                APP_CONFIG.RAG_EMBEDDING_MODEL = str(rag_config['embedding_model'])
+                logger.info(f"RAG embedding model: {APP_CONFIG.RAG_EMBEDDING_MODEL}")
+        
         return jsonify({
             'status': 'success',
             'message': 'Application configuration updated successfully',
             'config': {
                 'rag_enabled': APP_CONFIG.RAG_ENABLED,
                 'voice_conversation_enabled': APP_CONFIG.VOICE_CONVERSATION_ENABLED,
-                'charting_enabled': APP_CONFIG.CHARTING_ENABLED
+                'charting_enabled': APP_CONFIG.CHARTING_ENABLED,
+                'rag_config': {
+                    'refresh_on_startup': APP_CONFIG.RAG_REFRESH_ON_STARTUP,
+                    'num_examples': APP_CONFIG.RAG_NUM_EXAMPLES,
+                    'embedding_model': APP_CONFIG.RAG_EMBEDDING_MODEL
+                }
             }
         }), 200
         

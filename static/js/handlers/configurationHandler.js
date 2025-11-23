@@ -52,6 +52,9 @@ function showNotification(type, message) {
     }, 5000);
 }
 
+// Make showNotification globally available for use throughout the application
+window.showNotification = showNotification;
+
 function generateId() {
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }

@@ -9,23 +9,6 @@ const AdminManager = {
     featureChanges: {},
 
     /**
-     * Show notification message
-     */
-    showNotification(message, type = 'info') {
-        // Simple notification fallback
-        const color = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600';
-        const notification = document.createElement('div');
-        notification.className = `fixed top-4 right-4 ${color} text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-opacity`;
-        notification.textContent = message;
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            setTimeout(() => notification.remove(), 300);
-        }, 3000);
-    },
-
-    /**
      * Initialize the administration module
      */
     init() {
@@ -206,11 +189,11 @@ const AdminManager = {
                 this.renderUsers();
                 this.updateUserStats();
             } else {
-                this.showNotification(data.message || 'Failed to load users', 'error');
+                window.showNotification('error', data.message || 'Failed to load users');
             }
         } catch (error) {
             console.error('[AdminManager] Error loading users:', error);
-            this.showNotification('Failed to load users', 'error');
+            window.showNotification('error', 'Failed to load users');
         }
     },
 
@@ -344,15 +327,15 @@ const AdminManager = {
             const data = await response.json();
 
             if (data.status === 'success') {
-                this.showNotification(`User tier updated to ${newTier}`, 'success');
+                window.showNotification('success', `User tier updated to ${newTier}`);
                 await this.loadUsers(); // Reload to get updated feature counts
             } else {
-                this.showNotification(data.message || 'Failed to update user tier', 'error');
+                window.showNotification('error', data.message || 'Failed to update user tier');
                 await this.loadUsers(); // Reload to reset select
             }
         } catch (error) {
             console.error('[AdminManager] Error changing user tier:', error);
-            this.showNotification('Failed to update user tier', 'error');
+            window.showNotification('error', 'Failed to update user tier');
             await this.loadUsers();
         }
     },
@@ -377,11 +360,11 @@ const AdminManager = {
                 this.renderFeatures();
                 this.updateFeatureStats(data.feature_count_by_tier);
             } else {
-                this.showNotification(data.message || 'Failed to load features', 'error');
+                window.showNotification('error', data.message || 'Failed to load features');
             }
         } catch (error) {
             console.error('[AdminManager] Error loading features:', error);
-            this.showNotification('Failed to load features', 'error');
+            window.showNotification('error', 'Failed to load features');
         }
     },
 
@@ -491,7 +474,7 @@ const AdminManager = {
      */
     async saveFeatureChanges() {
         if (Object.keys(this.featureChanges).length === 0) {
-            this.showNotification('No changes to save', 'info');
+            window.showNotification('info', 'No changes to save');
             return;
         }
 
@@ -524,10 +507,10 @@ const AdminManager = {
             }
 
             if (successCount > 0) {
-                this.showNotification(`Updated ${successCount} feature(s)`, 'success');
+                window.showNotification('success', `Updated ${successCount} feature(s)`);
             }
             if (errorCount > 0) {
-                this.showNotification(`Failed to update ${errorCount} feature(s)`, 'error');
+                window.showNotification('error', `Failed to update ${errorCount} feature(s)`);
             }
 
             // Reload features to get fresh data
@@ -535,7 +518,7 @@ const AdminManager = {
 
         } catch (error) {
             console.error('[AdminManager] Error saving feature changes:', error);
-            this.showNotification('Failed to save changes', 'error');
+            window.showNotification('error', 'Failed to save changes');
         }
     },
 
@@ -559,14 +542,14 @@ const AdminManager = {
             const data = await response.json();
             
             if (data.status === 'success') {
-                this.showNotification(data.message || 'Features reset to defaults', 'success');
+                window.showNotification('success', data.message || 'Features reset to defaults');
                 await this.loadFeatures();
             } else {
-                this.showNotification(data.message || 'Failed to reset features', 'error');
+                window.showNotification('error', data.message || 'Failed to reset features');
             }
         } catch (error) {
             console.error('[AdminManager] Error resetting features:', error);
-            this.showNotification('Failed to reset features', 'error');
+            window.showNotification('error', 'Failed to reset features');
         }
     },
 
@@ -635,7 +618,7 @@ const AdminManager = {
             // Validate required fields for new user
             if (!isEdit) {
                 if (!formData.username || !formData.email || !formData.password) {
-                    this.showNotification('Please fill in all required fields (username, email, password)', 'error');
+                    window.showNotification('error', 'Please fill in all required fields (username, email, password)');
                     return;
                 }
             }
@@ -669,15 +652,15 @@ const AdminManager = {
             console.log('[AdminManager] Save user response:', data);
             
             if (data.status === 'success') {
-                this.showNotification(isEdit ? 'User updated successfully' : 'User created successfully', 'success');
+                window.showNotification('success', isEdit ? 'User updated successfully' : 'User created successfully');
                 this.hideUserModal();
                 await this.loadUsers();
             } else {
-                this.showNotification(data.message || 'Failed to save user', 'error');
+                window.showNotification('error', data.message || 'Failed to save user');
             }
         } catch (error) {
             console.error('[AdminManager] Error saving user:', error);
-            this.showNotification('Failed to save user', 'error');
+            window.showNotification('error', 'Failed to save user');
         }
     },
     
@@ -705,14 +688,14 @@ const AdminManager = {
             const data = await response.json();
             
             if (data.status === 'success') {
-                this.showNotification('User deleted successfully', 'success');
+                window.showNotification('success', 'User deleted successfully');
                 await this.loadUsers();
             } else {
-                this.showNotification(data.message || 'Failed to delete user', 'error');
+                window.showNotification('error', data.message || 'Failed to delete user');
             }
         } catch (error) {
             console.error('[AdminManager] Error deleting user:', error);
-            this.showNotification('Failed to delete user', 'error');
+            window.showNotification('error', 'Failed to delete user');
         }
     },
 
@@ -743,7 +726,7 @@ const AdminManager = {
         try {
             const token = localStorage.getItem('tda_auth_token');
             if (!token) {
-                this.showNotification('Not authenticated', 'error');
+                window.showNotification('error', 'Not authenticated');
                 return;
             }
 
@@ -763,11 +746,11 @@ const AdminManager = {
                 this.currentPanes = data.panes || [];
                 this.renderPanes();
             } else {
-                this.showNotification(data.message || 'Failed to load panes', 'error');
+                window.showNotification('error', data.message || 'Failed to load panes');
             }
         } catch (error) {
             console.error('[AdminManager] Error loading panes:', error);
-            this.showNotification('Failed to load panes', 'error');
+            window.showNotification('error', 'Failed to load panes');
         }
     },
 
@@ -856,7 +839,7 @@ const AdminManager = {
         try {
             const token = localStorage.getItem('tda_auth_token');
             if (!token) {
-                this.showNotification('Not authenticated', 'error');
+                window.showNotification('error', 'Not authenticated');
                 return;
             }
 
@@ -879,7 +862,7 @@ const AdminManager = {
             const data = await response.json();
             
             if (data.status === 'success') {
-                this.showNotification(`Pane visibility updated for ${tier} tier`, 'success');
+                window.showNotification('success', `Pane visibility updated for ${tier} tier`);
                 
                 // Update local state
                 const paneIndex = this.currentPanes.findIndex(p => p.pane_id === paneId);
@@ -892,13 +875,13 @@ const AdminManager = {
                     window.updatePaneVisibility();
                 }
             } else {
-                this.showNotification(data.message || 'Failed to update pane visibility', 'error');
+                window.showNotification('error', data.message || 'Failed to update pane visibility');
                 // Reload to reset UI
                 await this.loadPanes();
             }
         } catch (error) {
             console.error('[AdminManager] Error updating pane visibility:', error);
-            this.showNotification('Failed to update pane visibility', 'error');
+            window.showNotification('error', 'Failed to update pane visibility');
             // Reload to reset UI
             await this.loadPanes();
         }
@@ -915,7 +898,7 @@ const AdminManager = {
         try {
             const token = localStorage.getItem('tda_auth_token');
             if (!token) {
-                this.showNotification('Not authenticated', 'error');
+                window.showNotification('error', 'Not authenticated');
                 return;
             }
 
@@ -933,7 +916,7 @@ const AdminManager = {
             const data = await response.json();
             
             if (data.status === 'success') {
-                this.showNotification('Pane visibility reset to defaults', 'success');
+                window.showNotification('success', 'Pane visibility reset to defaults');
                 this.currentPanes = data.panes || [];
                 this.renderPanes();
                 
@@ -942,11 +925,11 @@ const AdminManager = {
                     window.updatePaneVisibility();
                 }
             } else {
-                this.showNotification(data.message || 'Failed to reset panes', 'error');
+                window.showNotification('error', data.message || 'Failed to reset panes');
             }
         } catch (error) {
             console.error('[AdminManager] Error resetting panes:', error);
-            this.showNotification('Failed to reset panes', 'error');
+            window.showNotification('error', 'Failed to reset panes');
         }
     },
 
@@ -968,7 +951,7 @@ const AdminManager = {
 
             const token = localStorage.getItem('tda_auth_token');
             if (!token) {
-                this.showNotification('Not authenticated', 'error');
+                window.showNotification('error', 'Not authenticated');
                 return;
             }
 
@@ -988,7 +971,7 @@ const AdminManager = {
             const data = await response.json();
             
             if (data.status === 'success') {
-                this.showNotification('MCP classification completed successfully', 'success');
+                window.showNotification('success', 'MCP classification completed successfully');
                 if (statusEl) statusEl.textContent = 'Classification completed successfully';
                 if (detailsEl) {
                     const details = [];
@@ -1066,14 +1049,14 @@ const AdminManager = {
             
             if (response.ok) {
                 const result = await response.json();
-                this.showNotification(result.message || 'Classification setting updated', 'success');
+                window.showNotification('success', result.message || 'Classification setting updated');
             } else {
                 const error = await response.json().catch(() => ({}));
                 throw new Error(error.message || 'Failed to update setting');
             }
         } catch (error) {
             console.error('[AdminManager] Failed to save classification setting:', error);
-            this.showNotification(`Failed to save setting: ${error.message}`, 'error');
+            window.showNotification('error', `Failed to save setting: ${error.message}`);
             
             // Revert checkbox on error
             const checkbox = document.getElementById('enable-mcp-classification');
@@ -1114,6 +1097,29 @@ const AdminManager = {
                         this.setFieldValue('tool-call-timeout', s.agent_config.tool_call_timeout);
                     }
                     
+                    // Performance & Context
+                    if (s.performance) {
+                        this.setFieldValue('context-max-rows', s.performance.context_max_rows);
+                        this.setFieldValue('context-max-chars', s.performance.context_max_chars);
+                        this.setFieldValue('description-threshold', s.performance.description_threshold);
+                    }
+                    
+                    // Agent Behavior
+                    if (s.agent_behavior) {
+                        const allowSynthesis = document.getElementById('allow-synthesis');
+                        const forceSubSummary = document.getElementById('force-sub-summary');
+                        const condensePrompts = document.getElementById('condense-prompts');
+                        if (allowSynthesis) allowSynthesis.checked = s.agent_behavior.allow_synthesis;
+                        if (forceSubSummary) forceSubSummary.checked = s.agent_behavior.force_sub_summary;
+                        if (condensePrompts) condensePrompts.checked = s.agent_behavior.condense_prompts;
+                    }
+                    
+                    // Query Optimization
+                    if (s.query_optimization) {
+                        const sqlConsolidation = document.getElementById('enable-sql-consolidation');
+                        if (sqlConsolidation) sqlConsolidation.checked = s.query_optimization.enable_sql_consolidation;
+                    }
+                    
                     // Security
                     if (s.security) {
                         this.setFieldValue('session-timeout', s.security.session_timeout);
@@ -1133,7 +1139,7 @@ const AdminManager = {
         try {
             const token = localStorage.getItem('tda_auth_token');
             if (!token) {
-                this.showNotification('Not authenticated', 'error');
+                window.showNotification('error', 'Not authenticated');
                 return;
             }
 
@@ -1145,6 +1151,19 @@ const AdminManager = {
                 agent_config: {
                     max_execution_steps: parseInt(this.getFieldValue('max-execution-steps')),
                     tool_call_timeout: parseInt(this.getFieldValue('tool-call-timeout'))
+                },
+                performance: {
+                    context_max_rows: parseInt(this.getFieldValue('context-max-rows')),
+                    context_max_chars: parseInt(this.getFieldValue('context-max-chars')),
+                    description_threshold: parseInt(this.getFieldValue('description-threshold'))
+                },
+                agent_behavior: {
+                    allow_synthesis: document.getElementById('allow-synthesis')?.checked || false,
+                    force_sub_summary: document.getElementById('force-sub-summary')?.checked || false,
+                    condense_prompts: document.getElementById('condense-prompts')?.checked || false
+                },
+                query_optimization: {
+                    enable_sql_consolidation: document.getElementById('enable-sql-consolidation')?.checked || false
                 },
                 security: {
                     session_timeout: parseInt(this.getFieldValue('session-timeout')),
@@ -1164,13 +1183,20 @@ const AdminManager = {
             const data = await response.json();
             
             if (response.ok && data.status === 'success') {
-                this.showNotification('Expert settings saved successfully', 'success');
+                // Use configurationHandler's notification system (positioned in header)
+                if (window.showNotification) {
+                    window.showNotification('success', 'Expert settings saved successfully');
+                }
             } else {
-                throw new Error(data.message || 'Failed to save settings');
+                if (window.showNotification) {
+                    window.showNotification('error', data.message || 'Failed to save settings');
+                }
             }
         } catch (error) {
             console.error('[AdminManager] Error saving expert settings:', error);
-            this.showNotification(error.message, 'error');
+            if (window.showNotification) {
+                window.showNotification('error', error.message);
+            }
         }
     },
 
@@ -1192,13 +1218,13 @@ const AdminManager = {
             const data = await response.json();
             
             if (response.ok && data.status === 'success') {
-                this.showNotification('Cache cleared successfully', 'success');
+                window.showNotification('success', 'Cache cleared successfully');
             } else {
                 throw new Error(data.message || 'Failed to clear cache');
             }
         } catch (error) {
             console.error('[AdminManager] Error clearing cache:', error);
-            this.showNotification(error.message, 'error');
+            window.showNotification('error', error.message);
         }
     },
 
@@ -1224,13 +1250,13 @@ const AdminManager = {
             const data = await response.json();
             
             if (response.ok && data.status === 'success') {
-                this.showNotification(data.message, 'success');
+                window.showNotification('success', data.message);
             } else {
                 throw new Error(data.message || 'Failed to reset state');
             }
         } catch (error) {
             console.error('[AdminManager] Error resetting state:', error);
-            this.showNotification(error.message, 'error');
+            window.showNotification('error', error.message);
         }
     },
 
@@ -1259,6 +1285,15 @@ const AdminManager = {
                 if (ragCheckbox) ragCheckbox.checked = data.config.rag_enabled || false;
                 if (voiceCheckbox) voiceCheckbox.checked = data.config.voice_conversation_enabled || false;
                 if (chartingCheckbox) chartingCheckbox.checked = data.config.charting_enabled || false;
+                
+                // Set RAG configuration values
+                if (data.config.rag_config) {
+                    const ragRefreshCheckbox = document.getElementById('rag-refresh-startup');
+                    if (ragRefreshCheckbox) ragRefreshCheckbox.checked = data.config.rag_config.refresh_on_startup;
+                    
+                    this.setFieldValue('rag-num-examples', data.config.rag_config.num_examples);
+                    this.setFieldValue('rag-embedding-model', data.config.rag_config.embedding_model);
+                }
             }
         } catch (error) {
             console.error('[AdminManager] Error loading app config:', error);
@@ -1276,11 +1311,17 @@ const AdminManager = {
             const ragCheckbox = document.getElementById('enable-rag-system');
             const voiceCheckbox = document.getElementById('enable-voice-system');
             const chartingCheckbox = document.getElementById('enable-charting-system');
+            const ragRefreshCheckbox = document.getElementById('rag-refresh-startup');
 
             const config = {
                 rag_enabled: ragCheckbox ? ragCheckbox.checked : false,
                 voice_conversation_enabled: voiceCheckbox ? voiceCheckbox.checked : false,
-                charting_enabled: chartingCheckbox ? chartingCheckbox.checked : false
+                charting_enabled: chartingCheckbox ? chartingCheckbox.checked : false,
+                rag_config: {
+                    refresh_on_startup: ragRefreshCheckbox ? ragRefreshCheckbox.checked : true,
+                    num_examples: parseInt(this.getFieldValue('rag-num-examples')) || 3,
+                    embedding_model: this.getFieldValue('rag-embedding-model') || 'all-MiniLM-L6-v2'
+                }
             };
 
             const response = await fetch('/api/v1/admin/app-config', {
@@ -1295,13 +1336,20 @@ const AdminManager = {
             const data = await response.json();
             
             if (response.ok && data.status === 'success') {
-                this.showNotification('Feature settings saved successfully', 'success');
+                // Use configurationHandler's notification system (positioned in header)
+                if (window.showNotification) {
+                    window.showNotification('success', 'Feature settings saved successfully');
+                }
             } else {
-                throw new Error(data.message || 'Failed to save settings');
+                if (window.showNotification) {
+                    window.showNotification('error', data.message || 'Failed to save settings');
+                }
             }
         } catch (error) {
             console.error('[AdminManager] Error saving app config:', error);
-            this.showNotification(error.message, 'error');
+            if (window.showNotification) {
+                window.showNotification('error', error.message);
+            }
         }
     },
 
