@@ -95,7 +95,7 @@ class ConfigManager:
         """
         Load configuration from tda_config.json.
         
-        When CONFIGURATION_PERSISTENCE=false, returns in-memory cache.
+        When CONFIGURATION_PERSISTENCE=false, loads from disk once then uses in-memory cache.
         If the file doesn't exist or is invalid, returns default configuration
         and creates the file.
         
@@ -106,8 +106,18 @@ class ConfigManager:
         from trusted_data_agent.core.config import APP_CONFIG
         if not APP_CONFIG.CONFIGURATION_PERSISTENCE:
             if self._memory_config is None:
-                app_logger.info("Initializing in-memory configuration (persistence disabled)")
-                self._memory_config = self._get_default_config()
+                # First time: load existing config from disk if it exists
+                if self.config_path.exists():
+                    try:
+                        with open(self.config_path, 'r', encoding='utf-8') as f:
+                            self._memory_config = json.load(f)
+                        app_logger.info("Loaded existing configuration into memory (persistence disabled)")
+                    except Exception as e:
+                        app_logger.warning(f"Failed to load config from disk: {e}. Using default.")
+                        self._memory_config = self._get_default_config()
+                else:
+                    app_logger.info("No config file found. Initializing in-memory configuration (persistence disabled)")
+                    self._memory_config = self._get_default_config()
             return self._memory_config
         
         try:
