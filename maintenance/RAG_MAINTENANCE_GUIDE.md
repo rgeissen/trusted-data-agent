@@ -36,14 +36,17 @@ python3 maintenance/identify_orphan_cases.py
 
 **What it does**:
 - Reads the `orphan_cases.json` file
+- **Double-checks** for preserved session IDs before deletion
 - Asks for confirmation before deletion
 - Deletes only the orphan case JSON files
 - Reports deletion results
 
-**Safety**:
+**Safety Features**:
 - Only deletes cases identified as deletable orphans
-- Preserves intentional orphans (batch-populated examples)
+- **Extra safety check**: Filters out preserved session IDs even if they appear in orphan_cases.json
+- Preserves intentional orphans (batch-populated examples with session_id='00000000-0000-0000-0000-000000000000')
 - Requires explicit confirmation
+- Shows protected cases during execution
 
 **Usage**:
 ```bash

@@ -20,8 +20,27 @@ def delete_orphan_cases(orphan_file):
     with open(orphan_file, 'r', encoding='utf-8') as f:
         orphan_cases = json.load(f)
     
+    # Safety check: Filter out preserved session IDs
+    PRESERVED_SESSION_IDS = {
+        '00000000-0000-0000-0000-000000000000',  # Template-generated cases
+    }
+    
+    filtered_cases = []
+    preserved_count = 0
+    for case in orphan_cases:
+        if case.get('session_id') in PRESERVED_SESSION_IDS:
+            preserved_count += 1
+            print(f"⚠ Skipping preserved case: {case.get('case_id')} (session_id: {case.get('session_id')})")
+        else:
+            filtered_cases.append(case)
+    
+    orphan_cases = filtered_cases
+    
+    if preserved_count > 0:
+        print(f"\n✓ Protected {preserved_count} template-generated cases from deletion\n")
+    
     if not orphan_cases:
-        print("No orphan cases to delete.")
+        print("No orphan cases to delete (after filtering preserved cases).")
         return
     
     print("=" * 80)
