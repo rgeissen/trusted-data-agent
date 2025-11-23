@@ -406,6 +406,11 @@ async def get_current_user_info(current_user):
         401: Not authenticated
     """
     from trusted_data_agent.auth.admin import get_user_tier
+    from trusted_data_agent.core.config import APP_STATE
+    
+    # Get license tier from APP_STATE
+    license_info = APP_STATE.get('license_info', {})
+    license_tier = license_info.get('tier', 'Unknown')
     
     return jsonify({
         'status': 'success',
@@ -417,6 +422,7 @@ async def get_current_user_info(current_user):
             'email': current_user.email,
             'is_admin': current_user.is_admin,
             'profile_tier': get_user_tier(current_user),
+            'license_tier': license_tier,
             'is_active': current_user.is_active,
             'created_at': current_user.created_at.isoformat(),
             'last_login_at': current_user.last_login_at.isoformat() if current_user.last_login_at else None

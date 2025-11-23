@@ -107,11 +107,6 @@ export const headerCollapseIcon = document.getElementById('header-collapse-icon'
 export const headerExpandIcon = document.getElementById('header-expand-icon');
 export const toggleHeaderCheckbox = document.getElementById('toggle-header-checkbox');
 
-// Settings Menu elements
-export const settingsMenuButton = document.getElementById('settings-menu-button');
-export const settingsDropdownMenu = document.getElementById('settings-dropdown-menu');
-export const settingsInfoButton = document.getElementById('settings-info-button');
-
 // Info Modal elements
 export const infoModalOverlay = document.getElementById('info-modal-overlay');
 export const infoModalClose = document.getElementById('info-modal-close');

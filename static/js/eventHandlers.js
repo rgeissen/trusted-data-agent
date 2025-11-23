@@ -1411,18 +1411,7 @@ export function initializeEventListeners() {
         if (e.target === DOM.viewPromptModalOverlay) UI.closeViewPromptModal();
     });
     
-    // Settings Menu
-    DOM.settingsMenuButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        DOM.settingsDropdownMenu.classList.toggle('open');
-    });
-    
-    DOM.settingsInfoButton.addEventListener('click', () => {
-        DOM.settingsDropdownMenu.classList.remove('open');
-        DOM.infoModalOverlay.classList.remove('hidden', 'opacity-0');
-        DOM.infoModalContent.classList.remove('scale-95', 'opacity-0');
-    });
-    
+    // Info Modal (now accessed from user dropdown)
     DOM.infoModalClose.addEventListener('click', () => {
         DOM.infoModalOverlay.classList.add('opacity-0');
         DOM.infoModalContent.classList.add('scale-95', 'opacity-0');
@@ -1540,10 +1529,7 @@ export function initializeEventListeners() {
         if (!DOM.windowDropdownMenu.contains(e.target) && e.target !== DOM.windowMenuButton) {
             DOM.windowDropdownMenu.classList.remove('open');
         }
-        if (!DOM.settingsDropdownMenu.contains(e.target) && e.target !== DOM.settingsMenuButton) {
-            DOM.settingsDropdownMenu.classList.remove('open');
-        }
-        // This is no longer a dropdown, so this logic is not needed for the app menu.
+        // Settings dropdown removed - now using user dropdown for Info
     });
 
     DOM.contextStatusDot.addEventListener('click', handleContextPurgeClick);

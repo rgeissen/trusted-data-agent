@@ -7,10 +7,11 @@
     <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@antv/g2plot@latest/dist/g2plot.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/themes.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 </head>
 <!-- MODIFICATION: Body remains the 100vh flex-col container -->
-<body class="flex h-screen flex-col bg-dark-bg text-light-text">
+<body class="flex h-screen flex-col bg-dark-bg text-light-text" data-theme="legacy">
 
     <!-- MODIFICATION: These are now top-level. The wrappers are removed. -->
     <nav class="w-full bg-black/30 backdrop-blur-md border-b border-white/10 py-2 flex items-center justify-between flex-shrink-0 z-40">
@@ -79,24 +80,43 @@
                     </div>
                     <span id="user-display-name" class="text-sm font-medium hidden md:block">Guest</span>
                 </button>
-                <div id="user-dropdown-menu" class="dropdown-menu mt-2 w-56 rounded-md shadow-lg glass-panel p-1">
-                    <div class="px-3 py-2 border-b border-white/10 mb-1">
+                <div id="user-dropdown-menu" class="dropdown-menu mt-2 w-56 rounded-md shadow-lg p-1" style="background-color: var(--modal-bg); border: 1px solid var(--border-primary); backdrop-filter: blur(16px);">
+                    <div class="px-3 py-2 mb-1" style="border-bottom: 1px solid var(--border-primary);">
                         <p class="text-sm font-medium text-white" id="user-menu-name">User</p>
                         <p class="text-xs text-gray-400" id="user-menu-email">user@example.com</p>
                     </div>
-                    <button id="user-profile-button" class="flex items-center w-full px-3 py-2 text-sm text-gray-200 rounded-md hover:bg-white/10 text-left">
+                    <button id="user-profile-button" class="flex items-center w-full px-3 py-2 text-sm text-gray-200 rounded-md text-left" onmouseover="this.style.backgroundColor='var(--hover-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
                         </svg>
                         Profile
                     </button>
-                    <button id="user-change-password-button" class="flex items-center w-full px-3 py-2 text-sm text-gray-200 rounded-md hover:bg-white/10 text-left">
+                    <button id="user-change-password-button" class="flex items-center w-full px-3 py-2 text-sm text-gray-200 rounded-md text-left" onmouseover="this.style.backgroundColor='var(--hover-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
                         </svg>
                         Change Password
                     </button>
-                    <div class="border-t border-white/10 my-1"></div>
+                    <button id="settings-info-button" class="flex items-center w-full px-3 py-2 text-sm text-gray-200 rounded-md text-left" onmouseover="this.style.backgroundColor='var(--hover-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                        Info
+                    </button>
+                    <div class="my-1" style="border-top: 1px solid var(--border-primary);"></div>
+                    <!-- Theme Selector -->
+                    <div class="px-3 py-2">
+                        <p class="text-xs text-gray-400 mb-2">Theme</p>
+                        <div class="flex gap-2">
+                            <button id="theme-legacy" class="theme-selector flex-1 px-2 py-1.5 text-xs text-gray-200 rounded border transition-colors" data-theme="legacy" style="border-color: var(--border-primary);" onmouseover="this.style.backgroundColor='var(--hover-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                                Legacy
+                            </button>
+                            <button id="theme-modern" class="theme-selector flex-1 px-2 py-1.5 text-xs text-gray-200 rounded border transition-colors" data-theme="modern" style="border-color: var(--border-primary);" onmouseover="this.style.backgroundColor='var(--hover-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                                Modern
+                            </button>
+                        </div>
+                    </div>
+                    <div class="my-1" style="border-top: 1px solid var(--border-primary);"></div>
                     <button id="user-logout-button" class="flex items-center w-full px-3 py-2 text-sm text-red-400 rounded-md hover:bg-red-500/10 text-left">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd" />
@@ -113,22 +133,6 @@
                     </svg>
                     Login
                 </a>
-            </div>
-            <!-- Settings/Cogwheel Menu -->
-            <div class="menu-item relative">
-                <button id="settings-menu-button" class="p-2 text-gray-300 hover:text-white transition-colors rounded-md hover:bg-white/10" title="Settings">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
-                    </svg>
-                </button>
-                <div id="settings-dropdown-menu" class="dropdown-menu mt-2 w-48 rounded-md shadow-lg glass-panel p-1">
-                    <button id="settings-info-button" class="flex items-center w-full px-3 py-2 text-sm text-gray-200 rounded-md hover:bg-white/10 text-left">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-                        </svg>
-                        Info
-                    </button>
-                </div>
             </div>
         </div>
     </nav>
@@ -758,11 +762,11 @@
             </div>
 
             <!-- VIEW X: Executions Dashboard - Three-Tier World-Class Design -->
-            <div id="executions-view" class="app-view flex flex-col w-full h-full bg-neutral-900">
+            <div id="executions-view" class="app-view flex flex-col w-full h-full" style="background-color: var(--bg-primary);">
                 <div class="w-full h-full flex flex-col overflow-hidden">
                     
                     <!-- TIER 1: Executive Command Center -->
-                    <div id="exec-command-center" class="bg-gradient-to-br from-neutral-800 to-neutral-900 border-b border-white/10 p-6">
+                    <div id="exec-command-center" class="border-b border-white/10 p-6" style="background: linear-gradient(to bottom right, var(--bg-secondary), var(--bg-primary));">
                         <div class="max-w-7xl mx-auto">
                             <div class="flex items-center justify-between mb-6">
                                 <div>
@@ -780,7 +784,7 @@
                             <!-- Metrics Grid -->
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                                 <!-- Total Sessions Card -->
-                                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:border-teradata-orange/50 transition-all">
+                                <div class="rounded-xl p-4 border transition-all" style="background-color: var(--card-bg); border-color: var(--border-primary);" onmouseover="this.style.borderColor='rgba(241, 95, 34, 0.5)'" onmouseout="this.style.borderColor='var(--border-primary)'">
                                     <div class="flex items-center justify-between">
                                         <div>
                                             <p class="text-gray-400 text-sm font-medium">Total Sessions</p>
@@ -795,7 +799,7 @@
                                 </div>
                                 
                                 <!-- Total Tokens Card -->
-                                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:border-orange-400/50 transition-all">
+                                <div class="rounded-xl p-4 border transition-all" style="background-color: var(--card-bg); border-color: var(--border-primary);" onmouseover="this.style.borderColor='rgba(251, 146, 60, 0.5)'" onmouseout="this.style.borderColor='var(--border-primary)'">
                                     <div class="flex items-center justify-between">
                                         <div>
                                             <p class="text-gray-400 text-sm font-medium">Total Tokens</p>
@@ -813,7 +817,7 @@
                                 </div>
                                 
                                 <!-- Success Rate Card -->
-                                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:border-green-500/50 transition-all">
+                                <div class="rounded-xl p-4 border transition-all" style="background-color: var(--card-bg); border-color: var(--border-primary);" onmouseover="this.style.borderColor='rgba(34, 197, 94, 0.5)'" onmouseout="this.style.borderColor='var(--border-primary)'">
                                     <div class="flex items-center justify-between">
                                         <div>
                                             <p class="text-gray-400 text-sm font-medium">Success Rate</p>
@@ -828,7 +832,7 @@
                                 </div>
                                 
                                 <!-- Estimated Cost Card -->
-                                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:border-yellow-500/50 transition-all">
+                                <div class="rounded-xl p-4 border transition-all" style="background-color: var(--card-bg); border-color: var(--border-primary);" onmouseover="this.style.borderColor='rgba(234, 179, 8, 0.5)'" onmouseout="this.style.borderColor='var(--border-primary)'">
                                     <div class="flex items-center justify-between">
                                         <div>
                                             <p class="text-gray-400 text-sm font-medium">Est. Cost</p>
@@ -843,7 +847,7 @@
                                 </div>
                                 
                                 <!-- Execution Velocity Card -->
-                                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:border-orange-500/50 transition-all">
+                                <div class="rounded-xl p-4 border transition-all" style="background-color: var(--card-bg); border-color: var(--border-primary);" onmouseover="this.style.borderColor='rgba(249, 115, 22, 0.5)'" onmouseout="this.style.borderColor='var(--border-primary)'">
                                     <div class="flex items-center justify-between">
                                         <div class="flex-1">
                                             <p class="text-gray-400 text-sm font-medium">Velocity (24h)</p>
@@ -856,7 +860,7 @@
                             <!-- Model Distribution, Expensive Sessions & Questions -->
                             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
                                 <!-- Model Distribution -->
-                                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                                <div class="rounded-xl p-4 border" style="background-color: var(--card-bg); border-color: var(--border-primary);">
                                     <h3 class="text-white font-semibold mb-3 flex items-center gap-2">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-teradata-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -869,7 +873,7 @@
                                 </div>
                                 
                                 <!-- Most Token-Intensive Sessions -->
-                                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                                <div class="rounded-xl p-4 border" style="background-color: var(--card-bg); border-color: var(--border-primary);">
                                     <h3 class="text-white font-semibold mb-3 flex items-center gap-2">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -882,7 +886,7 @@
                                 </div>
                                 
                                 <!-- Most Token-Intensive Questions -->
-                                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                                <div class="rounded-xl p-4 border" style="background-color: var(--card-bg); border-color: var(--border-primary);">
                                     <h3 class="text-white font-semibold mb-3 flex items-center gap-2">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -898,7 +902,7 @@
                     </div>
                     
                     <!-- TIER 2: Session Gallery -->
-                    <div id="session-gallery" class="flex-1 p-6 bg-neutral-900 overflow-y-auto">
+                    <div id="session-gallery" class="flex-1 p-6 overflow-y-auto" style="background-color: var(--bg-primary);">
                         <div class="max-w-7xl mx-auto">
                             <div class="flex items-center justify-between mb-6">
                                 <h2 class="text-2xl font-bold text-white">Session Gallery</h2>
@@ -910,7 +914,8 @@
                                             id="session-search" 
                                             type="text" 
                                             placeholder="Search sessions or questions..." 
-                                            class="px-4 py-2 pr-10 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-teradata-orange transition-colors"
+                                            class="px-4 py-2 pr-10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-teradata-orange transition-colors"
+                                            style="background-color: var(--input-bg); border: 1px solid var(--border-primary);"
                                         />
                                         <button 
                                             id="clear-search-btn" 
@@ -965,9 +970,9 @@
                     </div>
                     
                     <!-- TIER 3: Deep Dive Inspector (Initially Hidden) -->
-                    <div id="deep-dive-inspector" class="hidden fixed inset-0 bg-neutral-900/95 backdrop-blur-sm z-50 overflow-y-auto">
+                    <div id="deep-dive-inspector" class="hidden fixed inset-0 backdrop-blur-sm z-50 overflow-y-auto" style="background-color: var(--modal-overlay);">
                         <div class="min-h-screen flex items-start justify-center p-6">
-                            <div class="bg-gradient-to-br from-neutral-800 to-neutral-900 rounded-2xl border border-white/20 max-w-6xl w-full my-8 shadow-2xl">
+                            <div class="rounded-2xl border max-w-6xl w-full my-8 shadow-2xl" style="background: linear-gradient(to bottom right, var(--bg-secondary), var(--bg-primary)); border-color: var(--border-primary);">
                                 <!-- Inspector Header -->
                                 <div class="border-b border-white/10 p-6 flex items-center justify-between">
                                     <div>
@@ -985,19 +990,19 @@
                                 <div class="p-6 space-y-6">
                                     <!-- Session Stats -->
                                     <div class="grid grid-cols-4 gap-4">
-                                        <div class="bg-white/5 rounded-lg p-4">
+                                        <div class="rounded-lg p-4" style="background-color: var(--card-bg);">
                                             <p class="text-gray-400 text-sm">Total Turns</p>
                                             <p id="inspector-turn-count" class="text-2xl font-bold text-white mt-1">0</p>
                                         </div>
-                                        <div class="bg-white/5 rounded-lg p-4">
+                                        <div class="rounded-lg p-4" style="background-color: var(--card-bg);">
                                             <p class="text-gray-400 text-sm">Total Tokens</p>
                                             <p id="inspector-total-tokens" class="text-2xl font-bold text-white mt-1">0</p>
                                         </div>
-                                        <div class="bg-white/5 rounded-lg p-4">
+                                        <div class="rounded-lg p-4" style="background-color: var(--card-bg);">
                                             <p class="text-gray-400 text-sm">Model</p>
                                             <p id="inspector-model" class="text-lg font-semibold text-white mt-1">-</p>
                                         </div>
-                                        <div class="bg-white/5 rounded-lg p-4">
+                                        <div class="rounded-lg p-4" style="background-color: var(--card-bg);">
                                             <p class="text-gray-400 text-sm">RAG Cases</p>
                                             <p id="inspector-rag-count" class="text-2xl font-bold text-green-400 mt-1">0</p>
                                         </div>
@@ -1555,6 +1560,14 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                                 </svg>
                                 Expert Settings
+                            </div>
+                        </button>
+                        <button class="admin-tab px-6 py-3 text-sm font-medium text-gray-400 hover:text-white transition-all border-b-2 border-transparent hover:border-white/20" data-tab="system-prompts-tab">
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                System Prompts
                             </div>
                         </button>
                     </div>
@@ -2302,6 +2315,97 @@
                                         </svg>
                                         Save Expert Settings
                                     </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab 6: System Prompts -->
+                        <div id="system-prompts-tab" class="admin-tab-content hidden">
+                            <div class="space-y-6">
+                                <div class="glass-panel rounded-xl p-6">
+                                    <div class="mb-6">
+                                        <h3 class="text-xl font-bold text-white">System Prompt Editor</h3>
+                                        <p class="text-sm text-gray-400 mt-1">Manage system prompts for different profile tiers</p>
+                                        <div id="system-prompts-tier-notice" class="mt-4 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30 hidden">
+                                            <div class="flex items-start gap-3">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                                                </svg>
+                                                <div class="flex-1">
+                                                    <p class="text-sm font-medium text-yellow-200">License Tier Required</p>
+                                                    <p class="text-xs text-yellow-300/80 mt-1">System Prompt Editor requires "Prompt Engineer" or "Enterprise" license tier.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- System Prompt Selector -->
+                                    <div class="mb-6">
+                                        <label class="block text-sm font-medium text-gray-300 mb-2">Select System Prompt</label>
+                                        <select id="system-prompts-tier-selector" class="w-full px-4 py-2 rounded-lg text-white bg-gray-700 border border-gray-600 focus:outline-none focus:border-teradata-orange transition-colors">
+                                            <optgroup label="Master System Prompts">
+                                                <option value="MASTER_SYSTEM_PROMPT">Master System Prompt (Default)</option>
+                                                <option value="GOOGLE_MASTER_SYSTEM_PROMPT">Google Master System Prompt</option>
+                                                <option value="OLLAMA_MASTER_SYSTEM_PROMPT">Ollama Master System Prompt</option>
+                                            </optgroup>
+                                            <optgroup label="Workflow & Classification">
+                                                <option value="TASK_CLASSIFICATION_PROMPT">Task Classification Prompt</option>
+                                                <option value="WORKFLOW_META_PLANNING_PROMPT">Workflow Meta Planning Prompt</option>
+                                                <option value="WORKFLOW_TACTICAL_PROMPT">Workflow Tactical Prompt</option>
+                                            </optgroup>
+                                            <optgroup label="Error Recovery & Self-Correction">
+                                                <option value="ERROR_RECOVERY_PROMPT">Error Recovery Prompt</option>
+                                                <option value="TACTICAL_SELF_CORRECTION_PROMPT">Tactical Self-Correction Prompt</option>
+                                                <option value="TACTICAL_SELF_CORRECTION_PROMPT_COLUMN_ERROR">Self-Correction: Column Error</option>
+                                                <option value="TACTICAL_SELF_CORRECTION_PROMPT_TABLE_ERROR">Self-Correction: Table Error</option>
+                                            </optgroup>
+                                            <optgroup label="Data Operations">
+                                                <option value="SQL_CONSOLIDATION_PROMPT">SQL Consolidation Prompt</option>
+                                            </optgroup>
+                                            <optgroup label="Visualization">
+                                                <option value="G2PLOT_GUIDELINES">G2Plot Guidelines</option>
+                                            </optgroup>
+                                        </select>
+                                    </div>
+
+                                    <!-- System Prompt Editor -->
+                                    <div class="mb-6">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <div class="flex items-center gap-2">
+                                                <label class="block text-sm font-medium text-gray-300">System Prompt Content</label>
+                                                <span id="system-prompt-override-badge" class="hidden px-2 py-0.5 text-xs font-medium bg-[#F15F22] text-white rounded">
+                                                    Custom Override
+                                                </span>
+                                            </div>
+                                            <p class="text-xs text-gray-500">
+                                                <span id="system-prompt-char-count">0</span> characters
+                                            </p>
+                                        </div>
+                                        <textarea id="system-prompt-editor-textarea" rows="20" 
+                                                  class="w-full px-4 py-3 rounded-lg text-white bg-gray-700 border border-gray-600 focus:outline-none focus:border-teradata-orange transition-colors font-mono text-sm resize-y"
+                                                  placeholder="Select a system prompt to edit..."></textarea>
+                                    </div>
+
+                                    <!-- Action Buttons -->
+                                    <div class="flex justify-between items-center">
+                                        <button type="button" id="load-system-prompt-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md transition-colors text-white font-medium text-sm">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                            </svg>
+                                            Load Current Prompt
+                                        </button>
+                                        <div class="flex gap-2">
+                                            <button type="button" id="reset-system-prompt-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md transition-colors text-white font-medium text-sm">
+                                                Reset to Default
+                                            </button>
+                                            <button type="button" id="save-system-prompt-btn" class="px-6 py-2 bg-[#F15F22] hover:bg-[#D9501A] rounded-md transition-colors text-white font-medium text-sm">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                                Save System Prompt
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -3399,6 +3503,118 @@
     <!-- Authentication Client -->
     <script src="/static/js/auth.js"></script>
     <script>
+        // ============================================================================
+        // THEME MANAGEMENT
+        // ============================================================================
+        const ThemeManager = {
+            STORAGE_KEY: 'tda-theme',
+            DEFAULT_THEME: 'legacy',
+            
+            /**
+             * Initialize theme on page load
+             */
+            init() {
+                // Load saved theme or use default
+                const savedTheme = this.getTheme();
+                this.applyTheme(savedTheme, false); // false = no transition on init
+                
+                // Set up theme selector buttons
+                this.setupThemeSelectors();
+                
+                // Update button states
+                this.updateButtonStates(savedTheme);
+            },
+            
+            /**
+             * Get current theme from localStorage
+             */
+            getTheme() {
+                return localStorage.getItem(this.STORAGE_KEY) || this.DEFAULT_THEME;
+            },
+            
+            /**
+             * Save theme to localStorage
+             */
+            saveTheme(theme) {
+                localStorage.setItem(this.STORAGE_KEY, theme);
+            },
+            
+            /**
+             * Apply theme to document
+             */
+            applyTheme(theme, withTransition = true) {
+                const body = document.body;
+                
+                // Disable transitions during initial load
+                if (!withTransition) {
+                    body.classList.add('no-transition');
+                }
+                
+                // Set theme attribute
+                body.setAttribute('data-theme', theme);
+                
+                // Re-enable transitions after a brief delay
+                if (!withTransition) {
+                    setTimeout(() => {
+                        body.classList.remove('no-transition');
+                    }, 50);
+                }
+                
+                console.log(`[ThemeManager] Applied theme: ${theme}`);
+            },
+            
+            /**
+             * Switch to a different theme
+             */
+            switchTheme(theme) {
+                this.saveTheme(theme);
+                this.applyTheme(theme, true);
+                this.updateButtonStates(theme);
+                
+                // Show notification
+                if (window.showNotification) {
+                    const themeName = theme.charAt(0).toUpperCase() + theme.slice(1);
+                    window.showNotification('success', `Switched to ${themeName} theme`);
+                }
+            },
+            
+            /**
+             * Set up event listeners for theme selector buttons
+             */
+            setupThemeSelectors() {
+                const selectors = document.querySelectorAll('.theme-selector');
+                selectors.forEach(button => {
+                    button.addEventListener('click', () => {
+                        const theme = button.getAttribute('data-theme');
+                        this.switchTheme(theme);
+                    });
+                });
+            },
+            
+            /**
+             * Update button states to show active theme
+             */
+            updateButtonStates(activeTheme) {
+                const selectors = document.querySelectorAll('.theme-selector');
+                selectors.forEach(button => {
+                    const theme = button.getAttribute('data-theme');
+                    if (theme === activeTheme) {
+                        button.classList.add('bg-[#F15F22]', 'border-[#F15F22]', 'text-white');
+                        button.classList.remove('border-white/20');
+                    } else {
+                        button.classList.remove('bg-[#F15F22]', 'border-[#F15F22]', 'text-white');
+                        button.classList.add('border-white/20');
+                    }
+                });
+            }
+        };
+        
+        // Initialize theme immediately (before DOM ready)
+        ThemeManager.init();
+        
+        // ============================================================================
+        // AUTHENTICATION
+        // ============================================================================
         // Initialize authentication
         const authClient = new AuthClient();
         

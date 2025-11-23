@@ -1,0 +1,189 @@
+/**
+ * Theme System for Trusted Data Agent
+ * Supports multiple themes with CSS custom properties
+ */
+
+/* ============================================================================
+   DEFAULT THEME VARIABLES (applies to all themes)
+   ============================================================================ */
+:root {
+    /* Brand Colors - consistent across themes */
+    --teradata-orange: #F15F22;
+    --teradata-orange-dark: #D9501A;
+    --teradata-orange-light: #FF7A47;
+    
+    /* Typography */
+    --font-primary: 'Inter', sans-serif;
+    --font-display: 'Space Grotesk', sans-serif;
+    
+    /* Spacing & Sizing */
+    --header-height: 60px;
+    --sidebar-width: 280px;
+    
+    /* Transitions */
+    --transition-fast: 150ms ease;
+    --transition-normal: 300ms ease;
+    --transition-slow: 500ms ease;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================================================
+   LEGACY THEME (Current Dark Brown/Grey)
+   ============================================================================ */
+[data-theme="legacy"] {
+    /* Backgrounds */
+    --bg-primary: #262626;
+    --bg-secondary: #333333;
+    --bg-tertiary: #404040;
+    --bg-elevated: #4a4a4a;
+    --bg-overlay: rgba(38, 38, 38, 0.95);
+    
+    /* Glass/Blur Effects */
+    --glass-bg: rgba(51, 51, 51, 0.5);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    
+    /* Text Colors */
+    --text-primary: #F0F0F0;
+    --text-secondary: #CCCCCC;
+    --text-tertiary: #999999;
+    --text-muted: #666666;
+    --text-inverse: #1a1a1a;
+    
+    /* Border Colors */
+    --border-primary: rgba(255, 255, 255, 0.1);
+    --border-secondary: rgba(255, 255, 255, 0.05);
+    --border-focus: rgba(241, 95, 34, 0.5);
+    
+    /* Status Colors */
+    --status-success: #10b981;
+    --status-error: #ef4444;
+    --status-warning: #f59e0b;
+    --status-info: #3b82f6;
+    
+    /* Component Specific */
+    --header-bg: rgba(26, 26, 26, 0.95);
+    --sidebar-bg: rgba(38, 38, 38, 0.98);
+    --card-bg: rgba(51, 51, 51, 0.6);
+    --input-bg: rgba(64, 64, 64, 0.8);
+    --button-bg: rgba(74, 74, 74, 0.8);
+    --modal-bg: rgba(38, 38, 38, 0.98);
+    --modal-overlay: rgba(0, 0, 0, 0.75);
+    
+    /* Hover/Active States */
+    --hover-bg: rgba(255, 255, 255, 0.05);
+    --active-bg: rgba(255, 255, 255, 0.1);
+    --hover-border: rgba(255, 255, 255, 0.2);
+    
+    /* Scrollbar */
+    --scrollbar-thumb: rgba(255, 255, 255, 0.2);
+    --scrollbar-track: transparent;
+    
+    /* Chat Specific */
+    --message-user-bg: rgba(241, 95, 34, 0.15);
+    --message-assistant-bg: rgba(51, 51, 51, 0.6);
+    --message-border: rgba(255, 255, 255, 0.1);
+    
+    /* Avatar */
+    --avatar-bg: #4b5563;
+    --avatar-border: rgba(255, 255, 255, 0.2);
+}
+
+/* ============================================================================
+   MODERN THEME (Login Screen Style - Deep Blue/Slate)
+   ============================================================================ */
+[data-theme="modern"] {
+    /* Backgrounds */
+    --bg-primary: #1a2332;
+    --bg-secondary: #243447;
+    --bg-tertiary: #2d4056;
+    --bg-elevated: #374d66;
+    --bg-overlay: rgba(26, 35, 50, 0.98);
+    
+    /* Glass/Blur Effects */
+    --glass-bg: rgba(36, 52, 71, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.15);
+    
+    /* Text Colors */
+    --text-primary: #ffffff;
+    --text-secondary: #e2e8f0;
+    --text-tertiary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --text-inverse: #1a2332;
+    
+    /* Border Colors */
+    --border-primary: rgba(255, 255, 255, 0.15);
+    --border-secondary: rgba(255, 255, 255, 0.08);
+    --border-focus: rgba(241, 95, 34, 0.6);
+    
+    /* Status Colors */
+    --status-success: #10b981;
+    --status-error: #ef4444;
+    --status-warning: #f59e0b;
+    --status-info: #3b82f6;
+    
+    /* Component Specific */
+    --header-bg: rgba(26, 35, 50, 0.98);
+    --sidebar-bg: rgba(36, 52, 71, 0.98);
+    --card-bg: rgba(36, 52, 71, 0.8);
+    --input-bg: rgba(45, 64, 86, 0.9);
+    --button-bg: rgba(55, 77, 102, 0.8);
+    --modal-bg: rgba(36, 52, 71, 0.98);
+    --modal-overlay: rgba(10, 15, 25, 0.85);
+    
+    /* Hover/Active States */
+    --hover-bg: rgba(255, 255, 255, 0.08);
+    --active-bg: rgba(255, 255, 255, 0.15);
+    --hover-border: rgba(255, 255, 255, 0.25);
+    
+    /* Scrollbar */
+    --scrollbar-thumb: rgba(255, 255, 255, 0.25);
+    --scrollbar-track: transparent;
+    
+    /* Chat Specific */
+    --message-user-bg: rgba(241, 95, 34, 0.2);
+    --message-assistant-bg: rgba(36, 52, 71, 0.8);
+    --message-border: rgba(255, 255, 255, 0.15);
+    
+    /* Avatar */
+    --avatar-bg: #2563eb;
+    --avatar-border: rgba(255, 255, 255, 0.25);
+}
+
+/* ============================================================================
+   THEME APPLICATION TO BODY
+   ============================================================================ */
+body {
+    background-color: var(--bg-primary);
+    background-image: radial-gradient(circle at top, var(--bg-elevated), var(--bg-primary));
+    color: var(--text-primary);
+    font-family: var(--font-primary);
+    transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+/* Glass Panel Base Style */
+.glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    transition: background var(--transition-normal), border-color var(--transition-normal);
+}
+
+/* ============================================================================
+   THEME TRANSITION SUPPORT
+   ============================================================================ */
+* {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-duration: 300ms;
+    transition-timing-function: ease;
+}
+
+/* Disable transitions during theme initialization */
+.no-transition * {
+    transition: none !important;
+}

@@ -302,7 +302,10 @@ class ExecutionDashboard {
         }
 
         const html = sessions.map((session, index) => `
-            <div class="expensive-session-item flex items-center gap-3 p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer" 
+            <div class="expensive-session-item flex items-center gap-3 p-2 rounded-lg transition-colors cursor-pointer" 
+                 style="background-color: var(--card-bg);" 
+                 onmouseover="this.style.backgroundColor='var(--hover-bg)'" 
+                 onmouseout="this.style.backgroundColor='var(--card-bg)'" 
                  data-session-id="${session.session_id}">
                 <div class="flex-shrink-0 w-6 h-6 bg-red-500/20 rounded-full flex items-center justify-center">
                     <span class="text-xs font-bold text-red-400">${index + 1}</span>
@@ -339,7 +342,10 @@ class ExecutionDashboard {
         }
 
         const html = questions.map((question, index) => `
-            <div class="expensive-question-item flex items-center gap-3 p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer" 
+            <div class="expensive-question-item flex items-center gap-3 p-2 rounded-lg transition-colors cursor-pointer" 
+                 style="background-color: var(--card-bg);" 
+                 onmouseover="this.style.backgroundColor='var(--hover-bg)'" 
+                 onmouseout="this.style.backgroundColor='var(--card-bg)'" 
                  data-question-text="${question.query.replace(/"/g, '&quot;')}">
                 <div class="flex-shrink-0 w-6 h-6 bg-orange-500/20 rounded-full flex items-center justify-center">
                     <span class="text-xs font-bold text-orange-400">${index + 1}</span>
@@ -573,7 +579,10 @@ class ExecutionDashboard {
         const date = session.created_at ? new Date(session.created_at).toLocaleString() : 'Unknown';
 
         return `
-            <div id="session-card-${session.id}" class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border ${session.archived ? 'border-gray-600/50 opacity-75' : 'border-white/10'} hover:border-teradata-orange/50 transition-all cursor-pointer group">
+            <div id="session-card-${session.id}" class="rounded-xl p-4 border transition-all cursor-pointer group ${session.archived ? 'opacity-75' : ''}" 
+                 style="background-color: var(--card-bg); border-color: ${session.archived ? 'rgba(75, 85, 99, 0.5)' : 'var(--border-primary)'};" 
+                 onmouseover="this.style.borderColor='rgba(241, 95, 34, 0.5)'" 
+                 onmouseout="this.style.borderColor='${session.archived ? 'rgba(75, 85, 99, 0.5)' : 'var(--border-primary)'}'">
                 <div class="flex items-start justify-between mb-3">
                     <h3 class="text-white font-semibold truncate flex-1 group-hover:text-teradata-orange transition-colors" title="${session.name}">
                         ${session.name}
@@ -719,7 +728,7 @@ class ExecutionDashboard {
                         ${index < workflow.length - 1 ? '<div class="w-0.5 h-12 bg-white/10"></div>' : ''}
                     </div>
                     <div class="flex-1 pb-8">
-                        <div class="bg-white/5 rounded-lg p-4 border border-white/10">
+                        <div class="rounded-lg p-4 border" style="background-color: var(--card-bg); border-color: var(--border-primary);">
                             <p class="text-white font-semibold mb-2">${turn.user_query || 'Query ' + (index + 1)}</p>
                             <p class="text-gray-400 text-sm mb-2">${turn.final_summary || 'No summary available'}</p>
                             <div class="flex items-center gap-4 text-xs text-gray-500">
@@ -744,7 +753,7 @@ class ExecutionDashboard {
         if (!container) return;
 
         const html = ragCases.map(ragCase => `
-            <div class="bg-white/5 rounded-lg p-4 border border-white/10">
+            <div class="rounded-lg p-4 border" style="background-color: var(--card-bg); border-color: var(--border-primary);">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-white font-semibold">Case ${ragCase.case_id.substring(0, 8)}</span>
                     ${ragCase.is_most_efficient ? `

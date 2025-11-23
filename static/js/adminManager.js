@@ -123,6 +123,35 @@ const AdminManager = {
             resetStateBtn.addEventListener('click', () => this.resetState());
         }
 
+        // System Prompts
+        const systemPromptsTierSelector = document.getElementById('system-prompts-tier-selector');
+        if (systemPromptsTierSelector) {
+            systemPromptsTierSelector.addEventListener('change', (e) => this.loadSystemPromptForTier(e.target.value));
+        }
+
+        const loadSystemPromptBtn = document.getElementById('load-system-prompt-btn');
+        if (loadSystemPromptBtn) {
+            loadSystemPromptBtn.addEventListener('click', () => {
+                const tier = document.getElementById('system-prompts-tier-selector').value;
+                this.loadSystemPromptForTier(tier);
+            });
+        }
+
+        const saveSystemPromptBtn = document.getElementById('save-system-prompt-btn');
+        if (saveSystemPromptBtn) {
+            saveSystemPromptBtn.addEventListener('click', () => this.saveSystemPrompt());
+        }
+
+        const resetSystemPromptBtn = document.getElementById('reset-system-prompt-btn');
+        if (resetSystemPromptBtn) {
+            resetSystemPromptBtn.addEventListener('click', () => this.resetSystemPromptToDefault());
+        }
+
+        const systemPromptTextarea = document.getElementById('system-prompt-editor-textarea');
+        if (systemPromptTextarea) {
+            systemPromptTextarea.addEventListener('input', () => this.updateCharCount());
+        }
+
         // Application Configuration
         const saveAppConfigBtn = document.getElementById('save-app-config-btn');
         if (saveAppConfigBtn) {
@@ -167,6 +196,9 @@ const AdminManager = {
             this.loadAppConfig();
         } else if (tabName === 'expert-settings-tab') {
             this.loadExpertSettings();
+        } else if (tabName === 'system-prompts-tab') {
+            const tier = document.getElementById('system-prompts-tier-selector').value || 'user';
+            this.loadSystemPromptForTier(tier);
         }
     },
 
@@ -1367,6 +1399,230 @@ const AdminManager = {
     getFieldValue(id) {
         const field = document.getElementById(id);
         return field ? field.value : null;
+    },
+
+    // ========================================================================
+    // SYSTEM PROMPTS MANAGEMENT
+    // ========================================================================
+
+    /**
+     * Load system prompt for a specific prompt name
+     */
+    async loadSystemPromptForTier(promptName) {
+        try {
+            // Check license tier access (only "Prompt Engineer" and "Enterprise" license tiers can edit)
+            const token = authClient ? authClient.getToken() : null;
+            let canEdit = false;
+            let licenseTier = 'Unknown';
+            
+            if (token) {
+                try {
+                    const response = await fetch('/api/v1/auth/me', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (response.ok) {
+                        const userData = await response.json();
+                        // Check license_info from APP_STATE (stored during license validation)
+                        licenseTier = userData.license_tier || 'Unknown';
+                        canEdit = licenseTier === 'Prompt Engineer' || licenseTier === 'Enterprise';
+                    }
+                } catch (error) {
+                    console.error('[AdminManager] Error checking license tier:', error);
+                }
+            }
+            
+            const notice = document.getElementById('system-prompts-tier-notice');
+            const noticeText = notice?.querySelector('p.text-xs');
+            const textarea = document.getElementById('system-prompt-editor-textarea');
+            const saveBtn = document.getElementById('save-system-prompt-btn');
+            const resetBtn = document.getElementById('reset-system-prompt-btn');
+            
+            // Show/hide notice and disable controls if not authorized
+            if (notice) {
+                notice.classList.toggle('hidden', canEdit);
+                if (noticeText && !canEdit) {
+                    noticeText.textContent = `System Prompt Editor requires "Prompt Engineer" or "Enterprise" license tier. Current tier: ${licenseTier}`;
+                }
+            }
+            if (textarea) {
+                textarea.disabled = !canEdit;
+            }
+            if (saveBtn) {
+                saveBtn.disabled = !canEdit;
+                saveBtn.classList.toggle('opacity-50', !canEdit);
+                saveBtn.classList.toggle('cursor-not-allowed', !canEdit);
+            }
+            if (resetBtn) {
+                resetBtn.disabled = !canEdit;
+                resetBtn.classList.toggle('opacity-50', !canEdit);
+                resetBtn.classList.toggle('cursor-not-allowed', !canEdit);
+            }
+
+            // Load the system prompt from the backend
+            const overrideBadge = document.getElementById('system-prompt-override-badge');
+            
+            if (canEdit && token) {
+                try {
+                    const response = await fetch(`/api/v1/system-prompts/${promptName}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (textarea) {
+                            textarea.value = data.content || '';
+                            this.updateCharCount();
+                        }
+                        // Show/hide override badge
+                        if (overrideBadge) {
+                            overrideBadge.classList.toggle('hidden', !data.is_override);
+                        }
+                    } else {
+                        throw new Error('Failed to load system prompt');
+                    }
+                } catch (error) {
+                    console.error('[AdminManager] Error loading system prompt:', error);
+                    if (window.showNotification) {
+                        window.showNotification('error', `Failed to load system prompt: ${error.message}`);
+                    }
+                }
+            } else if (textarea) {
+                textarea.value = '';
+                this.updateCharCount();
+                if (overrideBadge) {
+                    overrideBadge.classList.add('hidden');
+                }
+            }
+
+        } catch (error) {
+            console.error('[AdminManager] Error loading system prompt:', error);
+            if (window.showNotification) {
+                window.showNotification('error', 'Failed to load system prompt');
+            }
+        }
+    },
+
+    /**
+     * Save system prompt for current prompt name
+     */
+    async saveSystemPrompt() {
+        try {
+            const promptName = document.getElementById('system-prompts-tier-selector').value;
+            const textarea = document.getElementById('system-prompt-editor-textarea');
+            const content = textarea ? textarea.value : '';
+
+            // Check license tier access
+            const token = authClient ? authClient.getToken() : null;
+            if (!token) {
+                if (window.showNotification) {
+                    window.showNotification('error', 'Authentication required');
+                }
+                return;
+            }
+
+            const response = await fetch('/api/v1/auth/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (!response.ok) {
+                if (window.showNotification) {
+                    window.showNotification('error', 'Failed to verify license tier');
+                }
+                return;
+            }
+
+            const userData = await response.json();
+            const licenseTier = userData.user?.license_tier || 'Unknown';
+            
+            if (licenseTier !== 'Prompt Engineer' && licenseTier !== 'Enterprise') {
+                if (window.showNotification) {
+                    window.showNotification('error', `System Prompt Editor requires "Prompt Engineer" or "Enterprise" license tier. Current tier: ${licenseTier}`);
+                }
+                return;
+            }
+
+            // Save the system prompt via backend API
+            const saveResponse = await fetch(`/api/v1/system-prompts/${promptName}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ content })
+            });
+
+            if (saveResponse.ok) {
+                // Show override badge after saving
+                const overrideBadge = document.getElementById('system-prompt-override-badge');
+                if (overrideBadge) {
+                    overrideBadge.classList.remove('hidden');
+                }
+                
+                if (window.showNotification) {
+                    window.showNotification('success', `System prompt "${promptName}" saved successfully`);
+                }
+            } else {
+                const errorData = await saveResponse.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Failed to save system prompt');
+            }
+
+        } catch (error) {
+            console.error('[AdminManager] Error saving system prompt:', error);
+            if (window.showNotification) {
+                window.showNotification('error', `Failed to save system prompt: ${error.message}`);
+            }
+        }
+    },
+
+    /**
+     * Reset system prompt to default for current prompt name
+     */
+    async resetSystemPromptToDefault() {
+        const promptName = document.getElementById('system-prompts-tier-selector').value;
+        const promptLabel = document.getElementById('system-prompts-tier-selector').selectedOptions[0]?.text || promptName;
+        
+        if (confirm(`Reset "${promptLabel}" to default?\n\nThis will remove any custom override and restore the encrypted default prompt.`)) {
+            const token = authClient ? authClient.getToken() : null;
+            if (!token) {
+                if (window.showNotification) {
+                    window.showNotification('error', 'Authentication required');
+                }
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v1/system-prompts/${promptName}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    await this.loadSystemPromptForTier(promptName);
+                    if (window.showNotification) {
+                        window.showNotification('success', `System prompt "${promptLabel}" reset to default`);
+                    }
+                } else {
+                    throw new Error('Failed to reset system prompt');
+                }
+            } catch (error) {
+                console.error('[AdminManager] Error resetting system prompt:', error);
+                if (window.showNotification) {
+                    window.showNotification('error', `Failed to reset system prompt: ${error.message}`);
+                }
+            }
+        }
+    },
+
+    /**
+     * Update character count for system prompt
+     */
+    updateCharCount() {
+        const textarea = document.getElementById('system-prompt-editor-textarea');
+        const countElement = document.getElementById('system-prompt-char-count');
+        
+        if (textarea && countElement) {
+            countElement.textContent = textarea.value.length.toLocaleString();
+        }
     }
 };
 
