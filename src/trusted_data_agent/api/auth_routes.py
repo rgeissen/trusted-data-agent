@@ -34,6 +34,14 @@ from trusted_data_agent.auth.middleware import (
     require_admin,
     get_request_context
 )
+from trusted_data_agent.auth.rate_limiter import check_ip_login_limit, check_ip_register_limit
+from trusted_data_agent.auth.audit import (
+    log_audit_event as log_audit_event_detailed,
+    log_login_success,
+    log_login_failure,
+    log_registration,
+    log_rate_limit_exceeded
+)
 
 logger = logging.getLogger("quart.app")
 
@@ -77,9 +85,20 @@ async def register():
         201: User created successfully
         400: Validation errors
         409: Username or email already exists
+        429: Rate limit exceeded
         500: Server error
     """
     try:
+        # Check rate limit
+        allowed, retry_after = check_ip_register_limit()
+        if not allowed:
+            log_rate_limit_exceeded('ip:' + request.remote_addr, '/api/v1/auth/register')
+            return jsonify({
+                'status': 'error',
+                'message': 'Registration rate limit exceeded',
+                'retry_after': retry_after
+            }), 429
+        
         data = await request.get_json()
         
         # Extract fields
@@ -188,9 +207,20 @@ async def login():
         200: Login successful, returns token
         400: Missing credentials
         401: Invalid credentials or account locked
+        429: Rate limit exceeded
         500: Server error
     """
     try:
+        # Check rate limit
+        allowed, retry_after = check_ip_login_limit()
+        if not allowed:
+            log_rate_limit_exceeded('ip:' + request.remote_addr, '/api/v1/auth/login')
+            return jsonify({
+                'status': 'error',
+                'message': 'Login rate limit exceeded',
+                'retry_after': retry_after
+            }), 429
+        
         data = await request.get_json()
         
         username = data.get('username', '').strip()

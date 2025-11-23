@@ -1,9 +1,11 @@
 # Per-User Runtime Context - Implementation Summary
 
-## Status: PHASES 1-3 COMPLETE ✅
+## Status: PHASES 1-4 COMPLETE ✅
 
 ## Overview
 Implementation of per-user runtime context isolation to prevent configuration conflicts when multiple users execute sessions in parallel with `TDA_CONFIGURATION_PERSISTENCE=false`.
+
+**All core phases complete!** The system now supports full multi-user isolation with automatic memory cleanup.
 
 ## Design Document
 See [PER_USER_RUNTIME_CONTEXT.md](./PER_USER_RUNTIME_CONTEXT.md) for the complete design specification.
@@ -118,12 +120,27 @@ Added 19 helper functions to `config.py`:
 
 ## Remaining Work
 
-### Phase 4: Low-Priority Files & Cleanup Task
-- [ ] Add background task for `cleanup_inactive_user_contexts()` (triggered periodically)
-- [ ] Update any remaining direct `APP_CONFIG.CURRENT_*` reads in low-priority modules
-- [ ] Add environment variable configuration for cleanup settings:
-  - `TDA_USER_CONFIG_CLEANUP_INTERVAL` (default: 300 seconds)
-  - `TDA_USER_CONFIG_CLEANUP_TIMEOUT` (default: 1800 seconds)
+### ✅ Phase 4: Cleanup Task (COMPLETE)
+- [x] Add background task for `cleanup_inactive_user_contexts()` (triggered periodically)
+- [x] Add environment variable configuration for cleanup settings:
+  - `TDA_USER_CONTEXT_CLEANUP_INTERVAL` (default: 300 seconds / 5 minutes)
+  - `TDA_USER_CONTEXT_MAX_AGE_HOURS` (default: 24 hours)
+- [ ] Update any remaining direct `APP_CONFIG.CURRENT_*` reads in low-priority modules (optional)
+
+#### File 7: `src/trusted_data_agent/main.py`
+**Changes**:
+1. Added `user_context_cleanup_worker()` async function that:
+   - Reads environment variables for configuration
+   - Only runs when `TDA_CONFIGURATION_PERSISTENCE=false` (multi-user mode)
+   - Periodically calls `cleanup_inactive_user_contexts()` based on interval
+   - Handles errors gracefully without crashing
+2. Started cleanup worker as background task in `create_app()` during startup
+
+**Impact**: Automatic memory management for inactive user contexts prevents unbounded growth
+
+**Environment Variables**:
+- `TDA_USER_CONTEXT_CLEANUP_INTERVAL`: How often to run cleanup (seconds, default: 300)
+- `TDA_USER_CONTEXT_MAX_AGE_HOURS`: Maximum age before removing context (hours, default: 24)
 
 ### Testing
 - [ ] Unit tests for all 19 helper functions in `config.py`
@@ -167,7 +184,7 @@ Cleanup function removes stale contexts based on `last_accessed` timestamp.
 ### No Errors Detected
 All modified files pass Python syntax checks with no errors.
 
-### Files Modified (10 files)
+### Files Modified (11 files)
 1. ✅ `src/trusted_data_agent/core/config.py`
 2. ✅ `src/trusted_data_agent/core/configuration_service.py`
 3. ✅ `src/trusted_data_agent/api/routes.py`
@@ -175,8 +192,31 @@ All modified files pass Python syntax checks with no errors.
 5. ✅ `src/trusted_data_agent/agent/executor.py`
 6. ✅ `src/trusted_data_agent/llm/handler.py`
 7. ✅ `src/trusted_data_agent/mcp/adapter.py`
-8. ✅ `docs/PER_USER_RUNTIME_CONTEXT.md` (design document)
-9. ✅ `docs/PER_USER_RUNTIME_CONTEXT_IMPLEMENTATION.md` (this file)
+8. ✅ `src/trusted_data_agent/main.py` (cleanup worker)
+9. ✅ `docs/PER_USER_RUNTIME_CONTEXT.md` (design document)
+10. ✅ `docs/PER_USER_RUNTIME_CONTEXT_IMPLEMENTATION.md` (this file)
+
+## Configuration
+
+### Environment Variables
+
+**Multi-User Mode:**
+```bash
+# Enable multi-user mode (disable configuration persistence)
+export TDA_CONFIGURATION_PERSISTENCE=false
+
+# Filter sessions by user UUID
+export TDA_SESSIONS_FILTER_BY_USER=true
+```
+
+**Cleanup Settings:**
+```bash
+# How often to run cleanup (seconds, default: 300 = 5 minutes)
+export TDA_USER_CONTEXT_CLEANUP_INTERVAL=300
+
+# Maximum age before removing inactive user context (hours, default: 24)
+export TDA_USER_CONTEXT_MAX_AGE_HOURS=24
+```
 
 ## Next Steps
 
@@ -185,6 +225,8 @@ All modified files pass Python syntax checks with no errors.
    # Set environment for multi-user mode
    export TDA_CONFIGURATION_PERSISTENCE=false
    export TDA_SESSIONS_FILTER_BY_USER=true
+   export TDA_USER_CONTEXT_CLEANUP_INTERVAL=300
+   export TDA_USER_CONTEXT_MAX_AGE_HOURS=24
    
    # Start the application
    python -m trusted_data_agent.main
@@ -192,11 +234,9 @@ All modified files pass Python syntax checks with no errors.
    # Test with multiple concurrent users making different configurations
    ```
 
-2. **Complete Phase 4**: Add cleanup task and remaining low-priority updates
+2. **Write Tests**: Create comprehensive test suite for per-user isolation
 
-3. **Write Tests**: Create comprehensive test suite for per-user isolation
-
-4. **Monitor**: Track memory usage of `USER_RUNTIME_CONTEXTS` in production
+3. **Monitor**: Track memory usage of `USER_RUNTIME_CONTEXTS` in production using logs
 
 ## Benefits Achieved
 
