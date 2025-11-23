@@ -529,9 +529,15 @@ class ConfigurationState {
         configuration.id = configuration.id || generateId();
         
         try {
+            const headers = { 'Content-Type': 'application/json' };
+            const authToken = localStorage.getItem('tda_auth_token');
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+            
             const response = await fetch('/api/v1/llm/configurations', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: headers,
                 body: JSON.stringify(configuration)
             });
             
@@ -580,9 +586,15 @@ class ConfigurationState {
 
     async updateLLMConfiguration(configId, updates) {
         try {
+            const headers = { 'Content-Type': 'application/json' };
+            const authToken = localStorage.getItem('tda_auth_token');
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+            
             const response = await fetch(`/api/v1/llm/configurations/${configId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: headers,
                 body: JSON.stringify(updates)
             });
             

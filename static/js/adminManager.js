@@ -115,6 +115,20 @@ const AdminManager = {
         if (resetPanesBtn) {
             resetPanesBtn.addEventListener('click', () => this.resetPanes());
         }
+
+        // Application configuration
+        const runMcpClassificationBtn = document.getElementById('run-mcp-classification-btn');
+        if (runMcpClassificationBtn) {
+            runMcpClassificationBtn.addEventListener('click', () => this.runMcpClassification());
+        }
+
+        // MCP Classification toggle (in admin panel)
+        const classificationCheckbox = document.getElementById('enable-mcp-classification');
+        if (classificationCheckbox) {
+            classificationCheckbox.addEventListener('change', async (e) => {
+                await this.saveClassificationSetting(e.target.checked);
+            });
+        }
     },
 
     /**
@@ -150,6 +164,8 @@ const AdminManager = {
             this.loadFeatures();
         } else if (tabName === 'pane-config-tab') {
             this.loadPanes();
+        } else if (tabName === 'app-config-tab') {
+            this.loadAppConfig();
         }
     },
 
@@ -913,6 +929,139 @@ const AdminManager = {
         } catch (error) {
             console.error('[AdminManager] Error resetting panes:', error);
             this.showNotification('Failed to reset panes', 'error');
+        }
+    },
+
+    /**
+     * Run MCP Resource Classification
+     */
+    async runMcpClassification() {
+        const statusEl = document.getElementById('mcp-classification-status');
+        const detailsEl = document.getElementById('mcp-classification-details');
+        const progressEl = document.getElementById('mcp-classification-progress');
+        const button = document.getElementById('run-mcp-classification-btn');
+
+        try {
+            // Show progress
+            if (progressEl) progressEl.classList.remove('hidden');
+            if (button) button.disabled = true;
+            if (statusEl) statusEl.textContent = 'Initializing services...';
+            if (detailsEl) detailsEl.textContent = '';
+
+            const token = localStorage.getItem('tda_auth_token');
+            if (!token) {
+                this.showNotification('Not authenticated', 'error');
+                return;
+            }
+
+            const response = await fetch('/api/v1/admin/mcp-classification', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                this.showNotification('MCP classification completed successfully', 'success');
+                if (statusEl) statusEl.textContent = 'Classification completed successfully';
+                if (detailsEl) {
+                    const details = [];
+                    if (data.categories_count) details.push(`${data.categories_count} categories created`);
+                    if (data.tools_count) details.push(`${data.tools_count} tools classified`);
+                    if (data.prompts_count) details.push(`${data.prompts_count} prompts classified`);
+                    if (data.resources_count) details.push(`${data.resources_count} resources classified`);
+                    detailsEl.textContent = details.join(' • ');
+                }
+            } else {
+                throw new Error(data.message || 'Classification failed');
+            }
+        } catch (error) {
+            console.error('[AdminManager] Error running MCP classification:', error);
+            
+            // Show error in header banner
+            const headerBanner = document.getElementById('header-status-message');
+            if (headerBanner) {
+                headerBanner.textContent = error.message;
+                headerBanner.className = 'text-sm px-3 py-1 rounded-md bg-red-500/20 border border-red-400/40 text-red-200';
+                headerBanner.style.opacity = '1';
+                
+                // Auto-hide after 10 seconds
+                setTimeout(() => {
+                    headerBanner.style.opacity = '0';
+                    setTimeout(() => {
+                        headerBanner.textContent = '';
+                        headerBanner.className = 'text-sm px-3 py-1 rounded-md transition-all duration-300 opacity-0';
+                    }, 300);
+                }, 10000);
+            }
+            
+            if (statusEl) statusEl.textContent = 'Ready to classify';
+            if (detailsEl) detailsEl.textContent = '';
+        } finally {
+            // Hide progress
+            if (progressEl) progressEl.classList.add('hidden');
+            if (button) button.disabled = false;
+        }
+    },
+
+    /**
+     * Load application configuration settings
+     */
+    async loadAppConfig() {
+        try {
+            // Load MCP classification setting
+            const response = await fetch('/api/v1/config/classification', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                const checkbox = document.getElementById('enable-mcp-classification');
+                if (checkbox) {
+                    checkbox.checked = result.enable_mcp_classification;
+                }
+            }
+        } catch (error) {
+            console.error('[AdminManager] Failed to load app configuration:', error);
+        }
+    },
+
+    /**
+     * Save the MCP classification setting
+     */
+    async saveClassificationSetting(enabled) {
+        try {
+            const response = await fetch('/api/v1/config/classification', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enable_mcp_classification: enabled })
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                this.showNotification(result.message || 'Classification setting updated', 'success');
+            } else {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || 'Failed to update setting');
+            }
+        } catch (error) {
+            console.error('[AdminManager] Failed to save classification setting:', error);
+            this.showNotification(`Failed to save setting: ${error.message}`, 'error');
+            
+            // Revert checkbox on error
+            const checkbox = document.getElementById('enable-mcp-classification');
+            if (checkbox) {
+                checkbox.checked = !enabled;
+            }
         }
     }
 };

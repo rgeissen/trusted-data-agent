@@ -1243,3 +1243,186 @@ def initialize_default_panes(session):
     session.commit()
     
     return panes
+
+
+@admin_api_bp.route("/v1/admin/mcp-classification", methods=["POST"])
+@require_admin
+async def run_mcp_classification():
+    """
+    Manually trigger MCP resource classification for the default profile.
+    This will use the LLM to categorize all MCP tools, prompts, and resources.
+    Auto-activates services if configured but not loaded.
+    
+    Returns:
+        200: Classification completed successfully with statistics
+        500: Classification failed
+    """
+    try:
+        from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
+        from trusted_data_agent.mcp_adapter import adapter
+        from trusted_data_agent.core.config_manager import get_config_manager
+        from trusted_data_agent.core import configuration_service
+        
+        current_user = get_current_user_from_request()
+        user_uuid = current_user.user_uuid if current_user else None
+        logger.info(f"Admin {current_user.username if current_user else 'unknown'} triggered manual MCP classification")
+        
+        # Check if services are already loaded
+        mcp_client = APP_STATE.get('mcp_client')
+        llm_instance = APP_STATE.get('llm')
+        
+        # Log current state
+        logger.info(f"MCP Classification check - mcp_client exists: {mcp_client is not None}, llm_instance exists: {llm_instance is not None}")
+        logger.info(f"MCP_SERVER_CONNECTED flag: {APP_CONFIG.MCP_SERVER_CONNECTED}, SERVICES_CONFIGURED: {APP_CONFIG.SERVICES_CONFIGURED}")
+        logger.info(f"CURRENT_PROVIDER: {APP_CONFIG.CURRENT_PROVIDER}, CURRENT_MODEL: {APP_CONFIG.CURRENT_MODEL}")
+        
+        # Auto-activate services if not loaded
+        if not llm_instance or not mcp_client:
+            logger.info("Services not loaded - attempting auto-activation from default profile")
+            
+            # Get config manager and default profile
+            config_manager = get_config_manager()
+            default_profile_id = config_manager.get_default_profile_id(user_uuid)
+            
+            if not default_profile_id:
+                logger.warning("No default profile set")
+                return jsonify({
+                    'status': 'error',
+                    'message': 'No default profile - set one in Configuration → Profiles'
+                }), 400
+            
+            profiles = config_manager.get_profiles(user_uuid)
+            default_profile = next((p for p in profiles if p.get("id") == default_profile_id), None)
+            
+            if not default_profile:
+                logger.warning(f"Default profile {default_profile_id} not found")
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Default profile not found - reconfigure in Profiles tab'
+                }), 400
+            
+            # Get LLM configuration
+            llm_config_id = default_profile.get('llmConfigurationId')
+            llm_configs = config_manager.get_llm_configurations(user_uuid)
+            llm_config = next((c for c in llm_configs if c.get('id') == llm_config_id), None)
+            
+            if not llm_config:
+                logger.warning(f"LLM configuration {llm_config_id} not found for default profile")
+                return jsonify({
+                    'status': 'error',
+                    'message': 'LLM configuration missing - check default profile in Profiles tab'
+                }), 400
+            
+            # Get credentials from encrypted storage (auth mode)
+            provider = llm_config.get('provider')
+            credentials = encryption.decrypt_credentials(current_user.id, provider)
+            
+            if not credentials:
+                logger.warning(f"No credentials found in encrypted storage for provider {provider}")
+                return jsonify({
+                    'status': 'error',
+                    'message': f'LLM credentials missing for {provider} - edit configuration and re-enter credentials'
+                }), 400
+            
+            # Get MCP server
+            mcp_server_id = default_profile.get('mcpServerId')
+            mcp_servers = config_manager.get_mcp_servers(user_uuid)
+            mcp_server = next((s for s in mcp_servers if s.get('id') == mcp_server_id), None)
+            
+            if not mcp_server:
+                logger.warning(f"MCP server {mcp_server_id} not found for default profile")
+                return jsonify({
+                    'status': 'error',
+                    'message': 'MCP server missing - check default profile in Profiles tab'
+                }), 400
+            
+            # Build configuration data
+            logger.info(f"Auto-activating services: Provider={provider}, Model={llm_config.get('model')}, MCP={mcp_server.get('name')}")
+            
+            service_config_data = {
+                "provider": provider,
+                "model": llm_config.get('model'),
+                "credentials": credentials,
+                "user_uuid": user_uuid,
+                "mcp_server": {
+                    "id": mcp_server.get('id'),
+                    "name": mcp_server.get('name'),
+                    "host": mcp_server.get('host'),
+                    "port": mcp_server.get('port'),
+                    "path": mcp_server.get('path', '/mcp')
+                },
+                "tts_credentials_json": ""  # Not needed for classification
+            }
+            
+            # Activate services
+            try:
+                result = await configuration_service.setup_and_categorize_services(service_config_data)
+                if result.get("status") != "success":
+                    logger.error(f"Service activation failed: {result.get('message')}")
+                    return jsonify({
+                        'status': 'error',
+                        'message': f"Failed to activate services: {result.get('message')}"
+                    }), 500
+                
+                logger.info("Services auto-activated successfully")
+                
+                # Refresh references after activation
+                mcp_client = APP_STATE.get('mcp_client')
+                llm_instance = APP_STATE.get('llm')
+                
+            except Exception as activation_error:
+                logger.error(f"Service activation error: {activation_error}", exc_info=True)
+                return jsonify({
+                    'status': 'error',
+                    'message': f"Service activation failed: {str(activation_error)}"
+                }), 500
+        
+        # Final validation
+        if not llm_instance or not mcp_client:
+            logger.error("Services still not available after auto-activation attempt")
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to initialize services - check logs'
+            }), 500
+        
+        # Temporarily enable classification
+        original_classification_setting = APP_CONFIG.ENABLE_MCP_CLASSIFICATION
+        APP_CONFIG.ENABLE_MCP_CLASSIFICATION = True
+        
+        try:
+            # Reload MCP capabilities with classification enabled
+            logger.info("Reloading MCP capabilities with classification enabled")
+            await adapter.load_and_categorize_mcp_resources(APP_STATE, user_uuid)
+            
+            # Get statistics from structured data
+            tools_count = sum(len(tools) for tools in APP_STATE.get('structured_tools', {}).values())
+            prompts_count = sum(len(prompts) for prompts in APP_STATE.get('structured_prompts', {}).values())
+            resources_count = sum(len(resources) for resources in APP_STATE.get('structured_resources', {}).values())
+            
+            categories_count = len(set(
+                list(APP_STATE.get('structured_tools', {}).keys()) +
+                list(APP_STATE.get('structured_prompts', {}).keys()) +
+                list(APP_STATE.get('structured_resources', {}).keys())
+            ))
+            
+            logger.info(f"MCP classification completed: {categories_count} categories, {tools_count} tools, {prompts_count} prompts, {resources_count} resources")
+            
+            return jsonify({
+                'status': 'success',
+                'message': 'MCP resource classification completed successfully',
+                'categories_count': categories_count,
+                'tools_count': tools_count,
+                'prompts_count': prompts_count,
+                'resources_count': resources_count
+            }), 200
+            
+        finally:
+            # Restore original setting
+            APP_CONFIG.ENABLE_MCP_CLASSIFICATION = original_classification_setting
+        
+    except Exception as e:
+        logger.error(f"Error running MCP classification: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': f'Failed to run classification: {str(e)}'
+        }), 500

@@ -2116,6 +2116,8 @@ async def create_llm_configuration():
     try:
         user_uuid = _get_user_uuid_from_request()
         from trusted_data_agent.core.config_manager import get_config_manager
+        from trusted_data_agent.auth import encryption
+        from trusted_data_agent.auth.admin import get_current_user_from_request
         config_manager = get_config_manager()
         
         data = await request.get_json()
@@ -2142,7 +2144,31 @@ async def create_llm_configuration():
                 "message": "Configuration ID already exists."
             }), 400
         
-        success = config_manager.add_llm_configuration(data, user_uuid)
+        # In auth mode, store credentials encrypted in database
+        credentials = data.get("credentials", {})
+        provider = data.get("provider")
+        
+        # Get current user for encryption (needs user.id, not user_uuid)
+        current_user = get_current_user_from_request()
+        app_logger.info(f"Creating LLM config - current_user: {current_user}, has_credentials: {bool(credentials)}")
+        
+        if current_user and credentials:
+            # Encrypt credentials in database
+            app_logger.info(f"Encrypting credentials for provider {provider}, user {current_user.username} (id={current_user.id})")
+            encryption.encrypt_credentials(current_user.id, provider, credentials)
+            app_logger.info(f"Successfully encrypted credentials for provider {provider}")
+            
+            # Remove credentials from config data (they're in encrypted storage now)
+            data_without_creds = {k: v for k, v in data.items() if k != "credentials"}
+            data_without_creds["credentials"] = {}  # Store empty dict in config
+            success = config_manager.add_llm_configuration(data_without_creds, user_uuid)
+        else:
+            # No auth or no credentials - store as-is
+            if not current_user:
+                app_logger.warning("No current user found - storing credentials in config (not encrypted)")
+            if not credentials:
+                app_logger.info("No credentials provided - storing config without credentials")
+            success = config_manager.add_llm_configuration(data, user_uuid)
         
         if success:
             app_logger.info(f"Created LLM configuration: {data['name']}")
@@ -2168,6 +2194,8 @@ async def update_llm_configuration(config_id: str):
     try:
         user_uuid = _get_user_uuid_from_request()
         from trusted_data_agent.core.config_manager import get_config_manager
+        from trusted_data_agent.auth import encryption
+        from trusted_data_agent.auth.admin import get_current_user_from_request
         config_manager = get_config_manager()
         
         data = await request.get_json()
@@ -2180,6 +2208,31 @@ async def update_llm_configuration(config_id: str):
                     "status": "error",
                     "message": f"Configuration name '{data['name']}' is already in use."
                 }), 400
+        
+        # In auth mode, store credentials encrypted in database
+        if "credentials" in data and data["credentials"]:
+            credentials = data["credentials"]
+            
+            # Get provider from existing config or from update data
+            configurations = config_manager.get_llm_configurations(user_uuid)
+            existing_config = next((c for c in configurations if c.get("id") == config_id), None)
+            provider = data.get("provider") or (existing_config.get("provider") if existing_config else None)
+            
+            if provider:
+                current_user = get_current_user_from_request()
+                app_logger.info(f"Updating LLM config - current_user: {current_user}, provider: {provider}, has_credentials: {bool(credentials)}")
+                
+                if current_user:
+                    # Encrypt credentials in database
+                    app_logger.info(f"Encrypting credentials for provider {provider}, user {current_user.username} (id={current_user.id})")
+                    encryption.encrypt_credentials(current_user.id, provider, credentials)
+                    app_logger.info(f"Successfully encrypted credentials for provider {provider}")
+                    
+                    # Remove credentials from update data (they're in encrypted storage now)
+                    data = {k: v for k, v in data.items() if k != "credentials"}
+                    data["credentials"] = {}  # Store empty dict in config
+                else:
+                    app_logger.warning("No current user found - storing credentials in config (not encrypted)")
         
         success = config_manager.update_llm_configuration(config_id, data, user_uuid)
         
