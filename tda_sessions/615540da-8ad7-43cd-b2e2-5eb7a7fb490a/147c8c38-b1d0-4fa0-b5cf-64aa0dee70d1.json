@@ -1,0 +1,41 @@
+{
+  "id": "147c8c38-b1d0-4fa0-b5cf-64aa0dee70d1",
+  "user_uuid": "615540da-8ad7-43cd-b2e2-5eb7a7fb490a",
+  "system_prompt_template": null,
+  "charting_intensity": "medium",
+  "provider": "Google",
+  "model": "gemini-2.0-flash",
+  "profile_tag": "GOGET",
+  "profile_tags_used": [],
+  "models_used": [],
+  "session_history": [],
+  "chat_object": [
+    {
+      "role": "user",
+      "content": "You are a helpful assistant.",
+      "turn_number": 0
+    },
+    {
+      "role": "model",
+      "content": "Understood.",
+      "turn_number": 0
+    }
+  ],
+  "name": "New Chat",
+  "created_at": "2025-11-23T09:32:25.305052",
+  "last_updated": "2025-11-23T09:32:25.662663",
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "last_turn_data": {
+    "workflow_history": []
+  },
+  "full_context_sent": false,
+  "license_info": {
+    "holder": "GNU Affero General Public License v3.0",
+    "issued_at": "2025-11-10T19:25:00.506556+00:00",
+    "expires_at": "2026-11-10T19:25:00.506556+00:00",
+    "version": "1.5-tiered",
+    "tier": "App Developer",
+    "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
+  }
+}

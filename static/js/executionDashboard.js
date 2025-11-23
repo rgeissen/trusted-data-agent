@@ -127,8 +127,8 @@ class ExecutionDashboard {
             // Load analytics and sessions in parallel
             const headers = this._getHeaders();
             const [analyticsResponse, sessionsResponse] = await Promise.all([
-                fetch('/api/v1/sessions/analytics', { headers }),
-                fetch('/api/v1/sessions?limit=100', { headers })
+                fetch('/api/v1/sessions/analytics', { method: 'GET', headers: headers }),
+                fetch('/api/v1/sessions?limit=100', { method: 'GET', headers: headers })
             ]);
 
             if (!analyticsResponse.ok || !sessionsResponse.ok) {
@@ -541,10 +541,11 @@ class ExecutionDashboard {
         const date = session.created_at ? new Date(session.created_at).toLocaleString() : 'Unknown';
 
         return `
-            <div id="session-card-${session.id}" class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:border-teradata-orange/50 transition-all cursor-pointer group">
+            <div id="session-card-${session.id}" class="bg-white/5 backdrop-blur-sm rounded-xl p-4 border ${session.archived ? 'border-gray-600/50 opacity-75' : 'border-white/10'} hover:border-teradata-orange/50 transition-all cursor-pointer group">
                 <div class="flex items-start justify-between mb-3">
                     <h3 class="text-white font-semibold truncate flex-1 group-hover:text-teradata-orange transition-colors" title="${session.name}">
                         ${session.name}
+                        ${session.archived ? '<span class="ml-2 text-xs text-gray-500">[Archived]</span>' : ''}
                     </h3>
                     <div class="flex items-center gap-2 flex-shrink-0 ml-2">
                         <button class="activate-session-btn p-1.5 rounded hover:bg-teradata-orange/20 text-gray-400 hover:text-teradata-orange transition-colors" 
@@ -554,6 +555,7 @@ class ExecutionDashboard {
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                             </svg>
                         </button>
+                        ${session.archived ? '<span class="px-2 py-1 text-xs font-semibold rounded border bg-gray-500/20 text-gray-400 border-gray-500/50">archived</span>' : ''}
                         <span class="px-2 py-1 text-xs font-semibold rounded border ${statusColor}">
                             ${session.status}
                         </span>
@@ -606,9 +608,13 @@ class ExecutionDashboard {
         // Load session details
         try {
             const headers = this._getHeaders();
-            const response = await fetch(`/api/v1/sessions/${sessionId}/details`, { headers });
+            const response = await fetch(`/api/v1/sessions/${sessionId}/details`, { 
+                method: 'GET',
+                headers: headers 
+            });
             if (!response.ok) {
-                throw new Error('Failed to fetch session details');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
             }
 
             const sessionData = await response.json();
@@ -745,7 +751,7 @@ class ExecutionDashboard {
 
         try {
             const headers = this._getHeaders();
-            const response = await fetch(`/api/v1/sessions/${this.currentSessionId}/details`, { headers });
+            const response = await fetch(`/api/v1/sessions/${this.currentSessionId}/details`, { method: 'GET', headers: headers });
             const sessionData = await response.json();
 
             const dataStr = JSON.stringify(sessionData, null, 2);
@@ -772,7 +778,7 @@ class ExecutionDashboard {
 
         try {
             const headers = this._getHeaders();
-            const response = await fetch(`/api/v1/sessions/${this.currentSessionId}/details`, { headers });
+            const response = await fetch(`/api/v1/sessions/${this.currentSessionId}/details`, { method: 'GET', headers: headers });
             const sessionData = await response.json();
 
             const workflow = sessionData.last_turn_data?.workflow_history || [];

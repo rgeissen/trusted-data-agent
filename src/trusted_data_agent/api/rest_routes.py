@@ -2737,6 +2737,8 @@ async def get_sessions_list():
                         "status": status,
                         "has_rag": has_rag,
                         "has_errors": has_errors,
+                        "archived": session_data.get("archived", False),
+                        "archived_at": session_data.get("archived_at"),
                         "last_turn_data": {
                             "workflow_history": workflow_history
                         }
@@ -2781,14 +2783,29 @@ async def get_session_details(session_id: str):
     try:
         user_uuid = _get_user_uuid_from_request()
         from pathlib import Path
+        from trusted_data_agent.core.config import APP_CONFIG
         
         project_root = Path(__file__).resolve().parents[3]
-        sessions_root = project_root / 'tda_sessions' / user_uuid
+        sessions_base = project_root / 'tda_sessions'
         rag_cases_dir = project_root / 'rag' / 'tda_rag_cases'
         
-        session_file = sessions_root / f"{session_id}.json"
+        # Find session file - respect SESSIONS_FILTER_BY_USER setting
+        session_file = None
+        if APP_CONFIG.SESSIONS_FILTER_BY_USER:
+            # User-specific mode: look only in user's directory
+            session_file = sessions_base / user_uuid / f"{session_id}.json"
+            if not session_file.exists():
+                session_file = None
+        else:
+            # All users mode: search all user directories
+            for user_dir in sessions_base.iterdir():
+                if user_dir.is_dir():
+                    potential_path = user_dir / f"{session_id}.json"
+                    if potential_path.exists():
+                        session_file = potential_path
+                        break
         
-        if not session_file.exists():
+        if not session_file or not session_file.exists():
             return jsonify({"error": "Session not found"}), 404
         
         with open(session_file, 'r', encoding='utf-8') as f:
@@ -2797,22 +2814,27 @@ async def get_session_details(session_id: str):
         # Find associated RAG cases
         rag_cases = []
         if rag_cases_dir.exists():
-            for case_file in rag_cases_dir.glob('case_*.json'):
-                try:
-                    with open(case_file, 'r', encoding='utf-8') as cf:
-                        case_data = json.load(cf)
-                    
-                    if case_data.get('metadata', {}).get('session_id') == session_id:
-                        rag_cases.append({
-                            "case_id": case_data.get('case_id'),
-                            "turn_id": case_data.get('metadata', {}).get('turn_id'),
-                            "is_most_efficient": case_data.get('metadata', {}).get('is_most_efficient', False),
-                            "output_tokens": case_data.get('metadata', {}).get('llm_config', {}).get('output_tokens', 0),
-                            "strategy_metrics": case_data.get('metadata', {}).get('strategy_metrics', {}),
-                            "collection_id": case_data.get('metadata', {}).get('collection_id', 0)
-                        })
-                except:
+            # RAG cases are stored in collection_X/ subdirectories
+            for collection_dir in rag_cases_dir.iterdir():
+                if not collection_dir.is_dir() or not collection_dir.name.startswith('collection_'):
                     continue
+                
+                for case_file in collection_dir.glob('case_*.json'):
+                    try:
+                        with open(case_file, 'r', encoding='utf-8') as cf:
+                            case_data = json.load(cf)
+                        
+                        if case_data.get('metadata', {}).get('session_id') == session_id:
+                            rag_cases.append({
+                                "case_id": case_data.get('case_id'),
+                                "turn_id": case_data.get('metadata', {}).get('turn_id'),
+                                "is_most_efficient": case_data.get('metadata', {}).get('is_most_efficient', False),
+                                "output_tokens": case_data.get('metadata', {}).get('llm_config', {}).get('output_tokens', 0),
+                                "strategy_metrics": case_data.get('metadata', {}).get('strategy_metrics', {}),
+                                "collection_id": case_data.get('metadata', {}).get('collection_id', 0)
+                            })
+                    except:
+                        continue
         
         session_data['rag_cases'] = rag_cases
         

@@ -263,12 +263,12 @@ export async function deleteSession(sessionId) {
     });
 
     if (response.status === 204) {
-        return { status: "success", message: "Session deleted successfully." };
+        return { status: "success", message: "Session archived successfully." };
     }
 
     const result = await response.json();
     if (!response.ok) {
-        throw new Error(result.message || `Failed to delete session (status ${response.status}).`);
+        throw new Error(result.message || `Failed to archive session (status ${response.status}).`);
     }
     return result;
 }

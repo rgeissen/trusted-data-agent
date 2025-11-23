@@ -891,14 +891,14 @@ async def delete_session_endpoint(session_id: str):
     try:
         success = session_manager.delete_session(user_uuid, session_id)
         if success:
-            app_logger.info(f"Successfully processed delete request for session {session_id} (user {user_uuid}).")
-            return jsonify({"status": "success", "message": "Session deleted successfully."}), 200
+            app_logger.info(f"Successfully processed archive request for session {session_id} (user {user_uuid}).")
+            return jsonify({"status": "success", "message": "Session archived successfully."}), 200
         else:
             app_logger.error(f"session_manager.delete_session reported failure for session {session_id} (user {user_uuid}).")
-            return jsonify({"status": "error", "message": "Failed to delete session file on the server."}), 500
+            return jsonify({"status": "error", "message": "Failed to archive session file on the server."}), 500
     except Exception as e:
         app_logger.error(f"Unexpected error during DELETE /api/session/{session_id} for user {user_uuid}: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": "An unexpected server error occurred during deletion."}), 500
+        return jsonify({"status": "error", "message": "An unexpected server error occurred during archiving."}), 500
 
 # --- MODIFICATION START: Add new endpoint for purging session memory ---
 @api_bp.route("/api/session/<session_id>/purge_memory", methods=["POST"])

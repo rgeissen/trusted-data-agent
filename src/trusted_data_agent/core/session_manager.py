@@ -3,7 +3,7 @@ import uuid
 import os
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path # Use pathlib for better path handling
 import shutil # For potential cleanup later if needed
 import asyncio # For sending notifications asynchronously
@@ -261,13 +261,16 @@ def get_all_sessions(user_uuid: str) -> list[dict]:
                 with open(session_file, 'r', encoding='utf-8') as f:
                     # Load only necessary fields for summary to improve performance
                     data = json.load(f)
+                    
                     summary = {
                         "id": data.get("id", session_file.stem),
                         "name": data.get("name", "Unnamed Session"),
                         "created_at": data.get("created_at", "Unknown"),
                         "models_used": data.get("models_used", []),
                         "profile_tags_used": data.get("profile_tags_used", []),
-                        "last_updated": data.get("last_updated", data.get("created_at", "Unknown"))
+                        "last_updated": data.get("last_updated", data.get("created_at", "Unknown")),
+                        "archived": data.get("archived", False),
+                        "archived_at": data.get("archived_at")
                     }
                     app_logger.debug(f"Loaded summary for {session_file.name}: models_used={summary['models_used']}, profile_tags_used={summary['profile_tags_used']}")
                     session_summaries.append(summary)
@@ -293,25 +296,36 @@ def get_all_sessions(user_uuid: str) -> list[dict]:
     return session_summaries
 
 def delete_session(user_uuid: str, session_id: str) -> bool:
-    """Deletes a session file from the filesystem."""
+    """Archives a session by marking it as archived instead of deleting the file."""
     session_path = _find_session_path(user_uuid, session_id)
     if not session_path:
-        app_logger.error(f"Cannot delete session '{session_id}' for user '{user_uuid}': Session not found.")
+        app_logger.error(f"Cannot archive session '{session_id}' for user '{user_uuid}': Session not found.")
         return False # Indicate failure due to not finding the session
 
-    app_logger.info(f"Attempting to delete session file: {session_path}")
+    app_logger.info(f"Attempting to archive session file: {session_path}")
     try:
         if session_path.is_file():
-            session_path.unlink()
-            app_logger.info(f"Successfully deleted session file: {session_path}")
+            # Load the session data
+            with open(session_path, 'r', encoding='utf-8') as f:
+                session_data = json.load(f)
+            
+            # Mark as archived
+            session_data["archived"] = True
+            session_data["archived_at"] = datetime.now(timezone.utc).isoformat()
+            
+            # Save back to file
+            with open(session_path, 'w', encoding='utf-8') as f:
+                json.dump(session_data, f, indent=2, ensure_ascii=False)
+            
+            app_logger.info(f"Successfully archived session file: {session_path}")
             return True # Indicate success
         else:
             # This case should ideally not be hit if _find_session_path is correct
-            app_logger.warning(f"Session file not found for deletion: {session_path}. Treating as success (already gone).")
+            app_logger.warning(f"Session file not found for archiving: {session_path}. Treating as success (already gone).")
             return True # Indicate success (idempotent delete)
-    except OSError as e:
-        app_logger.error(f"Error deleting session file '{session_path}': {e}", exc_info=True)
-        return False # Indicate failure due to OS error
+    except (OSError, json.JSONDecodeError) as e:
+        app_logger.error(f"Error archiving session file '{session_path}': {e}", exc_info=True)
+        return False # Indicate failure due to error
 
 # --- MODIFICATION START: Rename and refactor add_to_history ---
 def add_message_to_histories(user_uuid: str, session_id: str, role: str, content: str, html_content: str | None = None, source: str | None = None):
