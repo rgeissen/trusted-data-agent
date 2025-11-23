@@ -26,6 +26,13 @@ export async function handleStartNewSession() {
     UI.addMessage('assistant', "Starting a new conversation... Please wait.");
     UI.setThinkingIndicator(false);
 
+    // --- MODIFICATION START: Hide profile override warning banner on new session ---
+    const profileWarningBanner = document.getElementById('profile-override-warning-banner');
+    if (profileWarningBanner) {
+        profileWarningBanner.classList.add('hidden');
+    }
+    // --- MODIFICATION END ---
+
     // --- MODIFICATION START: Hide header buttons and clear turnId on new session ---
     if (DOM.headerReplayPlannedButton) {
         DOM.headerReplayPlannedButton.classList.add('hidden');
@@ -67,6 +74,13 @@ export async function handleLoadSession(sessionId, isNewSession = false) {
 
     // --- MODIFICATION START: Remove highlight on load ---
     UI.removeHighlight(sessionId);
+    // --- MODIFICATION END ---
+
+    // --- MODIFICATION START: Hide profile override warning banner when switching sessions ---
+    const profileWarningBanner = document.getElementById('profile-override-warning-banner');
+    if (profileWarningBanner) {
+        profileWarningBanner.classList.add('hidden');
+    }
     // --- MODIFICATION END ---
 
     try {

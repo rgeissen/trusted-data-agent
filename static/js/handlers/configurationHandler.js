@@ -1368,9 +1368,22 @@ export async function reconnectAndLoad() {
         };
 
 
+        const headers = { 'Content-Type': 'application/json' };
+        
+        // Add authentication token if available
+        const authToken = localStorage.getItem('tda_auth_token');
+        if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+        }
+        
+        // Add User UUID header (for backwards compatibility)
+        if (state.userUUID) {
+            headers['X-TDA-User-UUID'] = state.userUUID;
+        }
+        
         const response = await fetch('/configure', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: headers,
             body: JSON.stringify(configData)
         });
 

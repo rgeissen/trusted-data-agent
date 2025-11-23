@@ -1,0 +1,218 @@
+"""
+SQLAlchemy models for authentication.
+
+Defines User, AuthToken, and related database models.
+"""
+
+import uuid
+from datetime import datetime, timezone
+from typing import Optional
+
+from sqlalchemy import (
+    Boolean, Column, DateTime, ForeignKey, Integer, String, Text, Index
+)
+from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy.dialects.postgresql import UUID
+
+Base = declarative_base()
+
+
+class User(Base):
+    """User model for authentication and profile management."""
+    
+    __tablename__ = 'users'
+    
+    # Primary fields
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    username = Column(String(30), unique=True, nullable=False, index=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)
+    
+    # Profile fields
+    user_uuid = Column(String(36), unique=True, nullable=False, default=lambda: str(uuid.uuid4()), index=True)
+    display_name = Column(String(100), nullable=True)
+    full_name = Column(String(255), nullable=True)
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Security fields
+    is_active = Column(Boolean, default=True, nullable=False)
+    is_admin = Column(Boolean, default=False, nullable=False)
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
+    
+    # Relationships
+    auth_tokens = relationship("AuthToken", back_populates="user", cascade="all, delete-orphan")
+    credentials = relationship("UserCredential", back_populates="user", cascade="all, delete-orphan")
+    preferences = relationship("UserPreference", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    audit_logs = relationship("AuditLog", back_populates="user", cascade="all, delete-orphan")
+    
+    def __repr__(self):
+        return f"<User(id='{self.id}', username='{self.username}', email='{self.email}')>"
+    
+    def to_dict(self, include_sensitive=False):
+        """Convert user to dictionary for API responses."""
+        data = {
+            'id': self.id,
+            'username': self.username,
+            'email': self.email,
+            'full_name': self.full_name,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None,
+            'is_active': self.is_active,
+            'is_admin': self.is_admin
+        }
+        
+        if include_sensitive:
+            data['failed_login_attempts'] = self.failed_login_attempts
+            data['locked_until'] = self.locked_until.isoformat() if self.locked_until else None
+        
+        return data
+
+
+class AuthToken(Base):
+    """Authentication token model for session management."""
+    
+    __tablename__ = 'auth_tokens'
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    token_hash = Column(String(255), nullable=False, index=True, unique=True)
+    
+    # Token metadata
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    
+    # Request context
+    ip_address = Column(String(45), nullable=True)  # IPv6 max length
+    user_agent = Column(String(500), nullable=True)
+    
+    # Status
+    revoked = Column(Boolean, default=False, nullable=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Relationships
+    user = relationship("User", back_populates="auth_tokens")
+    
+    # Indexes
+    __table_args__ = (
+        Index('idx_token_user_active', 'user_id', 'revoked', 'expires_at'),
+    )
+    
+    def __repr__(self):
+        return f"<AuthToken(id='{self.id}', user_id='{self.user_id}', expires_at='{self.expires_at}')>"
+    
+    def is_valid(self):
+        """Check if token is still valid."""
+        now = datetime.now(timezone.utc)
+        return not self.revoked and self.expires_at > now
+
+
+class UserCredential(Base):
+    """Encrypted credentials storage for user API keys."""
+    
+    __tablename__ = 'user_credentials'
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    provider = Column(String(50), nullable=False)  # Amazon, Google, OpenAI, etc.
+    credentials_encrypted = Column(Text, nullable=False)
+    
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    user = relationship("User", back_populates="credentials")
+    
+    # Unique constraint: one credential set per user per provider
+    __table_args__ = (
+        Index('idx_user_provider', 'user_id', 'provider', unique=True),
+    )
+    
+    def __repr__(self):
+        return f"<UserCredential(user_id='{self.user_id}', provider='{self.provider}')>"
+
+
+class UserPreference(Base):
+    """User preferences and settings."""
+    
+    __tablename__ = 'user_preferences'
+    
+    user_id = Column(String(36), ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
+    
+    # UI preferences
+    theme = Column(String(20), default='light')  # light, dark
+    default_profile_id = Column(String(36), nullable=True)
+    notification_enabled = Column(Boolean, default=True)
+    
+    # Extended preferences (JSON)
+    preferences_json = Column(Text, nullable=True)  # Store as JSON string
+    
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    user = relationship("User", back_populates="preferences")
+    
+    def __repr__(self):
+        return f"<UserPreference(user_id='{self.user_id}', theme='{self.theme}')>"
+
+
+class AuditLog(Base):
+    """Audit log for tracking user actions."""
+    
+    __tablename__ = 'audit_logs'
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey('users.id', ondelete='SET NULL'), nullable=True, index=True)
+    
+    # Action details
+    action = Column(String(50), nullable=False, index=True)  # login, logout, configure, execute, etc.
+    resource = Column(String(255), nullable=True)  # endpoint path or resource identifier
+    status = Column(String(20), nullable=False)  # success, failure
+    
+    # Request context
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+    
+    # Additional details
+    details = Column(Text, nullable=True)  # JSON string for extensibility
+    
+    timestamp = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    
+    # Relationships
+    user = relationship("User", back_populates="audit_logs")
+    
+    # Indexes for common queries
+    __table_args__ = (
+        Index('idx_audit_user_time', 'user_id', 'timestamp'),
+        Index('idx_audit_action_time', 'action', 'timestamp'),
+    )
+    
+    def __repr__(self):
+        return f"<AuditLog(action='{self.action}', user_id='{self.user_id}', status='{self.status}')>"
+
+
+class PasswordResetToken(Base):
+    """Temporary tokens for password reset flow."""
+    
+    __tablename__ = 'password_reset_tokens'
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    token_hash = Column(String(255), nullable=False, index=True, unique=True)
+    
+    expires_at = Column(DateTime(timezone=True), nullable=False)  # 1 hour expiry
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    used = Column(Boolean, default=False, nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    
+    def __repr__(self):
+        return f"<PasswordResetToken(user_id='{self.user_id}', used={self.used})>"
+    
+    def is_valid(self):
+        """Check if reset token is still valid."""
+        now = datetime.now(timezone.utc)
+        return not self.used and self.expires_at > now

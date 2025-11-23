@@ -154,16 +154,18 @@ def create_app():
 
     from trusted_data_agent.api.routes import api_bp
     from trusted_data_agent.api.rest_routes import rest_api_bp
+    from trusted_data_agent.api.auth_routes import auth_bp
 
     app.register_blueprint(api_bp)
     app.register_blueprint(rest_api_bp, url_prefix="/api")
+    app.register_blueprint(auth_bp)  # Auth routes are already prefixed with /api/v1/auth
 
     @app.after_request
     async def add_security_headers(response):
         # Allow connections to unpkg for G2Plot if needed, adjust connect-src
         csp_policy = [
             "default-src 'self'",
-            "script-src 'self' https://cdn.tailwindcss.com https://unpkg.com",
+            "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com", # Allow inline scripts for auth pages
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", # Allow inline styles for G2Plot tooltips etc.
             "font-src 'self' https://fonts.gstatic.com",
             "connect-src 'self' *.googleapis.com https://*.withgoogle.com https://unpkg.com https://api.github.com", # Added unpkg and GitHub API
@@ -182,6 +184,18 @@ def create_app():
         Used to start background tasks like our RAG worker and initialize RAG independently.
         """
         app_logger.info("Application starting up... Launching background tasks.")
+        
+        # Initialize authentication database if enabled
+        if os.environ.get('TDA_AUTH_ENABLED', 'false').lower() == 'true':
+            try:
+                from trusted_data_agent.auth.database import init_database
+                app_logger.info("Authentication is enabled - initializing database...")
+                init_database()
+                app_logger.info("Authentication database initialized successfully")
+            except Exception as e:
+                app_logger.error(f"Failed to initialize authentication database: {e}", exc_info=True)
+        else:
+            app_logger.info("Authentication is disabled (TDA_AUTH_ENABLED not set to 'true')")
         
         # Load configuration from tda_config.json and apply to APP_CONFIG
         from trusted_data_agent.core.config_manager import get_config_manager

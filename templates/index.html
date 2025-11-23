@@ -37,13 +37,15 @@
             </a>
             <!-- Status message area -->
             <div id="header-status-message" class="text-sm px-3 py-1 rounded-md transition-all duration-300 opacity-0"></div>
-            <!-- Configuration Persistence Warning Banner -->
+            <!-- Configuration Persistence Warning Banner (Application Level) -->
             <div id="persistence-warning-banner" class="hidden flex items-center gap-x-2 px-3 py-1.5 bg-cyan-500/20 border border-cyan-400/40 rounded-md text-xs text-cyan-200">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
                 </svg>
                 <span class="font-medium">Demo Mode: Credentials are not stored permanently</span>
             </div>
+            <!-- Example: Add more application-level banners here if needed -->
+            <!-- <div id="some-other-app-banner" class="hidden ...">...</div> -->
         </div>
         <div class="flex items-center gap-x-4">
             <!-- Status Dots (MOVED HERE) -->
@@ -68,6 +70,49 @@
                     <div id="context-status-dot" class="connection-dot disconnected"></div>
                     <span class="text-sm text-gray-300">Context</span>
                 </div>
+            </div>
+            <!-- User Menu (Authentication) -->
+            <div id="user-menu-container" class="menu-item relative hidden">
+                <button id="user-menu-button" class="flex items-center gap-x-2 p-2 text-gray-300 hover:text-white transition-colors rounded-md hover:bg-white/10" title="User Menu">
+                    <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm">
+                        <span id="user-avatar-initial">?</span>
+                    </div>
+                    <span id="user-display-name" class="text-sm font-medium hidden md:block">Guest</span>
+                </button>
+                <div id="user-dropdown-menu" class="dropdown-menu mt-2 w-56 rounded-md shadow-lg glass-panel p-1">
+                    <div class="px-3 py-2 border-b border-white/10 mb-1">
+                        <p class="text-sm font-medium text-white" id="user-menu-name">User</p>
+                        <p class="text-xs text-gray-400" id="user-menu-email">user@example.com</p>
+                    </div>
+                    <button id="user-profile-button" class="flex items-center w-full px-3 py-2 text-sm text-gray-200 rounded-md hover:bg-white/10 text-left">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                        </svg>
+                        Profile
+                    </button>
+                    <button id="user-change-password-button" class="flex items-center w-full px-3 py-2 text-sm text-gray-200 rounded-md hover:bg-white/10 text-left">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                        </svg>
+                        Change Password
+                    </button>
+                    <div class="border-t border-white/10 my-1"></div>
+                    <button id="user-logout-button" class="flex items-center w-full px-3 py-2 text-sm text-red-400 rounded-md hover:bg-red-500/10 text-left">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd" />
+                        </svg>
+                        Logout
+                    </button>
+                </div>
+            </div>
+            <!-- Login Button (shown when not authenticated) -->
+            <div id="login-button-container" class="hidden">
+                <a href="/login" class="flex items-center gap-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 3a1 1 0 011 1v12a1 1 0 11-2 0V4a1 1 0 011-1zm7.707 3.293a1 1 0 010 1.414L9.414 9H17a1 1 0 110 2H9.414l1.293 1.293a1 1 0 01-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                    Login
+                </a>
             </div>
             <!-- Settings/Cogwheel Menu -->
             <div class="menu-item relative">
@@ -171,6 +216,18 @@
                             </svg>
                             <span id="header-override-profile-tag" class="text-sm font-semibold text-white"></span>
                             <span class="text-xs text-white/70">override</span>
+                        </div>
+                        <!-- Profile Override Failure Warning (Inline in header) -->
+                        <div id="profile-override-warning-banner" class="hidden flex items-center gap-x-2 px-3 py-1 rounded-md bg-yellow-500/20 border border-yellow-400/50">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                            <span id="profile-override-warning-message" class="text-xs text-yellow-100 font-medium"></span>
+                            <button id="dismiss-profile-warning" class="text-yellow-400 hover:text-yellow-200 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
                         </div>
                     </div>
                     <!-- RIGHT: Config/Info/Window Buttons -->
@@ -2404,5 +2461,90 @@
             </div>
         </div>
     </div>
+
+    <!-- Authentication Client -->
+    <script src="/static/js/auth.js"></script>
+    <script>
+        // Initialize authentication
+        const authClient = new AuthClient();
+        
+        // Update UI based on authentication state
+        function updateAuthUI() {
+            const isAuth = authClient.isAuthenticated();
+            const user = authClient.getUser();
+            
+            const userMenuContainer = document.getElementById('user-menu-container');
+            const loginButtonContainer = document.getElementById('login-button-container');
+            
+            if (isAuth && user) {
+                // Show user menu
+                userMenuContainer.classList.remove('hidden');
+                loginButtonContainer.classList.add('hidden');
+                
+                // Update user info
+                const initial = user.display_name ? user.display_name.charAt(0).toUpperCase() : user.username.charAt(0).toUpperCase();
+                document.getElementById('user-avatar-initial').textContent = initial;
+                document.getElementById('user-display-name').textContent = user.display_name || user.username;
+                document.getElementById('user-menu-name').textContent = user.display_name || user.username;
+                document.getElementById('user-menu-email').textContent = user.email;
+                
+                console.log('Authenticated as:', user.username);
+            } else {
+                // Show login button
+                userMenuContainer.classList.add('hidden');
+                loginButtonContainer.classList.remove('hidden');
+                
+                console.log('Not authenticated');
+            }
+        }
+        
+        // Initialize on page load
+        updateAuthUI();
+        
+        // Handle user menu toggle
+        const userMenuButton = document.getElementById('user-menu-button');
+        const userDropdownMenu = document.getElementById('user-dropdown-menu');
+        
+        if (userMenuButton && userDropdownMenu) {
+            userMenuButton.addEventListener('click', () => {
+                userDropdownMenu.classList.toggle('show');
+            });
+        }
+        
+        // Handle logout
+        const logoutButton = document.getElementById('user-logout-button');
+        if (logoutButton) {
+            logoutButton.addEventListener('click', async () => {
+                const result = await authClient.logout();
+                console.log('Logout result:', result);
+                window.location.href = '/login';
+            });
+        }
+        
+        // Handle profile button (placeholder)
+        const profileButton = document.getElementById('user-profile-button');
+        if (profileButton) {
+            profileButton.addEventListener('click', () => {
+                alert('Profile page coming soon!');
+            });
+        }
+        
+        // Handle change password button (placeholder)
+        const changePasswordButton = document.getElementById('user-change-password-button');
+        if (changePasswordButton) {
+            changePasswordButton.addEventListener('click', () => {
+                alert('Password change feature coming soon!');
+            });
+        }
+        
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+            if (userMenuButton && userDropdownMenu) {
+                if (!userMenuButton.contains(e.target) && !userDropdownMenu.contains(e.target)) {
+                    userDropdownMenu.classList.remove('show');
+                }
+            }
+        });
+    </script>
 </body>
 </html>

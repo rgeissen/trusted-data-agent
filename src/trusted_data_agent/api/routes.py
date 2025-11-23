@@ -37,11 +37,39 @@ api_bp = Blueprint('api', __name__)
 app_logger = logging.getLogger("quart.app")
 
 def _get_user_uuid_from_request():
-    """Extracts User UUID from request header or aborts."""
+    """
+    Extracts User UUID from request.
+    
+    If authentication is enabled, extracts from JWT token.
+    Otherwise, falls back to X-TDA-User-UUID header.
+    
+    Returns None if authentication is required but not provided (caller should handle error).
+    """
+    import os
+    
+    # Check if authentication is enabled
+    auth_enabled = os.environ.get('TDA_AUTH_ENABLED', 'false').lower() == 'true'
+    
+    if auth_enabled:
+        # Try to get user from authentication token
+        try:
+            from trusted_data_agent.auth.middleware import get_current_user
+            user = get_current_user()
+            if user and user.user_uuid:
+                app_logger.debug(f"User UUID from auth token: {user.user_uuid}")
+                return user.user_uuid
+        except Exception as e:
+            app_logger.warning(f"Failed to get user from auth token: {e}")
+    
+    # Fall back to header-based UUID (for backwards compatibility or when auth is disabled)
     user_uuid = request.headers.get("X-TDA-User-UUID")
     if not user_uuid:
-        app_logger.error("Missing X-TDA-User-UUID header in request.")
-        abort(400, description="X-TDA-User-UUID header is required.")
+        if auth_enabled:
+            app_logger.error("Authentication enabled but no valid token or X-TDA-User-UUID header provided.")
+            return None  # Let caller handle the error response
+        else:
+            app_logger.error("Missing X-TDA-User-UUID header in request.")
+            return None  # Let caller handle the error response
     return user_uuid
 
 
@@ -49,6 +77,18 @@ def _get_user_uuid_from_request():
 async def index():
     """Serves the main HTML page."""
     return await render_template("index.html")
+
+
+@api_bp.route("/login")
+async def login_page():
+    """Serves the login page."""
+    return await render_template("login.html")
+
+
+@api_bp.route("/register")
+async def register_page():
+    """Serves the registration page."""
+    return await render_template("register.html")
 
 @api_bp.route("/api/status")
 async def get_application_status():
@@ -822,6 +862,8 @@ async def get_rag_case_details(case_id: str):
 async def get_sessions():
     """Returns a list of all active chat sessions for the requesting user."""
     user_uuid = _get_user_uuid_from_request()
+    if not user_uuid:
+        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
     sessions = session_manager.get_all_sessions(user_uuid=user_uuid)
     # Ensure profile_tags_used is included for each session
     for session in sessions:
@@ -833,6 +875,8 @@ async def get_sessions():
 async def get_session_history(session_id):
     """Retrieves the chat history and token counts for a specific session."""
     user_uuid = _get_user_uuid_from_request()
+    if not user_uuid:
+        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
     session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
     if session_data:
         # --- MODIFICATION START: Extract feedback from workflow_history ---
@@ -863,6 +907,8 @@ async def get_session_history(session_id):
 async def rename_session(session_id: str):
     """Renames a specific session for the requesting user."""
     user_uuid = _get_user_uuid_from_request()
+    if not user_uuid:
+        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
     data = await request.get_json()
     new_name = data.get("newName")
 
@@ -886,6 +932,8 @@ async def rename_session(session_id: str):
 async def delete_session_endpoint(session_id: str):
     """Deletes a specific session for the requesting user."""
     user_uuid = _get_user_uuid_from_request()
+    if not user_uuid:
+        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
     app_logger.info(f"DELETE request received for session {session_id} from user {user_uuid}.")
 
     try:
@@ -905,6 +953,8 @@ async def delete_session_endpoint(session_id: str):
 async def purge_memory(session_id: str):
     """Purges the agent's LLM context memory (`chat_object`) for a session."""
     user_uuid = _get_user_uuid_from_request()
+    if not user_uuid:
+        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
     app_logger.info(f"Purge memory request for session {session_id}, user {user_uuid}")
 
     success = session_manager.purge_session_memory(user_uuid, session_id)
@@ -923,6 +973,8 @@ async def purge_memory(session_id: str):
 async def get_turn_plan(session_id: str, turn_id: int):
     """Retrieves the original plan for a specific turn in a session."""
     user_uuid = _get_user_uuid_from_request()
+    if not user_uuid:
+        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
     session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
     if not session_data:
         return jsonify({"error": "Session not found"}), 404
@@ -944,6 +996,8 @@ async def get_turn_plan(session_id: str, turn_id: int):
 async def get_turn_details(session_id: str, turn_id: int):
     """Retrieves the full details (plan and trace) for a specific turn."""
     user_uuid = _get_user_uuid_from_request()
+    if not user_uuid:
+        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
     session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
     if not session_data:
         return jsonify({"error": "Session not found"}), 404
@@ -974,6 +1028,8 @@ async def get_turn_details(session_id: str, turn_id: int):
 async def get_turn_query(session_id: str, turn_id: int):
     """Retrieves the original user query for a specific turn in a session."""
     user_uuid = _get_user_uuid_from_request()
+    if not user_uuid:
+        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
     session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
     if not session_data:
         return jsonify({"error": "Session not found"}), 404
@@ -996,6 +1052,8 @@ async def get_turn_query(session_id: str, turn_id: int):
 async def new_session():
     """Creates a new chat session for the requesting user."""
     user_uuid = _get_user_uuid_from_request()
+    if not user_uuid:
+        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
 
     if not APP_STATE.get('llm') or not APP_CONFIG.MCP_SERVER_CONNECTED:
         return jsonify({"error": "Application not configured. Please set MCP and LLM details in Config."}), 400
@@ -1107,6 +1165,8 @@ async def configure_services():
         return jsonify({"status": "error", "message": "Request body must be a valid JSON."}), 400
     
     user_uuid = _get_user_uuid_from_request()
+    if not user_uuid:
+        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
 
     # Check if credentials are nested (new format) or flat (old format)
     creds = data_from_ui.get("credentials", {})
@@ -1207,6 +1267,10 @@ async def test_mcp_connection():
 async def ask_stream():
     """Handles the main chat conversation stream for ad-hoc user queries."""
     user_uuid = _get_user_uuid_from_request()
+    if not user_uuid:
+        async def error_gen():
+            yield PlanExecutor._format_sse({"error": "Authentication required. Please login."}, "error")
+        return Response(error_gen(), mimetype="text/event-stream")
 
     if not APP_STATE.get('mcp_tools'):
         async def error_gen():
@@ -1237,27 +1301,26 @@ async def ask_stream():
             yield PlanExecutor._format_sse({"error": "Session not found or invalid."}, "error")
         return Response(error_gen(), mimetype="text/event-stream")
 
-    # Get profile tag from active profile or override
+    # Get profile tag from active profile (NOT from override)
+    # Note: If profile_override_id is set, the executor will handle updating the session
+    # with the override profile only if it succeeds. We should not pre-emptively add
+    # the override tag here, as it may fail during executor initialization.
     from trusted_data_agent.core.config_manager import get_config_manager
     config_manager = get_config_manager()
     
-    # Determine which profile to use
-    if profile_override_id:
-        # Use override profile temporarily
+    # Always use default profile here - executor will update if override succeeds
+    default_profile_id = config_manager.get_default_profile_id()
+    if default_profile_id:
         profiles = config_manager.get_profiles()
-        override_profile = next((p for p in profiles if p.get("id") == profile_override_id), None)
-        profile_tag = override_profile.get("tag") if override_profile else None
+        default_profile = next((p for p in profiles if p.get("id") == default_profile_id), None)
+        profile_tag = default_profile.get("tag") if default_profile else None
     else:
-        # Use default profile
-        default_profile_id = config_manager.get_default_profile_id()
-        if default_profile_id:
-            profiles = config_manager.get_profiles()
-            default_profile = next((p for p in profiles if p.get("id") == default_profile_id), None)
-            profile_tag = default_profile.get("tag") if default_profile else None
-        else:
-            profile_tag = None
+        profile_tag = None
 
-    session_manager.update_models_used(user_uuid=user_uuid, session_id=session_id, provider=APP_CONFIG.CURRENT_PROVIDER, model=APP_CONFIG.CURRENT_MODEL, profile_tag=profile_tag)
+    # Only update session if no profile override is active
+    # If profile override is active, let executor handle the update after validation
+    if not profile_override_id:
+        session_manager.update_models_used(user_uuid=user_uuid, session_id=session_id, provider=APP_CONFIG.CURRENT_PROVIDER, model=APP_CONFIG.CURRENT_MODEL, profile_tag=profile_tag)
 
     # --- MODIFICATION START: Generate task_id for interactive sessions ---
     task_id = generate_task_id()
@@ -1338,6 +1401,10 @@ async def invoke_prompt_stream():
     Handles the direct invocation of a prompt from the UI.
     """
     user_uuid = _get_user_uuid_from_request()
+    if not user_uuid:
+        async def error_gen():
+            yield PlanExecutor._format_sse({"error": "Authentication required. Please login."}, "error")
+        return Response(error_gen(), mimetype="text/event-stream")
 
     if not APP_STATE.get('mcp_tools'):
         async def error_gen():
@@ -1432,6 +1499,8 @@ async def invoke_prompt_stream():
 async def cancel_stream(session_id: str):
     """Cancels the active execution task for a given session."""
     user_uuid = _get_user_uuid_from_request()
+    if not user_uuid:
+        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
     active_tasks_key = f"{user_uuid}_{session_id}"
     active_tasks = APP_STATE.get("active_tasks", {})
     task = active_tasks.get(active_tasks_key)
@@ -1456,6 +1525,8 @@ async def cancel_stream(session_id: str):
 async def toggle_turn_validity_route(session_id: str, turn_id: int):
     """Toggles the validity of a specific turn."""
     user_uuid = _get_user_uuid_from_request()
+    if not user_uuid:
+        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
     app_logger.info(f"Toggle validity request for session {session_id}, turn {turn_id}, user {user_uuid}")
 
     success = session_manager.toggle_turn_validity(user_uuid, session_id, turn_id)
@@ -1471,6 +1542,8 @@ async def toggle_turn_validity_route(session_id: str, turn_id: int):
 async def update_turn_feedback_route(session_id: str, turn_id: int):
     """Updates the feedback (upvote/downvote) for a specific turn."""
     user_uuid = _get_user_uuid_from_request()
+    if not user_uuid:
+        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
     data = await request.get_json()
     vote = data.get("vote")  # Expected: 'up', 'down', or None
     

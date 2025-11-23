@@ -12,3 +12,9 @@ google.cloud
 google-cloud-texttospeech
 chromadb
 sentence-transformers
+
+# Authentication dependencies
+bcrypt>=4.1.0
+pyjwt>=2.8.0
+sqlalchemy>=2.0.0
+email-validator>=2.1.0

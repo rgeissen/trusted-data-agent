@@ -224,14 +224,71 @@ class PlanExecutor:
         self.llm_debug_history.append({"reason": reason, "response": response_text})
         app_logger.debug(f"LLM RESPONSE (DEBUG): Reason='{reason}', Response='{response_text}'")
 
-        # --- MODIFICATION START: Update session_manager with actual provider/model ---
-        session_manager.update_models_used(self.user_uuid, self.session_id, actual_provider, actual_model)
-        # --- MODIFICATION END ---
-
         self.turn_input_tokens += statement_input_tokens
         self.turn_output_tokens += statement_output_tokens
 
         return response_text, statement_input_tokens, statement_output_tokens
+
+    def _get_current_profile_tag(self) -> str | None:
+        """
+        Get the current profile tag from active profiles or profile override.
+        
+        Returns:
+            Profile tag string or None if no active profile
+        """
+        try:
+            from trusted_data_agent.core.config_manager import get_config_manager
+            config_manager = get_config_manager()
+            
+            # If profile override is active, use that profile's tag
+            if self.profile_override_id:
+                profiles = config_manager.get_profiles(self.user_uuid)
+                override_profile = next((p for p in profiles if p.get("id") == self.profile_override_id), None)
+                if override_profile:
+                    profile_tag = override_profile.get("tag")
+                    app_logger.debug(f"_get_current_profile_tag: Using profile override tag: {profile_tag}")
+                    return profile_tag
+                else:
+                    app_logger.warning(f"_get_current_profile_tag: Profile override ID {self.profile_override_id} not found")
+            
+            # Otherwise use the active profile
+            active_profile_ids = config_manager.get_active_for_consumption_profile_ids(self.user_uuid)
+            if active_profile_ids:
+                profiles = config_manager.get_profiles(self.user_uuid)
+                active_profile = next((p for p in profiles if p.get("id") == active_profile_ids[0]), None)
+                if active_profile:
+                    profile_tag = active_profile.get("tag")
+                    app_logger.debug(f"_get_current_profile_tag: Using active profile tag: {profile_tag}")
+                    return profile_tag
+            
+            app_logger.debug(f"_get_current_profile_tag: No profile tag found (override_id={self.profile_override_id}, active_ids={active_profile_ids if 'active_profile_ids' in locals() else 'not set'})")
+        except Exception as e:
+            app_logger.warning(f"Failed to get current profile tag: {e}", exc_info=True)
+        return None
+
+    def _get_active_profile_tag(self) -> str:
+        """
+        Get the tag of the currently active (default) profile, ignoring any profile override.
+        Used for fallback messaging when profile override fails.
+        
+        Returns:
+            str: The tag of the active profile, or "DEFAULT" if none found
+        """
+        try:
+            from trusted_data_agent.core.config_manager import get_config_manager
+            config_manager = get_config_manager()
+            
+            active_profile_ids = config_manager.get_active_for_consumption_profile_ids(self.user_uuid)
+            if active_profile_ids:
+                profiles = config_manager.get_profiles(self.user_uuid)
+                active_profile = next((p for p in profiles if p.get("id") == active_profile_ids[0]), None)
+                if active_profile:
+                    return active_profile.get("tag", "DEFAULT")
+            
+        except Exception as e:
+            app_logger.warning(f"Failed to get active profile tag: {e}", exc_info=True)
+        
+        return "DEFAULT"
 
     async def _get_tool_constraints(self, tool_name: str) -> Tuple[dict, list]:
         """
@@ -631,21 +688,29 @@ class PlanExecutor:
                             # Create temporary LLM instance using shared factory
                             from trusted_data_agent.llm.client_factory import create_llm_client, get_provider_config_details
                             
-                            temp_llm_instance = await create_llm_client(provider, model, credentials)
-                            
-                            # Update APP_CONFIG and executor's cached values for this turn
-                            set_user_provider(provider, self.user_uuid)
-                            set_user_model(model, self.user_uuid)
-                            self.current_provider = provider
-                            self.current_model = model
-                            
-                            # Apply provider-specific configuration details
-                            provider_details = get_provider_config_details(provider, model, credentials)
-                            for key, value in provider_details.items():
-                                setattr(APP_CONFIG, key, value)
-                            
-                            APP_STATE['llm'] = temp_llm_instance
-                            app_logger.info(f"✅ LLM instance created and configured successfully")
+                            try:
+                                temp_llm_instance = await create_llm_client(provider, model, credentials)
+                                
+                                # Only update if LLM instance was created successfully
+                                # Update APP_CONFIG and executor's cached values for this turn
+                                set_user_provider(provider, self.user_uuid)
+                                set_user_model(model, self.user_uuid)
+                                self.current_provider = provider
+                                self.current_model = model
+                                
+                                # Apply provider-specific configuration details
+                                provider_details = get_provider_config_details(provider, model, credentials)
+                                for key, value in provider_details.items():
+                                    setattr(APP_CONFIG, key, value)
+                                
+                                APP_STATE['llm'] = temp_llm_instance
+                                app_logger.info(f"✅ LLM instance created and configured successfully")
+                            except Exception as llm_error:
+                                app_logger.error(f"❌ Failed to create LLM instance for profile override: {llm_error}")
+                                app_logger.error(f"   Provider: {provider}, Model: {model}")
+                                app_logger.error(f"   Credentials present: {bool(credentials)}")
+                                app_logger.error(f"   Continuing with default profile")
+                                raise  # Re-raise to trigger outer exception handler
                     
                     # Get override profile's MCP server configuration
                     override_mcp_server_id = override_profile.get('mcpServerId')
@@ -726,8 +791,56 @@ class PlanExecutor:
                     
             except Exception as e:
                 app_logger.error(f"Failed to apply profile override: {e}", exc_info=True)
+                
+                # CRITICAL: Restore original provider/model before they get saved to session
+                # The override attempt may have changed self.current_provider and self.current_model
+                # but since it failed, we need to restore them to the original values
+                if self.original_provider and self.original_model:
+                    app_logger.info(f"🔄 Restoring provider/model from {self.current_provider}/{self.current_model} to {self.original_provider}/{self.original_model}")
+                    self.current_provider = self.original_provider
+                    self.current_model = self.original_model
+                    set_user_provider(self.original_provider, self.user_uuid)
+                    set_user_model(self.original_model, self.user_uuid)
+                
+                # Send warning banner notification to user via SSE
+                from trusted_data_agent.core.config_manager import get_config_manager
+                config_manager = get_config_manager()
+                override_profile = None
+                if self.profile_override_id:
+                    profiles = config_manager.get_profiles(self.user_uuid)
+                    override_profile = next((p for p in profiles if p.get("id") == self.profile_override_id), None)
+                
+                # Get default profile tag for notification
+                default_profile_tag = self._get_active_profile_tag()
+                
+                # Clear profile_override_id NOW so subsequent calls use default profile
+                app_logger.info(f"🔄 Clearing profile_override_id to use default profile tag: {default_profile_tag}")
+                self.profile_override_id = None
+                
+                if override_profile:
+                    # Send notification as SSE event to show banner in header
+                    notification_data = {
+                        "type": "profile_override_failed",
+                        "payload": {
+                            "override_profile_name": override_profile.get('name', 'Unknown'),
+                            "override_profile_tag": override_profile.get('tag', 'N/A'),
+                            "default_profile_tag": default_profile_tag,
+                            "error_message": str(e)
+                        }
+                    }
+                    app_logger.info(f"📢 Yielding profile_override_failed notification: {notification_data}")
+                    yield self._format_sse(notification_data, event="notification")
+                
                 # Continue with default profile if override fails
+                # Note: Do NOT call update_models_used here - it will be called below with the restored default values
         # --- MODIFICATION END ---
+
+        # Update session with correct provider/model/profile_tag at the start of execution
+        # This ensures the session data is correct before any LLM calls
+        profile_tag = self._get_current_profile_tag()
+        app_logger.info(f"🔍 About to call update_models_used with: provider={self.current_provider}, model={self.current_model}, profile_tag={profile_tag}, profile_override_id={self.profile_override_id}")
+        session_manager.update_models_used(self.user_uuid, self.session_id, self.current_provider, self.current_model, profile_tag)
+        app_logger.info(f"✅ Session {self.session_id} initialized with provider={self.current_provider}, model={self.current_model}, profile_tag={profile_tag}")
 
         try:
             # --- MODIFICATION START: Handle Replay ---

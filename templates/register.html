@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Trusted Data Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body class="bg-gray-900 min-h-screen flex items-center justify-center py-12">
+    <div class="max-w-md w-full mx-4">
+        <!-- Logo/Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-white mb-2">Trusted Data Agent</h1>
+            <p class="text-gray-400">Create your account</p>
+        </div>
+
+        <!-- Register Card -->
+        <div class="bg-gray-800 rounded-lg shadow-xl p-8">
+            <!-- Alert Messages -->
+            <div id="alert-container" class="mb-4 hidden">
+                <div id="alert-message" class="p-4 rounded-lg text-sm"></div>
+            </div>
+
+            <!-- Register Form -->
+            <form id="register-form" class="space-y-5">
+                <!-- Username -->
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-300 mb-2">
+                        Username *
+                    </label>
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        required
+                        autocomplete="username"
+                        pattern="[a-zA-Z0-9_]{3,30}"
+                        title="3-30 characters, letters, numbers, and underscores only"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Choose a username"
+                    >
+                    <p class="mt-1 text-xs text-gray-400">3-30 characters, letters, numbers, and underscores only</p>
+                </div>
+
+                <!-- Email -->
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-300 mb-2">
+                        Email *
+                    </label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        required
+                        autocomplete="email"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="your@email.com"
+                    >
+                </div>
+
+                <!-- Display Name -->
+                <div>
+                    <label for="display_name" class="block text-sm font-medium text-gray-300 mb-2">
+                        Display Name
+                    </label>
+                    <input
+                        type="text"
+                        id="display_name"
+                        name="display_name"
+                        autocomplete="name"
+                        maxlength="100"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Your full name (optional)"
+                    >
+                </div>
+
+                <!-- Password -->
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-300 mb-2">
+                        Password *
+                    </label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        required
+                        autocomplete="new-password"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Create a strong password"
+                    >
+                    <div id="password-requirements" class="mt-2 text-xs space-y-1">
+                        <p class="text-gray-400">Password must contain:</p>
+                        <div class="flex items-center gap-2">
+                            <span id="req-length" class="text-gray-500">○</span>
+                            <span class="text-gray-400">At least 8 characters</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="req-uppercase" class="text-gray-500">○</span>
+                            <span class="text-gray-400">One uppercase letter</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="req-lowercase" class="text-gray-500">○</span>
+                            <span class="text-gray-400">One lowercase letter</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="req-number" class="text-gray-500">○</span>
+                            <span class="text-gray-400">One number</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Confirm Password -->
+                <div>
+                    <label for="confirm_password" class="block text-sm font-medium text-gray-300 mb-2">
+                        Confirm Password *
+                    </label>
+                    <input
+                        type="password"
+                        id="confirm_password"
+                        name="confirm_password"
+                        required
+                        autocomplete="new-password"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Confirm your password"
+                    >
+                    <p id="password-match-message" class="mt-1 text-xs hidden"></p>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-2">
+                    <button
+                        type="submit"
+                        id="register-button"
+                        class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                    >
+                        <span id="register-button-text">Create account</span>
+                        <span id="register-button-spinner" class="hidden">
+                            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Divider -->
+            <div class="mt-6">
+                <div class="relative">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-gray-600"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-2 bg-gray-800 text-gray-400">Already have an account?</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Login Link -->
+            <div class="mt-6 text-center">
+                <a href="/login" class="text-blue-400 hover:text-blue-300 text-sm font-medium">
+                    Sign in instead
+                </a>
+            </div>
+        </div>
+
+        <!-- Back to Home -->
+        <div class="mt-6 text-center">
+            <a href="/" class="text-gray-400 hover:text-gray-300 text-sm">
+                ← Back to home
+            </a>
+        </div>
+    </div>
+
+    <script src="/static/js/auth.js"></script>
+    <script>
+        // Initialize auth client
+        const auth = new AuthClient();
+
+        // Check if already logged in
+        if (auth.isAuthenticated()) {
+            window.location.href = '/';
+        }
+
+        // Password strength validation
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirm_password');
+        const passwordMatchMessage = document.getElementById('password-match-message');
+
+        passwordInput.addEventListener('input', () => {
+            const password = passwordInput.value;
+            
+            // Check requirements
+            document.getElementById('req-length').textContent = password.length >= 8 ? '✓' : '○';
+            document.getElementById('req-length').className = password.length >= 8 ? 'text-green-500' : 'text-gray-500';
+            
+            document.getElementById('req-uppercase').textContent = /[A-Z]/.test(password) ? '✓' : '○';
+            document.getElementById('req-uppercase').className = /[A-Z]/.test(password) ? 'text-green-500' : 'text-gray-500';
+            
+            document.getElementById('req-lowercase').textContent = /[a-z]/.test(password) ? '✓' : '○';
+            document.getElementById('req-lowercase').className = /[a-z]/.test(password) ? 'text-green-500' : 'text-gray-500';
+            
+            document.getElementById('req-number').textContent = /[0-9]/.test(password) ? '✓' : '○';
+            document.getElementById('req-number').className = /[0-9]/.test(password) ? 'text-green-500' : 'text-gray-500';
+            
+            // Check password match
+            checkPasswordMatch();
+        });
+
+        confirmPasswordInput.addEventListener('input', checkPasswordMatch);
+
+        function checkPasswordMatch() {
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+            
+            if (confirmPassword === '') {
+                passwordMatchMessage.classList.add('hidden');
+                return;
+            }
+            
+            passwordMatchMessage.classList.remove('hidden');
+            
+            if (password === confirmPassword) {
+                passwordMatchMessage.textContent = '✓ Passwords match';
+                passwordMatchMessage.className = 'mt-1 text-xs text-green-500';
+            } else {
+                passwordMatchMessage.textContent = '✗ Passwords do not match';
+                passwordMatchMessage.className = 'mt-1 text-xs text-red-500';
+            }
+        }
+
+        // Handle registration form submission
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+            const displayName = document.getElementById('display_name').value;
+            
+            // Validate passwords match
+            if (password !== confirmPassword) {
+                showAlert('Passwords do not match', 'error');
+                return;
+            }
+            
+            const registerButton = document.getElementById('register-button');
+            const buttonText = document.getElementById('register-button-text');
+            const buttonSpinner = document.getElementById('register-button-spinner');
+            
+            // Show loading state
+            registerButton.disabled = true;
+            buttonText.classList.add('hidden');
+            buttonSpinner.classList.remove('hidden');
+            
+            try {
+                const result = await auth.register(username, email, password, displayName);
+                
+                if (result.success) {
+                    showAlert('Account created successfully! Redirecting to login...', 'success');
+                    
+                    // Redirect to login page after a short delay
+                    setTimeout(() => {
+                        window.location.href = '/login?registered=true';
+                    }, 1500);
+                } else {
+                    // Show validation errors
+                    if (result.errors && result.errors.length > 0) {
+                        showAlert(result.errors.join(', '), 'error');
+                    } else {
+                        showAlert(result.message || 'Registration failed. Please try again.', 'error');
+                    }
+                    
+                    // Reset button state
+                    registerButton.disabled = false;
+                    buttonText.classList.remove('hidden');
+                    buttonSpinner.classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                showAlert('An unexpected error occurred. Please try again.', 'error');
+                
+                // Reset button state
+                registerButton.disabled = false;
+                buttonText.classList.remove('hidden');
+                buttonSpinner.classList.add('hidden');
+            }
+        });
+
+        function showAlert(message, type) {
+            const container = document.getElementById('alert-container');
+            const alertMessage = document.getElementById('alert-message');
+            
+            container.classList.remove('hidden');
+            alertMessage.textContent = message;
+            
+            // Set colors based on type
+            if (type === 'success') {
+                alertMessage.className = 'p-4 rounded-lg text-sm bg-green-900 text-green-200 border border-green-700';
+            } else if (type === 'error') {
+                alertMessage.className = 'p-4 rounded-lg text-sm bg-red-900 text-red-200 border border-red-700';
+            } else {
+                alertMessage.className = 'p-4 rounded-lg text-sm bg-blue-900 text-blue-200 border border-blue-700';
+            }
+            
+            // Auto-hide success messages
+            if (type === 'success') {
+                setTimeout(() => {
+                    container.classList.add('hidden');
+                }, 4000);
+            }
+        }
+    </script>
+</body>
+</html>

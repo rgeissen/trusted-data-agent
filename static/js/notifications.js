@@ -74,6 +74,38 @@ function showReconfigurationNotification(data) {
     document.body.appendChild(overlay);
 }
 
+function showProfileOverrideWarning(overrideProfileName, overrideProfileTag, defaultProfileTag, errorMessage) {
+    console.log('[showProfileOverrideWarning] Function called');
+    const banner = document.getElementById('profile-override-warning-banner');
+    const message = document.getElementById('profile-override-warning-message');
+    const dismissBtn = document.getElementById('dismiss-profile-warning');
+    
+    console.log('[showProfileOverrideWarning] Elements found:', {
+        banner: banner ? 'yes' : 'no',
+        message: message ? 'yes' : 'no',
+        dismissBtn: dismissBtn ? 'yes' : 'no'
+    });
+    
+    if (!banner || !message) {
+        console.error('[showProfileOverrideWarning] Required elements not found!');
+        return;
+    }
+    
+    const displayMessage = `Unable to use profile '${overrideProfileName}' (@${overrideProfileTag}): Missing credentials. Using default profile (@${defaultProfileTag}).`;
+    console.log('[showProfileOverrideWarning] Setting message:', displayMessage);
+    message.textContent = displayMessage;
+    banner.classList.remove('hidden');
+    console.log('[showProfileOverrideWarning] Banner should now be visible');
+    
+    // Setup dismiss button
+    if (dismissBtn) {
+        dismissBtn.onclick = () => {
+            console.log('[showProfileOverrideWarning] Dismiss button clicked');
+            banner.classList.add('hidden');
+        };
+    }
+}
+
 export function subscribeToNotifications() {
     if (!state.userUUID) {
         // Set status to disconnected if we can't even start.
@@ -89,6 +121,7 @@ export function subscribeToNotifications() {
 
     eventSource.addEventListener('notification', (event) => {
         const data = JSON.parse(event.data);
+        console.log('[notification] Received:', data.type, data);
 
         // When a notification is received, we know the connection is good.
         UI.updateSSEStatus('connected');
@@ -116,8 +149,29 @@ export function subscribeToNotifications() {
                 }
                 break;
             }
+            case 'profile_override_failed': {
+                console.log('[profile_override_failed] Received notification:', data);
+                const { override_profile_name, override_profile_tag, default_profile_tag, error_message } = data.payload;
+                console.log('[profile_override_failed] Calling showProfileOverrideWarning with:', {
+                    override_profile_name,
+                    override_profile_tag,
+                    default_profile_tag,
+                    error_message
+                });
+                showProfileOverrideWarning(override_profile_name, override_profile_tag, default_profile_tag, error_message);
+                break;
+            }
             case 'session_model_update': {
                 const { session_id, models_used, profile_tags_used, last_updated, provider, model, name } = data.payload;
+                console.log('[session_model_update] Received notification:', {
+                    session_id,
+                    models_used,
+                    profile_tags_used,
+                    provider,
+                    model,
+                    current_session: state.currentSessionId,
+                    is_current: session_id === state.currentSessionId
+                });
                 UI.updateSessionModels(session_id, models_used, profile_tags_used);
                 UI.updateSessionTimestamp(session_id, last_updated);
                 if (name) {
@@ -126,10 +180,12 @@ export function subscribeToNotifications() {
                 UI.moveSessionToTop(session_id);
 
                 if (session_id === state.currentSessionId) {
+                    console.log('[session_model_update] Updating Live Status with:', provider, model);
                     state.currentProvider = provider;
                     state.currentModel = model;
                     UI.updateStatusPromptName();
                 } else {
+                    console.log('[session_model_update] Not updating Live Status - wrong session');
                 }
                 break;
             }

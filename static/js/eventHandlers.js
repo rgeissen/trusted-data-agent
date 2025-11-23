@@ -104,6 +104,31 @@ async function processStream(responseBody) {
                                 metricsEl.classList.remove('hidden');
                             }
                         }
+                    } else if (eventName === 'notification') {
+                        // Handle notifications sent during execution stream
+                        console.log('[notification] Received during execution:', eventData.type, eventData);
+                        if (eventData.type === 'profile_override_failed') {
+                            const { override_profile_name, override_profile_tag, default_profile_tag, error_message } = eventData.payload;
+                            // Show banner - import the function from notifications.js
+                            const banner = document.getElementById('profile-override-warning-banner');
+                            const message = document.getElementById('profile-override-warning-message');
+                            if (banner && message) {
+                                const displayMessage = `Profile @${override_profile_tag}: Missing credentials. Using @${default_profile_tag} instead.`;
+                                message.textContent = displayMessage;
+                                banner.classList.remove('hidden');
+                                
+                                // Auto-dismiss after 5 seconds
+                                setTimeout(() => {
+                                    banner.classList.add('hidden');
+                                }, 5000);
+                                
+                                // Manual dismiss button still works
+                                const dismissBtn = document.getElementById('dismiss-profile-warning');
+                                if (dismissBtn) {
+                                    dismissBtn.onclick = () => banner.classList.add('hidden');
+                                }
+                            }
+                        }
                     } else if (eventName === 'rag_retrieval') {
                         state.lastRagCaseData = eventData; // Store the full RAG case data
                         UI.blinkRagDot();
@@ -111,8 +136,8 @@ async function processStream(responseBody) {
                         const { session_id, newName } = eventData;
                         UI.updateSessionListItemName(session_id, newName);
                     } else if (eventName === 'session_model_update') {
-                        const { session_id, models_used, last_updated } = eventData;
-                        UI.updateSessionModels(session_id, models_used);
+                        const { session_id, models_used, profile_tags_used, last_updated } = eventData;
+                        UI.updateSessionModels(session_id, models_used, profile_tags_used);
                         UI.updateSessionTimestamp(session_id, last_updated);
                     } else if (eventName === 'request_user_input') {
                         UI.updateStatusWindow({ step: "Action Required", details: "Waiting for user to correct parameters.", type: 'workaround' });
@@ -1205,11 +1230,19 @@ async function handleToggleTurnValidity(badgeEl) {
     }
 
     try {
+        const headers = {
+            'X-TDA-User-UUID': state.userUUID
+        };
+        
+        // Add authentication token if available
+        const authToken = localStorage.getItem('tda_auth_token');
+        if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+        }
+        
         const response = await fetch(`/api/session/${sessionId}/turn/${turnId}/toggle_validity`, {
             method: 'POST',
-            headers: {
-                'X-TDA-User-UUID': state.userUUID
-            }
+            headers: headers
         });
 
         if (!response.ok) {

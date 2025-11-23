@@ -9,7 +9,7 @@ import { state } from './state.js';
 import { getSystemPromptForModel, isPrivilegedUser, getSystemPrompts } from './utils.js';
 
 /**
- * Gets standard headers for API requests, including Content-Type and User UUID.
+ * Gets standard headers for API requests, including Content-Type, User UUID, and Auth token.
  * @param {boolean} includeContentType - Whether to include 'Content-Type: application/json'. Defaults to true.
  * @returns {HeadersInit} The headers object.
  */
@@ -18,10 +18,18 @@ function _getHeaders(includeContentType = true) {
     if (includeContentType) {
         headers['Content-Type'] = 'application/json';
     }
+    
+    // Add authentication token if available
+    const authToken = localStorage.getItem('tda_auth_token');
+    if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    
+    // Add User UUID header (for backwards compatibility or when auth is disabled)
     if (state.userUUID) {
         headers['X-TDA-User-UUID'] = state.userUUID;
-    } else {
     }
+    
     return headers;
 }
 

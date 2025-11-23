@@ -1248,13 +1248,17 @@ export function addSessionToList(session, isActive = false) {
     const tagsDiv = document.createElement('div');
     tagsDiv.className = 'session-models text-xs text-gray-400 mt-1 flex flex-wrap gap-1';
     
-    // Debug logging
+    // Debug logging with expanded arrays
     console.log('[DEBUG] Session data:', {
         id: session.id,
         profile_tags_used: session.profile_tags_used,
         models_used: session.models_used,
+        provider: session.provider,
+        model: session.model,
         has_profile_tags: session.profile_tags_used && Array.isArray(session.profile_tags_used) && session.profile_tags_used.length > 0
     });
+    console.log('[DEBUG] models_used expanded:', session.models_used);
+    console.log('[DEBUG] profile_tags_used expanded:', session.profile_tags_used);
     
     // Prefer profile_tags_used over models_used
     if (session.profile_tags_used && Array.isArray(session.profile_tags_used) && session.profile_tags_used.length > 0) {

@@ -12,18 +12,23 @@ class ExecutionDashboard {
     }
 
     /**
-     * Get headers for API requests including User UUID
+     * Get headers for API requests including User UUID and Auth token
      */
     _getHeaders() {
         const headers = {
             'Content-Type': 'application/json'
         };
         
+        // Add authentication token if available
+        const authToken = localStorage.getItem('tda_auth_token');
+        if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+        }
+        
         // Get userUUID from localStorage (same as main app)
         const userUUID = localStorage.getItem('tdaUserUUID');
         if (userUUID) {
             headers['X-TDA-User-UUID'] = userUUID;
-        } else {
         }
         
         return headers;
