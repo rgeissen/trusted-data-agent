@@ -27,20 +27,11 @@ app_logger = logging.getLogger("quart.app") # Use quart logger
 
 # --- MODIFICATION START: Helper to get User UUID (copied from routes.py) ---
 def _get_user_uuid_from_request():
-    """
-    Extracts the User UUID from the request header.
-    
-    Returns:
-        Optional[str]: User UUID if present, None otherwise
-        
-    Note:
-        When CONFIGURATION_PERSISTENCE=true, user_uuid is not strictly required
-        as all users share the same configuration from disk.
-        When CONFIGURATION_PERSISTENCE=false, user_uuid enables per-user isolation.
-    """
+    """Extracts the User UUID from the request header."""
     user_uuid = request.headers.get('X-TDA-User-UUID')
     if not user_uuid:
-        app_logger.debug("REST API: X-TDA-User-UUID header not provided.")
+        app_logger.warning("REST API: Missing X-TDA-User-UUID header in request.")
+        abort(400, "Missing required X-TDA-User-UUID header.")
     return user_uuid
 # --- MODIFICATION END ---
 
@@ -762,7 +753,7 @@ async def manage_classification_setting():
         config["enable_mcp_classification"] = enable_classification
         
         # Save to file
-        if not config_manager.save_config(config, user_uuid):
+        if not config_manager.save_config(config):
             return jsonify({
                 "status": "error",
                 "message": "Failed to save configuration to file"
@@ -1149,7 +1140,6 @@ async def create_rag_collection():
 async def update_rag_collection(collection_id: int):
     """Update a RAG collection's metadata (name, MCP server, description)."""
     try:
-        user_uuid = _get_user_uuid_from_request()
         from trusted_data_agent.core.config_manager import get_config_manager
         
         data = await request.get_json()
@@ -1184,7 +1174,7 @@ async def update_rag_collection(collection_id: int):
         
         # Persist to config file
         config_manager = get_config_manager()
-        config_manager.save_rag_collections(collections_list, user_uuid)
+        config_manager.save_rag_collections(collections_list)
         
         app_logger.info(f"Updated RAG collection {collection_id}: {coll_meta['name']} (MCP: {coll_meta.get('mcp_server_id')})")
         return jsonify({
@@ -1755,7 +1745,6 @@ async def reload_template_plugins():
     Useful for development and testing new templates.
     """
     try:
-        user_uuid = _get_user_uuid_from_request()
         from trusted_data_agent.agent.rag_template_manager import get_template_manager
         
         template_manager = get_template_manager()
@@ -2115,7 +2104,6 @@ async def create_llm_configuration():
 async def update_llm_configuration(config_id: str):
     """Update an existing LLM configuration."""
     try:
-        user_uuid = _get_user_uuid_from_request()
         from trusted_data_agent.core.config_manager import get_config_manager
         config_manager = get_config_manager()
         
@@ -2123,14 +2111,14 @@ async def update_llm_configuration(config_id: str):
         
         # If name is being updated, check uniqueness
         if "name" in data:
-            configurations = config_manager.get_llm_configurations(user_uuid)
+            configurations = config_manager.get_llm_configurations()
             if any(c.get("name") == data["name"] and c.get("id") != config_id for c in configurations):
                 return jsonify({
                     "status": "error",
                     "message": f"Configuration name '{data['name']}' is already in use."
                 }), 400
         
-        success = config_manager.update_llm_configuration(config_id, data, user_uuid)
+        success = config_manager.update_llm_configuration(config_id, data)
         
         if success:
             app_logger.info(f"Updated LLM configuration: {config_id}")
@@ -2153,11 +2141,10 @@ async def update_llm_configuration(config_id: str):
 async def delete_llm_configuration(config_id: str):
     """Delete an LLM configuration."""
     try:
-        user_uuid = _get_user_uuid_from_request()
         from trusted_data_agent.core.config_manager import get_config_manager
         config_manager = get_config_manager()
         
-        success, error_message = config_manager.remove_llm_configuration(config_id, user_uuid)
+        success, error_message = config_manager.remove_llm_configuration(config_id)
         
         if success:
             app_logger.info(f"Deleted LLM configuration: {config_id}")
@@ -2180,18 +2167,17 @@ async def delete_llm_configuration(config_id: str):
 async def activate_llm_configuration(config_id: str):
     """Set an LLM configuration as the active configuration."""
     try:
-        user_uuid = _get_user_uuid_from_request()
         from trusted_data_agent.core.config_manager import get_config_manager
         config_manager = get_config_manager()
         
         # Verify configuration exists
-        configurations = config_manager.get_llm_configurations(user_uuid)
+        configurations = config_manager.get_llm_configurations()
         configuration = next((c for c in configurations if c.get("id") == config_id), None)
         
         if not configuration:
             return jsonify({"status": "error", "message": "LLM configuration not found"}), 404
         
-        success = config_manager.set_active_llm_configuration_id(config_id, user_uuid)
+        success = config_manager.set_active_llm_configuration_id(config_id)
         
         if success:
             app_logger.info(f"Activated LLM configuration: {config_id}")
@@ -2261,7 +2247,7 @@ async def create_profile():
         # Validate tag uniqueness
         tag = data.get("tag")
         if tag:
-            profiles = config_manager.get_profiles(user_uuid)
+            profiles = config_manager.get_profiles()
             if any(p.get("tag") == tag for p in profiles):
                 return jsonify({"status": "error", "message": f"Tag '{tag}' is already in use."}), 400
 
@@ -2269,7 +2255,7 @@ async def create_profile():
         if "id" not in data:
             data["id"] = f"profile-{uuid.uuid4()}"
         
-        success = config_manager.add_profile(data, user_uuid)
+        success = config_manager.add_profile(data)
         
         if success:
             app_logger.info(f"Created profile with tag: {data.get('tag')} (ID: {data.get('id')})")
@@ -2289,7 +2275,6 @@ async def create_profile():
 async def update_profile(profile_id: str):
     """Update an existing profile configuration."""
     try:
-        user_uuid = _get_user_uuid_from_request()
         from trusted_data_agent.core.config_manager import get_config_manager
         from trusted_data_agent.core.config import APP_STATE
         config_manager = get_config_manager()
@@ -2303,15 +2288,15 @@ async def update_profile(profile_id: str):
         # Validate tag uniqueness if tag is being changed
         tag = data.get("tag")
         if tag:
-            profiles = config_manager.get_profiles(user_uuid)
+            profiles = config_manager.get_profiles()
             if any(p.get("tag") == tag and p.get("id") != profile_id for p in profiles):
                 return jsonify({"status": "error", "message": f"Tag '{tag}' is already in use."}), 400
 
         # Check if this profile is currently active for consumption
-        active_profile_ids = config_manager.get_active_for_consumption_profile_ids(user_uuid)
+        active_profile_ids = config_manager.get_active_for_consumption_profile_ids()
         is_active = profile_id in active_profile_ids
         
-        success = config_manager.update_profile(profile_id, data, user_uuid)
+        success = config_manager.update_profile(profile_id, data)
         
         if success:
             app_logger.info(f"Updated profile: {profile_id}")
@@ -2319,8 +2304,8 @@ async def update_profile(profile_id: str):
             # If this profile is active for consumption, update APP_STATE
             if is_active and active_profile_ids:
                 primary_profile_id = active_profile_ids[0]
-                APP_STATE["disabled_tools"] = config_manager.get_profile_disabled_tools(primary_profile_id, user_uuid)
-                APP_STATE["disabled_prompts"] = config_manager.get_profile_disabled_prompts(primary_profile_id, user_uuid)
+                APP_STATE["disabled_tools"] = config_manager.get_profile_disabled_tools(primary_profile_id)
+                APP_STATE["disabled_prompts"] = config_manager.get_profile_disabled_prompts(primary_profile_id)
                 
                 app_logger.info(f"Profile {profile_id} is active - updated APP_STATE with {len(APP_STATE['disabled_tools'])} disabled tools and {len(APP_STATE['disabled_prompts'])} disabled prompts")
                 
@@ -2343,11 +2328,10 @@ async def update_profile(profile_id: str):
 async def delete_profile(profile_id: str):
     """Delete a profile configuration."""
     try:
-        user_uuid = _get_user_uuid_from_request()
         from trusted_data_agent.core.config_manager import get_config_manager
         config_manager = get_config_manager()
         
-        success = config_manager.remove_profile(profile_id, user_uuid)
+        success = config_manager.remove_profile(profile_id)
         
         if not success:
             return jsonify({
@@ -2356,9 +2340,9 @@ async def delete_profile(profile_id: str):
             }), 404
         
         # Check if this was the active profile and clear it
-        active_profile_id = config_manager.get_active_profile_id(user_uuid)
+        active_profile_id = config_manager.get_active_profile_id()
         if active_profile_id == profile_id:
-            config_manager.set_active_profile_id(None, user_uuid)
+            config_manager.set_active_profile_id(None)
         
         app_logger.info(f"Deleted profile: {profile_id}")
         return jsonify({
@@ -2374,18 +2358,17 @@ async def delete_profile(profile_id: str):
 async def set_default_profile(profile_id: str):
     """Set a profile as the default profile."""
     try:
-        user_uuid = _get_user_uuid_from_request()
         from trusted_data_agent.core.config_manager import get_config_manager
         config_manager = get_config_manager()
         
         # Verify profile exists
-        profiles = config_manager.get_profiles(user_uuid)
+        profiles = config_manager.get_profiles()
         profile = next((p for p in profiles if p.get("id") == profile_id), None)
         
         if not profile:
             return jsonify({"status": "error", "message": "Profile not found"}), 404
         
-        success = config_manager.set_default_profile_id(profile_id, user_uuid)
+        success = config_manager.set_default_profile_id(profile_id)
         
         if success:
             app_logger.info(f"Set default profile: {profile_id}")
@@ -2404,7 +2387,6 @@ async def set_default_profile(profile_id: str):
 async def set_active_for_consumption_profiles():
     """Set the list of profiles active for consumption and update APP_STATE with enabled/disabled lists."""
     try:
-        user_uuid = _get_user_uuid_from_request()
         from trusted_data_agent.core.config_manager import get_config_manager
         from trusted_data_agent.core.config import APP_STATE
         config_manager = get_config_manager()
@@ -2412,14 +2394,14 @@ async def set_active_for_consumption_profiles():
         data = await request.get_json()
         profile_ids = data.get("profile_ids", [])
         
-        success = config_manager.set_active_for_consumption_profile_ids(profile_ids, user_uuid)
+        success = config_manager.set_active_for_consumption_profile_ids(profile_ids)
         
         if success and profile_ids:
             # Update APP_STATE with disabled lists from the first active profile
             # (For simplicity, we use the first profile's settings)
             primary_profile_id = profile_ids[0]
-            APP_STATE["disabled_tools"] = config_manager.get_profile_disabled_tools(primary_profile_id, user_uuid)
-            APP_STATE["disabled_prompts"] = config_manager.get_profile_disabled_prompts(primary_profile_id, user_uuid)
+            APP_STATE["disabled_tools"] = config_manager.get_profile_disabled_tools(primary_profile_id)
+            APP_STATE["disabled_prompts"] = config_manager.get_profile_disabled_prompts(primary_profile_id)
             
             app_logger.info(f"Set active for consumption profiles: {profile_ids}")
             app_logger.info(f"Updated APP_STATE with {len(APP_STATE['disabled_tools'])} disabled tools and {len(APP_STATE['disabled_prompts'])} disabled prompts from profile {primary_profile_id}")
@@ -2452,12 +2434,11 @@ async def set_active_for_consumption_profiles():
 async def test_profile(profile_id: str):
     """Test a profile's configuration."""
     try:
-        user_uuid = _get_user_uuid_from_request()
         from trusted_data_agent.core.config_manager import get_config_manager
         config_manager = get_config_manager()
         
         # Get profile
-        profiles = config_manager.get_profiles(user_uuid)
+        profiles = config_manager.get_profiles()
         profile = next((p for p in profiles if p.get("id") == profile_id), None)
         if not profile:
             return jsonify({"status": "error", "message": "Profile not found"}), 404
@@ -2465,7 +2446,7 @@ async def test_profile(profile_id: str):
         results = {}
 
         # Test MCP connection
-        mcp_server = next((s for s in config_manager.get_mcp_servers(user_uuid) if s.get("id") == profile.get("mcpServerId")), None)
+        mcp_server = next((s for s in config_manager.get_mcp_servers() if s.get("id") == profile.get("mcpServerId")), None)
         if mcp_server:
             # This is a placeholder for the actual test logic.
             # In a real implementation, you would use the mcp_server details to make a test connection.

@@ -12,6 +12,8 @@ class AppConfig:
     """
     # --- Feature Flags & Behavior ---
     CONFIGURATION_PERSISTENCE = os.environ.get('TDA_CONFIGURATION_PERSISTENCE', 'true').lower() == 'true'
+    USER_CONFIG_CLEANUP_ENABLED = os.environ.get('TDA_USER_CONFIG_CLEANUP_ENABLED', 'true').lower() == 'true' # If True, automatically removes inactive user configs from memory
+    USER_CONFIG_CLEANUP_HOURS = int(os.environ.get('TDA_USER_CONFIG_CLEANUP_HOURS', '24')) # Hours of inactivity before cleaning up user config
     ALL_MODELS_UNLOCKED = False # If True, bypasses model certification checks, allowing all models from a provider to be used.
     CHARTING_ENABLED = True # Master switch to enable or disable the agent's ability to generate charts.
     DEFAULT_CHARTING_INTENSITY = "medium" # Controls how proactively the agent suggests charts. Options: "none", "medium", "heavy".
