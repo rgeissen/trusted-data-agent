@@ -143,6 +143,8 @@ class ConfigManager:
         """
         Save configuration to tda_config.json.
         
+        When CONFIGURATION_PERSISTENCE=false, this returns True without saving to disk.
+        
         SECURITY: Credentials are NEVER saved to tda_config.json.
         They are always stripped before saving, regardless of CONFIGURATION_PERSISTENCE setting.
         Credentials should only exist in browser localStorage.
@@ -154,6 +156,12 @@ class ConfigManager:
             True if successful, False otherwise
         """
         try:
+            # Check if persistence is enabled
+            from trusted_data_agent.core.config import APP_CONFIG
+            if not APP_CONFIG.CONFIGURATION_PERSISTENCE:
+                app_logger.info("Configuration persistence disabled - skipping save to disk")
+                return True  # Return success without saving
+            
             # SECURITY: Always strip credentials before saving
             config = self._strip_credentials(config)
             

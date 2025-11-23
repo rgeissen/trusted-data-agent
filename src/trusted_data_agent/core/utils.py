@@ -133,8 +133,14 @@ def synthesize_speech(client, text: str) -> bytes | None:
 
 def unwrap_exception(e: BaseException) -> BaseException:
     """Recursively unwraps ExceptionGroups to find the root cause."""
-    if isinstance(e, ExceptionGroup) and e.exceptions:
-        return unwrap_exception(e.exceptions[0])
+    # ExceptionGroup is only available in Python 3.11+
+    # Use try/except to handle both versions
+    try:
+        if isinstance(e, ExceptionGroup) and e.exceptions:
+            return unwrap_exception(e.exceptions[0])
+    except NameError:
+        # ExceptionGroup doesn't exist in Python 3.10 and earlier
+        pass
     return e
 
 def _get_prompt_info(prompt_name: str) -> dict | None:
