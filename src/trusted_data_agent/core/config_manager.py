@@ -42,6 +42,7 @@ class ConfigManager:
             config_path = project_root / self.DEFAULT_CONFIG_FILENAME
         
         self.config_path = Path(config_path)
+        self._memory_config = None  # In-memory cache when persistence is disabled
         app_logger.info(f"ConfigManager initialized with path: {self.config_path}")
     
     def _get_default_config(self) -> Dict[str, Any]:
@@ -94,12 +95,21 @@ class ConfigManager:
         """
         Load configuration from tda_config.json.
         
+        When CONFIGURATION_PERSISTENCE=false, returns in-memory cache.
         If the file doesn't exist or is invalid, returns default configuration
         and creates the file.
         
         Returns:
             Configuration dictionary
         """
+        # Check if persistence is disabled - use in-memory cache
+        from trusted_data_agent.core.config import APP_CONFIG
+        if not APP_CONFIG.CONFIGURATION_PERSISTENCE:
+            if self._memory_config is None:
+                app_logger.info("Initializing in-memory configuration (persistence disabled)")
+                self._memory_config = self._get_default_config()
+            return self._memory_config
+        
         try:
             if not self.config_path.exists():
                 app_logger.info(f"Config file not found at {self.config_path}. Creating default config.")
@@ -143,7 +153,7 @@ class ConfigManager:
         """
         Save configuration to tda_config.json.
         
-        When CONFIGURATION_PERSISTENCE=false, this returns True without saving to disk.
+        When CONFIGURATION_PERSISTENCE=false, saves to in-memory cache only.
         
         SECURITY: Credentials are NEVER saved to tda_config.json.
         They are always stripped before saving, regardless of CONFIGURATION_PERSISTENCE setting.
@@ -159,8 +169,11 @@ class ConfigManager:
             # Check if persistence is enabled
             from trusted_data_agent.core.config import APP_CONFIG
             if not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-                app_logger.info("Configuration persistence disabled - skipping save to disk")
-                return True  # Return success without saving
+                app_logger.info("Configuration persistence disabled - saving to memory only")
+                # Update last_modified timestamp
+                config["last_modified"] = datetime.now(timezone.utc).isoformat()
+                self._memory_config = config
+                return True
             
             # SECURITY: Always strip credentials before saving
             config = self._strip_credentials(config)

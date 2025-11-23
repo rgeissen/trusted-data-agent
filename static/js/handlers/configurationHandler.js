@@ -339,6 +339,32 @@ class ConfigurationState {
         return updatedProfile;
     }
 
+    async copyProfile(profileId) {
+        const profile = this.profiles.find(p => p.id === profileId);
+        if (!profile) return null;
+        
+        // Create a copy with a new ID and modified name
+        const newProfile = {
+            ...profile,
+            id: generateId(),
+            name: `${profile.name} (Copy)`,
+            tag: '' // Clear tag so user can generate/enter a new one
+        };
+        
+        // Add the copied profile
+        const response = await fetch('/api/v1/profiles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newProfile)
+        });
+        
+        if (response.ok) {
+            await this.loadProfiles();
+            return newProfile;
+        }
+        return null;
+    }
+
     async removeProfile(profileId) {
         await API.deleteProfile(profileId);
         this.profiles = this.profiles.filter(p => p.id !== profileId);
@@ -1596,6 +1622,10 @@ function renderProfiles() {
                         class="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 rounded transition-colors text-white">
                         Test
                     </button>
+                    <button type="button" data-action="copy-profile" data-profile-id="${profile.id}" 
+                        class="px-3 py-1 text-sm bg-green-600 hover:bg-green-700 rounded transition-colors text-white">
+                        Copy
+                    </button>
                     <button type="button" data-action="edit-profile" data-profile-id="${profile.id}" 
                         class="px-3 py-1 text-sm bg-gray-600 hover:bg-gray-700 rounded transition-colors text-white">
                         Edit
@@ -1763,6 +1793,25 @@ function attachProfileEventListeners() {
         });
     });
 
+    // Copy Profile button
+    document.querySelectorAll('[data-action="copy-profile"]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const profileId = e.target.dataset.profileId;
+            const profile = configState.profiles.find(p => p.id === profileId);
+            const profileName = profile ? profile.name : 'this profile';
+            
+            const copiedProfile = await configState.copyProfile(profileId);
+            if (copiedProfile) {
+                renderProfiles();
+                renderLLMProviders(); // Re-render to update default/active badges
+                renderMCPServers(); // Re-render to update default/active badges
+                showNotification('success', `Profile "${profileName}" copied successfully. Please edit to set a unique tag.`);
+            } else {
+                showNotification('error', 'Failed to copy profile');
+            }
+        });
+    });
+
     // Delete Profile button
     document.querySelectorAll('[data-action="delete-profile"]').forEach(btn => {
         btn.addEventListener('click', async (e) => {
@@ -1792,14 +1841,26 @@ async function showProfileModal(profileId = null) {
 
     // Populate LLM configurations
     const llmSelect = modal.querySelector('#profile-modal-llm-provider');
+    const activeLLMId = configState.activeLLM || configState.llmConfigurations[0]?.id;
     llmSelect.innerHTML = configState.llmConfigurations
-        .map(config => `<option value="${config.id}" ${profile?.llmConfigurationId === config.id ? 'selected' : ''}>${escapeHtml(config.name)}</option>`)
+        .map(config => {
+            const isSelected = profile ? 
+                (profile.llmConfigurationId === config.id) : 
+                (config.id === activeLLMId);
+            return `<option value="${config.id}" ${isSelected ? 'selected' : ''}>${escapeHtml(config.name)}</option>`;
+        })
         .join('');
 
     // Populate MCP servers
     const mcpSelect = modal.querySelector('#profile-modal-mcp-server');
+    const activeMCPId = configState.activeMCP || configState.mcpServers[0]?.id;
     mcpSelect.innerHTML = configState.mcpServers
-        .map(server => `<option value="${server.id}" ${profile?.mcpServerId === server.id ? 'selected' : ''}>${escapeHtml(server.name)}</option>`)
+        .map(server => {
+            const isSelected = profile ? 
+                (profile.mcpServerId === server.id) : 
+                (server.id === activeMCPId);
+            return `<option value="${server.id}" ${isSelected ? 'selected' : ''}>${escapeHtml(server.name)}</option>`;
+        })
         .join('');
 
     const toolsContainer = modal.querySelector('#profile-modal-tools');
@@ -1875,16 +1936,22 @@ async function showProfileModal(profileId = null) {
     `).join('') || '<span class="text-gray-400">No RAG collections found.</span>';
 
     // Set profile name, tag and description
-    modal.querySelector('#profile-modal-name').value = profile ? (profile.name || '') : '';
-    modal.querySelector('#profile-modal-tag').value = profile ? (profile.tag || '').replace('@', '') : '';
-    modal.querySelector('#profile-modal-description').value = profile ? profile.description : '';
+    const profileNameInput = modal.querySelector('#profile-modal-name');
+    const profileTagInput = modal.querySelector('#profile-modal-tag');
+    const profileDescInput = modal.querySelector('#profile-modal-description');
+    
+    profileNameInput.value = profile ? (profile.name || '') : '';
+    profileTagInput.value = profile ? (profile.tag || '').replace('@', '') : '';
+    profileDescInput.value = profile ? profile.description : '';
 
     // Tag generation function
     function generateTag() {
         const llmConfig = configState.llmConfigurations.find(c => c.id === llmSelect.value);
         const mcpServer = configState.mcpServers.find(s => s.id === mcpSelect.value);
         
-        if (!llmConfig || !mcpServer) return '';
+        if (!llmConfig || !mcpServer) {
+            return '';
+        }
         
         // Extract characters from provider, model, and server
         const providerPart = (llmConfig.provider || '').substring(0, 2).toUpperCase();
@@ -1904,32 +1971,30 @@ async function showProfileModal(profileId = null) {
         return tag + suffix;
     }
 
-    // Auto-generate tag on configuration change (only for new profiles)
+    // Auto-generate tag when LLM/MCP changes (only for new profiles)
     if (!isEdit) {
+        // Auto-generate when LLM or MCP changes (only if tag is empty)
         const autoGenerate = () => {
-            const tagInput = modal.querySelector('#profile-modal-tag');
-            if (!tagInput.value) {
-                tagInput.value = generateTag();
+            if (!profileTagInput.value.trim()) {
+                profileTagInput.value = generateTag();
             }
         };
         llmSelect.addEventListener('change', autoGenerate);
         mcpSelect.addEventListener('change', autoGenerate);
-        
-        // Initial generation
-        autoGenerate();
     }
 
     // Manual tag generation button
     const generateTagBtn = modal.querySelector('#profile-modal-generate-tag');
     if (generateTagBtn) {
-        generateTagBtn.onclick = () => {
-            modal.querySelector('#profile-modal-tag').value = generateTag();
+        generateTagBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            profileTagInput.value = generateTag();
         };
     }
 
     // Force uppercase on tag input
-    const tagInput = modal.querySelector('#profile-modal-tag');
-    tagInput.addEventListener('input', (e) => {
+    profileTagInput.addEventListener('input', (e) => {
         e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 5);
     });
 
