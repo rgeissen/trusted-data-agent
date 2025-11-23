@@ -2760,6 +2760,8 @@ async def get_sessions_list():
                         "last_updated": last_updated,
                         "provider": provider,
                         "model": model,
+                        "models_used": session_data.get("models_used", []),
+                        "profile_tags_used": session_data.get("profile_tags_used", []),
                         "turn_count": turn_count,
                         "total_tokens": input_tokens + output_tokens,
                         "status": status,
