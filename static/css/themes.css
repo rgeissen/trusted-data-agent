@@ -500,3 +500,287 @@ button, a, input, textarea, select, [role="button"] {
         scroll-behavior: auto !important;
     }
 }
+
+/* ============================================================================
+   CONVERSATION AREA - ENHANCED TEXT & CONTENT DISPLAY
+   ============================================================================ */
+
+/* Refined Typography in Messages */
+.message-bubble p {
+    line-height: 1.7;
+    letter-spacing: -0.01em;
+    margin-bottom: var(--space-3);
+}
+
+.message-bubble p:last-child {
+    margin-bottom: 0;
+}
+
+.message-bubble h1,
+.message-bubble h2,
+.message-bubble h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-top: var(--space-5);
+    margin-bottom: var(--space-3);
+    color: var(--text-primary);
+}
+
+.message-bubble h1 { font-size: var(--text-2xl); }
+.message-bubble h2 { font-size: var(--text-xl); }
+.message-bubble h3 { font-size: var(--text-lg); }
+
+/* Enhanced Code Blocks */
+.message-bubble code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.15em 0.4em;
+    border-radius: var(--radius-xs);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    letter-spacing: 0;
+}
+
+.message-bubble pre {
+    background: linear-gradient(135deg, #1a1f2e 0%, #161a26 100%);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    overflow-x: auto;
+    margin: var(--space-4) 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2),
+                0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+}
+
+.message-bubble pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: #e2e8f0;
+}
+
+/* Enhanced Lists */
+.message-bubble ul,
+.message-bubble ol {
+    margin: var(--space-4) 0;
+    padding-left: var(--space-6);
+}
+
+.message-bubble li {
+    margin-bottom: var(--space-2);
+    line-height: 1.7;
+}
+
+.message-bubble li::marker {
+    color: var(--teradata-orange);
+}
+
+/* Enhanced Tables */
+.message-bubble table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: var(--space-4) 0;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-primary);
+}
+
+.message-bubble thead {
+    background: linear-gradient(135deg, 
+                                rgba(241, 95, 34, 0.2) 0%, 
+                                rgba(241, 95, 34, 0.1) 100%);
+}
+
+.message-bubble th {
+    padding: var(--space-3) var(--space-4);
+    text-align: left;
+    font-weight: 600;
+    font-size: var(--text-sm);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--teradata-orange);
+}
+
+.message-bubble td {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border-secondary);
+    color: var(--text-secondary);
+}
+
+.message-bubble tbody tr {
+    transition: background var(--duration-fast) var(--ease-in-out-smooth);
+}
+
+.message-bubble tbody tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.message-bubble tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Enhanced Blockquotes */
+.message-bubble blockquote {
+    border-left: 3px solid var(--teradata-orange);
+    padding-left: var(--space-4);
+    margin: var(--space-4) 0;
+    font-style: italic;
+    color: var(--text-tertiary);
+    background: var(--accent-overlay, rgba(241, 95, 34, 0.05));
+    padding: var(--space-4);
+    border-radius: var(--radius-sm);
+}
+
+/* Enhanced Links */
+.message-bubble a {
+    color: var(--teradata-orange-light);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: all var(--duration-fast) var(--ease-in-out-smooth);
+}
+
+.message-bubble a:hover {
+    color: var(--teradata-orange);
+    border-bottom-color: var(--teradata-orange);
+}
+
+/* Collapsible Sections Enhancement */
+details.collapsible-section {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    margin: var(--space-3) 0;
+    overflow: hidden;
+    transition: all var(--duration-normal) var(--ease-out-expo);
+}
+
+details.collapsible-section:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--border-primary);
+}
+
+details.collapsible-section[open] {
+    background: rgba(255, 255, 255, 0.04);
+    box-shadow: var(--shadow-sm);
+}
+
+details.collapsible-section summary {
+    padding: var(--space-3) var(--space-4);
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    transition: all var(--duration-fast) var(--ease-in-out-smooth);
+    user-select: none;
+}
+
+details.collapsible-section summary:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--teradata-orange-light);
+}
+
+details.collapsible-section summary::marker,
+details.collapsible-section summary::-webkit-details-marker {
+    display: none;
+}
+
+details.collapsible-section summary::before {
+    content: '▶';
+    transition: transform var(--duration-fast) var(--ease-out-expo);
+    color: var(--teradata-orange);
+    font-size: 0.75em;
+}
+
+details.collapsible-section[open] summary::before {
+    transform: rotate(90deg);
+}
+
+details.collapsible-section .collapsible-content {
+    padding: 0 var(--space-4) var(--space-4) var(--space-4);
+    animation: expandContent 0.3s var(--ease-out-expo);
+}
+
+@keyframes expandContent {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================================================
+   INPUT AREA ENHANCEMENTS
+   ============================================================================ */
+
+/* Enhanced Input Container */
+#chat-input-container {
+    background: var(--glass-bg-strong, rgba(30, 41, 59, 0.95));
+    backdrop-filter: var(--blur-strong, blur(24px));
+    -webkit-backdrop-filter: var(--blur-strong, blur(24px));
+    border-top: 1px solid var(--border-primary);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15),
+                0 -1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Enhanced Textarea */
+textarea#user-input {
+    font-family: var(--font-primary);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    letter-spacing: -0.01em;
+    resize: none;
+    transition: all var(--duration-fast) var(--ease-in-out-smooth);
+}
+
+textarea#user-input:focus {
+    box-shadow: 0 0 0 3px var(--border-focus-ring, rgba(241, 95, 34, 0.15)),
+                0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Enhanced Send Button */
+button#send-button {
+    background: linear-gradient(135deg, var(--teradata-orange) 0%, var(--teradata-orange-dark) 100%);
+    box-shadow: 0 2px 8px rgba(241, 95, 34, 0.3);
+    transition: all var(--duration-fast) var(--ease-out-expo);
+}
+
+button#send-button:hover:not(:disabled) {
+    box-shadow: 0 4px 16px rgba(241, 95, 34, 0.4),
+                var(--glow-orange);
+    transform: translateY(-1px) scale(1.02);
+}
+
+button#send-button:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+    transition-duration: var(--duration-instant);
+}
+
+/* Icon Button Enhancements */
+button[class*="icon-button"],
+button[aria-label] {
+    transition: all var(--duration-fast) var(--ease-out-expo);
+    border-radius: var(--radius-sm);
+}
+
+button[class*="icon-button"]:hover,
+button[aria-label]:hover {
+    background: var(--hover-bg-strong, rgba(148, 163, 184, 0.12));
+    transform: scale(1.1);
+}
+
+button[class*="icon-button"]:active,
+button[aria-label]:active {
+    transform: scale(0.95);
+    transition-duration: var(--duration-instant);
+}
