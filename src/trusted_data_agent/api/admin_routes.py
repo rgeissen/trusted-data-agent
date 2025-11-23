@@ -1426,3 +1426,243 @@ async def run_mcp_classification():
             'status': 'error',
             'message': f'Failed to run classification: {str(e)}'
         }), 500
+
+
+@admin_api_bp.route("/v1/admin/expert-settings", methods=["GET"])
+@require_admin
+async def get_expert_settings():
+    """
+    Get current expert settings values.
+    
+    Returns:
+        200: Expert settings object
+        500: Error retrieving settings
+    """
+    try:
+        from trusted_data_agent.core.config import APP_CONFIG
+        
+        settings = {
+            'llm_behavior': {
+                'max_retries': APP_CONFIG.LLM_API_MAX_RETRIES,
+                'base_delay': APP_CONFIG.LLM_API_BASE_DELAY
+            },
+            'agent_config': {
+                'max_execution_steps': APP_CONFIG.MAX_EXECUTION_STEPS if hasattr(APP_CONFIG, 'MAX_EXECUTION_STEPS') else 25,
+                'tool_call_timeout': APP_CONFIG.TOOL_CALL_TIMEOUT if hasattr(APP_CONFIG, 'TOOL_CALL_TIMEOUT') else 60
+            },
+            'security': {
+                'session_timeout': APP_CONFIG.SESSION_TIMEOUT_HOURS if hasattr(APP_CONFIG, 'SESSION_TIMEOUT_HOURS') else 24,
+                'token_expiry': APP_CONFIG.TOKEN_EXPIRY_HOURS if hasattr(APP_CONFIG, 'TOKEN_EXPIRY_HOURS') else 168
+            }
+        }
+        
+        return jsonify({
+            'status': 'success',
+            'settings': settings
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error retrieving expert settings: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@admin_api_bp.route("/v1/admin/expert-settings", methods=["POST"])
+@require_admin
+async def save_expert_settings():
+    """
+    Save expert settings values.
+    
+    Returns:
+        200: Settings saved successfully
+        400: Invalid settings
+        500: Error saving settings
+    """
+    try:
+        from trusted_data_agent.core.config import APP_CONFIG
+        
+        data = await request.get_json()
+        
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': 'No settings provided'
+            }), 400
+        
+        # Update LLM behavior settings
+        if 'llm_behavior' in data:
+            llm = data['llm_behavior']
+            if 'max_retries' in llm:
+                APP_CONFIG.LLM_API_MAX_RETRIES = int(llm['max_retries'])
+            if 'base_delay' in llm:
+                APP_CONFIG.LLM_API_BASE_DELAY = float(llm['base_delay'])
+        
+        # Update agent configuration
+        if 'agent_config' in data:
+            agent = data['agent_config']
+            if 'max_execution_steps' in agent:
+                APP_CONFIG.MAX_EXECUTION_STEPS = int(agent['max_execution_steps'])
+            if 'tool_call_timeout' in agent:
+                APP_CONFIG.TOOL_CALL_TIMEOUT = int(agent['tool_call_timeout'])
+        
+        # Update security settings
+        if 'security' in data:
+            security = data['security']
+            if 'session_timeout' in security:
+                APP_CONFIG.SESSION_TIMEOUT_HOURS = int(security['session_timeout'])
+            if 'token_expiry' in security:
+                APP_CONFIG.TOKEN_EXPIRY_HOURS = int(security['token_expiry'])
+        
+        logger.info("Expert settings updated successfully")
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Expert settings saved successfully'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error saving expert settings: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@admin_api_bp.route("/v1/admin/clear-cache", methods=["POST"])
+@require_admin
+async def clear_cache():
+    """
+    Clear application cache.
+    
+    Returns:
+        200: Cache cleared successfully
+        500: Error clearing cache
+    """
+    try:
+        from trusted_data_agent.core.config import APP_STATE
+        
+        # Clear any cached data in APP_STATE
+        cache_keys = ['cached_prompts', 'cached_tools', 'cached_resources']
+        for key in cache_keys:
+            if key in APP_STATE:
+                del APP_STATE[key]
+        
+        logger.info("Application cache cleared")
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Cache cleared successfully'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error clearing cache: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@admin_api_bp.route("/v1/admin/reset-state", methods=["POST"])
+@require_admin
+async def reset_state():
+    """
+    Reset application state (requires reconnection).
+    
+    Returns:
+        200: State reset successfully
+        500: Error resetting state
+    """
+    try:
+        from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
+        
+        # Reset configuration flags
+        APP_CONFIG.SERVICES_CONFIGURED = False
+        APP_CONFIG.MCP_SERVER_CONNECTED = False
+        APP_CONFIG.CURRENT_PROVIDER = None
+        APP_CONFIG.CURRENT_MODEL = None
+        
+        # Clear APP_STATE
+        keys_to_clear = ['llm', 'mcp_client', 'mcp_tools', 'mcp_prompts', 'mcp_resources',
+                         'structured_tools', 'structured_prompts', 'structured_resources']
+        for key in keys_to_clear:
+            if key in APP_STATE:
+                del APP_STATE[key]
+        
+        logger.warning("Application state reset - reconnection required")
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Application state reset successfully. Please reconnect services.'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error resetting state: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@admin_api_bp.route('/v1/admin/app-config', methods=['GET'])
+@require_admin
+async def get_app_config():
+    """Get current application configuration settings (feature availability)"""
+    from trusted_data_agent.core.config import APP_CONFIG
+    
+    try:
+        return jsonify({
+            'status': 'success',
+            'config': {
+                'rag_enabled': APP_CONFIG.RAG_ENABLED,
+                'voice_conversation_enabled': APP_CONFIG.VOICE_CONVERSATION_ENABLED,
+                'charting_enabled': APP_CONFIG.CHARTING_ENABLED
+            }
+        }), 200
+    except Exception as e:
+        logger.error(f"Error getting app config: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@admin_api_bp.route('/v1/admin/app-config', methods=['POST'])
+@require_admin
+async def save_app_config():
+    """Save application configuration settings (feature availability)"""
+    from trusted_data_agent.core.config import APP_CONFIG
+    
+    try:
+        data = await request.get_json()
+        
+        # Update APP_CONFIG with new feature availability settings
+        if 'rag_enabled' in data:
+            APP_CONFIG.RAG_ENABLED = bool(data['rag_enabled'])
+            logger.info(f"RAG enabled: {APP_CONFIG.RAG_ENABLED}")
+        
+        if 'voice_conversation_enabled' in data:
+            APP_CONFIG.VOICE_CONVERSATION_ENABLED = bool(data['voice_conversation_enabled'])
+            logger.info(f"Voice conversation enabled: {APP_CONFIG.VOICE_CONVERSATION_ENABLED}")
+        
+        if 'charting_enabled' in data:
+            APP_CONFIG.CHARTING_ENABLED = bool(data['charting_enabled'])
+            logger.info(f"Charting enabled: {APP_CONFIG.CHARTING_ENABLED}")
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Application configuration updated successfully',
+            'config': {
+                'rag_enabled': APP_CONFIG.RAG_ENABLED,
+                'voice_conversation_enabled': APP_CONFIG.VOICE_CONVERSATION_ENABLED,
+                'charting_enabled': APP_CONFIG.CHARTING_ENABLED
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error saving app config: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500

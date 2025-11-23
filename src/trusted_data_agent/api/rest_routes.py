@@ -797,6 +797,8 @@ async def manage_classification_setting():
     
     elif request.method == "PUT":
         # Update setting
+        user_uuid = _get_user_uuid_from_request()
+        
         data = await request.get_json()
         if data is None or "enable_mcp_classification" not in data:
             return jsonify({

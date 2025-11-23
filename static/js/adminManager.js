@@ -122,12 +122,28 @@ const AdminManager = {
             runMcpClassificationBtn.addEventListener('click', () => this.runMcpClassification());
         }
 
-        // MCP Classification toggle (in admin panel)
-        const classificationCheckbox = document.getElementById('enable-mcp-classification');
-        if (classificationCheckbox) {
-            classificationCheckbox.addEventListener('change', async (e) => {
-                await this.saveClassificationSetting(e.target.checked);
-            });
+        // MCP Classification toggle is handled by configurationHandler.js
+
+        // Expert Settings
+        const saveExpertSettingsBtn = document.getElementById('save-expert-settings-btn');
+        if (saveExpertSettingsBtn) {
+            saveExpertSettingsBtn.addEventListener('click', () => this.saveExpertSettings());
+        }
+
+        const clearCacheBtn = document.getElementById('clear-cache-btn');
+        if (clearCacheBtn) {
+            clearCacheBtn.addEventListener('click', () => this.clearCache());
+        }
+
+        const resetStateBtn = document.getElementById('reset-state-btn');
+        if (resetStateBtn) {
+            resetStateBtn.addEventListener('click', () => this.resetState());
+        }
+
+        // Application Configuration
+        const saveAppConfigBtn = document.getElementById('save-app-config-btn');
+        if (saveAppConfigBtn) {
+            saveAppConfigBtn.addEventListener('click', () => this.saveAppConfig());
         }
     },
 
@@ -166,6 +182,8 @@ const AdminManager = {
             this.loadPanes();
         } else if (tabName === 'app-config-tab') {
             this.loadAppConfig();
+        } else if (tabName === 'expert-settings-tab') {
+            this.loadExpertSettings();
         }
     },
 
@@ -1063,6 +1081,244 @@ const AdminManager = {
                 checkbox.checked = !enabled;
             }
         }
+    },
+
+    /**
+     * Load expert settings from backend
+     */
+    async loadExpertSettings() {
+        try {
+            const token = localStorage.getItem('tda_auth_token');
+            if (!token) return;
+
+            const response = await fetch('/api/v1/admin/expert-settings', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.status === 'success' && data.settings) {
+                    const s = data.settings;
+                    
+                    // LLM Behavior
+                    if (s.llm_behavior) {
+                        this.setFieldValue('llm-max-retries', s.llm_behavior.max_retries);
+                        this.setFieldValue('llm-base-delay', s.llm_behavior.base_delay);
+                    }
+                    
+                    // Agent Configuration
+                    if (s.agent_config) {
+                        this.setFieldValue('max-execution-steps', s.agent_config.max_execution_steps);
+                        this.setFieldValue('tool-call-timeout', s.agent_config.tool_call_timeout);
+                    }
+                    
+                    // Security
+                    if (s.security) {
+                        this.setFieldValue('session-timeout', s.security.session_timeout);
+                        this.setFieldValue('token-expiry', s.security.token_expiry);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('[AdminManager] Error loading expert settings:', error);
+        }
+    },
+
+    /**
+     * Save expert settings to backend
+     */
+    async saveExpertSettings() {
+        try {
+            const token = localStorage.getItem('tda_auth_token');
+            if (!token) {
+                this.showNotification('Not authenticated', 'error');
+                return;
+            }
+
+            const settings = {
+                llm_behavior: {
+                    max_retries: parseInt(this.getFieldValue('llm-max-retries')),
+                    base_delay: parseFloat(this.getFieldValue('llm-base-delay'))
+                },
+                agent_config: {
+                    max_execution_steps: parseInt(this.getFieldValue('max-execution-steps')),
+                    tool_call_timeout: parseInt(this.getFieldValue('tool-call-timeout'))
+                },
+                security: {
+                    session_timeout: parseInt(this.getFieldValue('session-timeout')),
+                    token_expiry: parseInt(this.getFieldValue('token-expiry'))
+                }
+            };
+
+            const response = await fetch('/api/v1/admin/expert-settings', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(settings)
+            });
+
+            const data = await response.json();
+            
+            if (response.ok && data.status === 'success') {
+                this.showNotification('Expert settings saved successfully', 'success');
+            } else {
+                throw new Error(data.message || 'Failed to save settings');
+            }
+        } catch (error) {
+            console.error('[AdminManager] Error saving expert settings:', error);
+            this.showNotification(error.message, 'error');
+        }
+    },
+
+    /**
+     * Clear application cache
+     */
+    async clearCache() {
+        try {
+            const token = localStorage.getItem('tda_auth_token');
+            if (!token) return;
+
+            const response = await fetch('/api/v1/admin/clear-cache', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+            
+            if (response.ok && data.status === 'success') {
+                this.showNotification('Cache cleared successfully', 'success');
+            } else {
+                throw new Error(data.message || 'Failed to clear cache');
+            }
+        } catch (error) {
+            console.error('[AdminManager] Error clearing cache:', error);
+            this.showNotification(error.message, 'error');
+        }
+    },
+
+    /**
+     * Reset application state
+     */
+    async resetState() {
+        if (!confirm('This will reset all application state and require reconnection. Continue?')) {
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('tda_auth_token');
+            if (!token) return;
+
+            const response = await fetch('/api/v1/admin/reset-state', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+            
+            if (response.ok && data.status === 'success') {
+                this.showNotification(data.message, 'success');
+            } else {
+                throw new Error(data.message || 'Failed to reset state');
+            }
+        } catch (error) {
+            console.error('[AdminManager] Error resetting state:', error);
+            this.showNotification(error.message, 'error');
+        }
+    },
+
+    /**
+     * Load application configuration (feature toggles)
+     */
+    async loadAppConfig() {
+        try {
+            const token = localStorage.getItem('tda_auth_token');
+            if (!token) return;
+
+            const response = await fetch('/api/v1/admin/app-config', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+            
+            if (response.ok && data.status === 'success') {
+                // Set checkbox values
+                const ragCheckbox = document.getElementById('enable-rag-system');
+                const voiceCheckbox = document.getElementById('enable-voice-system');
+                const chartingCheckbox = document.getElementById('enable-charting-system');
+                
+                if (ragCheckbox) ragCheckbox.checked = data.config.rag_enabled || false;
+                if (voiceCheckbox) voiceCheckbox.checked = data.config.voice_conversation_enabled || false;
+                if (chartingCheckbox) chartingCheckbox.checked = data.config.charting_enabled || false;
+            }
+        } catch (error) {
+            console.error('[AdminManager] Error loading app config:', error);
+        }
+    },
+
+    /**
+     * Save application configuration (feature toggles)
+     */
+    async saveAppConfig() {
+        try {
+            const token = localStorage.getItem('tda_auth_token');
+            if (!token) return;
+
+            const ragCheckbox = document.getElementById('enable-rag-system');
+            const voiceCheckbox = document.getElementById('enable-voice-system');
+            const chartingCheckbox = document.getElementById('enable-charting-system');
+
+            const config = {
+                rag_enabled: ragCheckbox ? ragCheckbox.checked : false,
+                voice_conversation_enabled: voiceCheckbox ? voiceCheckbox.checked : false,
+                charting_enabled: chartingCheckbox ? chartingCheckbox.checked : false
+            };
+
+            const response = await fetch('/api/v1/admin/app-config', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(config)
+            });
+
+            const data = await response.json();
+            
+            if (response.ok && data.status === 'success') {
+                this.showNotification('Feature settings saved successfully', 'success');
+            } else {
+                throw new Error(data.message || 'Failed to save settings');
+            }
+        } catch (error) {
+            console.error('[AdminManager] Error saving app config:', error);
+            this.showNotification(error.message, 'error');
+        }
+    },
+
+    /**
+     * Helper to set field value
+     */
+    setFieldValue(id, value) {
+        const field = document.getElementById(id);
+        if (field) field.value = value;
+    },
+
+    /**
+     * Helper to get field value
+     */
+    getFieldValue(id) {
+        const field = document.getElementById(id);
+        return field ? field.value : null;
     }
 };
 
