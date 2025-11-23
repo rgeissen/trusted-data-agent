@@ -17,6 +17,7 @@ from pydantic import ValidationError, BaseModel
 import boto3
 
 from trusted_data_agent.core.config import APP_CONFIG
+from trusted_data_agent.core.config import get_user_provider, get_user_model
 # --- MODIFICATION START: Import session manager functions ---
 from trusted_data_agent.core.session_manager import get_session, update_token_count
 # --- MODIFICATION END ---
@@ -461,8 +462,8 @@ async def call_llm_api(llm_instance: any, prompt: str, user_uuid: str = None, se
 
     response_text = ""
     input_tokens, output_tokens = 0, 0
-    actual_provider = APP_CONFIG.CURRENT_PROVIDER # Capture current provider
-    actual_model = APP_CONFIG.CURRENT_MODEL     # Capture current model
+    actual_provider = get_user_provider(user_uuid) # Capture current provider
+    actual_model = get_user_model(user_uuid)     # Capture current model
 
     max_retries = APP_CONFIG.LLM_API_MAX_RETRIES
     base_delay = APP_CONFIG.LLM_API_BASE_DELAY

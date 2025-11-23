@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from langchain_mcp_adapters.tools import load_mcp_tools
 from trusted_data_agent.llm import handler as llm_handler
 from trusted_data_agent.core.config import APP_CONFIG, AppConfig
+from trusted_data_agent.core.config import get_user_mcp_server_name
 from trusted_data_agent.agent.response_models import CanonicalResponse, PromptReportResponse
 
 app_logger = logging.getLogger("quart.app")
@@ -213,13 +214,13 @@ def _get_type_from_schema(schema: dict) -> str:
     return "any"
 
 
-async def load_and_categorize_mcp_resources(STATE: dict):
+async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None):
     mcp_client = STATE.get('mcp_client')
     llm_instance = STATE.get('llm')
     if not mcp_client or not llm_instance:
         raise Exception("MCP or LLM client not initialized.")
 
-    server_name = APP_CONFIG.CURRENT_MCP_SERVER_NAME
+    server_name = get_user_mcp_server_name(user_uuid)
     if not server_name:
         raise Exception("MCP server name not found in configuration.")
 
@@ -1273,7 +1274,7 @@ async def invoke_mcp_tool(STATE: dict, command: dict, user_uuid: str = None, ses
 
     app_logger.debug(f"Invoking tool '{tool_name}' with aligned args: {aligned_args}")
     try:
-        server_name = APP_CONFIG.CURRENT_MCP_SERVER_NAME
+        server_name = get_user_mcp_server_name(user_uuid)
         if not server_name:
             raise Exception("MCP server name not found in configuration.")
 

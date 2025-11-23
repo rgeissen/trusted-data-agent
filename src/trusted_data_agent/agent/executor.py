@@ -17,7 +17,12 @@ from trusted_data_agent.agent.formatter import OutputFormatter
 from trusted_data_agent.core import session_manager
 from trusted_data_agent.llm import handler as llm_handler
 # --- MODIFICATION START: Import APP_CONFIG and APP_STATE ---
-from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
+from trusted_data_agent.core.config import (
+    APP_CONFIG, APP_STATE,
+    get_user_provider, get_user_model, set_user_provider, set_user_model,
+    set_user_aws_region, set_user_azure_deployment_details,
+    set_user_friendli_details, set_user_model_provider_in_profile
+)
 # --- MODIFICATION END ---
 from trusted_data_agent.agent.response_models import CanonicalResponse, PromptReportResponse
 from trusted_data_agent.mcp import adapter as mcp_adapter
@@ -89,8 +94,8 @@ class PlanExecutor:
         self.original_provider_details = {}  # Will store provider-specific config (Friendli, Azure, AWS)
         
         # Snapshot model and provider for this turn
-        self.current_model = APP_CONFIG.CURRENT_MODEL
-        self.current_provider = APP_CONFIG.CURRENT_PROVIDER
+        self.current_model = get_user_model(user_uuid)
+        self.current_provider = get_user_provider(user_uuid)
         # --- MODIFICATION END ---
 
         self.structured_collected_data = {}
@@ -587,8 +592,8 @@ class PlanExecutor:
                     self.original_mcp_prompts = APP_STATE.get('mcp_prompts')
                     self.original_structured_tools = APP_STATE.get('structured_tools')
                     self.original_structured_prompts = APP_STATE.get('structured_prompts')
-                    self.original_provider = APP_CONFIG.CURRENT_PROVIDER
-                    self.original_model = APP_CONFIG.CURRENT_MODEL
+                    self.original_provider = get_user_provider(self.user_uuid)
+                    self.original_model = get_user_model(self.user_uuid)
                     
                     # Save provider-specific details
                     if self.original_provider == "Friendli":
@@ -629,8 +634,8 @@ class PlanExecutor:
                             temp_llm_instance = await create_llm_client(provider, model, credentials)
                             
                             # Update APP_CONFIG and executor's cached values for this turn
-                            APP_CONFIG.CURRENT_PROVIDER = provider
-                            APP_CONFIG.CURRENT_MODEL = model
+                            set_user_provider(provider, self.user_uuid)
+                            set_user_model(model, self.user_uuid)
                             self.current_provider = provider
                             self.current_model = model
                             
@@ -932,20 +937,20 @@ class PlanExecutor:
                     if self.original_llm is not None:
                         APP_STATE['llm'] = self.original_llm
                         if self.original_provider:
-                            APP_CONFIG.CURRENT_PROVIDER = self.original_provider
+                            set_user_provider(self.original_provider, self.user_uuid)
                         if self.original_model:
-                            APP_CONFIG.CURRENT_MODEL = self.original_model
+                            set_user_model(self.original_model, self.user_uuid)
                         
                         # Restore provider-specific details
                         if self.original_provider == "Friendli" and 'friendli' in self.original_provider_details:
-                            APP_CONFIG.CURRENT_FRIENDLI_DETAILS = self.original_provider_details['friendli']
+                            set_user_friendli_details(self.original_provider_details['friendli'], self.user_uuid)
                         elif self.original_provider == "Azure" and 'azure' in self.original_provider_details:
-                            APP_CONFIG.CURRENT_AZURE_DEPLOYMENT_DETAILS = self.original_provider_details['azure']
+                            set_user_azure_deployment_details(self.original_provider_details['azure'], self.user_uuid)
                         elif self.original_provider == "Amazon":
                             if 'aws_region' in self.original_provider_details:
-                                APP_CONFIG.CURRENT_AWS_REGION = self.original_provider_details['aws_region']
+                                set_user_aws_region(self.original_provider_details['aws_region'], self.user_uuid)
                             if 'aws_model_provider' in self.original_provider_details:
-                                APP_CONFIG.CURRENT_MODEL_PROVIDER_IN_PROFILE = self.original_provider_details['aws_model_provider']
+                                set_user_model_provider_in_profile(self.original_provider_details['aws_model_provider'], self.user_uuid)
                         
                         app_logger.info(f"✅ Restored original LLM instance")
                         app_logger.info(f"   Provider: {self.original_provider}")

@@ -680,10 +680,13 @@ async def configure_services_rest():
     This is a protected, atomic operation that uses the centralized
     configuration service.
     """
-    # Configuration is global, no user UUID needed.
     config_data = await request.get_json()
     if not config_data:
         return jsonify({"status": "error", "message": "Request body must be a valid JSON."}), 400
+    
+    # Extract user_uuid for per-user context isolation
+    user_uuid = _get_user_uuid_from_request()
+    config_data["user_uuid"] = user_uuid
 
     result = await configuration_service.setup_and_categorize_services(config_data)
 

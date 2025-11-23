@@ -1105,6 +1105,8 @@ async def configure_services():
     data_from_ui = await request.get_json()
     if not data_from_ui:
         return jsonify({"status": "error", "message": "Request body must be a valid JSON."}), 400
+    
+    user_uuid = _get_user_uuid_from_request()
 
     # Check if credentials are nested (new format) or flat (old format)
     creds = data_from_ui.get("credentials", {})
@@ -1119,6 +1121,7 @@ async def configure_services():
         "provider": data_from_ui.get("provider"),
         "model": data_from_ui.get("model"),
         "tts_credentials_json": data_from_ui.get("tts_credentials_json"),
+        "user_uuid": user_uuid,
         "credentials": {
             "apiKey": creds.get("apiKey") or data_from_ui.get("apiKey"),
             "aws_access_key_id": creds.get("aws_access_key_id") or data_from_ui.get("aws_access_key_id"),

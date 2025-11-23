@@ -13,7 +13,14 @@ import google.generativeai as genai
 import boto3
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
-from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
+from trusted_data_agent.core.config import (
+    APP_CONFIG, APP_STATE,
+    set_user_provider, set_user_model, set_user_aws_region,
+    set_user_azure_deployment_details, set_user_friendli_details,
+    set_user_model_provider_in_profile, set_user_mcp_server_name,
+    set_user_mcp_server_id, set_user_llm_instance, set_user_mcp_client,
+    set_user_server_configs
+)
 from trusted_data_agent.llm import handler as llm_handler
 from trusted_data_agent.mcp import adapter as mcp_adapter
 from trusted_data_agent.core.utils import unwrap_exception, _regenerate_contexts
@@ -39,6 +46,7 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
         server_name = config_data.get("mcp_server", {}).get("name") or config_data.get("server_name")
         server_id = config_data.get("mcp_server", {}).get("id") or config_data.get("server_id")
         tts_credentials_json = config_data.get("tts_credentials_json")
+        user_uuid = config_data.get("user_uuid")  # Extract user_uuid for per-user isolation
 
 
         if not server_name:
@@ -161,34 +169,39 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
 
             app_logger.info("All validations passed. Committing configuration to application state.")
             
-            # --- 3. Commit to Global State ---
-            APP_CONFIG.CURRENT_PROVIDER = provider
-            APP_CONFIG.CURRENT_MODEL = model
-            APP_CONFIG.CURRENT_AWS_REGION = credentials.get("aws_region") if provider == "Amazon" else None
+            # --- 3. Commit to Global State (with per-user isolation support) ---
+            set_user_provider(provider, user_uuid)
+            set_user_model(model, user_uuid)
+            set_user_aws_region(credentials.get("aws_region") if provider == "Amazon" else None, user_uuid)
+            
             if provider == "Azure":
-                APP_CONFIG.CURRENT_AZURE_DEPLOYMENT_DETAILS = {
+                azure_details = {
                     "endpoint": credentials.get("azure_endpoint"),
                     "deployment_name": credentials.get("azure_deployment_name"),
                     "api_version": credentials.get("azure_api_version")
                 }
+                set_user_azure_deployment_details(azure_details, user_uuid)
+            
             if provider == "Friendli":
                 is_dedicated = bool(credentials.get("friendli_endpoint_url"))
-                APP_CONFIG.CURRENT_FRIENDLI_DETAILS = {
+                friendli_details = {
                     "token": credentials.get("friendli_token"),
                     "endpoint_url": credentials.get("friendli_endpoint_url"),
                     "models_path": "/v1/models" if is_dedicated else None # No path for serverless
                 }
-            APP_CONFIG.CURRENT_MODEL_PROVIDER_IN_PROFILE = None
-            APP_CONFIG.CURRENT_MCP_SERVER_NAME = server_name
-            APP_CONFIG.CURRENT_MCP_SERVER_ID = server_id  # Store the unique ID
+                set_user_friendli_details(friendli_details, user_uuid)
             
-            APP_STATE['llm'] = temp_llm_instance
-            APP_STATE['mcp_client'] = temp_mcp_client
-            APP_STATE['server_configs'] = temp_server_configs
+            set_user_model_provider_in_profile(None, user_uuid)
+            set_user_mcp_server_name(server_name, user_uuid)
+            set_user_mcp_server_id(server_id, user_uuid)
+            
+            set_user_llm_instance(temp_llm_instance, user_uuid)
+            set_user_mcp_client(temp_mcp_client, user_uuid)
+            set_user_server_configs(temp_server_configs, user_uuid)
 
             if provider == "Amazon" and model.startswith("arn:aws:bedrock:"):
                 profile_part = model.split('/')[-1]
-                APP_CONFIG.CURRENT_MODEL_PROVIDER_IN_PROFILE = profile_part.split('.')[1]
+                set_user_model_provider_in_profile(profile_part.split('.')[1], user_uuid)
             
             # --- MODIFICATION START: Initialize and store RAGRetriever instance ---
             # Note: RAGRetriever is now initialized at application startup independently
@@ -264,7 +277,7 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             # --- MODIFICATION END ---
 
             # --- 4. Load and Classify Capabilities (The Automatic Step) ---
-            await mcp_adapter.load_and_categorize_mcp_resources(APP_STATE)
+            await mcp_adapter.load_and_categorize_mcp_resources(APP_STATE, user_uuid)
             APP_CONFIG.MCP_SERVER_CONNECTED = True
             
             # --- 4a. Load Enabled/Disabled Tools/Prompts from Active Profile ---
