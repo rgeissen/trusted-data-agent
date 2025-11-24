@@ -1392,7 +1392,11 @@ async def run_mcp_classification():
         try:
             # Reload MCP capabilities with classification enabled
             logger.info("Reloading MCP capabilities with classification enabled")
-            await adapter.load_and_categorize_mcp_resources(APP_STATE, user_uuid)
+            # Get default profile for classification
+            from trusted_data_agent.core.config_manager import get_config_manager
+            config_manager = get_config_manager()
+            profile_id = config_manager.get_default_profile_id(user_uuid)
+            await adapter.load_and_categorize_mcp_resources(APP_STATE, user_uuid, profile_id)
             
             # Get statistics from structured data
             tools_count = sum(len(tools) for tools in APP_STATE.get('structured_tools', {}).values())

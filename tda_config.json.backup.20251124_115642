@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "created_at": "2025-11-18T15:42:02.792618+00:00",
-  "last_modified": "2025-11-24T10:59:47.165435+00:00",
+  "last_modified": "2025-11-24T10:56:04.128874+00:00",
   "enable_mcp_classification": false,
   "rag_collections": [
     {
@@ -221,15 +221,7 @@
         "base_teradataQuery",
         "tdvs_rag_prompt",
         "tdvs_tools_prompt"
-      ],
-      "classification_mode": "full",
-      "classification_results": {
-        "tools": {},
-        "prompts": {},
-        "resources": {},
-        "last_classified": null,
-        "classified_with_mode": null
-      }
+      ]
     },
     {
       "id": "profile-1763820446672-zy475d5rc",
@@ -283,15 +275,7 @@
         "base_teradataQuery",
         "tdvs_rag_prompt",
         "tdvs_tools_prompt"
-      ],
-      "classification_mode": "full",
-      "classification_results": {
-        "tools": {},
-        "prompts": {},
-        "resources": {},
-        "last_classified": "2025-11-24T10:58:57.143606+00:00",
-        "classified_with_mode": "full"
-      }
+      ]
     },
     {
       "id": "profile-1763832288606-e7s3t60hi",
@@ -340,15 +324,7 @@
       ],
       "autocompleteCollections": [
         "*"
-      ],
-      "classification_mode": "full",
-      "classification_results": {
-        "tools": {},
-        "prompts": {},
-        "resources": {},
-        "last_classified": null,
-        "classified_with_mode": null
-      }
+      ]
     },
     {
       "id": "profile-1763894116960-ywzktgodl",
@@ -397,15 +373,7 @@
       ],
       "autocompleteCollections": [
         "*"
-      ],
-      "classification_mode": "full",
-      "classification_results": {
-        "tools": {},
-        "prompts": {},
-        "resources": {},
-        "last_classified": null,
-        "classified_with_mode": null
-      }
+      ]
     },
     {
       "autocompleteCollections": [
@@ -457,15 +425,7 @@
         "dba_userDelay",
         "dba_sessionInfo",
         "dba_systemSpace"
-      ],
-      "classification_mode": "full",
-      "classification_results": {
-        "tools": {},
-        "prompts": {},
-        "resources": {},
-        "last_classified": null,
-        "classified_with_mode": null
-      }
+      ]
     },
     {
       "name": "Test Profile Light",
@@ -699,96 +659,6 @@
       "llm_model": "gemini-1.5-flash",
       "mcp_servers": [],
       "id": "profile-d69d7c1b-4b2c-4988-82af-ce071f1fcbbb",
-      "classification_results": {
-        "tools": {},
-        "prompts": {},
-        "resources": {},
-        "last_classified": null,
-        "classified_with_mode": null
-      }
-    },
-    {
-      "name": "Comparison Test Light",
-      "classification_mode": "light",
-      "llm_provider": "Google",
-      "llm_model": "gemini-1.5-flash",
-      "mcp_servers": [],
-      "id": "profile-35b0265d-e5ee-42ce-a02f-97ac0481c8ce",
-      "classification_results": {
-        "tools": {},
-        "prompts": {},
-        "resources": {},
-        "last_classified": null,
-        "classified_with_mode": null
-      }
-    },
-    {
-      "name": "Comparison Test Full",
-      "classification_mode": "full",
-      "llm_provider": "Google",
-      "llm_model": "gemini-1.5-flash",
-      "mcp_servers": [],
-      "id": "profile-1b40b736-c230-4c83-bfc7-66043f986ff7",
-      "classification_results": {
-        "tools": {},
-        "prompts": {},
-        "resources": {},
-        "last_classified": null,
-        "classified_with_mode": null
-      }
-    },
-    {
-      "name": "Validation Test Profile",
-      "classification_mode": "full",
-      "llm_provider": "Google",
-      "llm_model": "gemini-1.5-flash",
-      "mcp_servers": [],
-      "id": "profile-a7319d4c-99ce-44b9-8291-13dcab531a3d",
-      "classification_results": {
-        "tools": {},
-        "prompts": {},
-        "resources": {},
-        "last_classified": null,
-        "classified_with_mode": null
-      }
-    },
-    {
-      "name": "Test Mode None",
-      "classification_mode": "none",
-      "llm_provider": "Google",
-      "llm_model": "gemini-1.5-flash",
-      "mcp_servers": [],
-      "id": "profile-3a47ec31-5db6-4f46-8879-e201e05030af",
-      "classification_results": {
-        "tools": {},
-        "prompts": {},
-        "resources": {},
-        "last_classified": null,
-        "classified_with_mode": null
-      }
-    },
-    {
-      "name": "Test Mode Light",
-      "classification_mode": "light",
-      "llm_provider": "Google",
-      "llm_model": "gemini-1.5-flash",
-      "mcp_servers": [],
-      "id": "profile-a3cb7a01-8a06-4f30-9420-95f9ec21829f",
-      "classification_results": {
-        "tools": {},
-        "prompts": {},
-        "resources": {},
-        "last_classified": null,
-        "classified_with_mode": null
-      }
-    },
-    {
-      "name": "Test Mode Full",
-      "classification_mode": "full",
-      "llm_provider": "Google",
-      "llm_model": "gemini-1.5-flash",
-      "mcp_servers": [],
-      "id": "profile-08435108-9e3b-4bb1-b9a9-e9c66d37c17d",
       "classification_results": {
         "tools": {},
         "prompts": {},

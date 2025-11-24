@@ -43,6 +43,101 @@ else:
 
 app_logger = logging.getLogger("quart.app")
 
+
+def load_profile_classification_into_state(profile_id: str, user_uuid: str) -> bool:
+    """
+    Load cached classification results from a profile into APP_STATE.
+    Returns True if cached results were loaded, False if classification needs to run.
+    """
+    config_manager = get_config_manager()
+    profile = config_manager.get_profile(profile_id, user_uuid)
+    
+    if not profile:
+        app_logger.warning(f"Profile {profile_id} not found")
+        return False
+    
+    classification_results = config_manager.get_profile_classification(profile_id, user_uuid)
+    
+    # Check if we have cached results
+    if not classification_results or not classification_results.get('tools'):
+        app_logger.info(f"No cached classification for profile {profile_id}, will run classification")
+        return False
+    
+    # Check if classification mode matches what was used
+    classification_mode = profile.get('classification_mode', 'full')
+    cached_mode = classification_results.get('classified_with_mode')
+    
+    if cached_mode and cached_mode != classification_mode:
+        app_logger.info(f"Classification mode changed from '{cached_mode}' to '{classification_mode}', will reclassify")
+        return False
+    
+    # Load cached results into APP_STATE
+    APP_STATE['structured_tools'] = classification_results.get('tools', {})
+    APP_STATE['structured_prompts'] = classification_results.get('prompts', {})
+    APP_STATE['structured_resources'] = classification_results.get('resources', {})
+    
+    app_logger.info(f"Loaded cached classification for profile {profile_id} (mode: {classification_mode})")
+    app_logger.info(f"  - {len(APP_STATE['structured_tools'])} tool categories")
+    app_logger.info(f"  - {len(APP_STATE['structured_prompts'])} prompt categories")
+    app_logger.info(f"  - {len(APP_STATE['structured_resources'])} resource categories")
+    
+    return True
+
+
+async def switch_profile_context(profile_id: str, user_uuid: str) -> dict:
+    """
+    Switch the active profile context, loading its classification and configuration.
+    This is called when a user explicitly switches profiles during runtime.
+    
+    Returns a result dict with status and message.
+    """
+    config_manager = get_config_manager()
+    profile = config_manager.get_profile(profile_id, user_uuid)
+    
+    if not profile:
+        return {
+            "status": "error",
+            "message": f"Profile {profile_id} not found"
+        }
+    
+    try:
+        # Update runtime state
+        APP_CONFIG.CURRENT_PROFILE_ID = profile_id
+        classification_mode = profile.get('classification_mode', 'full')
+        APP_CONFIG.CURRENT_PROFILE_CLASSIFICATION_MODE = classification_mode
+        
+        app_logger.info(f"Switching to profile {profile_id} (classification mode: {classification_mode})")
+        
+        # Try to load cached classification
+        cached_loaded = load_profile_classification_into_state(profile_id, user_uuid)
+        
+        # If no cache, run classification
+        if not cached_loaded:
+            app_logger.info(f"No cached classification, running classification for profile {profile_id}")
+            await mcp_adapter.load_and_categorize_mcp_resources(APP_STATE, user_uuid, profile_id)
+        
+        # Load disabled tools/prompts from profile
+        APP_STATE["disabled_tools"] = profile.get('disabled_tools', [])
+        APP_STATE["disabled_prompts"] = profile.get('disabled_prompts', [])
+        
+        # Regenerate contexts with new classification
+        _regenerate_contexts()
+        
+        return {
+            "status": "success",
+            "message": f"Switched to profile {profile_id}",
+            "classification_mode": classification_mode,
+            "used_cache": cached_loaded
+        }
+    
+    except Exception as e:
+        app_logger.error(f"Failed to switch profile context: {e}", exc_info=True)
+        return {
+            "status": "error",
+            "message": f"Failed to switch profile: {str(e)}"
+        }
+
+
 async def setup_and_categorize_services(config_data: dict) -> dict:
     """
     A centralized, atomic, and lock-protected service to configure the entire
@@ -317,13 +412,38 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             # --- MODIFICATION END ---
 
             # --- 4. Load and Classify Capabilities (The Automatic Step) ---
-            await mcp_adapter.load_and_categorize_mcp_resources(APP_STATE, user_uuid)
+            # Get default or active profile to use its classification mode
+            config_manager = get_config_manager()
+            profile_id = config_manager.get_default_profile_id(user_uuid)
+            if profile_id:
+                APP_CONFIG.CURRENT_PROFILE_ID = profile_id
+                app_logger.info(f"Using profile {profile_id} for MCP classification")
+            else:
+                app_logger.warning("No default profile found, classification will use default mode 'full'")
+            
+            # Try to load cached classification first
+            cached_loaded = False
+            if profile_id:
+                cached_loaded = load_profile_classification_into_state(profile_id, user_uuid)
+            
+            # Run classification if no cache available
+            if not cached_loaded:
+                await mcp_adapter.load_and_categorize_mcp_resources(APP_STATE, user_uuid, profile_id)
+            else:
+                app_logger.info("Using cached classification results, skipping LLM classification")
+            
             APP_CONFIG.MCP_SERVER_CONNECTED = True
+            
+            # Update classification mode in runtime state
+            if profile_id:
+                profile = config_manager.get_profile(profile_id, user_uuid)
+                if profile:
+                    APP_CONFIG.CURRENT_PROFILE_CLASSIFICATION_MODE = profile.get('classification_mode', 'full')
+                    app_logger.info(f"Set runtime classification mode to '{APP_CONFIG.CURRENT_PROFILE_CLASSIFICATION_MODE}'")
             
             # --- 4a. Load Enabled/Disabled Tools/Prompts from Active Profile ---
             # Note: This will be fully populated when a profile is activated
             # For now, just initialize with empty lists since no profile is active yet during initial config
-            config_manager = get_config_manager()
             APP_STATE["disabled_tools"] = []
             APP_STATE["disabled_prompts"] = []
             app_logger.info("Initialized empty disabled lists. These will be populated when a profile is activated.")

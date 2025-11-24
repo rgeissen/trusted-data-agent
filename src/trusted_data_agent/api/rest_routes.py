@@ -2418,6 +2418,115 @@ async def create_profile():
         app_logger.error(f"Error creating profile: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@rest_api_bp.route("/v1/profiles/<profile_id>/activate", methods=["POST"])
+async def activate_profile(profile_id: str):
+    """
+    Activate a profile, switching the runtime context to use its configuration and classification.
+    This loads the profile's LLM settings, MCP servers, and classification results.
+    """
+    user_uuid = _get_user_uuid_from_request()
+    from trusted_data_agent.core import configuration_service
+    
+    try:
+        result = await configuration_service.switch_profile_context(profile_id, user_uuid)
+        
+        if result["status"] == "success":
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 400
+    
+    except Exception as e:
+        app_logger.error(f"Failed to activate profile {profile_id}: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": f"Profile activation failed: {str(e)}"
+        }), 500
+
+
+@rest_api_bp.route("/v1/profiles/<profile_id>/classification", methods=["GET"])
+async def get_profile_classification(profile_id: str):
+    """
+    Get the classification results for a specific profile.
+    Returns the cached classification structure (tools, prompts, resources).
+    """
+    user_uuid = _get_user_uuid_from_request()
+    from trusted_data_agent.core.config_manager import ConfigManager
+    config_manager = ConfigManager()
+    
+    # Verify profile exists and belongs to user
+    profile = config_manager.get_profile(profile_id, user_uuid)
+    if not profile:
+        return jsonify({
+            "status": "error",
+            "message": f"Profile '{profile_id}' not found"
+        }), 404
+    
+    # Get classification results
+    classification_results = config_manager.get_profile_classification(profile_id, user_uuid)
+    classification_mode = profile.get('classification_mode', 'full')
+    
+    return jsonify({
+        "status": "success",
+        "profile_id": profile_id,
+        "classification_mode": classification_mode,
+        "classification_results": classification_results
+    }), 200
+
+
+@rest_api_bp.route("/v1/profiles/<profile_id>/reclassify", methods=["POST"])
+async def reclassify_profile(profile_id: str):
+    """
+    Force reclassification of MCP resources for a specific profile.
+    This clears cached results and re-runs classification using the profile's LLM and mode.
+    """
+    user_uuid = _get_user_uuid_from_request()
+    from trusted_data_agent.core.config_manager import ConfigManager
+    config_manager = ConfigManager()
+    
+    # Verify profile exists and belongs to user
+    profile = config_manager.get_profile(profile_id, user_uuid)
+    if not profile:
+        return jsonify({
+            "status": "error",
+            "message": f"Profile '{profile_id}' not found"
+        }), 404
+    
+    try:
+        # Clear existing classification
+        config_manager.clear_profile_classification(profile_id, user_uuid)
+        app_logger.info(f"Cleared classification cache for profile {profile_id}")
+        
+        # Re-run classification if this is the active profile
+        # For non-active profiles, classification will happen when they're activated
+        if APP_CONFIG.CURRENT_PROFILE_ID == profile_id:
+            app_logger.info(f"Profile {profile_id} is active, running reclassification now")
+            from trusted_data_agent.mcp_adapter import adapter as mcp_adapter
+            await mcp_adapter.load_and_categorize_mcp_resources(APP_STATE, user_uuid, profile_id)
+            
+            # Get updated results
+            classification_results = config_manager.get_profile_classification(profile_id, user_uuid)
+            
+            return jsonify({
+                "status": "success",
+                "message": "Profile reclassified successfully",
+                "profile_id": profile_id,
+                "classification_results": classification_results
+            }), 200
+        else:
+            return jsonify({
+                "status": "success",
+                "message": "Classification cache cleared. Will reclassify when profile is activated.",
+                "profile_id": profile_id
+            }), 200
+    
+    except Exception as e:
+        app_logger.error(f"Failed to reclassify profile {profile_id}: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": f"Reclassification failed: {str(e)}"
+        }), 500
+
+
 @rest_api_bp.route("/v1/profiles/<profile_id>", methods=["PUT"])
 async def update_profile(profile_id: str):
     """Update an existing profile configuration."""

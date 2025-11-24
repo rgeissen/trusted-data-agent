@@ -669,6 +669,20 @@ class ConfigManager:
         config = self.load_config(user_uuid)
         return config.get("profiles", [])
 
+    def get_profile(self, profile_id: str, user_uuid: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """
+        Get a single profile by ID.
+        
+        Args:
+            profile_id: Profile ID to retrieve
+            user_uuid: Optional user UUID for per-user configuration isolation
+        
+        Returns:
+            Profile configuration dictionary or None if not found
+        """
+        profiles = self.get_profiles(user_uuid)
+        return next((p for p in profiles if p.get("id") == profile_id), None)
+
     def save_profiles(self, profiles: list, user_uuid: Optional[str] = None) -> bool:
         """
         Save profile configurations.
