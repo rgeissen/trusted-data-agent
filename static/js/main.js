@@ -830,11 +830,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (status.isConfigured) {
 
+            // Check authentication status - show welcome screen for unauthenticated users
+            const isAuthenticated = window.authClient && window.authClient.isAuthenticated();
+            
             // Check if admin has enabled "always show welcome screen"
             const alwaysShowWelcome = state.appConfig?.window_defaults?.always_show_welcome_screen || false;
             
-            if (alwaysShowWelcome) {
-                // Admin setting overrides - always show welcome screen at startup
+            if (!isAuthenticated || alwaysShowWelcome) {
+                // Show welcome screen for unauthenticated users or if admin setting enabled
                 await showWelcomeScreen();
             } else {
                 // Normal flow - finalize configuration and show chat interface
@@ -1058,6 +1061,11 @@ async function showWelcomeScreen() {
             }
         });
         welcomeBtn.dataset._wired = 'true';
+    }
+    
+    // After setting up welcome screen, check auth state and override button if needed
+    if (window.updateAuthUI) {
+        window.updateAuthUI();
     }
 }
 

@@ -381,17 +381,20 @@
                                             <button id="welcome-configure-btn" class="welcome-cta-button group relative px-8 py-3.5 bg-teradata-orange hover:bg-teradata-orange-dark text-white text-lg font-semibold rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center gap-3">
                                                 <!-- Animated glow effect -->
                                                 <div class="welcome-button-glow"></div>
-                                                <!-- Cogwheel Icon (spins during connection) -->
+                                                <!-- Icon (cogwheel for authenticated, login arrow for unauthenticated) -->
                                                 <svg id="welcome-cogwheel-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 relative z-10 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                </svg>
+                                                <svg id="welcome-login-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 relative z-10 transition-transform hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                                                 </svg>
                                                 <span id="welcome-button-text" class="relative z-10">Start Conversation</span>
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 relative z-10 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                                 </svg>
                                             </button>
-                                            <div class="flex flex-col items-center gap-2">
+                                            <div id="welcome-config-info" class="flex flex-col items-center gap-2">
                                                 <p class="text-sm text-gray-400 welcome-subtext">(Requires MCP + Google/OpenAI/Llama/Azure AI/Ollama)</p>
                                                 <a href="#" id="welcome-reconfigure-link" class="text-sm text-gray-400 hover:text-white transition-colors hidden">
                                                     or reconfigure settings
@@ -3900,10 +3903,43 @@
                 }
                 
                 console.log('Authenticated as:', user.username);
+                
+                // Enable all view switches for authenticated users
+                document.querySelectorAll('.view-switch-button').forEach(btn => {
+                    if (btn.id !== 'view-switch-admin') { // Admin is controlled separately
+                        btn.classList.remove('pointer-events-none', 'opacity-50', 'cursor-not-allowed');
+                        btn.removeAttribute('title');
+                    }
+                });
+                
+                // Configure welcome button for authenticated user
+                const welcomeBtn = document.getElementById('welcome-configure-btn');
+                const welcomeBtnText = document.getElementById('welcome-button-text');
+                const welcomeCogwheelIcon = document.getElementById('welcome-cogwheel-icon');
+                const welcomeLoginIcon = document.getElementById('welcome-login-icon');
+                const welcomeConfigInfo = document.getElementById('welcome-config-info');
+                
+                if (welcomeBtnText) welcomeBtnText.textContent = 'Start Conversation';
+                if (welcomeCogwheelIcon) welcomeCogwheelIcon.classList.remove('hidden');
+                if (welcomeLoginIcon) welcomeLoginIcon.classList.add('hidden');
+                if (welcomeConfigInfo) welcomeConfigInfo.classList.remove('hidden');
+                if (welcomeBtn) {
+                    // Remove any previous click listeners by cloning
+                    const newBtn = welcomeBtn.cloneNode(true);
+                    welcomeBtn.parentNode.replaceChild(newBtn, welcomeBtn);
+                    // Add original click listener back
+                    newBtn.addEventListener('click', function() {
+                        const welcomeScreen = document.getElementById('welcome-screen');
+                        if (welcomeScreen) {
+                            welcomeScreen.classList.add('hidden');
+                            localStorage.setItem('welcomeScreenShown', 'true');
+                        }
+                    });
+                }
             } else {
-                // Show login button
+                // Hide login button (login CTA shown on welcome screen instead)
                 userMenuContainer.classList.add('hidden');
-                loginButtonContainer.classList.remove('hidden');
+                loginButtonContainer.classList.add('hidden');
                 
                 // Hide admin menu
                 const adminMenuItem = document.getElementById('view-switch-admin');
@@ -3911,9 +3947,53 @@
                     adminMenuItem.classList.add('hidden');
                 }
                 
+                // Disable all view switches except conversation
+                document.querySelectorAll('.view-switch-button').forEach(btn => {
+                    if (btn.id !== 'view-switch-conversation') {
+                        btn.classList.add('pointer-events-none', 'opacity-50', 'cursor-not-allowed');
+                        btn.setAttribute('title', 'Please login to access this view');
+                    }
+                });
+                
+                // Ensure conversation view is active
+                const conversationView = document.getElementById('conversation-view');
+                if (conversationView && conversationView.classList.contains('hidden')) {
+                    // Switch to conversation view
+                    document.querySelectorAll('.view-container').forEach(view => view.classList.add('hidden'));
+                    conversationView.classList.remove('hidden');
+                    
+                    // Update active state
+                    document.querySelectorAll('.view-switch-button').forEach(btn => btn.classList.remove('active'));
+                    document.getElementById('view-switch-conversation')?.classList.add('active');
+                }
+                
+                // Configure welcome button as login CTA for unauthenticated user
+                const welcomeBtn = document.getElementById('welcome-configure-btn');
+                const welcomeBtnText = document.getElementById('welcome-button-text');
+                const welcomeCogwheelIcon = document.getElementById('welcome-cogwheel-icon');
+                const welcomeLoginIcon = document.getElementById('welcome-login-icon');
+                const welcomeConfigInfo = document.getElementById('welcome-config-info');
+                
+                if (welcomeBtnText) welcomeBtnText.textContent = 'Login to Continue';
+                if (welcomeCogwheelIcon) welcomeCogwheelIcon.classList.add('hidden');
+                if (welcomeLoginIcon) welcomeLoginIcon.classList.remove('hidden');
+                if (welcomeConfigInfo) welcomeConfigInfo.classList.add('hidden');
+                if (welcomeBtn) {
+                    // Remove any previous click listeners by cloning
+                    const newBtn = welcomeBtn.cloneNode(true);
+                    welcomeBtn.parentNode.replaceChild(newBtn, welcomeBtn);
+                    // Add login redirect listener
+                    newBtn.addEventListener('click', function() {
+                        window.location.href = '/login';
+                    });
+                }
+                
                 console.log('Not authenticated');
             }
         }
+        
+        // Make updateAuthUI globally accessible for use by showWelcomeScreen
+        window.updateAuthUI = updateAuthUI;
         
         // Initialize on page load - wait for DOM to be fully ready
         if (document.readyState === 'loading') {
