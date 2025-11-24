@@ -1585,10 +1585,19 @@ async def get_window_defaults():
         config_manager = get_config_manager()
         config = config_manager.load_config()
         window_defaults = config.get('window_defaults', {
-            'session_history_expanded': False,
-            'resources_expanded': False,
-            'status_expanded': False,
-            'allow_user_override': True,
+            # Session History Panel
+            'session_history_visible': True,
+            'session_history_default_mode': 'collapsed',
+            'session_history_user_can_toggle': True,
+            # Resources Panel
+            'resources_visible': True,
+            'resources_default_mode': 'collapsed',
+            'resources_user_can_toggle': True,
+            # Status Window
+            'status_visible': True,
+            'status_default_mode': 'collapsed',
+            'status_user_can_toggle': True,
+            # Other settings
             'always_show_welcome_screen': False,
             'default_theme': 'legacy'
         })
@@ -1640,10 +1649,19 @@ async def update_window_defaults():
         
         # Update window defaults
         window_defaults = {
-            'session_history_expanded': bool(data.get('session_history_expanded', False)),
-            'resources_expanded': bool(data.get('resources_expanded', False)),
-            'status_expanded': bool(data.get('status_expanded', False)),
-            'allow_user_override': bool(data.get('allow_user_override', True)),
+            # Session History Panel
+            'session_history_visible': bool(data.get('session_history_visible', True)),
+            'session_history_default_mode': str(data.get('session_history_default_mode', 'collapsed')),
+            'session_history_user_can_toggle': bool(data.get('session_history_user_can_toggle', True)),
+            # Resources Panel
+            'resources_visible': bool(data.get('resources_visible', True)),
+            'resources_default_mode': str(data.get('resources_default_mode', 'collapsed')),
+            'resources_user_can_toggle': bool(data.get('resources_user_can_toggle', True)),
+            # Status Window
+            'status_visible': bool(data.get('status_visible', True)),
+            'status_default_mode': str(data.get('status_default_mode', 'collapsed')),
+            'status_user_can_toggle': bool(data.get('status_user_can_toggle', True)),
+            # Other settings
             'always_show_welcome_screen': bool(data.get('always_show_welcome_screen', False)),
             'default_theme': str(data.get('default_theme', 'legacy'))
         }

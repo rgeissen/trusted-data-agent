@@ -257,8 +257,38 @@ export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIc
     // Generate a unique storage key based on panel ID
     const storageKey = panel.id ? `panelState_${panel.id}` : null;
     
-    // Check if user overrides are allowed
-    const allowUserOverride = windowDefaults.allow_user_override !== false;
+    // Determine panel-specific settings from windowDefaults
+    let panelVisible = true;
+    let defaultMode = 'collapsed';
+    let userCanToggle = true;
+    
+    if (panel.id === 'session-history-panel') {
+        panelVisible = windowDefaults.session_history_visible !== false;
+        defaultMode = windowDefaults.session_history_default_mode || 'collapsed';
+        userCanToggle = windowDefaults.session_history_user_can_toggle !== false;
+    } else if (panel.id === 'tool-header') {
+        panelVisible = windowDefaults.resources_visible !== false;
+        defaultMode = windowDefaults.resources_default_mode || 'collapsed';
+        userCanToggle = windowDefaults.resources_user_can_toggle !== false;
+    } else if (panel.id === 'status-window') {
+        panelVisible = windowDefaults.status_visible !== false;
+        defaultMode = windowDefaults.status_default_mode || 'collapsed';
+        userCanToggle = windowDefaults.status_user_can_toggle !== false;
+    }
+    
+    // If panel not visible, hide it completely and disable controls
+    if (!panelVisible) {
+        panel.style.display = 'none';
+        if (button) button.style.display = 'none';
+        if (checkbox) {
+            const checkboxContainer = checkbox.closest('.toggle-container');
+            if (checkboxContainer) checkboxContainer.style.display = 'none';
+        }
+        return; // Exit early
+    }
+    
+    // Panel is visible - ensure it's shown (remove inline display:none)
+    panel.style.display = 'block';
     
     const toggle = (isOpen, saveState = true) => {
         const isCollapsed = !isOpen;
@@ -267,8 +297,8 @@ export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIc
         if (expandIcon) expandIcon.classList.toggle('hidden', !isCollapsed);
         if (checkbox) checkbox.checked = isOpen;
         
-        // Save state to localStorage only if user override is allowed
-        if (saveState && storageKey && allowUserOverride) {
+        // Save state to localStorage only if user can toggle
+        if (saveState && storageKey && userCanToggle) {
             try {
                 localStorage.setItem(storageKey, isOpen ? 'open' : 'collapsed');
             } catch (e) {
@@ -277,22 +307,13 @@ export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIc
         }
     };
 
-    // Determine panel state
+    // Apply initial panel state
     if (storageKey) {
         try {
-            let defaultExpanded = false;
+            const defaultExpanded = defaultMode === 'expanded';
             
-            // Map panel IDs to their corresponding window default keys
-            if (panel.id === 'session-history-panel' && windowDefaults.session_history_expanded !== undefined) {
-                defaultExpanded = windowDefaults.session_history_expanded;
-            } else if (panel.id === 'tool-header' && windowDefaults.resources_expanded !== undefined) {
-                defaultExpanded = windowDefaults.resources_expanded;
-            } else if (panel.id === 'status-window' && windowDefaults.status_expanded !== undefined) {
-                defaultExpanded = windowDefaults.status_expanded;
-            }
-            
-            if (allowUserOverride) {
-                // User can override - check for saved preference first
+            if (userCanToggle) {
+                // User can toggle - check for saved preference first
                 const savedState = localStorage.getItem(storageKey);
                 if (savedState !== null) {
                     // User has a saved preference - use it
@@ -303,7 +324,7 @@ export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIc
                     toggle(defaultExpanded, false);
                 }
             } else {
-                // User cannot override - always use admin default and clear any saved state
+                // User cannot toggle - always use admin default and clear any saved state
                 localStorage.removeItem(storageKey);
                 toggle(defaultExpanded, false);
             }
@@ -312,9 +333,9 @@ export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIc
         }
     }
 
-    // Hide or show controls based on allow_user_override
-    if (!allowUserOverride) {
-        // Hide the toggle button and checkbox - panels are locked
+    // Configure controls based on userCanToggle
+    if (!userCanToggle) {
+        // Disable the toggle button and checkbox - panels are locked
         if (button) {
             button.style.display = 'none';
         }
@@ -325,22 +346,18 @@ export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIc
             }
         }
     } else {
-        // Show controls (in case they were previously hidden)
+        // Show controls and enable toggling
         if (button) {
-            button.style.display = '';
+            button.style.display = 'flex';  // Buttons are flex containers
+            button.addEventListener('click', (e) => {
+                toggle(panel.classList.contains('collapsed'));
+            });
         }
         if (checkbox) {
             const checkboxContainer = checkbox.closest('.toggle-container');
             if (checkboxContainer) {
-                checkboxContainer.style.display = '';
+                checkboxContainer.style.display = 'flex';
             }
-        }
-        
-        // Enable event listeners only if override is allowed
-        button.addEventListener('click', (e) => {
-            toggle(panel.classList.contains('collapsed'));
-        });
-        if (checkbox) {
             checkbox.addEventListener('change', () => toggle(checkbox.checked));
         }
     }

@@ -307,9 +307,16 @@ class ConfigurationState {
     async loadProfiles() {
         try {
             const { profiles, default_profile_id, active_for_consumption_profile_ids } = await API.getProfiles();
+            console.log('[ConfigState] Loaded profiles:', { profiles, default_profile_id, active_for_consumption_profile_ids });
             this.profiles = profiles || [];
             this.defaultProfileId = default_profile_id;
             this.activeForConsumptionProfileIds = active_for_consumption_profile_ids || [];
+            console.log('[ConfigState] State after load:', {
+                profileCount: this.profiles.length,
+                defaultProfileId: this.defaultProfileId,
+                activeCount: this.activeForConsumptionProfileIds.length,
+                activeIds: this.activeForConsumptionProfileIds
+            });
             
             // Initialize session header with default profile
             if (this.defaultProfileId && typeof window.updateSessionHeaderProfile === 'function') {
@@ -1587,6 +1594,8 @@ function renderProfiles() {
     const container = document.getElementById('profiles-container');
     if (!container) return;
 
+    console.log('[renderProfiles] Rendering', configState.profiles.length, 'profiles');
+    
     if (configState.profiles.length === 0) {
         container.innerHTML = `
             <div class="text-center text-gray-400 py-8">
@@ -1610,7 +1619,7 @@ function renderProfiles() {
                         </button>
                         <div class="flex items-center" title="Active for Consumption">
                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" data-action="toggle-active-consumption" data-profile-id="${profile.id}" ${isActiveForConsumption ? 'checked' : ''} class="sr-only peer">
+                                <input type="checkbox" data-action="toggle-active-consumption" data-profile-id="${profile.id}" ${isActiveForConsumption ? 'checked' : ''} class="sr-only peer" style="position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border-width: 0 !important;">
                                 <div class="w-11 h-6 bg-gray-800/50 border border-gray-500 rounded-full peer peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teradata-orange"></div>
                             </label>
                         </div>

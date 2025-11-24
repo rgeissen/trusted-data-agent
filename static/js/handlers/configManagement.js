@@ -217,8 +217,11 @@ export async function finalizeConfiguration(config, switchToConversationView = t
         window.hideWelcomeScreen();
     }
     
+    console.log('[finalizeConfiguration] switchToConversationView:', switchToConversationView);
     if (switchToConversationView) {
+        console.log('[finalizeConfiguration] About to call handleViewSwitch(conversation-view)');
         handleViewSwitch('conversation-view'); // Set the default view
+        console.log('[finalizeConfiguration] Called handleViewSwitch(conversation-view)');
     }
 }
 

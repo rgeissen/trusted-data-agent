@@ -827,7 +827,8 @@ const AdminManager = {
                     <td class="px-6 py-4 text-center">
                         <label class="inline-flex items-center cursor-pointer">
                             <input type="checkbox" 
-                                class="pane-visibility-checkbox sr-only peer" 
+                                class="sr-only peer" 
+                                style="position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border-width: 0 !important;"
                                 data-pane-id="${pane.pane_id}" 
                                 data-tier="user"
                                 ${pane.visible_to_user ? 'checked' : ''}>
@@ -837,7 +838,8 @@ const AdminManager = {
                     <td class="px-6 py-4 text-center">
                         <label class="inline-flex items-center cursor-pointer">
                             <input type="checkbox" 
-                                class="pane-visibility-checkbox sr-only peer" 
+                                class="sr-only peer" 
+                                style="position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border-width: 0 !important;"
                                 data-pane-id="${pane.pane_id}" 
                                 data-tier="developer"
                                 ${pane.visible_to_developer ? 'checked' : ''}>
@@ -847,7 +849,8 @@ const AdminManager = {
                     <td class="px-6 py-4 text-center">
                         <label class="inline-flex items-center cursor-pointer">
                             <input type="checkbox" 
-                                class="pane-visibility-checkbox sr-only peer" 
+                                class="sr-only peer" 
+                                style="position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border-width: 0 !important;"
                                 data-pane-id="${pane.pane_id}" 
                                 data-tier="admin"
                                 ${pane.visible_to_admin ? 'checked' : ''}
@@ -1358,19 +1361,37 @@ const AdminManager = {
             const data = await response.json();
             
             if (response.ok && data.status === 'success') {
-                const sessionCheckbox = document.getElementById('default-session-history-expanded');
-                const resourcesCheckbox = document.getElementById('default-resources-expanded');
-                const statusCheckbox = document.getElementById('default-status-expanded');
-                const allowOverrideCheckbox = document.getElementById('allow-user-panel-override');
+                const wd = data.window_defaults;
+                
+                // Session History Panel
+                const sessionVisible = document.getElementById('session-history-visible');
+                const sessionMode = document.getElementById('session-history-default-mode');
+                const sessionToggle = document.getElementById('session-history-user-can-toggle');
+                if (sessionVisible) sessionVisible.checked = wd.session_history_visible !== false;
+                if (sessionMode) sessionMode.value = wd.session_history_default_mode || 'collapsed';
+                if (sessionToggle) sessionToggle.checked = wd.session_history_user_can_toggle !== false;
+                
+                // Resources Panel
+                const resourcesVisible = document.getElementById('resources-visible');
+                const resourcesMode = document.getElementById('resources-default-mode');
+                const resourcesToggle = document.getElementById('resources-user-can-toggle');
+                if (resourcesVisible) resourcesVisible.checked = wd.resources_visible !== false;
+                if (resourcesMode) resourcesMode.value = wd.resources_default_mode || 'collapsed';
+                if (resourcesToggle) resourcesToggle.checked = wd.resources_user_can_toggle !== false;
+                
+                // Status Window
+                const statusVisible = document.getElementById('status-visible');
+                const statusMode = document.getElementById('status-default-mode');
+                const statusToggle = document.getElementById('status-user-can-toggle');
+                if (statusVisible) statusVisible.checked = wd.status_visible !== false;
+                if (statusMode) statusMode.value = wd.status_default_mode || 'collapsed';
+                if (statusToggle) statusToggle.checked = wd.status_user_can_toggle !== false;
+                
+                // Other settings
                 const alwaysShowWelcomeCheckbox = document.getElementById('always-show-welcome-screen');
                 const defaultThemeSelector = document.getElementById('default-theme-selector');
-                
-                if (sessionCheckbox) sessionCheckbox.checked = data.window_defaults.session_history_expanded || false;
-                if (resourcesCheckbox) resourcesCheckbox.checked = data.window_defaults.resources_expanded || false;
-                if (statusCheckbox) statusCheckbox.checked = data.window_defaults.status_expanded || false;
-                if (allowOverrideCheckbox) allowOverrideCheckbox.checked = data.window_defaults.allow_user_override !== false;
-                if (alwaysShowWelcomeCheckbox) alwaysShowWelcomeCheckbox.checked = data.window_defaults.always_show_welcome_screen || false;
-                if (defaultThemeSelector) defaultThemeSelector.value = data.window_defaults.default_theme || 'legacy';
+                if (alwaysShowWelcomeCheckbox) alwaysShowWelcomeCheckbox.checked = wd.always_show_welcome_screen || false;
+                if (defaultThemeSelector) defaultThemeSelector.value = wd.default_theme || 'legacy';
             }
         } catch (error) {
             console.error('[AdminManager] Error loading window defaults:', error);
@@ -1385,18 +1406,42 @@ const AdminManager = {
             const token = localStorage.getItem('tda_auth_token');
             if (!token) return;
 
-            const sessionCheckbox = document.getElementById('default-session-history-expanded');
-            const resourcesCheckbox = document.getElementById('default-resources-expanded');
-            const statusCheckbox = document.getElementById('default-status-expanded');
-            const allowOverrideCheckbox = document.getElementById('allow-user-panel-override');
+            // Session History Panel
+            const sessionVisible = document.getElementById('session-history-visible');
+            const sessionMode = document.getElementById('session-history-default-mode');
+            const sessionToggle = document.getElementById('session-history-user-can-toggle');
+            
+            // Resources Panel
+            const resourcesVisible = document.getElementById('resources-visible');
+            const resourcesMode = document.getElementById('resources-default-mode');
+            const resourcesToggle = document.getElementById('resources-user-can-toggle');
+            
+            // Status Window
+            const statusVisible = document.getElementById('status-visible');
+            const statusMode = document.getElementById('status-default-mode');
+            const statusToggle = document.getElementById('status-user-can-toggle');
+            
+            // Other settings
             const alwaysShowWelcomeCheckbox = document.getElementById('always-show-welcome-screen');
             const defaultThemeSelector = document.getElementById('default-theme-selector');
 
             const windowDefaults = {
-                session_history_expanded: sessionCheckbox ? sessionCheckbox.checked : false,
-                resources_expanded: resourcesCheckbox ? resourcesCheckbox.checked : false,
-                status_expanded: statusCheckbox ? statusCheckbox.checked : false,
-                allow_user_override: allowOverrideCheckbox ? allowOverrideCheckbox.checked : true,
+                // Session History Panel
+                session_history_visible: sessionVisible ? sessionVisible.checked : true,
+                session_history_default_mode: sessionMode ? sessionMode.value : 'collapsed',
+                session_history_user_can_toggle: sessionToggle ? sessionToggle.checked : true,
+                
+                // Resources Panel
+                resources_visible: resourcesVisible ? resourcesVisible.checked : true,
+                resources_default_mode: resourcesMode ? resourcesMode.value : 'collapsed',
+                resources_user_can_toggle: resourcesToggle ? resourcesToggle.checked : true,
+                
+                // Status Window
+                status_visible: statusVisible ? statusVisible.checked : true,
+                status_default_mode: statusMode ? statusMode.value : 'collapsed',
+                status_user_can_toggle: statusToggle ? statusToggle.checked : true,
+                
+                // Other settings
                 always_show_welcome_screen: alwaysShowWelcomeCheckbox ? alwaysShowWelcomeCheckbox.checked : false,
                 default_theme: defaultThemeSelector ? defaultThemeSelector.value : 'legacy'
             };

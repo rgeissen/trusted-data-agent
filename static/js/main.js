@@ -682,14 +682,26 @@ function hideWelcomeScreen() {
     const welcomeScreen = document.getElementById('welcome-screen');
     const chatLog = document.getElementById('chat-log');
     const chatFooter = document.getElementById('chat-footer');
+    const chatContainer = document.getElementById('chat-container');
+    
+    console.log('[hideWelcomeScreen] Hiding welcome screen and showing chat');
+    console.log('[hideWelcomeScreen] Elements:', { welcomeScreen, chatLog, chatFooter, chatContainer });
     
     if (welcomeScreen && chatLog) {
         welcomeScreen.classList.add('hidden');
         chatLog.classList.remove('hidden');
+        chatLog.style.display = 'block';  // Ensure it's visible
         if (chatFooter) {
             chatFooter.classList.remove('hidden');
+            chatFooter.style.display = 'block';  // Ensure it's visible
+        }
+        if (chatContainer) {
+            chatContainer.style.display = 'flex';
+            chatContainer.style.flexDirection = 'column';
         }
     }
+    
+    console.log('[hideWelcomeScreen] Chat should now be visible');
 }
 
 // Make function available globally
@@ -753,8 +765,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     promptEditorMenuItem.style.display = 'none';
 
     try {
-        const res = await fetch('/app-config');
-        state.appConfig = await res.json();
+        // Use the app config that was already fetched in index.html
+        // Wait for it to be available if it hasn't loaded yet
+        let attempts = 0;
+        while (!window.appConfigData && attempts < 50) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+        
+        if (window.appConfigData) {
+            state.appConfig = window.appConfigData;
+        } else {
+            // Fallback: fetch directly if window.appConfigData isn't available
+            const res = await fetch('/app-config');
+            state.appConfig = await res.json();
+        }
 
         await API.checkAndUpdateDefaultPrompts();
 
@@ -782,22 +807,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error("Could not fetch app config", e);
     }
 
-    // Initialize panels as collapsed and disabled until configuration is loaded
-    DOM.sessionHistoryPanel.classList.add('collapsed');
-    DOM.statusWindow.classList.add('collapsed');
-    DOM.toolHeader.classList.add('collapsed');
-    DOM.toggleHistoryButton.classList.add('btn-disabled');
-    DOM.toggleHistoryButton.style.opacity = '0.5';
-    DOM.toggleHistoryButton.style.cursor = 'not-allowed';
-    DOM.toggleHistoryButton.style.pointerEvents = 'none';
-    DOM.toggleStatusButton.classList.add('btn-disabled');
-    DOM.toggleStatusButton.style.opacity = '0.5';
-    DOM.toggleStatusButton.style.cursor = 'not-allowed';
-    DOM.toggleStatusButton.style.pointerEvents = 'none';
-    DOM.toggleHeaderButton.classList.add('btn-disabled');
-    DOM.toggleHeaderButton.style.opacity = '0.5';
-    DOM.toggleHeaderButton.style.cursor = 'not-allowed';
-    DOM.toggleHeaderButton.style.pointerEvents = 'none';
+    // Initialize panels as hidden and disabled until conversation pane is entered
+    // Panels will be configured based on admin settings when entering conversation view
+    DOM.sessionHistoryPanel.style.display = 'none';
+    DOM.statusWindow.style.display = 'none';
+    DOM.toolHeader.style.display = 'none';
+    DOM.toggleHistoryButton.style.display = 'none';
+    DOM.toggleStatusButton.style.display = 'none';
+    DOM.toggleHeaderButton.style.display = 'none';
 
     try {
         const status = await API.checkServerStatus();
@@ -884,18 +901,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         handleViewSwitch('credentials-view');
     }
 
-    // Setup panel toggle handlers (called after configuration check so panels can be enabled if configured)
-    // Pass window defaults from app config to setupPanelToggle
-    const windowDefaults = state.appConfig?.window_defaults || {};
-    
-    DOM.toggleHistoryCheckbox.checked = !DOM.sessionHistoryPanel.classList.contains('collapsed');
-    setupPanelToggle(DOM.toggleHistoryButton, DOM.sessionHistoryPanel, DOM.toggleHistoryCheckbox, DOM.historyCollapseIcon, DOM.historyExpandIcon, windowDefaults);
-
-    DOM.toggleHeaderCheckbox.checked = !DOM.toolHeader.classList.contains('collapsed');
-    setupPanelToggle(DOM.toggleHeaderButton, DOM.toolHeader, DOM.toggleHeaderCheckbox, DOM.headerCollapseIcon, DOM.headerExpandIcon, windowDefaults);
-
-    DOM.toggleStatusCheckbox.checked = !DOM.statusWindow.classList.contains('collapsed');
-    setupPanelToggle(DOM.toggleStatusButton, DOM.statusWindow, DOM.toggleStatusCheckbox, DOM.statusCollapseIcon, DOM.statusExpandIcon, windowDefaults);
+    // Panel setup will be done when entering conversation pane
+    // (panels remain hidden during welcome screen)
 
     const savedKeyObservationsMode = localStorage.getItem('keyObservationsMode');
     if (['autoplay-off', 'autoplay-on', 'off'].includes(savedKeyObservationsMode)) {
@@ -911,6 +918,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         localStorage.setItem('showWelcomeScreenAtStartup', state.showWelcomeScreenAtStartup);
     });
 });
+
+// ============================================================================
+// PANEL MANAGEMENT
+// ============================================================================
+
+/**
+ * Initialize panels based on admin window defaults
+ * Called when entering conversation pane (not during welcome screen)
+ */
+function initializePanels() {
+    const windowDefaults = state.appConfig?.window_defaults || {};
+    
+    console.log('[Panel Init] Initializing panels with defaults:', windowDefaults);
+    
+    // Setup each panel with admin settings
+    DOM.toggleHistoryCheckbox.checked = windowDefaults.session_history_default_mode === 'expanded';
+    setupPanelToggle(DOM.toggleHistoryButton, DOM.sessionHistoryPanel, DOM.toggleHistoryCheckbox, DOM.historyCollapseIcon, DOM.historyExpandIcon, windowDefaults);
+
+    DOM.toggleHeaderCheckbox.checked = windowDefaults.resources_default_mode === 'expanded';
+    setupPanelToggle(DOM.toggleHeaderButton, DOM.toolHeader, DOM.toggleHeaderCheckbox, DOM.headerCollapseIcon, DOM.headerExpandIcon, windowDefaults);
+
+    DOM.toggleStatusCheckbox.checked = windowDefaults.status_default_mode === 'expanded';
+    setupPanelToggle(DOM.toggleStatusButton, DOM.statusWindow, DOM.toggleStatusCheckbox, DOM.statusCollapseIcon, DOM.statusExpandIcon, windowDefaults);
+    
+    console.log('[Panel Init] Panels initialized');
+}
+
+// Make initializePanels globally accessible
+window.initializePanels = initializePanels;
+console.log('[main.js] window.initializePanels is now available:', typeof window.initializePanels);
 
 // ============================================================================
 // WELCOME SCREEN MANAGEMENT

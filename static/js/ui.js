@@ -1875,6 +1875,7 @@ export function toggleSideNav() {
  * @param {string} viewId - The ID of the view to switch to (e.g., 'conversation-view').
  */
 export function handleViewSwitch(viewId) {
+    console.log('[handleViewSwitch] Switching to view:', viewId);
 
     // 1. Log all app views found
     const appViews = document.querySelectorAll('.app-view');
@@ -1936,6 +1937,26 @@ export function handleViewSwitch(viewId) {
             window.AdminManager.loadFeatures();
         } else {
             console.error('[UI DEBUG] AdminManager not initialized');
+        }
+    }
+    
+    // 9. If switching to Conversation view, initialize panels based on admin settings
+    if (viewId === 'conversation-view') {
+        console.log('[handleViewSwitch] Conversation view detected, checking for initializePanels:', typeof window.initializePanels);
+        if (window.initializePanels) {
+            console.log('[handleViewSwitch] Calling initializePanels()');
+            window.initializePanels();
+        } else {
+            console.error('[UI DEBUG] initializePanels not available yet - will retry');
+            // Retry after a short delay to allow main.js to finish loading
+            setTimeout(() => {
+                if (window.initializePanels) {
+                    console.log('[handleViewSwitch] Calling initializePanels() after delay');
+                    window.initializePanels();
+                } else {
+                    console.error('[UI DEBUG] initializePanels still not available after delay');
+                }
+            }, 500);
         }
     }
 }

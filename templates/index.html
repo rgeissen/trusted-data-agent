@@ -2065,34 +2065,97 @@
                                             </div>
 
                                             <!-- Session History Panel -->
-                                            <div class="p-4 bg-gray-700/50 rounded-lg">
+                                            <div class="p-4 bg-gray-700/50 rounded-lg space-y-3">
+                                                <h4 class="text-sm font-bold text-white">Session History Panel (Left Sidebar)</h4>
+                                                
                                                 <div class="flex items-start gap-3">
-                                                    <input type="checkbox" id="default-session-history-expanded" name="default_session_history_expanded" class="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-[#F15F22] focus:ring-2 focus:ring-[#F15F22] focus:ring-offset-0">
+                                                    <input type="checkbox" id="session-history-visible" name="session_history_visible" class="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-[#F15F22] focus:ring-2 focus:ring-[#F15F22] focus:ring-offset-0">
                                                     <div class="flex-1">
-                                                        <label for="default-session-history-expanded" class="block text-sm font-semibold text-white cursor-pointer">Session History Panel Expanded by Default</label>
-                                                        <p class="text-xs text-gray-400 mt-1">When enabled, the left session history panel will be visible when users first load the application. Users can toggle this panel and their preference will be remembered.</p>
+                                                        <label for="session-history-visible" class="block text-xs font-semibold text-white cursor-pointer">Panel is visible for the user</label>
+                                                        <p class="text-xs text-gray-400 mt-0.5">When enabled, the session history panel is available to users</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="flex items-start gap-3 ml-7">
+                                                    <div class="flex-1">
+                                                        <label for="session-history-default-mode" class="block text-xs font-semibold text-white mb-1">Panel default visibility mode</label>
+                                                        <select id="session-history-default-mode" name="session_history_default_mode" class="w-full px-3 py-1.5 text-sm bg-gray-700 border border-gray-600 text-white rounded focus:ring-2 focus:ring-[#F15F22] focus:border-transparent">
+                                                            <option value="expanded">Expanded</option>
+                                                            <option value="collapsed">Collapsed</option>
+                                                        </select>
+                                                        <p class="text-xs text-gray-400 mt-0.5">Initial state when entering conversation pane</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="flex items-start gap-3">
+                                                    <input type="checkbox" id="session-history-user-can-toggle" name="session_history_user_can_toggle" class="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-[#F15F22] focus:ring-2 focus:ring-[#F15F22] focus:ring-offset-0">
+                                                    <div class="flex-1">
+                                                        <label for="session-history-user-can-toggle" class="block text-xs font-semibold text-white cursor-pointer">User can collapse/expand</label>
+                                                        <p class="text-xs text-gray-400 mt-0.5">When enabled, user can toggle the panel open/closed</p>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <!-- Resources Panel -->
-                                            <div class="p-4 bg-gray-700/50 rounded-lg">
+                                            <div class="p-4 bg-gray-700/50 rounded-lg space-y-3">
+                                                <h4 class="text-sm font-bold text-white">Resources Panel (Right Sidebar)</h4>
+                                                
                                                 <div class="flex items-start gap-3">
-                                                    <input type="checkbox" id="default-resources-expanded" name="default_resources_expanded" class="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-[#F15F22] focus:ring-2 focus:ring-[#F15F22] focus:ring-offset-0">
+                                                    <input type="checkbox" id="resources-visible" name="resources_visible" class="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-[#F15F22] focus:ring-2 focus:ring-[#F15F22] focus:ring-offset-0">
                                                     <div class="flex-1">
-                                                        <label for="default-resources-expanded" class="block text-sm font-semibold text-white cursor-pointer">Resources Panel Expanded by Default</label>
-                                                        <p class="text-xs text-gray-400 mt-1">When enabled, the right resources panel will be visible when users first load the application. Users can toggle this panel and their preference will be remembered.</p>
+                                                        <label for="resources-visible" class="block text-xs font-semibold text-white cursor-pointer">Panel is visible for the user</label>
+                                                        <p class="text-xs text-gray-400 mt-0.5">When enabled, the resources panel is available to users</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="flex items-start gap-3 ml-7">
+                                                    <div class="flex-1">
+                                                        <label for="resources-default-mode" class="block text-xs font-semibold text-white mb-1">Panel default visibility mode</label>
+                                                        <select id="resources-default-mode" name="resources_default_mode" class="w-full px-3 py-1.5 text-sm bg-gray-700 border border-gray-600 text-white rounded focus:ring-2 focus:ring-[#F15F22] focus:border-transparent">
+                                                            <option value="expanded">Expanded</option>
+                                                            <option value="collapsed">Collapsed</option>
+                                                        </select>
+                                                        <p class="text-xs text-gray-400 mt-0.5">Initial state when entering conversation pane</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="flex items-start gap-3">
+                                                    <input type="checkbox" id="resources-user-can-toggle" name="resources_user_can_toggle" class="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-[#F15F22] focus:ring-2 focus:ring-[#F15F22] focus:ring-offset-0">
+                                                    <div class="flex-1">
+                                                        <label for="resources-user-can-toggle" class="block text-xs font-semibold text-white cursor-pointer">User can collapse/expand</label>
+                                                        <p class="text-xs text-gray-400 mt-0.5">When enabled, user can toggle the panel open/closed</p>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <!-- Live Status Panel -->
-                                            <div class="p-4 bg-gray-700/50 rounded-lg">
+                                            <div class="p-4 bg-gray-700/50 rounded-lg space-y-3">
+                                                <h4 class="text-sm font-bold text-white">Live Status Window (Bottom)</h4>
+                                                
                                                 <div class="flex items-start gap-3">
-                                                    <input type="checkbox" id="default-status-expanded" name="default_status_expanded" class="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-[#F15F22] focus:ring-2 focus:ring-[#F15F22] focus:ring-offset-0">
+                                                    <input type="checkbox" id="status-visible" name="status_visible" class="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-[#F15F22] focus:ring-2 focus:ring-[#F15F22] focus:ring-offset-0">
                                                     <div class="flex-1">
-                                                        <label for="default-status-expanded" class="block text-sm font-semibold text-white cursor-pointer">Live Status Window Expanded by Default</label>
-                                                        <p class="text-xs text-gray-400 mt-1">When enabled, the bottom live status window will be visible when users first load the application. Users can toggle this window and their preference will be remembered.</p>
+                                                        <label for="status-visible" class="block text-xs font-semibold text-white cursor-pointer">Panel is visible for the user</label>
+                                                        <p class="text-xs text-gray-400 mt-0.5">When enabled, the live status window is available to users</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="flex items-start gap-3 ml-7">
+                                                    <div class="flex-1">
+                                                        <label for="status-default-mode" class="block text-xs font-semibold text-white mb-1">Panel default visibility mode</label>
+                                                        <select id="status-default-mode" name="status_default_mode" class="w-full px-3 py-1.5 text-sm bg-gray-700 border border-gray-600 text-white rounded focus:ring-2 focus:ring-[#F15F22] focus:border-transparent">
+                                                            <option value="expanded">Expanded</option>
+                                                            <option value="collapsed">Collapsed</option>
+                                                        </select>
+                                                        <p class="text-xs text-gray-400 mt-0.5">Initial state when entering conversation pane</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="flex items-start gap-3">
+                                                    <input type="checkbox" id="status-user-can-toggle" name="status_user_can_toggle" class="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-[#F15F22] focus:ring-2 focus:ring-[#F15F22] focus:ring-offset-0">
+                                                    <div class="flex-1">
+                                                        <label for="status-user-can-toggle" class="block text-xs font-semibold text-white cursor-pointer">User can collapse/expand</label>
+                                                        <p class="text-xs text-gray-400 mt-0.5">When enabled, user can toggle the window open/closed</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -3643,10 +3706,10 @@
                     return saved;
                 }
                 
-                // Check if admin has set a default theme
-                const adminDefault = state.appConfig?.window_defaults?.default_theme;
+                // Check if admin has set a default theme (use window.appConfigData instead of state)
+                const adminDefault = window.appConfigData?.window_defaults?.default_theme;
                 console.log('[ThemeManager] Admin default theme:', adminDefault);
-                console.log('[ThemeManager] Full appConfig:', state.appConfig);
+                console.log('[ThemeManager] Full appConfig:', window.appConfigData);
                 return adminDefault || this.DEFAULT_THEME;
             },
             
@@ -3734,14 +3797,16 @@
         const authClient = new AuthClient();
         
         // Load app config early to get default theme before initializing ThemeManager
+        // Fetch app config and make it globally available
+        window.appConfigData = null;
         (async () => {
             try {
                 const res = await fetch('/app-config');
-                state.appConfig = await res.json();
-                console.log('[Startup] App config loaded:', state.appConfig);
+                window.appConfigData = await res.json();
+                console.log('[Startup] App config loaded:', window.appConfigData);
             } catch (error) {
                 console.error('[Startup] Error loading app config:', error);
-                state.appConfig = { window_defaults: { default_theme: 'legacy' } };
+                window.appConfigData = { window_defaults: { default_theme: 'legacy' } };
             }
             
             // Initialize theme after appConfig is loaded
@@ -3928,11 +3993,42 @@
                     const newBtn = welcomeBtn.cloneNode(true);
                     welcomeBtn.parentNode.replaceChild(newBtn, welcomeBtn);
                     // Add original click listener back
-                    newBtn.addEventListener('click', function() {
+                    newBtn.addEventListener('click', async function() {
+                        console.log('[Welcome Button] Start Conversation clicked (authenticated user)');
                         const welcomeScreen = document.getElementById('welcome-screen');
                         if (welcomeScreen) {
                             welcomeScreen.classList.add('hidden');
                             localStorage.setItem('welcomeScreenShown', 'true');
+                        }
+                        
+                        // Call finalizeConfiguration to load sessions and initialize everything
+                        try {
+                            // Import required modules
+                            const { checkServerStatus } = await import('/static/js/api.js');
+                            const { finalizeConfiguration } = await import('/static/js/handlers/configManagement.js');
+                            const { handleViewSwitch } = await import('/static/js/ui.js');
+                            
+                            // Get current config from status
+                            const status = await checkServerStatus();
+                            console.log('[Welcome Button] Status:', status);
+                            
+                            if (!status.isConfigured) {
+                                console.log('[Welcome Button] System not configured yet - switching to credentials view');
+                                handleViewSwitch('credentials-view');
+                                return;
+                            }
+                            
+                            // System is configured - proceed with initialization
+                            const currentConfig = { 
+                                provider: status.provider, 
+                                model: status.model,
+                                mcp_server: status.mcp_server 
+                            };
+                            
+                            console.log('[Welcome Button] Calling finalizeConfiguration with config:', currentConfig);
+                            await finalizeConfiguration(currentConfig, true);
+                        } catch (error) {
+                            console.error('[Welcome Button] Error initializing:', error);
                         }
                     });
                 }

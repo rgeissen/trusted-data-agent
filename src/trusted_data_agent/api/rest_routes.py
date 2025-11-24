@@ -3,6 +3,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 import re
 import uuid # Import uuid
 import copy # --- MODIFICATION START: Import copy ---
@@ -771,8 +772,11 @@ async def get_stored_credentials_info():
 @rest_api_bp.route("/v1/config/classification", methods=["GET", "PUT"])
 async def manage_classification_setting():
     """
-    GET: Returns the current enable_mcp_classification setting.
-    PUT: Updates the enable_mcp_classification setting in tda_config.json and APP_CONFIG.
+    GET: Returns the current enable_mcp_classification setting (GLOBAL).
+    PUT: Updates the enable_mcp_classification setting as a GLOBAL runtime flag.
+    
+    NOTE: This is a GLOBAL application setting that affects ALL users.
+    It is stored in APP_CONFIG and persisted to a global settings file (not per-user).
     
     PUT Request body:
     {
@@ -785,20 +789,15 @@ async def manage_classification_setting():
         "enable_mcp_classification": true/false
     }
     """
-    from trusted_data_agent.core.config_manager import get_config_manager
-    config_manager = get_config_manager()
-    
     if request.method == "GET":
-        # Return current setting
+        # Return current GLOBAL setting
         return jsonify({
             "status": "success",
             "enable_mcp_classification": APP_CONFIG.ENABLE_MCP_CLASSIFICATION
         }), 200
     
     elif request.method == "PUT":
-        # Update setting
-        user_uuid = _get_user_uuid_from_request()
-        
+        # Update GLOBAL setting - affects all users
         data = await request.get_json()
         if data is None or "enable_mcp_classification" not in data:
             return jsonify({
@@ -808,21 +807,30 @@ async def manage_classification_setting():
         
         enable_classification = bool(data["enable_mcp_classification"])
         
-        # Load current config
-        config = config_manager.load_config()
+        # Update the GLOBAL runtime setting
+        APP_CONFIG.ENABLE_MCP_CLASSIFICATION = enable_classification
         
-        # Update the setting
-        config["enable_mcp_classification"] = enable_classification
-        
-        # Save to file
-        if not config_manager.save_config(config, user_uuid):
+        # Persist to global settings file (not per-user config)
+        try:
+            global_settings_file = Path("tda_global_settings.json")
+            if global_settings_file.exists():
+                with open(global_settings_file, 'r') as f:
+                    global_settings = json.load(f)
+            else:
+                global_settings = {}
+            
+            global_settings["enable_mcp_classification"] = enable_classification
+            
+            with open(global_settings_file, 'w') as f:
+                json.dump(global_settings, f, indent=2)
+            
+            app_logger.info(f"Updated GLOBAL MCP classification setting to: {enable_classification}")
+        except Exception as e:
+            app_logger.error(f"Failed to persist global classification setting: {e}")
             return jsonify({
                 "status": "error",
                 "message": "Failed to save configuration to file"
             }), 500
-        
-        # Update runtime config
-        APP_CONFIG.ENABLE_MCP_CLASSIFICATION = enable_classification
         
         app_logger.info(f"MCP Classification setting updated to: {enable_classification}")
         

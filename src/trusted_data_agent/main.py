@@ -240,10 +240,24 @@ def create_app():
         config_manager = get_config_manager()
         loaded_config = config_manager.load_config()
         
-        # Load enable_mcp_classification setting (defaults to True if not present)
-        enable_classification = loaded_config.get("enable_mcp_classification", True)
-        APP_CONFIG.ENABLE_MCP_CLASSIFICATION = enable_classification
-        app_logger.info(f"MCP Classification setting loaded from config: {enable_classification}")
+        # Load GLOBAL MCP Classification setting from global settings file (overrides environment variable if present)
+        # This is a GLOBAL application setting that affects ALL users
+        try:
+            from pathlib import Path
+            import json
+            global_settings_file = Path("tda_global_settings.json")
+            if global_settings_file.exists():
+                with open(global_settings_file, 'r') as f:
+                    global_settings = json.load(f)
+                if "enable_mcp_classification" in global_settings:
+                    APP_CONFIG.ENABLE_MCP_CLASSIFICATION = global_settings["enable_mcp_classification"]
+                    app_logger.info(f"MCP Classification (GLOBAL) loaded from settings file: {APP_CONFIG.ENABLE_MCP_CLASSIFICATION}")
+                else:
+                    app_logger.info(f"MCP Classification (GLOBAL) from environment: {APP_CONFIG.ENABLE_MCP_CLASSIFICATION}")
+            else:
+                app_logger.info(f"MCP Classification (GLOBAL) from environment: {APP_CONFIG.ENABLE_MCP_CLASSIFICATION}")
+        except Exception as e:
+            app_logger.warning(f"Failed to load global settings file: {e}. Using environment default: {APP_CONFIG.ENABLE_MCP_CLASSIFICATION}")
         
         # Initialize RAG early if enabled - independent of LLM/MCP configuration
         if APP_CONFIG.RAG_ENABLED:
