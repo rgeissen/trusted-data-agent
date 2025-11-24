@@ -284,7 +284,8 @@ export function addMessage(role, content, turnId = null, isValid = true, source 
         }
         assistantBadge.addEventListener('mousedown', (e) => e.stopPropagation());
         assistantBadge.textContent = turnId;
-        icon.appendChild(assistantBadge); // Append badge to assistant icon
+        assistantBadge.classList.add('assistant-badge');
+        wrapper.appendChild(assistantBadge); // Append badge to wrapper, not icon
 
         if (isValid === false) {
             assistantBadge.classList.add('context-invalid');
@@ -311,7 +312,8 @@ export function addMessage(role, content, turnId = null, isValid = true, source 
                 }
                 userBadge.addEventListener('mousedown', (e) => e.stopPropagation());
                 userBadge.textContent = turnId;
-                userAvatarIcon.appendChild(userBadge); // Append badge to user icon
+                userBadge.classList.add('user-badge');
+                lastUserBubble.appendChild(userBadge); // Append badge to wrapper, not icon
                 
                 if (isValid === false) {
                     userBadge.classList.add('context-invalid');
