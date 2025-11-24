@@ -830,22 +830,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (status.isConfigured) {
 
-            // NOTE: With new config UI, we don't need to pre-fill old form fields
-            // The configurationHandler manages its own state via localStorage
+            // Check if admin has enabled "always show welcome screen"
+            const alwaysShowWelcome = state.appConfig?.window_defaults?.always_show_welcome_screen || false;
             
-            // Old code removed:
-            // DOM.llmProviderSelect.value = status.provider;
-            // DOM.mcpServerNameInput.value = status.mcp_server.name;
-            // await loadCredentialsAndModels();
+            if (alwaysShowWelcome) {
+                // Admin setting overrides - always show welcome screen at startup
+                await showWelcomeScreen();
+            } else {
+                // Normal flow - finalize configuration and show chat interface
+                // NOTE: With new config UI, we don't need to pre-fill old form fields
+                // The configurationHandler manages its own state via localStorage
+                
+                // Old code removed:
+                // DOM.llmProviderSelect.value = status.provider;
+                // DOM.mcpServerNameInput.value = status.mcp_server.name;
+                // await loadCredentialsAndModels();
 
-            const currentConfig = { provider: status.provider, model: status.model };
-            // Pass the mcp_server details from status to ensure they are used if re-finalizing
-            currentConfig.mcp_server = status.mcp_server;
-            await finalizeConfiguration(currentConfig, true);
+                const currentConfig = { provider: status.provider, model: status.model };
+                // Pass the mcp_server details from status to ensure they are used if re-finalizing
+                currentConfig.mcp_server = status.mcp_server;
+                await finalizeConfiguration(currentConfig, true);
 
-
-            // handleViewSwitch is now called inside finalizeConfiguration
-
+                // handleViewSwitch is now called inside finalizeConfiguration
+            }
 
         } else {
             // The new configuration UI handles its own state

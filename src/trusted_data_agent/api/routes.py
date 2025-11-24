@@ -278,7 +278,8 @@ async def get_app_config():
         'session_history_expanded': False,
         'resources_expanded': False,
         'status_expanded': False,
-        'allow_user_override': True
+        'allow_user_override': True,
+        'always_show_welcome_screen': False
     })
     
     return jsonify({

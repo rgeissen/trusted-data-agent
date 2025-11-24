@@ -2032,7 +2032,7 @@
                                     </details>
                                 </div>
 
-                                <!-- Window Management -->
+                                <!-- Startup Management -->
                                 <div class="glass-panel rounded-xl p-6">
                                     <details class="group">
                                         <summary class="flex justify-between items-center cursor-pointer list-none">
@@ -2041,8 +2041,8 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0a2 2 0 012 2v8a2 2 0 01-2 2h-2a2 2 0 01-2-2V9a2 2 0 012-2z" />
                                                 </svg>
                                                 <div>
-                                                    <h3 class="text-lg font-bold text-white">Window Management</h3>
-                                                    <p class="text-sm text-gray-400">Default panel visibility settings (users can override in their preferences)</p>
+                                                    <h3 class="text-lg font-bold text-white">Startup Management</h3>
+                                                    <p class="text-sm text-gray-400">Default panel visibility and welcome screen settings at startup</p>
                                                 </div>
                                             </div>
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -2094,6 +2094,17 @@
                                                 </div>
                                             </div>
 
+                                            <!-- Always Show Welcome Screen -->
+                                            <div class="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                                                <div class="flex items-start gap-3">
+                                                    <input type="checkbox" id="always-show-welcome-screen" name="always_show_welcome_screen" class="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-[#F15F22] focus:ring-2 focus:ring-[#F15F22] focus:ring-offset-0">
+                                                    <div class="flex-1">
+                                                        <label for="always-show-welcome-screen" class="block text-sm font-semibold text-white cursor-pointer">Always Show Welcome Screen at Startup</label>
+                                                        <p class="text-xs text-gray-400 mt-1">When enabled, the welcome screen will always be displayed in the conversation pane at startup or after browser refresh, regardless of whether the application is configured for the user.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <!-- User Override Control -->
                                             <div class="p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
                                                 <div class="flex items-start gap-3">
@@ -2108,7 +2119,7 @@
                                             <!-- Save Button -->
                                             <div class="pt-4 border-t border-white/10">
                                                 <button type="button" id="save-window-defaults-btn" class="px-6 py-3 bg-[#F15F22] hover:bg-[#D9501A] rounded-md transition-colors text-white font-medium text-sm">
-                                                    Save Window Defaults
+                                                    Save Startup Settings
                                                 </button>
                                             </div>
                                         </div>
