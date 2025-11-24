@@ -2383,6 +2383,25 @@ async def create_profile():
         if "id" not in data:
             data["id"] = f"profile-{uuid.uuid4()}"
         
+        # Validate and set classification mode
+        classification_mode = data.get("classification_mode", "full")
+        if classification_mode not in ["none", "light", "full"]:
+            return jsonify({
+                "status": "error", 
+                "message": f"Invalid classification_mode: '{classification_mode}'. Must be 'none', 'light', or 'full'."
+            }), 400
+        data["classification_mode"] = classification_mode
+        
+        # Initialize empty classification results (will be populated on first classification)
+        if "classification_results" not in data:
+            data["classification_results"] = {
+                "tools": {},
+                "prompts": {},
+                "resources": {},
+                "last_classified": None,
+                "classified_with_mode": None
+            }
+        
         success = config_manager.add_profile(data, user_uuid)
         
         if success:
@@ -2413,6 +2432,27 @@ async def update_profile(profile_id: str):
         # Don't allow changing the ID
         if "id" in data and data["id"] != profile_id:
             return jsonify({"status": "error", "message": "Cannot change profile ID"}), 400
+
+        # Validate classification_mode if provided
+        if "classification_mode" in data:
+            if data["classification_mode"] not in ["none", "light", "full"]:
+                return jsonify({
+                    "status": "error", 
+                    "message": f"Invalid classification_mode: '{data['classification_mode']}'. Must be 'none', 'light', or 'full'."
+                }), 400
+            
+            # If classification mode is changing, clear cached results to trigger reclassification
+            current_profile = config_manager.get_profiles(user_uuid)
+            current_profile = next((p for p in current_profile if p.get("id") == profile_id), None)
+            if current_profile and current_profile.get("classification_mode") != data["classification_mode"]:
+                data["classification_results"] = {
+                    "tools": {},
+                    "prompts": {},
+                    "resources": {},
+                    "last_classified": None,
+                    "classified_with_mode": None
+                }
+                app_logger.info(f"Classification mode changed for profile {profile_id}, clearing cached results")
 
         # Validate tag uniqueness if tag is being changed
         tag = data.get("tag")

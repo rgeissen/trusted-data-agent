@@ -41,6 +41,10 @@ class AppConfig:
     CURRENT_MCP_SERVER_ID = None # Stores the unique ID of the active MCP server (decoupled from name).
     CURRENT_AWS_REGION = None # Stores the AWS region, used specifically for the "Amazon" provider.
     CURRENT_AZURE_DEPLOYMENT_DETAILS = None # Stores Azure-specific details {endpoint, deployment_name, api_version}.
+    
+    # --- Profile Classification State ---
+    CURRENT_PROFILE_ID = None # ID of the currently active profile
+    CURRENT_PROFILE_CLASSIFICATION_MODE = None # Classification mode of current profile: 'none', 'light', or 'full'
     CURRENT_FRIENDLI_DETAILS = None # Stores Friendli.ai specific details {token, endpoint_url}.
     CURRENT_MODEL_PROVIDER_IN_PROFILE = None # For Amazon Bedrock, stores the model provider if using an inference profile ARN.
 

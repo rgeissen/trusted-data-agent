@@ -214,7 +214,15 @@ def _get_type_from_schema(schema: dict) -> str:
     return "any"
 
 
-async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None):
+async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None, profile_id: str = None):
+    """
+    Load MCP tools, prompts, and resources, then categorize them based on the profile's classification mode.
+    
+    Args:
+        STATE: Application state dictionary
+        user_uuid: User identifier for config loading
+        profile_id: Profile ID to get classification settings from
+    """
     mcp_client = STATE.get('mcp_client')
     llm_instance = STATE.get('llm')
     if not mcp_client or not llm_instance:
@@ -223,6 +231,20 @@ async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None):
     server_name = get_user_mcp_server_name(user_uuid)
     if not server_name:
         raise Exception("MCP server name not found in configuration.")
+    
+    # Get classification mode from profile if provided
+    classification_mode = 'full'  # default
+    if profile_id:
+        from trusted_data_agent.core.config_manager import ConfigManager
+        config_manager = ConfigManager()
+        profile = config_manager.get_profile(profile_id, user_uuid)
+        if profile:
+            classification_mode = profile.get('classification_mode', 'full')
+            app_logger.info(f"Using classification mode '{classification_mode}' from profile {profile_id}")
+        else:
+            app_logger.warning(f"Profile {profile_id} not found, using default classification mode 'full'")
+    else:
+        app_logger.warning("No profile_id provided to load_and_categorize_mcp_resources, using default mode 'full'")
 
     async with mcp_client.session(server_name) as temp_session:
         app_logger.info("--- Loading and classifying MCP tools and prompts... ---")
@@ -317,15 +339,22 @@ async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None):
 
         capabilities_list_str = "\n".join(all_capabilities)
 
-        # --- Check if MCP classification is enabled ---
-        skip_classification = not APP_CONFIG.ENABLE_MCP_CLASSIFICATION
+        # --- Determine classification behavior based on profile's classification_mode ---
+        # 'none': No categorization, store everything flat
+        # 'light': Single generic category per type ("All Tools", "All Prompts", "All Resources")
+        # 'full': LLM-based semantic categorization
         
-        if skip_classification:
-            app_logger.info("MCP classification is disabled. Using single-category structure for faster configuration.")
-            # Use empty dict - we'll assign default categories below
+        if classification_mode == 'none':
+            app_logger.info("Classification mode 'none': skipping all categorization.")
             classified_data = {}
-        else:
-            app_logger.info("MCP classification is enabled. Calling LLM to categorize capabilities...")
+            skip_classification = True
+        elif classification_mode == 'light':
+            app_logger.info("Classification mode 'light': using generic single-category structure.")
+            classified_data = {}
+            skip_classification = True
+        elif classification_mode == 'full':
+            skip_classification = False
+            app_logger.info("Classification mode 'full': calling LLM to semantically categorize capabilities...")
             classification_prompt = (
                 "You are a helpful assistant that analyzes a list of technical capabilities (tools and prompts) and classifies them. "
                 "For each capability, you must determine a single user-friendly 'category' for a UI. "
@@ -352,14 +381,20 @@ async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None):
 
             cleaned_str = match.group(0)
             classified_data = json.loads(cleaned_str)
+        else:
+            app_logger.warning(f"Unknown classification mode '{classification_mode}', defaulting to 'light'")
+            classified_data = {}
+            skip_classification = True
 
         STATE['structured_tools'] = {}
         disabled_tools_list = STATE.get("disabled_tools", [])
 
         for tool in loaded_tools:
-            if skip_classification:
+            if classification_mode == 'none':
+                category = "Tools"  # Single flat category
+            elif skip_classification:  # 'light' mode
                 category = "All Tools"
-            else:
+            else:  # 'full' mode
                 classification = classified_data.get(tool.name, {})
                 category = classification.get("category", "Uncategorized")
 
@@ -414,9 +449,11 @@ async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None):
 
         if loaded_prompts:
             for prompt_obj in loaded_prompts:
-                if skip_classification:
+                if classification_mode == 'none':
+                    category = "Prompts"  # Single flat category
+                elif skip_classification:  # 'light' mode
                     category = "All Prompts"
-                else:
+                else:  # 'full' mode
                     classification = classified_data.get(prompt_obj.name, {})
                     category = classification.get("category", "Uncategorized")
 
@@ -448,9 +485,11 @@ async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None):
         STATE['structured_resources'] = {} # Initialize the structure
         if loaded_resources:
             for resource_obj in loaded_resources:
-                if skip_classification:
+                if classification_mode == 'none':
+                    category = "Resources"  # Single flat category
+                elif skip_classification:  # 'light' mode
                     category = "All Resources"
-                else:
+                else:  # 'full' mode
                     classification = classified_data.get(resource_obj.name, {})
                     category = classification.get("category", "Uncategorized")
 
@@ -508,6 +547,25 @@ async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None):
             "prompt": list(prompt_args)
         }
         app_logger.info(f"Dynamically identified {len(tool_args)} tool and {len(prompt_args)} prompt arguments for context enrichment.")
+        
+        # Save classification results to profile if profile_id provided
+        if profile_id and classification_mode != 'none':
+            from trusted_data_agent.core.config_manager import ConfigManager
+            config_manager = ConfigManager()
+            
+            classification_results = {
+                'tools': STATE.get('structured_tools', {}),
+                'prompts': STATE.get('structured_prompts', {}),
+                'resources': STATE.get('structured_resources', {}),
+                'classified_with_mode': classification_mode
+            }
+            
+            config_manager.save_profile_classification(
+                profile_id=profile_id,
+                classification_results=classification_results,
+                user_uuid=user_uuid
+            )
+            app_logger.info(f"Saved classification results to profile {profile_id} (mode: {classification_mode})")
 
 
 def _transform_chart_data(data: any) -> list[dict]:

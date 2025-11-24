@@ -799,6 +799,76 @@ class ConfigManager:
         return self.save_config(config, user_uuid)
 
     # ========================================================================
+    # PROFILE CLASSIFICATION METHODS
+    # ========================================================================
+    
+    def get_profile_classification(self, profile_id: str, user_uuid: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get classification results for a specific profile.
+        
+        Args:
+            profile_id: Profile ID
+            user_uuid: Optional user UUID for per-user configuration isolation
+        
+        Returns:
+            Classification results dictionary or empty dict if not found
+        """
+        profiles = self.get_profiles(user_uuid)
+        profile = next((p for p in profiles if p.get("id") == profile_id), None)
+        if profile:
+            return profile.get("classification_results", {})
+        return {}
+    
+    def save_profile_classification(self, profile_id: str, classification_results: Dict[str, Any], 
+                                   user_uuid: Optional[str] = None) -> bool:
+        """
+        Save classification results for a specific profile.
+        
+        Args:
+            profile_id: Profile ID
+            classification_results: Classification data including tools, prompts, resources
+            user_uuid: Optional user UUID for per-user configuration isolation
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        from datetime import datetime, timezone
+        
+        profiles = self.get_profiles(user_uuid)
+        profile = next((p for p in profiles if p.get("id") == profile_id), None)
+        
+        if not profile:
+            app_logger.warning(f"Profile {profile_id} not found for classification save")
+            return False
+        
+        # Update classification results with timestamp
+        classification_results["last_classified"] = datetime.now(timezone.utc).isoformat()
+        classification_results["classified_with_mode"] = profile.get("classification_mode", "full")
+        
+        profile["classification_results"] = classification_results
+        return self.save_profiles(profiles, user_uuid)
+    
+    def clear_profile_classification(self, profile_id: str, user_uuid: Optional[str] = None) -> bool:
+        """
+        Clear classification cache for a profile to force reclassification.
+        
+        Args:
+            profile_id: Profile ID
+            user_uuid: Optional user UUID for per-user configuration isolation
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        empty_results = {
+            "tools": {},
+            "prompts": {},
+            "resources": {},
+            "last_classified": None,
+            "classified_with_mode": None
+        }
+        return self.save_profile_classification(profile_id, empty_results, user_uuid)
+
+    # ========================================================================
     # LLM CONFIGURATION METHODS
     # ========================================================================
 
