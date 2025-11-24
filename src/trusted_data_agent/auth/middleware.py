@@ -31,6 +31,7 @@ def get_current_user() -> Optional[User]:
     auth_header = request.headers.get('Authorization', '')
     
     if not auth_header.startswith('Bearer '):
+        logger.debug(f"No Bearer token in Authorization header for {request.path}: '{auth_header[:20] if auth_header else 'empty'}'")
         return None
     
     token = auth_header[7:]  # Remove 'Bearer ' prefix

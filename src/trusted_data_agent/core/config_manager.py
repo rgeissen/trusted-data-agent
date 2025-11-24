@@ -588,7 +588,8 @@ class ConfigManager:
         profiles = self.get_profiles(user_uuid)
         for profile in profiles:
             if profile.get("id") == profile_id:
-                return profile.get("enabled_tools", [])
+                # Frontend stores as 'tools', legacy field was 'enabled_tools'
+                return profile.get("tools", profile.get("enabled_tools", []))
         return []
     
     def get_profile_enabled_prompts(self, profile_id: str, user_uuid: Optional[str] = None) -> list:
@@ -605,7 +606,8 @@ class ConfigManager:
         profiles = self.get_profiles(user_uuid)
         for profile in profiles:
             if profile.get("id") == profile_id:
-                return profile.get("enabled_prompts", [])
+                # Frontend stores as 'prompts', legacy field was 'enabled_prompts'
+                return profile.get("prompts", profile.get("enabled_prompts", []))
         return []
     
     def get_profile_disabled_tools(self, profile_id: str, user_uuid: Optional[str] = None) -> list:

@@ -56,10 +56,12 @@ def _get_user_uuid_from_request():
             from trusted_data_agent.auth.middleware import get_current_user
             user = get_current_user()
             if user and user.user_uuid:
-                app_logger.debug(f"User UUID from auth token: {user.user_uuid}")
+                app_logger.info(f"User UUID from auth token: {user.user_uuid}")
                 return user.user_uuid
+            else:
+                app_logger.warning(f"Auth enabled but get_current_user returned: {user}")
         except Exception as e:
-            app_logger.warning(f"Failed to get user from auth token: {e}")
+            app_logger.warning(f"Failed to get user from auth token: {e}", exc_info=True)
     
     # Fall back to header-based UUID (for backwards compatibility or when auth is disabled)
     user_uuid = request.headers.get("X-TDA-User-UUID")
@@ -104,7 +106,12 @@ async def get_application_status():
             "configurationPersistence": False
         })
 
-    is_configured = APP_CONFIG.SERVICES_CONFIGURED
+    # Check if default profile exists (simplified check - activation enforces LLM+MCP configured)
+    from trusted_data_agent.core.config_manager import get_config_manager
+    config_manager = get_config_manager()
+    user_uuid = _get_user_uuid_from_request()
+    default_profile_id = config_manager.get_default_profile_id(user_uuid)
+    is_configured = default_profile_id is not None
 
     # Check RAG status
     rag_retriever = APP_STATE.get('rag_retriever_instance')
@@ -394,7 +401,24 @@ async def text_to_speech():
 @api_bp.route("/tools")
 async def get_tools():
     """Returns the categorized list of MCP tools."""
-    if not APP_STATE.get("mcp_client"): return jsonify({"error": "Not configured"}), 400
+    # Auto-load default profile if not already loaded
+    if not APP_STATE.get("mcp_client"):
+        from trusted_data_agent.core.config_manager import get_config_manager
+        from trusted_data_agent.core import configuration_service
+        config_manager = get_config_manager()
+        user_uuid = _get_user_uuid_from_request()
+        default_profile_id = config_manager.get_default_profile_id(user_uuid)
+        
+        if not default_profile_id:
+            return jsonify({"error": "Not configured"}), 400
+        
+        # Load default profile into APP_STATE (without LLM validation for resource viewing)
+        app_logger.info(f"Auto-loading default profile {default_profile_id} for /tools endpoint")
+        result = await configuration_service.switch_profile_context(default_profile_id, user_uuid, validate_llm=False)
+        if result["status"] != "success":
+            return jsonify({"error": f"Failed to load default profile: {result['message']}"}), 400
+    
+    # Return structured tools (disabled flags already set by _regenerate_contexts)
     return jsonify(APP_STATE.get("structured_tools", {}))
 
 @api_bp.route("/prompts")
@@ -402,8 +426,24 @@ async def get_prompts():
     """
     Returns the categorized list of MCP prompts with metadata only.
     """
+    # Auto-load default profile if not already loaded
     if not APP_STATE.get("mcp_client"):
-        return jsonify({"error": "Not configured"}), 400
+        from trusted_data_agent.core.config_manager import get_config_manager
+        from trusted_data_agent.core import configuration_service
+        config_manager = get_config_manager()
+        user_uuid = _get_user_uuid_from_request()
+        default_profile_id = config_manager.get_default_profile_id(user_uuid)
+        
+        if not default_profile_id:
+            return jsonify({"error": "Not configured"}), 400
+        
+        # Load default profile into APP_STATE (without LLM validation for resource viewing)
+        app_logger.info(f"Auto-loading default profile {default_profile_id} for /prompts endpoint")
+        result = await configuration_service.switch_profile_context(default_profile_id, user_uuid, validate_llm=False)
+        if result["status"] != "success":
+            return jsonify({"error": f"Failed to load default profile: {result['message']}"}), 400
+    
+    # Return structured prompts (disabled flags already set by _regenerate_contexts)
     return jsonify(APP_STATE.get("structured_prompts", {}))
 
 @api_bp.route("/resources")
@@ -412,8 +452,23 @@ async def get_resources():
     Returns a categorized list of MCP resources.
     This is a placeholder for future functionality.
     """
+    # Auto-load default profile if not already loaded
     if not APP_STATE.get("mcp_client"):
-        return jsonify({"error": "Not configured"}), 400
+        from trusted_data_agent.core.config_manager import get_config_manager
+        from trusted_data_agent.core import configuration_service
+        config_manager = get_config_manager()
+        user_uuid = _get_user_uuid_from_request()
+        default_profile_id = config_manager.get_default_profile_id(user_uuid)
+        
+        if not default_profile_id:
+            return jsonify({"error": "Not configured"}), 400
+        
+        # Load default profile into APP_STATE (without LLM validation for resource viewing)
+        app_logger.info(f"Auto-loading default profile {default_profile_id} for /resources endpoint")
+        result = await configuration_service.switch_profile_context(default_profile_id, user_uuid, validate_llm=False)
+        if result["status"] != "success":
+            return jsonify({"error": f"Failed to load default profile: {result['message']}"}), 400
+    
     # Placeholder: Return empty dict until implemented
     return jsonify({})
 
@@ -1134,16 +1189,19 @@ async def new_session():
     charting_intensity = data.get("charting_intensity", APP_CONFIG.DEFAULT_CHARTING_INTENSITY) if APP_CONFIG.CHARTING_ENABLED else "none"
     system_prompt_template = data.get("system_prompt")
 
-    # Get profile tag from active profile
+    # Get profile tag from DEFAULT profile (not first active)
     from trusted_data_agent.core.config_manager import get_config_manager
     config_manager = get_config_manager()
-    active_profile_ids = config_manager.get_active_for_consumption_profile_ids()
+    default_profile_id = config_manager.get_default_profile_id(user_uuid)
     profile_tag = None
-    if active_profile_ids:
-        profiles = config_manager.get_profiles()
-        active_profile = next((p for p in profiles if p.get("id") == active_profile_ids[0]), None)
-        if active_profile:
-            profile_tag = active_profile.get("tag")
+    if default_profile_id:
+        profiles = config_manager.get_profiles(user_uuid)
+        default_profile = next((p for p in profiles if p.get("id") == default_profile_id), None)
+        if default_profile:
+            profile_tag = default_profile.get("tag")
+            app_logger.info(f"Creating session with default profile: {default_profile.get('name')} (@{profile_tag})")
+        else:
+            app_logger.warning(f"Default profile ID {default_profile_id} not found in profiles list")
 
     try:
         session_id = session_manager.create_session(

@@ -71,7 +71,7 @@ def load_profile_classification_into_state(profile_id: str, user_uuid: str) -> b
         app_logger.info(f"Classification mode changed from '{cached_mode}' to '{classification_mode}', will reclassify")
         return False
     
-    # Load cached results into APP_STATE
+    # Load ALL cached results into APP_STATE (UI will show active/inactive based on disabled lists)
     APP_STATE['structured_tools'] = classification_results.get('tools', {})
     APP_STATE['structured_prompts'] = classification_results.get('prompts', {})
     APP_STATE['structured_resources'] = classification_results.get('resources', {})
@@ -84,10 +84,16 @@ def load_profile_classification_into_state(profile_id: str, user_uuid: str) -> b
     return True
 
 
-async def switch_profile_context(profile_id: str, user_uuid: str) -> dict:
+async def switch_profile_context(profile_id: str, user_uuid: str, validate_llm: bool = False) -> dict:
     """
     Switch the active profile context, loading its classification and configuration.
-    This is called when a user explicitly switches profiles during runtime.
+    This initializes the MCP client and loads cached classification data.
+    
+    Args:
+        profile_id: ID of the profile to switch to
+        user_uuid: User UUID for per-user context
+        validate_llm: If True, validates LLM client (required for conversation)
+                     If False, skips LLM validation (for resource viewing only)
     
     Returns a result dict with status and message.
     """
@@ -106,7 +112,253 @@ async def switch_profile_context(profile_id: str, user_uuid: str) -> dict:
         classification_mode = profile.get('classification_mode', 'light')
         APP_CONFIG.CURRENT_PROFILE_CLASSIFICATION_MODE = classification_mode
         
-        app_logger.info(f"Switching to profile {profile_id} (classification mode: {classification_mode})")
+        app_logger.info(f"Switching to profile {profile_id} (classification mode: {classification_mode}, validate_llm: {validate_llm})")
+        
+        # Load LLM configuration from profile
+        llm_config_id = profile.get('llmConfigurationId')
+        if not llm_config_id:
+            return {
+                "status": "error",
+                "message": f"Profile {profile_id} has no llmConfigurationId configured"
+            }
+        
+        llm_configs = config_manager.get_llm_configurations(user_uuid)
+        llm_config = next((c for c in llm_configs if c.get('id') == llm_config_id), None)
+        
+        if not llm_config:
+            return {
+                "status": "error",
+                "message": f"LLM configuration {llm_config_id} not found"
+            }
+        
+        provider = llm_config.get('provider')
+        model = llm_config.get('model')
+        credentials = llm_config.get('credentials', {})
+        
+        app_logger.info(f"Initializing LLM client for profile {profile_id}: {provider}/{model}")
+        
+        # Load stored credentials if available
+        if user_uuid and ENCRYPTION_AVAILABLE:
+            try:
+                stored_result = await retrieve_credentials_for_provider(user_uuid, provider)
+                if stored_result.get("credentials"):
+                    credentials = {**stored_result["credentials"], **credentials}
+                    app_logger.info(f"Loaded stored credentials for {provider}")
+            except Exception as e:
+                app_logger.warning(f"Could not load stored credentials: {e}")
+        
+        # Fall back to environment variables if no credentials in config or store
+        import os
+        if not credentials.get("apiKey") and not credentials.get("friendli_token") and not credentials.get("aws_access_key_id"):
+            app_logger.info(f"No credentials in config/store, checking environment variables for {provider}")
+            if provider == "Google":
+                env_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+                if env_key:
+                    credentials["apiKey"] = env_key
+                    app_logger.info("Loaded Google API key from environment")
+            elif provider == "Anthropic":
+                env_key = os.environ.get("ANTHROPIC_API_KEY")
+                if env_key:
+                    credentials["apiKey"] = env_key
+                    app_logger.info("Loaded Anthropic API key from environment")
+            elif provider == "OpenAI":
+                env_key = os.environ.get("OPENAI_API_KEY")
+                if env_key:
+                    credentials["apiKey"] = env_key
+                    app_logger.info("Loaded OpenAI API key from environment")
+            elif provider == "Azure":
+                credentials["apiKey"] = os.environ.get("AZURE_OPENAI_API_KEY")
+                credentials["azure_endpoint"] = os.environ.get("AZURE_OPENAI_ENDPOINT")
+                credentials["azure_deployment_name"] = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME")
+                credentials["azure_api_version"] = os.environ.get("AZURE_OPENAI_API_VERSION")
+                if any(credentials.values()):
+                    app_logger.info("Loaded Azure credentials from environment")
+            elif provider == "Friendli":
+                credentials["friendli_token"] = os.environ.get("FRIENDLI_TOKEN")
+                credentials["friendli_endpoint_url"] = os.environ.get("FRIENDLI_ENDPOINT_URL")
+                if credentials["friendli_token"]:
+                    app_logger.info("Loaded Friendli credentials from environment")
+            elif provider == "Amazon":
+                credentials["aws_access_key_id"] = os.environ.get("AWS_ACCESS_KEY_ID")
+                credentials["aws_secret_access_key"] = os.environ.get("AWS_SECRET_ACCESS_KEY")
+                credentials["aws_region"] = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
+                if credentials["aws_access_key_id"]:
+                    app_logger.info("Loaded AWS credentials from environment")
+            elif provider == "Ollama":
+                credentials["ollama_host"] = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+                app_logger.info("Using Ollama host from environment")
+        
+        # Initialize and optionally validate LLM client
+        temp_llm_instance = None
+        if validate_llm:
+            # Full validation - test the connection
+            try:
+                if provider == "Google":
+                    genai.configure(api_key=credentials.get("apiKey"))
+                    temp_llm_instance = genai.GenerativeModel(model)
+                    await temp_llm_instance.generate_content_async("test", generation_config={"max_output_tokens": 1})
+                
+                elif provider == "Anthropic":
+                    temp_llm_instance = AsyncAnthropic(api_key=credentials.get("apiKey"))
+                    await temp_llm_instance.models.list()
+                
+                elif provider == "OpenAI":
+                    temp_llm_instance = AsyncOpenAI(api_key=credentials.get("apiKey"))
+                    await temp_llm_instance.chat.completions.create(
+                        model=model,
+                        messages=[{"role": "user", "content": "test"}],
+                        max_tokens=1
+                    )
+                
+                elif provider == "Azure":
+                    temp_llm_instance = AsyncAzureOpenAI(
+                        api_key=credentials.get("apiKey"),
+                        azure_endpoint=credentials.get("azure_endpoint"),
+                        api_version=credentials.get("azure_api_version")
+                    )
+                    await temp_llm_instance.chat.completions.create(
+                        model=credentials.get("azure_deployment_name"),
+                        messages=[{"role": "user", "content": "test"}],
+                        max_tokens=1
+                    )
+                
+                elif provider == "Friendli":
+                    is_dedicated = bool(credentials.get("friendli_endpoint_url"))
+                    if is_dedicated:
+                        temp_llm_instance = AsyncOpenAI(
+                            api_key=credentials.get("friendli_token"),
+                            base_url=credentials.get("friendli_endpoint_url")
+                        )
+                    else:
+                        temp_llm_instance = AsyncOpenAI(
+                            api_key=credentials.get("friendli_token"),
+                            base_url="https://api.friendli.ai/serverless/v1"
+                        )
+                    await temp_llm_instance.chat.completions.create(
+                        model=model,
+                        messages=[{"role": "user", "content": "test"}],
+                        max_tokens=1
+                    )
+                
+                elif provider == "Amazon":
+                    aws_region = credentials.get("aws_region")
+                    temp_llm_instance = boto3.client(
+                        service_name='bedrock-runtime',
+                        aws_access_key_id=credentials.get("aws_access_key_id"),
+                        aws_secret_access_key=credentials.get("aws_secret_access_key"),
+                        region_name=aws_region
+                    )
+                    app_logger.info("Boto3 client for Bedrock created (validation skipped)")
+                
+                elif provider == "Ollama":
+                    host = credentials.get("ollama_host")
+                    if not host:
+                        raise ValueError("Ollama host is required")
+                    temp_llm_instance = llm_handler.OllamaClient(host=host)
+                    await temp_llm_instance.list_models()
+                
+                else:
+                    raise ValueError(f"Unsupported provider: {provider}")
+                
+                app_logger.info(f"LLM client validated successfully: {provider}/{model}")
+                
+            except Exception as e:
+                app_logger.error(f"Failed to initialize LLM client: {e}", exc_info=True)
+                return {
+                    "status": "error",
+                    "message": f"Failed to initialize LLM client: {str(e)}"
+                }
+        else:
+            # Skip validation - just set configuration (client will be created on first message)
+            app_logger.info(f"LLM configuration loaded without validation: {provider}/{model}")
+        
+        # Store LLM client and configuration
+        set_user_provider(provider, user_uuid)
+        set_user_model(model, user_uuid)
+        if temp_llm_instance:
+            set_user_llm_instance(temp_llm_instance, user_uuid)
+        else:
+            # Set placeholder for resource loading
+            APP_STATE['llm'] = {"placeholder": True, "provider": provider, "model": model}
+        APP_CONFIG.ACTIVE_PROVIDER = provider
+        APP_CONFIG.ACTIVE_MODEL = model
+        
+        # Store provider-specific credentials
+        if provider == "Azure":
+            azure_details = {
+                "endpoint": credentials.get("azure_endpoint"),
+                "deployment_name": credentials.get("azure_deployment_name"),
+                "api_version": credentials.get("azure_api_version")
+            }
+            set_user_azure_deployment_details(azure_details, user_uuid)
+        elif provider == "Friendli":
+            friendli_details = {
+                "token": credentials.get("friendli_token"),
+                "endpoint_url": credentials.get("friendli_endpoint_url")
+            }
+            set_user_friendli_details(friendli_details, user_uuid)
+        elif provider == "Amazon":
+            set_user_aws_region(credentials.get("aws_region"), user_uuid)
+        
+        # Load MCP server configuration from profile
+        mcp_server_id = profile.get('mcpServerId')
+        if not mcp_server_id:
+            return {
+                "status": "error",
+                "message": f"Profile {profile_id} has no mcpServerId configured"
+            }
+        
+        mcp_servers = config_manager.get_mcp_servers(user_uuid)
+        mcp_server = next((s for s in mcp_servers if s.get('id') == mcp_server_id), None)
+        
+        if not mcp_server:
+            return {
+                "status": "error",
+                "message": f"MCP server {mcp_server_id} not found in configuration"
+            }
+        
+        server_name = mcp_server.get('name')
+        host = mcp_server.get('host')
+        port = mcp_server.get('port')
+        path = mcp_server.get('path')
+        
+        if not all([server_name, host, port, path]):
+            return {
+                "status": "error",
+                "message": f"Incomplete MCP server configuration for {mcp_server_id}"
+            }
+        
+        mcp_server_url = f"http://{host}:{port}{path}"
+        app_logger.info(f"Initializing MCP client for profile {profile_id}: {mcp_server_url}")
+        
+        # Initialize and validate MCP client
+        try:
+            server_configs = {server_name: {"url": mcp_server_url, "transport": "streamable_http"}}
+            temp_mcp_client = MultiServerMCPClient(server_configs)
+            
+            # Test MCP connection
+            async with temp_mcp_client.session(server_name) as temp_session:
+                await temp_session.list_tools()
+            
+            app_logger.info(f"MCP server connection validated successfully: {server_name}")
+            
+        except Exception as e:
+            app_logger.error(f"Failed to initialize MCP client: {e}", exc_info=True)
+            return {
+                "status": "error",
+                "message": f"Failed to connect to MCP server: {str(e)}"
+            }
+        
+        # Store MCP client in APP_STATE
+        set_user_mcp_client(temp_mcp_client, user_uuid)
+        set_user_server_configs(server_configs, user_uuid)
+        set_user_mcp_server_name(server_name, user_uuid)
+        set_user_mcp_server_id(mcp_server_id, user_uuid)
+        
+        APP_CONFIG.MCP_SERVER_CONNECTED = True
+        APP_CONFIG.SERVICES_CONFIGURED = True
+        
+        app_logger.info(f"Profile {profile_id} fully initialized and validated")
         
         # Try to load cached classification
         cached_loaded = load_profile_classification_into_state(profile_id, user_uuid)
@@ -120,9 +372,11 @@ async def switch_profile_context(profile_id: str, user_uuid: str) -> dict:
             config_manager.update_profile(profile_id, {"needs_reclassification": False}, user_uuid)
             app_logger.info(f"Cleared needs_reclassification flag for profile {profile_id} after classification")
         
-        # Load disabled tools/prompts from profile
-        APP_STATE["disabled_tools"] = profile.get('disabled_tools', [])
-        APP_STATE["disabled_prompts"] = profile.get('disabled_prompts', [])
+        # Calculate disabled tools/prompts from profile's enabled lists
+        APP_STATE["disabled_tools"] = config_manager.get_profile_disabled_tools(profile_id, user_uuid)
+        APP_STATE["disabled_prompts"] = config_manager.get_profile_disabled_prompts(profile_id, user_uuid)
+        
+        app_logger.info(f"Loaded profile {profile_id}: {len(APP_STATE['disabled_tools'])} disabled tools, {len(APP_STATE['disabled_prompts'])} disabled prompts")
         
         # Regenerate contexts with new classification
         _regenerate_contexts()

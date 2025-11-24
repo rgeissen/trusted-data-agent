@@ -177,7 +177,7 @@ def _regenerate_contexts():
     disabled_tools_list = APP_STATE.get("disabled_tools", [])
     disabled_prompts_list = APP_STATE.get("disabled_prompts", [])
     
-    if APP_STATE.get('mcp_tools') and APP_STATE.get('structured_tools'):
+    if 'mcp_tools' in APP_STATE and 'structured_tools' in APP_STATE:
         for category, tool_list in APP_STATE['structured_tools'].items():
             for tool_info in tool_list:
                 tool_info['disabled'] = tool_info['name'] in disabled_tools_list
@@ -218,7 +218,7 @@ def _regenerate_contexts():
             APP_STATE['tools_context'] = "--- No Tools Available ---"
         app_logger.info(f"Regenerated LLM tool context. {enabled_count} tools are active.")
 
-    if APP_STATE.get('mcp_prompts') and APP_STATE.get('structured_prompts'):
+    if 'mcp_prompts' in APP_STATE and 'structured_prompts' in APP_STATE:
         for category, prompt_list in APP_STATE['structured_prompts'].items():
             for prompt_info in prompt_list:
                 prompt_info['disabled'] = prompt_info['name'] in disabled_prompts_list
