@@ -1861,16 +1861,22 @@ function renderProfiles() {
                         class="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-white">
                         Test
                     </button>
+                    <button type="button" data-action="inherit-classification" data-profile-id="${profile.id}" 
+                        class="px-4 py-2 text-sm font-medium ${!isDefault && isActiveForConsumption ? (profile.inherit_classification ? 'bg-orange-600 hover:bg-orange-700' : 'bg-gray-700 hover:bg-orange-600') : 'bg-gray-600 cursor-not-allowed opacity-50'} rounded-lg transition-colors text-white"
+                        title="${isDefault ? 'Default profile cannot inherit classification' : (!isActiveForConsumption ? 'Activate profile to enable classification inheritance' : (profile.inherit_classification ? 'Disable classification inheritance' : 'Inherit classification from default profile'))}"
+                        ${!isDefault && isActiveForConsumption ? '' : 'disabled'}>
+                        ${profile.inherit_classification ? '✓ ' : ''}Inherit Classification
+                    </button>
                     <button type="button" data-action="reclassify-profile" data-profile-id="${profile.id}" 
-                        class="px-4 py-2 text-sm font-medium ${profile.active_for_consumption ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-600 cursor-not-allowed opacity-50'} rounded-lg transition-colors text-white"
-                        title="${profile.active_for_consumption ? 'Re-run classification for this profile' : 'Activate profile to enable reclassification'}"
-                        ${profile.active_for_consumption ? '' : 'disabled'}>
+                        class="px-4 py-2 text-sm font-medium ${profile.active_for_consumption && !profile.inherit_classification ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-600 cursor-not-allowed opacity-50'} rounded-lg transition-colors text-white"
+                        title="${profile.inherit_classification ? 'Disable inherit classification to reclassify' : (profile.active_for_consumption ? 'Re-run classification for this profile' : 'Activate profile to enable reclassification')}"
+                        ${profile.active_for_consumption && !profile.inherit_classification ? '' : 'disabled'}>
                         Reclassify
                     </button>
                     <button type="button" data-action="show-classification" data-profile-id="${profile.id}" 
-                        class="px-4 py-2 text-sm font-medium ${isActiveForConsumption && profile.classification_results ? 'bg-teal-600 hover:bg-teal-700' : 'bg-gray-600 cursor-not-allowed opacity-50'} rounded-lg transition-colors text-white"
-                        title="${!isActiveForConsumption ? 'Activate profile to view classification' : (profile.classification_results ? 'View classification results' : 'No classification results available')}"
-                        ${isActiveForConsumption && profile.classification_results ? '' : 'disabled'}>
+                        class="px-4 py-2 text-sm font-medium ${isActiveForConsumption && profile.classification_results && !profile.inherit_classification ? 'bg-teal-600 hover:bg-teal-700' : 'bg-gray-600 cursor-not-allowed opacity-50'} rounded-lg transition-colors text-white"
+                        title="${profile.inherit_classification ? 'Disable inherit classification to view own classification' : (!isActiveForConsumption ? 'Activate profile to view classification' : (profile.classification_results ? 'View classification results' : 'No classification results available'))}"
+                        ${isActiveForConsumption && profile.classification_results && !profile.inherit_classification ? '' : 'disabled'}>
                         Show Classification
                     </button>
                     <button type="button" data-action="copy-profile" data-profile-id="${profile.id}" 
@@ -2100,6 +2106,40 @@ function attachProfileEventListeners() {
     });
     
     // Reclassify Profile button
+    document.querySelectorAll('[data-action="inherit-classification"]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const button = e.target;
+            const profileId = button.dataset.profileId;
+            const profile = configState.profiles.find(p => p.id === profileId);
+            
+            if (button.disabled) {
+                return;
+            }
+            
+            // Toggle the inherit_classification flag
+            const newInheritState = !profile.inherit_classification;
+            
+            try {
+                // Update the profile with the new inherit_classification state
+                await configState.updateProfile(profileId, {
+                    inherit_classification: newInheritState
+                });
+                
+                // Reload profiles to get updated state
+                await configState.loadProfiles();
+                renderProfiles();
+                
+                const message = newInheritState 
+                    ? `Profile "${profile.name}" will now inherit classification from default profile`
+                    : `Profile "${profile.name}" will use its own classification`;
+                showNotification('success', message);
+            } catch (error) {
+                console.error('Inherit classification toggle error:', error);
+                showNotification('error', 'Failed to update classification inheritance');
+            }
+        });
+    });
+
     document.querySelectorAll('[data-action="reclassify-profile"]').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const button = e.target;
@@ -2585,6 +2625,11 @@ async function showProfileModal(profileId = null) {
             ragCollections: selectedRag.length === ragCollections.length ? ['*'] : selectedRag,
             autocompleteCollections: selectedAutocomplete.length === ragCollections.length ? ['*'] : selectedAutocomplete,
         };
+        
+        // For new profiles: if a default profile exists, enable inherit_classification by default
+        if (!isEdit && configState.defaultProfileId) {
+            profileData.inherit_classification = true;
+        }
 
         try {
             if (isEdit) {
