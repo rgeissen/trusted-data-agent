@@ -2427,6 +2427,7 @@ async def activate_profile(profile_id: str):
     """
     Activate a profile, switching the runtime context to use its configuration and classification.
     This loads the profile's LLM settings, MCP servers, and classification results.
+    Requires all profile tests to pass before activation.
     """
     user_uuid = _get_user_uuid_from_request()
     from trusted_data_agent.core import configuration_service
@@ -2443,6 +2444,78 @@ async def activate_profile(profile_id: str):
                 "message": f"Profile '{profile_id}' not found"
             }), 404
         
+        # Run tests before activation
+        test_results = {}
+        all_tests_passed = True
+        
+        # Test LLM configuration
+        try:
+            llm_config_id = profile.get("llmConfigurationId")
+            if llm_config_id:
+                llm_configs = config_manager.get_llm_configurations(user_uuid)
+                llm_config = next((cfg for cfg in llm_configs if cfg.get("id") == llm_config_id), None)
+                
+                if llm_config:
+                    from trusted_data_agent.llm.llm_factory import LLMFactory
+                    llm_instance = LLMFactory.create_llm(llm_config)
+                    response = await llm_instance.ainvoke("Say 'OK' if you can read this.")
+                    test_results["llm"] = {"status": "success", "message": "LLM connection successful."}
+                else:
+                    test_results["llm"] = {"status": "error", "message": "LLM configuration not found."}
+                    all_tests_passed = False
+            else:
+                test_results["llm"] = {"status": "error", "message": "No LLM configuration specified."}
+                all_tests_passed = False
+        except Exception as llm_error:
+            test_results["llm"] = {"status": "error", "message": f"LLM connection failed: {str(llm_error)}"}
+            all_tests_passed = False
+        
+        # Test MCP server
+        try:
+            mcp_server_id = profile.get("mcpServerId")
+            if mcp_server_id:
+                mcp_servers = config_manager.get_mcp_servers(user_uuid)
+                mcp_server = next((srv for srv in mcp_servers if srv.get("id") == mcp_server_id), None)
+                
+                if mcp_server:
+                    test_results["mcp_server"] = {"status": "success", "message": f"MCP server configured: {mcp_server.get('name', 'Unknown')}"}
+                else:
+                    test_results["mcp_server"] = {"status": "error", "message": "MCP server not found."}
+                    all_tests_passed = False
+            else:
+                test_results["mcp_server"] = {"status": "error", "message": "No MCP server specified."}
+                all_tests_passed = False
+        except Exception as mcp_error:
+            test_results["mcp_server"] = {"status": "error", "message": f"MCP test failed: {str(mcp_error)}"}
+            all_tests_passed = False
+        
+        # Test RAG collections
+        try:
+            import chromadb
+            from trusted_data_agent.core.config import APP_CONFIG
+            from pathlib import Path
+            
+            rag_path = Path(APP_CONFIG.RAG_PERSIST_DIR).resolve()
+            chroma_client = chromadb.PersistentClient(path=str(rag_path))
+            collections = chroma_client.list_collections()
+            
+            if collections and len(collections) > 0:
+                test_results["rag_collections"] = {"status": "success", "message": f"RAG collections available ({len(collections)} collection(s))."}
+            else:
+                test_results["rag_collections"] = {"status": "warning", "message": "No RAG collections found."}
+                # Warning doesn't fail activation
+        except Exception as rag_error:
+            test_results["rag_collections"] = {"status": "error", "message": f"RAG test failed: {str(rag_error)}"}
+            all_tests_passed = False
+        
+        # If tests failed, return error
+        if not all_tests_passed:
+            return jsonify({
+                "status": "error",
+                "message": "Profile tests failed. Cannot activate profile.",
+                "test_results": test_results
+            }), 400
+        
         # If profile needs reclassification, return a special status
         if profile.get("needs_reclassification", False):
             result = await configuration_service.switch_profile_context(profile_id, user_uuid)
@@ -2451,6 +2524,7 @@ async def activate_profile(profile_id: str):
                 # Add warning about reclassification
                 result["needs_reclassification"] = True
                 result["warning"] = "This profile has changes that require reclassification for optimal categorization."
+                result["test_results"] = test_results
                 return jsonify(result), 200
             else:
                 return jsonify(result), 400
@@ -2459,6 +2533,7 @@ async def activate_profile(profile_id: str):
         result = await configuration_service.switch_profile_context(profile_id, user_uuid)
         
         if result["status"] == "success":
+            result["test_results"] = test_results
             return jsonify(result), 200
         else:
             return jsonify(result), 400
@@ -2683,10 +2758,12 @@ async def delete_profile(profile_id: str):
                 "message": "Profile not found"
             }), 404
         
-        # Check if this was the active profile and clear it
-        active_profile_id = config_manager.get_active_profile_id(user_uuid)
-        if active_profile_id == profile_id:
-            config_manager.set_active_profile_id(None, user_uuid)
+        # Check if this profile was in the active list and remove it
+        active_profile_ids = config_manager.get_active_for_consumption_profile_ids(user_uuid)
+        if profile_id in active_profile_ids:
+            active_profile_ids = [pid for pid in active_profile_ids if pid != profile_id]
+            config_manager.set_active_for_consumption_profile_ids(active_profile_ids, user_uuid)
+            app_logger.info(f"Removed deleted profile {profile_id} from active profiles list")
         
         app_logger.info(f"Deleted profile: {profile_id}")
         return jsonify({
@@ -2782,6 +2859,8 @@ async def test_profile(profile_id: str):
     try:
         user_uuid = _get_user_uuid_from_request()
         from trusted_data_agent.core.config_manager import get_config_manager
+        from trusted_data_agent.auth.admin import get_current_user_from_request
+        
         config_manager = get_config_manager()
         
         # Get profile
@@ -2789,35 +2868,144 @@ async def test_profile(profile_id: str):
         profile = next((p for p in profiles if p.get("id") == profile_id), None)
         if not profile:
             return jsonify({"status": "error", "message": "Profile not found"}), 404
+        
+        # Get current user for credential lookup
+        current_user = get_current_user_from_request()
+        user_id_for_creds = current_user.id if current_user else user_uuid
 
         results = {}
 
-        # Test MCP connection
-        mcp_server = next((s for s in config_manager.get_mcp_servers(user_uuid) if s.get("id") == profile.get("mcpServerId")), None)
-        if mcp_server:
-            # This is a placeholder for the actual test logic.
-            # In a real implementation, you would use the mcp_server details to make a test connection.
-            results["mcp_connection"] = {"status": "success", "message": "MCP connection successful."}
+        # Test LLM connection - actually verify credentials work
+        llm_config_id = profile.get("llmConfigurationId")
+        if llm_config_id:
+            try:
+                # Get the LLM configuration
+                llm_config = next((c for c in config_manager.get_llm_configurations(user_uuid) 
+                                 if c.get("id") == llm_config_id), None)
+                
+                if llm_config:
+                    # Use shared validation logic with proper user ID
+                    success, message = await _validate_llm_credentials(llm_config, user_id_for_creds)
+                    results["llm_connection"] = {
+                        "status": "success" if success else "error",
+                        "message": message
+                    }
+                else:
+                    results["llm_connection"] = {"status": "error", "message": f"LLM configuration '{llm_config_id}' not found."}
+                    
+            except Exception as llm_error:
+                results["llm_connection"] = {"status": "error", "message": f"LLM connection failed: {str(llm_error)}"}
         else:
-            results["mcp_connection"] = {"status": "error", "message": "MCP server not found in configuration."}
+            results["llm_connection"] = {"status": "error", "message": "No LLM configuration selected."}
 
-        # Test LLM connection
-        # This is a placeholder for the actual test logic.
-        results["llm_connection"] = {"status": "success", "message": "LLM connection successful."}
+        # Test MCP connection
+        mcp_server_id = profile.get("mcpServerId")
+        if mcp_server_id:
+            mcp_server = next((s for s in config_manager.get_mcp_servers(user_uuid) 
+                             if s.get("id") == mcp_server_id), None)
+            if mcp_server:
+                results["mcp_connection"] = {"status": "success", "message": f"MCP server configured: {mcp_server.get('name', 'Unknown')}."}
+            else:
+                results["mcp_connection"] = {"status": "error", "message": f"MCP server '{mcp_server_id}' not found."}
+        else:
+            results["mcp_connection"] = {"status": "warning", "message": "No MCP server configured."}
 
         # Test RAG collections
-        # This is a placeholder for the actual test logic.
-        results["rag_collections"] = {"status": "success", "message": "RAG collections are available."}
-        
-        # Test Autocomplete collections
-        # This is a placeholder for the actual test logic.
-        results["autocomplete_collections"] = {"status": "success", "message": "Autocomplete collections are available."}
+        try:
+            import chromadb
+            from trusted_data_agent.core.config import APP_CONFIG
+            from pathlib import Path
+            
+            # Get the RAG persist directory
+            rag_path = Path(APP_CONFIG.RAG_PERSIST_DIR).resolve()
+            chroma_client = chromadb.PersistentClient(path=str(rag_path))
+            collections = chroma_client.list_collections()
+            
+            if collections and len(collections) > 0:
+                results["rag_collections"] = {"status": "success", "message": f"RAG collections available ({len(collections)} collection(s))."}
+            else:
+                results["rag_collections"] = {"status": "warning", "message": "No RAG collections found."}
+        except Exception as rag_error:
+            results["rag_collections"] = {"status": "error", "message": f"RAG test failed: {str(rag_error)}"}
 
         return jsonify({"status": "success", "results": results}), 200
 
     except Exception as e:
         app_logger.error(f"Error testing profile: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
+
+# Helper function for LLM credential validation
+async def _validate_llm_credentials(llm_config, user_id: str):
+    """
+    Validate LLM credentials by making a test API call.
+    Returns tuple: (success: bool, message: str)
+    """
+    from trusted_data_agent.llm.client_factory import test_llm_credentials
+    from trusted_data_agent.auth.encryption import decrypt_credentials
+    
+    llm_provider = llm_config.get("provider")
+    llm_model = llm_config.get("model")
+    
+    # Get decrypted credentials from database
+    credentials = decrypt_credentials(user_id, llm_provider)
+    if not credentials:
+        return False, f"No credentials found for {llm_provider}. Please configure credentials first."
+    
+    # Use shared test function from client_factory
+    try:
+        success, message = await test_llm_credentials(llm_provider, llm_model, credentials)
+        if not success:
+            app_logger.error(f"LLM credential validation failed: {message}")
+        return success, message
+    except Exception as e:
+        error_msg = str(e)
+        app_logger.error(f"LLM credential validation failed: {error_msg}", exc_info=True)
+        return False, f"Validation failed: {error_msg}"
+
+@rest_api_bp.route("/v1/llm_configurations/<config_id>/test", methods=["POST"])
+async def test_llm_configuration(config_id: str):
+    """
+    Test an LLM configuration by making a simple API call to validate credentials.
+    """
+    try:
+        user_uuid = _get_user_uuid_from_request()
+        from trusted_data_agent.core.config_manager import get_config_manager
+        from trusted_data_agent.auth.admin import get_current_user_from_request
+        
+        config_manager = get_config_manager()
+        
+        # Get the LLM configuration
+        llm_config = next((c for c in config_manager.get_llm_configurations(user_uuid) 
+                         if c.get("id") == config_id), None)
+        
+        if not llm_config:
+            return jsonify({
+                "status": "error",
+                "message": "LLM configuration not found"
+            }), 404
+        
+        # Get current user for credential lookup
+        current_user = get_current_user_from_request()
+        if not current_user:
+            return jsonify({
+                "status": "error",
+                "message": "Authentication required"
+            }), 401
+        
+        # Use shared validation logic with current_user.id
+        success, message = await _validate_llm_credentials(llm_config, current_user.id)
+        
+        if success:
+            return jsonify({"status": "success", "message": message}), 200
+        else:
+            return jsonify({"status": "error", "message": message}), 400
+                
+    except Exception as e:
+        app_logger.error(f"LLM configuration test failed for {config_id}: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": f"LLM connection failed: {str(e)}"
+        }), 400
         
 # ============================================================================
 # EXECUTION DASHBOARD API ENDPOINTS

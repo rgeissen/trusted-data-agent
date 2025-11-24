@@ -537,6 +537,18 @@ export async function testProfile(profileId) {
     return await res.json();
 }
 
+export async function testLLMConfiguration(configId) {
+    const res = await fetch(`/api/v1/llm_configurations/${configId}/test`, {
+        method: 'POST',
+        headers: _getHeaders(false)
+    });
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to test LLM configuration');
+    }
+    return await res.json();
+}
+
 export async function fetchResourcesForServer(mcpServer) {
     const res = await fetch('/api/v1/mcp/resources', {
         method: 'POST',

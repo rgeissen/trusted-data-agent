@@ -815,7 +815,14 @@ export function renderLLMProviders() {
                             </div>
                         </div>
                     </div>
+                    <!-- Test results container -->
+                    <div id="llm-test-results-${config.id}" class="text-sm min-h-[20px]"></div>
+                    
                     <div class="flex items-center gap-2 pt-2 border-t border-white/10">
+                        <button type="button" data-action="test-llm" data-config-id="${config.id}" 
+                            class="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-white">
+                            Test
+                        </button>
                         <button type="button" data-action="edit-llm" data-config-id="${config.id}" 
                             class="flex-1 px-4 py-2 text-sm font-medium bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-white">
                             Edit
@@ -834,6 +841,49 @@ export function renderLLMProviders() {
 }
 
 function attachLLMEventListeners() {
+    // Test LLM button
+    document.querySelectorAll('[data-action="test-llm"]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const configId = e.target.dataset.configId;
+            const resultsContainer = document.getElementById(`llm-test-results-${configId}`);
+            const testBtn = e.target;
+            
+            // Show testing state
+            resultsContainer.innerHTML = '<span class="text-yellow-400">Testing credentials...</span>';
+            testBtn.disabled = true;
+            testBtn.textContent = 'Testing...';
+            
+            try {
+                const result = await API.testLLMConfiguration(configId);
+                
+                if (result.status === 'success') {
+                    resultsContainer.innerHTML = `<span class="text-green-400">✓ Credentials valid</span>`;
+                } else {
+                    // Extract just the key part of the error message
+                    let errorMsg = result.message || 'Test failed';
+                    // Remove file paths and stack traces
+                    errorMsg = errorMsg.split('(/')[0].split('(File:')[0].trim();
+                    // Limit length
+                    if (errorMsg.length > 60) {
+                        errorMsg = errorMsg.substring(0, 60) + '...';
+                    }
+                    resultsContainer.innerHTML = `<span class="text-red-400">✗ ${errorMsg}</span>`;
+                }
+            } catch (error) {
+                // Extract just the key part of the error message
+                let errorMsg = error.message || 'Test failed';
+                errorMsg = errorMsg.split('(/')[0].split('(File:')[0].trim();
+                if (errorMsg.length > 60) {
+                    errorMsg = errorMsg.substring(0, 60) + '...';
+                }
+                resultsContainer.innerHTML = `<span class="text-red-400">✗ ${errorMsg}</span>`;
+            } finally {
+                testBtn.disabled = false;
+                testBtn.textContent = 'Test';
+            }
+        });
+    });
+    
     // Edit LLM button
     document.querySelectorAll('[data-action="edit-llm"]').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -877,6 +927,15 @@ export function showLLMConfigurationModal(configId = null) {
         <div id="llm-config-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
             <div class="glass-panel rounded-xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
                 <h3 class="text-xl font-bold text-white mb-4">${isEdit ? 'Edit' : 'Add'} LLM Configuration</h3>
+                <!-- Error banner container -->
+                <div id="llm-modal-error" class="hidden mb-4 p-3 bg-red-500/20 border border-red-500 rounded-md">
+                    <div class="flex items-start gap-2">
+                        <svg class="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                        </svg>
+                        <span id="llm-modal-error-text" class="text-sm text-red-200 flex-1"></span>
+                    </div>
+                </div>
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-300 mb-1">Configuration Name</label>
@@ -929,6 +988,19 @@ export function showLLMConfigurationModal(configId = null) {
     const credentialsContainer = modal.querySelector('#llm-modal-credentials-container');
     const refreshBtn = modal.querySelector('#llm-modal-refresh-models');
     const modelSelect = modal.querySelector('#llm-modal-model');
+    const errorBanner = modal.querySelector('#llm-modal-error');
+    const errorText = modal.querySelector('#llm-modal-error-text');
+    
+    // Helper functions for error banner
+    function showModalError(message) {
+        errorText.textContent = message;
+        errorBanner.classList.remove('hidden');
+    }
+    
+    function hideModalError() {
+        errorBanner.classList.add('hidden');
+        errorText.textContent = '';
+    }
 
     // Function to render credential fields based on selected provider
     function renderCredentialFields(provider) {
@@ -988,6 +1060,12 @@ export function showLLMConfigurationModal(configId = null) {
     // Function to refresh models
     async function refreshModels() {
         const provider = providerSelect.value;
+        
+        if (!provider) {
+            showNotification('error', 'Please select a provider first');
+            return;
+        }
+        
         const credentials = {};
         
         // Collect credentials
@@ -1001,6 +1079,14 @@ export function showLLMConfigurationModal(configId = null) {
                 credentials[field] = input.value;
             }
         });
+        
+        // Validate required credentials
+        const template = LLM_PROVIDER_TEMPLATES[provider];
+        const missingFields = template.fields.filter(f => f.required && !credentials[f.id]);
+        if (missingFields.length > 0) {
+            showNotification('error', `Please enter: ${missingFields.map(f => f.label).join(', ')}`);
+            return;
+        }
 
         refreshBtn.disabled = true;
         refreshBtn.innerHTML = '<svg class="w-5 h-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
@@ -1013,6 +1099,10 @@ export function showLLMConfigurationModal(configId = null) {
             });
 
             const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to fetch models');
+            }
 
             if (data.models && data.models.length > 0) {
                 const certifiedModels = data.models.filter(model => {
@@ -1077,17 +1167,21 @@ export function showLLMConfigurationModal(configId = null) {
 
     // Save button
     modal.querySelector('#llm-modal-save').addEventListener('click', async () => {
+        const saveBtn = modal.querySelector('#llm-modal-save');
         const name = modal.querySelector('#llm-modal-name').value.trim();
         const provider = providerSelect.value;
         const model = modelSelect.value;
         
+        // Clear any previous errors
+        hideModalError();
+        
         if (!name) {
-            showNotification('error', 'Configuration name is required');
+            showModalError('Configuration name is required');
             return;
         }
 
         if (!model) {
-            showNotification('error', 'Please select a model');
+            showModalError('Please select a model');
             return;
         }
 
@@ -1108,7 +1202,7 @@ export function showLLMConfigurationModal(configId = null) {
         const template = LLM_PROVIDER_TEMPLATES[provider];
         const missingFields = template.fields.filter(f => f.required && !credentials[f.id]);
         if (missingFields.length > 0) {
-            showNotification('error', `Missing required fields: ${missingFields.map(f => f.label).join(', ')}`);
+            showModalError(`Missing required fields: ${missingFields.map(f => f.label).join(', ')}`);
             return;
         }
 
@@ -1120,29 +1214,47 @@ export function showLLMConfigurationModal(configId = null) {
         };
 
         try {
-            let success;
+            // Disable save button during validation
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Testing credentials...';
+            
+            // Save the configuration first (temporarily)
+            let savedConfigId;
+            let isNewConfig = !isEdit;
+            
             if (isEdit) {
-                success = await configState.updateLLMConfiguration(configId, configData);
+                await configState.updateLLMConfiguration(configId, configData);
+                savedConfigId = configId;
             } else {
-                const result = await configState.addLLMConfiguration(configData);
-                success = result !== null && result !== undefined;
+                savedConfigId = await configState.addLLMConfiguration(configData);
+                if (!savedConfigId) {
+                    throw new Error('Failed to create configuration');
+                }
             }
-
-            if (success) {
-                // Save credentials to localStorage for future use
+            
+            // Test the credentials
+            try {
+                const testResult = await API.testLLMConfiguration(savedConfigId);
+                
+                if (testResult.status !== 'success') {
+                    // Test failed - remove the config if it was new, or revert if edited
+                    if (isNewConfig) {
+                        await configState.removeLLMConfiguration(savedConfigId);
+                    }
+                    showModalError(`Credential validation failed: ${testResult.message}`);
+                    return;
+                }
+                
+                // Test passed - save credentials to localStorage
                 const storageKey = `${provider.toLowerCase()}ApiKey`;
                 try {
-                    // For providers with multiple fields, store as JSON object
                     if (Object.keys(credentials).length > 1) {
                         localStorage.setItem(storageKey, JSON.stringify(credentials));
                     } else if (credentials.apiKey) {
-                        // For simple apiKey, store as plain string
                         localStorage.setItem(storageKey, credentials.apiKey);
                     } else if (credentials.ollama_host) {
-                        // For Ollama, store host separately for backward compatibility
                         localStorage.setItem('ollamaHost', credentials.ollama_host);
                     } else {
-                        // Store the whole credentials object
                         localStorage.setItem(storageKey, JSON.stringify(credentials));
                     }
                 } catch (e) {
@@ -1150,11 +1262,21 @@ export function showLLMConfigurationModal(configId = null) {
                 }
                 
                 renderLLMProviders();
+                showNotification('success', `LLM configuration ${isEdit ? 'updated' : 'added'} successfully with validated credentials`);
                 modal.remove();
-                showNotification('success', `LLM configuration ${isEdit ? 'updated' : 'added'} successfully`);
+                
+            } catch (testError) {
+                // Test failed with exception - remove the config if it was new
+                if (isNewConfig) {
+                    await configState.removeLLMConfiguration(savedConfigId);
+                }
+                showModalError(`Credential validation failed: ${testError.message}`);
             }
         } catch (error) {
-            showNotification('error', `Failed to ${isEdit ? 'update' : 'add'} configuration: ${error.message}`);
+            showModalError(`Failed to ${isEdit ? 'update' : 'add'} configuration: ${error.message}`);
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = isEdit ? 'Update' : 'Add';
         }
     });
 }
@@ -1596,6 +1718,20 @@ function renderProfiles() {
 
     console.log('[renderProfiles] Rendering', configState.profiles.length, 'profiles');
     
+    // Update Test All Profiles button state
+    const testAllProfilesBtn = document.getElementById('test-all-profiles-btn');
+    if (testAllProfilesBtn) {
+        if (configState.profiles.length === 0) {
+            testAllProfilesBtn.disabled = true;
+            testAllProfilesBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            testAllProfilesBtn.classList.remove('hover:bg-blue-700');
+        } else {
+            testAllProfilesBtn.disabled = false;
+            testAllProfilesBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            testAllProfilesBtn.classList.add('hover:bg-blue-700');
+        }
+    }
+    
     if (configState.profiles.length === 0) {
         container.innerHTML = `
             <div class="text-center text-gray-400 py-8">
@@ -1674,24 +1810,24 @@ function renderProfiles() {
                 </div>
                 <div class="flex items-center gap-2">
                     <button type="button" data-action="test-profile" data-profile-id="${profile.id}" 
-                        class="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 rounded transition-colors text-white">
+                        class="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-white">
                         Test
                     </button>
                     <button type="button" data-action="reclassify-profile" data-profile-id="${profile.id}" 
-                        class="px-3 py-1 text-sm bg-purple-600 hover:bg-purple-700 rounded transition-colors text-white"
+                        class="px-4 py-2 text-sm font-medium bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors text-white"
                         title="Re-run classification for this profile">
                         Reclassify
                     </button>
                     <button type="button" data-action="copy-profile" data-profile-id="${profile.id}" 
-                        class="px-3 py-1 text-sm bg-green-600 hover:bg-green-700 rounded transition-colors text-white">
+                        class="px-4 py-2 text-sm font-medium bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-white">
                         Copy
                     </button>
                     <button type="button" data-action="edit-profile" data-profile-id="${profile.id}" 
-                        class="px-3 py-1 text-sm bg-gray-600 hover:bg-gray-700 rounded transition-colors text-white">
+                        class="px-4 py-2 text-sm font-medium bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-white">
                         Edit
                     </button>
                     <button type="button" data-action="delete-profile" data-profile-id="${profile.id}" 
-                        class="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 rounded transition-colors text-white">
+                        class="px-4 py-2 text-sm font-medium bg-gray-700 hover:bg-red-600 rounded-lg transition-colors text-red-400 hover:text-white">
                         Delete
                     </button>
                 </div>
@@ -1740,32 +1876,7 @@ function attachProfileEventListeners() {
             let activeIds = configState.activeForConsumptionProfileIds;
 
             if (isChecked) {
-                // Check if profile needs reclassification
-                const profile = configState.profiles.find(p => p.id === profileId);
-                if (profile && profile.needs_reclassification) {
-                    const shouldReclassify = confirm(
-                        'This profile has changes that require reclassification for optimal categorization.\n\n' +
-                        'Would you like to reclassify now? (Recommended)\n\n' +
-                        'Click OK to reclassify, or Cancel to activate without reclassifying.'
-                    );
-                    
-                    if (shouldReclassify) {
-                        // Trigger reclassification first
-                        try {
-                            const reclassifyBtn = document.querySelector(`[data-action="reclassify-profile"][data-profile-id="${profileId}"]`);
-                            if (reclassifyBtn) {
-                                reclassifyBtn.click();
-                                // Don't proceed with activation - let user activate after reclassification
-                                e.target.checked = false;
-                                return;
-                            }
-                        } catch (error) {
-                            console.error('Reclassification error:', error);
-                        }
-                    }
-                }
-                
-                // Test the profile before activating
+                // Test the profile first before any other checks
                 const resultsContainer = document.getElementById(`test-results-${profileId}`);
                 if (resultsContainer) {
                     resultsContainer.innerHTML = `<span class="text-yellow-400">Testing before activation...</span>`;
@@ -1781,29 +1892,55 @@ function attachProfileEventListeners() {
                         testResultsHTML += `<p class="${statusClass}">${value.message}</p>`;
                     }
                     
-                    if (allSuccessful) {
-                        // Tests passed - activate the profile
-                        if (!activeIds.includes(profileId)) {
-                            activeIds.push(profileId);
-                        }
-                        await configState.setActiveForConsumptionProfiles(activeIds);
-                        renderProfiles();
-                        renderLLMProviders(); // Re-render to update default/active badges
-                        renderMCPServers(); // Re-render to update default/active badges
-                        showNotification('success', 'Profile tested successfully and activated');
-                        
-                        // Re-apply test results after render
-                        const newResultsContainer = document.getElementById(`test-results-${profileId}`);
-                        if (newResultsContainer) {
-                            newResultsContainer.innerHTML = testResultsHTML;
-                        }
-                    } else {
+                    if (!allSuccessful) {
                         // Tests failed - revert checkbox and show results
                         e.target.checked = false;
                         if (resultsContainer) {
                             resultsContainer.innerHTML = testResultsHTML;
                         }
                         showNotification('error', 'Profile tests failed. Cannot activate profile.');
+                        return;
+                    }
+                    
+                    // Tests passed - now check if profile needs reclassification
+                    const profile = configState.profiles.find(p => p.id === profileId);
+                    if (profile && profile.needs_reclassification) {
+                        const shouldReclassify = confirm(
+                            'Tests passed! However, this profile has changes that require reclassification for optimal categorization.\n\n' +
+                            'Would you like to reclassify now before activating? (Recommended)\n\n' +
+                            'Click OK to reclassify, or Cancel to activate without reclassifying.'
+                        );
+                        
+                        if (shouldReclassify) {
+                            // Trigger reclassification first
+                            try {
+                                const reclassifyBtn = document.querySelector(`[data-action="reclassify-profile"][data-profile-id="${profileId}"]`);
+                                if (reclassifyBtn) {
+                                    reclassifyBtn.click();
+                                    // Don't proceed with activation - let user activate after reclassification
+                                    e.target.checked = false;
+                                    return;
+                                }
+                            } catch (error) {
+                                console.error('Reclassification error:', error);
+                            }
+                        }
+                    }
+                    
+                    // Tests passed (and either no reclassification needed or user declined) - activate the profile
+                    if (!activeIds.includes(profileId)) {
+                        activeIds.push(profileId);
+                    }
+                    await configState.setActiveForConsumptionProfiles(activeIds);
+                    renderProfiles();
+                    renderLLMProviders(); // Re-render to update default/active badges
+                    renderMCPServers(); // Re-render to update default/active badges
+                    showNotification('success', 'Profile tested successfully and activated');
+                    
+                    // Re-apply test results after render
+                    const newResultsContainer = document.getElementById(`test-results-${profileId}`);
+                    if (newResultsContainer) {
+                        newResultsContainer.innerHTML = testResultsHTML;
                     }
                 } catch (error) {
                     // Test error - revert checkbox
@@ -1841,21 +1978,8 @@ function attachProfileEventListeners() {
                 }
                 resultsContainer.innerHTML = html;
 
-                // Update checkbox
-                let activeIds = [...configState.activeForConsumptionProfileIds];
-                if (all_successful) {
-                    if (!activeIds.includes(profileId)) {
-                        activeIds.push(profileId);
-                    }
-                } else {
-                    activeIds = activeIds.filter(id => id !== profileId);
-                }
-                await configState.setActiveForConsumptionProfiles(activeIds);
-
-                const checkbox = document.querySelector(`input[data-action="toggle-active-consumption"][data-profile-id="${profileId}"]`);
-                if (checkbox) {
-                    checkbox.checked = all_successful;
-                }
+                // Just display results - don't auto-activate the profile
+                // User can manually activate via the toggle switch if tests pass
 
             } catch (error) {
                 resultsContainer.innerHTML = `<span class="text-red-400">${error.message}</span>`;

@@ -151,3 +151,73 @@ def get_provider_config_details(provider: str, model: str, credentials: Dict[str
         }
     
     return details
+
+
+async def test_llm_credentials(provider: str, model: str, credentials: Dict[str, Any]) -> Tuple[bool, str]:
+    """
+    Test LLM credentials by making a lightweight API call.
+    
+    Args:
+        provider: The LLM provider name
+        model: The model identifier
+        credentials: Dictionary containing provider-specific credentials
+        
+    Returns:
+        Tuple of (success: bool, message: str)
+    """
+    try:
+        # Create the client
+        llm_instance = await create_llm_client(provider, model, credentials)
+        
+        # Make provider-specific test call
+        if provider == "Google":
+            response = await llm_instance.generate_content_async("test")
+            if hasattr(response, 'text'):
+                return True, f"LLM connection successful ({provider} {model})."
+                
+        elif provider == "Anthropic":
+            response = await llm_instance.messages.create(
+                model=model,
+                max_tokens=5,
+                messages=[{"role": "user", "content": "test"}]
+            )
+            if response.content:
+                return True, f"LLM connection successful ({provider} {model})."
+                
+        elif provider in ["OpenAI", "Friendli", "Azure"]:
+            response = await llm_instance.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": "test"}],
+                max_tokens=5
+            )
+            if response.choices:
+                return True, f"LLM connection successful ({provider} {model})."
+                
+        elif provider == "Amazon":
+            import json
+            body = json.dumps({
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 5,
+                "messages": [{"role": "user", "content": "test"}]
+            })
+            response = llm_instance.invoke_model(modelId=model, body=body)
+            response_body = json.loads(response['body'].read())
+            if response_body.get('content'):
+                return True, f"LLM connection successful ({provider} {model})."
+                
+        elif provider == "Ollama":
+            response = await llm_instance.generate(model=model, prompt="test")
+            if response.get('response'):
+                return True, f"LLM connection successful ({provider} {model})."
+                
+        else:
+            return False, f"Provider '{provider}' is not supported for testing."
+            
+        return False, "LLM returned empty response."
+        
+    except Exception as e:
+        error_msg = str(e)
+        # Clean up error message
+        if "(" in error_msg:
+            error_msg = error_msg.split("(")[0].strip()
+        return False, f"Validation failed: {error_msg}"
