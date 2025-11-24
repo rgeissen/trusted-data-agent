@@ -1650,6 +1650,24 @@ function renderProfiles() {
                                 return 'N/A';
                             })()}</p>
                             <p><span class="font-medium">MCP:</span> ${escapeHtml(configState.mcpServers.find(s => s.id === profile.mcpServerId)?.name || 'Unknown')}</p>
+                            ${profile.classification_mode ? `
+                            <p><span class="font-medium">Classification:</span> ${(() => {
+                                const mode = profile.classification_mode;
+                                const badges = {
+                                    'light': '<span class="inline-flex items-center px-1.5 py-0.5 text-xs font-medium bg-blue-500/20 text-blue-400 rounded">Light</span>',
+                                    'full': '<span class="inline-flex items-center px-1.5 py-0.5 text-xs font-medium bg-purple-500/20 text-purple-400 rounded">Full</span>'
+                                };
+                                return badges[mode] || badges['light'];
+                            })()}</p>
+                            ` : ''}
+                            ${profile.needs_reclassification ? `
+                            <p><span class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-yellow-500/20 text-yellow-400 rounded border border-yellow-500/30">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                                Reclassification Recommended
+                            </span></p>
+                            ` : ''}
                         </div>
                         <div class="mt-2 text-xs" id="test-results-${profile.id}"></div>
                     </div>
@@ -1658,6 +1676,11 @@ function renderProfiles() {
                     <button type="button" data-action="test-profile" data-profile-id="${profile.id}" 
                         class="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 rounded transition-colors text-white">
                         Test
+                    </button>
+                    <button type="button" data-action="reclassify-profile" data-profile-id="${profile.id}" 
+                        class="px-3 py-1 text-sm bg-purple-600 hover:bg-purple-700 rounded transition-colors text-white"
+                        title="Re-run classification for this profile">
+                        Reclassify
                     </button>
                     <button type="button" data-action="copy-profile" data-profile-id="${profile.id}" 
                         class="px-3 py-1 text-sm bg-green-600 hover:bg-green-700 rounded transition-colors text-white">
@@ -1717,6 +1740,31 @@ function attachProfileEventListeners() {
             let activeIds = configState.activeForConsumptionProfileIds;
 
             if (isChecked) {
+                // Check if profile needs reclassification
+                const profile = configState.profiles.find(p => p.id === profileId);
+                if (profile && profile.needs_reclassification) {
+                    const shouldReclassify = confirm(
+                        'This profile has changes that require reclassification for optimal categorization.\n\n' +
+                        'Would you like to reclassify now? (Recommended)\n\n' +
+                        'Click OK to reclassify, or Cancel to activate without reclassifying.'
+                    );
+                    
+                    if (shouldReclassify) {
+                        // Trigger reclassification first
+                        try {
+                            const reclassifyBtn = document.querySelector(`[data-action="reclassify-profile"][data-profile-id="${profileId}"]`);
+                            if (reclassifyBtn) {
+                                reclassifyBtn.click();
+                                // Don't proceed with activation - let user activate after reclassification
+                                e.target.checked = false;
+                                return;
+                            }
+                        } catch (error) {
+                            console.error('Reclassification error:', error);
+                        }
+                    }
+                }
+                
                 // Test the profile before activating
                 const resultsContainer = document.getElementById(`test-results-${profileId}`);
                 if (resultsContainer) {
@@ -1865,6 +1913,47 @@ function attachProfileEventListeners() {
             }
         });
     });
+    
+    // Reclassify Profile button
+    document.querySelectorAll('[data-action="reclassify-profile"]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const button = e.target;
+            const profileId = button.dataset.profileId;
+            const profile = configState.profiles.find(p => p.id === profileId);
+            const profileName = profile ? profile.name : 'this profile';
+            
+            if (confirm(`Re-run classification for "${profileName}"?\n\nThis will clear cached results and reclassify all tools, prompts, and resources based on the profile's current classification mode.`)) {
+                try {
+                    // Disable button and show loading state
+                    button.disabled = true;
+                    button.textContent = 'Reclassifying...';
+                    
+                    const response = await fetch(`/api/v1/profiles/${profileId}/reclassify`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok && result.status === 'success') {
+                        showNotification('success', result.message || 'Profile reclassified successfully');
+                        // Refresh profile list to update needs_reclassification flag
+                        await configState.loadProfiles();
+                        renderProfiles();
+                    } else {
+                        showNotification('error', result.message || 'Failed to reclassify profile');
+                    }
+                } catch (error) {
+                    console.error('Reclassify error:', error);
+                    showNotification('error', 'Failed to reclassify profile');
+                } finally {
+                    // Re-enable button
+                    button.disabled = false;
+                    button.textContent = 'Reclassify';
+                }
+            }
+        });
+    });
 }
 
 async function showProfileModal(profileId = null) {
@@ -1899,6 +1988,13 @@ async function showProfileModal(profileId = null) {
             return `<option value="${server.id}" ${isSelected ? 'selected' : ''}>${escapeHtml(server.name)}</option>`;
         })
         .join('');
+
+    // Set classification mode
+    const classificationMode = profile?.classification_mode || 'light';
+    const modeRadio = modal.querySelector(`input[name="classification-mode"][value="${classificationMode}"]`);
+    if (modeRadio) {
+        modeRadio.checked = true;
+    }
 
     const toolsContainer = modal.querySelector('#profile-modal-tools');
     const promptsContainer = modal.querySelector('#profile-modal-prompts');
@@ -2081,6 +2177,10 @@ async function showProfileModal(profileId = null) {
         const selectedPrompts = Array.from(promptsContainer.querySelectorAll('input:checked')).map(cb => cb.value);
         const selectedRag = Array.from(ragContainer.querySelectorAll('input:checked')).map(cb => parseInt(cb.value));
         const selectedAutocomplete = Array.from(autocompleteContainer.querySelectorAll('input:checked')).map(cb => parseInt(cb.value));
+        
+        // Get selected classification mode
+        const classificationModeRadio = modal.querySelector('input[name="classification-mode"]:checked');
+        const classificationMode = classificationModeRadio ? classificationModeRadio.value : 'full';
 
         const profileData = {
             id: profile ? profile.id : `profile-${generateId()}`,
@@ -2089,6 +2189,7 @@ async function showProfileModal(profileId = null) {
             description,
             llmConfigurationId: llmSelect.value,
             mcpServerId: mcpSelect.value,
+            classification_mode: classificationMode,
             tools: selectedTools.length === allTools.length ? ['*'] : selectedTools,
             prompts: selectedPrompts.length === allPrompts.length ? ['*'] : selectedPrompts,
             ragCollections: selectedRag.length === ragCollections.length ? ['*'] : selectedRag,

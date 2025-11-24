@@ -233,13 +233,13 @@ async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None, 
         raise Exception("MCP server name not found in configuration.")
     
     # Get classification mode from profile if provided
-    classification_mode = 'full'  # default
+    classification_mode = 'light'  # default
     if profile_id:
         from trusted_data_agent.core.config_manager import ConfigManager
         config_manager = ConfigManager()
         profile = config_manager.get_profile(profile_id, user_uuid)
         if profile:
-            classification_mode = profile.get('classification_mode', 'full')
+            classification_mode = profile.get('classification_mode', 'light')
             app_logger.info(f"Using classification mode '{classification_mode}' from profile {profile_id}")
         else:
             app_logger.warning(f"Profile {profile_id} not found, using default classification mode 'full'")
@@ -340,15 +340,10 @@ async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None, 
         capabilities_list_str = "\n".join(all_capabilities)
 
         # --- Determine classification behavior based on profile's classification_mode ---
-        # 'none': No categorization, store everything flat
         # 'light': Single generic category per type ("All Tools", "All Prompts", "All Resources")
         # 'full': LLM-based semantic categorization
         
-        if classification_mode == 'none':
-            app_logger.info("Classification mode 'none': skipping all categorization.")
-            classified_data = {}
-            skip_classification = True
-        elif classification_mode == 'light':
+        if classification_mode == 'light':
             app_logger.info("Classification mode 'light': using generic single-category structure.")
             classified_data = {}
             skip_classification = True
@@ -390,9 +385,7 @@ async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None, 
         disabled_tools_list = STATE.get("disabled_tools", [])
 
         for tool in loaded_tools:
-            if classification_mode == 'none':
-                category = "Tools"  # Single flat category
-            elif skip_classification:  # 'light' mode
+            if skip_classification:  # 'light' mode
                 category = "All Tools"
             else:  # 'full' mode
                 classification = classified_data.get(tool.name, {})
@@ -449,9 +442,7 @@ async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None, 
 
         if loaded_prompts:
             for prompt_obj in loaded_prompts:
-                if classification_mode == 'none':
-                    category = "Prompts"  # Single flat category
-                elif skip_classification:  # 'light' mode
+                if skip_classification:  # 'light' mode
                     category = "All Prompts"
                 else:  # 'full' mode
                     classification = classified_data.get(prompt_obj.name, {})
@@ -485,9 +476,7 @@ async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None, 
         STATE['structured_resources'] = {} # Initialize the structure
         if loaded_resources:
             for resource_obj in loaded_resources:
-                if classification_mode == 'none':
-                    category = "Resources"  # Single flat category
-                elif skip_classification:  # 'light' mode
+                if skip_classification:  # 'light' mode
                     category = "All Resources"
                 else:  # 'full' mode
                     classification = classified_data.get(resource_obj.name, {})
@@ -549,7 +538,7 @@ async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None, 
         app_logger.info(f"Dynamically identified {len(tool_args)} tool and {len(prompt_args)} prompt arguments for context enrichment.")
         
         # Save classification results to profile if profile_id provided
-        if profile_id and classification_mode != 'none':
+        if profile_id:
             from trusted_data_agent.core.config_manager import ConfigManager
             config_manager = ConfigManager()
             

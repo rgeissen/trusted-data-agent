@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "created_at": "2025-11-18T15:42:02.792618+00:00",
-  "last_modified": "2025-11-24T10:59:47.165435+00:00",
+  "last_modified": "2025-11-24T11:40:07.975135+00:00",
   "enable_mcp_classification": false,
   "rag_collections": [
     {
@@ -229,7 +229,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "id": "profile-1763820446672-zy475d5rc",
@@ -291,7 +292,8 @@
         "resources": {},
         "last_classified": "2025-11-24T10:58:57.143606+00:00",
         "classified_with_mode": "full"
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "id": "profile-1763832288606-e7s3t60hi",
@@ -348,7 +350,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "id": "profile-1763894116960-ywzktgodl",
@@ -405,7 +408,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "autocompleteCollections": [
@@ -465,7 +469,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Test Profile Light",
@@ -480,7 +485,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Test Profile Light",
@@ -495,7 +501,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Test Direct",
@@ -510,7 +517,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Test Profile Light",
@@ -525,7 +533,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Test Profile Light",
@@ -540,7 +549,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Test Profile None",
@@ -555,7 +565,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Test Profile Light",
@@ -570,7 +581,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Test Profile Full",
@@ -585,7 +597,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Test Profile Light",
@@ -600,7 +613,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Test Profile None",
@@ -615,7 +629,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Test Profile Light",
@@ -630,7 +645,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Test Profile Full",
@@ -645,7 +661,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Test Profile Light",
@@ -660,7 +677,8 @@
         "resources": {},
         "last_classified": "2025-11-24T10:56:01.563256+00:00",
         "classified_with_mode": "light"
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Test Profile None",
@@ -675,7 +693,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Test Profile Light",
@@ -690,7 +709,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Test Profile Full",
@@ -705,7 +725,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Comparison Test Light",
@@ -720,7 +741,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Comparison Test Full",
@@ -735,7 +757,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Validation Test Profile",
@@ -750,7 +773,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Test Mode None",
@@ -765,7 +789,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Test Mode Light",
@@ -780,7 +805,8 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
     },
     {
       "name": "Test Mode Full",
@@ -795,7 +821,325 @@
         "resources": {},
         "last_classified": null,
         "classified_with_mode": null
-      }
+      },
+      "needs_reclassification": false
+    },
+    {
+      "name": "UI Test None Mode",
+      "tag": "UINO",
+      "description": "Testing none classification mode via UI",
+      "classification_mode": "full",
+      "llm_provider": "Google",
+      "llm_model": "gemini-1.5-flash",
+      "mcp_servers": [],
+      "id": "profile-103830c9-1ddf-4e24-91c8-76f10cf3f932",
+      "classification_results": {
+        "tools": {},
+        "prompts": {},
+        "resources": {},
+        "last_classified": "2025-11-24T11:10:43.827599+00:00",
+        "classified_with_mode": "full"
+      },
+      "needs_reclassification": false
+    },
+    {
+      "name": "UI Test Light Mode",
+      "tag": "UILI",
+      "description": "Testing light classification mode via UI",
+      "classification_mode": "light",
+      "llm_provider": "Google",
+      "llm_model": "gemini-1.5-flash",
+      "mcp_servers": [],
+      "id": "profile-7d953ab2-dc4b-4675-9611-a74894df5fc1",
+      "classification_results": {
+        "tools": {},
+        "prompts": {},
+        "resources": {},
+        "last_classified": null,
+        "classified_with_mode": null
+      },
+      "needs_reclassification": false
+    },
+    {
+      "name": "UI Test Full Mode",
+      "tag": "UIFU",
+      "description": "Testing full classification mode via UI",
+      "classification_mode": "full",
+      "llm_provider": "Google",
+      "llm_model": "gemini-1.5-flash",
+      "mcp_servers": [],
+      "id": "profile-9727510f-7f2e-461d-a900-fe9192baf9ba",
+      "classification_results": {
+        "tools": {},
+        "prompts": {},
+        "resources": {},
+        "last_classified": null,
+        "classified_with_mode": null
+      },
+      "needs_reclassification": false
+    },
+    {
+      "name": "E2E Test - None Mode",
+      "tag": "E2ENO",
+      "description": "End-to-end testing with none classification mode",
+      "classification_mode": "none",
+      "llm_provider": "Google",
+      "llm_model": "gemini-1.5-flash",
+      "mcp_servers": [
+        {
+          "name": "filesystem",
+          "command": "npx",
+          "args": [
+            "-y",
+            "@modelcontextprotocol/server-filesystem",
+            "/tmp"
+          ],
+          "env": {}
+        },
+        {
+          "name": "brave-search",
+          "command": "npx",
+          "args": [
+            "-y",
+            "@modelcontextprotocol/server-brave-search"
+          ],
+          "env": {
+            "BRAVE_API_KEY": "test-key"
+          }
+        },
+        {
+          "name": "memory",
+          "command": "npx",
+          "args": [
+            "-y",
+            "@modelcontextprotocol/server-memory"
+          ],
+          "env": {}
+        }
+      ],
+      "id": "profile-e0484290-d036-42a0-9a37-3581cd3a737e",
+      "classification_results": {
+        "tools": {},
+        "prompts": {},
+        "resources": {},
+        "last_classified": null,
+        "classified_with_mode": null
+      },
+      "needs_reclassification": false
+    },
+    {
+      "name": "E2E Test - Light Mode",
+      "tag": "E2ELI",
+      "description": "End-to-end testing with light classification mode",
+      "classification_mode": "light",
+      "llm_provider": "Google",
+      "llm_model": "gemini-1.5-flash",
+      "mcp_servers": [
+        {
+          "name": "filesystem",
+          "command": "npx",
+          "args": [
+            "-y",
+            "@modelcontextprotocol/server-filesystem",
+            "/tmp"
+          ],
+          "env": {}
+        },
+        {
+          "name": "brave-search",
+          "command": "npx",
+          "args": [
+            "-y",
+            "@modelcontextprotocol/server-brave-search"
+          ],
+          "env": {
+            "BRAVE_API_KEY": "test-key"
+          }
+        },
+        {
+          "name": "memory",
+          "command": "npx",
+          "args": [
+            "-y",
+            "@modelcontextprotocol/server-memory"
+          ],
+          "env": {}
+        }
+      ],
+      "id": "profile-a3465498-585c-4007-b52e-93b4dcb7e3ea",
+      "classification_results": {
+        "tools": {},
+        "prompts": {},
+        "resources": {},
+        "last_classified": null,
+        "classified_with_mode": null
+      },
+      "needs_reclassification": false
+    },
+    {
+      "name": "E2E Test - Full Mode",
+      "tag": "E2EFU",
+      "description": "End-to-end testing with full classification mode",
+      "classification_mode": "full",
+      "llm_provider": "Google",
+      "llm_model": "gemini-1.5-flash",
+      "mcp_servers": [
+        {
+          "name": "filesystem",
+          "command": "npx",
+          "args": [
+            "-y",
+            "@modelcontextprotocol/server-filesystem",
+            "/tmp"
+          ],
+          "env": {}
+        },
+        {
+          "name": "brave-search",
+          "command": "npx",
+          "args": [
+            "-y",
+            "@modelcontextprotocol/server-brave-search"
+          ],
+          "env": {
+            "BRAVE_API_KEY": "test-key"
+          }
+        },
+        {
+          "name": "memory",
+          "command": "npx",
+          "args": [
+            "-y",
+            "@modelcontextprotocol/server-memory"
+          ],
+          "env": {}
+        }
+      ],
+      "id": "profile-6499fb9c-dd81-46b4-8fa9-d4702c6fe37d",
+      "classification_results": {
+        "tools": {},
+        "prompts": {},
+        "resources": {},
+        "last_classified": null,
+        "classified_with_mode": null
+      },
+      "needs_reclassification": false
+    },
+    {
+      "name": "Test None Mode",
+      "tag": "TESTNONE",
+      "classification_mode": "none",
+      "llm_provider": "Google",
+      "llm_model": "gemini-1.5-flash",
+      "id": "profile-5e57c3ee-e294-47ba-b449-c92dc7bfb08d",
+      "classification_results": {
+        "tools": {},
+        "prompts": {},
+        "resources": {},
+        "last_classified": null,
+        "classified_with_mode": null
+      },
+      "needs_reclassification": false
+    },
+    {
+      "name": "Test Light Mode v2",
+      "tag": "LIGHT2",
+      "classification_mode": "light",
+      "llm_provider": "Google",
+      "llm_model": "gemini-1.5-flash",
+      "id": "profile-d6c83ec4-b2be-4d6d-94b2-9da84e6a0a3f",
+      "classification_results": {
+        "tools": {},
+        "prompts": {},
+        "resources": {},
+        "last_classified": null,
+        "classified_with_mode": null
+      },
+      "needs_reclassification": false
+    },
+    {
+      "name": "Test Full Mode v2",
+      "tag": "FULL2",
+      "classification_mode": "full",
+      "llm_provider": "Google",
+      "llm_model": "gemini-1.5-flash",
+      "id": "profile-958f4d09-f951-427c-8ab9-8e541f394f0b",
+      "classification_results": {
+        "tools": {},
+        "prompts": {},
+        "resources": {},
+        "last_classified": null,
+        "classified_with_mode": null
+      },
+      "needs_reclassification": false
+    },
+    {
+      "name": "Test Default Mode",
+      "tag": "DEFAULT",
+      "llm_provider": "Google",
+      "llm_model": "gemini-1.5-flash",
+      "id": "profile-b84ba4ed-8ae4-4e7f-8fc7-3d6a1178f0bf",
+      "classification_mode": "full",
+      "classification_results": {
+        "tools": {},
+        "prompts": {},
+        "resources": {},
+        "last_classified": null,
+        "classified_with_mode": null
+      },
+      "needs_reclassification": false
+    },
+    {
+      "name": "Test Reclassification Workflow",
+      "tag": "RECLASS",
+      "classification_mode": "full",
+      "llm_provider": "Google",
+      "llm_model": "gemini-1.5-flash",
+      "id": "profile-2ea8bec3-54ca-43b5-b57f-7c8a3e4d6323",
+      "classification_results": {
+        "tools": {},
+        "prompts": {},
+        "resources": {},
+        "last_classified": "2025-11-24T11:37:23.511948+00:00",
+        "classified_with_mode": "full"
+      },
+      "needs_reclassification": true,
+      "mcp_servers": [
+        {
+          "name": "test-server",
+          "command": "npx",
+          "args": [
+            "-y",
+            "@modelcontextprotocol/server-memory"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Test Reclassification Workflow",
+      "tag": "RECLASS1763984407",
+      "classification_mode": "full",
+      "llm_provider": "Google",
+      "llm_model": "gemini-1.5-flash",
+      "id": "profile-f81f1f03-043d-4013-844a-3aaf1820ee97",
+      "classification_results": {
+        "tools": {},
+        "prompts": {},
+        "resources": {},
+        "last_classified": "2025-11-24T11:40:07.974707+00:00",
+        "classified_with_mode": "full"
+      },
+      "needs_reclassification": true,
+      "mcp_servers": [
+        {
+          "name": "test-server",
+          "command": "npx",
+          "args": [
+            "-y",
+            "@modelcontextprotocol/server-memory"
+          ]
+        }
+      ]
     }
   ],
   "active_profile_id": null,

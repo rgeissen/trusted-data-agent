@@ -2384,11 +2384,11 @@ async def create_profile():
             data["id"] = f"profile-{uuid.uuid4()}"
         
         # Validate and set classification mode
-        classification_mode = data.get("classification_mode", "full")
-        if classification_mode not in ["none", "light", "full"]:
+        classification_mode = data.get("classification_mode", "light")
+        if classification_mode not in ["light", "full"]:
             return jsonify({
                 "status": "error", 
-                "message": f"Invalid classification_mode: '{classification_mode}'. Must be 'none', 'light', or 'full'."
+                "message": f"Invalid classification_mode: '{classification_mode}'. Must be 'light' or 'full'."
             }), 400
         data["classification_mode"] = classification_mode
         
@@ -2401,6 +2401,10 @@ async def create_profile():
                 "last_classified": None,
                 "classified_with_mode": None
             }
+        
+        # New profiles need classification
+        if "needs_reclassification" not in data:
+            data["needs_reclassification"] = True
         
         success = config_manager.add_profile(data, user_uuid)
         
@@ -2426,8 +2430,32 @@ async def activate_profile(profile_id: str):
     """
     user_uuid = _get_user_uuid_from_request()
     from trusted_data_agent.core import configuration_service
+    from trusted_data_agent.core.config_manager import ConfigManager
     
     try:
+        # Check if profile needs reclassification
+        config_manager = ConfigManager()
+        profile = config_manager.get_profile(profile_id, user_uuid)
+        
+        if not profile:
+            return jsonify({
+                "status": "error",
+                "message": f"Profile '{profile_id}' not found"
+            }), 404
+        
+        # If profile needs reclassification, return a special status
+        if profile.get("needs_reclassification", False):
+            result = await configuration_service.switch_profile_context(profile_id, user_uuid)
+            
+            if result["status"] == "success":
+                # Add warning about reclassification
+                result["needs_reclassification"] = True
+                result["warning"] = "This profile has changes that require reclassification for optimal categorization."
+                return jsonify(result), 200
+            else:
+                return jsonify(result), 400
+        
+        # Normal activation flow
         result = await configuration_service.switch_profile_context(profile_id, user_uuid)
         
         if result["status"] == "success":
@@ -2463,7 +2491,7 @@ async def get_profile_classification(profile_id: str):
     
     # Get classification results
     classification_results = config_manager.get_profile_classification(profile_id, user_uuid)
-    classification_mode = profile.get('classification_mode', 'full')
+    classification_mode = profile.get('classification_mode', 'light')
     
     return jsonify({
         "status": "success",
@@ -2506,6 +2534,10 @@ async def reclassify_profile(profile_id: str):
             # Get updated results
             classification_results = config_manager.get_profile_classification(profile_id, user_uuid)
             
+            # Clear the needs_reclassification flag
+            config_manager.update_profile(profile_id, {"needs_reclassification": False}, user_uuid)
+            app_logger.info(f"Cleared needs_reclassification flag for profile {profile_id}")
+            
             return jsonify({
                 "status": "success",
                 "message": "Profile reclassified successfully",
@@ -2513,10 +2545,13 @@ async def reclassify_profile(profile_id: str):
                 "classification_results": classification_results
             }), 200
         else:
+            # For inactive profiles, just clear the cache
+            # The flag will be cleared when profile is activated and classified
             return jsonify({
                 "status": "success",
                 "message": "Classification cache cleared. Will reclassify when profile is activated.",
-                "profile_id": profile_id
+                "profile_id": profile_id,
+                "note": "The needs_reclassification flag will be cleared after activation and classification."
             }), 200
     
     except Exception as e:
@@ -2542,18 +2577,26 @@ async def update_profile(profile_id: str):
         if "id" in data and data["id"] != profile_id:
             return jsonify({"status": "error", "message": "Cannot change profile ID"}), 400
 
+        # Get current profile to detect changes
+        current_profile = config_manager.get_profiles(user_uuid)
+        current_profile = next((p for p in current_profile if p.get("id") == profile_id), None)
+        
+        if not current_profile:
+            return jsonify({"status": "error", "message": f"Profile '{profile_id}' not found"}), 404
+        
+        # Track if reclassification is needed
+        needs_reclassification = False
+        
         # Validate classification_mode if provided
         if "classification_mode" in data:
-            if data["classification_mode"] not in ["none", "light", "full"]:
+            if data["classification_mode"] not in ["light", "full"]:
                 return jsonify({
                     "status": "error", 
-                    "message": f"Invalid classification_mode: '{data['classification_mode']}'. Must be 'none', 'light', or 'full'."
+                    "message": f"Invalid classification_mode: '{data['classification_mode']}'. Must be 'light' or 'full'."
                 }), 400
             
-            # If classification mode is changing, clear cached results to trigger reclassification
-            current_profile = config_manager.get_profiles(user_uuid)
-            current_profile = next((p for p in current_profile if p.get("id") == profile_id), None)
-            if current_profile and current_profile.get("classification_mode") != data["classification_mode"]:
+            # If classification mode is changing, clear cached results and flag for reclassification
+            if current_profile.get("classification_mode") != data["classification_mode"]:
                 data["classification_results"] = {
                     "tools": {},
                     "prompts": {},
@@ -2561,7 +2604,29 @@ async def update_profile(profile_id: str):
                     "last_classified": None,
                     "classified_with_mode": None
                 }
+                needs_reclassification = True
                 app_logger.info(f"Classification mode changed for profile {profile_id}, clearing cached results")
+        
+        # Check if MCP servers changed (affects available tools/prompts)
+        if "mcp_servers" in data:
+            current_servers = current_profile.get("mcp_servers", [])
+            new_servers = data["mcp_servers"]
+            # Compare server configurations
+            if current_servers != new_servers:
+                needs_reclassification = True
+                app_logger.info(f"MCP servers changed for profile {profile_id}, reclassification needed")
+        
+        # Check if LLM provider/model changed (affects full mode categorization)
+        if "llm_provider" in data or "llm_model" in data:
+            provider_changed = "llm_provider" in data and current_profile.get("llm_provider") != data["llm_provider"]
+            model_changed = "llm_model" in data and current_profile.get("llm_model") != data["llm_model"]
+            if (provider_changed or model_changed) and current_profile.get("classification_mode") == "full":
+                needs_reclassification = True
+                app_logger.info(f"LLM configuration changed for profile {profile_id} (full mode), reclassification recommended")
+        
+        # Set the reclassification flag
+        if needs_reclassification:
+            data["needs_reclassification"] = True
 
         # Validate tag uniqueness if tag is being changed
         tag = data.get("tag")

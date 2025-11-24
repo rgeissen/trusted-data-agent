@@ -3598,6 +3598,42 @@
                     </div>
                 </div>
 
+                <!-- Classification Mode Section -->
+                <div class="border-t border-gray-800/50 pt-5">
+                    <h4 class="text-sm font-medium text-gray-300 mb-2">
+                        Tool & Prompt Classification
+                    </h4>
+                    <p class="text-xs text-gray-500 mb-3">Choose how MCP tools and prompts are categorized in the UI</p>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-2">Classification Mode</label>
+                        <div class="grid grid-cols-1 gap-2">
+                            <label class="relative flex items-start gap-3 p-3 bg-gray-800/20 border border-gray-700/30 rounded-md cursor-pointer hover:bg-gray-800/40 hover:border-gray-600/50 transition-all">
+                                <input type="radio" name="classification-mode" value="light" id="profile-modal-classification-light" checked
+                                       class="mt-0.5 text-[#F15F22] focus:ring-[#F15F22] focus:ring-offset-gray-900">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-sm font-medium text-gray-200">Light</span>
+                                        <span class="px-1.5 py-0.5 text-xs font-medium bg-blue-500/20 text-blue-400 rounded">Recommended</span>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-0.5">Generic categories: "All Tools", "All Prompts", "All Resources"</p>
+                                </div>
+                            </label>
+                            
+                            <label class="relative flex items-start gap-3 p-3 bg-gray-800/20 border border-gray-700/30 rounded-md cursor-pointer hover:bg-gray-800/40 hover:border-gray-600/50 transition-all">
+                                <input type="radio" name="classification-mode" value="full" id="profile-modal-classification-full"
+                                       class="mt-0.5 text-[#F15F22] focus:ring-[#F15F22] focus:ring-offset-gray-900">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-sm font-medium text-gray-200">Full</span>
+                                        <span class="px-1.5 py-0.5 text-xs font-medium bg-purple-500/20 text-purple-400 rounded">Semantic</span>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-0.5">LLM-powered semantic categorization (e.g., "Data Quality", "Performance")</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- MCP Resources Section -->
                 <div class="border-t border-gray-800/50 pt-5">
                     <h4 class="text-sm font-medium text-gray-300 mb-3">

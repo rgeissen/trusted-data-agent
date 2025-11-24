@@ -44,7 +44,7 @@ class AppConfig:
     
     # --- Profile Classification State ---
     CURRENT_PROFILE_ID = None # ID of the currently active profile
-    CURRENT_PROFILE_CLASSIFICATION_MODE = None # Classification mode of current profile: 'none', 'light', or 'full'
+    CURRENT_PROFILE_CLASSIFICATION_MODE = None # Classification mode of current profile: 'light' or 'full'
     CURRENT_FRIENDLI_DETAILS = None # Stores Friendli.ai specific details {token, endpoint_url}.
     CURRENT_MODEL_PROVIDER_IN_PROFILE = None # For Amazon Bedrock, stores the model provider if using an inference profile ARN.
 

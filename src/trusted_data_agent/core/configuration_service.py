@@ -103,7 +103,7 @@ async def switch_profile_context(profile_id: str, user_uuid: str) -> dict:
     try:
         # Update runtime state
         APP_CONFIG.CURRENT_PROFILE_ID = profile_id
-        classification_mode = profile.get('classification_mode', 'full')
+        classification_mode = profile.get('classification_mode', 'light')
         APP_CONFIG.CURRENT_PROFILE_CLASSIFICATION_MODE = classification_mode
         
         app_logger.info(f"Switching to profile {profile_id} (classification mode: {classification_mode})")
@@ -115,6 +115,10 @@ async def switch_profile_context(profile_id: str, user_uuid: str) -> dict:
         if not cached_loaded:
             app_logger.info(f"No cached classification, running classification for profile {profile_id}")
             await mcp_adapter.load_and_categorize_mcp_resources(APP_STATE, user_uuid, profile_id)
+            
+            # Clear needs_reclassification flag after successful classification
+            config_manager.update_profile(profile_id, {"needs_reclassification": False}, user_uuid)
+            app_logger.info(f"Cleared needs_reclassification flag for profile {profile_id} after classification")
         
         # Load disabled tools/prompts from profile
         APP_STATE["disabled_tools"] = profile.get('disabled_tools', [])
@@ -438,7 +442,7 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             if profile_id:
                 profile = config_manager.get_profile(profile_id, user_uuid)
                 if profile:
-                    APP_CONFIG.CURRENT_PROFILE_CLASSIFICATION_MODE = profile.get('classification_mode', 'full')
+                    APP_CONFIG.CURRENT_PROFILE_CLASSIFICATION_MODE = profile.get('classification_mode', 'light')
                     app_logger.info(f"Set runtime classification mode to '{APP_CONFIG.CURRENT_PROFILE_CLASSIFICATION_MODE}'")
             
             # --- 4a. Load Enabled/Disabled Tools/Prompts from Active Profile ---
