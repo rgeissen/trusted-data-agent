@@ -38,7 +38,7 @@ def require_prompt_engineer_or_enterprise(f):
             return jsonify({"success": False, "message": "Authentication required"}), 401
         
         # Check license tier from APP_STATE
-        license_info = APP_STATE.get('license_info', {})
+        license_info = APP_STATE.get('license_info') or {}
         license_tier = license_info.get('tier', 'Unknown')
         
         if license_tier not in ['Prompt Engineer', 'Enterprise']:

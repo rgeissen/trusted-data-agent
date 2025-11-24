@@ -1363,12 +1363,14 @@ const AdminManager = {
                 const statusCheckbox = document.getElementById('default-status-expanded');
                 const allowOverrideCheckbox = document.getElementById('allow-user-panel-override');
                 const alwaysShowWelcomeCheckbox = document.getElementById('always-show-welcome-screen');
+                const defaultThemeSelector = document.getElementById('default-theme-selector');
                 
                 if (sessionCheckbox) sessionCheckbox.checked = data.window_defaults.session_history_expanded || false;
                 if (resourcesCheckbox) resourcesCheckbox.checked = data.window_defaults.resources_expanded || false;
                 if (statusCheckbox) statusCheckbox.checked = data.window_defaults.status_expanded || false;
                 if (allowOverrideCheckbox) allowOverrideCheckbox.checked = data.window_defaults.allow_user_override !== false;
                 if (alwaysShowWelcomeCheckbox) alwaysShowWelcomeCheckbox.checked = data.window_defaults.always_show_welcome_screen || false;
+                if (defaultThemeSelector) defaultThemeSelector.value = data.window_defaults.default_theme || 'legacy';
             }
         } catch (error) {
             console.error('[AdminManager] Error loading window defaults:', error);
@@ -1388,13 +1390,15 @@ const AdminManager = {
             const statusCheckbox = document.getElementById('default-status-expanded');
             const allowOverrideCheckbox = document.getElementById('allow-user-panel-override');
             const alwaysShowWelcomeCheckbox = document.getElementById('always-show-welcome-screen');
+            const defaultThemeSelector = document.getElementById('default-theme-selector');
 
             const windowDefaults = {
                 session_history_expanded: sessionCheckbox ? sessionCheckbox.checked : false,
                 resources_expanded: resourcesCheckbox ? resourcesCheckbox.checked : false,
                 status_expanded: statusCheckbox ? statusCheckbox.checked : false,
                 allow_user_override: allowOverrideCheckbox ? allowOverrideCheckbox.checked : true,
-                always_show_welcome_screen: alwaysShowWelcomeCheckbox ? alwaysShowWelcomeCheckbox.checked : false
+                always_show_welcome_screen: alwaysShowWelcomeCheckbox ? alwaysShowWelcomeCheckbox.checked : false,
+                default_theme: defaultThemeSelector ? defaultThemeSelector.value : 'legacy'
             };
 
             const response = await fetch('/api/v1/admin/window-defaults', {
@@ -1516,7 +1520,7 @@ const AdminManager = {
                     if (response.ok) {
                         const userData = await response.json();
                         // Check license_info from APP_STATE (stored during license validation)
-                        licenseTier = userData.license_tier || 'Unknown';
+                        licenseTier = userData.user?.license_tier || 'Unknown';
                         canEdit = licenseTier === 'Prompt Engineer' || licenseTier === 'Enterprise';
                     }
                 } catch (error) {

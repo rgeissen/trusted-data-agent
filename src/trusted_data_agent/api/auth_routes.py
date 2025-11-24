@@ -409,7 +409,7 @@ async def get_current_user_info(current_user):
     from trusted_data_agent.core.config import APP_STATE
     
     # Get license tier from APP_STATE
-    license_info = APP_STATE.get('license_info', {})
+    license_info = APP_STATE.get('license_info') or {}
     license_tier = license_info.get('tier', 'Unknown')
     
     return jsonify({

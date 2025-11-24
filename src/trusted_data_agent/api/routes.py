@@ -279,7 +279,8 @@ async def get_app_config():
         'resources_expanded': False,
         'status_expanded': False,
         'allow_user_override': True,
-        'always_show_welcome_screen': False
+        'always_show_welcome_screen': False,
+        'default_theme': 'legacy'
     })
     
     return jsonify({

@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 </head>
 <!-- MODIFICATION: Body remains the 100vh flex-col container -->
-<body class="flex h-screen flex-col bg-dark-bg text-light-text" data-theme="legacy">
+<body class="flex h-screen flex-col" data-theme="modern">
 
     <!-- MODIFICATION: These are now top-level. The wrappers are removed. -->
     <nav class="w-full bg-black/30 backdrop-blur-md border-b border-white/10 py-2 flex items-center justify-between flex-shrink-0 z-40">
@@ -2105,6 +2105,20 @@
                                                 </div>
                                             </div>
 
+                                            <!-- Default Theme -->
+                                            <div class="p-4 bg-gray-700/50 rounded-lg">
+                                                <div class="flex items-start gap-3">
+                                                    <div class="flex-1">
+                                                        <label for="default-theme-selector" class="block text-sm font-semibold text-white mb-2">Default Theme</label>
+                                                        <p class="text-xs text-gray-400 mb-3">Select the default theme that users will see on their first visit. Users can change their theme preference, and their choice will be saved.</p>
+                                                        <select id="default-theme-selector" name="default_theme" class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white text-sm focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22]">
+                                                            <option value="legacy">Legacy Theme</option>
+                                                            <option value="modern">Modern Theme</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <!-- User Override Control -->
                                             <div class="p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
                                                 <div class="flex items-start gap-3">
@@ -3605,7 +3619,7 @@
              * Initialize theme on page load
              */
             init() {
-                // Load saved theme or use default
+                // Load saved theme or use admin default
                 const savedTheme = this.getTheme();
                 this.applyTheme(savedTheme, false); // false = no transition on init
                 
@@ -3617,10 +3631,20 @@
             },
             
             /**
-             * Get current theme from localStorage
+             * Get current theme from localStorage or admin default
              */
             getTheme() {
-                return localStorage.getItem(this.STORAGE_KEY) || this.DEFAULT_THEME;
+                const saved = localStorage.getItem(this.STORAGE_KEY);
+                if (saved) {
+                    console.log('[ThemeManager] Using saved theme:', saved);
+                    return saved;
+                }
+                
+                // Check if admin has set a default theme
+                const adminDefault = state.appConfig?.window_defaults?.default_theme;
+                console.log('[ThemeManager] Admin default theme:', adminDefault);
+                console.log('[ThemeManager] Full appConfig:', state.appConfig);
+                return adminDefault || this.DEFAULT_THEME;
             },
             
             /**
@@ -3700,14 +3724,26 @@
             }
         };
         
-        // Initialize theme immediately (before DOM ready)
-        ThemeManager.init();
-        
         // ============================================================================
         // AUTHENTICATION
         // ============================================================================
         // Initialize authentication
         const authClient = new AuthClient();
+        
+        // Load app config early to get default theme before initializing ThemeManager
+        (async () => {
+            try {
+                const res = await fetch('/app-config');
+                state.appConfig = await res.json();
+                console.log('[Startup] App config loaded:', state.appConfig);
+            } catch (error) {
+                console.error('[Startup] Error loading app config:', error);
+                state.appConfig = { window_defaults: { default_theme: 'legacy' } };
+            }
+            
+            // Initialize theme after appConfig is loaded
+            ThemeManager.init();
+        })();
         
         // Global pane visibility cache
         let paneVisibilityCache = null;
@@ -3879,8 +3915,12 @@
             }
         }
         
-        // Initialize on page load
-        updateAuthUI();
+        // Initialize on page load - wait for DOM to be fully ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', updateAuthUI);
+        } else {
+            updateAuthUI();
+        }
         
         // Handle user menu toggle
         const userMenuButton = document.getElementById('user-menu-button');

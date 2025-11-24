@@ -250,9 +250,9 @@
    Enhanced with sophisticated gradients and depth
    ============================================================================ */
 body {
-    background: var(--gradient-primary, var(--bg-primary));
-    background-attachment: fixed;
-    color: var(--text-primary);
+    background: var(--gradient-primary, var(--bg-primary)) !important;
+    background-attachment: fixed !important;
+    color: var(--text-primary) !important;
     font-family: var(--font-primary);
     font-size: var(--text-base);
     line-height: 1.6;

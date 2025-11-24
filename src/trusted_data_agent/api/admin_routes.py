@@ -1589,7 +1589,8 @@ async def get_window_defaults():
             'resources_expanded': False,
             'status_expanded': False,
             'allow_user_override': True,
-            'always_show_welcome_screen': False
+            'always_show_welcome_screen': False,
+            'default_theme': 'legacy'
         })
         
         return jsonify({
@@ -1643,7 +1644,8 @@ async def update_window_defaults():
             'resources_expanded': bool(data.get('resources_expanded', False)),
             'status_expanded': bool(data.get('status_expanded', False)),
             'allow_user_override': bool(data.get('allow_user_override', True)),
-            'always_show_welcome_screen': bool(data.get('always_show_welcome_screen', False))
+            'always_show_welcome_screen': bool(data.get('always_show_welcome_screen', False)),
+            'default_theme': str(data.get('default_theme', 'legacy'))
         }
         
         config['window_defaults'] = window_defaults
