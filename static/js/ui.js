@@ -144,7 +144,7 @@ export function addMessage(role, content, turnId = null, isValid = true, source 
     // This logic is now handled by the badge.
 
     const messageContainer = document.createElement('div');
-    messageContainer.className = 'p-4 rounded-xl shadow-lg max-w-2xl glass-panel';
+    messageContainer.className = 'p-4 rounded-xl shadow-lg max-w-3xl glass-panel';
     // Use theme-aware gradients for message backgrounds
     messageContainer.style.background = role === 'user' 
         ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)' 

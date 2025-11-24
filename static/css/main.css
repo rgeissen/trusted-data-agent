@@ -67,7 +67,7 @@ body {
     border-radius: var(--radius-lg, 0.75rem);
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
-    overflow: hidden;
+    overflow: visible;
 }
 
 /* User Message - Elevated with orange accent */
