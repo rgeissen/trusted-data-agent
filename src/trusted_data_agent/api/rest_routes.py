@@ -2581,10 +2581,17 @@ async def reclassify_profile(profile_id: str):
     """
     Force reclassification of MCP resources for a specific profile.
     This clears cached results and re-runs classification using the profile's LLM and mode.
+    Initializes temporary LLM and MCP clients for classification if not already present.
     """
     user_uuid = _get_user_uuid_from_request()
     from trusted_data_agent.core.config_manager import ConfigManager
+    from trusted_data_agent.auth.admin import get_current_user_from_request
+    
     config_manager = ConfigManager()
+    
+    # Get current user for credential lookup (when auth is enabled)
+    current_user = get_current_user_from_request()
+    user_id_for_creds = current_user.id if current_user else user_uuid
     
     # Verify profile exists and belongs to user
     profile = config_manager.get_profile(profile_id, user_uuid)
@@ -2594,24 +2601,164 @@ async def reclassify_profile(profile_id: str):
             "message": f"Profile '{profile_id}' not found"
         }), 404
     
+    # Check if this profile is active for consumption
+    active_profiles = config_manager.get_active_for_consumption_profile_ids(user_uuid)
+    is_active_for_consumption = profile_id in active_profiles
+    
+    if not is_active_for_consumption:
+        # For inactive profiles, just clear the cache
+        config_manager.clear_profile_classification(profile_id, user_uuid)
+        return jsonify({
+            "status": "success",
+            "message": "Classification cache cleared. Profile must be active for classification to run.",
+            "profile_id": profile_id,
+            "note": "Activate the profile to run classification."
+        }), 200
+    
+    # Profile is active - need to run classification
+    app_logger.info(f"Profile {profile_id} is active for consumption, running reclassification now")
+    
+    # Store original state
+    original_llm = APP_STATE.get('llm')
+    original_mcp_client = APP_STATE.get('mcp_client')
+    original_profile_id = APP_CONFIG.CURRENT_PROFILE_ID
+    temp_llm_instance = None
+    temp_mcp_client = None
+    
     try:
         # Clear existing classification
         config_manager.clear_profile_classification(profile_id, user_uuid)
         app_logger.info(f"Cleared classification cache for profile {profile_id}")
         
-        # Re-run classification if this is the active profile
-        # For non-active profiles, classification will happen when they're activated
-        if APP_CONFIG.CURRENT_PROFILE_ID == profile_id:
-            app_logger.info(f"Profile {profile_id} is active, running reclassification now")
-            from trusted_data_agent.mcp_adapter import adapter as mcp_adapter
-            await mcp_adapter.load_and_categorize_mcp_resources(APP_STATE, user_uuid, profile_id)
-            
+        # Initialize temporary clients if needed
+        from trusted_data_agent.llm.client_factory import create_llm_client
+        
+        # Check if encryption is available
+        import os
+        ENCRYPTION_AVAILABLE = os.environ.get('TDA_AUTH_ENABLED', 'false').lower() == 'true'
+        
+        # Get LLM configuration from profile
+        llm_config_id = profile.get('llmConfigurationId')
+        if not llm_config_id:
+            return jsonify({
+                "status": "error",
+                "message": "Profile has no LLM configuration selected"
+            }), 400
+        
+        # Look up the actual LLM configuration
+        llm_config = next((c for c in config_manager.get_llm_configurations(user_uuid) 
+                          if c.get("id") == llm_config_id), None)
+        
+        if not llm_config:
+            return jsonify({
+                "status": "error",
+                "message": f"LLM configuration '{llm_config_id}' not found"
+            }), 404
+        
+        provider = llm_config.get('provider')
+        model = llm_config.get('model')
+        
+        if not provider or not model:
+            return jsonify({
+                "status": "error",
+                "message": "LLM configuration incomplete (missing provider or model)"
+            }), 400
+        
+        # Get credentials (decrypt if needed)
+        credentials = None
+        app_logger.info(f"Attempting to retrieve credentials for {provider}")
+        app_logger.info(f"  ENCRYPTION_AVAILABLE: {ENCRYPTION_AVAILABLE}")
+        app_logger.info(f"  user_id_for_creds: {user_id_for_creds}")
+        app_logger.info(f"  current_user: {current_user}")
+        
+        if ENCRYPTION_AVAILABLE and user_id_for_creds:
+            try:
+                from trusted_data_agent.auth import encryption
+                app_logger.info(f"Attempting to decrypt credentials for user_id={user_id_for_creds}, provider={provider}")
+                credentials = encryption.decrypt_credentials(user_id_for_creds, provider)
+                if credentials:
+                    app_logger.info(f"Successfully loaded encrypted credentials for {provider}")
+                else:
+                    app_logger.warning(f"decrypt_credentials returned None for {provider}")
+            except Exception as e:
+                app_logger.warning(f"Could not load encrypted credentials: {e}", exc_info=True)
+        else:
+            app_logger.warning(f"Skipping encryption: ENCRYPTION_AVAILABLE={ENCRYPTION_AVAILABLE}, user_id_for_creds={user_id_for_creds}")
+        
+        # Fall back to credentials in config if not found via encryption
+        if not credentials:
+            credentials = llm_config.get('credentials', {})
+            if credentials:
+                app_logger.info(f"Using credentials from LLM configuration")
+            else:
+                app_logger.warning(f"No credentials available for {provider}")
+                app_logger.warning(f"  LLM config keys: {list(llm_config.keys())}")
+                return jsonify({
+                    "status": "error",
+                    "message": f"No credentials available for {provider}. With auth enabled, credentials must be stored in the database. Please save your LLM configuration credentials first."
+                }), 400
+        
+        # Create temporary LLM client
+        app_logger.info(f"Creating temporary LLM client for {provider}/{model}")
+        temp_llm_instance = await create_llm_client(provider, model, credentials)
+        
+        # Get MCP configuration from profile
+        mcp_server_id = profile.get('mcpServerId')
+        if not mcp_server_id:
+            return jsonify({
+                "status": "error",
+                "message": "Profile has no MCP server selected"
+            }), 400
+        
+        # Look up the actual MCP server configuration
+        mcp_server = next((s for s in config_manager.get_mcp_servers(user_uuid) 
+                          if s.get("id") == mcp_server_id), None)
+        
+        if not mcp_server:
+            return jsonify({
+                "status": "error",
+                "message": f"MCP server '{mcp_server_id}' not found"
+            }), 404
+        
+        server_name = mcp_server.get('name')
+        server_host = mcp_server.get('host')
+        server_port = mcp_server.get('port')
+        server_path = mcp_server.get('path')
+        
+        if not all([server_name, server_host, server_port, server_path]):
+            return jsonify({
+                "status": "error",
+                "message": "MCP server configuration incomplete (missing name, host, port, or path)"
+            }), 400
+        
+        # Build MCP server config for MultiServerMCPClient
+        mcp_server_url = f"http://{server_host}:{server_port}{server_path}"
+        server_config = {"url": mcp_server_url, "transport": "streamable_http"}
+        
+        app_logger.info(f"Creating temporary MCP client for server {server_name} at {mcp_server_url}")
+        temp_mcp_client = MultiServerMCPClient({server_name: server_config})
+        
+        # Set temporary clients in APP_STATE
+        APP_STATE['llm'] = temp_llm_instance
+        APP_STATE['mcp_client'] = temp_mcp_client
+        
+        # Set provider and model in config so call_llm_api can use them
+        from trusted_data_agent.core.config import (
+            set_user_mcp_server_name, set_user_mcp_server_id,
+            set_user_provider, set_user_model
+        )
+        set_user_provider(provider, user_uuid)
+        set_user_model(model, user_uuid)
+        set_user_mcp_server_name(server_name, user_uuid)
+        set_user_mcp_server_id(mcp_server_id, user_uuid)
+        
+        # Now run classification via switch_profile_context
+        from trusted_data_agent.core import configuration_service
+        result = await configuration_service.switch_profile_context(profile_id, user_uuid)
+        
+        if result["status"] == "success":
             # Get updated results
             classification_results = config_manager.get_profile_classification(profile_id, user_uuid)
-            
-            # Clear the needs_reclassification flag
-            config_manager.update_profile(profile_id, {"needs_reclassification": False}, user_uuid)
-            app_logger.info(f"Cleared needs_reclassification flag for profile {profile_id}")
             
             return jsonify({
                 "status": "success",
@@ -2620,21 +2767,38 @@ async def reclassify_profile(profile_id: str):
                 "classification_results": classification_results
             }), 200
         else:
-            # For inactive profiles, just clear the cache
-            # The flag will be cleared when profile is activated and classified
             return jsonify({
-                "status": "success",
-                "message": "Classification cache cleared. Will reclassify when profile is activated.",
-                "profile_id": profile_id,
-                "note": "The needs_reclassification flag will be cleared after activation and classification."
-            }), 200
-    
+                "status": "error",
+                "message": f"Classification failed: {result.get('message', 'Unknown error')}"
+            }), 500
+            
     except Exception as e:
-        app_logger.error(f"Failed to reclassify profile {profile_id}: {e}", exc_info=True)
+        app_logger.error(f"Error during reclassification: {e}", exc_info=True)
         return jsonify({
             "status": "error",
             "message": f"Reclassification failed: {str(e)}"
         }), 500
+        
+    finally:
+        # Restore original state
+        APP_STATE['llm'] = original_llm
+        APP_STATE['mcp_client'] = original_mcp_client
+        
+        # Clean up temporary MCP client
+        if temp_mcp_client:
+            try:
+                if hasattr(temp_mcp_client, 'cleanup'):
+                    await temp_mcp_client.cleanup()
+            except Exception as cleanup_error:
+                app_logger.warning(f"Error cleaning up temporary MCP client: {cleanup_error}")
+        
+        # Switch back to original profile if needed
+        if original_profile_id and original_profile_id != profile_id:
+            app_logger.info(f"Switching back to original profile {original_profile_id}")
+            try:
+                await configuration_service.switch_profile_context(original_profile_id, user_uuid)
+            except Exception as switch_error:
+                app_logger.warning(f"Error switching back to original profile: {switch_error}")
 
 
 @rest_api_bp.route("/v1/profiles/<profile_id>", methods=["PUT"])
@@ -2682,22 +2846,52 @@ async def update_profile(profile_id: str):
                 needs_reclassification = True
                 app_logger.info(f"Classification mode changed for profile {profile_id}, clearing cached results")
         
-        # Check if MCP servers changed (affects available tools/prompts)
+        # Check if MCP server changed (affects available tools/prompts)
+        if "mcpServerId" in data:
+            current_server = current_profile.get("mcpServerId")
+            new_server = data["mcpServerId"]
+            if current_server != new_server:
+                needs_reclassification = True
+                app_logger.info(f"MCP server changed for profile {profile_id}, reclassification needed")
+        
+        # Check if MCP servers changed (legacy field - affects available tools/prompts)
         if "mcp_servers" in data:
             current_servers = current_profile.get("mcp_servers", [])
             new_servers = data["mcp_servers"]
-            # Compare server configurations
             if current_servers != new_servers:
                 needs_reclassification = True
                 app_logger.info(f"MCP servers changed for profile {profile_id}, reclassification needed")
         
-        # Check if LLM provider/model changed (affects full mode categorization)
+        # Check if LLM configuration changed (affects full mode categorization)
+        if "llmConfigurationId" in data:
+            current_llm_config = current_profile.get("llmConfigurationId")
+            new_llm_config = data["llmConfigurationId"]
+            if current_llm_config != new_llm_config and current_profile.get("classification_mode") == "full":
+                needs_reclassification = True
+                app_logger.info(f"LLM configuration changed for profile {profile_id} (full mode), reclassification recommended")
+        
+        # Check if LLM provider/model changed (legacy fields - affects full mode categorization)
         if "llm_provider" in data or "llm_model" in data:
             provider_changed = "llm_provider" in data and current_profile.get("llm_provider") != data["llm_provider"]
             model_changed = "llm_model" in data and current_profile.get("llm_model") != data["llm_model"]
             if (provider_changed or model_changed) and current_profile.get("classification_mode") == "full":
                 needs_reclassification = True
                 app_logger.info(f"LLM configuration changed for profile {profile_id} (full mode), reclassification recommended")
+        
+        # Check if tools or prompts selection changed
+        if "tools" in data:
+            current_tools = current_profile.get("tools", [])
+            new_tools = data["tools"]
+            if current_tools != new_tools:
+                needs_reclassification = True
+                app_logger.info(f"Tools selection changed for profile {profile_id}, reclassification needed")
+        
+        if "prompts" in data:
+            current_prompts = current_profile.get("prompts", [])
+            new_prompts = data["prompts"]
+            if current_prompts != new_prompts:
+                needs_reclassification = True
+                app_logger.info(f"Prompts selection changed for profile {profile_id}, reclassification needed")
         
         # Set the reclassification flag
         if needs_reclassification:

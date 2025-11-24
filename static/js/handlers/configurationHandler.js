@@ -55,6 +55,46 @@ function showNotification(type, message) {
 // Make showNotification globally available for use throughout the application
 window.showNotification = showNotification;
 
+function showDeleteConfirmation(message, onConfirm) {
+    const banner = document.getElementById('delete-confirmation-banner');
+    const messageEl = document.getElementById('delete-confirmation-message');
+    const cancelBtn = document.getElementById('delete-confirmation-cancel');
+    const okBtn = document.getElementById('delete-confirmation-ok');
+    
+    if (!banner || !messageEl || !cancelBtn || !okBtn) {
+        console.error('Delete confirmation banner elements not found');
+        return;
+    }
+    
+    // Set the message
+    messageEl.textContent = message;
+    
+    // Show the banner
+    banner.classList.remove('hidden');
+    
+    // Remove any existing event listeners by cloning
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    const newOkBtn = okBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+    okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+    
+    // Hide banner function
+    const hideBanner = () => {
+        banner.classList.add('hidden');
+    };
+    
+    // Cancel button
+    newCancelBtn.addEventListener('click', hideBanner);
+    
+    // OK button
+    newOkBtn.addEventListener('click', async () => {
+        hideBanner();
+        if (onConfirm) {
+            await onConfirm();
+        }
+    });
+}
+
 function generateId() {
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
@@ -311,6 +351,12 @@ class ConfigurationState {
             this.profiles = profiles || [];
             this.defaultProfileId = default_profile_id;
             this.activeForConsumptionProfileIds = active_for_consumption_profile_ids || [];
+            
+            // Set active_for_consumption flag on each profile based on the active list
+            this.profiles.forEach(profile => {
+                profile.active_for_consumption = this.activeForConsumptionProfileIds.includes(profile.id);
+            });
+            
             console.log('[ConfigState] State after load:', {
                 profileCount: this.profiles.length,
                 defaultProfileId: this.defaultProfileId,
@@ -743,7 +789,7 @@ function attachMCPEventListeners() {
             const server = configState.mcpServers.find(s => s.id === serverId);
             const serverName = server ? server.name : 'this server';
             
-            if (confirm(`Are you sure you want to delete MCP server "${serverName}"?`)) {
+            showDeleteConfirmation(`Are you sure you want to delete MCP server "${serverName}"?`, async () => {
                 const result = await configState.removeMCPServer(serverId);
                 if (result.success) {
                     renderMCPServers();
@@ -751,7 +797,7 @@ function attachMCPEventListeners() {
                 } else {
                     showNotification('error', result.error);
                 }
-            }
+            });
         });
     });
 }
@@ -898,15 +944,17 @@ function attachLLMEventListeners() {
             const configId = e.target.dataset.configId;
             const config = configState.llmConfigurations.find(c => c.id === configId);
             
-            if (config && confirm(`Are you sure you want to delete "${config.name}"?`)) {
-                const result = await configState.removeLLMConfiguration(configId);
-                if (result.success) {
-                    showNotification('success', 'LLM configuration deleted successfully');
-                    renderLLMProviders();
-                    updateReconnectButton();
-                } else {
-                    showNotification('error', result.error);
-                }
+            if (config) {
+                showDeleteConfirmation(`Are you sure you want to delete "${config.name}"?`, async () => {
+                    const result = await configState.removeLLMConfiguration(configId);
+                    if (result.success) {
+                        showNotification('success', 'LLM configuration deleted successfully');
+                        renderLLMProviders();
+                        updateReconnectButton();
+                    } else {
+                        showNotification('error', result.error);
+                    }
+                });
             }
         });
     });
@@ -1814,9 +1862,16 @@ function renderProfiles() {
                         Test
                     </button>
                     <button type="button" data-action="reclassify-profile" data-profile-id="${profile.id}" 
-                        class="px-4 py-2 text-sm font-medium bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors text-white"
-                        title="Re-run classification for this profile">
+                        class="px-4 py-2 text-sm font-medium ${profile.active_for_consumption ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-600 cursor-not-allowed opacity-50'} rounded-lg transition-colors text-white"
+                        title="${profile.active_for_consumption ? 'Re-run classification for this profile' : 'Activate profile to enable reclassification'}"
+                        ${profile.active_for_consumption ? '' : 'disabled'}>
                         Reclassify
+                    </button>
+                    <button type="button" data-action="show-classification" data-profile-id="${profile.id}" 
+                        class="px-4 py-2 text-sm font-medium ${isActiveForConsumption && profile.classification_results ? 'bg-teal-600 hover:bg-teal-700' : 'bg-gray-600 cursor-not-allowed opacity-50'} rounded-lg transition-colors text-white"
+                        title="${!isActiveForConsumption ? 'Activate profile to view classification' : (profile.classification_results ? 'View classification results' : 'No classification results available')}"
+                        ${isActiveForConsumption && profile.classification_results ? '' : 'disabled'}>
+                        Show Classification
                     </button>
                     <button type="button" data-action="copy-profile" data-profile-id="${profile.id}" 
                         class="px-4 py-2 text-sm font-medium bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-white">
@@ -1856,7 +1911,7 @@ function attachProfileEventListeners() {
             renderMCPServers(); // Re-render to update default/active badges
             updateReconnectButton(); // Update Reconnect & Load button state
             
-            showNotification('success', 'Default profile updated. Click "Reconnect & Load" to apply changes.');
+            showNotification('success', 'Default profile successfully changed');
         });
     });
 
@@ -1902,40 +1957,35 @@ function attachProfileEventListeners() {
                         return;
                     }
                     
-                    // Tests passed - now check if profile needs reclassification
-                    const profile = configState.profiles.find(p => p.id === profileId);
-                    if (profile && profile.needs_reclassification) {
-                        const shouldReclassify = confirm(
-                            'Tests passed! However, this profile has changes that require reclassification for optimal categorization.\n\n' +
-                            'Would you like to reclassify now before activating? (Recommended)\n\n' +
-                            'Click OK to reclassify, or Cancel to activate without reclassifying.'
-                        );
-                        
-                        if (shouldReclassify) {
-                            // Trigger reclassification first
-                            try {
-                                const reclassifyBtn = document.querySelector(`[data-action="reclassify-profile"][data-profile-id="${profileId}"]`);
-                                if (reclassifyBtn) {
-                                    reclassifyBtn.click();
-                                    // Don't proceed with activation - let user activate after reclassification
-                                    e.target.checked = false;
-                                    return;
-                                }
-                            } catch (error) {
-                                console.error('Reclassification error:', error);
-                            }
-                        }
-                    }
-                    
-                    // Tests passed (and either no reclassification needed or user declined) - activate the profile
+                    // Tests passed - activate the profile
+                    // Note: Classification will happen when user clicks "Reclassify" button or when profile is actually used
                     if (!activeIds.includes(profileId)) {
                         activeIds.push(profileId);
                     }
                     await configState.setActiveForConsumptionProfiles(activeIds);
-                    renderProfiles();
+                    
+                    // If no default profile exists, set this profile as default
+                    const wasSetAsDefault = !configState.defaultProfileId;
+                    if (wasSetAsDefault) {
+                        await configState.setDefaultProfile(profileId);
+                    }
+                    
+                    // Update the profile object's active_for_consumption property
+                    const profile = configState.profiles.find(p => p.id === profileId);
+                    const profileIndex = configState.profiles.findIndex(p => p.id === profileId);
+                    if (profileIndex !== -1) {
+                        configState.profiles[profileIndex].active_for_consumption = true;
+                    }
+                    
+                    await configState.loadProfiles(); // Reload to sync state
+                    renderProfiles(); // Re-render with updated state (reclassify button will be enabled)
                     renderLLMProviders(); // Re-render to update default/active badges
                     renderMCPServers(); // Re-render to update default/active badges
-                    showNotification('success', 'Profile tested successfully and activated');
+                    
+                    const message = wasSetAsDefault 
+                        ? `Profile "${profile ? profile.name : 'Profile'}" activated and set as default. Click "Reclassify" to classify tools and prompts.`
+                        : `Profile "${profile ? profile.name : 'Profile'}" activated successfully. Click "Reclassify" to classify tools and prompts.`;
+                    showNotification('success', message);
                     
                     // Re-apply test results after render
                     const newResultsContainer = document.getElementById(`test-results-${profileId}`);
@@ -1954,9 +2004,11 @@ function attachProfileEventListeners() {
                 // Deactivating - no test needed
                 activeIds = activeIds.filter(id => id !== profileId);
                 await configState.setActiveForConsumptionProfiles(activeIds);
-                renderProfiles();
+                await configState.loadProfiles(); // Reload to update active_for_consumption flags
+                renderProfiles(); // Re-render with updated state (reclassify button will be disabled)
                 renderLLMProviders(); // Re-render to update default/active badges
                 renderMCPServers(); // Re-render to update default/active badges
+                showNotification('success', 'Profile deactivated successfully');
             }
         });
     });
@@ -2028,13 +2080,22 @@ function attachProfileEventListeners() {
             const profile = configState.profiles.find(p => p.id === profileId);
             const profileName = profile ? profile.name : 'this profile';
             
-            if (confirm(`Are you sure you want to delete profile "${profileName}"?`)) {
+            // Only allow deleting the default profile if it's the last profile
+            const isDefault = profileId === configState.defaultProfileId;
+            const isLastProfile = configState.profiles.length === 1;
+            
+            if (isDefault && !isLastProfile) {
+                showNotification('error', 'Cannot delete the default profile while other profiles exist. Please change the default profile first.');
+                return;
+            }
+            
+            showDeleteConfirmation(`Are you sure you want to delete profile "${profileName}"?`, async () => {
                 await configState.removeProfile(profileId);
                 renderProfiles();
                 renderLLMProviders(); // Re-render to update default/active badges
                 renderMCPServers(); // Re-render to update default/active badges
                 showNotification('success', 'Profile deleted successfully');
-            }
+            });
         });
     });
     
@@ -2046,38 +2107,243 @@ function attachProfileEventListeners() {
             const profile = configState.profiles.find(p => p.id === profileId);
             const profileName = profile ? profile.name : 'this profile';
             
-            if (confirm(`Re-run classification for "${profileName}"?\n\nThis will clear cached results and reclassify all tools, prompts, and resources based on the profile's current classification mode.`)) {
-                try {
-                    // Disable button and show loading state
-                    button.disabled = true;
-                    button.textContent = 'Reclassifying...';
-                    
-                    const response = await fetch(`/api/v1/profiles/${profileId}/reclassify`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-                    
-                    const result = await response.json();
-                    
-                    if (response.ok && result.status === 'success') {
-                        showNotification('success', result.message || 'Profile reclassified successfully');
-                        // Refresh profile list to update needs_reclassification flag
-                        await configState.loadProfiles();
-                        renderProfiles();
-                    } else {
-                        showNotification('error', result.message || 'Failed to reclassify profile');
-                    }
-                } catch (error) {
-                    console.error('Reclassify error:', error);
-                    showNotification('error', 'Failed to reclassify profile');
-                } finally {
-                    // Re-enable button
-                    button.disabled = false;
-                    button.textContent = 'Reclassify';
+            // Button should be disabled if profile is not active (handled in rendering)
+            if (button.disabled) {
+                return;
+            }
+            
+            try {
+                // Disable button and show loading state
+                button.disabled = true;
+                button.textContent = 'Reclassifying...';
+                showNotification('info', `Reclassifying "${profileName}"... This will clear cached results and reclassify all resources.`);
+                
+                const headers = { 'Content-Type': 'application/json' };
+                const authToken = localStorage.getItem('tda_auth_token');
+                if (authToken) {
+                    headers['Authorization'] = `Bearer ${authToken}`;
                 }
+                
+                const response = await fetch(`/api/v1/profiles/${profileId}/reclassify`, {
+                    method: 'POST',
+                    headers: headers,
+                    credentials: 'include'  // Include session cookies for authentication
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.status === 'success') {
+                    showNotification('success', result.message || 'Profile reclassified successfully');
+                    // Refresh profile list to update needs_reclassification flag
+                    await configState.loadProfiles();
+                    renderProfiles();
+                } else {
+                    showNotification('error', result.message || 'Failed to reclassify profile');
+                }
+            } catch (error) {
+                console.error('Reclassify error:', error);
+                showNotification('error', 'Failed to reclassify profile');
+            } finally {
+                // Re-enable button
+                button.disabled = false;
+                button.textContent = 'Reclassify';
             }
         });
     });
+
+    document.querySelectorAll('[data-action="show-classification"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const profileId = e.target.dataset.profileId;
+            const profile = configState.profiles.find(p => p.id === profileId);
+            
+            if (!profile || !profile.classification_results) {
+                showNotification('error', 'No classification results available');
+                return;
+            }
+            
+            showClassificationModal(profile);
+        });
+    });
+}
+
+function showClassificationModal(profile) {
+    const modal = document.getElementById('classification-modal');
+    if (!modal) return;
+
+    const title = modal.querySelector('#classification-modal-title');
+    const subtitle = modal.querySelector('#classification-modal-subtitle');
+    const content = modal.querySelector('#classification-modal-content');
+    
+    // Set title and subtitle
+    title.textContent = `Classification Results - ${profile.name || profile.tag}`;
+    subtitle.textContent = `Mode: ${profile.classification_mode || 'light'} | Profile: @${profile.tag}`;
+    
+    // Get classification results
+    const results = profile.classification_results;
+    if (!results) {
+        content.innerHTML = '<p class="text-gray-400">No classification results available.</p>';
+        modal.classList.remove('hidden');
+        return;
+    }
+    
+    // Helper function to check if a tool/prompt is active in the profile
+    const isActive = (name, type) => {
+        const list = type === 'tool' ? profile.tools : profile.prompts;
+        if (!list || list.length === 0) return false;
+        if (list.includes('*')) return true;
+        return list.includes(name);
+    };
+    
+    // Build HTML for tools and prompts
+    let html = '';
+    
+    // Tools section
+    if (results.tools && Object.keys(results.tools).length > 0) {
+        const totalTools = Object.values(results.tools).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+        html += `
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-base font-semibold text-white">Tools</h4>
+                    <span class="text-sm text-gray-400">${Object.keys(results.tools).length} categories • ${totalTools} total tools</span>
+                </div>
+                <div class="space-y-3">
+        `;
+        
+        for (const [category, tools] of Object.entries(results.tools).sort()) {
+            const toolList = Array.isArray(tools) ? tools : [];
+            const categoryColor = getCategoryColor(category);
+            const activeCount = toolList.filter(t => {
+                const name = typeof t === 'string' ? t : (t.name || '');
+                return isActive(name, 'tool');
+            }).length;
+            
+            html += `
+                <div class="bg-gray-800/30 border border-gray-700/50 rounded-lg p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h5 class="text-sm font-medium" style="color: ${categoryColor};">
+                            <span class="inline-block w-2 h-2 rounded-full mr-2" style="background: ${categoryColor};"></span>
+                            ${escapeHtml(category)}
+                        </h5>
+                        <span class="text-xs text-gray-400">${activeCount}/${toolList.length} active</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            `;
+            
+            toolList.forEach(tool => {
+                const toolName = typeof tool === 'string' ? tool : (tool.name || 'Unknown');
+                const active = isActive(toolName, 'tool');
+                html += `
+                    <div class="text-sm font-mono px-3 py-1.5 rounded border ${active ? 'text-gray-300 bg-gray-900/30 border-gray-700/30' : 'text-gray-500 bg-gray-900/10 border-gray-700/20 opacity-50 line-through'}">
+                        ${escapeHtml(toolName)}
+                        ${!active ? '<span class="text-xs text-red-400 ml-2">(deactivated)</span>' : ''}
+                    </div>
+                `;
+            });
+            
+            html += `
+                    </div>
+                </div>
+            `;
+        }
+        
+        html += `
+                </div>
+            </div>
+        `;
+    }
+    
+    // Prompts section
+    if (results.prompts && Object.keys(results.prompts).length > 0) {
+        const totalPrompts = Object.values(results.prompts).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+        html += `
+            <div class="space-y-4 border-t border-gray-700/50 pt-6">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-base font-semibold text-white">Prompts</h4>
+                    <span class="text-sm text-gray-400">${Object.keys(results.prompts).length} categories • ${totalPrompts} total prompts</span>
+                </div>
+                <div class="space-y-3">
+        `;
+        
+        for (const [category, prompts] of Object.entries(results.prompts).sort()) {
+            const promptList = Array.isArray(prompts) ? prompts : [];
+            const categoryColor = getCategoryColor(category);
+            const activeCount = promptList.filter(p => {
+                const name = typeof p === 'string' ? p : (p.name || '');
+                return isActive(name, 'prompt');
+            }).length;
+            
+            html += `
+                <div class="bg-gray-800/30 border border-gray-700/50 rounded-lg p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h5 class="text-sm font-medium" style="color: ${categoryColor};">
+                            <span class="inline-block w-2 h-2 rounded-full mr-2" style="background: ${categoryColor};"></span>
+                            ${escapeHtml(category)}
+                        </h5>
+                        <span class="text-xs text-gray-400">${activeCount}/${promptList.length} active</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            `;
+            
+            promptList.forEach(prompt => {
+                const promptName = typeof prompt === 'string' ? prompt : (prompt.name || 'Unknown');
+                const active = isActive(promptName, 'prompt');
+                html += `
+                    <div class="text-sm font-mono px-3 py-1.5 rounded border ${active ? 'text-gray-300 bg-gray-900/30 border-gray-700/30' : 'text-gray-500 bg-gray-900/10 border-gray-700/20 opacity-50 line-through'}">
+                        ${escapeHtml(promptName)}
+                        ${!active ? '<span class="text-xs text-red-400 ml-2">(deactivated)</span>' : ''}
+                    </div>
+                `;
+            });
+            
+            html += `
+                    </div>
+                </div>
+            `;
+        }
+        
+        html += `
+                </div>
+            </div>
+        `;
+    }
+    
+    // If no tools or prompts
+    if ((!results.tools || Object.keys(results.tools).length === 0) && 
+        (!results.prompts || Object.keys(results.prompts).length === 0)) {
+        html = '<p class="text-gray-400">No tools or prompts have been classified yet.</p>';
+    }
+    
+    content.innerHTML = html;
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    
+    // Close button handler
+    const closeBtn = modal.querySelector('#classification-modal-close');
+    closeBtn.onclick = () => modal.classList.add('hidden');
+    
+    // Click outside to close
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            modal.classList.add('hidden');
+        }
+    };
+}
+
+function getCategoryColor(category) {
+    const colors = {
+        'Performance': '#3b82f6',      // blue
+        'Data Quality': '#10b981',      // green
+        'Data Visualization': '#8b5cf6', // purple
+        'Database Information': '#06b6d4', // cyan
+        'Table Management': '#f59e0b',  // amber
+        'Security': '#ef4444',          // red
+        'User Management': '#ec4899',   // pink
+        'Utilities': '#6b7280',         // gray
+        'Reporting': '#14b8a6',         // teal
+        'Archiving': '#a855f7'          // purple
+    };
+    return colors[category] || '#9ca3af'; // default gray
 }
 
 async function showProfileModal(profileId = null) {
@@ -2322,16 +2588,40 @@ async function showProfileModal(profileId = null) {
 
         try {
             if (isEdit) {
+                // Get the current state before update
+                const profileBeforeUpdate = configState.profiles.find(p => p.id === profileId);
+                const hadReclassificationFlag = profileBeforeUpdate?.needs_reclassification || false;
+                
                 await configState.updateProfile(profileId, profileData);
+                // Reload profiles to get updated needs_reclassification flag from backend
+                await configState.loadProfiles();
+                
+                // Check if reclassification flag was newly set during this update
+                const updatedProfile = configState.profiles.find(p => p.id === profileId);
+                const hasReclassificationFlag = updatedProfile?.needs_reclassification || false;
+                const flagWasNewlySet = !hadReclassificationFlag && hasReclassificationFlag;
+                
+                console.log('[Profile Update] Before:', hadReclassificationFlag, 'After:', hasReclassificationFlag, 'Newly set:', flagWasNewlySet);
+                
+                renderProfiles();
+                renderLLMProviders(); // Re-render to update default/active badges
+                renderMCPServers(); // Re-render to update default/active badges
+                modal.classList.add('hidden');
+                
+                if (flagWasNewlySet) {
+                    showNotification('warning', 'Profile updated - Reclassification recommended');
+                } else {
+                    showNotification('success', 'Profile updated successfully');
+                }
             } else {
                 await configState.addProfile(profileData);
+                
+                renderProfiles();
+                renderLLMProviders(); // Re-render to update default/active badges
+                renderMCPServers(); // Re-render to update default/active badges
+                modal.classList.add('hidden');
+                showNotification('success', 'Profile added successfully');
             }
-
-            renderProfiles();
-            renderLLMProviders(); // Re-render to update default/active badges
-            renderMCPServers(); // Re-render to update default/active badges
-            modal.classList.add('hidden');
-            showNotification('success', `Profile ${isEdit ? 'updated' : 'added'} successfully`);
         } catch (error) {
             showNotification('error', error.message);
         }
