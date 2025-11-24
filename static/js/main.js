@@ -875,14 +875,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Setup panel toggle handlers (called after configuration check so panels can be enabled if configured)
+    // Pass window defaults from app config to setupPanelToggle
+    const windowDefaults = state.appConfig?.window_defaults || {};
+    
     DOM.toggleHistoryCheckbox.checked = !DOM.sessionHistoryPanel.classList.contains('collapsed');
-    setupPanelToggle(DOM.toggleHistoryButton, DOM.sessionHistoryPanel, DOM.toggleHistoryCheckbox, DOM.historyCollapseIcon, DOM.historyExpandIcon);
+    setupPanelToggle(DOM.toggleHistoryButton, DOM.sessionHistoryPanel, DOM.toggleHistoryCheckbox, DOM.historyCollapseIcon, DOM.historyExpandIcon, windowDefaults);
 
     DOM.toggleHeaderCheckbox.checked = !DOM.toolHeader.classList.contains('collapsed');
-    setupPanelToggle(DOM.toggleHeaderButton, DOM.toolHeader, DOM.toggleHeaderCheckbox, DOM.headerCollapseIcon, DOM.headerExpandIcon);
+    setupPanelToggle(DOM.toggleHeaderButton, DOM.toolHeader, DOM.toggleHeaderCheckbox, DOM.headerCollapseIcon, DOM.headerExpandIcon, windowDefaults);
 
     DOM.toggleStatusCheckbox.checked = !DOM.statusWindow.classList.contains('collapsed');
-    setupPanelToggle(DOM.toggleStatusButton, DOM.statusWindow, DOM.toggleStatusCheckbox, DOM.statusCollapseIcon, DOM.statusExpandIcon);
+    setupPanelToggle(DOM.toggleStatusButton, DOM.statusWindow, DOM.toggleStatusCheckbox, DOM.statusCollapseIcon, DOM.statusExpandIcon, windowDefaults);
 
     const savedKeyObservationsMode = localStorage.getItem('keyObservationsMode');
     if (['autoplay-off', 'autoplay-on', 'off'].includes(savedKeyObservationsMode)) {

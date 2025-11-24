@@ -269,6 +269,18 @@ async def simple_chat():
 @api_bp.route("/app-config")
 async def get_app_config():
     """Returns the startup configuration flags and license info."""
+    from trusted_data_agent.core.config_manager import get_config_manager
+    
+    # Load window defaults from config
+    config_manager = get_config_manager()
+    config = config_manager.load_config()
+    window_defaults = config.get('window_defaults', {
+        'session_history_expanded': False,
+        'resources_expanded': False,
+        'status_expanded': False,
+        'allow_user_override': True
+    })
+    
     return jsonify({
         "all_models_unlocked": APP_CONFIG.ALL_MODELS_UNLOCKED,
         "charting_enabled": APP_CONFIG.CHARTING_ENABLED,
@@ -276,7 +288,8 @@ async def get_app_config():
         "default_charting_intensity": APP_CONFIG.DEFAULT_CHARTING_INTENSITY,
         "voice_conversation_enabled": APP_CONFIG.VOICE_CONVERSATION_ENABLED,
         "rag_enabled": APP_CONFIG.RAG_ENABLED,
-        "license_info": APP_STATE.get("license_info")
+        "license_info": APP_STATE.get("license_info"),
+        "window_defaults": window_defaults
     })
 
 @api_bp.route("/api/prompts-version")

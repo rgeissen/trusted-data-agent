@@ -145,7 +145,10 @@ export function addMessage(role, content, turnId = null, isValid = true, source 
 
     const messageContainer = document.createElement('div');
     messageContainer.className = 'p-4 rounded-xl shadow-lg max-w-2xl glass-panel';
-    messageContainer.classList.add(role === 'user' ? 'bg-gray-800/50' : 'bg-[#333333]/50');
+    // Use theme-aware gradients for message backgrounds
+    messageContainer.style.background = role === 'user' 
+        ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)' 
+        : 'var(--message-assistant-bg, rgba(30, 41, 59, 0.9))';
 
     const author = document.createElement('p');
     author.className = 'font-bold mb-2 text-sm';

@@ -1569,6 +1569,100 @@ async def save_expert_settings():
         }), 500
 
 
+@admin_api_bp.route("/v1/admin/window-defaults", methods=["GET"])
+@require_admin
+async def get_window_defaults():
+    """
+    Get default panel expansion states.
+    
+    Returns:
+        200: Window defaults retrieved successfully
+        500: Error retrieving defaults
+    """
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        
+        config_manager = get_config_manager()
+        config = config_manager.load_config()
+        window_defaults = config.get('window_defaults', {
+            'session_history_expanded': False,
+            'resources_expanded': False,
+            'status_expanded': False,
+            'allow_user_override': True
+        })
+        
+        return jsonify({
+            'status': 'success',
+            'window_defaults': window_defaults
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error retrieving window defaults: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@admin_api_bp.route("/v1/admin/window-defaults", methods=["PUT"])
+@require_admin
+async def update_window_defaults():
+    """
+    Update default panel expansion states.
+    
+    Expects JSON body:
+    {
+        "session_history_expanded": bool,
+        "resources_expanded": bool,
+        "status_expanded": bool
+    }
+    
+    Returns:
+        200: Window defaults saved successfully
+        400: Invalid data
+        500: Error saving defaults
+    """
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        
+        data = await request.get_json()
+        
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': 'No data provided'
+            }), 400
+        
+        config_manager = get_config_manager()
+        config = config_manager.load_config()
+        
+        # Update window defaults
+        window_defaults = {
+            'session_history_expanded': bool(data.get('session_history_expanded', False)),
+            'resources_expanded': bool(data.get('resources_expanded', False)),
+            'status_expanded': bool(data.get('status_expanded', False)),
+            'allow_user_override': bool(data.get('allow_user_override', True))
+        }
+        
+        config['window_defaults'] = window_defaults
+        config_manager.save_config(config)
+        
+        logger.info(f"Window defaults updated: {window_defaults}")
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Window defaults saved successfully',
+            'window_defaults': window_defaults
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error saving window defaults: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
 @admin_api_bp.route("/v1/admin/clear-cache", methods=["POST"])
 @require_admin
 async def clear_cache():

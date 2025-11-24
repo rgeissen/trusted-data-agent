@@ -72,10 +72,10 @@ body {
 
 /* User Message - Elevated with orange accent */
 .message-bubble.user {
-    background: var(--message-user-bg, linear-gradient(135deg, rgba(241, 95, 34, 0.15) 0%, rgba(241, 95, 34, 0.08) 100%)) !important;
-    border: 1px solid var(--message-user-border, rgba(241, 95, 34, 0.3)) !important;
-    box-shadow: 0 2px 8px rgba(241, 95, 34, 0.1),
-                0 1px 3px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
+    border: 1px solid rgba(241, 95, 34, 0.25) !important;
+    box-shadow: 0 2px 8px rgba(241, 95, 34, 0.15),
+                0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .message-bubble.user::before {
@@ -123,18 +123,18 @@ body {
                 0 0 20px rgba(59, 130, 246, 0.15) inset;
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     /* Ensure proper sizing and text centering */
-    min-width: 2.5rem;
-    min-height: 2.5rem;
-    width: 2.5rem;
-    height: 2.5rem;
+    min-width: 2.5rem !important;
+    min-height: 2.5rem !important;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     font-size: 0.95rem;
     font-weight: 700;
     line-height: 1;
-    overflow: hidden;
-    position: relative;
+    overflow: visible !important;
+    position: relative !important;
     letter-spacing: 0.02em;
 }
 
@@ -144,25 +144,25 @@ body {
 .message-bubble .bg-\[#F15F22\]::after {
     content: '';
     position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     background: linear-gradient(
         to bottom right,
         rgba(255, 255, 255, 0.15) 0%,
         rgba(255, 255, 255, 0.05) 40%,
         transparent 60%
     );
-    transform: rotate(-45deg);
+    border-radius: inherit;
     pointer-events: none;
+    z-index: 1;
 }
 
-/* Ensure text appears above shine effect */
-.avatar > *,
-.message-bubble .bg-gray-700 > *,
-.message-bubble .bg-\[#F15F22\] > * {
-    position: relative;
+/* Ensure avatar letter text has proper z-index - below badges */
+.avatar,
+.message-bubble .bg-gray-700,
+.message-bubble .bg-\[#F15F22\] {
     z-index: 1;
 }
 
@@ -197,7 +197,7 @@ body {
     background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.2) 0%, transparent 60%);
     border-radius: inherit;
     pointer-events: none;
-    z-index: 0;
+    z-index: 1;
 }
 
 .message-bubble.user .avatar:hover,
@@ -1056,35 +1056,35 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     color: var(--medium-text) !important;
 }
 
-/* --- MODIFICATION START: Styles for turn badge --- */
+/* --- MODIFICATION START: Styles for turn badge v2024 --- */
 .turn-badge {
-    position: absolute;
-    bottom: -4px;
-    right: -4px;
-    background-color: var(--teradata-orange); /* Default for Assistant */
-    color: white;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    font-size: 10px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-    border: 1px solid var(--dark-bg); /* Default border matching main background */
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    position: absolute !important;
+    background-color: var(--teradata-orange) !important;
+    color: white !important;
+    width: 22px !important;
+    height: 22px !important;
+    border-radius: 50% !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1 !important;
+    border: 2px solid var(--bg-primary, #0f172a) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+    z-index: 1000 !important;
+    pointer-events: auto !important;
+    top: calc(100% + 8px) !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
 }
-/* Style for User avatar badge */
- .bg-gray-700 .turn-badge {
-     background-color: var(--user-avatar-bg); /* Use the gray variable */
-     /* --- MODIFICATION START: Change border color to mid grey --- */
-     border: 1.5px solid var(--medium-text); /* White border, slightly thicker */
-     /* --- MODIFICATION END --- */
-     /* Text color remains white (inherited) */
-     /* Adjust positioning slightly if border thickness affects it */
-     bottom: -5px;
-     right: -5px;
+/* User avatar badge - centered below */
+.bg-gray-700 .turn-badge {
+    /* inherits from parent */
+}
+/* Assistant avatar badge - centered below */
+.bg-\[#F15F22\] .turn-badge {
+    /* inherits from parent */
 }
 /* --- MODIFICATION END --- */
 
@@ -2282,41 +2282,91 @@ button[data-action="delete-mcp"]:hover {
     }
 }
 
-/* Custom checkbox styling for profile modal */
-#profile-modal input[type="checkbox"] {
+/* Enhanced checkbox styling - applied globally */
+input[type="checkbox"] {
     appearance: none;
     -webkit-appearance: none;
-    width: 16px;
-    height: 16px;
-    border: 1.5px solid rgba(156, 163, 175, 0.4); /* gray-400 with opacity */
-    border-radius: 3px;
-    background-color: rgba(31, 41, 55, 0.3); /* gray-800 with low opacity */
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(148, 163, 184, 0.3);
+    border-radius: var(--radius-sm, 4px);
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.8));
     cursor: pointer;
     position: relative;
-    transition: all 0.15s ease;
+    transition: all var(--duration-200, 0.2s) var(--ease-out-expo, cubic-bezier(0.19, 1, 0.22, 1));
     flex-shrink: 0;
+    box-shadow: 
+        0 1px 3px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
-#profile-modal input[type="checkbox"]:hover {
-    border-color: rgba(156, 163, 175, 0.6);
-    background-color: rgba(31, 41, 55, 0.5);
+input[type="checkbox"]:hover {
+    border-color: rgba(148, 163, 184, 0.5);
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
+    box-shadow: 
+        0 2px 6px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transform: translateY(-0.5px);
 }
 
-#profile-modal input[type="checkbox"]:checked {
-    background-color: rgba(107, 114, 128, 0.6); /* gray-500 with opacity */
-    border-color: rgba(156, 163, 175, 0.8);
+input[type="checkbox"]:focus {
+    outline: none;
+    border-color: rgba(241, 95, 34, 0.5);
+    box-shadow: 
+        0 2px 6px rgba(0, 0, 0, 0.4),
+        0 0 0 3px rgba(241, 95, 34, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-#profile-modal input[type="checkbox"]:checked::after {
+input[type="checkbox"]:checked {
+    background: linear-gradient(135deg, var(--teradata-orange, #F15F22), var(--teradata-orange-dark, #D9501A));
+    border-color: rgba(241, 95, 34, 0.6);
+    box-shadow: 
+        0 2px 8px rgba(241, 95, 34, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+        inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+input[type="checkbox"]:checked::before {
     content: '';
     position: absolute;
-    left: 4px;
-    top: 1px;
-    width: 5px;
-    height: 9px;
-    border: solid rgba(229, 231, 235, 0.9); /* gray-200 */
+    inset: 0;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.2) 0%, transparent 60%);
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 2px;
+    width: 4px;
+    height: 8px;
+    border: solid #ffffff;
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
+}
+
+input[type="checkbox"]:checked:hover {
+    background: linear-gradient(135deg, #F15F22, #E85519);
+    box-shadow: 
+        0 4px 12px rgba(241, 95, 34, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.15) inset,
+        inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+    transform: translateY(-0.5px);
+}
+
+input[type="checkbox"]:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: rgba(148, 163, 184, 0.2);
+}
+
+input[type="checkbox"]:disabled:hover {
+    transform: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 #profile-modal label {

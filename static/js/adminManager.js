@@ -157,6 +157,12 @@ const AdminManager = {
         if (saveAppConfigBtn) {
             saveAppConfigBtn.addEventListener('click', () => this.saveAppConfig());
         }
+
+        // Window defaults button
+        const saveWindowDefaultsBtn = document.getElementById('save-window-defaults-btn');
+        if (saveWindowDefaultsBtn) {
+            saveWindowDefaultsBtn.addEventListener('click', () => this.saveWindowDefaults());
+        }
     },
 
     /**
@@ -1327,8 +1333,91 @@ const AdminManager = {
                     this.setFieldValue('rag-embedding-model', data.config.rag_config.embedding_model);
                 }
             }
+
+            // Load window defaults
+            await this.loadWindowDefaults();
         } catch (error) {
             console.error('[AdminManager] Error loading app config:', error);
+        }
+    },
+
+    /**
+     * Load window defaults from backend
+     */
+    async loadWindowDefaults() {
+        try {
+            const token = localStorage.getItem('tda_auth_token');
+            if (!token) return;
+
+            const response = await fetch('/api/v1/admin/window-defaults', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+            
+            if (response.ok && data.status === 'success') {
+                const sessionCheckbox = document.getElementById('default-session-history-expanded');
+                const resourcesCheckbox = document.getElementById('default-resources-expanded');
+                const statusCheckbox = document.getElementById('default-status-expanded');
+                const allowOverrideCheckbox = document.getElementById('allow-user-panel-override');
+                
+                if (sessionCheckbox) sessionCheckbox.checked = data.window_defaults.session_history_expanded || false;
+                if (resourcesCheckbox) resourcesCheckbox.checked = data.window_defaults.resources_expanded || false;
+                if (statusCheckbox) statusCheckbox.checked = data.window_defaults.status_expanded || false;
+                if (allowOverrideCheckbox) allowOverrideCheckbox.checked = data.window_defaults.allow_user_override !== false;
+            }
+        } catch (error) {
+            console.error('[AdminManager] Error loading window defaults:', error);
+        }
+    },
+
+    /**
+     * Save window defaults to backend
+     */
+    async saveWindowDefaults() {
+        try {
+            const token = localStorage.getItem('tda_auth_token');
+            if (!token) return;
+
+            const sessionCheckbox = document.getElementById('default-session-history-expanded');
+            const resourcesCheckbox = document.getElementById('default-resources-expanded');
+            const statusCheckbox = document.getElementById('default-status-expanded');
+            const allowOverrideCheckbox = document.getElementById('allow-user-panel-override');
+
+            const windowDefaults = {
+                session_history_expanded: sessionCheckbox ? sessionCheckbox.checked : false,
+                resources_expanded: resourcesCheckbox ? resourcesCheckbox.checked : false,
+                status_expanded: statusCheckbox ? statusCheckbox.checked : false,
+                allow_user_override: allowOverrideCheckbox ? allowOverrideCheckbox.checked : true
+            };
+
+            const response = await fetch('/api/v1/admin/window-defaults', {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(windowDefaults)
+            });
+
+            const data = await response.json();
+            
+            if (response.ok && data.status === 'success') {
+                if (window.showNotification) {
+                    window.showNotification('success', 'Window defaults saved successfully. Users without saved preferences will see these defaults on next load.');
+                }
+            } else {
+                if (window.showNotification) {
+                    window.showNotification('error', data.message || 'Failed to save window defaults');
+                }
+            }
+        } catch (error) {
+            console.error('[AdminManager] Error saving window defaults:', error);
+            if (window.showNotification) {
+                window.showNotification('error', 'Failed to save window defaults');
+            }
         }
     },
 

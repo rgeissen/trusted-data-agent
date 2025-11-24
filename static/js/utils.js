@@ -253,9 +253,12 @@ export function renderChart(containerId, spec) {
 }
 
 
-export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIcon) {
+export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIcon, windowDefaults = {}) {
     // Generate a unique storage key based on panel ID
     const storageKey = panel.id ? `panelState_${panel.id}` : null;
+    
+    // Check if user overrides are allowed
+    const allowUserOverride = windowDefaults.allow_user_override !== false;
     
     const toggle = (isOpen, saveState = true) => {
         const isCollapsed = !isOpen;
@@ -264,8 +267,8 @@ export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIc
         if (expandIcon) expandIcon.classList.toggle('hidden', !isCollapsed);
         if (checkbox) checkbox.checked = isOpen;
         
-        // Save state to localStorage
-        if (saveState && storageKey) {
+        // Save state to localStorage only if user override is allowed
+        if (saveState && storageKey && allowUserOverride) {
             try {
                 localStorage.setItem(storageKey, isOpen ? 'open' : 'collapsed');
             } catch (e) {
@@ -274,24 +277,72 @@ export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIc
         }
     };
 
-    // Restore state from localStorage on initialization
+    // Determine panel state
     if (storageKey) {
         try {
-            const savedState = localStorage.getItem(storageKey);
-            if (savedState !== null) {
-                const isOpen = savedState === 'open';
-                toggle(isOpen, false); // Don't save again during initialization
+            let defaultExpanded = false;
+            
+            // Map panel IDs to their corresponding window default keys
+            if (panel.id === 'session-history-panel' && windowDefaults.session_history_expanded !== undefined) {
+                defaultExpanded = windowDefaults.session_history_expanded;
+            } else if (panel.id === 'tool-header' && windowDefaults.resources_expanded !== undefined) {
+                defaultExpanded = windowDefaults.resources_expanded;
+            } else if (panel.id === 'status-window' && windowDefaults.status_expanded !== undefined) {
+                defaultExpanded = windowDefaults.status_expanded;
+            }
+            
+            if (allowUserOverride) {
+                // User can override - check for saved preference first
+                const savedState = localStorage.getItem(storageKey);
+                if (savedState !== null) {
+                    // User has a saved preference - use it
+                    const isOpen = savedState === 'open';
+                    toggle(isOpen, false);
+                } else {
+                    // No saved preference - use admin default
+                    toggle(defaultExpanded, false);
+                }
+            } else {
+                // User cannot override - always use admin default and clear any saved state
+                localStorage.removeItem(storageKey);
+                toggle(defaultExpanded, false);
             }
         } catch (e) {
             console.warn('Failed to restore panel state:', e);
         }
     }
 
-    button.addEventListener('click', (e) => {
-        toggle(panel.classList.contains('collapsed'));
-    });
-    if (checkbox) {
-        checkbox.addEventListener('change', () => toggle(checkbox.checked));
+    // Hide or show controls based on allow_user_override
+    if (!allowUserOverride) {
+        // Hide the toggle button and checkbox - panels are locked
+        if (button) {
+            button.style.display = 'none';
+        }
+        if (checkbox) {
+            const checkboxContainer = checkbox.closest('.toggle-container');
+            if (checkboxContainer) {
+                checkboxContainer.style.display = 'none';
+            }
+        }
+    } else {
+        // Show controls (in case they were previously hidden)
+        if (button) {
+            button.style.display = '';
+        }
+        if (checkbox) {
+            const checkboxContainer = checkbox.closest('.toggle-container');
+            if (checkboxContainer) {
+                checkboxContainer.style.display = '';
+            }
+        }
+        
+        // Enable event listeners only if override is allowed
+        button.addEventListener('click', (e) => {
+            toggle(panel.classList.contains('collapsed'));
+        });
+        if (checkbox) {
+            checkbox.addEventListener('change', () => toggle(checkbox.checked));
+        }
     }
 }
 
