@@ -242,7 +242,7 @@ The Trusted Data Agent is built on a modern, asynchronous client-server architec
 
 #### MCP Integration Layer
 - **Protocol:** Model Context Protocol - standardized tool/prompt/resource exposure
-- **Connection:** HTTP/WebSocket to MCP server
+- **Connection:** HTTP/WebSocket to MCP Server
 - **Security:** Credential passthrough, no credential storage in agent
 
 ### Data Flow & Session Management
@@ -264,7 +264,7 @@ The Trusted Data Agent is built on a modern, asynchronous client-server architec
 - Sessions stored in `tda_sessions/{session_id}/` with conversation and workflow history
 - Multi-user Docker: Separate containers OR persistence disabled for shared container
 
-### Deployment Architectures
+**Deployment Architectures:**
 
 **Single-User (Development):**
 ```
@@ -277,7 +277,7 @@ Option 1: Load Balancer → Multiple Container Instances (port 5000, 5001, 5002.
 Option 2: Shared Container → TDA_CONFIGURATION_PERSISTENCE=false (sequential access)
 ```
 
-### Security Considerations
+**Security Considerations:**
 
 - **Credentials:** LLM/MCP credentials never logged or exposed in UI
 - **Isolation:** Session data segregated by user UUID
@@ -436,11 +436,11 @@ The Trusted Data Agent uses a modern, modular configuration system that separate
 
 ##### Step 1: Configure MCP Servers
 
-1. **Open the App:** After running the application, navigate to `http://127.0.0.1:5000` in your browser.
+1. **Open the App:** After running the application, navigate to `http://localhost:5000` in your browser.
 
-2. **Open Configuration Panel:** Click the gear icon to open the configuration modal.
+2. **Navigate to Credentials:** Click on the **Credentials** panel in the left sidebar.
 
-3. **MCP Servers Tab:** Configure one or more MCP Server connections:
+3. **MCP Servers Tab:** Select the "MCP Servers" tab and configure one or more MCP Server connections:
    - **Name:** A friendly identifier for this server (e.g., "Production Database", "Dev Environment")
    - **Host:** The hostname or IP address of your MCP Server
    - **Port:** The port number (e.g., 8888)
@@ -482,37 +482,165 @@ Profiles combine an MCP Server with an LLM Provider to create named configuratio
 
 ##### Step 4: Start Conversation
 
-1. Click the **"Start Conversation"** button to activate your default profile.
+1. Navigate back to the **Conversations** panel using the left sidebar.
 
-2. The application will validate connections, load capabilities from the MCP Server, and prepare the agent for interaction.
+2. Click the **"Start Conversation"** button to activate your default profile.
+
+3. The application will validate connections, load capabilities from the MCP Server, and prepare the agent for interaction.
 
 ---
 
 ### Using the Interface
 
-#### The Main Interface
+#### Navigation and Panel Structure
 
-The UI is divided into several key areas:
+The application provides a multi-panel interface accessible through the left sidebar navigation. Click the hamburger menu (☰) in the top-left to expand/collapse the sidebar.
 
-* **History Panel (Left):** Lists all your conversation sessions. You can click to switch between them or start a new chat with the "+" button.
+**Available Panels:**
 
-* **Capabilities Panel (Top):** This is your library of available actions, organized into tabs:
+1. **Conversations** - Main conversational interface with the agent
+2. **Executions** - Real-time dashboard for monitoring all agent tasks
+3. **RAG Maintenance** - Manage knowledge base collections and RAG templates
+4. **Marketplace** - Browse and install RAG templates from the community
+5. **Credentials** - Configure LLM providers, MCP Servers, and profiles
+6. **Administration** - User management and system settings (admin only)
 
-  * **Tools:** Single-action functions the agent can call (e.g., `base_tableList`).
+#### The Conversation Panel
 
-  * **Prompts:** Pre-defined, multi-step workflows the agent can execute (e.g., `qlty_tableQualityReport`).
+When you select the **Conversations** panel, the interface is organized into several key areas:
 
-  * **Resources:** Other available assets from the MCP server.
+* **Session History (Left):** Lists all your conversation sessions. Click to switch between sessions or start a new conversation with the "+" button.
 
-* **Chat Window (Center):** This is where your conversation with the agent appears.
+* **Capabilities Panel (Top):** Your library of available actions from the connected MCP Server, organized into tabs:
 
-* **Chat Input (Bottom):** Type your questions in natural language here.
+  * **Tools:** Single-action functions the agent can call (e.g., `base_tableList`)
+  
+  * **Prompts:** Pre-defined, multi-step workflows the agent can execute (e.g., `qlty_tableQualityReport`)
+  
+  * **Resources:** Other available assets from the MCP Server
 
-* **Live Status Panel (Right):** This is the transparency window. It shows a real-time log of the agent's internal monologue, the tools it decides to run, and the raw data it gets back.
+* **Chat Window (Center):** Where your conversation with the agent appears, showing both user queries and agent responses.
+
+* **Chat Input (Bottom):** Type your questions in natural language here. Supports profile overrides and voice input.
+
+* **Live Status Panel (Right):** The transparency window showing real-time logs of the agent's internal reasoning, tool executions, and raw data responses.
+
+#### The Executions Panel
+
+The **Executions** panel provides a comprehensive, real-time dashboard for monitoring all agent workloads across the application:
+
+* **Task List:** View all running, completed, and failed tasks with their status, duration, and resource usage
+* **Real-time Updates:** Tasks automatically update as they progress through stages (planning, execution, synthesis)
+* **Detailed Execution View:** Click any task to see its full execution log, including:
+  - Agent reasoning and planning steps
+  - Tool invocations and responses
+  - Error messages and stack traces
+  - Token usage and cost estimates
+* **Task Control:** Cancel running tasks or retry failed executions
+* **Cross-Source Monitoring:** Track tasks initiated from the UI, REST API, or scheduled workflows
+
+This panel is especially valuable for monitoring REST API-triggered workloads and debugging complex agent behaviors.
+
+#### The RAG Maintenance Panel
+
+The **RAG Maintenance** panel is your control center for managing the Retrieval-Augmented Generation (RAG) knowledge base:
+
+* **Collections Management:**
+  - View all RAG collections with document counts and metadata
+  - Create, update, or delete collections
+  - Inspect individual documents and their embeddings
+  - Bulk import/export collection data
+  
+* **Template Management:**
+  - Browse installed RAG templates
+  - Configure template parameters
+  - View template usage statistics
+  - Enable/disable specific templates
+
+* **Content Operations:**
+  - Generate contextual questions for documents
+  - Populate collections with new content
+  - Provide feedback on RAG retrieval quality
+  - Clean orphaned or invalid entries
+
+For detailed RAG workflows and maintenance procedures, see the [RAG Maintenance Guide](maintenance/RAG_MAINTENANCE_GUIDE.md).
+
+#### The Marketplace Panel
+
+The **Marketplace** panel provides access to community-contributed RAG templates:
+
+* **Template Discovery:** Browse available templates by category, popularity, or use case
+* **Template Preview:** View template details, capabilities, and example use cases before installation
+* **One-Click Installation:** Install templates directly into your RAG system
+* **Version Management:** Update existing templates to latest versions
+* **Community Ratings:** See ratings and reviews from other users
+
+Templates extend the agent's capabilities with specialized knowledge domains, industry-specific workflows, and pre-configured analysis patterns.
+
+#### The Credentials Panel
+
+The **Credentials** panel is where you configure all external connections and create profiles. This is typically the first panel you'll use when setting up the application:
+
+* **MCP Servers Tab:**
+  - Configure Model Context Protocol server connections
+  - Test server connectivity and capability discovery
+  - Manage server-specific settings and parameters
+
+* **LLM Providers Tab:**
+  - Add connections to Google, Anthropic, OpenAI, Azure, AWS Bedrock, Friendli.AI, or Ollama
+  - Configure API keys, endpoints, and authentication
+  - Test model availability and fetch model lists
+  - Compare multiple providers side-by-side
+
+* **Profiles Tab:**
+  - Create named profiles combining MCP servers with LLM providers
+  - Set default profiles and configure profile tags for quick switching
+  - Enable/disable profiles for temporary override selection
+  - Manage profile-specific settings and descriptions
+
+All credential data can be stored in secure keyring storage or environment variables for enhanced security.
+
+#### The Administration Panel
+
+The **Administration** panel provides system-level management capabilities (visible only to admin users):
+
+* **User Management:**
+  - Create, modify, and deactivate user accounts
+  - Assign roles and permissions
+  - Monitor user activity and session history
+  - Reset passwords and manage authentication
+
+* **System Configuration:**
+  - Configure application-wide settings
+  - Manage logging levels and retention
+  - Set resource limits and quotas
+  - Monitor system health and performance
+
+* **Audit Logs:**
+  - View all system activities and changes
+  - Track API usage and access patterns
+  - Export audit data for compliance reporting
+
+#### Quick Navigation Tips
+
+* **Sidebar Toggle:** Click the hamburger menu (☰) or use keyboard shortcut to expand/collapse the navigation sidebar
+* **Panel Switching:** Click any panel name in the sidebar to instantly switch views
+* **Multi-Panel Workflow:** Open the Credentials panel to configure connections, then switch to Conversations to start chatting
+* **Monitoring While Working:** Keep the Executions panel open in a separate browser tab to monitor long-running tasks
+* **Keyboard Shortcuts:** Use `Ctrl/Cmd + Number` to jump directly to panels (where supported)
+
+**Example Workflow:**
+1. **Credentials** → Configure LLM providers and MCP servers → Create profiles
+2. **Marketplace** → Browse and install RAG templates for your domain
+3. **RAG Maintenance** → Populate collections with your knowledge base
+4. **Conversations** → Start chatting with the agent using your enriched context
+5. **Executions** → Monitor task progress and review execution logs
+
+---
 
 #### Asking Questions
 
-Simply type your request into the chat input at the bottom and press Enter.
+Simply type your request into the chat input at the bottom of the **Conversations** panel and press Enter.
 
 * **Example:** `"What tables are in the DEMO_DB database?"`
 
@@ -571,9 +699,9 @@ The agent will execute the entire workflow and present a structured report.
 
 #### Customizing the Agent's Behavior
 
-You can change how the agent thinks and behaves by editing its core instructions.
+You can change how the agent thinks and behaves by editing its core instructions (available in the **Conversations** panel).
 
-1. Click the **"System Prompt"** button in the top navigation bar.
+1. Click the **"System Prompt"** button in the conversation header.
 
 2. The editor modal will appear, showing the current set of instructions for the selected model.
 
@@ -585,9 +713,9 @@ You can change how the agent thinks and behaves by editing its core instructions
 
 #### Direct Chat with the LLM
 
-To test the raw intelligence of a model without the agent's tool-using logic, you can use the direct chat feature.
+To test the raw intelligence of a model without the agent's tool-using logic, you can use the direct chat feature (available in the **Conversations** panel).
 
-1. Click the **"Chat"** button in the top navigation bar.
+1. Click the **"Chat"** button in the conversation header.
 
 2. A modal will appear, allowing you to have a direct, tool-less conversation with the currently configured LLM. This is useful for evaluating a model's baseline knowledge or creative capabilities.
 
@@ -667,7 +795,7 @@ The Trusted Data Agent includes a powerful, asynchronous REST API to enable prog
 This API exposes the core functionalities of the agent, allowing developers to build custom applications, automate complex analytical tasks, and manage the agent's configuration without using the web interface.
 
 **Important Notes for REST API Usage:**
-*   Most API calls now require an `X-TDA-User-UUID` header for user identification and session management. The example scripts (`rest_run_query.sh`, `rest_check_status.sh`, `rest_stop_task.sh`) require you to provide this UUID as a command-line argument. You can find your User UUID in the application's configuration screen.
+*   Most API calls now require an `X-TDA-User-UUID` header for user identification and session management. The example scripts (`rest_run_query.sh`, `rest_check_status.sh`, `rest_stop_task.sh`) require you to provide this UUID as a command-line argument. You can find your User UUID in the **Credentials** panel.
 *   The `rest_run_query.sh` script can optionally accept a `--session-id` to run a query in an existing session.
 *   Example scripts (e.g., `rest_run_query.sh`) support a `--verbose` flag. By default, they output only the final JSON result to `stdout`, redirecting informational messages to `stderr`.
 
@@ -680,7 +808,7 @@ This API exposes the core functionalities of the agent, allowing developers to b
 * **Full Agent Functionality**: Create sessions and submit natural language queries or execute pre-defined prompts programmatically, receiving the same rich, structured JSON output as the web UI.
 
 For complete technical details, endpoint definitions, and cURL examples, please see the full documentation:
-[**REST API Documentation (docs/RestAPI/restAPI.md)**](https://github.com/rgeissen/trusted-data-agent/blob/main/docs/RestAPI/restAPI.md)
+[**REST API Documentation (docs/RestAPI/restAPI.md)**](docs/RestAPI/restAPI.md)
 
 ---
 
@@ -688,7 +816,7 @@ For complete technical details, endpoint definitions, and cURL examples, please 
 
 The Trusted Data Agent's UI serves as a powerful, real-time monitoring tool that provides full visibility into all agent workloads, regardless of whether they are initiated from the user interface or the REST API. This capability is particularly valuable for developers and administrators interacting with the agent programmatically.
 
-When a task is triggered via a REST call, it is not a "black box" operation. Instead, the entire execution workflow is visualized in real-time within the UI's live status window. This provides a granular, step-by-step view of the agent's process, including:
+When a task is triggered via a REST call, it is not a "black box" operation. Instead, the entire execution workflow is visualized in real-time within the UI's Live Status panel. This provides a granular, step-by-step view of the agent's process, including:
 
 *   **Planner Activity:** See the strategic plan the agent creates to address the request.
 *   **Tool Execution:** Watch as the agent executes specific tools and gathers data.
@@ -717,16 +845,15 @@ Once you have a conversation that successfully executes your desired workflow, y
 
 **Step 3: Automate via the REST API**
 
-With your workflow defined, you can transition to the REST API for operational use cases. This is done by sending your prompts to the appropriate API endpoint. You can find your `user_id` in the application's configuration screen, and the `session_id` for an existing conversation can be copied from the session selector in the history panel.
+With your workflow defined, you can transition to the REST API for operational use cases. This is done by sending your prompts to the appropriate API endpoint. You can find your `userUUID` in the **Credentials** panel, and the `session_id` for an existing conversation can be copied from the session selector in the history panel.
 
 *   **Example `curl` command:**
 
 ```bash
-curl -X POST http://localhost:8000/api/execute_turn \
+curl -X POST http://localhost:5000/v1/sessions/{session_id}/query \
 -H "Content-Type: application/json" \
+-H "X-TDA-User-UUID: your-user-uuid" \
 -d '{
-    "user_id": "your-user-id",
-    "session_id": "your-session-id",
     "prompt": "Your refined prompt from the UI"
 }'
 ```
@@ -800,7 +927,7 @@ When deploying for multiple users, you have two main options:
 
 ### Pre-configuring MCP Server
 
-You can bake MCP server configuration into the Docker image:
+You can bake MCP Server configuration into the Docker image:
 
 1. **Before building**, edit `tda_config.json`:
 ```json
@@ -826,7 +953,7 @@ You can bake MCP server configuration into the Docker image:
 ### Detailed Docker Documentation
 
 For comprehensive information on Docker deployment, credential isolation, security considerations, and troubleshooting, see:
-[**Docker Credential Isolation Guide (docs/DOCKER_CREDENTIAL_ISOLATION.md)**](docs/DOCKER_CREDENTIAL_ISOLATION.md)
+[**Docker Credential Isolation Guide (docs/Docker/DOCKER_CREDENTIAL_ISOLATION.md)**](docs/Docker/DOCKER_CREDENTIAL_ISOLATION.md)
 
 ---
 
