@@ -1,78 +1,88 @@
-import argparse
-import requests
-import sys
-import os
+#!/bin/bash
+# rest_stop_task.sh
+#
+# This script sends a cancellation request for a running task.
+#
+# Usage: ./rest_stop_task.sh <task_id> <access_token> [--base-url <url>]
 
+# --- 1. Argument Parsing ---
+TASK_ID=""
+ACCESS_TOKEN=""
+BASE_URL="http://127.0.0.1:5000"
 
+while (( "$#" )); do
+  case "$1" in
+    --base-url)
+      if [ -n "$2" ]; then
+        BASE_URL=$2
+        shift 2
+      else
+        echo "Error: --base-url requires a non-empty argument." >&2
+        exit 1
+      fi
+      ;;
+    -*)
+      echo "Unsupported flag $1" >&2
+      exit 1
+      ;;
+    *)
+      if [ -z "$TASK_ID" ]; then
+        TASK_ID=$1
+        shift
+      elif [ -z "$ACCESS_TOKEN" ]; then
+        ACCESS_TOKEN=$1
+        shift
+      else
+        echo "Too many arguments provided." >&2
+        exit 1
+      fi
+      ;;
+  esac
+done
 
-def cancel_task(base_url: str, task_id: str, user_uuid: str):
-    """
-    Sends a POST request to the TDA REST API to cancel a specific task.
+# Check if required arguments are present
+if [ -z "$TASK_ID" ] || [ -z "$ACCESS_TOKEN" ]; then
+  echo "Usage: ./rest_stop_task.sh <task_id> <access_token> [--base-url <url>]" >&2
+  echo "Example: ./rest_stop_task.sh task-123-456 tda_1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p" >&2
+  exit 1
+fi
 
-    Args:
-        base_url: The base URL of the Trusted Data Agent server (e.g., http://127.0.0.1:5000).
-        task_id: The ID of the task to cancel.
-        user_uuid: The UUID of the user initiating the cancellation.
-    """
-    cancel_url = f"{base_url.rstrip('/')}/api/v1/tasks/{task_id}/cancel"
-    print(f"Attempting to cancel task {task_id} for user {user_uuid} at: {cancel_url}")
+# --- 2. Check Dependencies ---
+if ! command -v jq &> /dev/null; then
+    echo "Error: 'jq' is not installed. Please install it to continue." >&2
+    echo "On macOS: brew install jq" >&2
+    echo "On Debian/Ubuntu: sudo apt-get install jq" >&2
+    exit 1
+fi
 
-    headers = {
-        "X-TDA-User-UUID": user_uuid
-    }
+# --- 3. Send Cancellation Request ---
+CANCEL_URL="${BASE_URL}/api/v1/tasks/${TASK_ID}/cancel"
+echo "Attempting to cancel task $TASK_ID at: $CANCEL_URL"
 
-    try:
-        response = requests.post(cancel_url, headers=headers, timeout=10) # Added a timeout
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$CANCEL_URL" \
+  -H "Authorization: Bearer $ACCESS_TOKEN")
 
-        # Check if the request was successful
-        if response.status_code == 200:
-            try:
-                response_data = response.json()
-                status = response_data.get("status", "unknown")
-                message = response_data.get("message", "No message received.")
-                print(f"Server response ({response.status_code}): Status: {status}, Message: {message}")
-            except requests.exceptions.JSONDecodeError:
-                print(f"Error: Received non-JSON response from server (Status Code: {response.status_code}).")
-                print(f"Raw response: {response.text}")
-        elif response.status_code == 404:
-             try:
-                 response_data = response.json()
-                 print(f"Error ({response.status_code}): {response_data.get('message', 'Task not found.')}")
-             except requests.exceptions.JSONDecodeError:
-                 print(f"Error: Task not found (Status Code: {response.status_code}). Server response was not valid JSON.")
-                 print(f"Raw response: {response.text}")
-        else:
-            # Handle other potential errors (e.g., 500 Internal Server Error)
-            print(f"Error: Received status code {response.status_code} from server.")
-            try:
-                # Try to print JSON error message if available
-                error_data = response.json()
-                print(f"Server error details: {error_data}")
-            except requests.exceptions.JSONDecodeError:
-                # Fallback to raw text if not JSON
-                print(f"Raw server response: {response.text}")
+HTTP_STATUS=$(tail -n1 <<< "$RESPONSE")
+HTTP_BODY=$(sed '$ d' <<< "$RESPONSE")
 
-    except requests.exceptions.ConnectionError:
-        print(f"Error: Could not connect to the server at {base_url}. Is it running?")
-        sys.exit(1)
-    except requests.exceptions.Timeout:
-        print(f"Error: The request to {cancel_url} timed out.")
-        sys.exit(1)
-    except requests.exceptions.RequestException as e:
-        print(f"An unexpected error occurred during the request: {e}")
-        sys.exit(1)
+echo "--- Server Response (HTTP Status: $HTTP_STATUS) ---"
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Cancel a running Trusted Data Agent task via the REST API.")
-
-    parser.add_argument("task_id",
-                        help="The unique ID of the task to be cancelled.")
-    parser.add_argument("user_uuid",
-                        help="The user UUID to authenticate the request.")
-    parser.add_argument("--base-url",
-                        default="http://127.0.0.1:5000",
-                        help="The base URL of the Trusted Data Agent server (default: http://127.0.0.1:5000)")
-
-    args = parser.parse_args()
-
-    cancel_task(args.base_url, args.task_id, args.user_uuid)
+if [ "$HTTP_STATUS" -eq 200 ]; then
+  echo "$HTTP_BODY" | jq .
+  STATUS=$(echo "$HTTP_BODY" | jq -r '.status')
+  MESSAGE=$(echo "$HTTP_BODY" | jq -r '.message')
+  echo "Status: $STATUS"
+  echo "Message: $MESSAGE"
+elif [ "$HTTP_STATUS" -eq 404 ]; then
+  echo "Error: Task not found or already completed."
+  echo "$HTTP_BODY" | jq . 2>/dev/null || echo "$HTTP_BODY"
+  exit 1
+elif [ "$HTTP_STATUS" -eq 401 ]; then
+  echo "Error: Authentication failed. Check your access token."
+  echo "$HTTP_BODY" | jq . 2>/dev/null || echo "$HTTP_BODY"
+  exit 1
+else
+  echo "Error: Received unexpected status code $HTTP_STATUS"
+  echo "$HTTP_BODY" | jq . 2>/dev/null || echo "$HTTP_BODY"
+  exit 1
+fi

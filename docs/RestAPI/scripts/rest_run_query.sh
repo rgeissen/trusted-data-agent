@@ -5,12 +5,12 @@
 # It creates a session, submits a user's question, and then monitors the
 # progress until a final result is received.
 #
-# Usage: ./rest_run_query.sh [--verbose] "Your question for the agent in quotes"
+# Usage: ./rest_run_query.sh <access_token> "Your question for the agent in quotes" [--session-id <session_id>] [--verbose]
 
 # --- 1. Argument Parsing and Validation ---
 VERBOSE=false
 USER_QUESTION=""
-USER_UUID=""
+ACCESS_TOKEN=""
 SESSION_ID=""
 
 # Parse arguments
@@ -34,8 +34,8 @@ while (( "$#" )); do
       exit 1
       ;;
     *)
-      if [ -z "$USER_UUID" ]; then
-        USER_UUID=$1
+      if [ -z "$ACCESS_TOKEN" ]; then
+        ACCESS_TOKEN=$1
         shift
       elif [ -z "$USER_QUESTION" ]; then
         USER_QUESTION=$1
@@ -49,9 +49,13 @@ while (( "$#" )); do
 done
 
 # Check if required arguments are present
-if [ -z "$USER_UUID" ] || [ -z "$USER_QUESTION" ]; then
-  echo "Usage: ./rest_run_query.sh <user_uuid> \"<your_question>\" [--session-id <session_id>] [--verbose]" >&2
-  echo "Example: ./rest_run_query.sh a1b2c3d4-e5f6-7890-1234-567890abcdef \"What is the business description for the DEMO_DB database?\" --session-id x-y-z --verbose" >&2
+if [ -z "$ACCESS_TOKEN" ] || [ -z "$USER_QUESTION" ]; then
+  echo "Usage: ./rest_run_query.sh <access_token> \"<your_question>\" [--session-id <session_id>] [--verbose]" >&2
+  echo "Example: ./rest_run_query.sh tda_1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p \"What is the business description for the DEMO_DB database?\" --session-id x-y-z --verbose" >&2
+  echo "" >&2
+  echo "To get an access token:" >&2
+  echo "  1. Login: curl -X POST http://localhost:5000/auth/login -H 'Content-Type: application/json' -d '{\"username\":\"your_user\",\"password\":\"your_pass\"}' | jq -r '.token'" >&2
+  echo "  2. Create token: curl -X POST http://localhost:5000/api/v1/auth/tokens -H 'Authorization: Bearer YOUR_JWT' -H 'Content-Type: application/json' -d '{\"name\":\"My Token\"}' | jq -r '.token'" >&2
   exit 1
 fi
 BASE_URL="http://127.0.0.1:5000"
@@ -84,10 +88,11 @@ fi
 if [ -z "$SESSION_ID" ]; then
   # --- 4. Create a New Session ---
   log_message "--> Step 1: Creating a new session..."
-  SESSION_ID=$(curl -s -X POST -H "X-TDA-User-UUID: $USER_UUID" "$BASE_URL/api/v1/sessions" | jq -r .session_id)
+  SESSION_ID=$(curl -s -X POST -H "Authorization: Bearer $ACCESS_TOKEN" "$BASE_URL/api/v1/sessions" | jq -r .session_id)
 
   if [ -z "$SESSION_ID" ] || [ "$SESSION_ID" = "null" ]; then
     log_message "Error: Failed to create a session. Is the server running and configured?"
+    log_message "Check if your access token is valid."
     exit 1
   fi
   log_message "    Session created successfully: $SESSION_ID"
@@ -103,7 +108,7 @@ JSON_PAYLOAD=$(jq -n --arg prompt "$USER_QUESTION" '{prompt: $prompt}')
 
 TASK_URL=$(curl -s -X POST "$BASE_URL/api/v1/sessions/$SESSION_ID/query" \
      -H "Content-Type: application/json" \
-     -H "X-TDA-User-UUID: $USER_UUID" \
+     -H "Authorization: Bearer $ACCESS_TOKEN" \
      -d "$JSON_PAYLOAD" | jq -r .status_url)
 
 if [ -z "$TASK_URL" ] || [ "$TASK_URL" = "null" ]; then
@@ -118,9 +123,9 @@ log_message ""
 log_message "--> Step 3: Starting the status checker. Monitoring for results..."
 log_message "================================================================="
 
-# Execute the status checking script, passing it the task URL, User UUID, and verbose flag.
+# Execute the status checking script, passing it the task URL, access token, and verbose flag.
 if [ "$VERBOSE" = true ]; then
-  ./rest_check_status.sh "$TASK_URL" "$USER_UUID" --verbose
+  ./rest_check_status.sh "$TASK_URL" "$ACCESS_TOKEN" --verbose
 else
-  ./rest_check_status.sh "$TASK_URL" "$USER_UUID"
+  ./rest_check_status.sh "$TASK_URL" "$ACCESS_TOKEN"
 fi

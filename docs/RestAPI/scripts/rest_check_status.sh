@@ -1,13 +1,15 @@
 #!/bin/bash
-# check_status.sh
+# rest_check_status.sh
 #
 # This script polls a task status URL until the task is complete,
 # printing new events as they arrive.
+#
+# Usage: ./rest_check_status.sh <task_url_path> <access_token> [--verbose]
 
 # --- 1. Argument Parsing and Validation ---
 VERBOSE=false
 TASK_URL_PATH=""
-USER_UUID=""
+ACCESS_TOKEN=""
 
 # Parse arguments
 while (( "$#" )); do
@@ -22,8 +24,8 @@ while (( "$#" )); do
     *)
       if [ -z "$TASK_URL_PATH" ]; then
         TASK_URL_PATH=$1
-      elif [ -z "$USER_UUID" ]; then
-        USER_UUID=$1
+      elif [ -z "$ACCESS_TOKEN" ]; then
+        ACCESS_TOKEN=$1
       else
         echo "Too many arguments provided." >&2
         exit 1
@@ -34,9 +36,9 @@ while (( "$#" )); do
 done
 
 # Check if required arguments are present
-if [ -z "$TASK_URL_PATH" ] || [ -z "$USER_UUID" ]; then
-  echo "Usage: ./check_status.sh <task_url_path> <user_uuid> [--verbose]" >&2
-  echo "Example: ./check_status.sh /api/v1/tasks/some-task-id a1b2c3d4-e5f6-7890-1234-567890abcdef --verbose" >&2
+if [ -z "$TASK_URL_PATH" ] || [ -z "$ACCESS_TOKEN" ]; then
+  echo "Usage: ./rest_check_status.sh <task_url_path> <access_token> [--verbose]" >&2
+  echo "Example: ./rest_check_status.sh /api/v1/tasks/some-task-id tda_1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p --verbose" >&2
   exit 1
 fi
 
@@ -59,8 +61,8 @@ log_message "-------------------------------------"
 
 # --- 3. Polling Loop ---
 while true; do
-  # Fetch the latest task status, including the User UUID header
-  RESPONSE=$(curl -s -H "X-TDA-User-UUID: $USER_UUID" "$FULL_URL")
+  # Fetch the latest task status using Bearer token authentication
+  RESPONSE=$(curl -s -H "Authorization: Bearer $ACCESS_TOKEN" "$FULL_URL")
 
   # Gracefully handle cases where the server response is empty
   if [ -z "$RESPONSE" ]; then

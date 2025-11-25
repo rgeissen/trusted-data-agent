@@ -1506,6 +1506,28 @@
                                                 </button>
                                             </div>
                                         </div>
+
+                                        <!-- Access Token Management -->
+                                        <div class="pt-6 border-t border-white/10 mt-6">
+                                            <div class="flex items-center justify-between mb-4">
+                                                <div>
+                                                    <h4 class="text-sm font-medium text-gray-300 mb-1">Access Token Management</h4>
+                                                    <p class="text-xs text-gray-500">Create and manage API tokens for REST API authentication</p>
+                                                </div>
+                                                <button id="create-access-token-btn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md transition-colors flex items-center gap-2">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                                                    </svg>
+                                                    Create Token
+                                                </button>
+                                            </div>
+
+                                            <!-- Tokens List -->
+                                            <div id="access-tokens-list" class="space-y-2">
+                                                <!-- Tokens will be dynamically inserted here -->
+                                                <div class="text-center text-gray-500 text-sm py-4">Loading tokens...</div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -3518,6 +3540,7 @@
     <script src="{{ url_for('static', filename='js/adminManager.js') }}"></script>
     <script type="module" src="{{ url_for('static', filename='js/main.js') }}?v=2.6"></script>
     <script type="module" src="{{ url_for('static', filename='js/handlers/ragCollectionManagement.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/handlers/accessTokenManager.js') }}"></script>
     <!-- RAG Case Modal -->
     <div id="rag-case-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
         <div id="rag-case-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-4xl p-6 transform scale-95 opacity-0 flex flex-col" style="height: 90vh;">
@@ -4381,5 +4404,67 @@
             window.AdminManager = AdminManager; // Make it available globally
         }
     </script>
+
+    <!-- Access Token Creation Modal -->
+    <div id="create-token-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 class="text-xl font-bold text-white mb-4">Create Access Token</h3>
+            <div class="space-y-4">
+                <div>
+                    <label for="token-name" class="block text-sm font-medium text-gray-300 mb-2">Token Name</label>
+                    <input type="text" id="token-name" placeholder="e.g., My API Token" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    <p class="text-xs text-gray-500 mt-1">Give your token a descriptive name</p>
+                </div>
+                <div>
+                    <label for="token-expiry" class="block text-sm font-medium text-gray-300 mb-2">Expiration</label>
+                    <select id="token-expiry" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                        <option value="30">30 days</option>
+                        <option value="60">60 days</option>
+                        <option value="90" selected>90 days</option>
+                        <option value="180">180 days</option>
+                        <option value="365">1 year</option>
+                        <option value="0">Never</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button id="cancel-token-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors">Cancel</button>
+                <button id="confirm-create-token-btn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors">Create Token</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Token Display Modal -->
+    <div id="token-display-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <div class="flex items-center gap-3 mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <h3 class="text-xl font-bold text-white">Token Created!</h3>
+            </div>
+            <div class="space-y-4">
+                <div class="bg-yellow-900/30 border border-yellow-600/50 rounded-md p-4">
+                    <p class="text-sm text-yellow-200 font-medium mb-2">⚠️ Important: Copy your token now</p>
+                    <p class="text-xs text-yellow-300">This token will only be shown once. Make sure to copy it and store it securely.</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Your Access Token</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="new-token-value" readonly class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white font-mono text-sm">
+                        <button id="copy-new-token-btn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            Copy
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end mt-6">
+                <button id="close-token-display-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors">Close</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
