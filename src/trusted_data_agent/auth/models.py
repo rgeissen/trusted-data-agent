@@ -287,6 +287,7 @@ class AccessToken(Base):
             'expires_at': to_iso(self.expires_at),
             'last_used_at': to_iso(self.last_used_at),
             'revoked': self.revoked,
+            'revoked_at': to_iso(self.revoked_at),
             'use_count': self.use_count
         }
         return data

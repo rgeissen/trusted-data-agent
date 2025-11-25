@@ -58,15 +58,59 @@ def init_database():
     """
     Initialize the database by creating all tables.
     Safe to call multiple times (won't recreate existing tables).
+    
+    On first initialization, creates a default admin account.
     """
     try:
         logger.info(f"Initializing authentication database at: {DATABASE_URL}")
         Base.metadata.create_all(bind=engine)
         logger.info("Authentication database initialized successfully")
+        
+        # Create default admin account if no users exist
+        _create_default_admin_if_needed()
+        
         return True
     except Exception as e:
         logger.error(f"Failed to initialize authentication database: {e}", exc_info=True)
         return False
+
+
+def _create_default_admin_if_needed():
+    """
+    Create default admin account (admin/admin) if no users exist in the database.
+    This runs only once on first database initialization.
+    """
+    from trusted_data_agent.auth.models import User
+    from trusted_data_agent.auth.security import hash_password
+    
+    try:
+        with get_db_session() as session:
+            # Check if any users exist
+            user_count = session.query(User).count()
+            
+            if user_count == 0:
+                # Create default admin account
+                admin_user = User(
+                    username='admin',
+                    email='admin@example.com',
+                    password_hash=hash_password('admin'),
+                    is_admin=True,
+                    is_active=True,
+                    profile_tier='admin',
+                    full_name='System Administrator'
+                )
+                session.add(admin_user)
+                session.commit()
+                
+                logger.warning(
+                    "⚠️  Default admin account created: username='admin', password='admin' "
+                    "⚠️  CHANGE THIS PASSWORD IMMEDIATELY after first login!"
+                )
+            else:
+                logger.info(f"Database already has {user_count} user(s), skipping default admin creation")
+                
+    except Exception as e:
+        logger.error(f"Error checking/creating default admin account: {e}", exc_info=True)
 
 
 def drop_all_tables():

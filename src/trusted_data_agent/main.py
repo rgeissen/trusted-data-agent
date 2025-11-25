@@ -152,9 +152,9 @@ async def user_context_cleanup_worker():
     cleanup_interval = int(os.environ.get('TDA_USER_CONTEXT_CLEANUP_INTERVAL', '300'))  # Default: 5 minutes
     max_age_hours = int(os.environ.get('TDA_USER_CONTEXT_MAX_AGE_HOURS', '24'))  # Default: 24 hours
     
-    # Only run in multi-user mode
+    # Only run in multi-user mode (when persistence is disabled)
     if APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        app_logger.info("User context cleanup worker disabled (single-user mode with persistence)")
+        app_logger.info("User context cleanup worker disabled (multi-user authentication enabled)")
         return
     
     app_logger.info(f"User context cleanup worker started (interval: {cleanup_interval}s, max_age: {max_age_hours}h)")

@@ -366,6 +366,7 @@ Retrieve all access tokens for the authenticated user.
       "last_used_at": "2025-11-25T14:30:00Z",
       "expires_at": "2026-02-25T10:00:00Z",
       "revoked": false,
+      "revoked_at": null,
       "use_count": 142
     },
     {
@@ -375,8 +376,9 @@ Retrieve all access tokens for the authenticated user.
       "created_at": "2025-11-20T09:00:00Z",
       "last_used_at": null,
       "expires_at": null,
-      "revoked": false,
-      "use_count": 0
+      "revoked": true,
+      "revoked_at": "2025-11-24T16:00:00Z",
+      "use_count": 23
     }
   ]
 }
@@ -386,11 +388,15 @@ Retrieve all access tokens for the authenticated user.
 - `token_prefix`: First 10 characters for identification
 - `last_used_at`: `null` if never used
 - `expires_at`: `null` if no expiration
+- `revoked`: Boolean indicating if token has been revoked
+- `revoked_at`: Timestamp when token was revoked, `null` if active
 - `use_count`: Total number of API calls with this token
+
+**Note:** By default, only active tokens are returned. Set `include_revoked=true` to see revoked tokens in the audit trail.
 
 #### 3.2.3. Revoke Access Token
 
-Immediately revoke an access token, preventing further use.
+Immediately revoke an access token, preventing further use. The token is marked as revoked and preserved in the audit trail.
 
 **Endpoint:** `DELETE /api/v1/auth/tokens/{token_id}`  
 **Authentication:** Required (JWT or access token)
@@ -410,7 +416,7 @@ Immediately revoke an access token, preventing further use.
 - `404 Not Found` - Token not found or doesn't belong to user
 - `401 Unauthorized` - Authentication required
 
-⚠️ **Note:** Revoked tokens cannot be reactivated. Create a new token if needed.
+⚠️ **Note:** Revoked tokens are kept in the database for audit purposes but cannot be used for authentication. They remain visible in the token list with a "Revoked" status and timestamp. Revoked tokens cannot be reactivated. Create a new token if needed.
 
 ### 3.3. Application Configuration
 

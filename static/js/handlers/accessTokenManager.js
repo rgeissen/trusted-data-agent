@@ -196,7 +196,7 @@ const AccessTokenManager = {
                 return;
             }
             
-            const response = await fetch('/api/v1/auth/tokens', {
+            const response = await fetch('/api/v1/auth/tokens?include_revoked=true', {
                 headers: {
                     'Authorization': `Bearer ${jwtToken}`
                 }
@@ -244,18 +244,22 @@ const AccessTokenManager = {
         const expiresAt = token.expires_at ? new Date(token.expires_at).toLocaleDateString() : 'Never';
         const isExpired = token.expires_at && new Date(token.expires_at) < new Date();
         const isRevoked = token.revoked;
+        const revokedDate = token.revoked_at ? new Date(token.revoked_at).toLocaleDateString() : null;
 
         let statusBadge = '';
+        let cardOpacity = '';
         if (isRevoked) {
             statusBadge = '<span class="px-2 py-1 text-xs font-medium bg-red-900/30 text-red-400 rounded">Revoked</span>';
+            cardOpacity = 'opacity-60';
         } else if (isExpired) {
             statusBadge = '<span class="px-2 py-1 text-xs font-medium bg-yellow-900/30 text-yellow-400 rounded">Expired</span>';
+            cardOpacity = 'opacity-75';
         } else {
             statusBadge = '<span class="px-2 py-1 text-xs font-medium bg-green-900/30 text-green-400 rounded">Active</span>';
         }
 
         return `
-            <div class="bg-gray-700/50 rounded-md p-4 border border-gray-600">
+            <div class="bg-gray-700/50 rounded-md p-4 border border-gray-600 ${cardOpacity}">
                 <div class="flex items-start justify-between mb-3">
                     <div class="flex-1">
                         <div class="flex items-center gap-2 mb-2">
@@ -279,10 +283,17 @@ const AccessTokenManager = {
                         <span class="text-gray-500">Last Used:</span>
                         <span class="text-gray-300 ml-1">${lastUsed}</span>
                     </div>
+                    ${isRevoked ? `
+                    <div>
+                        <span class="text-gray-500">Revoked:</span>
+                        <span class="text-red-400 ml-1">${revokedDate}</span>
+                    </div>
+                    ` : `
                     <div>
                         <span class="text-gray-500">Expires:</span>
                         <span class="text-gray-300 ml-1">${expiresAt}</span>
                     </div>
+                    `}
                     <div>
                         <span class="text-gray-500">Uses:</span>
                         <span class="text-gray-300 ml-1">${token.use_count || 0}</span>
@@ -304,7 +315,7 @@ const AccessTokenManager = {
         
         window.showConfirmation(
             'Revoke Access Token',
-            'Are you sure you want to revoke this token? This action cannot be undone.',
+            'Are you sure you want to revoke this token? The token will become inactive but remain in the audit trail.',
             async () => {
                 try {
                     // Get JWT token from authClient

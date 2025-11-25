@@ -247,22 +247,30 @@ The Trusted Data Agent is built on a modern, asynchronous client-server architec
 
 ### Data Flow & Session Management
 
+**Authentication Flow:**
+1. User logs in → Backend validates credentials
+2. JWT token issued (24-hour expiry) → Stored in browser localStorage as `tda_auth_token`
+3. All API requests include `Authorization: Bearer <token>` header
+4. Token refreshed automatically or user re-authenticates
+
 **Configuration Flow:**
 1. User enters credentials (LLM + MCP) → Validated by backend
-2. If `TDA_CONFIGURATION_PERSISTENCE=true`: Saved to `tda_config.json` + browser localStorage
-3. If `TDA_CONFIGURATION_PERSISTENCE=false`: Memory-only (cleared on restart)
+2. Credentials encrypted using Fernet → Stored per-user in `tda_auth.db`
+3. MCP/LLM profiles created → Associated with user account
+4. Configuration persists across sessions (user-specific)
 
 **Query Execution Flow:**
-1. User query → Backend creates/loads session
+1. User query → Backend authenticates JWT → Creates/loads session
 2. Backend invokes Fusion Optimizer with context (conversation history + workflow summaries)
 3. Optimizer generates strategic plan → Executes via LLM + MCP tools
 4. Results streamed via SSE → UI updates in real-time
 5. Session persisted with turn history and summaries
 
 **Session Isolation:**
-- Each user identified by `userUUID` (browser-generated, stored in localStorage)
+- Each user identified by database user ID (from JWT token)
 - Sessions stored in `tda_sessions/{session_id}/` with conversation and workflow history
-- Multi-user Docker: Separate containers OR persistence disabled for shared container
+- User credentials isolated in encrypted database storage
+- Multi-user support: Multiple users can access simultaneously with separate sessions
 
 **Deployment Architectures:**
 
@@ -368,38 +376,44 @@ pip install -e .
 
 The `-e` flag stands for "editable," meaning any changes you make to the source code will be immediately effective without needing to reinstall.
 
-### Step 5: Start the Application and Create Your Account
+### Step 5: Start the Application
 
-The application uses a **secure authentication system** with encrypted credential storage. Authentication is **always required** - no configuration files to edit!
+The application uses a **multi-user authentication system** with JWT tokens and encrypted credential storage. Authentication is **always required** for all users.
 
 **Run the application:**
 
 ```bash
-python src/trusted_data_agent/main.py
+python -m trusted_data_agent.main
 ```
 
 The application will:
-- Automatically create `tda_auth.db` (encrypted database)
+- Automatically create `tda_auth.db` (SQLite database with encrypted credentials)
+- Initialize default admin account: `admin` / `admin` (⚠️ **change immediately!**)
 - Start the web server on `http://localhost:5000`
 
-### Step 6: Register and Configure Credentials
+### Step 6: First Login and Security
 
 1. **Open your browser** to `http://localhost:5000`
-2. **Click "Register"** to create your account (takes 10 seconds)
-3. **Login** with your credentials
-4. **Enter API keys** through the web UI settings
+2. **Login** with default credentials: `admin` / `admin`
+3. **⚠️ IMPORTANT:** Immediately change the admin password in the **Administration** panel
+4. **Create user accounts** for your team (admin users can create additional users)
+5. **Configure credentials** through the **Credentials** panel
 
-All credentials are:
-- ✅ Encrypted using Fernet encryption
-- ✅ Stored per-user in the database
-- ✅ Never exposed in browser localStorage
-- ✅ Excluded from git (database is in `.gitignore`)
+**Authentication Features:**
+- ✅ JWT tokens (24-hour expiry) for web UI sessions
+- ✅ Long-lived access tokens for REST API automation
+- ✅ Per-user credential encryption using Fernet
+- ✅ User tiers: `user`, `developer`, `admin`
+- ✅ Soft-delete audit trail for revoked tokens
+- ✅ Session management with persistent context
 
 **Supported LLM Providers:**
 - AWS Bedrock (requires: Access Key, Secret Key, Region)
 - Anthropic Claude (requires: API Key)
 - OpenAI (requires: API Key)
 - Google Gemini (requires: API Key)
+- Azure OpenAI (requires: Endpoint, API Key, Deployment Name)
+- Friendli.AI (requires: API Key)
 - Ollama (local - requires: Ollama installation)
 
 ### Running the Application
@@ -434,15 +448,27 @@ This comprehensive guide covers everything you need to know to use the Trusted D
 
 ### Getting Started
 
+#### Prerequisites Before First Use
+
+⚠️ **Important:** Before you can start conversations with the agent, you must complete the initial configuration. The agent requires three components to function:
+
+1. **MCP Server Connection** - Where your data and tools live
+2. **LLM Provider Configuration** - The AI model that powers the agent
+3. **Profile Creation** - Combines MCP + LLM into a usable configuration
+
+Without these configurations, the **"Start Conversation"** button will remain disabled.
+
 #### Initial Configuration
 
 The Trusted Data Agent uses a modern, modular configuration system that separates infrastructure (MCP Servers, LLM Providers) from usage patterns (Profiles). This architecture provides maximum flexibility for different use cases.
 
+**Configuration Flow:** MCP Servers → LLM Providers → Profiles → Start Conversation
+
 ##### Step 1: Configure MCP Servers
 
-1. **Open the App:** After running the application, navigate to `http://localhost:5000` in your browser.
+1. **Login:** Navigate to `http://localhost:5000` and login with your credentials.
 
-2. **Navigate to Credentials:** Click on the **Credentials** panel in the left sidebar.
+2. **Navigate to Credentials:** Click on the **Credentials** panel in the left sidebar (person icon).
 
 3. **MCP Servers Tab:** Select the "MCP Servers" tab and configure one or more MCP Server connections:
    - **Name:** A friendly identifier for this server (e.g., "Production Database", "Dev Environment")
@@ -486,11 +512,20 @@ Profiles combine an MCP Server with an LLM Provider to create named configuratio
 
 ##### Step 4: Start Conversation
 
-1. Navigate back to the **Conversations** panel using the left sidebar.
+1. Navigate back to the **Conversations** panel using the left sidebar (chat icon).
 
 2. Click the **"Start Conversation"** button to activate your default profile.
 
-3. The application will validate connections, load capabilities from the MCP Server, and prepare the agent for interaction.
+3. The application will:
+   - Validate your MCP Server connection
+   - Authenticate with your LLM provider
+   - Load all available tools, prompts, and resources from the MCP Server
+   - Display them in the **Capabilities Panel** at the top
+   - Enable the chat input for you to start asking questions
+
+**✅ You're Ready!** Once you see the capabilities loaded and the chat input is active, you can start interacting with your data through natural language queries.
+
+**Example First Query:** `"What databases are available?"` or `"Show me all tables in the DEMO_DB database"`
 
 ---
 
@@ -602,7 +637,14 @@ The **Credentials** panel is where you configure all external connections and cr
   - Enable/disable profiles for temporary override selection
   - Manage profile-specific settings and descriptions
 
-All credential data can be stored in secure keyring storage or environment variables for enhanced security.
+* **Advanced Settings Tab:**
+  - **Access Token Management:** Create, view, and revoke long-lived API tokens for REST API automation
+  - **Token Security:** Tokens are shown only once at creation and stored as SHA256 hashes
+  - **Usage Tracking:** Monitor token usage with last used timestamps, use counts, and IP addresses
+  - **Audit Trail:** Revoked tokens remain visible with revocation dates for compliance and forensics
+  - **Charting Configuration:** Toggle chart rendering on/off and configure charting intensity levels
+
+All credential data is encrypted using Fernet encryption and stored securely in the user database.
 
 #### The Administration Panel
 
@@ -798,10 +840,48 @@ The Trusted Data Agent includes a powerful, asynchronous REST API to enable prog
 
 This API exposes the core functionalities of the agent, allowing developers to build custom applications, automate complex analytical tasks, and manage the agent's configuration without using the web interface.
 
-**Important Notes for REST API Usage:**
-*   Most API calls now require an `X-TDA-User-UUID` header for user identification and session management. The example scripts (`rest_run_query.sh`, `rest_check_status.sh`, `rest_stop_task.sh`) require you to provide this UUID as a command-line argument. You can find your User UUID in the **Credentials** panel.
-*   The `rest_run_query.sh` script can optionally accept a `--session-id` to run a query in an existing session.
-*   Example scripts (e.g., `rest_run_query.sh`) support a `--verbose` flag. By default, they output only the final JSON result to `stdout`, redirecting informational messages to `stderr`.
+**Authentication:**
+
+The REST API uses **Bearer token authentication** for all protected endpoints. You have two authentication options:
+
+1. **JWT Tokens (Web UI):** 24-hour tokens automatically issued when you log in to the web interface
+2. **Access Tokens (REST API):** Long-lived tokens created in the **Advanced Settings** panel for automation
+
+**Creating Access Tokens:**
+
+1. Navigate to **Credentials** → **Advanced Settings**
+2. Click **"Create Token"**
+3. Provide a descriptive name (e.g., "Production Server", "CI/CD Pipeline")
+4. Set expiration (default: 90 days, or never expires)
+5. **Copy the token immediately** - it's shown only once!
+6. Store securely (e.g., environment variables, secrets manager)
+
+**Using Access Tokens:**
+
+```bash
+# Set your token as an environment variable
+export TDA_ACCESS_TOKEN="tda_9DqZMBXh-OK4H4F7iI2t3EcGctldT-iX"
+
+# Use with example scripts
+./docs/RestAPI/scripts/rest_run_query.sh "$TDA_ACCESS_TOKEN" "What tables exist?"
+
+# Or directly with curl
+curl -X POST http://localhost:5000/api/v1/configure \
+  -H "Authorization: Bearer $TDA_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"provider": "Google", "model": "gemini-2.0-flash-exp"}'
+```
+
+**Token Management:**
+- View all tokens and usage statistics in **Advanced Settings**
+- Revoke tokens immediately (soft-delete preserves audit trail)
+- Monitor token usage: last used timestamp, use count, IP address
+- Tokens are SHA256 hashed in database for security
+
+**Important Notes:**
+*   Example scripts (`rest_run_query.sh`, `rest_check_status.sh`) now require an access token as the first argument
+*   The `rest_run_query.sh` script can optionally accept a `--session-id` to run a query in an existing session
+*   Example scripts support a `--verbose` flag - by default they output only JSON to `stdout`
 
 ### Key Capabilities
 
@@ -849,17 +929,27 @@ Once you have a conversation that successfully executes your desired workflow, y
 
 **Step 3: Automate via the REST API**
 
-With your workflow defined, you can transition to the REST API for operational use cases. This is done by sending your prompts to the appropriate API endpoint. You can find your `userUUID` in the **Credentials** panel, and the `session_id` for an existing conversation can be copied from the session selector in the history panel.
+With your workflow defined, you can transition to the REST API for operational use cases. This is done by sending your prompts to the appropriate API endpoint using an access token for authentication.
+
+**Create an Access Token:**
+1. Navigate to **Credentials** → **Advanced Settings** → **Access Token Management**
+2. Click **"Create Token"** and provide a name (e.g., "Production Automation")
+3. Copy the token immediately (shown only once!)
+4. Store securely in your environment or secrets manager
 
 *   **Example `curl` command:**
 
 ```bash
-curl -X POST http://localhost:5000/v1/sessions/{session_id}/query \
--H "Content-Type: application/json" \
--H "X-TDA-User-UUID: your-user-uuid" \
--d '{
+# Set your access token
+export TDA_TOKEN="tda_9DqZMBXh-OK4H4F7iI2t3EcGctldT-iX"
+
+# Execute query in a session
+curl -X POST http://localhost:5000/api/v1/sessions/{session_id}/query \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TDA_TOKEN" \
+  -d '{
     "prompt": "Your refined prompt from the UI"
-}'
+  }'
 ```
 
 This allows you to integrate the Trusted Data Agent into larger automated systems, CI/CD pipelines, or other applications.
@@ -916,18 +1006,31 @@ docker run -d \
 
 ### Multi-User Deployment Considerations
 
-When deploying for multiple users, you have two main options:
+**The application now supports true multi-user authentication with user isolation:**
 
-#### Option 1: Shared Container (Sequential Access)
-- Set `TDA_CONFIGURATION_PERSISTENCE=false` to prevent credential persistence
-- Each user configures credentials per session
-- Credentials exist in memory only and are cleared on browser refresh
-- Best for: Testing, demos, sequential user access
+#### Production Deployment (Recommended)
+- Single shared container supports multiple simultaneous users
+- Each user has their own account with encrypted credentials
+- User tiers control access to features (user, developer, admin)
+- Session data isolated per user with JWT authentication
+- Best for: Production deployments, team collaboration
 
-#### Option 2: One Container Per User (Simultaneous Access)
-- Deploy separate container instances on different ports
-- Each user gets their own isolated environment
-- Best for: Multiple simultaneous users, production deployments
+#### Initial Setup:
+```bash
+docker run -d \
+  -p 5000:5000 \
+  -v $(pwd)/tda_auth.db:/app/tda_auth.db \
+  -v $(pwd)/tda_sessions:/app/tda_sessions \
+  -e CORS_ALLOWED_ORIGINS=https://your-domain.com \
+  trusted-data-agent:latest
+```
+
+**Important Security Steps:**
+1. Mount volumes for `tda_auth.db` (user database) and `tda_sessions` (session data)
+2. Change default admin password immediately after first login
+3. Create individual user accounts for team members
+4. Configure HTTPS reverse proxy (nginx, traefik) for production
+5. Set `TDA_ENCRYPTION_KEY` environment variable for production encryption
 
 ### Pre-configuring MCP Server
 
@@ -1019,6 +1122,7 @@ Under the AGPLv3, you are free to use, modify, and distribute this software. How
 
 This list reflects the recent enhancements and updates to the Trusted Data Agent, as shown on the application's welcome screen.
 
+*   **25-Nov-2025:** Multi-User Authentication - JWT tokens, access tokens, user tiers
 *   **22-Nov-2025:** Profile System - Modular Configuration & Temporary Overrides
 *   **21-Nov-2025:** RAG Templates - Modular Plugin System
 *   **19-Nov-2025:** Modern UI Design
