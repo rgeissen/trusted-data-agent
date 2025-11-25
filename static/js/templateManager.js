@@ -169,6 +169,9 @@ class TemplateManager {
             if (template.status === 'deprecated') {
                 option.textContent += ' (Deprecated)';
                 option.disabled = true;
+            } else if (template.status === 'coming_soon') {
+                option.textContent += ' (Coming Soon)';
+                option.disabled = true;
             }
             
             if (selectedTemplateId && template.template_id === selectedTemplateId) {

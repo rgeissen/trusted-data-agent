@@ -18,7 +18,7 @@
       "plugin_directory": "sql-query-doc-context",
       "template_file": "sql-query-doc-context/sql_query_doc_context_v1.json",
       "manifest_file": "sql-query-doc-context/manifest.json",
-      "status": "active",
+      "status": "coming_soon",
       "display_order": 2,
       "category": "Database",
       "is_builtin": true
@@ -28,6 +28,7 @@
     "active": "Template is ready for use",
     "beta": "Template is available but still being tested",
     "deprecated": "Template is being phased out",
-    "draft": "Template is not yet available"
+    "draft": "Template is not yet available",
+    "coming_soon": "Template is under development and will be available soon"
   }
 }

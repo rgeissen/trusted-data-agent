@@ -90,9 +90,9 @@ class RAGTemplateManager:
             plugin_directory = template_entry.get("plugin_directory")
             status = template_entry.get("status", "active")
             
-            # Only load active templates
-            if status != "active":
-                logger.debug(f"Skipping template {template_id} with status: {status}")
+            # Skip deprecated templates, but load all others (active, beta, coming_soon)
+            if status == "deprecated":
+                logger.debug(f"Skipping deprecated template {template_id}")
                 continue
             
             # Support both old flat structure and new plugin directory structure
@@ -139,8 +139,10 @@ class RAGTemplateManager:
                     logger.error(f"Template {template_id} failed validation")
                     continue
                 
+                # Preserve status from registry entry
+                template_data['status'] = status
                 self.templates[template_id] = template_data
-                logger.info(f"Loaded template: {template_id} ({template_data.get('template_name')})")
+                logger.info(f"Loaded template: {template_id} ({template_data.get('template_name')}) with status: {status}")
                 
             except Exception as e:
                 logger.error(f"Failed to load template {template_id}: {e}", exc_info=True)

@@ -91,8 +91,9 @@ export async function loadTemplateCards() {
  * @returns {HTMLElement} Template card element
  */
 export function createTemplateCard(template, index) {
+    const isComingSoon = template.status === 'coming_soon';
     const card = document.createElement('div');
-    card.className = 'glass-panel rounded-xl p-6 hover:border-[#F15F22] transition-colors cursor-pointer';
+    card.className = `glass-panel rounded-xl p-6 transition-colors ${isComingSoon ? 'opacity-50 cursor-not-allowed' : 'hover:border-[#F15F22] cursor-pointer'}`;
     card.setAttribute('data-template-id', template.template_id);
     
     // Icon colors array
@@ -108,7 +109,7 @@ export function createTemplateCard(template, index) {
                 </svg>
             </div>
             <div class="flex items-center gap-2">
-                <span class="px-2 py-1 bg-green-500/20 text-green-400 text-xs font-medium rounded">Ready</span>
+                <span class="px-2 py-1 ${isComingSoon ? 'bg-gray-500/20 text-gray-400' : 'bg-green-500/20 text-green-400'} text-xs font-medium rounded">${isComingSoon ? 'Coming Soon' : 'Ready'}</span>
             </div>
         </div>
         <h3 class="text-lg font-bold text-white mb-2">${template.display_name || template.template_name}</h3>
@@ -129,12 +130,14 @@ export function createTemplateCard(template, index) {
         </div>
     `;
     
-    // Add click handler
-    card.addEventListener('click', () => {
-        if (window.openSqlTemplatePopulator) {
-            window.openSqlTemplatePopulator();
-        }
-    });
+    // Add click handler (only for active templates)
+    if (!isComingSoon) {
+        card.addEventListener('click', () => {
+            if (window.openSqlTemplatePopulator) {
+                window.openSqlTemplatePopulator();
+            }
+        });
+    }
     
     return card;
 }
