@@ -324,6 +324,8 @@ cd trusted-data-agent
 
 It is highly recommended to use a Python virtual environment.
 
+**Option A: Using Python venv**
+
 1. **Create and activate a virtual environment:**
 
    ```
@@ -334,6 +336,23 @@ It is highly recommended to use a Python virtual environment.
    # For Windows
    python -m venv venv
    .\venv\Scripts\activate
+   
+   ```
+
+2. **Install the required packages:**
+
+   ```
+   pip install -r requirements.txt
+   
+   ```
+
+**Option B: Using Conda (Recommended for consistent environments)**
+
+1. **Create and activate a conda environment:**
+
+   ```
+   conda create -n tda python=3.13
+   conda activate tda
    
    ```
 
@@ -406,6 +425,7 @@ The application will:
 - ✅ User tiers: `user`, `developer`, `admin`
 - ✅ Soft-delete audit trail for revoked tokens
 - ✅ Session management with persistent context
+- ℹ️ Rate limiting disabled by default (configurable in Administration → App Config)
 
 **Supported LLM Providers:**
 - AWS Bedrock (requires: Access Key, Secret Key, Region)
@@ -1031,6 +1051,14 @@ docker run -d \
 3. Create individual user accounts for team members
 4. Configure HTTPS reverse proxy (nginx, traefik) for production
 5. Set `TDA_ENCRYPTION_KEY` environment variable for production encryption
+
+**Optional Security Configuration:**
+- **Rate Limiting**: Disabled by default, can be enabled and configured through the web UI:
+  - Navigate to **Administration** → **App Config** → **Security & Rate Limiting**
+  - Toggle "Enable Rate Limiting" and configure limits for your deployment
+  - Per-user limits: prompts per hour/day, configuration changes
+  - Per-IP limits: login attempts, registrations, API calls
+  - Changes take effect within 60 seconds (cache refresh)
 
 ### Pre-configuring MCP Server
 

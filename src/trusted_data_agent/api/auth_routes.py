@@ -907,3 +907,180 @@ async def revoke_access_token(token_id: str):
             'status': 'error',
             'message': 'Failed to revoke access token'
         }), 500
+
+
+@auth_bp.route('/admin/rate-limit-settings', methods=['GET'])
+@require_admin
+async def get_rate_limit_settings():
+    """
+    Get current rate limiting configuration settings.
+    
+    Admin only endpoint.
+    
+    Returns:
+        200: Rate limiting settings
+        401: Unauthorized
+        403: Forbidden (not admin)
+        500: Server error
+    """
+    from trusted_data_agent.auth.models import SystemSettings
+    
+    try:
+        with get_db_session() as session:
+            # Fetch all rate limit related settings
+            rate_limit_keys = [
+                'rate_limit_enabled',
+                'rate_limit_user_prompts_per_hour',
+                'rate_limit_user_prompts_per_day',
+                'rate_limit_user_configs_per_hour',
+                'rate_limit_ip_login_per_minute',
+                'rate_limit_ip_register_per_hour',
+                'rate_limit_ip_api_per_minute'
+            ]
+            
+            settings = {}
+            for key in rate_limit_keys:
+                setting = session.query(SystemSettings).filter_by(setting_key=key).first()
+                if setting:
+                    settings[key] = {
+                        'value': setting.setting_value,
+                        'description': setting.description
+                    }
+            
+            return jsonify({
+                'status': 'success',
+                'settings': settings
+            }), 200
+    
+    except Exception as e:
+        logger.error(f"Get rate limit settings error: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to retrieve rate limit settings'
+        }), 500
+
+
+@auth_bp.route('/admin/rate-limit-settings', methods=['PUT'])
+@require_admin
+async def update_rate_limit_settings():
+    """
+    Update rate limiting configuration settings.
+    
+    Admin only endpoint.
+    
+    Request Body:
+        {
+            "rate_limit_enabled": "true",
+            "rate_limit_user_prompts_per_hour": "100",
+            ...
+        }
+    
+    Returns:
+        200: Settings updated successfully
+        400: Invalid request
+        401: Unauthorized
+        403: Forbidden (not admin)
+        500: Server error
+    """
+    from trusted_data_agent.auth.models import SystemSettings
+    
+    current_user = get_current_user()
+    
+    try:
+        data = await request.get_json()
+        
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': 'No settings provided'
+            }), 400
+        
+        # Valid setting keys
+        valid_keys = {
+            'rate_limit_enabled',
+            'rate_limit_user_prompts_per_hour',
+            'rate_limit_user_prompts_per_day',
+            'rate_limit_user_configs_per_hour',
+            'rate_limit_ip_login_per_minute',
+            'rate_limit_ip_register_per_hour',
+            'rate_limit_ip_api_per_minute'
+        }
+        
+        # Validate input
+        invalid_keys = set(data.keys()) - valid_keys
+        if invalid_keys:
+            return jsonify({
+                'status': 'error',
+                'message': f'Invalid setting keys: {", ".join(invalid_keys)}'
+            }), 400
+        
+        with get_db_session() as session:
+            updated_settings = []
+            
+            for key, value in data.items():
+                # Convert value to string
+                value_str = str(value).lower() if key == 'rate_limit_enabled' else str(value)
+                
+                # Validate boolean for enabled flag
+                if key == 'rate_limit_enabled' and value_str not in ('true', 'false'):
+                    return jsonify({
+                        'status': 'error',
+                        'message': f'Invalid value for {key}: must be true or false'
+                    }), 400
+                
+                # Validate integer for numeric settings
+                if key != 'rate_limit_enabled':
+                    try:
+                        int_value = int(value_str)
+                        if int_value < 0:
+                            return jsonify({
+                                'status': 'error',
+                                'message': f'Invalid value for {key}: must be non-negative integer'
+                            }), 400
+                    except ValueError:
+                        return jsonify({
+                            'status': 'error',
+                            'message': f'Invalid value for {key}: must be an integer'
+                        }), 400
+                
+                # Update or create setting
+                setting = session.query(SystemSettings).filter_by(setting_key=key).first()
+                if setting:
+                    setting.setting_value = value_str
+                    setting.updated_at = datetime.now()
+                else:
+                    # Create new setting if it doesn't exist
+                    setting = SystemSettings(
+                        setting_key=key,
+                        setting_value=value_str,
+                        description=f'Rate limiting setting: {key}'
+                    )
+                    session.add(setting)
+                
+                updated_settings.append(key)
+            
+            session.commit()
+            
+            # Log the configuration change
+            log_audit_event_detailed(
+                user_id=current_user.id,
+                action='update_rate_limit_settings',
+                resource='system_settings',
+                status='success',
+                details=f'Updated settings: {", ".join(updated_settings)}'
+            )
+            
+            logger.info(f"User {current_user.username} updated rate limit settings: {updated_settings}")
+            
+            return jsonify({
+                'status': 'success',
+                'message': 'Rate limit settings updated successfully',
+                'updated_settings': updated_settings
+            }), 200
+    
+    except Exception as e:
+        logger.error(f"Update rate limit settings error: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to update rate limit settings'
+        }), 500

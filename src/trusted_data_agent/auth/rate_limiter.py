@@ -17,18 +17,78 @@ from quart import request, jsonify
 
 logger = logging.getLogger("quart.app")
 
-# Rate limit configuration from environment
-RATE_LIMIT_ENABLED = os.environ.get('TDA_RATE_LIMIT_ENABLED', 'true').lower() == 'true'
+# Cache for rate limit configuration (refreshed periodically)
+_config_cache = {}
+_config_cache_time = 0
+CONFIG_CACHE_TTL = 60  # Cache config for 60 seconds
 
-# Per-user limits (authenticated users)
-USER_PROMPTS_PER_HOUR = int(os.environ.get('TDA_USER_PROMPTS_PER_HOUR', '100'))
-USER_PROMPTS_PER_DAY = int(os.environ.get('TDA_USER_PROMPTS_PER_DAY', '1000'))
-USER_CONFIGS_PER_HOUR = int(os.environ.get('TDA_USER_CONFIGS_PER_HOUR', '10'))
 
-# Per-IP limits (anonymous/authentication endpoints)
-IP_LOGIN_PER_MINUTE = int(os.environ.get('TDA_IP_LOGIN_PER_MINUTE', '5'))
-IP_REGISTER_PER_HOUR = int(os.environ.get('TDA_IP_REGISTER_PER_HOUR', '3'))
-IP_API_PER_MINUTE = int(os.environ.get('TDA_IP_API_PER_MINUTE', '60'))
+def _get_rate_limit_config():
+    """
+    Get rate limit configuration from database with caching.
+    Falls back to environment variables if database is unavailable.
+    """
+    global _config_cache, _config_cache_time
+    
+    current_time = time.time()
+    
+    # Return cached config if still valid
+    if _config_cache and (current_time - _config_cache_time) < CONFIG_CACHE_TTL:
+        return _config_cache
+    
+    # Try to load from database
+    try:
+        from trusted_data_agent.auth.database import get_db_session
+        from trusted_data_agent.auth.models import SystemSettings
+        
+        with get_db_session() as session:
+            settings = session.query(SystemSettings).filter(
+                SystemSettings.setting_key.like('rate_limit_%')
+            ).all()
+            
+            config = {}
+            for setting in settings:
+                if setting.setting_key == 'rate_limit_enabled':
+                    config['enabled'] = setting.setting_value.lower() == 'true'
+                elif setting.setting_key == 'rate_limit_user_prompts_per_hour':
+                    config['user_prompts_per_hour'] = int(setting.setting_value)
+                elif setting.setting_key == 'rate_limit_user_prompts_per_day':
+                    config['user_prompts_per_day'] = int(setting.setting_value)
+                elif setting.setting_key == 'rate_limit_user_configs_per_hour':
+                    config['user_configs_per_hour'] = int(setting.setting_value)
+                elif setting.setting_key == 'rate_limit_ip_login_per_minute':
+                    config['ip_login_per_minute'] = int(setting.setting_value)
+                elif setting.setting_key == 'rate_limit_ip_register_per_hour':
+                    config['ip_register_per_hour'] = int(setting.setting_value)
+                elif setting.setting_key == 'rate_limit_ip_api_per_minute':
+                    config['ip_api_per_minute'] = int(setting.setting_value)
+            
+            # Update cache
+            _config_cache = config
+            _config_cache_time = current_time
+            
+            return config
+    
+    except Exception as e:
+        logger.warning(f"Failed to load rate limit config from database, using environment variables: {e}")
+        # Fall back to environment variables
+        config = {
+            'enabled': os.environ.get('TDA_RATE_LIMIT_ENABLED', 'false').lower() == 'true',
+            'user_prompts_per_hour': int(os.environ.get('TDA_USER_PROMPTS_PER_HOUR', '100')),
+            'user_prompts_per_day': int(os.environ.get('TDA_USER_PROMPTS_PER_DAY', '1000')),
+            'user_configs_per_hour': int(os.environ.get('TDA_USER_CONFIGS_PER_HOUR', '10')),
+            'ip_login_per_minute': int(os.environ.get('TDA_IP_LOGIN_PER_MINUTE', '5')),
+            'ip_register_per_hour': int(os.environ.get('TDA_IP_REGISTER_PER_HOUR', '3')),
+            'ip_api_per_minute': int(os.environ.get('TDA_IP_API_PER_MINUTE', '60'))
+        }
+        return config
+
+
+# Get current configuration
+def _is_rate_limit_enabled():
+    """Check if rate limiting is enabled."""
+    config = _get_rate_limit_config()
+    return config.get('enabled', False)
 
 # In-memory storage for rate limits
 # Structure: {identifier: {bucket_key: (tokens, last_update_time)}}
@@ -117,7 +177,7 @@ def check_rate_limit(
     Returns:
         Tuple of (is_allowed, retry_after_seconds)
     """
-    if not RATE_LIMIT_ENABLED:
+    if not _is_rate_limit_enabled():
         return True, 0
     
     # Periodic cleanup
@@ -171,7 +231,7 @@ def rate_limit(limit: int, window: int, bucket_key: Optional[str] = None):
     def decorator(f):
         @wraps(f)
         async def decorated_function(*args, **kwargs):
-            if not RATE_LIMIT_ENABLED:
+            if not _is_rate_limit_enabled():
                 return await f(*args, **kwargs)
             
             # Try to get user_id first (authenticated request)
@@ -214,31 +274,35 @@ def check_user_prompt_quota(user_id: str) -> Tuple[bool, str]:
     Returns:
         Tuple of (is_allowed, error_message)
     """
-    if not RATE_LIMIT_ENABLED:
+    if not _is_rate_limit_enabled():
         return True, ""
+    
+    config = _get_rate_limit_config()
+    user_prompts_per_hour = config.get('user_prompts_per_hour', 100)
+    user_prompts_per_day = config.get('user_prompts_per_day', 1000)
     
     # Check hourly limit
     allowed, retry_after = check_rate_limit(
         f"user:{user_id}",
-        USER_PROMPTS_PER_HOUR,
+        user_prompts_per_hour,
         3600,
         "prompts_hourly"
     )
     
     if not allowed:
-        return False, f"Hourly prompt limit exceeded ({USER_PROMPTS_PER_HOUR}/hour). Retry in {retry_after} seconds."
+        return False, f"Hourly prompt limit exceeded ({user_prompts_per_hour}/hour). Retry in {retry_after} seconds."
     
     # Check daily limit
     allowed, retry_after = check_rate_limit(
         f"user:{user_id}",
-        USER_PROMPTS_PER_DAY,
+        user_prompts_per_day,
         86400,
         "prompts_daily"
     )
     
     if not allowed:
         hours = retry_after // 3600
-        return False, f"Daily prompt limit exceeded ({USER_PROMPTS_PER_DAY}/day). Retry in {hours} hours."
+        return False, f"Daily prompt limit exceeded ({user_prompts_per_day}/day). Retry in {hours} hours."
     
     return True, ""
 
@@ -253,18 +317,21 @@ def check_user_config_quota(user_id: str) -> Tuple[bool, str]:
     Returns:
         Tuple of (is_allowed, error_message)
     """
-    if not RATE_LIMIT_ENABLED:
+    if not _is_rate_limit_enabled():
         return True, ""
+    
+    config = _get_rate_limit_config()
+    user_configs_per_hour = config.get('user_configs_per_hour', 10)
     
     allowed, retry_after = check_rate_limit(
         f"user:{user_id}",
-        USER_CONFIGS_PER_HOUR,
+        user_configs_per_hour,
         3600,
         "configs_hourly"
     )
     
     if not allowed:
-        return False, f"Configuration limit exceeded ({USER_CONFIGS_PER_HOUR}/hour). Retry in {retry_after} seconds."
+        return False, f"Configuration limit exceeded ({user_configs_per_hour}/hour). Retry in {retry_after} seconds."
     
     return True, ""
 
@@ -279,14 +346,17 @@ def check_ip_login_limit(ip_address: Optional[str] = None) -> Tuple[bool, int]:
     Returns:
         Tuple of (is_allowed, retry_after_seconds)
     """
-    if not RATE_LIMIT_ENABLED:
+    if not _is_rate_limit_enabled():
         return True, 0
+    
+    config = _get_rate_limit_config()
+    ip_login_per_minute = config.get('ip_login_per_minute', 5)
     
     ip = ip_address or _get_client_ip()
     
     return check_rate_limit(
         f"ip:{ip}",
-        IP_LOGIN_PER_MINUTE,
+        ip_login_per_minute,
         60,
         "login"
     )
@@ -302,14 +372,17 @@ def check_ip_register_limit(ip_address: Optional[str] = None) -> Tuple[bool, int
     Returns:
         Tuple of (is_allowed, retry_after_seconds)
     """
-    if not RATE_LIMIT_ENABLED:
+    if not _is_rate_limit_enabled():
         return True, 0
+    
+    config = _get_rate_limit_config()
+    ip_register_per_hour = config.get('ip_register_per_hour', 3)
     
     ip = ip_address or _get_client_ip()
     
     return check_rate_limit(
         f"ip:{ip}",
-        IP_REGISTER_PER_HOUR,
+        ip_register_per_hour,
         3600,
         "register"
     )

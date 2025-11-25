@@ -163,6 +163,17 @@ const AdminManager = {
         if (saveWindowDefaultsBtn) {
             saveWindowDefaultsBtn.addEventListener('click', () => this.saveWindowDefaults());
         }
+
+        // Rate Limiting
+        const rateLimitEnabledCheckbox = document.getElementById('rate-limit-enabled');
+        if (rateLimitEnabledCheckbox) {
+            rateLimitEnabledCheckbox.addEventListener('change', (e) => this.toggleRateLimitSettings(e.target.checked));
+        }
+
+        const saveRateLimitBtn = document.getElementById('save-rate-limit-btn');
+        if (saveRateLimitBtn) {
+            saveRateLimitBtn.addEventListener('click', () => this.saveRateLimitSettings());
+        }
     },
 
     /**
@@ -200,6 +211,7 @@ const AdminManager = {
             this.loadPanes();
         } else if (tabName === 'app-config-tab') {
             this.loadAppConfig();
+            this.loadRateLimitSettings();
         } else if (tabName === 'expert-settings-tab') {
             this.loadExpertSettings();
         } else if (tabName === 'system-prompts-tab') {
@@ -1792,6 +1804,125 @@ const AdminManager = {
         
         if (textarea && countElement) {
             countElement.textContent = textarea.value.length.toLocaleString();
+        }
+    },
+
+    /**
+     * Load rate limiting settings from server
+     */
+    async loadRateLimitSettings() {
+        const token = localStorage.getItem('tda_auth_token');
+        if (!token) return;
+
+        try {
+            const response = await fetch('/api/v1/auth/admin/rate-limit-settings', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to load rate limit settings');
+            }
+
+            const data = await response.json();
+            const settings = data.settings || {};
+
+            // Update checkbox
+            const enabled = settings.rate_limit_enabled?.value === 'true';
+            const checkbox = document.getElementById('rate-limit-enabled');
+            if (checkbox) {
+                checkbox.checked = enabled;
+                this.toggleRateLimitSettings(enabled);
+            }
+
+            // Update input fields
+            if (settings.rate_limit_user_prompts_per_hour) {
+                const input = document.getElementById('rate-limit-user-prompts-per-hour');
+                if (input) input.value = settings.rate_limit_user_prompts_per_hour.value;
+            }
+            if (settings.rate_limit_user_prompts_per_day) {
+                const input = document.getElementById('rate-limit-user-prompts-per-day');
+                if (input) input.value = settings.rate_limit_user_prompts_per_day.value;
+            }
+            if (settings.rate_limit_user_configs_per_hour) {
+                const input = document.getElementById('rate-limit-user-configs-per-hour');
+                if (input) input.value = settings.rate_limit_user_configs_per_hour.value;
+            }
+            if (settings.rate_limit_ip_login_per_minute) {
+                const input = document.getElementById('rate-limit-ip-login-per-minute');
+                if (input) input.value = settings.rate_limit_ip_login_per_minute.value;
+            }
+            if (settings.rate_limit_ip_register_per_hour) {
+                const input = document.getElementById('rate-limit-ip-register-per-hour');
+                if (input) input.value = settings.rate_limit_ip_register_per_hour.value;
+            }
+            if (settings.rate_limit_ip_api_per_minute) {
+                const input = document.getElementById('rate-limit-ip-api-per-minute');
+                if (input) input.value = settings.rate_limit_ip_api_per_minute.value;
+            }
+
+        } catch (error) {
+            console.error('[AdminManager] Error loading rate limit settings:', error);
+            window.showAppBanner('Failed to load rate limit settings', 'error', 5000);
+        }
+    },
+
+    /**
+     * Toggle rate limit settings visibility
+     */
+    toggleRateLimitSettings(enabled) {
+        const settingsDiv = document.getElementById('rate-limit-settings');
+        if (settingsDiv) {
+            if (enabled) {
+                settingsDiv.classList.remove('hidden');
+            } else {
+                settingsDiv.classList.add('hidden');
+            }
+        }
+    },
+
+    /**
+     * Save rate limiting settings
+     */
+    async saveRateLimitSettings() {
+        const token = localStorage.getItem('tda_auth_token');
+        if (!token) {
+            window.showAppBanner('Authentication required', 'error', 5000);
+            return;
+        }
+
+        try {
+            // Collect settings
+            const settings = {
+                rate_limit_enabled: document.getElementById('rate-limit-enabled')?.checked ? 'true' : 'false',
+                rate_limit_user_prompts_per_hour: document.getElementById('rate-limit-user-prompts-per-hour')?.value || '100',
+                rate_limit_user_prompts_per_day: document.getElementById('rate-limit-user-prompts-per-day')?.value || '1000',
+                rate_limit_user_configs_per_hour: document.getElementById('rate-limit-user-configs-per-hour')?.value || '10',
+                rate_limit_ip_login_per_minute: document.getElementById('rate-limit-ip-login-per-minute')?.value || '5',
+                rate_limit_ip_register_per_hour: document.getElementById('rate-limit-ip-register-per-hour')?.value || '3',
+                rate_limit_ip_api_per_minute: document.getElementById('rate-limit-ip-api-per-minute')?.value || '60'
+            };
+
+            const response = await fetch('/api/v1/auth/admin/rate-limit-settings', {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(settings)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to save rate limit settings');
+            }
+
+            const data = await response.json();
+            window.showAppBanner('Rate limit settings saved successfully', 'success', 5000);
+            console.log('[AdminManager] Rate limit settings saved:', data);
+
+        } catch (error) {
+            console.error('[AdminManager] Error saving rate limit settings:', error);
+            window.showAppBanner(`Failed to save rate limit settings: ${error.message}`, 'error', 5000);
         }
     }
 };

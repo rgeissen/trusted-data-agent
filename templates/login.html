@@ -231,6 +231,11 @@
                         localStorage.removeItem(REMEMBER_ME_KEY);
                     }
                     
+                    // Check if user is admin to show default password warning
+                    if (result.user && result.user.username === 'admin') {
+                        localStorage.setItem('tda_show_admin_password_warning', 'true');
+                    }
+                    
                     showAlert('Login successful! Redirecting...', 'success');
                     setTimeout(() => {
                         window.location.href = '/';

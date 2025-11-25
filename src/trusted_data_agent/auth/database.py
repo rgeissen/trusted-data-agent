@@ -69,6 +69,9 @@ def init_database():
         # Create default admin account if no users exist
         _create_default_admin_if_needed()
         
+        # Initialize system settings
+        _initialize_default_system_settings()
+        
         return True
     except Exception as e:
         logger.error(f"Failed to initialize authentication database: {e}", exc_info=True)
@@ -111,6 +114,45 @@ def _create_default_admin_if_needed():
                 
     except Exception as e:
         logger.error(f"Error checking/creating default admin account: {e}", exc_info=True)
+
+
+def _initialize_default_system_settings():
+    """
+    Initialize default system settings if they don't exist.
+    This includes rate limiting configuration.
+    """
+    from trusted_data_agent.auth.models import SystemSettings
+    
+    # Default rate limiting settings (disabled by default)
+    default_settings = {
+        'rate_limit_enabled': ('false', 'Enable or disable rate limiting system-wide'),
+        'rate_limit_user_prompts_per_hour': ('100', 'Maximum prompts per hour for authenticated users'),
+        'rate_limit_user_prompts_per_day': ('1000', 'Maximum prompts per day for authenticated users'),
+        'rate_limit_user_configs_per_hour': ('10', 'Maximum configuration changes per hour for authenticated users'),
+        'rate_limit_ip_login_per_minute': ('5', 'Maximum login attempts per minute per IP address'),
+        'rate_limit_ip_register_per_hour': ('3', 'Maximum registrations per hour per IP address'),
+        'rate_limit_ip_api_per_minute': ('60', 'Maximum API calls per minute per IP address'),
+    }
+    
+    try:
+        with get_db_session() as session:
+            for key, (value, description) in default_settings.items():
+                # Check if setting already exists
+                existing = session.query(SystemSettings).filter_by(setting_key=key).first()
+                if not existing:
+                    setting = SystemSettings(
+                        setting_key=key,
+                        setting_value=value,
+                        description=description
+                    )
+                    session.add(setting)
+                    logger.debug(f"Initialized system setting: {key} = {value}")
+            
+            session.commit()
+            logger.info("System settings initialized successfully")
+            
+    except Exception as e:
+        logger.error(f"Error initializing system settings: {e}", exc_info=True)
 
 
 def drop_all_tables():

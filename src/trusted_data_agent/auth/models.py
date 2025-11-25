@@ -331,3 +331,30 @@ class PaneVisibility(Base):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+
+
+class SystemSettings(Base):
+    """System-wide configuration settings including rate limiting."""
+    
+    __tablename__ = 'system_settings'
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    setting_key = Column(String(100), nullable=False, unique=True, index=True)
+    setting_value = Column(String(255), nullable=False)
+    description = Column(String(500), nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    def __repr__(self):
+        return f"<SystemSettings(key='{self.setting_key}', value='{self.setting_value}')>"
+    
+    def to_dict(self):
+        """Convert system setting to dictionary for API responses."""
+        return {
+            'id': self.id,
+            'key': self.setting_key,
+            'value': self.setting_value,
+            'description': self.description,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
