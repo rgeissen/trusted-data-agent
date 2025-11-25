@@ -49,14 +49,14 @@ logs/
 # tda_sessions/
 
 # Sensitive data
-*.key
-*.pem
 *.env
 !.env.example
-!tda_keys/*.key
-!tda_keys/*.pem
 tda_auth.db
 tda_auth.db-*
+
+# Keys and certificates
+# Note: jwt_secret.key is distributed with the application
+# Users should regenerate it using: python maintenance/regenerate_jwt_secret.py
 
 # Temporary files
 *.tmp

@@ -363,7 +363,24 @@ It is highly recommended to use a Python virtual environment.
    
    ```
 
-### Step 3: Create the Project Configuration File
+### Step 3: Regenerate JWT Secret Key (Security)
+
+**⚠️ IMPORTANT SECURITY STEP**
+
+The application ships with a default JWT secret key for user authentication. You **must** regenerate this key for your installation to ensure security.
+
+```bash
+python maintenance/regenerate_jwt_secret.py
+```
+
+This will:
+- Generate a new unique JWT secret key for your installation
+- Save it to `tda_keys/jwt_secret.key` with secure permissions (600)
+- Ensure your user authentication tokens cannot be forged
+
+**Note:** If you skip this step, your installation will use the default key, which is a **security risk**.
+
+### Step 4: Create the Project Configuration File
 
 In the project's root directory, create a new file named `pyproject.toml`. This file is essential for Python to recognize the project structure.
 
@@ -384,7 +401,7 @@ where = ["src"]
 
 ```
 
-### Step 4: Install the Application in Editable Mode
+### Step 5: Install the Application in Editable Mode
 
 This crucial step links your source code to your Python environment, resolving all import paths. **Run this command from the project's root directory.**
 
@@ -395,7 +412,7 @@ pip install -e .
 
 The `-e` flag stands for "editable," meaning any changes you make to the source code will be immediately effective without needing to reinstall.
 
-### Step 5: Start the Application
+### Step 6: Start the Application
 
 The application uses a **multi-user authentication system** with JWT tokens and encrypted credential storage. Authentication is **always required** for all users.
 
@@ -410,7 +427,7 @@ The application will:
 - Initialize default admin account: `admin` / `admin` (⚠️ **change immediately!**)
 - Start the web server on `http://localhost:5000`
 
-### Step 6: First Login and Security
+### Step 7: First Login and Security
 
 1. **Open your browser** to `http://localhost:5000`
 2. **Login** with default credentials: `admin` / `admin`

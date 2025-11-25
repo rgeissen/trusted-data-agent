@@ -4110,7 +4110,7 @@
         window.updatePaneVisibility = updatePaneVisibility;
         
         // Update UI based on authentication state
-        function updateAuthUI() {
+        async function updateAuthUI() {
             const isAuth = authClient.isAuthenticated();
             const user = authClient.getUser();
             
@@ -4205,7 +4205,9 @@
                 const welcomeLoginIcon = document.getElementById('welcome-login-icon');
                 const welcomeConfigInfo = document.getElementById('welcome-config-info');
                 
-                if (welcomeBtnText) welcomeBtnText.textContent = 'Start Conversation';
+                // Don't set button text here - let main.js showWelcomeScreen() handle validation
+                // to avoid race conditions and flickering
+                
                 if (welcomeCogwheelIcon) welcomeCogwheelIcon.classList.remove('hidden');
                 if (welcomeLoginIcon) welcomeLoginIcon.classList.add('hidden');
                 if (welcomeConfigInfo) welcomeConfigInfo.classList.remove('hidden');

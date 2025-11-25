@@ -10,6 +10,7 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from pathlib import Path
 
 import bcrypt
 import jwt
@@ -19,17 +20,63 @@ from trusted_data_agent.auth.models import AuthToken, User
 
 logger = logging.getLogger("quart.app")
 
-# Configuration from environment
-JWT_SECRET_KEY = os.environ.get('TDA_JWT_SECRET_KEY', secrets.token_urlsafe(32))
+
+def _get_or_create_jwt_secret() -> str:
+    """
+    Get JWT secret key from environment, or load/create persistent key file.
+    
+    Priority:
+    1. TDA_JWT_SECRET_KEY environment variable
+    2. tda_keys/jwt_secret.key file
+    3. Generate new key and save to file
+    
+    Returns:
+        JWT secret key string
+    """
+    # Check environment variable first
+    env_key = os.environ.get('TDA_JWT_SECRET_KEY')
+    if env_key:
+        logger.info("Using JWT secret key from TDA_JWT_SECRET_KEY environment variable")
+        return env_key
+    
+    # Check for persistent key file
+    key_dir = Path(__file__).parent.parent.parent.parent / 'tda_keys'
+    key_file = key_dir / 'jwt_secret.key'
+    
+    try:
+        if key_file.exists():
+            with open(key_file, 'r', encoding='utf-8') as f:
+                stored_key = f.read().strip()
+                if stored_key:
+                    logger.info(f"Loaded JWT secret key from {key_file}")
+                    return stored_key
+        
+        # Generate new key and save it
+        new_key = secrets.token_urlsafe(32)
+        key_dir.mkdir(parents=True, exist_ok=True)
+        
+        with open(key_file, 'w', encoding='utf-8') as f:
+            f.write(new_key)
+        
+        # Set restrictive permissions (owner read/write only)
+        key_file.chmod(0o600)
+        
+        logger.info(f"Generated new JWT secret key and saved to {key_file}")
+        return new_key
+        
+    except Exception as e:
+        logger.error(f"Error loading/creating JWT secret key file: {e}. Using temporary key.", exc_info=True)
+        logger.warning("JWT tokens will not persist across restarts!")
+        return secrets.token_urlsafe(32)
+
+
+# Configuration from environment or persistent storage
+JWT_SECRET_KEY = _get_or_create_jwt_secret()
 JWT_ALGORITHM = 'HS256'
 JWT_EXPIRY_HOURS = int(os.environ.get('TDA_JWT_EXPIRY_HOURS', '24'))
 PASSWORD_MIN_LENGTH = int(os.environ.get('TDA_PASSWORD_MIN_LENGTH', '8'))
 MAX_LOGIN_ATTEMPTS = int(os.environ.get('TDA_MAX_LOGIN_ATTEMPTS', '5'))
 LOCKOUT_DURATION_MINUTES = int(os.environ.get('TDA_LOCKOUT_DURATION_MINUTES', '15'))
-
-# Warn if using default secret in production
-if JWT_SECRET_KEY == secrets.token_urlsafe(32) and os.environ.get('TDA_ENV') == 'production':
-    logger.warning("Using default JWT secret key! Set TDA_JWT_SECRET_KEY environment variable in production.")
 
 
 def hash_password(password: str) -> str:

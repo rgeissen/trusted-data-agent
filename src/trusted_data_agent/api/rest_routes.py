@@ -2168,7 +2168,14 @@ async def create_llm_configuration():
         current_user = get_current_user_from_request()
         app_logger.info(f"Creating LLM config - current_user: {current_user}, has_credentials: {bool(credentials)}")
         
-        if current_user and credentials:
+        if not current_user:
+            app_logger.error("No authenticated user - cannot create LLM configuration with credentials")
+            return jsonify({
+                "status": "error",
+                "message": "Authentication required to store LLM credentials"
+            }), 401
+        
+        if credentials:
             # Encrypt credentials in database
             app_logger.info(f"Encrypting credentials for provider {provider}, user {current_user.username} (id={current_user.id})")
             encryption.encrypt_credentials(current_user.id, provider, credentials)
@@ -2179,11 +2186,8 @@ async def create_llm_configuration():
             data_without_creds["credentials"] = {}  # Store empty dict in config
             success = config_manager.add_llm_configuration(data_without_creds, user_uuid)
         else:
-            # No auth or no credentials - store as-is
-            if not current_user:
-                app_logger.warning("No current user found - storing credentials in config (not encrypted)")
-            if not credentials:
-                app_logger.info("No credentials provided - storing config without credentials")
+            # No credentials provided - store config without credentials
+            app_logger.info("No credentials provided - storing config without credentials")
             success = config_manager.add_llm_configuration(data, user_uuid)
         
         if success:
@@ -2238,17 +2242,21 @@ async def update_llm_configuration(config_id: str):
                 current_user = get_current_user_from_request()
                 app_logger.info(f"Updating LLM config - current_user: {current_user}, provider: {provider}, has_credentials: {bool(credentials)}")
                 
-                if current_user:
-                    # Encrypt credentials in database
-                    app_logger.info(f"Encrypting credentials for provider {provider}, user {current_user.username} (id={current_user.id})")
-                    encryption.encrypt_credentials(current_user.id, provider, credentials)
-                    app_logger.info(f"Successfully encrypted credentials for provider {provider}")
-                    
-                    # Remove credentials from update data (they're in encrypted storage now)
-                    data = {k: v for k, v in data.items() if k != "credentials"}
-                    data["credentials"] = {}  # Store empty dict in config
-                else:
-                    app_logger.warning("No current user found - storing credentials in config (not encrypted)")
+                if not current_user:
+                    app_logger.error("No authenticated user - cannot update LLM configuration with credentials")
+                    return jsonify({
+                        "status": "error",
+                        "message": "Authentication required to store LLM credentials"
+                    }), 401
+                
+                # Encrypt credentials in database
+                app_logger.info(f"Encrypting credentials for provider {provider}, user {current_user.username} (id={current_user.id})")
+                encryption.encrypt_credentials(current_user.id, provider, credentials)
+                app_logger.info(f"Successfully encrypted credentials for provider {provider}")
+                
+                # Remove credentials from update data (they're in encrypted storage now)
+                data = {k: v for k, v in data.items() if k != "credentials"}
+                data["credentials"] = {}  # Store empty dict in config
         
         success = config_manager.update_llm_configuration(config_id, data, user_uuid)
         

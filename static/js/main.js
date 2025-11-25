@@ -976,17 +976,42 @@ async function showWelcomeScreen() {
         console.error("Error checking for saved configurations:", error);
     }
     
-    // Update button text based on whether user has saved configurations
+    // Check if default profile exists and is valid
+    let isDefaultProfileValid = false;
+    if (hasSavedConfig && window.configState?.defaultProfileId) {
+        try {
+            console.log('[Welcome Screen] Testing default profile:', window.configState.defaultProfileId);
+            const { testProfile } = await import('./api.js');
+            const result = await testProfile(window.configState.defaultProfileId);
+            
+            // Check if all tests passed
+            isDefaultProfileValid = Object.values(result.results).every(r => r.status === 'success');
+            console.log('[Welcome Screen] Default profile validation result:', isDefaultProfileValid);
+            
+            if (!isDefaultProfileValid) {
+                console.warn('[Welcome Screen] Default profile validation failed:', result.results);
+            }
+        } catch (error) {
+            console.error('[Welcome Screen] Error testing default profile:', error);
+            isDefaultProfileValid = false;
+        }
+    }
+    
+    // Update button text based on whether user has a valid default profile
     if (welcomeBtnText) {
-        const buttonText = hasSavedConfig ? 'Start Conversation' : 'Configure Application';
+        const buttonText = (hasSavedConfig && isDefaultProfileValid) ? 'Start Conversation' : 'Configure Application';
         welcomeBtnText.textContent = buttonText;
     }
     
     // Update subtext with configuration details or default message
     if (welcomeSubtext) {
-        welcomeSubtext.textContent = hasSavedConfig && configDetails 
-            ? configDetails 
-            : "You'll need an MCP server and an LLM provider";
+        if (hasSavedConfig && isDefaultProfileValid && configDetails) {
+            welcomeSubtext.textContent = configDetails;
+        } else if (hasSavedConfig && !isDefaultProfileValid) {
+            welcomeSubtext.textContent = "Default profile needs validation. Please check your credentials.";
+        } else {
+            welcomeSubtext.textContent = "You'll need an MCP server and an LLM provider";
+        }
     }
     
     // Show/hide reconfigure link based on saved config
@@ -1010,8 +1035,8 @@ async function showWelcomeScreen() {
     // Wire up the configure button
     if (welcomeBtn && !welcomeBtn.dataset._wired) {
         welcomeBtn.addEventListener('click', async () => {
-            if (hasSavedConfig) {
-                // User has saved config - start conversation automatically
+            if (hasSavedConfig && isDefaultProfileValid) {
+                // User has valid default profile - start conversation automatically
                 
                 // Show spinning cogwheel and update button text
                 if (welcomeCogwheel) {
@@ -1043,12 +1068,12 @@ async function showWelcomeScreen() {
                         welcomeCogwheel.classList.remove('animate-spin');
                     }
                     if (welcomeBtnText) {
-                        welcomeBtnText.textContent = hasSavedConfig ? 'Start Conversation' : 'Configure Application';
+                        welcomeBtnText.textContent = (hasSavedConfig && isDefaultProfileValid) ? 'Start Conversation' : 'Configure Application';
                     }
                     welcomeBtn.disabled = false;    
                 }
             } else {
-                // No saved config - go to credentials view
+                // No valid profile - go to credentials view to configure
                 handleViewSwitch('credentials-view');
             }
         });
