@@ -68,6 +68,23 @@ async def run_agent_execution(
         # For a normal query, we save the actual user input.
         message_to_save = display_message if is_replay and display_message else user_input
 
+        # Get profile tag from profile_override_id or default profile
+        profile_tag = None
+        if profile_override_id or session_data.get("profile_tag"):
+            try:
+                from trusted_data_agent.core.config_manager import get_config_manager
+                config_manager = get_config_manager()
+                
+                # Use override if provided, otherwise use session's profile_tag
+                profile_id_to_check = profile_override_id or session_data.get("profile_tag")
+                if profile_id_to_check:
+                    profiles = config_manager.get_profiles(user_uuid)
+                    profile = next((p for p in profiles if p.get("id") == profile_id_to_check or p.get("tag") == profile_id_to_check), None)
+                    if profile:
+                        profile_tag = profile.get("tag")
+            except Exception as e:
+                app_logger.warning(f"Failed to get profile tag: {e}")
+
         if message_to_save:
             session_manager.add_message_to_histories(
                 user_uuid,
@@ -75,9 +92,10 @@ async def run_agent_execution(
                 'user',
                 message_to_save,
                 html_content=None, # User input is plain text
-                source=source
+                source=source,
+                profile_tag=profile_tag
             )
-            app_logger.debug(f"Added user message to session_history for {session_id}: '{message_to_save}'")
+            app_logger.debug(f"Added user message to session_history for {session_id}: '{message_to_save}' with profile_tag: {profile_tag}")
         # --- MODIFICATION END ---
 
         previous_turn_data = session_data.get("last_turn_data", {})

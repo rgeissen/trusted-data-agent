@@ -103,7 +103,7 @@ export function renderHistoricalTrace(originalPlan = [], executionTrace = [], tu
 }
 
 
-export function addMessage(role, content, turnId = null, isValid = true, source = null) { // eslint-disable-line no-unused-vars
+export function addMessage(role, content, turnId = null, isValid = true, source = null, profileTag = null) { // eslint-disable-line no-unused-vars
     const wrapper = document.createElement('div');
     wrapper.className = `message-bubble group flex items-start gap-4 ${role === 'user' ? 'justify-end' : ''}`;
     const icon = document.createElement('div');
@@ -111,6 +111,15 @@ export function addMessage(role, content, turnId = null, isValid = true, source 
     icon.className = 'flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg relative';
     icon.textContent = role === 'user' ? 'U' : 'A';
     icon.classList.add(role === 'user' ? 'bg-gray-700' : 'bg-[#F15F22]');
+
+    // Add profile badge for user messages if profileTag is provided
+    if (role === 'user' && profileTag) {
+        const badge = document.createElement('div');
+        badge.className = 'absolute -top-1 -right-1 bg-[#F15F22] text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full border-2 border-gray-900 shadow-md';
+        badge.textContent = profileTag;
+        badge.title = `Executed with profile: ${profileTag}`;
+        icon.appendChild(badge);
+    }
 
     if (role === 'assistant' && turnId) {
         icon.classList.add('assistant-avatar');

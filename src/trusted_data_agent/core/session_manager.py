@@ -328,12 +328,13 @@ def delete_session(user_uuid: str, session_id: str) -> bool:
         return False # Indicate failure due to error
 
 # --- MODIFICATION START: Rename and refactor add_to_history ---
-def add_message_to_histories(user_uuid: str, session_id: str, role: str, content: str, html_content: str | None = None, source: str | None = None):
+def add_message_to_histories(user_uuid: str, session_id: str, role: str, content: str, html_content: str | None = None, source: str | None = None, profile_tag: str | None = None):
     """
     Adds a message to the appropriate histories, decoupling UI from LLM context.
     - `content` (plain text) is *always* added to the LLM's chat_object.
     - `html_content` (if provided) is added to the UI's session_history.
     - If `html_content` is not provided, `content` is used for the UI.
+    - `profile_tag` (if provided) stores which profile was used for this message.
     """
     session_data = _load_session(user_uuid, session_id)
     if session_data:
@@ -364,6 +365,9 @@ def add_message_to_histories(user_uuid: str, session_id: str, role: str, content
 
         if source:
              message_to_append['source'] = source
+        
+        if profile_tag:
+             message_to_append['profile_tag'] = profile_tag
         
         session_history.append(message_to_append)
         # --- MODIFICATION END ---

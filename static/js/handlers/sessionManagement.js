@@ -111,14 +111,16 @@ export async function handleLoadSession(sessionId, isNewSession = false) {
                 const msg = data.history[i];
                 // Default to true if isValid flag is missing (for older sessions)
                 const isValid = msg.isValid === undefined ? true : msg.isValid;
+                // Get profile_tag from message (for user messages)
+                const profileTag = msg.profile_tag || null;
 
                 if (msg.role === 'assistant') {
                     // Pass the calculated turn ID and validity for assistant messages
-                    UI.addMessage(msg.role, msg.content, currentTurnId, isValid, msg.source);
+                    UI.addMessage(msg.role, msg.content, currentTurnId, isValid, msg.source, null);
                     currentTurnId++; // Increment turn ID after an assistant message
                 } else {
-                    // User messages don't need a turn ID, but pass validity
-                    UI.addMessage(msg.role, msg.content, null, isValid, msg.source);
+                    // User messages don't need a turn ID, but pass validity and profile tag
+                    UI.addMessage(msg.role, msg.content, null, isValid, msg.source, profileTag);
                 }
             }
             // --- MODIFICATION END ---

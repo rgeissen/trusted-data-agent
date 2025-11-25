@@ -303,11 +303,14 @@ export async function handleStreamRequest(endpoint, body) {
     if (body.message) {
         // Only add user message if it's NOT a replay initiated by the replay button
         if (!body.is_replay) {
-            UI.addMessage('user', body.message, null, true, 'text');
+            // Extract profile tag from activeTagPrefix (remove @ and trailing space)
+            const profileTag = window.activeTagPrefix ? window.activeTagPrefix.replace('@', '').trim() : null;
+            UI.addMessage('user', body.message, null, true, 'text', profileTag);
         } else {
         }
     } else {
-        UI.addMessage('user', `Executing prompt: ${body.prompt_name}`, null, true, 'text');
+        const profileTag = window.activeTagPrefix ? window.activeTagPrefix.replace('@', '').trim() : null;
+        UI.addMessage('user', `Executing prompt: ${body.prompt_name}`, null, true, 'text', profileTag);
     }
     DOM.userInput.value = '';
     UI.setExecutionState(true);

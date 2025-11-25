@@ -245,25 +245,28 @@ async def switch_profile_context(profile_id: str, user_uuid: str, validate_llm: 
         
         # Initialize and optionally validate LLM client
         temp_llm_instance = None
-        if validate_llm:
-            # Full validation - test the connection
+        if validate_llm or credentials:  # Create instance if validating OR if credentials are available
+            # Create LLM client (with optional validation test)
             try:
                 if provider == "Google":
                     genai.configure(api_key=credentials.get("apiKey"))
                     temp_llm_instance = genai.GenerativeModel(model)
-                    await temp_llm_instance.generate_content_async("test", generation_config={"max_output_tokens": 1})
+                    if validate_llm:
+                        await temp_llm_instance.generate_content_async("test", generation_config={"max_output_tokens": 1})
                 
                 elif provider == "Anthropic":
                     temp_llm_instance = AsyncAnthropic(api_key=credentials.get("apiKey"))
-                    await temp_llm_instance.models.list()
+                    if validate_llm:
+                        await temp_llm_instance.models.list()
                 
                 elif provider == "OpenAI":
                     temp_llm_instance = AsyncOpenAI(api_key=credentials.get("apiKey"))
-                    await temp_llm_instance.chat.completions.create(
-                        model=model,
-                        messages=[{"role": "user", "content": "test"}],
-                        max_tokens=1
-                    )
+                    if validate_llm:
+                        await temp_llm_instance.chat.completions.create(
+                            model=model,
+                            messages=[{"role": "user", "content": "test"}],
+                            max_tokens=1
+                        )
                 
                 elif provider == "Azure":
                     temp_llm_instance = AsyncAzureOpenAI(
@@ -271,11 +274,12 @@ async def switch_profile_context(profile_id: str, user_uuid: str, validate_llm: 
                         azure_endpoint=credentials.get("azure_endpoint"),
                         api_version=credentials.get("azure_api_version")
                     )
-                    await temp_llm_instance.chat.completions.create(
-                        model=credentials.get("azure_deployment_name"),
-                        messages=[{"role": "user", "content": "test"}],
-                        max_tokens=1
-                    )
+                    if validate_llm:
+                        await temp_llm_instance.chat.completions.create(
+                            model=credentials.get("azure_deployment_name"),
+                            messages=[{"role": "user", "content": "test"}],
+                            max_tokens=1
+                        )
                 
                 elif provider == "Friendli":
                     is_dedicated = bool(credentials.get("friendli_endpoint_url"))
@@ -289,11 +293,12 @@ async def switch_profile_context(profile_id: str, user_uuid: str, validate_llm: 
                             api_key=credentials.get("friendli_token"),
                             base_url="https://api.friendli.ai/serverless/v1"
                         )
-                    await temp_llm_instance.chat.completions.create(
-                        model=model,
-                        messages=[{"role": "user", "content": "test"}],
-                        max_tokens=1
-                    )
+                    if validate_llm:
+                        await temp_llm_instance.chat.completions.create(
+                            model=model,
+                            messages=[{"role": "user", "content": "test"}],
+                            max_tokens=1
+                        )
                 
                 elif provider == "Amazon":
                     aws_region = credentials.get("aws_region")
@@ -303,14 +308,18 @@ async def switch_profile_context(profile_id: str, user_uuid: str, validate_llm: 
                         aws_secret_access_key=credentials.get("aws_secret_access_key"),
                         region_name=aws_region
                     )
-                    app_logger.info("Boto3 client for Bedrock created (validation skipped)")
+                    if validate_llm:
+                        app_logger.info("Boto3 client for Bedrock validated")
+                    else:
+                        app_logger.info("Boto3 client for Bedrock created (validation skipped)")
                 
                 elif provider == "Ollama":
                     host = credentials.get("ollama_host")
                     if not host:
                         raise ValueError("Ollama host is required")
                     temp_llm_instance = llm_handler.OllamaClient(host=host)
-                    await temp_llm_instance.list_models()
+                    if validate_llm:
+                        await temp_llm_instance.list_models()
                 
                 else:
                     raise ValueError(f"Unsupported provider: {provider}")
