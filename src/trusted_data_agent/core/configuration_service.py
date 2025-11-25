@@ -47,6 +47,7 @@ app_logger = logging.getLogger("quart.app")
 def load_profile_classification_into_state(profile_id: str, user_uuid: str) -> bool:
     """
     Load cached classification results from a profile into APP_STATE.
+    If the profile has inherit_classification=true, loads from the default profile instead.
     Returns True if cached results were loaded, False if classification needs to run.
     """
     config_manager = get_config_manager()
@@ -56,11 +57,23 @@ def load_profile_classification_into_state(profile_id: str, user_uuid: str) -> b
         app_logger.warning(f"Profile {profile_id} not found")
         return False
     
-    classification_results = config_manager.get_profile_classification(profile_id, user_uuid)
+    # Check if this profile inherits classification from default profile
+    target_profile_id = profile_id
+    if profile.get('inherit_classification', False):
+        default_profile_id = config_manager.get_default_profile_id(user_uuid)
+        if default_profile_id and default_profile_id != profile_id:
+            app_logger.info(f"Profile {profile_id} inherits classification from default profile {default_profile_id}")
+            target_profile_id = default_profile_id
+            profile = config_manager.get_profile(default_profile_id, user_uuid)
+            if not profile:
+                app_logger.warning(f"Default profile {default_profile_id} not found")
+                return False
+    
+    classification_results = config_manager.get_profile_classification(target_profile_id, user_uuid)
     
     # Check if we have cached results
     if not classification_results or not classification_results.get('tools'):
-        app_logger.info(f"No cached classification for profile {profile_id}, will run classification")
+        app_logger.info(f"No cached classification for profile {target_profile_id}, will run classification")
         return False
     
     # Check if classification mode matches what was used

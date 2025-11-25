@@ -251,17 +251,17 @@ class PlanExecutor:
                 else:
                     app_logger.warning(f"_get_current_profile_tag: Profile override ID {self.profile_override_id} not found")
             
-            # Otherwise use the active profile
-            active_profile_ids = config_manager.get_active_for_consumption_profile_ids(self.user_uuid)
-            if active_profile_ids:
+            # Otherwise use the default profile
+            default_profile_id = config_manager.get_default_profile_id(self.user_uuid)
+            if default_profile_id:
                 profiles = config_manager.get_profiles(self.user_uuid)
-                active_profile = next((p for p in profiles if p.get("id") == active_profile_ids[0]), None)
-                if active_profile:
-                    profile_tag = active_profile.get("tag")
-                    app_logger.debug(f"_get_current_profile_tag: Using active profile tag: {profile_tag}")
+                default_profile = next((p for p in profiles if p.get("id") == default_profile_id), None)
+                if default_profile:
+                    profile_tag = default_profile.get("tag")
+                    app_logger.debug(f"_get_current_profile_tag: Using default profile tag: {profile_tag}")
                     return profile_tag
             
-            app_logger.debug(f"_get_current_profile_tag: No profile tag found (override_id={self.profile_override_id}, active_ids={active_profile_ids if 'active_profile_ids' in locals() else 'not set'})")
+            app_logger.debug(f"_get_current_profile_tag: No profile tag found (override_id={self.profile_override_id}, default_id={default_profile_id if 'default_profile_id' in locals() else 'not set'})")
         except Exception as e:
             app_logger.warning(f"Failed to get current profile tag: {e}", exc_info=True)
         return None
@@ -272,21 +272,21 @@ class PlanExecutor:
         Used for fallback messaging when profile override fails.
         
         Returns:
-            str: The tag of the active profile, or "DEFAULT" if none found
+            str: The tag of the default profile, or "DEFAULT" if none found
         """
         try:
             from trusted_data_agent.core.config_manager import get_config_manager
             config_manager = get_config_manager()
             
-            active_profile_ids = config_manager.get_active_for_consumption_profile_ids(self.user_uuid)
-            if active_profile_ids:
+            default_profile_id = config_manager.get_default_profile_id(self.user_uuid)
+            if default_profile_id:
                 profiles = config_manager.get_profiles(self.user_uuid)
-                active_profile = next((p for p in profiles if p.get("id") == active_profile_ids[0]), None)
-                if active_profile:
-                    return active_profile.get("tag", "DEFAULT")
+                default_profile = next((p for p in profiles if p.get("id") == default_profile_id), None)
+                if default_profile:
+                    return default_profile.get("tag", "DEFAULT")
             
         except Exception as e:
-            app_logger.warning(f"Failed to get active profile tag: {e}", exc_info=True)
+            app_logger.warning(f"Failed to get default profile tag: {e}", exc_info=True)
         
         return "DEFAULT"
 
@@ -685,6 +685,38 @@ class PlanExecutor:
                             app_logger.info(f"   Model: {model}")
                             app_logger.info(f"   Config ID: {override_llm_config_id}")
                             
+                            # Load stored credentials if available
+                            import os
+                            ENCRYPTION_AVAILABLE = False
+                            if os.environ.get('TDA_AUTH_ENABLED', 'false').lower() == 'true':
+                                try:
+                                    from trusted_data_agent.auth import encryption
+                                    from trusted_data_agent.core.configuration_service import retrieve_credentials_for_provider
+                                    ENCRYPTION_AVAILABLE = True
+                                except ImportError:
+                                    pass
+                            
+                            if ENCRYPTION_AVAILABLE:
+                                try:
+                                    # Get user_id from database using user_uuid (not from request context)
+                                    from trusted_data_agent.auth.models import User
+                                    from trusted_data_agent.auth.database import get_db_session
+                                    
+                                    with get_db_session() as session:
+                                        user = session.query(User).filter_by(user_uuid=self.user_uuid).first()
+                                        if user:
+                                            app_logger.info(f"Loading credentials for user {user.id}, provider {provider}")
+                                            stored_result = await retrieve_credentials_for_provider(user.id, provider)
+                                            if stored_result.get("credentials"):
+                                                credentials = {**stored_result["credentials"], **credentials}
+                                                app_logger.info(f"✓ Successfully loaded stored credentials for {provider}")
+                                            else:
+                                                app_logger.warning(f"No stored credentials found for {provider} (status: {stored_result.get('status')})")
+                                        else:
+                                            app_logger.warning(f"User not found for uuid {self.user_uuid}, cannot load stored credentials")
+                                except Exception as e:
+                                    app_logger.error(f"Error loading stored credentials: {e}", exc_info=True)
+                            
                             # Create temporary LLM instance using shared factory
                             from trusted_data_agent.llm.client_factory import create_llm_client, get_provider_config_details
                             
@@ -841,6 +873,26 @@ class PlanExecutor:
         app_logger.info(f"🔍 About to call update_models_used with: provider={self.current_provider}, model={self.current_model}, profile_tag={profile_tag}, profile_override_id={self.profile_override_id}")
         session_manager.update_models_used(self.user_uuid, self.session_id, self.current_provider, self.current_model, profile_tag)
         app_logger.info(f"✅ Session {self.session_id} initialized with provider={self.current_provider}, model={self.current_model}, profile_tag={profile_tag}")
+        
+        # Send immediate SSE notification so UI updates in real-time
+        session_data = session_manager.get_session(self.user_uuid, self.session_id)
+        if session_data:
+            notification_payload = {
+                "session_id": self.session_id,
+                "models_used": session_data.get("models_used", []),
+                "profile_tags_used": session_data.get("profile_tags_used", []),
+                "last_updated": session_data.get("last_updated"),
+                "provider": self.current_provider,
+                "model": self.current_model,
+                "name": session_data.get("name", "Unnamed Session"),
+            }
+            app_logger.info(f"🔔 [DEBUG] Sending session_model_update SSE notification: provider={notification_payload['provider']}, model={notification_payload['model']}, profile_tags={notification_payload['profile_tags_used']}")
+            yield self._format_sse({
+                "type": "session_model_update",
+                "payload": notification_payload
+            }, event="notification")
+        else:
+            app_logger.warning(f"🔔 [DEBUG] Could not send SSE notification - session_data is None for session {self.session_id}")
 
         try:
             # --- MODIFICATION START: Handle Replay ---
@@ -1109,16 +1161,8 @@ class PlanExecutor:
             if self.state != self.AgentState.ERROR and self.execution_depth == 0:
             # --- MODIFICATION END ---
                 # --- MODIFICATION START: Include model/provider and use self.current_turn_number ---
-                # Get profile tag from active profile
-                from trusted_data_agent.core.config_manager import get_config_manager
-                config_manager = get_config_manager()
-                active_profile_ids = config_manager.get_active_for_consumption_profile_ids()
-                profile_tag = None
-                if active_profile_ids:
-                    profiles = config_manager.get_profiles()
-                    active_profile = next((p for p in profiles if p.get("id") == active_profile_ids[0]), None)
-                    if active_profile:
-                        profile_tag = active_profile.get("tag")
+                # Get profile tag from default profile (or override if active)
+                profile_tag = self._get_current_profile_tag()
                 
                 turn_summary = {
                     "turn": self.current_turn_number, # Use the authoritative instance variable

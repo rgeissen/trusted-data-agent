@@ -128,6 +128,27 @@ async function processStream(responseBody) {
                                     dismissBtn.onclick = () => banner.classList.add('hidden');
                                 }
                             }
+                        } else if (eventData.type === 'session_model_update') {
+                            // Handle session metadata updates during execution
+                            const { session_id, models_used, profile_tags_used, last_updated, provider, model, name } = eventData.payload;
+                            console.log('[session_model_update] Received during execution:', {
+                                session_id,
+                                models_used,
+                                profile_tags_used,
+                                provider,
+                                model,
+                                current_session: state.currentSessionId,
+                                is_current: session_id === state.currentSessionId
+                            });
+                            UI.updateSessionModels(session_id, models_used, profile_tags_used);
+                            if (session_id === state.currentSessionId) {
+                                console.log('[session_model_update] Updating Live Status with:', provider, model);
+                                state.currentProvider = provider;
+                                state.currentModel = model;
+                                UI.updateStatusPromptName();
+                            } else {
+                                console.log('[session_model_update] Not updating Live Status - wrong session');
+                            }
                         }
                     } else if (eventName === 'rag_retrieval') {
                         state.lastRagCaseData = eventData; // Store the full RAG case data

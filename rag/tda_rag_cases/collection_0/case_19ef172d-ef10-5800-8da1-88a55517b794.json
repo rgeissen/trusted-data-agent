@@ -1,0 +1,44 @@
+{
+  "case_id": "19ef172d-ef10-5800-8da1-88a55517b794",
+  "metadata": {
+    "session_id": "a6c96abe-7520-45b0-8e95-2d2740c49e31",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "task-a26faa8c-fde9-4589-a4ce-963f6a7f6a47",
+    "collection_id": 0,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-25T08:45:15.338791+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Friendli",
+      "model": "google/gemma-3-27b-it",
+      "profile_tag": "FRGOT",
+      "input_tokens": 9212,
+      "output_tokens": 87
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 1,
+      "steps_per_phase": {
+        "1": 1
+      },
+      "total_steps": 1
+    }
+  },
+  "intent": {
+    "user_query": "system"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "The user is an expert strategic planning assistant.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

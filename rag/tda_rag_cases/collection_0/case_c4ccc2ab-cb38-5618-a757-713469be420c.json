@@ -1,0 +1,53 @@
+{
+  "case_id": "c4ccc2ab-cb38-5618-a757-713469be420c",
+  "metadata": {
+    "session_id": "bc847a80-913e-4ed7-99bd-a82bcd218416",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "task-4b9d185c-d9f5-4737-9556-974aa1152e28",
+    "collection_id": 0,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-25T08:50:17.029665+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Friendli",
+      "model": "google/gemma-3-27b-it",
+      "profile_tag": "FRGOT",
+      "input_tokens": 10704,
+      "output_tokens": 239
+    },
+    "is_most_efficient": false,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    }
+  },
+  "intent": {
+    "user_query": "what is the system verion?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Get the Teradata database version information.",
+        "relevant_tools": [
+          "dba_databaseVersion"
+        ],
+        "arguments": {}
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the database version information.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

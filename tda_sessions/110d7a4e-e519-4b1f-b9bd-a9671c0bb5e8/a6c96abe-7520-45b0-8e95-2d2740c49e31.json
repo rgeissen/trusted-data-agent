@@ -1,0 +1,231 @@
+{
+  "id": "a6c96abe-7520-45b0-8e95-2d2740c49e31",
+  "user_uuid": "110d7a4e-e519-4b1f-b9bd-a9671c0bb5e8",
+  "system_prompt_template": null,
+  "charting_intensity": "medium",
+  "provider": "Friendli",
+  "model": "google/gemma-3-27b-it",
+  "profile_tag": "FRGOT",
+  "profile_tags_used": [
+    "FRGOT"
+  ],
+  "models_used": [
+    "Friendli/google/gemma-3-27b-it"
+  ],
+  "session_history": [
+    {
+      "role": "user",
+      "content": "system",
+      "isValid": true,
+      "turn_number": 1,
+      "source": "text"
+    },
+    {
+      "role": "assistant",
+      "content": "<div class=\"response-card summary-card mb-4\"><p class=\"text-gray-300 mb-4\">The user's input and the workflow goal prompt are both simply \"system\".</p><h3 class=\"text-lg font-bold text-white mb-3 border-b border-gray-700 pb-2\">Key Observations</h3><ul class=\"list-disc list-outside space-y-2 text-gray-300 mb-4 pl-5\"><li>Both the original user input and the desired workflow goal are identical, indicating a potential setup or placeholder scenario.</li></ul></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>TDA_FinalReport</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"direct_answer\": \"The user&apos;s input and the workflow goal prompt are both simply \\\"system\\\".\", \"key_metric\": null, \"key_observations\": [{\"text\": \"Both the original user input and the desired workflow goal are identical, indicating a potential setup or placeholder scenario.\"}], \"synthesis\": []}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>direct_answer</th><th>key_metric</th><th>key_observations</th><th>synthesis</th></tr></thead>\n                    <tbody>\n        <tr><td>The user's input and the workflow goal prompt are both simply \"system\".</td><td>None</td><td>[{'text': 'Both the original user input and the desired workflow goal are identical, indicating a potential setup or placeholder scenario.'}]</td><td>[]</td></tr></tbody></table></div></div></div></details>",
+      "isValid": true,
+      "turn_number": 1
+    }
+  ],
+  "chat_object": [
+    {
+      "role": "user",
+      "content": "You are a helpful assistant.",
+      "turn_number": 0
+    },
+    {
+      "role": "model",
+      "content": "Understood.",
+      "turn_number": 0
+    },
+    {
+      "role": "user",
+      "content": "system",
+      "isValid": true,
+      "turn_number": 1
+    },
+    {
+      "role": "assistant",
+      "content": "The user's input and the workflow goal prompt are both simply \"system\".",
+      "isValid": true,
+      "turn_number": 1
+    }
+  ],
+  "name": "System Chat History",
+  "created_at": "2025-11-25T09:44:53.734583",
+  "last_updated": "2025-11-25T09:45:16.153687",
+  "input_tokens": 9570,
+  "output_tokens": 169,
+  "last_turn_data": {
+    "workflow_history": [
+      {
+        "turn": 1,
+        "user_query": "system",
+        "original_plan": [
+          {
+            "phase": 1,
+            "goal": "The user is an expert strategic planning assistant.",
+            "relevant_tools": [
+              "TDA_FinalReport"
+            ],
+            "arguments": {}
+          }
+        ],
+        "execution_trace": [
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Calling LLM for Planning",
+                "details": {
+                  "summary": "Generating a strategic meta-plan for the goal",
+                  "full_text": "system",
+                  "call_id": "642d6dd4-8adb-4237-b99e-b887642dc5b2",
+                  "execution_depth": 0,
+                  "input_tokens": 7473,
+                  "output_tokens": 58
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "system_message",
+                "timestamp": "2025-11-25T08:45:13.540216+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Strategic Meta-Plan Generated",
+                "details": [
+                  {
+                    "phase": 1,
+                    "goal": "The user is an expert strategic planning assistant.",
+                    "relevant_tools": [
+                      "TDA_FinalReport"
+                    ],
+                    "arguments": {}
+                  }
+                ]
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_generated",
+                "timestamp": "2025-11-25T08:45:13.540710+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Starting Plan Phase 1/1",
+                "details": {
+                  "phase_num": 1,
+                  "total_phases": 1,
+                  "goal": "The user is an expert strategic planning assistant.",
+                  "phase_details": {
+                    "phase": 1,
+                    "goal": "The user is an expert strategic planning assistant.",
+                    "relevant_tools": [
+                      "TDA_FinalReport"
+                    ],
+                    "arguments": {}
+                  },
+                  "execution_depth": 0
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_start",
+                "timestamp": "2025-11-25T08:45:13.540987+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_FinalReport",
+              "prompt_name": null,
+              "arguments": {},
+              "metadata": {
+                "phase_number": 1,
+                "execution_depth": 0,
+                "timestamp": "2025-11-25T08:45:14.125201+00:00"
+              }
+            },
+            "result": {
+              "status": "success",
+              "metadata": {
+                "call_id": "e7870e04-16dc-4581-b2a8-cf735423822b",
+                "tool_name": "TDA_FinalReport",
+                "input_tokens": 296,
+                "output_tokens": 78
+              },
+              "results": [
+                {
+                  "direct_answer": "The user's input and the workflow goal prompt are both simply \"system\".",
+                  "key_metric": null,
+                  "key_observations": [
+                    {
+                      "text": "Both the original user input and the desired workflow goal are identical, indicating a potential setup or placeholder scenario."
+                    }
+                  ],
+                  "synthesis": []
+                }
+              ],
+              "corrections": []
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "LLM has generated the final answer",
+                "details": "The user's input and the workflow goal prompt are both simply \"system\"."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": null,
+                "timestamp": "2025-11-25T08:45:15.334723+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          }
+        ],
+        "final_summary": "The user's input and the workflow goal prompt are both simply \"system\".",
+        "timestamp": "2025-11-25T08:45:15.338791+00:00",
+        "provider": "Friendli",
+        "model": "google/gemma-3-27b-it",
+        "profile_tag": "FRGOT",
+        "task_id": "task-a26faa8c-fde9-4589-a4ce-963f6a7f6a47",
+        "turn_input_tokens": 9212,
+        "turn_output_tokens": 87,
+        "session_id": "a6c96abe-7520-45b0-8e95-2d2740c49e31",
+        "rag_source_collection_id": null,
+        "isValid": true,
+        "case_id": "19ef172d-ef10-5800-8da1-88a55517b794"
+      }
+    ]
+  },
+  "full_context_sent": false,
+  "license_info": {
+    "holder": "GNU Affero General Public License v3.0",
+    "issued_at": "2025-11-10T19:25:00.506556+00:00",
+    "expires_at": "2026-11-10T19:25:00.506556+00:00",
+    "version": "1.5-tiered",
+    "tier": "App Developer",
+    "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
+  }
+}

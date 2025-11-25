@@ -578,37 +578,75 @@ class ConfigManager:
         """
         Get the list of enabled tools for a specific profile.
         
-        Args:
-            profile_id: Profile ID
-            user_uuid: Optional user UUID for per-user configuration isolation
-            
-        Returns:
-            List of enabled tool names for this profile
-        """
-        profiles = self.get_profiles(user_uuid)
-        for profile in profiles:
-            if profile.get("id") == profile_id:
-                # Frontend stores as 'tools', legacy field was 'enabled_tools'
-                return profile.get("tools", profile.get("enabled_tools", []))
-        return []
-    
-    def get_profile_enabled_prompts(self, profile_id: str, user_uuid: Optional[str] = None) -> list:
-        """
-        Get the list of enabled prompts for a specific profile.
+        If the profile has inherit_classification=true, returns the default profile's enabled tools instead.
         
         Args:
             profile_id: Profile ID
             user_uuid: Optional user UUID for per-user configuration isolation
             
         Returns:
-            List of enabled prompt names for this profile
+            List of enabled tool names for this profile (or default profile if inheriting)
         """
         profiles = self.get_profiles(user_uuid)
+        target_profile = None
+        
         for profile in profiles:
             if profile.get("id") == profile_id:
-                # Frontend stores as 'prompts', legacy field was 'enabled_prompts'
-                return profile.get("prompts", profile.get("enabled_prompts", []))
-        return []
+                target_profile = profile
+                break
+        
+        if not target_profile:
+            return []
+        
+        # Check if profile inherits classification from default profile
+        if target_profile.get("inherit_classification", False):
+            default_profile_id = self.get_default_profile_id(user_uuid)
+            if default_profile_id and default_profile_id != profile_id:
+                app_logger.info(f"Profile {profile_id} inherits classification from default profile {default_profile_id}")
+                # Recursively get default profile's tools (without infinite loop since default can't inherit)
+                for profile in profiles:
+                    if profile.get("id") == default_profile_id:
+                        return profile.get("tools", profile.get("enabled_tools", []))
+        
+        # Frontend stores as 'tools', legacy field was 'enabled_tools'
+        return target_profile.get("tools", target_profile.get("enabled_tools", []))
+    
+    def get_profile_enabled_prompts(self, profile_id: str, user_uuid: Optional[str] = None) -> list:
+        """
+        Get the list of enabled prompts for a specific profile.
+        
+        If the profile has inherit_classification=true, returns the default profile's enabled prompts instead.
+        
+        Args:
+            profile_id: Profile ID
+            user_uuid: Optional user UUID for per-user configuration isolation
+            
+        Returns:
+            List of enabled prompt names for this profile (or default profile if inheriting)
+        """
+        profiles = self.get_profiles(user_uuid)
+        target_profile = None
+        
+        for profile in profiles:
+            if profile.get("id") == profile_id:
+                target_profile = profile
+                break
+        
+        if not target_profile:
+            return []
+        
+        # Check if profile inherits classification from default profile
+        if target_profile.get("inherit_classification", False):
+            default_profile_id = self.get_default_profile_id(user_uuid)
+            if default_profile_id and default_profile_id != profile_id:
+                app_logger.info(f"Profile {profile_id} inherits classification from default profile {default_profile_id}")
+                # Recursively get default profile's prompts (without infinite loop since default can't inherit)
+                for profile in profiles:
+                    if profile.get("id") == default_profile_id:
+                        return profile.get("prompts", profile.get("enabled_prompts", []))
+        
+        # Frontend stores as 'prompts', legacy field was 'enabled_prompts'
+        return target_profile.get("prompts", target_profile.get("enabled_prompts", []))
     
     def get_profile_disabled_tools(self, profile_id: str, user_uuid: Optional[str] = None) -> list:
         """
