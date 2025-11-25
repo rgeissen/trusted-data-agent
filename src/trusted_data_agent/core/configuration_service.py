@@ -504,31 +504,21 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             
             # --- 1. LLM Client Validation ---
             credentials = config_data.get("credentials", {})
-            use_stored_credentials = config_data.get("use_stored_credentials", False)
             
-            # --- PHASE 4: Auto-load stored credentials if requested ---
-            if use_stored_credentials and user_uuid and ENCRYPTION_AVAILABLE:
+            # --- Always try to load stored credentials from database ---
+            if user_uuid and ENCRYPTION_AVAILABLE:
                 app_logger.info(f"Attempting to load stored credentials for provider: {provider}")
-                # Look up user by id
-                from trusted_data_agent.auth.models import User
-                from trusted_data_agent.auth.database import get_db_session
+                from trusted_data_agent.auth.encryption import decrypt_credentials
                 
-                with get_db_session() as session:
-                    user = session.query(User).filter_by(id=user_uuid).first()
-                    if not user:
-                        app_logger.warning(f"User not found for id {user_uuid}")
-                        stored_result = {"status": "error", "credentials": None}
-                    else:
-                        stored_result = await retrieve_credentials_for_provider(user.id, provider)
+                stored_creds = decrypt_credentials(user_uuid, provider)
                 
-                if stored_result.get("credentials"):
+                if stored_creds:
                     # Merge stored credentials with provided credentials (provided takes precedence)
-                    stored_creds = stored_result["credentials"]
                     credentials = {**stored_creds, **credentials}
-                    app_logger.info(f"Loaded {len(stored_creds)} stored credential fields for {provider}")
+                    app_logger.info(f"Loaded stored credential fields for {provider}")
                 else:
-                    app_logger.info(f"No stored credentials found for {provider}, using provided credentials")
-            # --- END PHASE 4 ---
+                    app_logger.warning(f"No stored credentials found for {provider}, using provided credentials only")
+            # --- END credential loading ---
             if provider == "Google":
                 genai.configure(api_key=credentials.get("apiKey"))
                 temp_llm_instance = genai.GenerativeModel(model)
