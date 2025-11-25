@@ -587,13 +587,22 @@ async function initializeRAGAutoCompletion() {
 }
 
 /**
- * DEPRECATED: ensureUserUUID is no longer needed.
+ * Extract user ID from JWT authentication for SSE notifications.
  * User identification is now handled via JWT authentication tokens.
- * Keeping function as stub for backwards compatibility.
  */
 function ensureUserUUID() {
-    // No-op: Authentication is now handled via JWT tokens
-    console.log('[Auth] User identification via JWT tokens');
+    // Extract user ID from JWT-stored user object
+    if (window.authClient) {
+        const user = window.authClient.getUser();
+        if (user && user.id) {
+            state.userUUID = user.id;
+            console.log('[Auth] User ID extracted from JWT:', user.id);
+        } else {
+            console.warn('[Auth] No user ID found in session');
+        }
+    } else {
+        console.warn('[Auth] authClient not initialized');
+    }
 }
 
 /**

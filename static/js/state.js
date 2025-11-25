@@ -5,7 +5,7 @@
  */
 
 export const state = {
-    // userUUID removed - authentication now handled via JWT tokens only
+    userUUID: null, // Extracted from JWT for SSE notifications
     showWelcomeScreenAtStartup: true,
     simpleChatHistory: [],
     currentProvider: 'Google',

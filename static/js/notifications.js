@@ -109,13 +109,16 @@ function showProfileOverrideWarning(overrideProfileName, overrideProfileTag, def
 export function subscribeToNotifications() {
     if (!state.userUUID) {
         // Set status to disconnected if we can't even start.
+        console.warn('[SSE] Cannot subscribe: no user ID available');
         UI.updateSSEStatus('disconnected');
         return;
     }
 
+    console.log('[SSE] Subscribing to notifications for user:', state.userUUID);
     const eventSource = new EventSource(`/api/notifications/subscribe?user_uuid=${state.userUUID}`);
 
     eventSource.onopen = () => {
+        console.log('[SSE] Connection established');
         UI.updateSSEStatus('connected');
     };
 

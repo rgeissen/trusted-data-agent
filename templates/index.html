@@ -3992,7 +3992,7 @@
         // AUTHENTICATION
         // ============================================================================
         // Initialize authentication
-        const authClient = new AuthClient();
+        window.authClient = new AuthClient();
         
         // Load app config early to get default theme before initializing ThemeManager
         // Fetch app config and make it globally available
@@ -4021,14 +4021,14 @@
             try {
                 // Get user tier if not provided
                 if (!userTier) {
-                    const user = authClient.getUser();
+                    const user = window.authClient.getUser();
                     userTier = user?.profile_tier || 'user';
                 }
                 
                 console.log(`[PaneVisibility] Starting update for tier: ${userTier}`);
                 
                 // Fetch pane visibility configuration
-                const token = authClient.getToken();
+                const token = window.authClient.getToken();
                 if (!token) {
                     console.warn('[PaneVisibility] No token available');
                     return;
@@ -4111,8 +4111,8 @@
         
         // Update UI based on authentication state
         async function updateAuthUI() {
-            const isAuth = authClient.isAuthenticated();
-            const user = authClient.getUser();
+            const isAuth = window.authClient.isAuthenticated();
+            const user = window.authClient.getUser();
             
             const userMenuContainer = document.getElementById('user-menu-container');
             const loginButtonContainer = document.getElementById('login-button-container');
@@ -4135,14 +4135,14 @@
                     // Always check /me endpoint to get current tier and validate token
                     fetch('/api/v1/auth/me', {
                         headers: {
-                            'Authorization': `Bearer ${authClient.getToken()}`
+                            'Authorization': `Bearer ${window.authClient.getToken()}`
                         }
                     })
                     .then(res => {
                         if (res.status === 401) {
                             // Token is invalid or expired, clear session and redirect
                             console.log('Token invalid, clearing session');
-                            authClient.clearSession();
+                            window.authClient.clearSession();
                             window.location.href = '/login';
                             return null;
                         }
@@ -4157,7 +4157,7 @@
                             console.log('[AuthUI] Is admin:', data.user.is_admin);
                             
                             // Update cached user data with current info from server
-                            authClient.setSession(authClient.getToken(), data.user);
+                            window.authClient.setSession(window.authClient.getToken(), data.user);
                             
                             // Check if user is admin tier or has is_admin flag
                             if (data.user.profile_tier === 'admin' || data.user.is_admin) {
@@ -4444,7 +4444,7 @@
         const logoutButton = document.getElementById('user-logout-button');
         if (logoutButton) {
             logoutButton.addEventListener('click', async () => {
-                const result = await authClient.logout();
+                const result = await window.authClient.logout();
                 console.log('Logout result:', result);
                 window.location.href = '/login';
             });
@@ -4502,7 +4502,7 @@
                     const response = await fetch('/api/v1/auth/change-password', {
                         method: 'POST',
                         headers: {
-                            'Authorization': `Bearer ${authClient.getToken()}`,
+                            'Authorization': `Bearer ${window.authClient.getToken()}`,
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
