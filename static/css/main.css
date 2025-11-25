@@ -1078,13 +1078,13 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
 }
 /* User badge - positioned below and right of U avatar */
 .turn-badge.user-badge {
-    top: 32px !important;
-    right: -4px !important;
+    top: 29px !important;
+    right: -7px !important;
 }
 /* Assistant badge - positioned below and left of A avatar */  
 .turn-badge.assistant-badge {
-    top: 32px !important;
-    left: 0px !important;
+    top: 29px !important;
+    left: -3px !important;
 }
 /* --- MODIFICATION END --- */
 
