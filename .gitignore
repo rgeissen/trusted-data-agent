@@ -52,6 +52,11 @@ logs/
 *.key
 *.pem
 *.env
+!.env.example
+!tda_keys/*.key
+!tda_keys/*.pem
+tda_auth.db
+tda_auth.db-*
 
 # Temporary files
 *.tmp

@@ -368,22 +368,20 @@ pip install -e .
 
 The `-e` flag stands for "editable," meaning any changes you make to the source code will be immediately effective without needing to reinstall.
 
-### Step 5: Configure API Keys (Optional)
+### Step 5: Configure API Keys
 
-You can either enter your API keys in the UI at runtime or, for convenience during development, create a `.env` file in the project root. The application will automatically load these keys.
+The application uses a **secure authentication system** with encrypted credential storage in the database (`tda_auth.db`). All API keys are:
+- Encrypted using Fernet encryption
+- Stored per-user in the database
+- Managed through the web UI
 
-```
-# For Google Models
-GEMINI_API_KEY="YOUR_GEMINI_API_KEY_HERE"
+**No manual configuration files needed!** Simply:
+1. Start the application (see Step 6)
+2. Register/login through the web interface
+3. Enter your API keys in the UI settings
+4. Keys are automatically encrypted and stored securely
 
-# For Anthropic Models
-ANTHROPIC_API_KEY="YOUR_ANTHROPIC_API_KEY_HERE"
-
-# For Microsoft Azure Models
-AZURE_API_KEY="YOUR_AZURE_API_KEY"
-AZURE_ENDPOINT="YOUR_AZURE_ENDPOINT_URL"
-AZURE_DEPLOYMENT_NAME="YOUR_MODEL_DEPLOYMENT_NAME"
-AZURE_API_VERSION="YYYY-MM-DD"
+The encrypted database is excluded from git via `.gitignore`, keeping your credentials safe
 
 # For AWS Bedrock Models
 AWS_ACCESS_KEY_ID="YOUR_AWS_ACCESS_KEY_ID"
