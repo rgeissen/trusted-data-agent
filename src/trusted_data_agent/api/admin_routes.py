@@ -35,8 +35,8 @@ def _get_user_uuid_from_request():
     if user:
         return user.id  # Return database ID, not user_uuid
     
-    # Fallback to header (for non-auth mode compatibility)
-    return request.headers.get("X-TDA-User-UUID")
+    # No fallback - authentication is required
+    return None
 
 
 # ==============================================================================

@@ -1568,10 +1568,7 @@ export async function reconnectAndLoad() {
             headers['Authorization'] = `Bearer ${authToken}`;
         }
         
-        // Add User UUID header (for backwards compatibility)
-        if (state.userUUID) {
-            headers['X-TDA-User-UUID'] = state.userUUID;
-        }
+        // Authentication is handled via JWT tokens only
         
         const response = await fetch('/configure', {
             method: 'POST',

@@ -587,39 +587,13 @@ async function initializeRAGAutoCompletion() {
 }
 
 /**
- * Ensures a user UUID exists in localStorage and application state.
- * Generates a new UUID if one is not found.
+ * DEPRECATED: ensureUserUUID is no longer needed.
+ * User identification is now handled via JWT authentication tokens.
+ * Keeping function as stub for backwards compatibility.
  */
 function ensureUserUUID() {
-    let userUUID = null;
-    try {
-        userUUID = localStorage.getItem('tdaUserUUID');
-        if (userUUID) {
-        } else {
-            userUUID = crypto.randomUUID();
-            localStorage.setItem('tdaUserUUID', userUUID);
-            // Verify it was set
-            const storedUUID = localStorage.getItem('tdaUserUUID');
-            if (storedUUID === userUUID) {
-            } else {
-                console.error("ensureUserUUID: Failed to store UUID in localStorage!");
-                // Optionally alert the user or fallback to temporary UUID
-                alert("Warning: Could not save user identifier. Session history may not persist correctly.");
-            }
-        }
-    } catch (e) {
-        console.error("ensureUserUUID: Error accessing localStorage:", e);
-        // Fallback: Generate a temporary UUID if localStorage fails
-        userUUID = userUUID || crypto.randomUUID(); // Use existing if generated before error
-        alert("Warning: Cannot access local storage. Session history will not persist across browser sessions.");
-    }
-    // Set the state regardless
-    state.userUUID = userUUID;
-
-    if (!state.userUUID) {
-         console.error("FATAL: User UUID is null after ensureUserUUID!");
-         alert("Fatal error: Could not establish user identifier.");
-    }
+    // No-op: Authentication is now handled via JWT tokens
+    console.log('[Auth] User identification via JWT tokens');
 }
 
 /**
@@ -725,25 +699,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Fetch GitHub star count - DEACTIVATED to conserve API credits
     // fetchGitHubStarCount();
-
-    const uuidInput = document.getElementById('tda-user-uuid');
-    const copyButton = document.getElementById('copy-uuid-button');
-
-    if (uuidInput) {
-        uuidInput.value = state.userUUID;
-    }
-
-    if (copyButton) {
-        copyButton.addEventListener('click', () => {
-            uuidInput.select();
-            document.execCommand('copy');
-            const originalTitle = copyButton.title;
-            copyButton.title = 'Copied!';
-            setTimeout(() => {
-                copyButton.title = originalTitle;
-            }, 2000);
-        });
-    }
 
     // REMOVED: loadInitialConfig() - obsolete with new configuration system
     // The new configuration system uses configState which loads from localStorage automatically

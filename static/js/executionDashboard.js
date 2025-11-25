@@ -27,11 +27,7 @@ class ExecutionDashboard {
             headers['Authorization'] = `Bearer ${authToken}`;
         }
         
-        // Get userUUID from localStorage (same as main app)
-        const userUUID = localStorage.getItem('tdaUserUUID');
-        if (userUUID) {
-            headers['X-TDA-User-UUID'] = userUUID;
-        }
+        // Authentication is handled via JWT tokens only
         
         return headers;
     }

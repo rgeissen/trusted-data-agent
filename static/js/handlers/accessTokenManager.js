@@ -3,6 +3,9 @@
  * Handles UI interactions for access token management
  */
 
+// Import centralized banner system
+import { showAppBanner } from '../bannerSystem.js';
+
 const AccessTokenManager = {
     /**
      * Initialize the access token manager
@@ -94,6 +97,13 @@ const AccessTokenManager = {
     },
 
     /**
+     * Show banner message (uses centralized application-level banner system)
+     */
+    showBanner(message, type = 'info') {
+        showAppBanner(message, type);
+    },
+
+    /**
      * Copy the newly created token to clipboard
      */
     async copyNewToken() {
@@ -113,7 +123,7 @@ const AccessTokenManager = {
                 }, 2000);
             } catch (err) {
                 console.error('Failed to copy:', err);
-                alert('Failed to copy token to clipboard');
+                this.showBanner('Failed to copy token to clipboard', 'error');
             }
         }
     },
@@ -126,7 +136,7 @@ const AccessTokenManager = {
         const expiryDays = parseInt(document.getElementById('token-expiry')?.value || '0');
 
         if (!name) {
-            alert('Please enter a token name');
+            this.showBanner('Please enter a token name', 'warning');
             return;
         }
 
@@ -148,12 +158,15 @@ const AccessTokenManager = {
             if (response.ok) {
                 this.hideCreateModal();
                 this.showTokenDisplayModal(data.token);
+                this.showBanner(`Access token "${name}" created successfully`, 'success');
             } else {
-                alert(data.detail || 'Failed to create token');
+                console.error('Token creation failed:', response.status, data);
+                const errorMsg = data.message || data.detail || 'Failed to create token';
+                this.showBanner(errorMsg, 'error');
             }
         } catch (err) {
             console.error('Error creating token:', err);
-            alert('Failed to create token. Please try again.');
+            this.showBanner('Failed to create token. Please check the console for details.', 'error');
         }
     },
 
@@ -174,6 +187,11 @@ const AccessTokenManager = {
             });
 
             if (!response.ok) {
+                // Don't show error for authentication issues, just show empty state
+                if (response.status === 401) {
+                    container.innerHTML = '<div class="text-center text-gray-500 text-sm py-4">No access tokens yet. Create one to get started!</div>';
+                    return;
+                }
                 throw new Error('Failed to load tokens');
             }
 
@@ -196,7 +214,8 @@ const AccessTokenManager = {
             });
         } catch (err) {
             console.error('Error loading tokens:', err);
-            container.innerHTML = '<div class="text-center text-red-400 text-sm py-4">Failed to load tokens</div>';
+            // Only show error for actual failures, not empty state
+            container.innerHTML = '<div class="text-center text-gray-500 text-sm py-4">No access tokens yet. Create one to get started!</div>';
         }
     },
 

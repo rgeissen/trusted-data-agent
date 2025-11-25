@@ -1252,7 +1252,7 @@ async function handleToggleTurnValidity(badgeEl) {
 
     try {
         const headers = {
-            'X-TDA-User-UUID': state.userUUID
+            'Content-Type': 'application/json'
         };
         
         // Add authentication token if available

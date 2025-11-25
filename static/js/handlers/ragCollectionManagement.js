@@ -2316,8 +2316,7 @@ async function generateQuestions() {
         const response = await fetch('/api/v1/rag/generate-questions', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'X-TDA-User-UUID': window.TDA_USER_UUID || 'default-user'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 subject: subject,

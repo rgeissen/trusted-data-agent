@@ -25,10 +25,8 @@ function _getHeaders(includeContentType = true) {
         headers['Authorization'] = `Bearer ${authToken}`;
     }
     
-    // Add User UUID header (for backwards compatibility or when auth is disabled)
-    if (state.userUUID) {
-        headers['X-TDA-User-UUID'] = state.userUUID;
-    }
+    // Authentication is now handled via JWT tokens only
+    // X-TDA-User-UUID header is deprecated and removed
     
     return headers;
 }

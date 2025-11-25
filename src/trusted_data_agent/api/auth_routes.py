@@ -413,6 +413,9 @@ async def get_current_user_info(current_user):
     license_info = APP_STATE.get('license_info') or {}
     license_tier = license_info.get('tier', 'Unknown')
     
+    user_tier = get_user_tier(current_user)
+    logger.info(f"[AuthMe] User {current_user.username}: tier={user_tier}, is_admin={current_user.is_admin}")
+    
     return jsonify({
         'status': 'success',
         'user': {
@@ -422,7 +425,7 @@ async def get_current_user_info(current_user):
             'display_name': current_user.display_name,
             'email': current_user.email,
             'is_admin': current_user.is_admin,
-            'profile_tier': get_user_tier(current_user),
+            'profile_tier': user_tier,
             'license_tier': license_tier,
             'is_active': current_user.is_active,
             'created_at': current_user.created_at.isoformat(),
@@ -507,6 +510,9 @@ async def get_user_panes(current_user):
                 panes = initialize_default_panes(session)
             
             panes_data = [pane.to_dict() for pane in panes]
+        
+        logger.info(f"[PaneVisibility] Returning {len(panes_data)} panes for user {current_user.username} (tier: {current_user.profile_tier})")
+        logger.debug(f"[PaneVisibility] Panes: {panes_data}")
         
         return jsonify({
             "status": "success",
