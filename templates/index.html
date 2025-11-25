@@ -4096,7 +4096,38 @@
                                 return;
                             }
                             
-                            // System is configured - proceed with initialization
+                            // System is configured - validate LLM before proceeding
+                            console.log('[Welcome Button] System configured, validating LLM...');
+                            
+                            // Validate LLM by calling POST /session (which triggers validation)
+                            // This ensures APP_STATE['llm'] is properly set before conversation starts
+                            const headers = { 'Content-Type': 'application/json' };
+                            const authToken = localStorage.getItem('tda_auth_token');
+                            if (authToken) {
+                                headers['Authorization'] = `Bearer ${authToken}`;
+                            }
+                            
+                            try {
+                                const sessionResponse = await fetch('/session', {
+                                    method: 'POST',
+                                    headers: headers,
+                                    body: JSON.stringify({})  // Empty body to satisfy endpoint
+                                });
+                                const sessionResult = await sessionResponse.json();
+                                
+                                if (!sessionResponse.ok) {
+                                    console.error('[Welcome Button] Session creation failed:', sessionResult);
+                                    throw new Error(sessionResult.error || 'Failed to validate configuration');
+                                }
+                                
+                                console.log('[Welcome Button] LLM validated, session ready:', sessionResult);
+                            } catch (validationError) {
+                                console.error('[Welcome Button] Validation failed:', validationError);
+                                alert('Failed to validate LLM configuration. Please check your settings.');
+                                handleViewSwitch('credentials-view');
+                                return;
+                            }
+                            
                             const currentConfig = { 
                                 provider: status.provider, 
                                 model: status.model,

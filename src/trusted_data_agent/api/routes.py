@@ -984,19 +984,6 @@ async def get_session_history(session_id):
     if not user_uuid:
         return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
     
-    # Validate LLM client when loading session (if not already validated)
-    if not APP_STATE.get('llm') or not APP_CONFIG.MCP_SERVER_CONNECTED:
-        from trusted_data_agent.core.config_manager import get_config_manager
-        from trusted_data_agent.core import configuration_service
-        config_manager = get_config_manager()
-        default_profile_id = config_manager.get_default_profile_id(user_uuid)
-        
-        if default_profile_id:
-            app_logger.info(f"Validating LLM client for session load using profile {default_profile_id}")
-            result = await configuration_service.switch_profile_context(default_profile_id, user_uuid, validate_llm=True)
-            if result["status"] != "success":
-                return jsonify({"error": f"Failed to validate LLM configuration: {result['message']}"}), 400
-    
     session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
     if session_data:
         # --- MODIFICATION START: Extract feedback from workflow_history ---

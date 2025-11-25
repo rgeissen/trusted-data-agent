@@ -1,5 +1,5 @@
 {
-  "id": "35f088d5-ab2f-426b-8992-314dc6ecb6a5",
+  "id": "17d87a0b-96ef-4923-8224-09c9aa1e23e3",
   "user_uuid": "110d7a4e-e519-4b1f-b9bd-a9671c0bb5e8",
   "system_prompt_template": null,
   "charting_intensity": "medium",
@@ -15,9 +15,23 @@
   "session_history": [
     {
       "role": "user",
-      "content": "what is the sytem version?",
+      "content": "what is the system version?",
       "isValid": true,
       "turn_number": 1,
+      "source": "text"
+    },
+    {
+      "role": "user",
+      "content": "what is the system version?",
+      "isValid": true,
+      "turn_number": 2,
+      "source": "text"
+    },
+    {
+      "role": "user",
+      "content": "what is the system version?",
+      "isValid": true,
+      "turn_number": 3,
       "source": "text"
     }
   ],
@@ -34,14 +48,26 @@
     },
     {
       "role": "user",
-      "content": "what is the sytem version?",
+      "content": "what is the system version?",
       "isValid": true,
       "turn_number": 1
+    },
+    {
+      "role": "user",
+      "content": "what is the system version?",
+      "isValid": true,
+      "turn_number": 2
+    },
+    {
+      "role": "user",
+      "content": "what is the system version?",
+      "isValid": true,
+      "turn_number": 3
     }
   ],
   "name": "New Chat",
-  "created_at": "2025-11-25T07:58:34.675466",
-  "last_updated": "2025-11-25T08:06:28.589774",
+  "created_at": "2025-11-25T08:17:09.582719",
+  "last_updated": "2025-11-25T08:22:09.610837",
   "input_tokens": 0,
   "output_tokens": 0,
   "last_turn_data": {
@@ -57,5 +83,5 @@
     "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
   },
   "archived": true,
-  "archived_at": "2025-11-25T08:00:08.068796+00:00"
+  "archived_at": "2025-11-25T08:00:05.718142+00:00"
 }

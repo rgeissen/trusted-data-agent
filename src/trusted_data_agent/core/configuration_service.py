@@ -76,9 +76,46 @@ def load_profile_classification_into_state(profile_id: str, user_uuid: str) -> b
     APP_STATE['structured_prompts'] = classification_results.get('prompts', {})
     APP_STATE['structured_resources'] = classification_results.get('resources', {})
     
+    # Reconstruct mcp_tools and mcp_prompts dictionaries from structured data
+    # This is needed for the agent execution and validation checks
+    # We need to create simple objects that have attributes (not just dicts)
+    class SimpleTool:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+    
+    mcp_tools_dict = {}
+    for category, tool_list in APP_STATE['structured_tools'].items():
+        for tool_info in tool_list:
+            # Convert 'arguments' list to 'args' dict format expected by SimpleTool
+            arguments_list = tool_info.get('arguments', [])
+            args_dict = {arg['name']: arg for arg in arguments_list}
+            
+            # Create a SimpleTool object with proper attributes
+            mcp_tools_dict[tool_info['name']] = SimpleTool(
+                name=tool_info['name'],
+                description=tool_info.get('description', ''),
+                args=args_dict
+            )
+    APP_STATE['mcp_tools'] = mcp_tools_dict
+    
+    mcp_prompts_dict = {}
+    for category, prompt_list in APP_STATE['structured_prompts'].items():
+        for prompt_info in prompt_list:
+            # Create a simple object with the prompt info as attributes
+            # Prompts may also have arguments, convert if present
+            arguments_list = prompt_info.get('arguments', [])
+            args_dict = {arg['name']: arg for arg in arguments_list} if arguments_list else {}
+            
+            mcp_prompts_dict[prompt_info['name']] = SimpleTool(
+                name=prompt_info['name'],
+                description=prompt_info.get('description', ''),
+                args=args_dict
+            )
+    APP_STATE['mcp_prompts'] = mcp_prompts_dict
+    
     app_logger.info(f"Loaded cached classification for profile {profile_id} (mode: {classification_mode})")
-    app_logger.info(f"  - {len(APP_STATE['structured_tools'])} tool categories")
-    app_logger.info(f"  - {len(APP_STATE['structured_prompts'])} prompt categories")
+    app_logger.info(f"  - {len(APP_STATE['structured_tools'])} tool categories, {len(mcp_tools_dict)} total tools")
+    app_logger.info(f"  - {len(APP_STATE['structured_prompts'])} prompt categories, {len(mcp_prompts_dict)} total prompts")
     app_logger.info(f"  - {len(APP_STATE['structured_resources'])} resource categories")
     
     return True
@@ -137,15 +174,23 @@ async def switch_profile_context(profile_id: str, user_uuid: str, validate_llm: 
         
         app_logger.info(f"Initializing LLM client for profile {profile_id}: {provider}/{model}")
         
-        # Load stored credentials if available
-        if user_uuid and ENCRYPTION_AVAILABLE:
+        # Load stored credentials if available - use current_user.id for encrypted credentials
+        if ENCRYPTION_AVAILABLE:
             try:
-                stored_result = await retrieve_credentials_for_provider(user_uuid, provider)
-                if stored_result.get("credentials"):
-                    credentials = {**stored_result["credentials"], **credentials}
-                    app_logger.info(f"Loaded stored credentials for {provider}")
+                from trusted_data_agent.auth.admin import get_current_user_from_request
+                current_user = get_current_user_from_request()
+                if current_user:
+                    app_logger.info(f"Loading credentials for user {current_user.id}, provider {provider}")
+                    stored_result = await retrieve_credentials_for_provider(current_user.id, provider)
+                    if stored_result.get("credentials"):
+                        credentials = {**stored_result["credentials"], **credentials}
+                        app_logger.info(f"✓ Successfully loaded stored credentials for {provider}")
+                    else:
+                        app_logger.warning(f"No stored credentials found for {provider} (status: {stored_result.get('status')})")
+                else:
+                    app_logger.warning(f"No current_user found, cannot load stored credentials")
             except Exception as e:
-                app_logger.warning(f"Could not load stored credentials: {e}")
+                app_logger.error(f"Error loading stored credentials: {e}", exc_info=True)
         
         # Fall back to environment variables if no credentials in config or store
         import os
@@ -333,15 +378,25 @@ async def switch_profile_context(profile_id: str, user_uuid: str, validate_llm: 
         
         # Initialize and validate MCP client
         try:
+            import asyncio
             server_configs = {server_name: {"url": mcp_server_url, "transport": "streamable_http"}}
             temp_mcp_client = MultiServerMCPClient(server_configs)
             
-            # Test MCP connection
-            async with temp_mcp_client.session(server_name) as temp_session:
-                await temp_session.list_tools()
+            # Test MCP connection with 10 second timeout
+            app_logger.info(f"Testing MCP connection to {server_name}...")
+            async def test_mcp():
+                async with temp_mcp_client.session(server_name) as temp_session:
+                    await temp_session.list_tools()
             
+            await asyncio.wait_for(test_mcp(), timeout=10.0)
             app_logger.info(f"MCP server connection validated successfully: {server_name}")
             
+        except asyncio.TimeoutError:
+            app_logger.error(f"MCP server connection timed out after 10 seconds: {mcp_server_url}")
+            return {
+                "status": "error",
+                "message": f"MCP server connection timed out. Server may be down or unreachable: {mcp_server_url}"
+            }
         except Exception as e:
             app_logger.error(f"Failed to initialize MCP client: {e}", exc_info=True)
             return {

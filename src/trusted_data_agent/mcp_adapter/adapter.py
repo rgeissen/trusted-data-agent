@@ -1319,16 +1319,19 @@ async def invoke_mcp_tool(STATE: dict, command: dict, user_uuid: str = None, ses
     # --- MODIFICATION END ---
 
 
-    app_logger.debug(f"Invoking tool '{tool_name}' with aligned args: {aligned_args}")
+    app_logger.info(f"🔧 [MCP CALL START] Tool: '{tool_name}' | Args: {aligned_args}")
     try:
         server_name = get_user_mcp_server_name(user_uuid)
         if not server_name:
             raise Exception("MCP server name not found in configuration.")
 
+        app_logger.info(f"🔧 [MCP CALL] Opening session to server: {server_name}")
         async with mcp_client.session(server_name) as temp_session:
+            app_logger.info(f"🔧 [MCP CALL] Calling tool '{tool_name}'...")
             call_tool_result = await temp_session.call_tool(tool_name, aligned_args)
+            app_logger.info(f"🔧 [MCP CALL SUCCESS] Tool '{tool_name}' returned result (length: {len(str(call_tool_result))} chars)")
     except Exception as e:
-        app_logger.error(f"Error during tool invocation for '{tool_name}': {e}", exc_info=True)
+        app_logger.error(f"❌ [MCP CALL ERROR] Tool '{tool_name}' failed: {e}", exc_info=True)
         result = {"status": "error", "error": f"An exception occurred while invoking tool '{tool_name}'.", "data": str(e)}
         return result, 0, 0
 
