@@ -616,28 +616,33 @@ async function toggleRagCollection(collectionId, currentState) {
  * Delete a RAG collection
  */
 async function deleteRagCollection(collectionId, collectionName) {
-    // Confirm deletion
-    if (!confirm(`Are you sure you want to delete the collection "${collectionName}"?\n\nThis will remove all RAG cases associated with this collection.`)) {
+    // Use custom confirmation modal
+    if (!window.showConfirmation) {
+        console.error('Confirmation system not available');
         return;
     }
     
-    try {
-        const response = await fetch(`/api/v1/rag/collections/${collectionId}`, {
-            method: 'DELETE'
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            showNotification('success', `Collection "${collectionName}" deleted successfully`);
-            
-            // Refresh collections list
-            await loadRagCollections();
-        } else {
-            showNotification('error', `Failed to delete collection: ${data.error || 'Unknown error'}`);
-        }
-    } catch (error) {
-        console.error('Error deleting RAG collection:', error);
+    window.showConfirmation(
+        'Delete RAG Collection',
+        `Are you sure you want to delete the collection "${collectionName}"?\n\nThis will remove all RAG cases associated with this collection.`,
+        async () => {
+            try {
+                const response = await fetch(`/api/v1/rag/collections/${collectionId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification('success', `Collection "${collectionName}" deleted successfully`);
+                    
+                    // Refresh collections list
+                    await loadRagCollections();
+                } else {
+                    showNotification('error', `Failed to delete collection: ${data.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error deleting RAG collection:', error);
         showNotification('error', 'Failed to delete collection. Check console for details.');
     }
 }

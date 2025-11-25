@@ -597,7 +597,9 @@ async function handleContextPurgeClick() {
             } catch (error) {
                 console.error(`Failed to purge agent memory:`, error);
                 // Optionally show an error to the user
-                alert(`Error: Could not purge agent memory. ${error.message}`);
+                if (window.showAppBanner) {
+                    window.showAppBanner(`Error: Could not purge agent memory. ${error.message}`, 'error');
+                }
             }
         }
     );
@@ -1279,7 +1281,9 @@ async function handleToggleTurnValidity(badgeEl) {
 
     } catch (error) {
         console.error(`Error toggling validity for turn ${turnId}:`, error);
-        alert(`Error: Could not update turn status. ${error.message}`);
+        if (window.showAppBanner) {
+            window.showAppBanner(`Error: Could not update turn status. ${error.message}`, 'error');
+        }
     }
 }
 
@@ -1326,7 +1330,9 @@ export function initializeEventListeners() {
     }
     if (DOM.headerReplayOptimizedButton) {
         DOM.headerReplayOptimizedButton.addEventListener('click', (e) => {
-             alert('Replay Optimized Query - Not Implemented Yet.');
+             if (window.showAppBanner) {
+                window.showAppBanner('Replay Optimized Query - Not Implemented Yet.', 'info');
+            }
             // Placeholder: handleReplayOptimizedClick(e.currentTarget);
         });
     }
@@ -1679,7 +1685,9 @@ export function initializeEventListeners() {
                 
             } catch (error) {
                 console.error('Failed to update case feedback:', error);
-                alert(`Error updating feedback: ${error.message}`);
+                if (window.showAppBanner) {
+                    window.showAppBanner(`Error updating feedback: ${error.message}`, 'error');
+                }
             }
         }
     });

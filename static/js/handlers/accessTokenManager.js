@@ -296,35 +296,44 @@ const AccessTokenManager = {
      * Revoke an access token
      */
     async revokeToken(tokenId) {
-        if (!confirm('Are you sure you want to revoke this token? This action cannot be undone.')) {
+        // Use custom confirmation modal instead of browser confirm()
+        if (!window.showConfirmation) {
+            console.error('Confirmation system not available');
             return;
         }
+        
+        window.showConfirmation(
+            'Revoke Access Token',
+            'Are you sure you want to revoke this token? This action cannot be undone.',
+            async () => {
+                try {
+                    // Get JWT token from authClient
+                    const jwtToken = window.authClient ? window.authClient.getToken() : localStorage.getItem('tda_auth_token');
+                    if (!jwtToken) {
+                        this.showBanner('Authentication required', 'error');
+                        return;
+                    }
+                    
+                    const response = await fetch(`/api/v1/auth/tokens/${tokenId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${jwtToken}`
+                        }
+                    });
 
-        try {
-            // Get JWT token from authClient
-            const jwtToken = window.authClient ? window.authClient.getToken() : localStorage.getItem('tda_auth_token');
-            if (!jwtToken) {
-                this.showBanner('Authentication required', 'error');
-                return;
-            }
-            
-            const response = await fetch(`/api/v1/auth/tokens/${tokenId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${jwtToken}`
+                    if (response.ok) {
+                        this.showBanner('Access token revoked successfully', 'success');
+                        this.loadAccessTokens(); // Refresh the list
+                    } else {
+                        const data = await response.json();
+                        this.showBanner(data.detail || 'Failed to revoke token', 'error');
+                    }
+                } catch (err) {
+                    console.error('Error revoking token:', err);
+                    this.showBanner('Failed to revoke token. Please try again.', 'error');
                 }
-            });
-
-            if (response.ok) {
-                this.loadAccessTokens(); // Refresh the list
-            } else {
-                const data = await response.json();
-                alert(data.detail || 'Failed to revoke token');
             }
-        } catch (err) {
-            console.error('Error revoking token:', err);
-            alert('Failed to revoke token. Please try again.');
-        }
+        );
     },
 
     /**

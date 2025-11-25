@@ -132,7 +132,9 @@ export function copyToClipboard(button) {
     } catch (err) {
         console.error('Fallback copy failed: ', err);
         // Optionally provide user feedback about the failure
-        alert('Failed to copy text. Please try copying manually.');
+        if (window.showAppBanner) {
+            window.showAppBanner('Failed to copy text. Please try copying manually.', 'error');
+        }
     }
 
     document.body.removeChild(textarea);
@@ -189,7 +191,9 @@ export function copyTableToClipboard(button) {
 
     } catch (e) {
         console.error("Failed to parse or process table data for copying:", e);
-        alert('Failed to process table data for copying.');
+        if (window.showAppBanner) {
+            window.showAppBanner('Failed to process table data for copying.', 'error');
+        }
         return;
     }
 
@@ -209,7 +213,9 @@ export function copyTableToClipboard(button) {
         }
     } catch (err) {
         console.error('Fallback table copy failed: ', err);
-        alert('Failed to copy table. Please try copying manually.');
+        if (window.showAppBanner) {
+            window.showAppBanner('Failed to copy table. Please try copying manually.', 'error');
+        }
     }
 
     document.body.removeChild(textarea);

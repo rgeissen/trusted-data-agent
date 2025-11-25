@@ -564,30 +564,35 @@ const AdminManager = {
      * Reset features to defaults
      */
     async resetFeatures() {
-        if (!confirm('Are you sure you want to reset all feature tiers to their default values?')) {
+        if (!window.showConfirmation) {
+            console.error('Confirmation system not available');
             return;
         }
-
-        try {
-            const token = localStorage.getItem('tda_auth_token');
-            const response = await fetch('/api/v1/admin/features/reset', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            const data = await response.json();
-            
-            if (data.status === 'success') {
-                window.showNotification('success', data.message || 'Features reset to defaults');
-                await this.loadFeatures();
-            } else {
-                window.showNotification('error', data.message || 'Failed to reset features');
-            }
-        } catch (error) {
-            console.error('[AdminManager] Error resetting features:', error);
-            window.showNotification('error', 'Failed to reset features');
+        
+        window.showConfirmation(
+            'Reset Feature Tiers',
+            'Are you sure you want to reset all feature tiers to their default values?',
+            async () => {
+                try {
+                    const token = localStorage.getItem('tda_auth_token');
+                    const response = await fetch('/api/v1/admin/features/reset', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        window.showNotification('success', data.message || 'Features reset to defaults');
+                        await this.loadFeatures();
+                    } else {
+                        window.showNotification('error', data.message || 'Failed to reset features');
+                    }
+                } catch (error) {
+                    console.error('[AdminManager] Error resetting features:', error);
+                    window.showNotification('error', 'Failed to reset features');
         }
     },
 
@@ -709,30 +714,35 @@ const AdminManager = {
         const user = this.currentUsers.find(u => u.id === userId);
         if (!user) return;
         
-        if (!confirm(`Are you sure you want to delete user "${user.username}"?`)) {
+        if (!window.showConfirmation) {
+            console.error('Confirmation system not available');
             return;
         }
         
-        try {
-            const token = localStorage.getItem('tda_auth_token');
-            const response = await fetch(`/api/v1/admin/users/${userId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            const data = await response.json();
-            
-            if (data.status === 'success') {
-                window.showNotification('success', 'User deleted successfully');
-                await this.loadUsers();
-            } else {
-                window.showNotification('error', data.message || 'Failed to delete user');
-            }
-        } catch (error) {
-            console.error('[AdminManager] Error deleting user:', error);
+        window.showConfirmation(
+            'Delete User',
+            `Are you sure you want to delete user "${user.username}"?`,
+            async () => {
+                try {
+                    const token = localStorage.getItem('tda_auth_token');
+                    const response = await fetch(`/api/v1/admin/users/${userId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        window.showNotification('success', 'User deleted successfully');
+                        await this.loadUsers();
+                    } else {
+                        window.showNotification('error', data.message || 'Failed to delete user');
+                    }
+                } catch (error) {
+                    console.error('[AdminManager] Error deleting user:', error);
             window.showNotification('error', 'Failed to delete user');
         }
     },
@@ -932,29 +942,34 @@ const AdminManager = {
      * Reset all pane visibility to defaults
      */
     async resetPanes() {
-        if (!confirm('Reset all pane visibility to default configuration? This will override all custom settings.')) {
+        if (!window.showConfirmation) {
+            console.error('Confirmation system not available');
             return;
         }
+        
+        window.showConfirmation(
+            'Reset Pane Visibility',
+            'Reset all pane visibility to default configuration? This will override all custom settings.',
+            async () => {
+                try {
+                    const token = localStorage.getItem('tda_auth_token');
+                    if (!token) {
+                        window.showNotification('error', 'Not authenticated');
+                        return;
+                    }
 
-        try {
-            const token = localStorage.getItem('tda_auth_token');
-            if (!token) {
-                window.showNotification('error', 'Not authenticated');
-                return;
-            }
+                    const response = await fetch('/api/v1/admin/panes/reset', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
 
-            const response = await fetch('/api/v1/admin/panes/reset', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            const data = await response.json();
+                    const data = await response.json();
             
             if (data.status === 'success') {
                 window.showNotification('success', 'Pane visibility reset to defaults');
@@ -1273,31 +1288,36 @@ const AdminManager = {
      * Reset application state
      */
     async resetState() {
-        if (!confirm('This will reset all application state and require reconnection. Continue?')) {
+        if (!window.showConfirmation) {
+            console.error('Confirmation system not available');
             return;
         }
+        
+        window.showConfirmation(
+            'Reset Application State',
+            'This will reset all application state and require reconnection. Continue?',
+            async () => {
+                try {
+                    const token = localStorage.getItem('tda_auth_token');
+                    if (!token) return;
 
-        try {
-            const token = localStorage.getItem('tda_auth_token');
-            if (!token) return;
+                    const response = await fetch('/api/v1/admin/reset-state', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
 
-            const response = await fetch('/api/v1/admin/reset-state', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            const data = await response.json();
-            
-            if (response.ok && data.status === 'success') {
-                window.showNotification('success', data.message);
-            } else {
-                throw new Error(data.message || 'Failed to reset state');
-            }
-        } catch (error) {
-            console.error('[AdminManager] Error resetting state:', error);
-            window.showNotification('error', error.message);
+                    const data = await response.json();
+                    
+                    if (response.ok && data.status === 'success') {
+                        window.showNotification('success', data.message);
+                    } else {
+                        throw new Error(data.message || 'Failed to reset state');
+                    }
+                } catch (error) {
+                    console.error('[AdminManager] Error resetting state:', error);
+                    window.showNotification('error', error.message);
         }
     },
 
@@ -1723,31 +1743,39 @@ const AdminManager = {
         const promptName = document.getElementById('system-prompts-tier-selector').value;
         const promptLabel = document.getElementById('system-prompts-tier-selector').selectedOptions[0]?.text || promptName;
         
-        if (confirm(`Reset "${promptLabel}" to default?\n\nThis will remove any custom override and restore the encrypted default prompt.`)) {
-            const token = authClient ? authClient.getToken() : null;
-            if (!token) {
-                if (window.showNotification) {
-                    window.showNotification('error', 'Authentication required');
-                }
-                return;
-            }
-
-            try {
-                const response = await fetch(`/api/v1/system-prompts/${promptName}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (response.ok) {
-                    await this.loadSystemPromptForTier(promptName);
+        if (!window.showConfirmation) {
+            console.error('Confirmation system not available');
+            return;
+        }
+        
+        window.showConfirmation(
+            'Reset System Prompt',
+            `Reset "${promptLabel}" to default?\n\nThis will remove any custom override and restore the encrypted default prompt.`,
+            async () => {
+                const token = authClient ? authClient.getToken() : null;
+                if (!token) {
                     if (window.showNotification) {
-                        window.showNotification('success', `System prompt "${promptLabel}" reset to default`);
+                        window.showNotification('error', 'Authentication required');
                     }
-                } else {
-                    throw new Error('Failed to reset system prompt');
+                    return;
                 }
-            } catch (error) {
-                console.error('[AdminManager] Error resetting system prompt:', error);
+
+                try {
+                    const response = await fetch(`/api/v1/system-prompts/${promptName}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (response.ok) {
+                        await this.loadSystemPromptForTier(promptName);
+                        if (window.showNotification) {
+                            window.showNotification('success', `System prompt "${promptLabel}" reset to default`);
+                        }
+                    } else {
+                        throw new Error('Failed to reset system prompt');
+                    }
+                } catch (error) {
+                    console.error('[AdminManager] Error resetting system prompt:', error);
                 if (window.showNotification) {
                     window.showNotification('error', `Failed to reset system prompt: ${error.message}`);
                 }

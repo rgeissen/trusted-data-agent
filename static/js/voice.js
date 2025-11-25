@@ -153,7 +153,9 @@ const onRecognitionEnd = async () => {
 const onRecognitionError = (event) => {
     console.error('Speech recognition error:', event.error);
     if (event.error === 'not-allowed') {
-        alert("Microphone access was denied. Please allow microphone access in your browser settings to use the voice feature.");
+        if (window.showAppBanner) {
+            window.showAppBanner('Microphone access denied. Please allow microphone access in your browser settings to use the voice feature.', 'error');
+        }
     }
     if (confirmationCallback) {
         confirmationCallback('error');

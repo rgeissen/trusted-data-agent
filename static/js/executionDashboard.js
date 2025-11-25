@@ -491,7 +491,9 @@ class ExecutionDashboard {
             
         } catch (error) {
             console.error('Error activating session:', error);
-            alert('Failed to activate session. Please try again.');
+            if (window.showAppBanner) {
+                window.showAppBanner('Failed to activate session. Please try again.', 'error');
+            }
         }
     }
 
@@ -658,7 +660,9 @@ class ExecutionDashboard {
             this.renderInspector(sessionData);
         } catch (error) {
             console.error('Error loading session details:', error);
-            alert('Failed to load session details: ' + error.message);
+            if (window.showAppBanner) {
+                window.showAppBanner('Failed to load session details: ' + error.message, 'error');
+            }
             this.closeInspector();
         }
     }
@@ -803,7 +807,9 @@ class ExecutionDashboard {
             URL.revokeObjectURL(url);
         } catch (error) {
             console.error('Export failed:', error);
-            alert('Failed to export session: ' + error.message);
+            if (window.showAppBanner) {
+                window.showAppBanner('Failed to export session: ' + error.message, 'error');
+            }
         }
     }
 
@@ -874,7 +880,9 @@ Tokens: ${c.output_tokens || 0}
             URL.revokeObjectURL(url);
         } catch (error) {
             console.error('Export failed:', error);
-            alert('Failed to export report: ' + error.message);
+            if (window.showAppBanner) {
+                window.showAppBanner('Failed to export report: ' + error.message, 'error');
+            }
         }
     }
 

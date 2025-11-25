@@ -1118,3 +1118,6 @@ function populateWelcomeDisabledCapabilities() {
 
 // Make showWelcomeScreen available globally
 window.showWelcomeScreen = showWelcomeScreen;
+
+// Make showConfirmation available globally for custom confirmation modals
+window.showConfirmation = UI.showConfirmation;
