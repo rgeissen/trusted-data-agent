@@ -226,7 +226,7 @@ const AdminManager = {
     async loadUsers() {
         try {
             const token = localStorage.getItem('tda_auth_token');
-            const response = await fetch('/api/v1/admin/users?active_only=true', {
+            const response = await fetch('/api/v1/admin/users', {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -240,10 +240,18 @@ const AdminManager = {
                 this.updateUserStats();
             } else {
                 window.showNotification('error', data.message || 'Failed to load users');
+                // Clear loading state even on error
+                this.currentUsers = [];
+                this.renderUsers();
+                this.updateUserStats();
             }
         } catch (error) {
             console.error('[AdminManager] Error loading users:', error);
             window.showNotification('error', 'Failed to load users');
+            // Clear loading state even on error
+            this.currentUsers = [];
+            this.renderUsers();
+            this.updateUserStats();
         }
     },
 
@@ -605,7 +613,9 @@ const AdminManager = {
                 } catch (error) {
                     console.error('[AdminManager] Error resetting features:', error);
                     window.showNotification('error', 'Failed to reset features');
-        }
+                }
+            }
+        );
     },
 
     /**
@@ -755,8 +765,10 @@ const AdminManager = {
                     }
                 } catch (error) {
                     console.error('[AdminManager] Error deleting user:', error);
-            window.showNotification('error', 'Failed to delete user');
-        }
+                    window.showNotification('error', 'Failed to delete user');
+                }
+            }
+        );
     },
 
     /**
@@ -999,6 +1011,8 @@ const AdminManager = {
             console.error('[AdminManager] Error resetting panes:', error);
             window.showNotification('error', 'Failed to reset panes');
         }
+            }
+        );
     },
 
     /**
@@ -1330,7 +1344,9 @@ const AdminManager = {
                 } catch (error) {
                     console.error('[AdminManager] Error resetting state:', error);
                     window.showNotification('error', error.message);
-        }
+                }
+            }
+        );
     },
 
     /**
@@ -1788,11 +1804,12 @@ const AdminManager = {
                     }
                 } catch (error) {
                     console.error('[AdminManager] Error resetting system prompt:', error);
-                if (window.showNotification) {
-                    window.showNotification('error', `Failed to reset system prompt: ${error.message}`);
+                    if (window.showNotification) {
+                        window.showNotification('error', `Failed to reset system prompt: ${error.message}`);
+                    }
                 }
             }
-        }
+        );
     },
 
     /**

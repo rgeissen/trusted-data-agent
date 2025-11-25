@@ -911,7 +911,7 @@ async def revoke_access_token(token_id: str):
 
 @auth_bp.route('/admin/rate-limit-settings', methods=['GET'])
 @require_admin
-async def get_rate_limit_settings():
+async def get_rate_limit_settings(current_user):
     """
     Get current rate limiting configuration settings.
     

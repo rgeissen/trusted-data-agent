@@ -643,8 +643,10 @@ async function deleteRagCollection(collectionId, collectionName) {
                 }
             } catch (error) {
                 console.error('Error deleting RAG collection:', error);
-        showNotification('error', 'Failed to delete collection. Check console for details.');
-    }
+                showNotification('error', 'Failed to delete collection. Check console for details.');
+            }
+        }
+    );
 }
 
 /**

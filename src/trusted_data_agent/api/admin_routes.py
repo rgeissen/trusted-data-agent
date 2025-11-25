@@ -379,8 +379,13 @@ async def manage_users():
             user_list = []
             for user in users:
                 # Get feature count for this user's tier
-                from trusted_data_agent.auth.features import get_user_features
-                user_features = get_user_features(user)
+                try:
+                    from trusted_data_agent.auth.features import get_user_features
+                    user_features = get_user_features(user)
+                    feature_count = len(user_features)
+                except Exception as e:
+                    logger.warning(f"Failed to get user features for {user.username}: {e}")
+                    feature_count = 0
                 
                 user_list.append({
                     'id': user.id,
@@ -391,7 +396,7 @@ async def manage_users():
                     'is_active': user.is_active,
                     'is_admin': user.is_admin,
                     'profile_tier': user.profile_tier,
-                    'feature_count': len(user_features),
+                    'feature_count': feature_count,
                     'is_current_user': current_user and user.id == current_user.id,
                     'created_at': user.created_at.isoformat(),
                     'last_login_at': user.last_login_at.isoformat() if user.last_login_at else None,
