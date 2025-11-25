@@ -4074,10 +4074,18 @@
                     newBtn.addEventListener('click', async function() {
                         console.log('[Welcome Button] Start Conversation clicked (authenticated user)');
                         const welcomeScreen = document.getElementById('welcome-screen');
-                        if (welcomeScreen) {
-                            welcomeScreen.classList.add('hidden');
-                            localStorage.setItem('welcomeScreenShown', 'true');
-                        }
+                        const welcomeBtn = document.getElementById('welcome-button');
+                        const welcomeBtnText = document.getElementById('welcome-button-text');
+                        const welcomeBtnSpinner = document.getElementById('welcome-button-spinner');
+                        
+                        // Show loading state - keep welcome screen visible
+                        if (welcomeBtn) welcomeBtn.disabled = true;
+                        if (welcomeBtnText) welcomeBtnText.textContent = 'Validating...';
+                        if (welcomeBtnSpinner) welcomeBtnSpinner.classList.remove('hidden');
+                        
+                        // Remove any previous error message
+                        const existingError = document.getElementById('welcome-validation-error');
+                        if (existingError) existingError.remove();
                         
                         // Call finalizeConfiguration to load sessions and initialize everything
                         try {
@@ -4096,11 +4104,9 @@
                                 return;
                             }
                             
-                            // System is configured - validate LLM before proceeding
-                            console.log('[Welcome Button] System configured, validating LLM...');
+                            // System is configured - check for existing sessions
+                            console.log('[Welcome Button] System configured, checking for existing sessions...');
                             
-                            // Validate LLM by calling POST /session (which triggers validation)
-                            // This ensures APP_STATE['llm'] is properly set before conversation starts
                             const headers = { 'Content-Type': 'application/json' };
                             const authToken = localStorage.getItem('tda_auth_token');
                             if (authToken) {
@@ -4108,23 +4114,56 @@
                             }
                             
                             try {
-                                const sessionResponse = await fetch('/session', {
-                                    method: 'POST',
-                                    headers: headers,
-                                    body: JSON.stringify({})  // Empty body to satisfy endpoint
-                                });
-                                const sessionResult = await sessionResponse.json();
+                                // First, check if there are existing sessions
+                                const sessionsResponse = await fetch('/sessions', { headers });
+                                const sessions = await sessionsResponse.json();
                                 
-                                if (!sessionResponse.ok) {
-                                    console.error('[Welcome Button] Session creation failed:', sessionResult);
-                                    throw new Error(sessionResult.error || 'Failed to validate configuration');
+                                let sessionToLoad = null;
+                                
+                                if (sessions && sessions.length > 0) {
+                                    // Load the most recent session (first in list)
+                                    sessionToLoad = sessions[0];
+                                    console.log('[Welcome Button] Loading most recent session:', sessionToLoad.id);
+                                } else {
+                                    // No existing sessions - create a new one and validate LLM
+                                    console.log('[Welcome Button] No existing sessions, creating new session and validating LLM...');
+                                    const sessionResponse = await fetch('/session', {
+                                        method: 'POST',
+                                        headers: headers,
+                                        body: JSON.stringify({})  // Empty body to satisfy endpoint
+                                    });
+                                    const sessionResult = await sessionResponse.json();
+                                    
+                                    if (!sessionResponse.ok) {
+                                        console.error('[Welcome Button] Session creation failed:', sessionResult);
+                                        throw new Error(sessionResult.error || 'Failed to validate configuration');
+                                    }
+                                    
+                                    sessionToLoad = sessionResult;
+                                    console.log('[Welcome Button] New session created and LLM validated:', sessionResult);
                                 }
                                 
-                                console.log('[Welcome Button] LLM validated, session ready:', sessionResult);
+                                // Store the session to load
+                                if (sessionToLoad) {
+                                    localStorage.setItem('sessionToLoad', sessionToLoad.id);
+                                }
                             } catch (validationError) {
                                 console.error('[Welcome Button] Validation failed:', validationError);
-                                alert('Failed to validate LLM configuration. Please check your settings.');
-                                handleViewSwitch('credentials-view');
+                                
+                                // Show error below button
+                                const errorDiv = document.createElement('div');
+                                errorDiv.id = 'welcome-validation-error';
+                                errorDiv.className = 'mt-4 p-4 bg-red-900/30 border border-red-500 rounded-lg text-red-300 text-sm';
+                                errorDiv.innerHTML = `
+                                    <div class="font-semibold mb-1">❌ Validation Failed</div>
+                                    <div>${validationError.message || 'Failed to validate LLM configuration. Please check your settings.'}</div>
+                                `;
+                                welcomeBtn.parentElement.appendChild(errorDiv);
+                                
+                                // Reset button state
+                                if (welcomeBtn) welcomeBtn.disabled = false;
+                                if (welcomeBtnText) welcomeBtnText.textContent = 'Start Conversation';
+                                if (welcomeBtnSpinner) welcomeBtnSpinner.classList.add('hidden');
                                 return;
                             }
                             
@@ -4136,8 +4175,31 @@
                             
                             console.log('[Welcome Button] Calling finalizeConfiguration with config:', currentConfig);
                             await finalizeConfiguration(currentConfig, true);
+                            
+                            // Only hide welcome screen after successful validation
+                            console.log('[Welcome Button] Validation successful, hiding welcome screen');
+                            if (welcomeScreen) {
+                                welcomeScreen.classList.add('hidden');
+                                localStorage.setItem('welcomeScreenShown', 'true');
+                            }
+                            
                         } catch (error) {
                             console.error('[Welcome Button] Error initializing:', error);
+                            
+                            // Show error below button
+                            const errorDiv = document.createElement('div');
+                            errorDiv.id = 'welcome-validation-error';
+                            errorDiv.className = 'mt-4 p-4 bg-red-900/30 border border-red-500 rounded-lg text-red-300 text-sm';
+                            errorDiv.innerHTML = `
+                                <div class="font-semibold mb-1">❌ Initialization Failed</div>
+                                <div>${error.message || 'An unexpected error occurred. Please try again.'}</div>
+                            `;
+                            welcomeBtn.parentElement.appendChild(errorDiv);
+                            
+                            // Reset button state
+                            if (welcomeBtn) welcomeBtn.disabled = false;
+                            if (welcomeBtnText) welcomeBtnText.textContent = 'Start Conversation';
+                            if (welcomeBtnSpinner) welcomeBtnSpinner.classList.add('hidden');
                         }
                     });
                 }
