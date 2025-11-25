@@ -3,9 +3,6 @@
  * Handles UI interactions for access token management
  */
 
-// Import centralized banner system
-import { showAppBanner } from '../bannerSystem.js';
-
 const AccessTokenManager = {
     /**
      * Initialize the access token manager
@@ -100,7 +97,12 @@ const AccessTokenManager = {
      * Show banner message (uses centralized application-level banner system)
      */
     showBanner(message, type = 'info') {
-        showAppBanner(message, type);
+        // Use global function from bannerSystem.js
+        if (window.showAppBanner) {
+            window.showAppBanner(message, type);
+        } else {
+            console.error('[AccessTokenManager] showAppBanner not available. Message:', message);
+        }
     },
 
     /**
@@ -141,11 +143,18 @@ const AccessTokenManager = {
         }
 
         try {
+            // Get JWT token from authClient
+            const jwtToken = window.authClient ? window.authClient.getToken() : localStorage.getItem('tda_auth_token');
+            if (!jwtToken) {
+                this.showBanner('Authentication required. Please log in.', 'error');
+                return;
+            }
+            
             const response = await fetch('/api/v1/auth/tokens', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+                    'Authorization': `Bearer ${jwtToken}`
                 },
                 body: JSON.stringify({
                     name: name,
@@ -180,9 +189,16 @@ const AccessTokenManager = {
         container.innerHTML = '<div class="text-center text-gray-500 text-sm py-4">Loading tokens...</div>';
 
         try {
+            // Get JWT token from authClient
+            const jwtToken = window.authClient ? window.authClient.getToken() : localStorage.getItem('tda_auth_token');
+            if (!jwtToken) {
+                container.innerHTML = '<div class="text-center text-gray-500 text-sm py-4">Please log in to view tokens</div>';
+                return;
+            }
+            
             const response = await fetch('/api/v1/auth/tokens', {
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+                    'Authorization': `Bearer ${jwtToken}`
                 }
             });
 
@@ -285,10 +301,17 @@ const AccessTokenManager = {
         }
 
         try {
+            // Get JWT token from authClient
+            const jwtToken = window.authClient ? window.authClient.getToken() : localStorage.getItem('tda_auth_token');
+            if (!jwtToken) {
+                this.showBanner('Authentication required', 'error');
+                return;
+            }
+            
             const response = await fetch(`/api/v1/auth/tokens/${tokenId}`, {
                 method: 'DELETE',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+                    'Authorization': `Bearer ${jwtToken}`
                 }
             });
 
