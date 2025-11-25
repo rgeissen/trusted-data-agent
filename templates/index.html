@@ -414,7 +414,7 @@
                                                 <svg id="welcome-login-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 relative z-10 transition-transform hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                                                 </svg>
-                                                <span id="welcome-button-text" class="relative z-10">Start Conversation</span>
+                                                <span id="welcome-button-text" class="relative z-10">Checking...</span>
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 relative z-10 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                                 </svg>
@@ -4217,22 +4217,35 @@
                     welcomeBtn.parentNode.replaceChild(newBtn, welcomeBtn);
                     // Add original click listener back
                     newBtn.addEventListener('click', async function() {
-                        console.log('[Welcome Button] Start Conversation clicked (authenticated user)');
                         const welcomeScreen = document.getElementById('welcome-screen');
-                        const welcomeBtn = document.getElementById('welcome-button');
+                        const welcomeBtn = document.getElementById('welcome-configure-btn');
                         const welcomeBtnText = document.getElementById('welcome-button-text');
                         const welcomeBtnSpinner = document.getElementById('welcome-button-spinner');
                         
+                        // Check button text to determine action
+                        const buttonText = welcomeBtnText ? welcomeBtnText.textContent : '';
+                        
+                        if (buttonText === 'Configure Application') {
+                            // Profile needs configuration - go to credentials view
+                            console.log('[Welcome Button] Configure Application clicked - switching to credentials view');
+                            const { handleViewSwitch } = await import('/static/js/ui.js');
+                            handleViewSwitch('credentials-view');
+                            return;
+                        }
+                        
+                        // Button says "Start Conversation" - profile is valid, proceed with session
+                        console.log('[Welcome Button] Start Conversation clicked (authenticated user)');
+                        
                         // Show loading state - keep welcome screen visible
                         if (welcomeBtn) welcomeBtn.disabled = true;
-                        if (welcomeBtnText) welcomeBtnText.textContent = 'Validating...';
+                        if (welcomeBtnText) welcomeBtnText.textContent = 'Loading...';
                         if (welcomeBtnSpinner) welcomeBtnSpinner.classList.remove('hidden');
                         
                         // Remove any previous error message
                         const existingError = document.getElementById('welcome-validation-error');
                         if (existingError) existingError.remove();
                         
-                        // Call finalizeConfiguration to load sessions and initialize everything
+                        // Load sessions and initialize
                         try {
                             // Import required modules
                             const { checkServerStatus } = await import('/static/js/api.js');
@@ -4244,7 +4257,7 @@
                             console.log('[Welcome Button] Status:', status);
                             
                             if (!status.isConfigured) {
-                                console.log('[Welcome Button] System not configured yet - switching to credentials view');
+                                console.log('[Welcome Button] System not configured - switching to credentials view');
                                 handleViewSwitch('credentials-view');
                                 return;
                             }
@@ -4259,8 +4272,11 @@
                             }
                             
                             try {
-                                // First, check if there are existing sessions
-                                const sessionsResponse = await fetch('/sessions', { headers });
+                                // First, check if there are existing sessions (with timeout)
+                                const sessionsResponse = await Promise.race([
+                                    fetch('/sessions', { headers }),
+                                    new Promise((_, reject) => setTimeout(() => reject(new Error('Request timed out')), 30000))
+                                ]);
                                 const sessions = await sessionsResponse.json();
                                 
                                 let sessionToLoad = null;
@@ -4272,16 +4288,22 @@
                                 } else {
                                     // No existing sessions - create a new one and validate LLM
                                     console.log('[Welcome Button] No existing sessions, creating new session and validating LLM...');
-                                    const sessionResponse = await fetch('/session', {
-                                        method: 'POST',
-                                        headers: headers,
-                                        body: JSON.stringify({})  // Empty body to satisfy endpoint
-                                    });
+                                    const sessionResponse = await Promise.race([
+                                        fetch('/session', {
+                                            method: 'POST',
+                                            headers: headers,
+                                            body: JSON.stringify({})  // Empty body to satisfy endpoint
+                                        }),
+                                        new Promise((_, reject) => setTimeout(() => reject(new Error('Session creation timed out')), 30000))
+                                    ]);
+                                    
+                                    console.log('[Welcome Button] Session response status:', sessionResponse.status, sessionResponse.ok);
                                     const sessionResult = await sessionResponse.json();
+                                    console.log('[Welcome Button] Session result:', sessionResult);
                                     
                                     if (!sessionResponse.ok) {
                                         console.error('[Welcome Button] Session creation failed:', sessionResult);
-                                        throw new Error(sessionResult.error || 'Failed to validate configuration');
+                                        throw new Error(sessionResult.error || sessionResult.message || 'Failed to validate configuration');
                                     }
                                     
                                     sessionToLoad = sessionResult;
@@ -4293,22 +4315,10 @@
                                     localStorage.setItem('sessionToLoad', sessionToLoad.id);
                                 }
                             } catch (validationError) {
-                                console.error('[Welcome Button] Validation failed:', validationError);
-                                
-                                // Show error below button
-                                const errorDiv = document.createElement('div');
-                                errorDiv.id = 'welcome-validation-error';
-                                errorDiv.className = 'mt-4 p-4 bg-red-900/30 border border-red-500 rounded-lg text-red-300 text-sm';
-                                errorDiv.innerHTML = `
-                                    <div class="font-semibold mb-1">❌ Validation Failed</div>
-                                    <div>${validationError.message || 'Failed to validate LLM configuration. Please check your settings.'}</div>
-                                `;
-                                welcomeBtn.parentElement.appendChild(errorDiv);
-                                
-                                // Reset button state
-                                if (welcomeBtn) welcomeBtn.disabled = false;
-                                if (welcomeBtnText) welcomeBtnText.textContent = 'Start Conversation';
-                                if (welcomeBtnSpinner) welcomeBtnSpinner.classList.add('hidden');
+                                console.error('[Welcome Button] Session creation/validation failed:', validationError);
+                                // Credentials may be invalid - redirect to configuration
+                                const { handleViewSwitch } = await import('/static/js/ui.js');
+                                handleViewSwitch('credentials-view');
                                 return;
                             }
                             
@@ -4330,21 +4340,9 @@
                             
                         } catch (error) {
                             console.error('[Welcome Button] Error initializing:', error);
-                            
-                            // Show error below button
-                            const errorDiv = document.createElement('div');
-                            errorDiv.id = 'welcome-validation-error';
-                            errorDiv.className = 'mt-4 p-4 bg-red-900/30 border border-red-500 rounded-lg text-red-300 text-sm';
-                            errorDiv.innerHTML = `
-                                <div class="font-semibold mb-1">❌ Initialization Failed</div>
-                                <div>${error.message || 'An unexpected error occurred. Please try again.'}</div>
-                            `;
-                            welcomeBtn.parentElement.appendChild(errorDiv);
-                            
-                            // Reset button state
-                            if (welcomeBtn) welcomeBtn.disabled = false;
-                            if (welcomeBtnText) welcomeBtnText.textContent = 'Start Conversation';
-                            if (welcomeBtnSpinner) welcomeBtnSpinner.classList.add('hidden');
+                            // Redirect to configuration on any error
+                            const { handleViewSwitch } = await import('/static/js/ui.js');
+                            handleViewSwitch('credentials-view');
                         }
                     });
                 }

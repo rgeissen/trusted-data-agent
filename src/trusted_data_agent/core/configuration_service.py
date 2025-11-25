@@ -180,21 +180,25 @@ async def switch_profile_context(profile_id: str, user_uuid: str, validate_llm: 
         
         app_logger.info(f"Initializing LLM client for profile {profile_id}: {provider}/{model}")
         
-        # Load stored credentials if available - use current_user.id for encrypted credentials
-        if ENCRYPTION_AVAILABLE:
+        # Load stored credentials if available - use user_uuid to look up user_id for encrypted credentials
+        if ENCRYPTION_AVAILABLE and user_uuid:
             try:
-                from trusted_data_agent.auth.admin import get_current_user_from_request
-                current_user = get_current_user_from_request()
-                if current_user:
-                    app_logger.info(f"Loading credentials for user {current_user.id}, provider {provider}")
-                    stored_result = await retrieve_credentials_for_provider(current_user.id, provider)
-                    if stored_result.get("credentials"):
-                        credentials = {**stored_result["credentials"], **credentials}
-                        app_logger.info(f"✓ Successfully loaded stored credentials for {provider}")
+                from trusted_data_agent.auth.models import User
+                from trusted_data_agent.auth.database import get_db_session
+                
+                # Look up user by id
+                with get_db_session() as session:
+                    user = session.query(User).filter_by(id=user_uuid).first()
+                    if user:
+                        app_logger.info(f"Loading credentials for user {user.id}, provider {provider}")
+                        stored_result = await retrieve_credentials_for_provider(user.id, provider)
+                        if stored_result.get("credentials"):
+                            credentials = {**stored_result["credentials"], **credentials}
+                            app_logger.info(f"✓ Successfully loaded stored credentials for {provider}")
+                        else:
+                            app_logger.warning(f"No stored credentials found for {provider} (status: {stored_result.get('status')})")
                     else:
-                        app_logger.warning(f"No stored credentials found for {provider} (status: {stored_result.get('status')})")
-                else:
-                    app_logger.warning(f"No current_user found, cannot load stored credentials")
+                        app_logger.warning(f"No user found for user_uuid={user_uuid}, cannot load stored credentials")
             except Exception as e:
                 app_logger.error(f"Error loading stored credentials: {e}", exc_info=True)
         
@@ -505,7 +509,17 @@ async def setup_and_categorize_services(config_data: dict) -> dict:
             # --- PHASE 4: Auto-load stored credentials if requested ---
             if use_stored_credentials and user_uuid and ENCRYPTION_AVAILABLE:
                 app_logger.info(f"Attempting to load stored credentials for provider: {provider}")
-                stored_result = await retrieve_credentials_for_provider(user_uuid, provider)
+                # Look up user by id
+                from trusted_data_agent.auth.models import User
+                from trusted_data_agent.auth.database import get_db_session
+                
+                with get_db_session() as session:
+                    user = session.query(User).filter_by(id=user_uuid).first()
+                    if not user:
+                        app_logger.warning(f"User not found for id {user_uuid}")
+                        stored_result = {"status": "error", "credentials": None}
+                    else:
+                        stored_result = await retrieve_credentials_for_provider(user.id, provider)
                 
                 if stored_result.get("credentials"):
                     # Merge stored credentials with provided credentials (provided takes precedence)
@@ -859,12 +873,13 @@ async def store_credentials_for_provider(user_id: str, provider: str, credential
         return {"status": "error", "message": str(e)}
 
 
-async def retrieve_credentials_for_provider(user_id: str, provider: str) -> dict:
+async def retrieve_credentials_for_provider(user_identifier: str, provider: str) -> dict:
     """
     Retrieve decrypted credentials for a provider.
     
     Args:
-        user_id: User's unique identifier
+        user_identifier: User's database ID (user.id) - credentials are stored by this
+                        NOTE: This should be user.id, NOT user_uuid
         provider: Provider name
         
     Returns:
@@ -874,16 +889,19 @@ async def retrieve_credentials_for_provider(user_id: str, provider: str) -> dict
         return {"status": "error", "credentials": None, "message": "Credential encryption not available"}
     
     try:
-        credentials = encryption.decrypt_credentials(user_id, provider)
+        # user_identifier should be user.id (the database primary key)
+        # Credentials are encrypted/stored using user.id as the key
+        credentials = encryption.decrypt_credentials(user_identifier, provider)
         
         if credentials:
-            app_logger.info(f"Retrieved credentials for user {user_id}, provider {provider}")
+            app_logger.info(f"Retrieved credentials for user {user_identifier}, provider {provider}")
             return {"status": "success", "credentials": credentials}
         else:
+            app_logger.info(f"No stored credentials found for user {user_identifier}, provider {provider}")
             return {"status": "success", "credentials": None, "message": "No stored credentials found"}
             
     except Exception as e:
-        app_logger.error(f"Failed to retrieve credentials: {e}", exc_info=True)
+        app_logger.error(f"Failed to retrieve credentials for user {user_identifier}: {e}", exc_info=True)
         return {"status": "error", "credentials": None, "message": str(e)}
 
 

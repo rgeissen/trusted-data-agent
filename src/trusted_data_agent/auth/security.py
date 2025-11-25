@@ -512,7 +512,7 @@ def verify_access_token(token: str) -> Optional[User]:
             # Access each attribute to force SQLAlchemy to load it into the instance
             _ = user.id
             _ = user.username
-            _ = user.user_uuid
+            _ = user.id
             _ = user.email
             _ = user.display_name
             _ = user.is_admin

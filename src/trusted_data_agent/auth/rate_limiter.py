@@ -240,7 +240,7 @@ def rate_limit(limit: int, window: int, bucket_key: Optional[str] = None):
                 from trusted_data_agent.auth.middleware import get_current_user
                 user = get_current_user()
                 if user:
-                    identifier = f"user:{user.user_uuid}"
+                    identifier = f"user:{user.id}"
             except:
                 pass
             

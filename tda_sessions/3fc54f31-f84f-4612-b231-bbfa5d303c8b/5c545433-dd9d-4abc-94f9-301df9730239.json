@@ -6,9 +6,21 @@
   "provider": "Google",
   "model": "gemini-2.0-flash",
   "profile_tag": "GOGET",
-  "profile_tags_used": [],
-  "models_used": [],
-  "session_history": [],
+  "profile_tags_used": [
+    "GOGET"
+  ],
+  "models_used": [
+    "Google/gemini-2.0-flash"
+  ],
+  "session_history": [
+    {
+      "role": "user",
+      "content": "what is the system version?",
+      "isValid": true,
+      "turn_number": 1,
+      "source": "text"
+    }
+  ],
   "chat_object": [
     {
       "role": "user",
@@ -19,11 +31,17 @@
       "role": "model",
       "content": "Understood.",
       "turn_number": 0
+    },
+    {
+      "role": "user",
+      "content": "what is the system version?",
+      "isValid": true,
+      "turn_number": 1
     }
   ],
   "name": "New Chat",
   "created_at": "2025-11-25T15:41:52.389867",
-  "last_updated": "2025-11-25T15:41:52.499941",
+  "last_updated": "2025-11-25T15:51:34.633523",
   "input_tokens": 0,
   "output_tokens": 0,
   "last_turn_data": {

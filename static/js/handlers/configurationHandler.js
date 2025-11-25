@@ -105,31 +105,7 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-/**
- * Load credentials from localStorage for a given provider
- * @param {string} provider - The LLM provider name
- * @returns {object} - The credentials object
- */
-function loadCredentialsFromLocalStorage(provider) {
-    const storageKey = `${provider.toLowerCase()}ApiKey`;
-    
-    // Special case for Ollama
-    if (provider === 'Ollama') {
-        const host = localStorage.getItem('ollamaHost');
-        return host ? { ollama_host: host } : {};
-    }
-    
-    const stored = localStorage.getItem(storageKey);
-    if (!stored) return {};
-    
-    try {
-        // Try parsing as JSON (for multi-field providers)
-        return JSON.parse(stored);
-    } catch {
-        // If not JSON, assume it's a simple apiKey string
-        return { apiKey: stored };
-    }
-}
+// loadCredentialsFromLocalStorage removed - credentials now only stored in encrypted database
 
 // ============================================================================
 // STORAGE KEYS
@@ -1061,13 +1037,8 @@ export function showLLMConfigurationModal(configId = null) {
         template.fields.forEach(field => {
             let value = '';
             
-            // First, try to get value from localStorage (always preferred for credentials)
-            const storedCredentials = loadCredentialsFromLocalStorage(provider);
-            value = storedCredentials[field.id] || '';
-            
-            // If still no value, try to get from config (backend) as fallback
-            // This handles the case where credentials were saved to backend (when persistence was on)
-            if (!value && config?.credentials) {
+            // Get credentials from config (backend database)
+            if (config?.credentials) {
                 value = config.credentials[field.id] || '';
             }
             
@@ -1293,21 +1264,7 @@ export function showLLMConfigurationModal(configId = null) {
                     return;
                 }
                 
-                // Test passed - save credentials to localStorage
-                const storageKey = `${provider.toLowerCase()}ApiKey`;
-                try {
-                    if (Object.keys(credentials).length > 1) {
-                        localStorage.setItem(storageKey, JSON.stringify(credentials));
-                    } else if (credentials.apiKey) {
-                        localStorage.setItem(storageKey, credentials.apiKey);
-                    } else if (credentials.ollama_host) {
-                        localStorage.setItem('ollamaHost', credentials.ollama_host);
-                    } else {
-                        localStorage.setItem(storageKey, JSON.stringify(credentials));
-                    }
-                } catch (e) {
-                    console.error('Failed to save credentials to localStorage:', e);
-                }
+                // Credentials are now stored in encrypted database only (no localStorage)
                 
                 renderLLMProviders();
                 showNotification('success', `LLM configuration ${isEdit ? 'updated' : 'added'} successfully with validated credentials`);
@@ -1518,16 +1475,8 @@ export async function reconnectAndLoad() {
         return;
     }
 
-    // Load credentials from localStorage and merge with config
-    // Since credentials are never stored in tda_config.json, we need to get them from browser storage
-    const credentialsFromStorage = loadCredentialsFromLocalStorage(llmConfig.provider);
-    if (!credentialsFromStorage || Object.keys(credentialsFromStorage).length === 0) {
-        showNotification('error', 'LLM Configuration credentials are missing. Please edit the configuration and enter your credentials.');
-        return;
-    }
-    
-    // Merge credentials from localStorage into llmConfig
-    llmConfig.credentials = credentialsFromStorage;
+    // Credentials are now fetched from backend database during connection
+    // No need to load from localStorage anymore
 
     const btn = document.getElementById('reconnect-and-load-btn');
     const btnText = document.getElementById('reconnect-button-text');
@@ -1699,6 +1648,10 @@ export async function reconnectAndLoad() {
                     console.error('Failed to load/create session:', sessionError);
                     showNotification('warning', 'Configuration successful, but failed to initialize session. Please create one manually.');
                     handleViewSwitch('conversation-view');
+                    // Show welcome screen since no session was created
+                    if (window.showWelcomeScreen) {
+                        await window.showWelcomeScreen();
+                    }
                 }
             }, 1000); // Small delay to allow user to see success message
         } else {

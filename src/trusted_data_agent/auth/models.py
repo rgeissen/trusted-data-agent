@@ -29,7 +29,6 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     
     # Profile fields
-    user_uuid = Column(String(36), unique=True, nullable=False, default=lambda: str(uuid.uuid4()), index=True)
     display_name = Column(String(100), nullable=True)
     full_name = Column(String(255), nullable=True)
     

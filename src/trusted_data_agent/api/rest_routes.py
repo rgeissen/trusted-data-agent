@@ -41,8 +41,8 @@ def _get_user_uuid_from_request():
     try:
         from trusted_data_agent.auth.middleware import get_current_user
         user = get_current_user()
-        if user and user.user_uuid:
-            return user.user_uuid
+        if user and user.id:
+            return user.id
         else:
             app_logger.warning("REST API: No valid authentication token provided")
             return None
@@ -757,11 +757,18 @@ async def get_stored_credentials_info():
         providers = result.get("providers", [])
         credentials_available = {}
         
-        # Get credential keys for each provider (without values)
-        for provider in providers:
-            cred_result = await configuration_service.retrieve_credentials_for_provider(user_uuid, provider)
-            if cred_result.get("credentials"):
-                credentials_available[provider] = list(cred_result["credentials"].keys())
+        # Look up user by id
+        from trusted_data_agent.auth.models import User
+        from trusted_data_agent.auth.database import get_db_session
+        
+        with get_db_session() as session:
+            user = session.query(User).filter_by(id=user_uuid).first()
+            if user:
+                # Get credential keys for each provider (without values)
+                for provider in providers:
+                    cred_result = await configuration_service.retrieve_credentials_for_provider(user.id, provider)
+                    if cred_result.get("credentials"):
+                        credentials_available[provider] = list(cred_result["credentials"].keys())
         
         return jsonify({
             "status": "success",
@@ -3396,7 +3403,7 @@ async def get_sessions_list():
         # Get authenticated user (for auth-enabled mode) or UUID from header (legacy mode)
         current_user = get_current_user()
         if current_user:
-            user_uuid = current_user.user_uuid
+            user_uuid = current_user.id
             app_logger.info(f"Fetching sessions for user: {user_uuid}")
         else:
             user_uuid = _get_user_uuid_from_request()
@@ -3569,7 +3576,7 @@ async def get_session_details(session_id: str):
         # Get authenticated user (for auth-enabled mode) or UUID from header (legacy mode)
         current_user = get_current_user()
         if current_user:
-            user_uuid = current_user.user_uuid
+            user_uuid = current_user.id
             # Check if user has VIEW_ALL_SESSIONS feature
             user_features = get_user_features(current_user)
             can_view_all = Feature.VIEW_ALL_SESSIONS in user_features

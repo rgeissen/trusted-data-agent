@@ -300,32 +300,29 @@ export async function loadCredentialsAndModels() {
         DOM.awsCredentialsContainer.classList.remove('hidden');
         DOM.awsListingMethodContainer.classList.remove('hidden');
         const envCreds = await API.getApiKey('amazon');
-        const savedCreds = JSON.parse(localStorage.getItem('amazonApiKey')) || {};
-        DOM.awsAccessKeyIdInput.value = envCreds.aws_access_key_id || savedCreds.aws_access_key_id || '';
-        DOM.awsSecretAccessKeyInput.value = envCreds.aws_secret_access_key || savedCreds.aws_secret_access_key || '';
-        DOM.awsRegionInput.value = envCreds.aws_region || savedCreds.aws_region || '';
+        DOM.awsAccessKeyIdInput.value = envCreds.aws_access_key_id || '';
+        DOM.awsSecretAccessKeyInput.value = envCreds.aws_secret_access_key || '';
+        DOM.awsRegionInput.value = envCreds.aws_region || '';
     } else if (newProvider === 'Ollama') {
         DOM.ollamaHostContainer.classList.remove('hidden');
         const data = await API.getApiKey('ollama');
-        DOM.ollamaHostInput.value = data.host || localStorage.getItem('ollamaHost') || 'http://localhost:11434';
+        DOM.ollamaHostInput.value = data.host || 'http://localhost:11434';
     } else if (newProvider === 'Azure') {
         DOM.azureCredentialsContainer.classList.remove('hidden');
         const envCreds = await API.getApiKey('azure');
-        const savedCreds = JSON.parse(localStorage.getItem('azureApiKey')) || {};
-        DOM.azureApiKeyInput.value = envCreds.azure_api_key || savedCreds.azure_api_key || '';
-        DOM.azureEndpointInput.value = envCreds.azure_endpoint || savedCreds.azure_endpoint || '';
-        DOM.azureDeploymentNameInput.value = envCreds.azure_deployment_name || savedCreds.azure_deployment_name || '';
-        DOM.azureApiVersionInput.value = envCreds.azure_api_version || savedCreds.azure_api_version || '2024-02-01';
+        DOM.azureApiKeyInput.value = envCreds.azure_api_key || '';
+        DOM.azureEndpointInput.value = envCreds.azure_endpoint || '';
+        DOM.azureDeploymentNameInput.value = envCreds.azure_deployment_name || '';
+        DOM.azureApiVersionInput.value = envCreds.azure_api_version || '2024-02-01';
     } else if (newProvider === 'Friendli') {
         DOM.friendliCredentialsContainer.classList.remove('hidden');
         const envCreds = await API.getApiKey('friendli');
-        const savedCreds = JSON.parse(localStorage.getItem('friendliApiKey')) || {};
-        DOM.friendliTokenInput.value = envCreds.friendli_token || savedCreds.friendli_token || '';
-        DOM.friendliEndpointUrlInput.value = envCreds.friendli_endpoint_url || savedCreds.friendli_endpoint_url || '';
+        DOM.friendliTokenInput.value = envCreds.friendli_token || '';
+        DOM.friendliEndpointInput.value = envCreds.friendli_endpoint_url || '';
     } else {
         DOM.apiKeyContainer.classList.remove('hidden');
         const data = await API.getApiKey(newProvider);
-        DOM.llmApiKeyInput.value = data.apiKey || localStorage.getItem(`${newProvider.toLowerCase()}ApiKey`) || '';
+        DOM.llmApiKeyInput.value = data.apiKey || '';
     }
 
     await handleRefreshModelsClick();

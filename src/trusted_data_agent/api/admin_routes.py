@@ -28,8 +28,9 @@ def _get_user_uuid_from_request():
     """
     Extract user ID from request (from auth token or header).
     
-    IMPORTANT: Returns user.id (database primary key), NOT user.user_uuid.
+    IMPORTANT: Returns user.id (database primary key).
     The user.id is required for foreign key constraints in user_credentials table.
+    After migration, the user_uuid column was removed.
     """
     user = get_current_user_from_request()
     if user:
@@ -89,9 +90,18 @@ async def manage_provider_credentials(provider: str):
     if not user_uuid:
         return jsonify({"status": "error", "message": "Authentication required"}), 401
     
+    # Look up user by id
+    from trusted_data_agent.auth.models import User
+    from trusted_data_agent.auth.database import get_db_session
+    
+    with get_db_session() as session:
+        user = session.query(User).filter_by(id=user_uuid).first()
+        if not user:
+            return jsonify({"status": "error", "message": "User not found"}), 404
+    
     if request.method == "GET":
         # Check if credentials exist
-        result = await configuration_service.retrieve_credentials_for_provider(user_uuid, provider)
+        result = await configuration_service.retrieve_credentials_for_provider(user.id, provider)
         
         has_credentials = result.get("credentials") is not None
         return jsonify({
@@ -147,8 +157,17 @@ async def test_provider_credentials(provider: str):
     if not user_uuid:
         return jsonify({"status": "error", "message": "Authentication required"}), 401
     
+    # Look up user by id
+    from trusted_data_agent.auth.models import User
+    from trusted_data_agent.auth.database import get_db_session
+    
+    with get_db_session() as session:
+        user = session.query(User).filter_by(id=user_uuid).first()
+        if not user:
+            return jsonify({"status": "error", "message": "User not found"}), 404
+    
     # Retrieve stored credentials
-    cred_result = await configuration_service.retrieve_credentials_for_provider(user_uuid, provider)
+    cred_result = await configuration_service.retrieve_credentials_for_provider(user.id, provider)
     
     if not cred_result.get("credentials"):
         return jsonify({
@@ -389,7 +408,7 @@ async def manage_users():
                 
                 user_list.append({
                     'id': user.id,
-                    'user_uuid': user.user_uuid,
+                    'user_uuid': user.id,
                     'username': user.username,
                     'email': user.email,
                     'display_name': user.display_name,
@@ -444,16 +463,16 @@ async def manage_user(user_id: str):
                     return jsonify({"status": "error", "message": "User not found"}), 404
                 
                 # Get recent audit logs
-                audit_logs = audit.get_user_audit_logs(user.user_uuid, limit=20)
+                audit_logs = audit.get_user_audit_logs(user.id, limit=20)
                 
                 # Get stored credential providers
-                providers = encryption.list_user_providers(user.user_uuid)
+                providers = encryption.list_user_providers(user.id)
                 
                 return jsonify({
                     "status": "success",
                     "user": {
                         'id': user.id,
-                        'user_uuid': user.user_uuid,
+                        'user_uuid': user.id,
                         'username': user.username,
                         'email': user.email,
                         'display_name': user.display_name,
@@ -1269,7 +1288,7 @@ async def run_mcp_classification():
         from trusted_data_agent.core import configuration_service
         
         current_user = get_current_user_from_request()
-        user_uuid = current_user.user_uuid if current_user else None
+        user_uuid = current_user.id if current_user else None
         logger.info(f"Admin {current_user.username if current_user else 'unknown'} triggered manual MCP classification")
         
         # Check if services are already loaded

@@ -693,7 +693,7 @@ class PlanExecutor:
                             try:
                                 # Get user_id from database using user_uuid (not from request context)
                                 with get_db_session() as session:
-                                    user = session.query(User).filter_by(user_uuid=self.user_uuid).first()
+                                    user = session.query(User).filter_by(id=self.user_uuid).first()
                                     if user:
                                         app_logger.info(f"Loading credentials for user {user.id}, provider {provider}")
                                         stored_result = await retrieve_credentials_for_provider(user.id, provider)

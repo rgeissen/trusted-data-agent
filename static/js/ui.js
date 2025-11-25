@@ -1958,6 +1958,12 @@ export function handleViewSwitch(viewId) {
                 }
             }, 500);
         }
+        
+        // If no active session, refresh the welcome screen to update button text
+        if (!state.currentSessionId && window.showWelcomeScreen) {
+            console.log('[handleViewSwitch] No active session, refreshing welcome screen');
+            window.showWelcomeScreen();
+        }
     }
 }
 

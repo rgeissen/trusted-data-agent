@@ -46,9 +46,9 @@ def _get_user_uuid_from_request():
     try:
         from trusted_data_agent.auth.middleware import get_current_user
         user = get_current_user()
-        if user and user.user_uuid:
-            app_logger.debug(f"User UUID from auth token: {user.user_uuid}")
-            return user.user_uuid
+        if user and user.id:
+            app_logger.debug(f"User UUID from auth token: {user.id}")
+            return user.id
         else:
             app_logger.error(f"Authentication failed - get_current_user returned: {user}")
             return None
@@ -1163,8 +1163,11 @@ async def new_session():
         if default_profile_id:
             app_logger.info(f"Validating LLM client for session creation using profile {default_profile_id}")
             result = await configuration_service.switch_profile_context(default_profile_id, user_uuid, validate_llm=True)
+            app_logger.info(f"Validation result: {result}")
             if result["status"] != "success":
-                return jsonify({"error": f"Failed to validate LLM configuration: {result['message']}"}), 400
+                error_msg = f"Failed to validate LLM configuration: {result['message']}"
+                app_logger.warning(f"Returning 400 error to client: {error_msg}")
+                return jsonify({"error": error_msg}), 400
         else:
             return jsonify({"error": "Application not configured. Please set MCP and LLM details in Config."}), 400
     

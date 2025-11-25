@@ -154,7 +154,7 @@ async def register():
                 session.refresh(user)
                 
                 user_id = user.id
-                user_uuid = user.user_uuid
+                user_uuid = user.id
                 user_username = user.username
         
         except IntegrityError as e:
@@ -307,7 +307,7 @@ async def login():
             # Detach user for response
             user_id = user.id
             user_username = user.username
-            user_uuid = user.user_uuid
+            user_uuid = user.id
             user_display_name = user.display_name
             user_email = user.email
             user_is_admin = user.is_admin
@@ -421,7 +421,7 @@ async def get_current_user_info(current_user):
         'user': {
             'id': current_user.id,
             'username': current_user.username,
-            'user_uuid': current_user.user_uuid,
+            'user_uuid': current_user.id,
             'display_name': current_user.display_name,
             'email': current_user.email,
             'is_admin': current_user.is_admin,
@@ -685,7 +685,7 @@ async def list_users(current_user):
                 {
                     'id': user.id,
                     'username': user.username,
-                    'user_uuid': user.user_uuid,
+                    'user_uuid': user.id,
                     'email': user.email,
                     'display_name': user.display_name,
                     'is_admin': user.is_admin,

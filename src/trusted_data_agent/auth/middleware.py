@@ -64,6 +64,13 @@ def get_current_user() -> Optional[User]:
             
             if not user:
                 logger.warning(f"Token valid but user {user_id} not found")
+                # Revoke this token since the user no longer exists
+                from trusted_data_agent.auth.security import revoke_token
+                try:
+                    revoke_token(token)
+                    logger.info(f"Revoked orphaned token for non-existent user {user_id}")
+                except Exception as e:
+                    logger.error(f"Failed to revoke orphaned token: {e}")
                 return None
             
             if not user.is_active:

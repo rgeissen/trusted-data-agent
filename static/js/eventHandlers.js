@@ -1477,32 +1477,9 @@ export function initializeEventListeners() {
     if (DOM.llmProviderSelect) {
         DOM.llmProviderSelect.addEventListener('change', handleProviderChange);
     }
-    if (DOM.awsAccessKeyIdInput && DOM.awsSecretAccessKeyInput && DOM.awsRegionInput) {
-        [DOM.awsAccessKeyIdInput, DOM.awsSecretAccessKeyInput, DOM.awsRegionInput].forEach(input => {
-            input.addEventListener('blur', () => {
-                const awsCreds = {
-                    aws_access_key_id: DOM.awsAccessKeyIdInput.value,
-                    aws_secret_access_key: DOM.awsSecretAccessKeyInput.value,
-                    aws_region: DOM.awsRegionInput.value
-                };
-                localStorage.setItem('amazonApiKey', JSON.stringify(awsCreds));
-            });
-        });
-    }
-    if (DOM.llmApiKeyInput && DOM.llmProviderSelect) {
-        DOM.llmApiKeyInput.addEventListener('blur', () => {
-            const provider = DOM.llmProviderSelect.value;
-            const apiKey = DOM.llmApiKeyInput.value;
-            if (apiKey && !['Amazon', 'Ollama'].includes(provider)) {
-                localStorage.setItem(`${provider.toLowerCase()}ApiKey`, apiKey);
-            }
-        });
-    }
-    if (DOM.ollamaHostInput) {
-        DOM.ollamaHostInput.addEventListener('blur', () => {
-            localStorage.setItem('ollamaHost', DOM.ollamaHostInput.value);
-        });
-    }
+    // AWS credentials are now stored in encrypted database only (no localStorage)
+    // API keys are now stored in encrypted database only (no localStorage)
+    // Ollama host is now stored in encrypted database only (no localStorage)
     if (DOM.refreshModelsButton) {
         DOM.refreshModelsButton.addEventListener('click', handleRefreshModelsClick);
     }
