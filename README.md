@@ -368,33 +368,39 @@ pip install -e .
 
 The `-e` flag stands for "editable," meaning any changes you make to the source code will be immediately effective without needing to reinstall.
 
-### Step 5: Configure API Keys
+### Step 5: Start the Application and Create Your Account
 
-The application uses a **secure authentication system** with encrypted credential storage in the database (`tda_auth.db`). All API keys are:
-- Encrypted using Fernet encryption
-- Stored per-user in the database
-- Managed through the web UI
+The application uses a **secure authentication system** with encrypted credential storage. Authentication is **always required** - no configuration files to edit!
 
-**No manual configuration files needed!** Simply:
-1. Start the application (see Step 6)
-2. Register/login through the web interface
-3. Enter your API keys in the UI settings
-4. Keys are automatically encrypted and stored securely
+**Run the application:**
 
-The encrypted database is excluded from git via `.gitignore`, keeping your credentials safe
-
-# For AWS Bedrock Models
-AWS_ACCESS_KEY_ID="YOUR_AWS_ACCESS_KEY_ID"
-AWS_SECRET_ACCESS_KEY="YOUR_AWS_SECRET_ACCESS_KEY"
-AWS_REGION="your-bedrock-region"
-
-# For Friendli.AI Models
-FRIENDLI_API_KEY="YOUR_FRIENDLI_API_KEY_HERE"
-
-# For Ollama (Local)
-OLLAMA_HOST="http://localhost:11434"
-
+```bash
+python src/trusted_data_agent/main.py
 ```
+
+The application will:
+- Automatically create `tda_auth.db` (encrypted database)
+- Start the web server on `http://localhost:5000`
+
+### Step 6: Register and Configure Credentials
+
+1. **Open your browser** to `http://localhost:5000`
+2. **Click "Register"** to create your account (takes 10 seconds)
+3. **Login** with your credentials
+4. **Enter API keys** through the web UI settings
+
+All credentials are:
+- ✅ Encrypted using Fernet encryption
+- ✅ Stored per-user in the database
+- ✅ Never exposed in browser localStorage
+- ✅ Excluded from git (database is in `.gitignore`)
+
+**Supported LLM Providers:**
+- AWS Bedrock (requires: Access Key, Secret Key, Region)
+- Anthropic Claude (requires: API Key)
+- OpenAI (requires: API Key)
+- Google Gemini (requires: API Key)
+- Ollama (local - requires: Ollama installation)
 
 ### Running the Application
 

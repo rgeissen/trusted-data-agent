@@ -223,17 +223,15 @@ def create_app():
         """
         app_logger.info("Application starting up... Launching background tasks.")
         
-        # Initialize authentication database if enabled
-        if os.environ.get('TDA_AUTH_ENABLED', 'false').lower() == 'true':
-            try:
-                from trusted_data_agent.auth.database import init_database
-                app_logger.info("Authentication is enabled - initializing database...")
-                init_database()
-                app_logger.info("Authentication database initialized successfully")
-            except Exception as e:
-                app_logger.error(f"Failed to initialize authentication database: {e}", exc_info=True)
-        else:
-            app_logger.info("Authentication is disabled (TDA_AUTH_ENABLED not set to 'true')")
+        # Initialize authentication database (always required)
+        try:
+            from trusted_data_agent.auth.database import init_database
+            app_logger.info("Initializing authentication database...")
+            init_database()
+            app_logger.info("Authentication database initialized successfully")
+        except Exception as e:
+            app_logger.error(f"Failed to initialize authentication database: {e}", exc_info=True)
+            raise  # Fatal error - cannot run without auth database
         
         # Load configuration from tda_config.json and apply to APP_CONFIG
         from trusted_data_agent.core.config_manager import get_config_manager

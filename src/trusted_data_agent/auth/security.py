@@ -367,3 +367,228 @@ def validate_password_strength(password: str) -> tuple[bool, list[str]]:
     #     errors.append("Password must contain at least one special character")
     
     return len(errors) == 0, errors
+
+
+# ============================================================================
+# Access Token Management
+# ============================================================================
+
+def generate_access_token(name: str = "API Token") -> str:
+    """
+    Generate a new access token with format: tda_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    
+    Args:
+        name: User-friendly name for the token
+        
+    Returns:
+        Full access token string (40 chars: prefix + 32 random chars)
+    """
+    # Generate cryptographically secure random token
+    random_part = secrets.token_urlsafe(24)  # ~32 chars in base64
+    token = f"tda_{random_part}"
+    return token
+
+
+def hash_access_token(token: str) -> str:
+    """
+    Hash an access token for secure storage.
+    
+    Args:
+        token: Full access token string
+        
+    Returns:
+        SHA256 hash of the token
+    """
+    return hashlib.sha256(token.encode('utf-8')).hexdigest()
+
+
+def get_token_prefix(token: str) -> str:
+    """
+    Extract displayable prefix from access token.
+    
+    Args:
+        token: Full access token (e.g., tda_abc123...)
+        
+    Returns:
+        First 12 characters for display (e.g., "tda_abc12...")
+    """
+    return token[:12] if len(token) >= 12 else token
+
+
+def verify_access_token(token: str) -> Optional[User]:
+    """
+    Verify an access token and return the associated user.
+    
+    Args:
+        token: Full access token string
+        
+    Returns:
+        User object if token is valid, None otherwise
+    """
+    from trusted_data_agent.auth.models import AccessToken
+    
+    if not token or not token.startswith('tda_'):
+        return None
+    
+    token_hash = hash_access_token(token)
+    
+    try:
+        with get_db_session() as session:
+            # Find token by hash
+            access_token = session.query(AccessToken).filter_by(
+                token_hash=token_hash,
+                revoked=False
+            ).first()
+            
+            if not access_token:
+                return None
+            
+            # Check if token is valid (not expired)
+            if not access_token.is_valid():
+                return None
+            
+            # Get associated user
+            user = session.query(User).filter_by(
+                id=access_token.user_id,
+                is_active=True
+            ).first()
+            
+            if not user:
+                return None
+            
+            # Update last used timestamp BEFORE loading user attributes
+            access_token.last_used_at = datetime.now(timezone.utc)
+            access_token.use_count += 1
+            session.commit()
+            
+            # Now load all user attributes AFTER commit (so they don't get expired)
+            # Access each attribute to force SQLAlchemy to load it into the instance
+            _ = user.id
+            _ = user.username
+            _ = user.user_uuid
+            _ = user.email
+            _ = user.display_name
+            _ = user.is_admin
+            _ = user.is_active
+            _ = user.created_at
+            _ = user.last_login_at
+            
+            # Detach from session
+            session.expunge(user)
+            return user
+            
+    except Exception as e:
+        logger.error(f"Error verifying access token: {e}", exc_info=True)
+        return None
+
+
+def create_access_token(user_id: str, name: str, expires_in_days: Optional[int] = None) -> tuple[str, str]:
+    """
+    Create and store a new access token for a user.
+    
+    Args:
+        user_id: User ID to associate with the token
+        name: User-friendly name for the token
+        expires_in_days: Optional expiration in days (None = never expires)
+        
+    Returns:
+        Tuple of (token_id, full_token) - token is only returned once!
+    """
+    from trusted_data_agent.auth.models import AccessToken
+    
+    # Generate new token
+    token = generate_access_token(name)
+    token_hash = hash_access_token(token)
+    token_prefix = get_token_prefix(token)
+    
+    # Calculate expiration
+    expires_at = None
+    if expires_in_days:
+        expires_at = datetime.now(timezone.utc) + timedelta(days=expires_in_days)
+    
+    try:
+        with get_db_session() as session:
+            # Create token record
+            access_token = AccessToken(
+                user_id=user_id,
+                token_prefix=token_prefix,
+                token_hash=token_hash,
+                name=name,
+                expires_at=expires_at
+            )
+            
+            session.add(access_token)
+            session.commit()
+            
+            token_id = access_token.id
+            
+        logger.info(f"Created access token '{name}' (ID: {token_id}) for user {user_id}")
+        return token_id, token
+        
+    except Exception as e:
+        logger.error(f"Error creating access token: {e}", exc_info=True)
+        raise
+
+
+def revoke_access_token(token_id: str, user_id: str) -> bool:
+    """
+    Revoke an access token.
+    
+    Args:
+        token_id: Token ID to revoke
+        user_id: User ID (for authorization check)
+        
+    Returns:
+        True if revoked successfully, False otherwise
+    """
+    from trusted_data_agent.auth.models import AccessToken
+    
+    try:
+        with get_db_session() as session:
+            access_token = session.query(AccessToken).filter_by(
+                id=token_id,
+                user_id=user_id
+            ).first()
+            
+            if not access_token:
+                return False
+            
+            access_token.revoked = True
+            access_token.revoked_at = datetime.now(timezone.utc)
+            session.commit()
+            
+        logger.info(f"Revoked access token {token_id} for user {user_id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error revoking access token: {e}", exc_info=True)
+        return False
+
+
+def list_access_tokens(user_id: str, include_revoked: bool = False) -> list:
+    """
+    List all access tokens for a user.
+    
+    Args:
+        user_id: User ID
+        include_revoked: Whether to include revoked tokens
+        
+    Returns:
+        List of token dictionaries
+    """
+    from trusted_data_agent.auth.models import AccessToken
+    
+    try:
+        with get_db_session() as session:
+            query = session.query(AccessToken).filter_by(user_id=user_id)
+            
+            if not include_revoked:
+                query = query.filter_by(revoked=False)
+            
+            tokens = query.order_by(AccessToken.created_at.desc()).all()
+            
+            return [token.to_dict() for token in tokens]
+            
+    except Exception as e:
+        logger.error(f"Error listing access tokens: {e}", exc_info=True)
+        return []

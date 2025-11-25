@@ -685,37 +685,27 @@ class PlanExecutor:
                             app_logger.info(f"   Model: {model}")
                             app_logger.info(f"   Config ID: {override_llm_config_id}")
                             
-                            # Load stored credentials if available
-                            import os
-                            ENCRYPTION_AVAILABLE = False
-                            if os.environ.get('TDA_AUTH_ENABLED', 'false').lower() == 'true':
-                                try:
-                                    from trusted_data_agent.auth import encryption
-                                    from trusted_data_agent.core.configuration_service import retrieve_credentials_for_provider
-                                    ENCRYPTION_AVAILABLE = True
-                                except ImportError:
-                                    pass
+                            # Load stored credentials from encrypted database (authentication always enabled)
+                            from trusted_data_agent.auth.models import User
+                            from trusted_data_agent.auth.database import get_db_session
+                            from trusted_data_agent.core.configuration_service import retrieve_credentials_for_provider
                             
-                            if ENCRYPTION_AVAILABLE:
-                                try:
-                                    # Get user_id from database using user_uuid (not from request context)
-                                    from trusted_data_agent.auth.models import User
-                                    from trusted_data_agent.auth.database import get_db_session
-                                    
-                                    with get_db_session() as session:
-                                        user = session.query(User).filter_by(user_uuid=self.user_uuid).first()
-                                        if user:
-                                            app_logger.info(f"Loading credentials for user {user.id}, provider {provider}")
-                                            stored_result = await retrieve_credentials_for_provider(user.id, provider)
-                                            if stored_result.get("credentials"):
-                                                credentials = {**stored_result["credentials"], **credentials}
-                                                app_logger.info(f"✓ Successfully loaded stored credentials for {provider}")
-                                            else:
-                                                app_logger.warning(f"No stored credentials found for {provider} (status: {stored_result.get('status')})")
+                            try:
+                                # Get user_id from database using user_uuid (not from request context)
+                                with get_db_session() as session:
+                                    user = session.query(User).filter_by(user_uuid=self.user_uuid).first()
+                                    if user:
+                                        app_logger.info(f"Loading credentials for user {user.id}, provider {provider}")
+                                        stored_result = await retrieve_credentials_for_provider(user.id, provider)
+                                        if stored_result.get("credentials"):
+                                            credentials = {**stored_result["credentials"], **credentials}
+                                            app_logger.info(f"✓ Successfully loaded stored credentials for {provider}")
                                         else:
-                                            app_logger.warning(f"User not found for uuid {self.user_uuid}, cannot load stored credentials")
-                                except Exception as e:
-                                    app_logger.error(f"Error loading stored credentials: {e}", exc_info=True)
+                                            app_logger.warning(f"No stored credentials found for {provider} (status: {stored_result.get('status')})")
+                                    else:
+                                        app_logger.warning(f"User not found for uuid {self.user_uuid}, cannot load stored credentials")
+                            except Exception as e:
+                                app_logger.error(f"Error loading stored credentials: {e}", exc_info=True)
                             
                             # Create temporary LLM instance using shared factory
                             from trusted_data_agent.llm.client_factory import create_llm_client, get_provider_config_details

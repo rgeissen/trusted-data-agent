@@ -32,7 +32,8 @@ from trusted_data_agent.auth.validators import (
 from trusted_data_agent.auth.middleware import (
     require_auth,
     require_admin,
-    get_request_context
+    get_request_context,
+    get_current_user
 )
 from trusted_data_agent.auth.rate_limiter import check_ip_login_limit, check_ip_register_limit
 from trusted_data_agent.auth.audit import (
@@ -700,4 +701,203 @@ async def list_users(current_user):
         return jsonify({
             'status': 'error',
             'message': 'Server error listing users'
+        }), 500
+
+
+# ============================================================================
+# Access Token Management Endpoints
+# ============================================================================
+
+@auth_bp.route("/tokens", methods=["POST"])
+async def create_access_token():
+    """
+    Create a new access token for REST API authentication.
+    
+    Request body:
+    {
+        "name": "My API Token",
+        "expires_in_days": 90  // optional, null = never expires
+    }
+    
+    Returns:
+    {
+        "status": "success",
+        "token": "tda_xxxxxxxx...",  // ONLY shown once!
+        "token_id": "uuid",
+        "name": "My API Token",
+        "created_at": "2025-11-25T...",
+        "expires_at": "2026-02-25T..." // or null
+    }
+    """
+    from trusted_data_agent.auth.middleware import require_auth
+    from trusted_data_agent.auth.security import create_access_token as create_token
+    
+    # Require authentication
+    current_user = get_current_user()
+    
+    if not current_user:
+        return jsonify({
+            'status': 'error',
+            'message': 'Authentication required'
+        }), 401
+    
+    try:
+        data = await request.get_json()
+        
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': 'Request body required'
+            }), 400
+        
+        name = data.get('name', '').strip()
+        expires_in_days = data.get('expires_in_days')
+        
+        if not name:
+            return jsonify({
+                'status': 'error',
+                'message': 'Token name is required'
+            }), 400
+        
+        if len(name) > 100:
+            return jsonify({
+                'status': 'error',
+                'message': 'Token name must be 100 characters or less'
+            }), 400
+        
+        # Validate expiration
+        if expires_in_days is not None:
+            if not isinstance(expires_in_days, int) or expires_in_days < 1:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'expires_in_days must be a positive integer'
+                }), 400
+        
+        # Create token
+        token_id, token = create_token(current_user.id, name, expires_in_days)
+        
+        # Get token details
+        from trusted_data_agent.auth.models import AccessToken
+        with get_db_session() as session:
+            access_token = session.query(AccessToken).filter_by(id=token_id).first()
+            token_data = access_token.to_dict()
+        
+        logger.info(f"User {current_user.username} created access token '{name}'")
+        
+        return jsonify({
+            'status': 'success',
+            'token': token,  # Full token - ONLY shown once!
+            'token_id': token_id,
+            'name': name,
+            'token_prefix': token_data['token_prefix'],
+            'created_at': token_data['created_at'],
+            'expires_at': token_data['expires_at']
+        }), 201
+    
+    except Exception as e:
+        logger.error(f"Create access token error: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to create access token'
+        }), 500
+
+
+@auth_bp.route("/tokens", methods=["GET"])
+async def list_access_tokens():
+    """
+    List all access tokens for the authenticated user.
+    
+    Query parameters:
+    - include_revoked: true/false (default: false)
+    
+    Returns:
+    {
+        "status": "success",
+        "tokens": [
+            {
+                "id": "uuid",
+                "name": "My Token",
+                "token_prefix": "tda_abc12...",
+                "created_at": "...",
+                "last_used_at": "...",
+                "expires_at": "..." or null,
+                "revoked": false,
+                "use_count": 42
+            }
+        ]
+    }
+    """
+    from trusted_data_agent.auth.security import list_access_tokens as list_tokens
+    
+    current_user = get_current_user()
+    
+    if not current_user:
+        return jsonify({
+            'status': 'error',
+            'message': 'Authentication required'
+        }), 401
+    
+    try:
+        include_revoked = request.args.get('include_revoked', 'false').lower() == 'true'
+        
+        tokens = list_tokens(current_user.id, include_revoked=include_revoked)
+        
+        return jsonify({
+            'status': 'success',
+            'tokens': tokens
+        }), 200
+    
+    except Exception as e:
+        logger.error(f"List access tokens error: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to list access tokens'
+        }), 500
+
+
+@auth_bp.route("/tokens/<token_id>", methods=["DELETE"])
+async def revoke_access_token(token_id: str):
+    """
+    Revoke an access token.
+    
+    Path parameter:
+    - token_id: UUID of the token to revoke
+    
+    Returns:
+    {
+        "status": "success",
+        "message": "Token revoked successfully"
+    }
+    """
+    from trusted_data_agent.auth.security import revoke_access_token as revoke_token
+    
+    current_user = get_current_user()
+    
+    if not current_user:
+        return jsonify({
+            'status': 'error',
+            'message': 'Authentication required'
+        }), 401
+    
+    try:
+        success = revoke_token(token_id, current_user.id)
+        
+        if not success:
+            return jsonify({
+                'status': 'error',
+                'message': 'Token not found or already revoked'
+            }), 404
+        
+        logger.info(f"User {current_user.username} revoked access token {token_id}")
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Token revoked successfully'
+        }), 200
+    
+    except Exception as e:
+        logger.error(f"Revoke access token error: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to revoke access token'
         }), 500

@@ -26,23 +26,29 @@ from trusted_data_agent.llm import handler as llm_handler
 rest_api_bp = Blueprint('rest_api', __name__)
 app_logger = logging.getLogger("quart.app") # Use quart logger
 
-# --- MODIFICATION START: Helper to get User UUID (copied from routes.py) ---
+# --- MODIFICATION START: Helper to get User UUID from JWT token ---
 def _get_user_uuid_from_request():
     """
-    Extracts the User UUID from the request header.
+    Extract user UUID from JWT authentication token.
     
     Returns:
-        Optional[str]: User UUID if present, None otherwise
+        Optional[str]: User UUID if authenticated, None otherwise
         
     Note:
-        When CONFIGURATION_PERSISTENCE=true, user_uuid is not strictly required
-        as all users share the same configuration from disk.
-        When CONFIGURATION_PERSISTENCE=false, user_uuid enables per-user isolation.
+        Authentication is always required for REST API.
+        Returns None if token is missing or invalid.
     """
-    user_uuid = request.headers.get('X-TDA-User-UUID')
-    if not user_uuid:
-        app_logger.debug("REST API: X-TDA-User-UUID header not provided.")
-    return user_uuid
+    try:
+        from trusted_data_agent.auth.middleware import get_current_user
+        user = get_current_user()
+        if user and user.user_uuid:
+            return user.user_uuid
+        else:
+            app_logger.warning("REST API: No valid authentication token provided")
+            return None
+    except Exception as e:
+        app_logger.error(f"REST API authentication error: {e}", exc_info=True)
+        return None
 # --- MODIFICATION END ---
 
 def _sanitize_for_json(obj):
@@ -2633,9 +2639,8 @@ async def reclassify_profile(profile_id: str):
         # Initialize temporary clients if needed
         from trusted_data_agent.llm.client_factory import create_llm_client
         
-        # Check if encryption is available
-        import os
-        ENCRYPTION_AVAILABLE = os.environ.get('TDA_AUTH_ENABLED', 'false').lower() == 'true'
+        # Authentication is always enabled - encryption always available
+        ENCRYPTION_AVAILABLE = True
         
         # Get LLM configuration from profile
         llm_config_id = profile.get('llmConfigurationId')
@@ -2695,7 +2700,7 @@ async def reclassify_profile(profile_id: str):
                 app_logger.warning(f"  LLM config keys: {list(llm_config.keys())}")
                 return jsonify({
                     "status": "error",
-                    "message": f"No credentials available for {provider}. With auth enabled, credentials must be stored in the database. Please save your LLM configuration credentials first."
+                    "message": f"No credentials available for {provider}. Credentials must be stored in the encrypted database. Please save your LLM configuration credentials first."
                 }), 400
         
         # Create temporary LLM client

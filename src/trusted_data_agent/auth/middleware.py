@@ -22,6 +22,7 @@ def get_current_user() -> Optional[User]:
     """
     Extract and verify authentication token from request, return User object.
     
+    Supports both JWT tokens (for web UI) and access tokens (for REST API).
     Checks Authorization header for Bearer token.
     
     Returns:
@@ -36,7 +37,18 @@ def get_current_user() -> Optional[User]:
     
     token = auth_header[7:]  # Remove 'Bearer ' prefix
     
-    # Verify token
+    # Try access token first (format: tda_xxxxxxxx...)
+    if token.startswith('tda_'):
+        from trusted_data_agent.auth.security import verify_access_token
+        user = verify_access_token(token)
+        if user:
+            logger.debug(f"Authenticated user {user.username} via access token")
+            return user
+        else:
+            logger.warning(f"Invalid or revoked access token for {request.path}")
+            return None
+    
+    # Otherwise, verify as JWT token
     payload = verify_auth_token(token)
     if not payload:
         return None

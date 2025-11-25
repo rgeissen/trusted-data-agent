@@ -124,6 +124,5 @@ def get_db():
         db.close()
 
 
-# Initialize database on module import (if enabled)
-if os.environ.get('TDA_AUTH_ENABLED', 'false').lower() == 'true':
-    init_database()
+# Initialize database on module import (authentication is always enabled)
+init_database()

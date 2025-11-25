@@ -29,16 +29,9 @@ from trusted_data_agent.core.utils import unwrap_exception, _regenerate_contexts
 from trusted_data_agent.agent.rag_retriever import RAGRetriever
 from trusted_data_agent.core.config_manager import get_config_manager
 
-# Import encryption module if authentication is enabled
-if os.environ.get('TDA_AUTH_ENABLED', 'false').lower() == 'true':
-    try:
-        from trusted_data_agent.auth import encryption, audit
-        ENCRYPTION_AVAILABLE = True
-    except ImportError:
-        ENCRYPTION_AVAILABLE = False
-        app_logger.warning("Auth module not available - credential encryption disabled")
-else:
-    ENCRYPTION_AVAILABLE = False
+# Authentication is always enabled - import encryption module
+from trusted_data_agent.auth import encryption, audit
+ENCRYPTION_AVAILABLE = True
 # --- MODIFICATION END ---
 
 app_logger = logging.getLogger("quart.app")

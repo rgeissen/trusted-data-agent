@@ -38,41 +38,23 @@ app_logger = logging.getLogger("quart.app")
 
 def _get_user_uuid_from_request():
     """
-    Extracts User UUID from request.
+    Extracts User UUID from request using JWT token.
     
-    If authentication is enabled, extracts from JWT token.
-    Otherwise, falls back to X-TDA-User-UUID header.
-    
-    Returns None if authentication is required but not provided (caller should handle error).
+    Authentication is always required.
+    Returns None if not authenticated (caller should handle error).
     """
-    import os
-    
-    # Check if authentication is enabled
-    auth_enabled = os.environ.get('TDA_AUTH_ENABLED', 'false').lower() == 'true'
-    
-    if auth_enabled:
-        # Try to get user from authentication token
-        try:
-            from trusted_data_agent.auth.middleware import get_current_user
-            user = get_current_user()
-            if user and user.user_uuid:
-                app_logger.info(f"User UUID from auth token: {user.user_uuid}")
-                return user.user_uuid
-            else:
-                app_logger.warning(f"Auth enabled but get_current_user returned: {user}")
-        except Exception as e:
-            app_logger.warning(f"Failed to get user from auth token: {e}", exc_info=True)
-    
-    # Fall back to header-based UUID (for backwards compatibility or when auth is disabled)
-    user_uuid = request.headers.get("X-TDA-User-UUID")
-    if not user_uuid:
-        if auth_enabled:
-            app_logger.error("Authentication enabled but no valid token or X-TDA-User-UUID header provided.")
-            return None  # Let caller handle the error response
+    try:
+        from trusted_data_agent.auth.middleware import get_current_user
+        user = get_current_user()
+        if user and user.user_uuid:
+            app_logger.debug(f"User UUID from auth token: {user.user_uuid}")
+            return user.user_uuid
         else:
-            app_logger.error("Missing X-TDA-User-UUID header in request.")
-            return None  # Let caller handle the error response
-    return user_uuid
+            app_logger.error(f"Authentication failed - get_current_user returned: {user}")
+            return None
+    except Exception as e:
+        app_logger.error(f"Failed to get user from auth token: {e}", exc_info=True)
+        return None
 
 
 @api_bp.route("/")
@@ -97,8 +79,17 @@ async def get_application_status():
     """
     Returns the current configuration status of the application.
     This is used by the front end on startup to synchronize its state.
-    It now respects the CONFIGURATION_PERSISTENCE flag.
+    Authentication is required - returns not configured if user not authenticated.
     """
+    # Get user UUID - if not authenticated, return not configured
+    user_uuid = _get_user_uuid_from_request()
+    if not user_uuid:
+        return jsonify({
+            "isConfigured": False,
+            "authenticationRequired": True,
+            "configurationPersistence": APP_CONFIG.CONFIGURATION_PERSISTENCE
+        })
+    
     if not APP_CONFIG.CONFIGURATION_PERSISTENCE:
         app_logger.info("Configuration persistence is disabled by environment setting. Forcing re-configuration.")
         return jsonify({
@@ -109,7 +100,6 @@ async def get_application_status():
     # Check if default profile exists (simplified check - activation enforces LLM+MCP configured)
     from trusted_data_agent.core.config_manager import get_config_manager
     config_manager = get_config_manager()
-    user_uuid = _get_user_uuid_from_request()
     default_profile_id = config_manager.get_default_profile_id(user_uuid)
     is_configured = default_profile_id is not None
 

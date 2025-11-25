@@ -220,6 +220,78 @@ class PasswordResetToken(Base):
         return not self.used and self.expires_at > now
 
 
+class AccessToken(Base):
+    """Long-lived access tokens for REST API authentication."""
+    
+    __tablename__ = 'access_tokens'
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    
+    # Token details
+    token_prefix = Column(String(10), nullable=False, index=True)  # First 8 chars for display (e.g., "tda_abcd")
+    token_hash = Column(String(255), nullable=False, index=True, unique=True)  # SHA256 hash of full token
+    name = Column(String(100), nullable=False)  # User-friendly name (e.g., "Production Server")
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    expires_at = Column(DateTime(timezone=True), nullable=True)  # NULL = never expires
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Status
+    revoked = Column(Boolean, default=False, nullable=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Usage tracking
+    use_count = Column(Integer, default=0, nullable=False)
+    last_ip_address = Column(String(45), nullable=True)
+    
+    # Indexes
+    __table_args__ = (
+        Index('idx_access_token_user_active', 'user_id', 'revoked'),
+    )
+    
+    def __repr__(self):
+        return f"<AccessToken(id='{self.id}', name='{self.name}', prefix='{self.token_prefix}')>"
+    
+    def is_valid(self):
+        """Check if access token is still valid."""
+        if self.revoked:
+            return False
+        if self.expires_at:
+            now = datetime.now(timezone.utc)
+            # Handle both timezone-aware and timezone-naive datetimes
+            expires_at = self.expires_at
+            if expires_at.tzinfo is None:
+                # If naive, assume it's UTC
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            return expires_at > now
+        return True
+    
+    def to_dict(self, include_token=False):
+        """Convert access token to dictionary for API responses."""
+        # Helper to ensure timezone-aware datetime for ISO format
+        def to_iso(dt):
+            if dt is None:
+                return None
+            if dt.tzinfo is None:
+                # Assume UTC if naive
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.isoformat()
+        
+        data = {
+            'id': self.id,
+            'name': self.name,
+            'token_prefix': self.token_prefix,
+            'created_at': to_iso(self.created_at),
+            'expires_at': to_iso(self.expires_at),
+            'last_used_at': to_iso(self.last_used_at),
+            'revoked': self.revoked,
+            'use_count': self.use_count
+        }
+        return data
+
+
 class PaneVisibility(Base):
     """Pane visibility configuration for tier-based access control."""
     
