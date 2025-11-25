@@ -303,13 +303,26 @@ export async function handleStreamRequest(endpoint, body) {
     if (body.message) {
         // Only add user message if it's NOT a replay initiated by the replay button
         if (!body.is_replay) {
-            // Extract profile tag from activeTagPrefix (remove @ and trailing space)
-            const profileTag = window.activeTagPrefix ? window.activeTagPrefix.replace('@', '').trim() : null;
+            // Extract profile tag - use explicit @tag override if present, otherwise use default profile
+            let profileTag = null;
+            if (window.activeTagPrefix) {
+                profileTag = window.activeTagPrefix.replace('@', '').trim();
+            } else if (window.configState?.defaultProfileId && window.configState?.profiles) {
+                const defaultProfile = window.configState.profiles.find(p => p.id === window.configState.defaultProfileId);
+                profileTag = defaultProfile?.tag || null;
+            }
             UI.addMessage('user', body.message, null, true, 'text', profileTag);
         } else {
         }
     } else {
-        const profileTag = window.activeTagPrefix ? window.activeTagPrefix.replace('@', '').trim() : null;
+        // Extract profile tag - use explicit @tag override if present, otherwise use default profile
+        let profileTag = null;
+        if (window.activeTagPrefix) {
+            profileTag = window.activeTagPrefix.replace('@', '').trim();
+        } else if (window.configState?.defaultProfileId && window.configState?.profiles) {
+            const defaultProfile = window.configState.profiles.find(p => p.id === window.configState.defaultProfileId);
+            profileTag = defaultProfile?.tag || null;
+        }
         UI.addMessage('user', `Executing prompt: ${body.prompt_name}`, null, true, 'text', profileTag);
     }
     DOM.userInput.value = '';

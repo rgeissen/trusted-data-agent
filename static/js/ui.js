@@ -107,19 +107,9 @@ export function addMessage(role, content, turnId = null, isValid = true, source 
     const wrapper = document.createElement('div');
     wrapper.className = `message-bubble group flex items-start gap-4 ${role === 'user' ? 'justify-end' : ''}`;
     const icon = document.createElement('div');
-    // Ensure relative positioning is always set for badge context
-    icon.className = 'flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg relative';
+    icon.className = 'flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg';
     icon.textContent = role === 'user' ? 'U' : 'A';
     icon.classList.add(role === 'user' ? 'bg-gray-700' : 'bg-[#F15F22]');
-
-    // Add profile badge for user messages if profileTag is provided
-    if (role === 'user' && profileTag) {
-        const badge = document.createElement('div');
-        badge.className = 'absolute -top-1 -right-1 bg-[#F15F22] text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full border-2 border-gray-900 shadow-md';
-        badge.textContent = profileTag;
-        badge.title = `Executed with profile: ${profileTag}`;
-        icon.appendChild(badge);
-    }
 
     if (role === 'assistant' && turnId) {
         icon.classList.add('assistant-avatar');
@@ -153,11 +143,42 @@ export function addMessage(role, content, turnId = null, isValid = true, source 
     // This logic is now handled by the badge.
 
     const messageContainer = document.createElement('div');
-    messageContainer.className = 'p-4 rounded-xl shadow-lg max-w-3xl glass-panel';
+    messageContainer.className = 'p-4 rounded-xl shadow-lg max-w-3xl glass-panel relative';
     // Use theme-aware gradients for message backgrounds
     messageContainer.style.background = role === 'user' 
         ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)' 
         : 'var(--message-assistant-bg, rgba(30, 41, 59, 0.9))';
+
+    // Add profile badge for user messages if profileTag is provided
+    if (role === 'user' && profileTag) {
+        const badge = document.createElement('div');
+        badge.className = 'absolute top-2 right-2 flex items-center gap-x-2 px-3 py-1 rounded-lg backdrop-blur-md border border-white/20 shadow-lg';
+        badge.textContent = `@${profileTag}`;
+        badge.title = `Executed with profile: ${profileTag}`;
+        
+        // Apply profile-specific colors if available
+        if (window.configState?.profiles) {
+            const profile = window.configState.profiles.find(p => p.tag === profileTag);
+            if (profile && profile.color) {
+                const hexToRgba = (hex, alpha) => {
+                    const r = parseInt(hex.slice(1, 3), 16);
+                    const g = parseInt(hex.slice(3, 5), 16);
+                    const b = parseInt(hex.slice(5, 7), 16);
+                    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                };
+                const color1 = hexToRgba(profile.color, 0.3);
+                const color2 = hexToRgba(profile.color, 0.15);
+                const borderColor = hexToRgba(profile.color, 0.5);
+                badge.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
+                badge.style.borderColor = borderColor;
+            }
+        }
+        badge.style.fontSize = '0.875rem';
+        badge.style.fontWeight = '600';
+        badge.style.color = 'white';
+        
+        messageContainer.appendChild(badge);
+    }
 
     const author = document.createElement('p');
     author.className = 'font-bold mb-2 text-sm';
