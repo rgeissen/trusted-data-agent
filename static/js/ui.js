@@ -150,11 +150,12 @@ export function addMessage(role, content, turnId = null, isValid = true, source 
         : 'var(--message-assistant-bg, rgba(30, 41, 59, 0.9))';
 
     // Add profile badge for user messages if profileTag is provided
+    let profileBadge = null;
     if (role === 'user' && profileTag) {
-        const badge = document.createElement('div');
-        badge.className = 'absolute top-2 right-2 flex items-center gap-x-2 px-3 py-1 rounded-lg backdrop-blur-md border border-white/20 shadow-lg';
-        badge.textContent = `@${profileTag}`;
-        badge.title = `Executed with profile: ${profileTag}`;
+        profileBadge = document.createElement('div');
+        profileBadge.className = 'flex items-center gap-x-2 px-3 py-1 rounded-lg backdrop-blur-md border border-white/20 shadow-lg flex-shrink-0';
+        profileBadge.textContent = `@${profileTag}`;
+        profileBadge.title = `Executed with profile: ${profileTag}`;
         
         // Apply profile-specific colors if available
         if (window.configState?.profiles) {
@@ -169,15 +170,15 @@ export function addMessage(role, content, turnId = null, isValid = true, source 
                 const color1 = hexToRgba(profile.color, 0.3);
                 const color2 = hexToRgba(profile.color, 0.15);
                 const borderColor = hexToRgba(profile.color, 0.5);
-                badge.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
-                badge.style.borderColor = borderColor;
+                profileBadge.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
+                profileBadge.style.borderColor = borderColor;
             }
         }
-        badge.style.fontSize = '0.875rem';
-        badge.style.fontWeight = '600';
-        badge.style.color = 'white';
-        
-        messageContainer.appendChild(badge);
+        profileBadge.style.fontSize = '0.875rem';
+        profileBadge.style.fontWeight = '600';
+        profileBadge.style.color = 'white';
+        profileBadge.style.alignSelf = 'flex-start';
+        profileBadge.style.marginRight = '12px';
     }
 
     const author = document.createElement('p');
@@ -197,7 +198,14 @@ export function addMessage(role, content, turnId = null, isValid = true, source 
     messageContent.innerHTML = content;
     messageContainer.appendChild(messageContent);
 
-    wrapper.appendChild(role === 'user' ? messageContainer : icon);
+    if (role === 'user') {
+        if (profileBadge) {
+            wrapper.appendChild(profileBadge);
+        }
+        wrapper.appendChild(messageContainer);
+    } else {
+        wrapper.appendChild(icon);
+    }
     wrapper.appendChild(role === 'user' ? icon : messageContainer);
 
     // --- MODIFICATION START: Add vertical feedback stack for assistant answers ---
