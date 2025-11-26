@@ -355,7 +355,18 @@ export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIc
         // Show controls and enable toggling
         if (button) {
             button.style.display = 'flex';  // Buttons are flex containers
-            button.addEventListener('click', (e) => {
+            button.style.pointerEvents = 'auto';  // Ensure button is clickable
+            button.style.cursor = 'pointer';  // Ensure cursor shows it's clickable
+            button.disabled = false;  // Ensure button is not disabled
+            
+            // Remove any existing click listeners to prevent duplicates
+            const newButton = button.cloneNode(true);
+            button.parentNode.replaceChild(newButton, button);
+            
+            // Add fresh event listener to the new button
+            newButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 toggle(panel.classList.contains('collapsed'));
             });
         }
@@ -364,7 +375,12 @@ export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIc
             if (checkboxContainer) {
                 checkboxContainer.style.display = 'flex';
             }
-            checkbox.addEventListener('change', () => toggle(checkbox.checked));
+            
+            // Remove any existing change listeners and add fresh one
+            const newCheckbox = checkbox.cloneNode(true);
+            checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+            
+            newCheckbox.addEventListener('change', () => toggle(newCheckbox.checked));
         }
     }
 }

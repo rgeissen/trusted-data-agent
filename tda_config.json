@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "created_at": "2025-11-18T15:42:02.792618+00:00",
-  "last_modified": "2025-11-25T17:55:19.768975+00:00",
+  "last_modified": "2025-11-26T09:59:23.904591+00:00",
   "enable_mcp_classification": false,
   "rag_collections": [
     {
@@ -187,6 +187,338 @@
       ],
       "classification_results": {
         "tools": {
+          "Database Information": [
+            {
+              "name": "base_columnDescription",
+              "description": "Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.",
+              "arguments": [
+                {
+                  "name": "database_name",
+                  "type": "string",
+                  "description": "Database name",
+                  "required": true
+                },
+                {
+                  "name": "obj_name",
+                  "type": "string",
+                  "description": "table or view name",
+                  "required": true
+                }
+              ],
+              "disabled": false
+            },
+            {
+              "name": "base_databaseList",
+              "description": "\nLists all databases in the Teradata System.\n\nReturns:\n  ResponseType: formatted response with query results + metadata\n",
+              "arguments": [],
+              "disabled": false
+            },
+            {
+              "name": "base_tableAffinity",
+              "description": "Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.",
+              "arguments": [
+                {
+                  "name": "database_name",
+                  "type": "string",
+                  "description": "Database name",
+                  "required": true
+                },
+                {
+                  "name": "obj_name",
+                  "type": "string",
+                  "description": "No description.",
+                  "required": true
+                }
+              ],
+              "disabled": false
+            },
+            {
+              "name": "base_tableDDL",
+              "description": "Displays the DDL definition of a table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.",
+              "arguments": [
+                {
+                  "name": "database_name",
+                  "type": "string",
+                  "description": "Database name",
+                  "required": true
+                },
+                {
+                  "name": "table_name",
+                  "type": "string",
+                  "description": "table name",
+                  "required": true
+                }
+              ],
+              "disabled": false
+            },
+            {
+              "name": "base_tableList",
+              "description": "Lists all tables in a database.",
+              "arguments": [
+                {
+                  "name": "database_name",
+                  "type": "string",
+                  "description": "Database name",
+                  "required": false
+                }
+              ],
+              "disabled": false
+            },
+            {
+              "name": "dba_databaseVersion",
+              "description": " Get Teradata database version information.",
+              "arguments": [],
+              "disabled": false
+            }
+          ],
+          "Query Management": [
+            {
+              "name": "base_readQuery",
+              "description": "Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.",
+              "arguments": [
+                {
+                  "name": "sql",
+                  "type": "string",
+                  "description": "SQL text, with optional bind-parameter placeholders",
+                  "required": false
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "Data Preview": [
+            {
+              "name": "base_tablePreview",
+              "description": "This function returns data sample and inferred structure from a database table or view via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.",
+              "arguments": [
+                {
+                  "name": "table_name",
+                  "type": "string",
+                  "description": "table or view name",
+                  "required": true
+                },
+                {
+                  "name": "database_name",
+                  "type": "string",
+                  "description": "Database name",
+                  "required": false
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "Table Management": [
+            {
+              "name": "base_tableUsage",
+              "description": "Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.",
+              "arguments": [
+                {
+                  "name": "database_name",
+                  "type": "string",
+                  "description": "Database name",
+                  "required": false
+                }
+              ],
+              "disabled": false
+            },
+            {
+              "name": "dba_tableSqlList",
+              "description": "Get a list of SQL run against a table in the last number of days.",
+              "arguments": [
+                {
+                  "name": "table_name",
+                  "type": "string",
+                  "description": "table name",
+                  "required": true
+                },
+                {
+                  "name": "no_days",
+                  "type": "integer",
+                  "description": "number of days",
+                  "required": false
+                }
+              ],
+              "disabled": false
+            },
+            {
+              "name": "dba_tableUsageImpact",
+              "description": "Measure the usage of a table and views by users, this is helpful to understand what user and tables are driving most resource usage at any point in time.",
+              "arguments": [
+                {
+                  "name": "database_name",
+                  "type": "string",
+                  "description": "database name to analyze",
+                  "required": false
+                },
+                {
+                  "name": "user_name",
+                  "type": "string",
+                  "description": "user name to analyze",
+                  "required": false
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "Data Quality": [
+            {
+              "name": "qlty_columnSummary",
+              "description": "Get the column summary statistics for a table.",
+              "arguments": [
+                {
+                  "name": "database_name",
+                  "type": "string",
+                  "description": "name of the database",
+                  "required": true
+                },
+                {
+                  "name": "table_name",
+                  "type": "string",
+                  "description": "table name to analyze",
+                  "required": true
+                }
+              ],
+              "disabled": false
+            },
+            {
+              "name": "qlty_distinctCategories",
+              "description": "Get the destinct categories from column in a table.",
+              "arguments": [
+                {
+                  "name": "database_name",
+                  "type": "string",
+                  "description": "name of the database",
+                  "required": true
+                },
+                {
+                  "name": "table_name",
+                  "type": "string",
+                  "description": "table name to analyze",
+                  "required": true
+                },
+                {
+                  "name": "column_name",
+                  "type": "string",
+                  "description": "column name to analyze",
+                  "required": true
+                }
+              ],
+              "disabled": false
+            },
+            {
+              "name": "qlty_missingValues",
+              "description": "Get the column names that having missing values in a table.",
+              "arguments": [
+                {
+                  "name": "database_name",
+                  "type": "string",
+                  "description": "name of the database",
+                  "required": true
+                },
+                {
+                  "name": "table_name",
+                  "type": "string",
+                  "description": "table name to analyze",
+                  "required": true
+                }
+              ],
+              "disabled": false
+            },
+            {
+              "name": "qlty_negativeValues",
+              "description": "Get the column names that having negative values in a table.",
+              "arguments": [
+                {
+                  "name": "database_name",
+                  "type": "string",
+                  "description": "name of the database",
+                  "required": true
+                },
+                {
+                  "name": "table_name",
+                  "type": "string",
+                  "description": "table name to analyze",
+                  "required": true
+                }
+              ],
+              "disabled": false
+            },
+            {
+              "name": "qlty_rowsWithMissingValues",
+              "description": "Get the rows with missing values in a table.",
+              "arguments": [
+                {
+                  "name": "database_name",
+                  "type": "string",
+                  "description": "name of the database",
+                  "required": true
+                },
+                {
+                  "name": "table_name",
+                  "type": "string",
+                  "description": "table name to analyze",
+                  "required": true
+                },
+                {
+                  "name": "column_name",
+                  "type": "string",
+                  "description": "column name to analyze",
+                  "required": true
+                }
+              ],
+              "disabled": false
+            },
+            {
+              "name": "qlty_standardDeviation",
+              "description": "Get the standard deviation from column in a table.",
+              "arguments": [
+                {
+                  "name": "database_name",
+                  "type": "string",
+                  "description": "name of the database",
+                  "required": true
+                },
+                {
+                  "name": "table_name",
+                  "type": "string",
+                  "description": "table name to analyze",
+                  "required": true
+                },
+                {
+                  "name": "column_name",
+                  "type": "string",
+                  "description": "column name to analyze",
+                  "required": true
+                }
+              ],
+              "disabled": false
+            },
+            {
+              "name": "qlty_univariateStatistics",
+              "description": "Get the univariate statistics for a table.",
+              "arguments": [
+                {
+                  "name": "database_name",
+                  "type": "string",
+                  "description": "name of the database",
+                  "required": true
+                },
+                {
+                  "name": "table_name",
+                  "type": "string",
+                  "description": "table name to analyze",
+                  "required": true
+                },
+                {
+                  "name": "column_name",
+                  "type": "string",
+                  "description": "column name to analyze",
+                  "required": true
+                }
+              ],
+              "disabled": false
+            }
+          ],
           "Performance": [
             {
               "name": "sql_Analyze_Cluster_Stats",
@@ -205,7 +537,7 @@
                   "required": false
                 }
               ],
-              "disabled": true
+              "disabled": false
             },
             {
               "name": "sql_Execute_Full_Pipeline",
@@ -224,7 +556,7 @@
                   "required": false
                 }
               ],
-              "disabled": true
+              "disabled": false
             },
             {
               "name": "sql_Retrieve_Cluster_Queries",
@@ -249,8 +581,129 @@
                   "required": false
                 }
               ],
-              "disabled": true
+              "disabled": false
             },
+            {
+              "name": "dba_flowControl",
+              "description": "Get the Teradata flow control metrics for a specified date range.",
+              "arguments": [
+                {
+                  "name": "start_date",
+                  "type": "string",
+                  "description": "No description.",
+                  "required": true
+                },
+                {
+                  "name": "end_date",
+                  "type": "string",
+                  "description": "No description.",
+                  "required": true
+                }
+              ],
+              "disabled": false
+            },
+            {
+              "name": "dba_userDelay",
+              "description": "Get the Teradata user delay metrics for a specified date range.",
+              "arguments": [
+                {
+                  "name": "start_date",
+                  "type": "string",
+                  "description": "No description.",
+                  "required": true
+                },
+                {
+                  "name": "end_date",
+                  "type": "string",
+                  "description": "No description.",
+                  "required": true
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "Security": [
+            {
+              "name": "sec_rolePermissions",
+              "description": "Get permissions for a role.",
+              "arguments": [
+                {
+                  "name": "role_name",
+                  "type": "string",
+                  "description": "role name to analyze",
+                  "required": true
+                }
+              ],
+              "disabled": false
+            },
+            {
+              "name": "sec_userDbPermissions",
+              "description": "Get permissions for a user.",
+              "arguments": [
+                {
+                  "name": "user_name",
+                  "type": "string",
+                  "description": "user name to analyze",
+                  "required": true
+                }
+              ],
+              "disabled": false
+            },
+            {
+              "name": "sec_userRoles",
+              "description": "Get roles assigned to a user.",
+              "arguments": [
+                {
+                  "name": "user_name",
+                  "type": "string",
+                  "description": "user name to analyze",
+                  "required": true
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "Space Management": [
+            {
+              "name": "dba_databaseSpace",
+              "description": "Get database space if database name is provided, otherwise get all databases space allocations.",
+              "arguments": [
+                {
+                  "name": "database_name",
+                  "type": "string",
+                  "description": "database name",
+                  "required": true
+                }
+              ],
+              "disabled": false
+            },
+            {
+              "name": "dba_tableSpace",
+              "description": "Get table space used for a table if table name is provided or get table space for all tables in a database if a database name is provided.\"",
+              "arguments": [
+                {
+                  "name": "database_name",
+                  "type": "string",
+                  "description": "database name",
+                  "required": false
+                },
+                {
+                  "name": "table_name",
+                  "type": "string",
+                  "description": "table name",
+                  "required": false
+                }
+              ],
+              "disabled": false
+            },
+            {
+              "name": "dba_systemSpace",
+              "description": "Get the Teradata total system database space usage.",
+              "arguments": [],
+              "disabled": false
+            }
+          ],
+          "Resource Usage": [
             {
               "name": "dba_resusageSummary",
               "description": "Get the Teradata system usage summary metrics by weekday and hour for each workload type and query complexity bucket.",
@@ -304,26 +757,7 @@
                   "required": false
                 }
               ],
-              "disabled": true
-            },
-            {
-              "name": "dba_flowControl",
-              "description": "Get the Teradata flow control metrics for a specified date range.",
-              "arguments": [
-                {
-                  "name": "start_date",
-                  "type": "string",
-                  "description": "No description.",
-                  "required": true
-                },
-                {
-                  "name": "end_date",
-                  "type": "string",
-                  "description": "No description.",
-                  "required": true
-                }
-              ],
-              "disabled": true
+              "disabled": false
             },
             {
               "name": "dba_featureUsage",
@@ -342,236 +776,10 @@
                   "required": true
                 }
               ],
-              "disabled": true
-            },
-            {
-              "name": "dba_userDelay",
-              "description": "Get the Teradata user delay metrics for a specified date range.",
-              "arguments": [
-                {
-                  "name": "start_date",
-                  "type": "string",
-                  "description": "No description.",
-                  "required": true
-                },
-                {
-                  "name": "end_date",
-                  "type": "string",
-                  "description": "No description.",
-                  "required": true
-                }
-              ],
-              "disabled": true
-            },
-            {
-              "name": "dba_sessionInfo",
-              "description": "Get the Teradata session information for user.",
-              "arguments": [
-                {
-                  "name": "user_name",
-                  "type": "string",
-                  "description": "No description.",
-                  "required": true
-                }
-              ],
-              "disabled": true
+              "disabled": false
             }
           ],
-          "Database Information": [
-            {
-              "name": "dba_databaseSpace",
-              "description": "Get database space if database name is provided, otherwise get all databases space allocations.",
-              "arguments": [
-                {
-                  "name": "database_name",
-                  "type": "string",
-                  "description": "database name",
-                  "required": true
-                }
-              ],
-              "disabled": true
-            },
-            {
-              "name": "base_columnDescription",
-              "description": "Shows detailed column information about a database table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.",
-              "arguments": [
-                {
-                  "name": "database_name",
-                  "type": "string",
-                  "description": "Database name",
-                  "required": true
-                },
-                {
-                  "name": "obj_name",
-                  "type": "string",
-                  "description": "table or view name",
-                  "required": true
-                }
-              ],
-              "disabled": true
-            },
-            {
-              "name": "base_databaseList",
-              "description": "\nLists all databases in the Teradata System.\n\nReturns:\n  ResponseType: formatted response with query results + metadata\n",
-              "arguments": [],
-              "disabled": true
-            },
-            {
-              "name": "dba_databaseVersion",
-              "description": " Get Teradata database version information.",
-              "arguments": [],
-              "disabled": true
-            },
-            {
-              "name": "dba_systemSpace",
-              "description": "Get the Teradata total system database space usage.",
-              "arguments": [],
-              "disabled": true
-            }
-          ],
-          "Table Management": [
-            {
-              "name": "dba_tableSpace",
-              "description": "Get table space used for a table if table name is provided or get table space for all tables in a database if a database name is provided.\"",
-              "arguments": [
-                {
-                  "name": "database_name",
-                  "type": "string",
-                  "description": "database name",
-                  "required": false
-                },
-                {
-                  "name": "table_name",
-                  "type": "string",
-                  "description": "table name",
-                  "required": false
-                }
-              ],
-              "disabled": true
-            },
-            {
-              "name": "dba_tableSqlList",
-              "description": "Get a list of SQL run against a table in the last number of days.",
-              "arguments": [
-                {
-                  "name": "table_name",
-                  "type": "string",
-                  "description": "table name",
-                  "required": true
-                },
-                {
-                  "name": "no_days",
-                  "type": "integer",
-                  "description": "number of days",
-                  "required": false
-                }
-              ],
-              "disabled": true
-            },
-            {
-              "name": "dba_tableUsageImpact",
-              "description": "Measure the usage of a table and views by users, this is helpful to understand what user and tables are driving most resource usage at any point in time.",
-              "arguments": [
-                {
-                  "name": "database_name",
-                  "type": "string",
-                  "description": "database name to analyze",
-                  "required": false
-                },
-                {
-                  "name": "user_name",
-                  "type": "string",
-                  "description": "user name to analyze",
-                  "required": false
-                }
-              ],
-              "disabled": true
-            },
-            {
-              "name": "base_tableAffinity",
-              "description": "Get tables commonly used together by database users, this is helpful to infer relationships between tables via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.",
-              "arguments": [
-                {
-                  "name": "database_name",
-                  "type": "string",
-                  "description": "Database name",
-                  "required": true
-                },
-                {
-                  "name": "obj_name",
-                  "type": "string",
-                  "description": "No description.",
-                  "required": true
-                }
-              ],
-              "disabled": true
-            },
-            {
-              "name": "base_tableDDL",
-              "description": "Displays the DDL definition of a table via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.",
-              "arguments": [
-                {
-                  "name": "database_name",
-                  "type": "string",
-                  "description": "Database name",
-                  "required": true
-                },
-                {
-                  "name": "table_name",
-                  "type": "string",
-                  "description": "table name",
-                  "required": true
-                }
-              ],
-              "disabled": true
-            },
-            {
-              "name": "base_tableList",
-              "description": "Lists all tables in a database.",
-              "arguments": [
-                {
-                  "name": "database_name",
-                  "type": "string",
-                  "description": "Database name",
-                  "required": false
-                }
-              ],
-              "disabled": true
-            },
-            {
-              "name": "base_tablePreview",
-              "description": "This function returns data sample and inferred structure from a database table or view via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.",
-              "arguments": [
-                {
-                  "name": "table_name",
-                  "type": "string",
-                  "description": "table or view name",
-                  "required": true
-                },
-                {
-                  "name": "database_name",
-                  "type": "string",
-                  "description": "Database name",
-                  "required": false
-                }
-              ],
-              "disabled": true
-            },
-            {
-              "name": "base_tableUsage",
-              "description": "Measure the usage of a table and views by users in a given schema, this is helpful to infer what database objects are most actively used or drive most value via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.",
-              "arguments": [
-                {
-                  "name": "database_name",
-                  "type": "string",
-                  "description": "Database name",
-                  "required": false
-                }
-              ],
-              "disabled": true
-            }
-          ],
-          "Utilities": [
+          "User Management": [
             {
               "name": "dba_userSqlList",
               "description": "Get a list of SQL run by a user in the last number of days if a user name is provided, otherwise get list of all SQL in the last number of days.",
@@ -589,34 +797,10 @@
                   "required": false
                 }
               ],
-              "disabled": true
-            },
-            {
-              "name": "tmpl_nameOfTool",
-              "description": "<description of what the tool is for>",
-              "arguments": [
-                {
-                  "name": "argument",
-                  "type": "string",
-                  "description": "No description.",
-                  "required": true
-                }
-              ],
-              "disabled": true
-            },
-            {
-              "name": "base_readQuery",
-              "description": "Execute a SQL query via SQLAlchemy, bind parameters if provided (prepared SQL), and return the fully rendered SQL (with literals) in metadata.",
-              "arguments": [
-                {
-                  "name": "sql",
-                  "type": "string",
-                  "description": "SQL text, with optional bind-parameter placeholders",
-                  "required": false
-                }
-              ],
-              "disabled": true
-            },
+              "disabled": false
+            }
+          ],
+          "Utilities": [
             {
               "name": "rag_Execute_Workflow",
               "description": "\nExecute complete RAG workflow to answer user questions based on document context.\nThis tool handles the entire RAG pipeline in a single step when a user query is tagged with /rag.\n\nWORKFLOW STEPS (executed automatically):\n1. Configuration setup using configurable values from rag_config.yml\n2. Store user query with '/rag ' prefix stripping  \n3. Generate query embeddings using either BYOM (ONNXEmbeddings) or IVSM functions based on config\n4. Perform semantic search against precomputed chunk embeddings\n5. Return context chunks for answer generation\n\nCONFIGURATION VALUES (from rag_config.yml):\n- version: 'ivsm' or 'byom' to select embedding approach\n- All database names, table names, and model settings are configurable\n- Vector store metadata fields are dynamically detected\n- Embedding parameters are configurable\n- Default chunk retrieval count is configurable\n- Default values are provided as fallback\n\nTECHNICAL DETAILS:\n- Strips the '/rag ' prefix if present from user questions\n- Creates query table if it does not exist (columns: id, txt, created_ts)\n- BYOM approach: Uses mldb.ONNXEmbeddings UDF for tokenization and embedding\n- IVSM approach: Uses ivsm.tokenizer_encode and ivsm.IVSM_score functions\n- Both approaches store embeddings in configured output table\n- Uses cosine similarity via TD_VECTORDISTANCE for semantic search\n- Returns the top-k matching chunks from the configured vector store\n- Each result includes chunk text, similarity score, and metadata fields\n\nCRITICAL ANSWERING RULES:\n- Answer ONLY using retrieved chunks - no external knowledge, speculation, or inference\n- Quote source content directly without paraphrasing, summarizing, or rewriting\n- If no relevant context found: \"Not enough information found in the provided context\"\n- If partial context: \"The available context does not fully answer the question\"\n- Include document/page references when available (e.g., \"On page 2 of 'demo_policy.pdf'...\")\n- Execute entire workflow silently without showing function calls to user - only show final answer\n\nLANGUAGE RESTRICTIONS:\n- Do not say \"According to the context\" or \"The context says\" - just quote directly\n- Do not say \"It can be inferred that...\" - no inference allowed\n- Use exact or near-verbatim quotes only\n- No paraphrasing, summarizing, or adding transitions between quotes\n- Copy content precisely - no expansion or interpretation\n\nBEHAVIORAL REQUIREMENTS:\n- Execute all RAG workflow steps silently without showing tool calls to users\n- Only display final answers based strictly on retrieved context chunks\n- Do not use external knowledge or speculation - only quote retrieved content directly\n- RAG mode only triggers with explicit /rag prefix - do not enter RAG mode implicitly\n- Hide all tool execution steps from user\n- Provide clean, direct response with only the answer based on retrieved chunks\n- This is a complete end-to-end RAG workflow - no additional tools needed\n\nEXECUTION: Run completely silently - user only sees their question and the final context-grounded answer.\n",
@@ -634,7 +818,20 @@
                   "required": false
                 }
               ],
-              "disabled": true
+              "disabled": false
+            },
+            {
+              "name": "tmpl_nameOfTool",
+              "description": "<description of what the tool is for>",
+              "arguments": [
+                {
+                  "name": "argument",
+                  "type": "string",
+                  "description": "No description.",
+                  "required": true
+                }
+              ],
+              "disabled": false
             },
             {
               "name": "TDA_CurrentDate",
@@ -706,166 +903,7 @@
               "disabled": false
             }
           ],
-          "Data Quality": [
-            {
-              "name": "qlty_columnSummary",
-              "description": "Get the column summary statistics for a table.",
-              "arguments": [
-                {
-                  "name": "database_name",
-                  "type": "string",
-                  "description": "name of the database",
-                  "required": true
-                },
-                {
-                  "name": "table_name",
-                  "type": "string",
-                  "description": "table name to analyze",
-                  "required": true
-                }
-              ],
-              "disabled": true
-            },
-            {
-              "name": "qlty_distinctCategories",
-              "description": "Get the destinct categories from column in a table.",
-              "arguments": [
-                {
-                  "name": "database_name",
-                  "type": "string",
-                  "description": "name of the database",
-                  "required": true
-                },
-                {
-                  "name": "table_name",
-                  "type": "string",
-                  "description": "table name to analyze",
-                  "required": true
-                },
-                {
-                  "name": "column_name",
-                  "type": "string",
-                  "description": "column name to analyze",
-                  "required": true
-                }
-              ],
-              "disabled": true
-            },
-            {
-              "name": "qlty_missingValues",
-              "description": "Get the column names that having missing values in a table.",
-              "arguments": [
-                {
-                  "name": "database_name",
-                  "type": "string",
-                  "description": "name of the database",
-                  "required": true
-                },
-                {
-                  "name": "table_name",
-                  "type": "string",
-                  "description": "table name to analyze",
-                  "required": true
-                }
-              ],
-              "disabled": true
-            },
-            {
-              "name": "qlty_negativeValues",
-              "description": "Get the column names that having negative values in a table.",
-              "arguments": [
-                {
-                  "name": "database_name",
-                  "type": "string",
-                  "description": "name of the database",
-                  "required": true
-                },
-                {
-                  "name": "table_name",
-                  "type": "string",
-                  "description": "table name to analyze",
-                  "required": true
-                }
-              ],
-              "disabled": true
-            },
-            {
-              "name": "qlty_rowsWithMissingValues",
-              "description": "Get the rows with missing values in a table.",
-              "arguments": [
-                {
-                  "name": "database_name",
-                  "type": "string",
-                  "description": "name of the database",
-                  "required": true
-                },
-                {
-                  "name": "table_name",
-                  "type": "string",
-                  "description": "table name to analyze",
-                  "required": true
-                },
-                {
-                  "name": "column_name",
-                  "type": "string",
-                  "description": "column name to analyze",
-                  "required": true
-                }
-              ],
-              "disabled": true
-            },
-            {
-              "name": "qlty_standardDeviation",
-              "description": "Get the standard deviation from column in a table.",
-              "arguments": [
-                {
-                  "name": "database_name",
-                  "type": "string",
-                  "description": "name of the database",
-                  "required": true
-                },
-                {
-                  "name": "table_name",
-                  "type": "string",
-                  "description": "table name to analyze",
-                  "required": true
-                },
-                {
-                  "name": "column_name",
-                  "type": "string",
-                  "description": "column name to analyze",
-                  "required": true
-                }
-              ],
-              "disabled": true
-            },
-            {
-              "name": "qlty_univariateStatistics",
-              "description": "Get the univariate statistics for a table.",
-              "arguments": [
-                {
-                  "name": "database_name",
-                  "type": "string",
-                  "description": "name of the database",
-                  "required": true
-                },
-                {
-                  "name": "table_name",
-                  "type": "string",
-                  "description": "table name to analyze",
-                  "required": true
-                },
-                {
-                  "name": "column_name",
-                  "type": "string",
-                  "description": "column name to analyze",
-                  "required": true
-                }
-              ],
-              "disabled": true
-            }
-          ],
-          "Data Visualization": [
+          "Visualization": [
             {
               "name": "plot_line_chart",
               "description": "\nFunction to generate a line plot for labels and columns.\nColumns mentioned in labels are used for x-axis and columns are used for y-axis.\n\nPARAMETERS:\n    table_name:\n        Required Argument.\n        Specifies the name of the table to generate the donut plot.\n        Types: str\n\n    labels:\n        Required Argument.\n        Specifies the labels to be used for the line plot.\n        Types: str\n\n    columns:\n        Required Argument.\n        Specifies the column to be used for generating the line plot.\n        Types: List[str]\n\nRETURNS:\n    dict\n",
@@ -889,7 +927,7 @@
                   "required": true
                 }
               ],
-              "disabled": true
+              "disabled": false
             },
             {
               "name": "plot_pie_chart",
@@ -914,7 +952,7 @@
                   "required": true
                 }
               ],
-              "disabled": true
+              "disabled": false
             },
             {
               "name": "plot_polar_chart",
@@ -939,7 +977,7 @@
                   "required": true
                 }
               ],
-              "disabled": true
+              "disabled": false
             },
             {
               "name": "plot_radar_chart",
@@ -964,7 +1002,7 @@
                   "required": true
                 }
               ],
-              "disabled": true
+              "disabled": false
             },
             {
               "name": "TDA_Charting",
@@ -998,45 +1036,19 @@
               "disabled": false
             }
           ],
-          "Security": [
+          "Session Management": [
             {
-              "name": "sec_rolePermissions",
-              "description": "Get permissions for a role.",
-              "arguments": [
-                {
-                  "name": "role_name",
-                  "type": "string",
-                  "description": "role name to analyze",
-                  "required": true
-                }
-              ],
-              "disabled": true
-            },
-            {
-              "name": "sec_userDbPermissions",
-              "description": "Get permissions for a user.",
+              "name": "dba_sessionInfo",
+              "description": "Get the Teradata session information for user.",
               "arguments": [
                 {
                   "name": "user_name",
                   "type": "string",
-                  "description": "user name to analyze",
+                  "description": "No description.",
                   "required": true
                 }
               ],
-              "disabled": true
-            },
-            {
-              "name": "sec_userRoles",
-              "description": "Get roles assigned to a user.",
-              "arguments": [
-                {
-                  "name": "user_name",
-                  "type": "string",
-                  "description": "user name to analyze",
-                  "required": true
-                }
-              ],
-              "disabled": true
+              "disabled": false
             }
           ],
           "Reporting": [
@@ -1068,14 +1080,16 @@
           ]
         },
         "prompts": {
-          "Table Management": [
+          "Archiving": [
             {
               "name": "dba_tableArchive",
               "description": "The following prompt is used to guide the Teradata DBA in finding opportunities for archiving data.",
               "arguments": [],
-              "disabled": true,
+              "disabled": false,
               "prompt_type": "reporting"
-            },
+            }
+          ],
+          "Database Information": [
             {
               "name": "dba_databaseLineage",
               "description": "You are a Teradata DBA who is an expert in finding the lineage of tables in a database.",
@@ -1093,9 +1107,45 @@
                   "type": "str"
                 }
               ],
-              "disabled": true,
+              "disabled": false,
               "prompt_type": "context"
             },
+            {
+              "name": "base_tableBusinessDesc",
+              "description": "You are a Teradata DBA who is an expert in describing the business use of tables in a database.",
+              "arguments": [
+                {
+                  "name": "database_name",
+                  "description": "Database for the table to describe.",
+                  "required": true,
+                  "type": "str"
+                },
+                {
+                  "name": "table_name",
+                  "description": "Table to describe.",
+                  "required": true,
+                  "type": "str"
+                }
+              ],
+              "disabled": false,
+              "prompt_type": "reporting"
+            },
+            {
+              "name": "base_databaseBusinessDesc",
+              "description": "You are a Teradata DBA who is an expert in describing the business use of databases.",
+              "arguments": [
+                {
+                  "name": "database_name",
+                  "description": "Database to describe.",
+                  "required": false,
+                  "type": "str"
+                }
+              ],
+              "disabled": false,
+              "prompt_type": "reporting"
+            }
+          ],
+          "Table Management": [
             {
               "name": "dba_tableDropImpact",
               "description": "You are a Teradata DBA who is an expert in finding the impact of dropping a table.",
@@ -1119,68 +1169,38 @@
                   "type": "str"
                 }
               ],
-              "disabled": true,
-              "prompt_type": "reporting"
-            },
-            {
-              "name": "base_tableBusinessDesc",
-              "description": "You are a Teradata DBA who is an expert in describing the business use of tables in a database.",
-              "arguments": [
-                {
-                  "name": "database_name",
-                  "description": "Database for the table to describe.",
-                  "required": true,
-                  "type": "str"
-                },
-                {
-                  "name": "table_name",
-                  "description": "Table to describe.",
-                  "required": true,
-                  "type": "str"
-                }
-              ],
-              "disabled": true,
+              "disabled": false,
               "prompt_type": "reporting"
             }
           ],
-          "Database Information": [
+          "Health Check": [
             {
               "name": "dba_databaseHealthAssessment",
               "description": "You are a Teradata DBA who is an expert in assessing the health of a database.",
               "arguments": [],
-              "disabled": true,
-              "prompt_type": "reporting"
-            },
-            {
-              "name": "base_databaseBusinessDesc",
-              "description": "You are a Teradata DBA who is an expert in describing the business use of databases.",
-              "arguments": [
-                {
-                  "name": "database_name",
-                  "description": "Database to describe.",
-                  "required": false,
-                  "type": "str"
-                }
-              ],
-              "disabled": true,
+              "disabled": false,
               "prompt_type": "reporting"
             }
           ],
-          "Utilities": [
+          "User Management": [
             {
               "name": "dba_userActivityAnalysis",
               "description": "Analyze Teradata user activity patterns for the past 7 days",
               "arguments": [],
-              "disabled": true,
+              "disabled": false,
               "prompt_type": "reporting"
-            },
+            }
+          ],
+          "System Analysis": [
             {
               "name": "dba_systemVoice",
               "description": "Analyze Teradata user activity patterns for the past 7 days",
               "arguments": [],
-              "disabled": true,
+              "disabled": false,
               "prompt_type": "reporting"
-            },
+            }
+          ],
+          "Testing": [
             {
               "name": "_testMyServer",
               "description": "Test all the MCP tools, prompts and resources.",
@@ -1192,9 +1212,11 @@
                   "type": "str"
                 }
               ],
-              "disabled": true,
+              "disabled": false,
               "prompt_type": "reporting"
-            },
+            }
+          ],
+          "Query Management": [
             {
               "name": "base_teradataQuery",
               "description": "A Teradata SQL expert that effectively solves problems understanding teradata specific SQL syntax.",
@@ -1206,7 +1228,7 @@
                   "type": "str"
                 }
               ],
-              "disabled": true,
+              "disabled": false,
               "prompt_type": "reporting"
             },
             {
@@ -1220,21 +1242,7 @@
                   "type": "str"
                 }
               ],
-              "disabled": true,
-              "prompt_type": "reporting"
-            },
-            {
-              "name": "tdvs_tools_prompt",
-              "description": "Main prompt for Teradata Enterprise Vector Store operations.",
-              "arguments": [],
-              "disabled": true,
-              "prompt_type": "reporting"
-            },
-            {
-              "name": "tdvs_rag_prompt",
-              "description": "Prompt for Teradata Enterprise Vector Store and RAG (Retrieval Augmented Generation) based operations.",
-              "arguments": [],
-              "disabled": true,
+              "disabled": false,
               "prompt_type": "reporting"
             }
           ],
@@ -1250,16 +1258,32 @@
                   "type": "str"
                 }
               ],
-              "disabled": true,
+              "disabled": false,
+              "prompt_type": "reporting"
+            }
+          ],
+          "Utilities": [
+            {
+              "name": "tdvs_tools_prompt",
+              "description": "Main prompt for Teradata Enterprise Vector Store operations.",
+              "arguments": [],
+              "disabled": false,
+              "prompt_type": "reporting"
+            },
+            {
+              "name": "tdvs_rag_prompt",
+              "description": "Prompt for Teradata Enterprise Vector Store and RAG (Retrieval Augmented Generation) based operations.",
+              "arguments": [],
+              "disabled": false,
               "prompt_type": "reporting"
             }
           ]
         },
         "resources": {},
         "classified_with_mode": "full",
-        "last_classified": "2025-11-24T18:01:54.247309+00:00"
+        "last_classified": "2025-11-26T09:59:23.855109+00:00"
       },
-      "needs_reclassification": true
+      "needs_reclassification": false
     },
     {
       "id": "profile-1764006444002-z0hdduce9",
