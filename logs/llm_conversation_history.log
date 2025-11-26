@@ -1,20 +1,10 @@
-2025-11-26 14:00:43,756 - --- FULL CONTEXT (User: 832e9f55-adc5-4f6a-8988-d38e32469612, Session: 1fbe12e5-2930-4100-bd74-5a0071137404) ---
+2025-11-26 15:38:23,215 - --- FULL CONTEXT (User: 832e9f55-adc5-4f6a-8988-d38e32469612, Session: 04181e3e-59cb-4680-af2c-db70ab425239) ---
 --- REASON FOR CALL ---
 Generating a strategic meta-plan for the goal: 'what is the system version?'
 
 --- History (History Disabled for LLM Call: False) ---
 {
   "chat_history": [
-    {
-      "role": "user",
-      "content": "You are a helpful assistant.",
-      "turn_number": 0
-    },
-    {
-      "role": "model",
-      "content": "Understood.",
-      "turn_number": 0
-    },
     {
       "role": "user",
       "content": "what is the system version?",
@@ -45,28 +35,6 @@ To select the correct capability, you MUST follow this two-step process, governe
 **CRITICAL RULE: Follow this strict hierarchy for capability selection:**
 1.  **Prioritize Pre-defined Analysis/Reports (Prompts):** If the user's request is for an **analysis, description, or summary** that is a strong semantic match for an available `prompt`, you **MUST** select that `prompt_name`. Prompts are the preferred method for generating these pre-defined analytical outputs.
 2.  **Default to Direct Actions (Tools):** If no analytical prompt is a direct match, or if the user's request is a direct command (e.g., "list...", "count...", "show me..."), you **MUST** treat the request as a direct action. Select the most specific `tool_name` that fulfills this action.
-
-**CRITICAL RULE (Planner Efficiency):** You **MUST NOT** create a multi-phase plan using tools if the user's goal can be fully achieved by a single, available prompt. If a prompt exists that matches the user's request for an analysis or report, you **MUST** call that prompt directly. Do not create a plan that manually replicates the function of an existing prompt.
-
-# Few-Shot Examples
-Here are examples of the correct thinking process:
-
-**Example 1: Direct Action Request**
-- **User Query:** "what is the quality of table 'online' in database 'DEMO_Customer360_db'?"
-- **Thought Process:**
-    1. The user's request is about "quality," but it's a direct question, not a request for a broad "description" or "summary." No prompt for a pre-defined analysis is a perfect match.
-    2. Therefore, I move to step 2 of my critical rule: treat this as a direct action.
-    3. The user's query is about a **table**. I must choose a table-level tool.
-    4. The `qlty_columnSummary` tool takes a `table_name` and is the most specific, correct choice for this direct action.
-- **Correct Response:** `{{"tool_name": "qlty_columnSummary", "arguments": {{"database_name": "DEMO_Customer360_db", "table_name": "online"}}}}`
-
-**Example 2: Pre-defined Analysis Request**
-- **User Query:** "describe the business purpose of the 'DEMO_Customer360_db' database"
-- **Thought Process:**
-    1. The user's request is for a "business purpose" description, which is a pre-defined analysis. I will check for a matching prompt first.
-    2. The `generic_database_analysis_prompt` is described as being for this exact purpose. It is a strong semantic match.
-    3. According to my critical rule, I **MUST** select this prompt. I am forbidden from creating a multi-step plan to get the DDL and then summarize it.
-- **Correct Response:** `{{"prompt_name": "generic_database_analysis_prompt", "arguments": {{"database_name": "DEMO_Customer360_db"}}}}`
 
 # Best Practices
 - **Context is Key:** Always use information from previous turns to fill in arguments like `database_name` or `table_name`.
@@ -309,28 +277,28 @@ You MUST follow these directives in order to create a valid and efficient plan.
 
 --- CONSTRAINTS ---
 You are explicitly forbidden from using the following capabilities in your plan under any circumstances:
-- `rag_Execute_Workflow` (tool)
 - `plot_line_chart` (tool)
-- `tmpl_nameOfTool` (tool)
-- `sql_Execute_Full_Pipeline` (tool)
-- `plot_radar_chart` (tool)
-- `sql_Retrieve_Cluster_Queries` (tool)
-- `plot_polar_chart` (tool)
 - `sql_Analyze_Cluster_Stats` (tool)
+- `sql_Execute_Full_Pipeline` (tool)
+- `sql_Retrieve_Cluster_Queries` (tool)
+- `tmpl_nameOfTool` (tool)
 - `plot_pie_chart` (tool)
-- `base_tableBusinessDesc` (prompt)
-- `base_query` (prompt)
+- `plot_polar_chart` (tool)
+- `plot_radar_chart` (tool)
+- `rag_Execute_Workflow` (tool)
 - `base_databaseBusinessDesc` (prompt)
-- `qlty_databaseQuality` (prompt)
-- `dba_databaseLineage` (prompt)
-- `dba_systemVoice` (prompt)
-- `dba_userActivityAnalysis` (prompt)
-- `dba_tableArchive` (prompt)
-- `tdvs_tools_prompt` (prompt)
-- `_testMyServer` (prompt)
-- `tdvs_rag_prompt` (prompt)
 - `dba_databaseHealthAssessment` (prompt)
+- `dba_databaseLineage` (prompt)
+- `base_tableBusinessDesc` (prompt)
 - `dba_tableDropImpact` (prompt)
+- `tdvs_tools_prompt` (prompt)
+- `tdvs_rag_prompt` (prompt)
+- `qlty_databaseQuality` (prompt)
+- `dba_tableArchive` (prompt)
+- `base_query` (prompt)
+- `dba_userActivityAnalysis` (prompt)
+- `_testMyServer` (prompt)
+- `dba_systemVoice` (prompt)
 
 
 
@@ -524,7 +492,7 @@ Your output **MUST** be a single, valid JSON array of phase objects. Each object
 Your response MUST be a single, valid JSON list of phase objects. Do NOT add any extra text, conversation, or markdown.
 
 
-2025-11-26 14:00:46,933 - --- FULL CONTEXT (User: 832e9f55-adc5-4f6a-8988-d38e32469612, Session: 1fbe12e5-2930-4100-bd74-5a0071137404) ---
+2025-11-26 15:38:25,997 - --- FULL CONTEXT (User: 832e9f55-adc5-4f6a-8988-d38e32469612, Session: 04181e3e-59cb-4680-af2c-db70ab425239) ---
 --- REASON FOR CALL ---
 Client-Side Tool Call: TDA_FinalReport
 Goal: what is the system version?
@@ -532,16 +500,6 @@ Goal: what is the system version?
 --- History (History Disabled for LLM Call: False) ---
 {
   "chat_history": [
-    {
-      "role": "user",
-      "content": "You are a helpful assistant.",
-      "turn_number": 0
-    },
-    {
-      "role": "model",
-      "content": "Understood.",
-      "turn_number": 0
-    },
     {
       "role": "user",
       "content": "what is the system version?",
@@ -610,7 +568,7 @@ You are required to populate its fields based on your analysis of the data provi
 2.  `key_metric`: OPTIONAL. Use ONLY if the answer can be summarized by a single, primary value (e.g., a total count, a status). Requires `value` (string) and `label` (string). Omit the entire field if not applicable.
 3.  `key_observations`: OPTIONAL. A list of objects, each with a `text` field containing a single, narrative bullet point of supporting detail or context. Do NOT include raw data or code.
 
-2025-11-26 14:00:48,397 - --- FULL CONTEXT (User: 832e9f55-adc5-4f6a-8988-d38e32469612, Session: 1fbe12e5-2930-4100-bd74-5a0071137404) ---
+2025-11-26 15:38:27,348 - --- FULL CONTEXT (User: 832e9f55-adc5-4f6a-8988-d38e32469612, Session: 04181e3e-59cb-4680-af2c-db70ab425239) ---
 --- REASON FOR CALL ---
 Generating session name from initial query.
 

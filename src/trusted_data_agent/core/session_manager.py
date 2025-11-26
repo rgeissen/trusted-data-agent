@@ -144,7 +144,7 @@ def _save_session(user_uuid: str, session_id: str, session_data: dict):
 
 # --- Public Session Management Functions ---
 
-def create_session(user_uuid: str, provider: str, llm_instance: any, charting_intensity: str, system_prompt_template: str | None = None, profile_tag: str | None = None) -> str:
+def create_session(user_uuid: str, provider: str, llm_instance: any, charting_intensity: str, system_prompt_template: str | None = None, profile_tag: str | None = None, profile_id: str | None = None) -> str:
     session_id = generate_session_id()
     app_logger.info(f"Attempting to create session '{session_id}' for user '{user_uuid}'.")
 
@@ -168,6 +168,7 @@ def create_session(user_uuid: str, provider: str, llm_instance: any, charting_in
         "provider": provider, # --- Store the provider used for this session (for backwards compatibility)
         "model": APP_CONFIG.CURRENT_MODEL, # --- Store the model used for this session (for backwards compatibility)
         "profile_tag": profile_tag, # --- Store the profile tag used for this session
+        "profile_id": profile_id, # --- Store the profile ID used for this session (for badge/color info)
         "profile_tags_used": [], # --- Initialize as empty for a new session
         "models_used": [], # --- Keep for backwards compatibility
         "session_history": [], # UI history (messages added via add_message_to_histories)

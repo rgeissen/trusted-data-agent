@@ -3,12 +3,54 @@
 Test REST API with JWT Authentication
 
 This script tests the REST API endpoints using JWT token authentication.
+
+⚠️  PROFILE REQUIREMENT:
+Session creation (if tested) requires a default profile configured.
+See test_session_creation_methods.py for complete session workflow.
 """
 
 import requests
 import json
 
 BASE_URL = "http://127.0.0.1:5000"
+
+def print_profile_info(jwt_token):
+    """Display profile configuration status."""
+    print("[6] Checking profile configuration...")
+    try:
+        response = requests.get(
+            f"{BASE_URL}/api/v1/profiles",
+            headers={"Authorization": f"Bearer {jwt_token}"}
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            profiles = data.get('profiles', [])
+            default_profile_id = data.get('default_profile_id')
+            
+            print(f"✓ Profile endpoint works")
+            print(f"  Total profiles: {len(profiles)}")
+            print(f"  Default profile: {'Yes' if default_profile_id else 'No ⚠️'}")
+            
+            if default_profile_id:
+                default_profile = next((p for p in profiles if p.get('id') == default_profile_id), None)
+                if default_profile:
+                    print(f"    Name: {default_profile.get('name')}")
+                    print(f"    LLM: {default_profile.get('llmConfigurationId')}")
+                    print(f"    MCP: {default_profile.get('mcpServerId')}")
+            else:
+                print(f"  ⚠️  To use session creation, configure a profile:")
+                print(f"      1. Open http://localhost:5000")
+                print(f"      2. Go to Configuration")
+                print(f"      3. Create a profile (LLM + MCP)")
+                print(f"      4. Mark as default")
+        else:
+            print(f"⚠️  Profile check failed: {response.status_code}")
+        print()
+        
+    except Exception as e:
+        print(f"⚠️  Profile check error: {e}")
+        print()
 
 def test_rest_api_with_jwt():
     """Test REST API endpoints with JWT authentication."""
@@ -150,9 +192,17 @@ def test_rest_api_with_jwt():
         print(f"   (This is normal if MCP is not configured)")
         print()
     
+    # Step 7: Check profile configuration
+    print_profile_info(jwt_token)
+    
     print("=" * 60)
     print("✅ REST API JWT authentication test complete!")
     print("=" * 60)
+    print()
+    print("📝 NEXT STEPS:")
+    print("   For session creation testing, see: test_session_creation_methods.py")
+    print("   This script requires a configured default profile (LLM + MCP Server)")
+    print()
     return True
 
 

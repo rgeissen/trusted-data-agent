@@ -1,0 +1,167 @@
+{
+  "id": "99f05bc7-fad5-4501-af79-b6a31024fbc0",
+  "user_uuid": "832e9f55-adc5-4f6a-8988-d38e32469612",
+  "system_prompt_template": null,
+  "charting_intensity": "medium",
+  "provider": "Google",
+  "model": "gemini-2.0-flash",
+  "profile_tag": "GOGET",
+  "profile_tags_used": [
+    "GOGET"
+  ],
+  "models_used": [
+    "Google/gemini-2.0-flash"
+  ],
+  "session_history": [
+    {
+      "role": "user",
+      "content": "Hello",
+      "isValid": true,
+      "turn_number": 1,
+      "source": "rest"
+    },
+    {
+      "role": "assistant",
+      "content": "<div class=\"response-card summary-card mb-4\"><p class=\"text-gray-300 mb-4\">I'm doing well, thank you for asking! How can I help you with your Teradata database system today?</p></div>",
+      "isValid": true,
+      "turn_number": 1
+    }
+  ],
+  "chat_object": [
+    {
+      "role": "user",
+      "content": "You are a helpful assistant.",
+      "turn_number": 0
+    },
+    {
+      "role": "model",
+      "content": "Understood.",
+      "turn_number": 0
+    },
+    {
+      "role": "user",
+      "content": "Hello",
+      "isValid": true,
+      "turn_number": 1
+    },
+    {
+      "role": "model",
+      "content": "I'm doing well, thank you for asking! How can I help you with your Teradata database system today?",
+      "isValid": true,
+      "turn_number": 1
+    }
+  ],
+  "name": "Brief Chat Log",
+  "created_at": "2025-11-26T15:20:05.381346",
+  "last_updated": "2025-11-26T15:20:07.572473",
+  "input_tokens": 8107,
+  "output_tokens": 47,
+  "last_turn_data": {
+    "workflow_history": [
+      {
+        "turn": 1,
+        "user_query": "Hello",
+        "original_plan": null,
+        "execution_trace": [
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Calling LLM for Planning",
+                "details": {
+                  "summary": "Generating a strategic meta-plan for the goal",
+                  "full_text": "Hello",
+                  "call_id": "fc9d582c-a8ed-4a4a-82e0-ce30be7b568c",
+                  "execution_depth": 0,
+                  "input_tokens": 8045,
+                  "output_tokens": 43
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "system_message",
+                "timestamp": "2025-11-26T14:20:07.004293+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Conversational Response Identified",
+                "details": "I'm doing well, thank you for asking! How can I help you with your Teradata database system today?"
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "system_message",
+                "timestamp": "2025-11-26T14:20:07.004759+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Strategic Meta-Plan Generated",
+                "details": null
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_generated",
+                "timestamp": "2025-11-26T14:20:07.004813+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "LLM has generated the final answer",
+                "details": "I'm doing well, thank you for asking! How can I help you with your Teradata database system today?"
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": null,
+                "timestamp": "2025-11-26T14:20:07.005929+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          }
+        ],
+        "final_summary": "I'm doing well, thank you for asking! How can I help you with your Teradata database system today?",
+        "timestamp": "2025-11-26T14:20:07.008352+00:00",
+        "provider": "Google",
+        "model": "gemini-2.0-flash",
+        "profile_tag": "GOGET",
+        "task_id": "task-3ea8fa38-df13-4c1e-8d21-471dccc275b6",
+        "turn_input_tokens": 8045,
+        "turn_output_tokens": 43,
+        "session_id": "99f05bc7-fad5-4501-af79-b6a31024fbc0",
+        "rag_source_collection_id": null,
+        "isValid": true
+      }
+    ]
+  },
+  "full_context_sent": false,
+  "license_info": {
+    "holder": "GNU Affero General Public License v3.0",
+    "issued_at": "2025-11-10T19:25:00.506556+00:00",
+    "expires_at": "2026-11-10T19:25:00.506556+00:00",
+    "version": "1.5-tiered",
+    "tier": "App Developer",
+    "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
+  },
+  "archived": true,
+  "archived_at": "2025-11-26T14:37:50.236249+00:00"
+}

@@ -1,0 +1,625 @@
+{
+  "id": "e49286d2-fee3-4113-b720-72e554cf6968",
+  "user_uuid": "832e9f55-adc5-4f6a-8988-d38e32469612",
+  "system_prompt_template": null,
+  "charting_intensity": "medium",
+  "provider": "Google",
+  "model": "gemini-2.0-flash",
+  "profile_tag": "GOGET",
+  "profile_id": "profile-1763993711628-vvbh23q09",
+  "profile_tags_used": [
+    "GOGET"
+  ],
+  "models_used": [
+    "Google/gemini-2.0-flash"
+  ],
+  "session_history": [
+    {
+      "role": "user",
+      "content": "What is your name?",
+      "isValid": true,
+      "turn_number": 1,
+      "source": "rest",
+      "profile_tag": "GOGET"
+    },
+    {
+      "role": "user",
+      "content": "Tell me about yourself",
+      "isValid": true,
+      "turn_number": 2,
+      "source": "rest",
+      "profile_tag": "GOGET"
+    },
+    {
+      "role": "assistant",
+      "content": "<div class=\"response-card summary-card mb-4\"><p class=\"text-gray-300 mb-4\">I am a specialized assistant for a Teradata database system, designed to fulfill user requests by selecting the best capability and supplying all necessary arguments.</p></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'><div class='response-card'><p class=\"text-gray-300 mb-4\">I am a specialized assistant for a Teradata database system, designed to fulfill user requests by selecting the best capability and supplying all necessary arguments.</p></div></div></details>",
+      "isValid": true,
+      "turn_number": 2
+    },
+    {
+      "role": "assistant",
+      "content": "<div class=\"response-card summary-card mb-4\"><p class=\"text-gray-300 mb-4\">I do not have a name.</p><h3 class=\"text-lg font-bold text-white mb-3 border-b border-gray-700 pb-2\">Key Observations</h3><ul class=\"list-disc list-outside space-y-2 text-gray-300 mb-4 pl-5\"><li>The user asked for my name.</li><li>As a large language model, I do not have a personal name.</li></ul></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>TDA_FinalReport</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"direct_answer\": \"I do not have a name.\", \"key_metric\": null, \"key_observations\": [{\"text\": \"The user&apos;s question was a simple request for my name.\"}, {\"text\": \"As a language model, I am not assigned a specific name.\"}], \"synthesis\": []}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>direct_answer</th><th>key_metric</th><th>key_observations</th><th>synthesis</th></tr></thead>\n                    <tbody>\n        <tr><td>I do not have a name.</td><td>None</td><td>[{'text': \"The user's question was a simple request for my name.\"}, {'text': 'As a language model, I am not assigned a specific name.'}]</td><td>[]</td></tr></tbody></table></div></div>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>TDA_FinalReport</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"direct_answer\": \"I do not have a name.\", \"key_metric\": null, \"key_observations\": [{\"text\": \"The user asked for my name.\"}, {\"text\": \"As a large language model, I do not have a personal name.\"}], \"synthesis\": []}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>direct_answer</th><th>key_metric</th><th>key_observations</th><th>synthesis</th></tr></thead>\n                    <tbody>\n        <tr><td>I do not have a name.</td><td>None</td><td>[{'text': 'The user asked for my name.'}, {'text': 'As a large language model, I do not have a personal name.'}]</td><td>[]</td></tr></tbody></table></div></div></div></details>",
+      "isValid": true,
+      "turn_number": 2
+    }
+  ],
+  "chat_object": [
+    {
+      "role": "user",
+      "content": "You are a helpful assistant.",
+      "turn_number": 0
+    },
+    {
+      "role": "model",
+      "content": "Understood.",
+      "turn_number": 0
+    },
+    {
+      "role": "user",
+      "content": "What is your name?",
+      "isValid": true,
+      "turn_number": 1
+    },
+    {
+      "role": "user",
+      "content": "Tell me about yourself",
+      "isValid": true,
+      "turn_number": 2
+    },
+    {
+      "role": "model",
+      "content": "I am a specialized assistant for a Teradata database system, designed to fulfill user requests by selecting the best capability and supplying all necessary arguments.",
+      "isValid": true,
+      "turn_number": 2
+    },
+    {
+      "role": "model",
+      "content": "I do not have a name.",
+      "isValid": true,
+      "turn_number": 2
+    }
+  ],
+  "name": "Name Inquiry",
+  "created_at": "2025-11-26T15:30:52.438856",
+  "last_updated": "2025-11-26T15:30:58.254667",
+  "input_tokens": 19577,
+  "output_tokens": 441,
+  "last_turn_data": {
+    "workflow_history": [
+      {
+        "turn": 1,
+        "user_query": "Tell me about yourself",
+        "original_plan": [
+          {
+            "phase": 1,
+            "goal": "This is a conversational turn. Provide a response to the user's request.",
+            "relevant_tools": [
+              "TDA_ContextReport"
+            ],
+            "arguments": {
+              "answer_from_context": "I am a specialized assistant for a Teradata database system, designed to fulfill user requests by selecting the best capability and supplying all necessary arguments."
+            }
+          }
+        ],
+        "execution_trace": [
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Calling LLM for Planning",
+                "details": {
+                  "summary": "Generating a strategic meta-plan for the goal",
+                  "full_text": "Tell me about yourself",
+                  "call_id": "abacbcba-cec1-47e0-a526-d4eb20c00cc4",
+                  "execution_depth": 0,
+                  "input_tokens": 8051,
+                  "output_tokens": 105
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "system_message",
+                "timestamp": "2025-11-26T14:30:54.715963+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Strategic Meta-Plan Generated",
+                "details": [
+                  {
+                    "phase": 1,
+                    "goal": "This is a conversational turn. Provide a response to the user's request.",
+                    "relevant_tools": [
+                      "TDA_ContextReport"
+                    ],
+                    "arguments": {
+                      "answer_from_context": "I am a specialized assistant for a Teradata database system, designed to fulfill user requests by selecting the best capability and supplying all necessary arguments."
+                    }
+                  }
+                ]
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_generated",
+                "timestamp": "2025-11-26T14:30:54.716359+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Starting Plan Phase 1/1",
+                "details": {
+                  "phase_num": 1,
+                  "total_phases": 1,
+                  "goal": "This is a conversational turn. Provide a response to the user's request.",
+                  "phase_details": {
+                    "phase": 1,
+                    "goal": "This is a conversational turn. Provide a response to the user's request.",
+                    "relevant_tools": [
+                      "TDA_ContextReport"
+                    ],
+                    "arguments": {
+                      "answer_from_context": "I am a specialized assistant for a Teradata database system, designed to fulfill user requests by selecting the best capability and supplying all necessary arguments."
+                    }
+                  },
+                  "execution_depth": 0
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_start",
+                "timestamp": "2025-11-26T14:30:54.716522+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Plan Optimization",
+                "details": "FASTPATH initiated for 'TDA_ContextReport'."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_optimization",
+                "timestamp": "2025-11-26T14:30:54.716574+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_ContextReport",
+              "arguments": {
+                "answer_from_context": "I am a specialized assistant for a Teradata database system, designed to fulfill user requests by selecting the best capability and supplying all necessary arguments."
+              },
+              "metadata": {
+                "phase_number": 1,
+                "execution_depth": 0,
+                "timestamp": "2025-11-26T14:30:54.716606+00:00"
+              }
+            },
+            "result": {
+              "status": "success",
+              "metadata": {
+                "tool_name": "TDA_ContextReport"
+              },
+              "results": [
+                {
+                  "response": "I am a specialized assistant for a Teradata database system, designed to fulfill user requests by selecting the best capability and supplying all necessary arguments."
+                }
+              ]
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Ending Plan Phase 1/1",
+                "details": {
+                  "phase_num": 1,
+                  "total_phases": 1,
+                  "status": "completed"
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_end",
+                "timestamp": "2025-11-26T14:30:54.716700+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "LLM has generated the final answer",
+                "details": "I am a specialized assistant for a Teradata database system, designed to fulfill user requests by selecting the best capability and supplying all necessary arguments."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": null,
+                "timestamp": "2025-11-26T14:30:54.717619+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          }
+        ],
+        "final_summary": "I am a specialized assistant for a Teradata database system, designed to fulfill user requests by selecting the best capability and supplying all necessary arguments.",
+        "timestamp": "2025-11-26T14:30:54.718993+00:00",
+        "provider": "Google",
+        "model": "gemini-2.0-flash",
+        "profile_tag": "GOGET",
+        "task_id": "task-569e77af-4bfe-4acf-8d97-4dafdb6156cb",
+        "turn_input_tokens": 8051,
+        "turn_output_tokens": 105,
+        "session_id": "e49286d2-fee3-4113-b720-72e554cf6968",
+        "rag_source_collection_id": null,
+        "isValid": true,
+        "case_id": "64dbf9e6-8c3b-572c-88e8-2a6dd12c436b"
+      },
+      {
+        "turn": 1,
+        "user_query": "What is your name?",
+        "original_plan": [
+          {
+            "phase": 1,
+            "goal": "Since the user asked what is my name, provide a canned conversational answer.",
+            "relevant_tools": [],
+            "arguments": {},
+            "plan_type": "conversational",
+            "response": "My name is Teradata Assistant. How can I help you with your Teradata database system today?"
+          },
+          {
+            "phase": 2,
+            "goal": "Generate the final report based on the data gathered.",
+            "relevant_tools": [
+              "TDA_FinalReport"
+            ],
+            "arguments": {}
+          }
+        ],
+        "execution_trace": [
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Calling LLM for Planning",
+                "details": {
+                  "summary": "Generating a strategic meta-plan for the goal",
+                  "full_text": "What is your name?",
+                  "call_id": "8981f9e5-7608-45da-be10-cb651028504f",
+                  "execution_depth": 0,
+                  "input_tokens": 8053,
+                  "output_tokens": 94
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "system_message",
+                "timestamp": "2025-11-26T14:30:54.091359+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "System Correction",
+                "details": {
+                  "summary": "The agent's plan was missing a final reporting step. The system has automatically added it to ensure a complete response.",
+                  "correction": {
+                    "added_phase": {
+                      "phase": 2,
+                      "goal": "Generate the final report based on the data gathered.",
+                      "relevant_tools": [
+                        "TDA_FinalReport"
+                      ],
+                      "arguments": {}
+                    }
+                  }
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "workaround",
+                "timestamp": "2025-11-26T14:30:54.092691+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": "system_correction",
+            "result": {
+              "step": "System Correction",
+              "type": "workaround",
+              "details": {
+                "summary": "The agent's plan was missing a final reporting step. The system has automatically added it to ensure a complete response.",
+                "correction": {
+                  "added_phase": {
+                    "phase": 2,
+                    "goal": "Generate the final report based on the data gathered.",
+                    "relevant_tools": [
+                      "TDA_FinalReport"
+                    ],
+                    "arguments": {}
+                  }
+                }
+              }
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Strategic Meta-Plan Generated",
+                "details": [
+                  {
+                    "phase": 1,
+                    "goal": "Since the user asked what is my name, provide a canned conversational answer.",
+                    "relevant_tools": [],
+                    "arguments": {},
+                    "plan_type": "conversational",
+                    "response": "My name is Teradata Assistant. How can I help you with your Teradata database system today?"
+                  },
+                  {
+                    "phase": 2,
+                    "goal": "Generate the final report based on the data gathered.",
+                    "relevant_tools": [
+                      "TDA_FinalReport"
+                    ],
+                    "arguments": {}
+                  }
+                ]
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_generated",
+                "timestamp": "2025-11-26T14:30:54.092802+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Starting Plan Phase 1/2",
+                "details": {
+                  "phase_num": 1,
+                  "total_phases": 2,
+                  "goal": "Since the user asked what is my name, provide a canned conversational answer.",
+                  "phase_details": {
+                    "phase": 1,
+                    "goal": "Since the user asked what is my name, provide a canned conversational answer.",
+                    "relevant_tools": [],
+                    "arguments": {},
+                    "plan_type": "conversational",
+                    "response": "My name is Teradata Assistant. How can I help you with your Teradata database system today?"
+                  },
+                  "execution_depth": 0
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_start",
+                "timestamp": "2025-11-26T14:30:54.092925+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_FinalReport",
+              "prompt_name": null,
+              "arguments": {},
+              "metadata": {
+                "phase_number": 1,
+                "execution_depth": 0,
+                "timestamp": "2025-11-26T14:30:55.895254+00:00"
+              }
+            },
+            "result": {
+              "status": "success",
+              "metadata": {
+                "call_id": "8ca9b442-bc85-4203-817c-2996e57da326",
+                "tool_name": "TDA_FinalReport",
+                "input_tokens": 272,
+                "output_tokens": 84
+              },
+              "results": [
+                {
+                  "direct_answer": "I do not have a name.",
+                  "key_metric": null,
+                  "key_observations": [
+                    {
+                      "text": "The user's question was a simple request for my name."
+                    },
+                    {
+                      "text": "As a language model, I am not assigned a specific name."
+                    }
+                  ],
+                  "synthesis": []
+                }
+              ],
+              "corrections": []
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Starting Plan Phase 2/2",
+                "details": {
+                  "phase_num": 2,
+                  "total_phases": 2,
+                  "goal": "Generate the final report based on the data gathered.",
+                  "phase_details": {
+                    "phase": 2,
+                    "goal": "Generate the final report based on the data gathered.",
+                    "relevant_tools": [
+                      "TDA_FinalReport"
+                    ],
+                    "arguments": {}
+                  },
+                  "execution_depth": 0
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_start",
+                "timestamp": "2025-11-26T14:30:56.996444+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Plan Optimization",
+                "details": "FASTPATH initiated for 'TDA_FinalReport'."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_optimization",
+                "timestamp": "2025-11-26T14:30:56.996516+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_FinalReport",
+              "arguments": {},
+              "metadata": {
+                "phase_number": 2,
+                "execution_depth": 0,
+                "timestamp": "2025-11-26T14:30:56.996573+00:00"
+              }
+            },
+            "result": {
+              "status": "success",
+              "metadata": {
+                "call_id": "1c2ab87e-0e55-4c09-83da-33cec7b7683c",
+                "tool_name": "TDA_FinalReport",
+                "input_tokens": 501,
+                "output_tokens": 88
+              },
+              "results": [
+                {
+                  "direct_answer": "I do not have a name.",
+                  "key_metric": null,
+                  "key_observations": [
+                    {
+                      "text": "The user asked for my name."
+                    },
+                    {
+                      "text": "As a large language model, I do not have a personal name."
+                    }
+                  ],
+                  "synthesis": []
+                }
+              ],
+              "corrections": []
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Ending Plan Phase 2/2",
+                "details": {
+                  "phase_num": 2,
+                  "total_phases": 2,
+                  "status": "completed"
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_end",
+                "timestamp": "2025-11-26T14:30:57.836601+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "LLM has generated the final answer",
+                "details": "I do not have a name."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": null,
+                "timestamp": "2025-11-26T14:30:57.837425+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          }
+        ],
+        "final_summary": "I do not have a name.",
+        "timestamp": "2025-11-26T14:30:57.838973+00:00",
+        "provider": "Google",
+        "model": "gemini-2.0-flash",
+        "profile_tag": "GOGET",
+        "task_id": "task-88285b9a-d4e8-44f4-94cd-599994ca5cad",
+        "turn_input_tokens": 10623,
+        "turn_output_tokens": 157,
+        "session_id": "e49286d2-fee3-4113-b720-72e554cf6968",
+        "rag_source_collection_id": null,
+        "isValid": true
+      }
+    ]
+  },
+  "full_context_sent": false,
+  "license_info": {
+    "holder": "GNU Affero General Public License v3.0",
+    "issued_at": "2025-11-10T19:25:00.506556+00:00",
+    "expires_at": "2026-11-10T19:25:00.506556+00:00",
+    "version": "1.5-tiered",
+    "tier": "App Developer",
+    "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
+  },
+  "archived": true,
+  "archived_at": "2025-11-26T14:37:29.992121+00:00"
+}

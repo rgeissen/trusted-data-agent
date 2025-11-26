@@ -51,6 +51,57 @@ def _get_user_uuid_from_request():
         return None
 # --- MODIFICATION END ---
 
+
+def _validate_user_profile(user_uuid: str) -> tuple[bool, dict]:
+    """
+    Validate that a user has a properly configured profile for REST operations.
+    
+    Returns:
+        Tuple of (is_valid, error_response_dict)
+        - is_valid: True if profile is valid, False otherwise
+        - error_response_dict: Contains 'error' key if invalid, empty dict if valid
+    
+    Profile is valid if:
+    - User has a default profile set
+    - Default profile exists and is properly configured
+    - Default profile has both LLM and MCP server configured
+    """
+    try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        
+        # Check if user has a default profile configured
+        default_profile_id = config_manager.get_default_profile_id(user_uuid)
+        if not default_profile_id:
+            return False, {
+                "error": "No default profile configured for this user. Please configure a profile (LLM + MCP Server combination) in the Configuration panel first."
+            }
+        
+        # Verify the default profile exists
+        default_profile = config_manager.get_profile(default_profile_id, user_uuid)
+        if not default_profile:
+            return False, {
+                "error": "Default profile not found. Please configure a profile first."
+            }
+        
+        # Extract LLM and MCP configuration from profile
+        llm_config_id = default_profile.get("llmConfigurationId")
+        mcp_server_id = default_profile.get("mcpServerId")
+        
+        if not llm_config_id or not mcp_server_id:
+            return False, {
+                "error": "Profile is incomplete. Please ensure both LLM Provider and MCP Server are configured."
+            }
+        
+        return True, {}
+    except Exception as e:
+        app_logger.error(f"REST API profile validation error: {e}", exc_info=True)
+        return False, {
+            "error": "Failed to validate profile configuration."
+        }
+
+# --- MODIFICATION END ---
+
 def _sanitize_for_json(obj):
     """
     Recursively sanitizes an object to make it JSON-serializable by removing
@@ -73,6 +124,10 @@ async def execute_prompt(prompt_name: str):
     """
     Execute an MCP prompt with the LLM and return the response.
     
+    Requires:
+    - User must be authenticated (JWT or Access Token)
+    - User must have a configured profile (LLM + MCP server combination)
+    
     Request body:
     {
         "arguments": {"database": "mydb", ...}  // Optional prompt arguments
@@ -88,26 +143,53 @@ async def execute_prompt(prompt_name: str):
     }
     """
     try:
+        # Get user context
+        user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({
+                "status": "error",
+                "message": "Authentication required"
+            }), 401
+        
+        # Validate user has a configured profile
+        is_valid, error_response = _validate_user_profile(user_uuid)
+        if not is_valid:
+            return jsonify(error_response), 400
+        
+        # Switch to user's default profile context
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        default_profile_id = config_manager.get_default_profile_id(user_uuid)
+        
+        from trusted_data_agent.core.configuration_service import switch_profile_context
+        profile_context = await switch_profile_context(default_profile_id, user_uuid, validate_llm=False)
+        
+        if "error" in profile_context:
+            return jsonify({
+                "status": "error",
+                "message": f"Failed to activate user profile: {profile_context.get('error')}"
+            }), 503
+        
         mcp_client = APP_STATE.get("mcp_client")
         if not mcp_client:
             return jsonify({
                 "status": "error",
-                "message": "MCP client not configured"
-            }), 400
+                "message": "MCP client not configured for profile"
+            }), 503
 
         server_name = APP_CONFIG.CURRENT_MCP_SERVER_NAME
         if not server_name:
             return jsonify({
                 "status": "error",
-                "message": "MCP server not configured"
-            }), 400
+                "message": "MCP server not configured for profile"
+            }), 503
             
         llm_instance = APP_STATE.get('llm')
         if not llm_instance:
             return jsonify({
                 "status": "error",
-                "message": "LLM not configured"
-            }), 400
+                "message": "LLM not configured for profile"
+            }), 503
 
         # Get arguments from request body
         data = await request.get_json() or {}
@@ -856,28 +938,94 @@ async def manage_classification_setting():
 
 @rest_api_bp.route("/v1/sessions", methods=["POST"])
 async def create_session():
-    """Creates a new conversation session *for the requesting user*."""
-    # --- MODIFICATION START: Get User UUID ---
+    """
+    Creates a new conversation session for the requesting user.
+    
+    Requires:
+    - User must be authenticated (JWT or Access Token)
+    - User must have a configured profile (LLM + MCP server combination)
+    - Profile must be set as default or active for consumption
+    
+    Returns:
+    - 201: Session created successfully with session_id
+    - 400: No profile configured for the user
+    - 503: Profile exists but configuration is incomplete
+    """
+    # Get User UUID from JWT/Access Token
     user_uuid = _get_user_uuid_from_request()
-    # --- MODIFICATION END ---
-
-    if not APP_CONFIG.MCP_SERVER_CONNECTED:
+    if not user_uuid:
         return jsonify({
-            "error": "Application is not configured. Please connect to LLM and MCP services first."
-        }), 503
+            "error": "Authentication required"
+        }), 401
 
     try:
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        
+        # Check if user has a default profile configured
+        default_profile_id = config_manager.get_default_profile_id(user_uuid)
+        if not default_profile_id:
+            return jsonify({
+                "error": "No default profile configured for this user. Please configure a profile (LLM + MCP Server combination) in the Configuration panel first."
+            }), 400
+        
+        # Verify the default profile exists and is properly configured
+        default_profile = config_manager.get_profile(default_profile_id, user_uuid)
+        if not default_profile:
+            return jsonify({
+                "error": "Default profile not found. Please configure a profile first."
+            }), 400
+        
+        # Extract LLM and MCP configuration from profile
+        llm_config_id = default_profile.get("llmConfigurationId")
+        mcp_server_id = default_profile.get("mcpServerId")
+        
+        if not llm_config_id or not mcp_server_id:
+            return jsonify({
+                "error": "Profile is incomplete. Please ensure both LLM Provider and MCP Server are configured."
+            }), 503
+        
+        # Get LLM configuration
+        llm_configs = config_manager.get_llm_configurations(user_uuid)
+        llm_config = next((c for c in llm_configs if c.get("id") == llm_config_id), None)
+        if not llm_config:
+            return jsonify({
+                "error": "LLM configuration for profile not found."
+            }), 503
+        
+        # Get MCP server configuration
+        mcp_configs = config_manager.get_mcp_servers(user_uuid)
+        mcp_config = next((m for m in mcp_configs if m.get("id") == mcp_server_id), None)
+        if not mcp_config:
+            return jsonify({
+                "error": "MCP Server configuration for profile not found."
+            }), 503
+        
+        # Extract provider from LLM config
+        provider = llm_config.get("provider", "Google")
+        
+        # Switch to this profile's context to get LLM instance
+        from trusted_data_agent.core.configuration_service import switch_profile_context
+        profile_context = await switch_profile_context(default_profile_id, user_uuid, validate_llm=False)
+        
+        if "error" in profile_context:
+            return jsonify({
+                "error": f"Failed to activate profile: {profile_context.get('error')}"
+            }), 503
+        
         llm_instance = APP_STATE.get("llm")
-
-        # --- MODIFICATION START: Pass User UUID ---
+        
+        # Create session with the profile's context
+        app_logger.info(f"REST API: Creating session with profile_id={default_profile_id}, profile_tag={default_profile.get('tag')}")  # DEBUG
         session_id = session_manager.create_session(
-            user_uuid=user_uuid, # Pass the UUID
-            provider=APP_CONFIG.CURRENT_PROVIDER,
+            user_uuid=user_uuid,
+            provider=provider,
             llm_instance=llm_instance,
-            charting_intensity=APP_CONFIG.DEFAULT_CHARTING_INTENSITY
-            # system_prompt_template is not typically passed via REST API for creation
+            charting_intensity=APP_CONFIG.DEFAULT_CHARTING_INTENSITY,
+            profile_tag=default_profile.get("tag"),
+            profile_id=default_profile_id  # Store profile ID for badge/color info
         )
-        app_logger.info(f"REST API: Created new session: {session_id} for user {user_uuid}")
+        app_logger.info(f"REST API: Created new session: {session_id} for user {user_uuid} using profile {default_profile_id}")
 
         # Retrieve the newly created session's full data
         new_session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
@@ -885,7 +1033,7 @@ async def create_session():
             # Prepare notification payload
             notification_payload = {
                 "id": new_session_data["id"],
-                "name": new_session_data.get("name", "New Chat"), # Default name if not present
+                "name": new_session_data.get("name", "New Chat"),
                 "models_used": new_session_data.get("models_used", []),
                 "last_updated": new_session_data.get("last_updated", datetime.now(timezone.utc).isoformat())
             }
@@ -925,6 +1073,23 @@ async def execute_query(session_id: str):
         return jsonify({"error": f"Session '{session_id}' not found."}), 404
     # --- MODIFICATION END ---
 
+    # --- NEW: Switch to profile context for query execution (with optional override) ---
+    from trusted_data_agent.core.config_manager import get_config_manager
+    from trusted_data_agent.core.configuration_service import switch_profile_context
+    
+    config_manager = get_config_manager()
+    
+    # Allow optional profile_id parameter; defaults to user's default profile
+    profile_id_override = data.get("profile_id")
+    profile_id_to_use = profile_id_override or config_manager.get_default_profile_id(user_uuid)
+    
+    if profile_id_to_use:
+        # Activate profile context to ensure correct LLM and profile badges are associated
+        profile_context = await switch_profile_context(profile_id_to_use, user_uuid, validate_llm=False)
+        if "error" in profile_context:
+            app_logger.warning(f"REST API: Could not activate profile {profile_id_to_use} for query execution: {profile_context.get('error')}")
+    # --- END NEW ---
+
     task_id = generate_task_id()
 
     # Initialize the task state
@@ -932,6 +1097,7 @@ async def execute_query(session_id: str):
         "task_id": task_id,
         "user_uuid": user_uuid, # Store the user UUID with the task
         "session_id": session_id, # Store session ID for reference
+        "profile_id_override": profile_id_override, # Track which profile was used for this query
         "status": "pending",
         "last_updated": datetime.now(timezone.utc).isoformat(),
         "events": [],
@@ -1013,7 +1179,8 @@ async def execute_query(session_id: str):
                 user_input=prompt,
                 event_handler=event_handler,
                 source='rest', # Identify source as REST
-                task_id=task_id # Pass the task_id here
+                task_id=task_id, # Pass the task_id here
+                profile_override_id=profile_id_override # Pass profile override for per-message tracking
             )
 
             if task_status_dict:

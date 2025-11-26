@@ -1,0 +1,53 @@
+{
+  "case_id": "b1f27594-5de5-5af0-8984-2ac6b8881be8",
+  "metadata": {
+    "session_id": "c3dd427b-7e42-4dd7-92b7-7555ba3ba189",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "task-0c983be8-4b62-458c-8565-36c8a75db9d3",
+    "collection_id": 0,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-26T14:13:30.242560+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "profile_tag": "GOGET",
+      "input_tokens": 8053,
+      "output_tokens": 102
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    }
+  },
+  "intent": {
+    "user_query": "What databases are available?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "List all available databases.",
+        "relevant_tools": [
+          "base_databaseList"
+        ],
+        "arguments": {}
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

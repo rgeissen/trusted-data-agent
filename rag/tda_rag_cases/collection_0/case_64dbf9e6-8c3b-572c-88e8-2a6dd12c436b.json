@@ -1,0 +1,53 @@
+{
+  "case_id": "64dbf9e6-8c3b-572c-88e8-2a6dd12c436b",
+  "metadata": {
+    "session_id": "e49286d2-fee3-4113-b720-72e554cf6968",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "task-88285b9a-d4e8-44f4-94cd-599994ca5cad",
+    "collection_id": 0,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": true,
+    "timestamp": "2025-11-26T14:30:57.838973+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "profile_tag": "GOGET",
+      "input_tokens": 10623,
+      "output_tokens": 157
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    }
+  },
+  "intent": {
+    "user_query": "What is your name?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Since the user asked what is my name, provide a canned conversational answer.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

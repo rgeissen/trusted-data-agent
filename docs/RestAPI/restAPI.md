@@ -22,6 +22,9 @@
 5. [Code Examples](#5-code-examples)
 6. [Security Best Practices](#6-security-best-practices)
 7. [Troubleshooting](#7-troubleshooting)
+8. [Quick Reference](#8-quick-reference)
+9. [API Updates & Migration Notes](#9-api-updates--migration-notes)
+10. [Additional Resources](#10-additional-resources)
 
 ---
 
@@ -53,6 +56,59 @@ For local development:
 ```
 http://localhost:5000/api
 http://127.0.0.1:5000/api
+```
+
+### Prerequisites for REST API
+
+⚠️ **Important:** Before you can use REST endpoints for session creation or query execution, you must:
+
+1. **Authenticate** - Login and obtain an access token (JWT or long-lived token)
+2. **Configure Profile** - Create a profile that combines:
+   - An **LLM Provider** (Google, Anthropic, Azure, AWS, Friendli, or Ollama)
+   - An **MCP Server** (your data source and tools)
+3. **Set as Default** - Mark your profile as the default for your user account
+
+Without a configured default profile, REST endpoints will return `400 Bad Request` with a helpful error message.
+
+### Quick Start Workflow
+
+The typical REST API workflow involves five steps:
+
+**1. Authenticate** - Obtain a JWT from `/auth/login`, then create long-lived token via `/auth/tokens`  
+**2. Create Profile** (One-time) - Configure LLM + MCP via UI or REST endpoints, set as default  
+**3. Create a Session** - `POST /api/v1/sessions` to start a conversation context  
+**4. Submit a Query** - `POST /api/v1/sessions/{session_id}/query` with your prompt  
+**5. Poll for Results** - `GET /api/v1/tasks/{task_id}` to check status and retrieve results  
+
+```bash
+# 1. Login to get JWT (one-time or per session)
+JWT=$(curl -s -X POST http://localhost:5000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"your_password"}' | jq -r '.access_token')
+
+# 2. Create access token for API automation (one-time)
+TOKEN=$(curl -s -X POST http://localhost:5000/api/v1/auth/tokens \
+  -H "Authorization: Bearer $JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my_app","expires_in_days":90}' | jq -r '.token')
+
+# Note: Configure Profile in UI or API (set LLM + MCP, mark as default)
+
+# 3. Create session (uses your default profile)
+SESSION=$(curl -s -X POST http://localhost:5000/api/v1/sessions \
+  -H "Authorization: Bearer $TOKEN")
+SESSION_ID=$(echo $SESSION | jq -r '.session_id')
+
+# 4. Submit query
+TASK=$(curl -s -X POST http://localhost:5000/api/v1/sessions/$SESSION_ID/query \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"Show me available databases"}')
+TASK_ID=$(echo $TASK | jq -r '.task_id')
+
+# 5. Check result
+curl -s http://localhost:5000/api/v1/tasks/$TASK_ID \
+  -H "Authorization: Bearer $TOKEN" | jq '.result'
 ```
 
 ---
@@ -499,6 +555,16 @@ Initializes and validates the agent's core services, including the LLM provider 
 
 ### 3.4. Session Management
 
+#### 📌 Important: User-Scoped Sessions
+
+All sessions in the REST API are **automatically scoped to the authenticated user**. When you create a session or execute a query, the user identity is extracted from the authentication token (JWT or access token). You do not need to manually specify a user UUID. The system automatically:
+
+- Associates sessions with your authenticated user
+- Prevents access to other users' sessions (404 Not Found)
+- Isolates all queries and task history by user
+
+This means two different users calling the same endpoints with different authentication tokens will each see their own sessions.
+
 #### 3.4.1. Create a New Session
 
 Creates a new, isolated conversation session for the agent. A session stores context and history for subsequent queries.
@@ -515,9 +581,15 @@ Creates a new, isolated conversation session for the agent. A session stores con
 }
 ```
 
+**Requirements:**
+- User must be authenticated (JWT or access token)
+- User must have a configured **default profile** (LLM + MCP Server)
+- Profile must have both LLM and MCP server IDs configured
+
 **Error Responses:**
-- `503 Service Unavailable` - Application not configured (run `/api/v1/configure` first)
 - `401 Unauthorized` - Authentication required
+- `400 Bad Request` - No default profile configured. Message: "No default profile configured for this user. Please configure a profile (LLM + MCP Server combination) in the Configuration panel first."
+- `503 Service Unavailable` - Profile incomplete (missing LLM or MCP configuration)
 
 #### 3.4.2. List Sessions
 
@@ -575,7 +647,7 @@ Get complete details for a specific session including timeline and RAG associati
 
 #### 3.5.1. Submit a Query
 
-Submits a natural language query to a specific session. This initiates a background task for the agent to process the query.
+Submits a natural language query to a specific session. This initiates a background task for the agent to process the query. You can optionally specify a different profile for this query (profile override).
 
 **Endpoint:** `POST /api/v1/sessions/{session_id}/query`  
 **Authentication:** Required (JWT or access token)
@@ -586,9 +658,14 @@ Submits a natural language query to a specific session. This initiates a backgro
 **Request Body:**
 ```json
 {
-  "prompt": "Your natural language query for the agent."
+  "prompt": "Your natural language query for the agent.",
+  "profile_id": "profile-optional-override"
 }
 ```
+
+**Request Parameters:**
+- `prompt` (string, required): The natural language query to submit
+- `profile_id` (string, optional): Override the session's default profile with a specific profile ID. If omitted, uses the user's default profile. Use this to execute different queries with different LLM/MCP combinations within the same session.
 
 **Success Response:**
 ```json
@@ -600,8 +677,35 @@ Submits a natural language query to a specific session. This initiates a backgro
 
 **Error Responses:**
 - `404 Not Found` - Session not found
-- `400 Bad Request` - Missing or invalid prompt
+- `400 Bad Request` - Missing or invalid prompt, or profile_id does not exist
 - `401 Unauthorized` - Authentication required
+
+**Profile Override Examples:**
+
+Basic query with default profile:
+```bash
+curl -X POST http://localhost:5000/api/v1/sessions/{session_id}/query \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "What is the system version?"}'
+```
+
+Query with specific profile override:
+```bash
+curl -X POST http://localhost:5000/api/v1/sessions/{session_id}/query \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Tell me about the current date",
+    "profile_id": "profile-1764006444002-z0hdduce9"
+  }'
+```
+
+**Profile Visibility in UI:**
+- Each message in the session displays the profile badge showing which profile was used
+- Messages with the default profile show one badge (e.g., `@GOGET`)
+- Messages with an override profile show the override profile badge (e.g., `@FRGOT`)
+- The profile badge includes color-coding based on the profile's branding configuration
 
 ### 3.6. Task Management
 
@@ -660,7 +764,7 @@ Requests cancellation of an actively running background task.
 Get all configured RAG collections with their active status.
 
 **Endpoint:** `GET /api/v1/rag/collections`  
-**Authentication:** Not required
+**Authentication:** Not required (public endpoint)
 
 **Success Response:**
         ```json
@@ -673,7 +777,8 @@ Get all configured RAG collections with their active status.
               "description": "Customer support query patterns",
               "mcp_server_id": "prod_server",
               "enabled": true,
-              "is_active": true
+              "is_active": true,
+              "count": 150
             }
           ]
         }
@@ -683,7 +788,8 @@ Get all configured RAG collections with their active status.
 
 Create a new RAG collection. All collections must be associated with an MCP server.
 
-* **Endpoint**: `POST /v1/rag/collections`
+* **Endpoint**: `POST /api/v1/rag/collections`
+* **Authentication**: Required (JWT or access token)
 * **Method**: `POST`
 * **Body**:
     ```json
@@ -711,7 +817,8 @@ Create a new RAG collection. All collections must be associated with an MCP serv
 
 Update a RAG collection's metadata (name, description, MCP server association).
 
-* **Endpoint**: `PUT /v1/rag/collections/{collection_id}`
+* **Endpoint**: `PUT /api/v1/rag/collections/{collection_id}`
+* **Authentication**: Required (JWT or access token)
 * **Method**: `PUT`
 * **URL Parameters**:
     * `collection_id` (integer, required): The collection ID
@@ -733,7 +840,8 @@ Update a RAG collection's metadata (name, description, MCP server association).
 
 Delete a RAG collection and its vector store.
 
-* **Endpoint**: `DELETE /v1/rag/collections/{collection_id}`
+* **Endpoint**: `DELETE /api/v1/rag/collections/{collection_id}`
+* **Authentication**: Required (JWT or access token)
 * **Method**: `DELETE`
 * **URL Parameters**:
     * `collection_id` (integer, required): The collection ID
@@ -746,7 +854,8 @@ Delete a RAG collection and its vector store.
 
 Enable or disable a RAG collection.
 
-* **Endpoint**: `POST /v1/rag/collections/{collection_id}/toggle`
+* **Endpoint**: `POST /api/v1/rag/collections/{collection_id}/toggle`
+* **Authentication**: Required (JWT or access token)
 * **Method**: `POST`
 * **URL Parameters**:
     * `collection_id` (integer, required): The collection ID
@@ -765,7 +874,8 @@ Enable or disable a RAG collection.
 
 Refresh the vector store for a specific collection (rebuilds from case files).
 
-* **Endpoint**: `POST /v1/rag/collections/{collection_id}/refresh`
+* **Endpoint**: `POST /api/v1/rag/collections/{collection_id}/refresh`
+* **Authentication**: Required (JWT or access token)
 * **Method**: `POST`
 * **URL Parameters**:
     * `collection_id` (integer, required): The collection ID
@@ -783,7 +893,8 @@ Refresh the vector store for a specific collection (rebuilds from case files).
 
 Submit user feedback (upvote/downvote) for a RAG case.
 
-* **Endpoint**: `POST /v1/rag/cases/{case_id}/feedback`
+* **Endpoint**: `POST /api/v1/rag/cases/{case_id}/feedback`
+* **Authentication**: Required (JWT or access token)
 * **Method**: `POST`
 * **URL Parameters**:
     * `case_id` (string, required): The case UUID
@@ -1113,8 +1224,7 @@ Get comprehensive analytics across all sessions for the execution dashboard.
 
 * **Endpoint**: `GET /v1/sessions/analytics`
 * **Method**: `GET`
-* **Headers**:
-    * `X-TDA-User-UUID` (string, required): The unique identifier for the user.
+* **Authentication**: Required (JWT or access token)
 * **Success Response**:
     * **Code**: `200 OK`
     * **Content**:
@@ -1151,8 +1261,7 @@ Get a filtered and sorted list of all sessions.
 
 * **Endpoint**: `GET /v1/sessions`
 * **Method**: `GET`
-* **Headers**:
-    * `X-TDA-User-UUID` (string, required): The unique identifier for the user.
+* **Authentication**: Required (JWT or access token)
 * **Query Parameters**:
     * `search` (string, optional): Search query to filter sessions
     * `sort` (string, optional): Sort order - `recent`, `oldest`, `tokens`, `turns` (default: `recent`)
@@ -1189,8 +1298,7 @@ Get complete details for a specific session including timeline and RAG associati
 
 * **Endpoint**: `GET /v1/sessions/{session_id}/details`
 * **Method**: `GET`
-* **Headers**:
-    * `X-TDA-User-UUID` (string, required): The unique identifier for the user.
+* **Authentication**: Required (JWT or access token)
 * **URL Parameters**:
     * `session_id` (string, required): The session UUID
 * **Success Response**:
@@ -1406,16 +1514,30 @@ class TDAClient:
         self.session_id = data.get("session_id")
         return self.session_id
     
-    def submit_query(self, prompt: str, session_id: Optional[str] = None) -> Dict[str, Any]:
-        """Submit a query and return task info"""
+    def submit_query(self, prompt: str, session_id: Optional[str] = None, 
+                    profile_id: Optional[str] = None) -> Dict[str, Any]:
+        """Submit a query and return task info
+        
+        Args:
+            prompt: The natural language query
+            session_id: Session ID (uses self.session_id if not provided)
+            profile_id: Optional profile override (if omitted, uses default profile)
+        
+        Returns:
+            Task information with task_id and status_url
+        """
         sid = session_id or self.session_id
         if not sid:
             raise Exception("No session ID. Call create_session() first.")
         
+        payload = {"prompt": prompt}
+        if profile_id:
+            payload["profile_id"] = profile_id
+        
         response = requests.post(
             f"{self.base_url}/api/v1/sessions/{sid}/query",
             headers=self._get_headers(),
-            json={"prompt": prompt}
+            json=payload
         )
         response.raise_for_status()
         return response.json()
@@ -1455,9 +1577,19 @@ class TDAClient:
         return response.json()
     
     def execute_query(self, prompt: str, session_id: Optional[str] = None, 
-                     wait: bool = True) -> Dict[str, Any]:
-        """Execute a query and optionally wait for completion"""
-        task_info = self.submit_query(prompt, session_id)
+                     wait: bool = True, profile_id: Optional[str] = None) -> Dict[str, Any]:
+        """Execute a query and optionally wait for completion
+        
+        Args:
+            prompt: The natural language query
+            session_id: Session ID (uses self.session_id if not provided)
+            wait: Whether to wait for completion
+            profile_id: Optional profile override
+        
+        Returns:
+            Task information or final result if wait=True
+        """
+        task_info = self.submit_query(prompt, session_id, profile_id)
         task_id = task_info.get("task_id")
         
         if wait:
@@ -1475,18 +1607,23 @@ if __name__ == "__main__":
     # Option 2: Login with credentials
     # client.login("username", "password")
     
-    # Create session and execute query
+    # Create session and execute queries
     session_id = client.create_session()
     print(f"Created session: {session_id}")
     
-    # Submit query and wait for result
-    result = client.execute_query("Show me all available databases")
+    # Query 1: Using default profile
+    result1 = client.execute_query("Show me all available databases")
+    if result1["status"] == "complete":
+        print("Query 1 completed with default profile!")
     
-    if result["status"] == "complete":
-        print("Query completed!")
-        print(f"Result: {result['result']}")
-    else:
-        print(f"Query failed: {result['status']}")
+    # Query 2: Using profile override (execute same session with different profile)
+    result2 = client.execute_query(
+        "Tell me about the current configuration",
+        profile_id="profile-1764006444002-z0hdduce9"  # Override with different profile
+    )
+    if result2["status"] == "complete":
+        print("Query 2 completed with override profile!")
+```
 ```
 
 ### 5.2. Bash/Shell Scripts
@@ -2016,36 +2153,68 @@ def ensure_authenticated(client):
 
 ### 7.2. Configuration Errors
 
-#### "Application not configured"
+#### "No default profile configured for this user"
 
-**Cause:** LLM and MCP server not set up  
-**Solution:** Configure via API or web UI first
+**HTTP Status:** `400 Bad Request`
 
-```bash
-curl -X POST http://localhost:5000/api/v1/configure \
-  -H "Content-Type: application/json" \
-  -d '{
-    "provider": "Google",
-    "model": "gemini-1.5-flash",
-    "credentials": {"apiKey": "YOUR_KEY"},
-    "mcp_server": {
-      "name": "my_server",
-      "host": "localhost",
-      "port": 8001,
-      "path": "/mcp"
-    }
-  }'
-```
+**Cause:** User doesn't have a default profile set up. REST operations require a profile that combines an LLM provider with an MCP server.
+
+**Solution:** 
+1. Configure a profile through the web UI:
+   - Go to **Configuration** panel
+   - Create LLM Configuration (Google, Anthropic, Azure, AWS, Friendli, or Ollama)
+   - Create MCP Server Configuration (point to your data/tools)
+   - Create Profile combining both
+   - Mark Profile as **default** (star icon)
+
+2. Or configure via REST API (see endpoints in Section 3.3)
+
+#### "Profile is incomplete"
+
+**HTTP Status:** `503 Service Unavailable`
+
+**Cause:** Default profile exists but is missing LLM or MCP server configuration
+
+**Solution:**
+1. Edit the profile in Configuration UI
+2. Ensure both LLM Configuration ID and MCP Server ID are set
+3. Save the profile
 
 #### "MCP server connection failed"
 
 **Cause:** MCP server not running or incorrect configuration  
 **Solution:**
 1. Verify MCP server is running
-2. Check host/port/path configuration
+2. Check host/port/path configuration in Profile settings
 3. Test connection: `curl http://localhost:8001/mcp`
 
 ### 7.3. Query Execution Errors
+
+#### "Invalid or non-existent profile_id"
+
+**HTTP Status:** `400 Bad Request`
+
+**Cause:** The `profile_id` specified in the query request doesn't exist or doesn't belong to the user
+
+**Solution:**
+1. Get your available profiles:
+```bash
+curl -X GET http://localhost:5000/api/v1/profiles \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+2. Use a valid profile ID from the list, or omit `profile_id` to use default:
+```bash
+# Without override (uses default profile)
+curl -X POST http://localhost:5000/api/v1/sessions/{id}/query \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"prompt": "Your question"}'
+
+# With valid override
+curl -X POST http://localhost:5000/api/v1/sessions/{id}/query \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"prompt": "Your question", "profile_id": "profile-valid-id"}'
+```
 
 #### Task Status: "error"
 
@@ -2213,15 +2382,18 @@ If you continue to experience issues:
 
 ### Session & Query Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/v1/configure` | Configure LLM & MCP |
-| POST | `/api/v1/sessions` | Create new session |
-| GET | `/api/v1/sessions` | List sessions |
-| GET | `/api/v1/sessions/{id}/details` | Get session details |
-| POST | `/api/v1/sessions/{id}/query` | Submit query |
-| GET | `/api/v1/tasks/{id}` | Get task status |
-| POST | `/api/v1/tasks/{id}/cancel` | Cancel task |
+| Method | Endpoint | Description | Requires Profile |
+|--------|----------|-------------|------------------|
+| POST | `/api/v1/sessions` | Create new session | ✅ Yes (default) |
+| GET | `/api/v1/sessions` | List sessions | ❌ No |
+| GET | `/api/v1/sessions/{id}/details` | Get session details | ❌ No |
+| POST | `/api/v1/sessions/{id}/query` | Submit query | ✅ Default (optional override) |
+| GET | `/api/v1/tasks/{id}` | Get task status | ❌ No |
+| POST | `/api/v1/tasks/{id}/cancel` | Cancel task | ❌ No |
+
+**Profile Requirement Notes:**
+- `POST /api/v1/sessions` requires user to have a **default profile** configured with both LLM Provider and MCP Server. Returns `400` if not configured.
+- `POST /api/v1/sessions/{id}/query` uses the user's **default profile** by default. Accepts optional `profile_id` parameter in request body to override with a different profile. Each query can use a different profile within the same session, and the UI displays the correct profile badge for each message.
 
 ### RAG Endpoints
 
@@ -2244,17 +2416,96 @@ If you continue to experience issues:
 | 200 | OK | Success |
 | 201 | Created | Resource created |
 | 202 | Accepted | Task submitted |
-| 400 | Bad Request | Invalid parameters |
+| 400 | Bad Request | Invalid parameters, no profile configured |
 | 401 | Unauthorized | Missing/invalid token |
 | 403 | Forbidden | Insufficient permissions |
 | 404 | Not Found | Resource doesn't exist |
 | 429 | Too Many Requests | Rate limit exceeded |
 | 500 | Internal Error | Server error |
-| 503 | Service Unavailable | Not configured |
+| 503 | Service Unavailable | Profile incomplete (missing LLM or MCP) |
 
 ---
 
-## 9. Additional Resources
+## 9. API Updates & Migration Notes
+
+### Recent Changes (November 2025)
+
+#### 🎯 Profile Override Feature - NEW
+**What Changed:** `POST /api/v1/sessions/{id}/query` now accepts optional `profile_id` parameter for per-query profile override.
+
+**What This Means:**
+- Execute different queries in the same session with different profiles
+- Each query can use a different LLM/MCP combination
+- UI displays the correct profile badge for each message
+- Provides complete visibility into which profile was used for each query
+
+**Usage:**
+```bash
+# Query with default profile (no profile_id needed)
+curl -X POST http://localhost:5000/api/v1/sessions/{id}/query \
+  -d '{"prompt": "Your question"}'
+
+# Query with profile override
+curl -X POST http://localhost:5000/api/v1/sessions/{id}/query \
+  -d '{"prompt": "Your question", "profile_id": "profile-xxx"}'
+```
+
+**Backward Compatibility:** ✅ Fully backward compatible. Existing code without `profile_id` will continue to work using the default profile.
+
+**See Also:** Section 3.5.1 "Submit a Query" for complete details and examples.
+
+#### 🔄 User-Scoped Sessions & Queries
+**What Changed:** Sessions and queries are now fully user-scoped through JWT/access token authentication.
+
+**Before:**
+- Sessions could be created with just an Authorization header
+- Optional `X-TDA-User-UUID` header to specify user (or default to system UUID)
+- User isolation was not enforced at API level
+
+**Now:**
+- User identity is **always** extracted from the authentication token
+- No custom headers needed - the system automatically associates all resources with the authenticated user
+- 404 responses if you try to access another user's sessions
+- **Migration:** Remove any `X-TDA-User-UUID` header usage from your clients
+
+#### ✅ Unified Endpoint Paths
+**What Changed:** All API endpoints now use consistent `/api/v1/` prefix.
+
+**Impact:**
+- Consistent path structure across all endpoints
+- Documentation updated to reflect correct paths
+- Both styles work during transition period, but use `/api/v1/` for new code
+
+#### 🔐 Authentication Requirements
+**What Changed:** All data-modifying operations now require authentication.
+
+**Current Requirements:**
+- `GET /api/v1/rag/collections` - Public (no auth)
+- `POST/PUT/DELETE` operations - Require JWT or access token
+- Session/query operations - Require authentication
+
+### Migration Guide
+
+**If you were using X-TDA-User-UUID header:**
+
+Before:
+```bash
+curl -X GET http://localhost:5000/api/v1/sessions \
+  -H "X-TDA-User-UUID: user-uuid-here" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+After:
+```bash
+curl -X GET http://localhost:5000/api/v1/sessions \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+The user UUID is now automatically extracted from your token. Remove the `X-TDA-User-UUID` header.
+
+---
+
+## 10. Additional Resources
 
 - **RAG Templates:** `docs/RAG_Templates/README.md`
 - **Authentication Migration:** `docs/AUTH_ONLY_MIGRATION.md`
@@ -2264,6 +2515,6 @@ If you continue to experience issues:
 
 ---
 
-**Last Updated:** November 25, 2025  
+**Last Updated:** November 26, 2025  
 **API Version:** v1  
-**Document Version:** 2.0.0
+**Document Version:** 2.1.0
