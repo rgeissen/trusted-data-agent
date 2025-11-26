@@ -361,7 +361,11 @@ export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIc
             
             // Remove any existing click listeners to prevent duplicates
             const newButton = button.cloneNode(true);
-            button.parentNode.replaceChild(newButton, button);
+            if (button.parentNode) {
+                button.parentNode.replaceChild(newButton, button);
+            } else {
+                console.warn('Button has no parent node - skipping replaceChild');
+            }
             
             // Add fresh event listener to the new button
             newButton.addEventListener('click', (e) => {
@@ -378,7 +382,11 @@ export function setupPanelToggle(button, panel, checkbox, collapseIcon, expandIc
             
             // Remove any existing change listeners and add fresh one
             const newCheckbox = checkbox.cloneNode(true);
-            checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+            if (checkbox.parentNode) {
+                checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+            } else {
+                console.warn('Checkbox has no parent node - skipping replaceChild');
+            }
             
             newCheckbox.addEventListener('change', () => toggle(newCheckbox.checked));
         }
