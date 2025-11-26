@@ -177,10 +177,20 @@ async def get_rag_questions():
                 continue
                 
             try:
-                results = collection.get(include=["metadatas"])
+                # Only get questions from successful and most efficient cases (not downvoted)
+                results = collection.get(
+                    where={"$and": [
+                        {"strategy_type": {"$eq": "successful"}},
+                        {"is_most_efficient": {"$eq": True}},
+                        {"user_feedback_score": {"$gte": 0}}  # Exclude downvoted cases
+                    ]},
+                    include=["metadatas"]
+                )
                 for metadata in results.get("metadatas", []):
-                    if "user_query" in metadata:
-                        questions.add(metadata["user_query"])
+                    user_query = metadata.get("user_query", "")
+                    # Filter out very short queries (< 3 chars) as they're not useful suggestions
+                    if user_query and len(user_query.strip()) >= 3:
+                        questions.add(user_query)
             except Exception as e:
                 app_logger.error(f"Error getting documents from collection {collection.name}: {e}")
         
@@ -194,9 +204,15 @@ async def get_rag_questions():
             continue
             
         try:
+            # Only query successful and most efficient cases (not downvoted)
             results = collection.query(
                 query_texts=[query_text],
                 n_results=limit,
+                where={"$and": [
+                    {"strategy_type": {"$eq": "successful"}},
+                    {"is_most_efficient": {"$eq": True}},
+                    {"user_feedback_score": {"$gte": 0}}  # Exclude downvoted cases
+                ]},
                 include=["metadatas", "distances"]
             )
             
@@ -727,7 +743,9 @@ async def get_collection_rows(collection_id):
             }), 500
 
         limit = request.args.get('limit', default=25, type=int)
-        limit = max(1, min(limit, 100))
+        limit = max(1, min(limit, 200))  # Allow up to 200 rows per request
+        offset = request.args.get('offset', default=0, type=int)
+        offset = max(0, offset)
         query_text = request.args.get('q', default=None, type=str)
         light = request.args.get('light', default='true').lower() == 'true'
 
@@ -839,8 +857,22 @@ async def get_collection_rows(collection_id):
                         app_logger.debug(f"Using cached feedback for {case_id}: {cached_feedback} (was {row.get('user_feedback_score', 0)})")
                         row['user_feedback_score'] = cached_feedback
         
+        # Apply server-side sorting if requested
+        sort_by = request.args.get('sort_by', default=None, type=str)
+        sort_order = request.args.get('sort_order', default='asc', type=str)
+        if sort_by and sort_by in ['id', 'user_query', 'strategy_type', 'user_feedback_score', 'output_tokens', 'timestamp', 'similarity_score']:
+            reverse = sort_order.lower() == 'desc'
+            try:
+                rows.sort(key=lambda x: (x.get(sort_by) is None, x.get(sort_by)), reverse=reverse)
+                app_logger.debug(f"Applied server-side sorting: {sort_by} {sort_order}")
+            except Exception as e:
+                app_logger.debug(f"Sorting failed: {e}")
+        
+        # Apply pagination: offset and limit
+        paginated_rows = rows[offset:offset + limit]
+        
         return jsonify({
-            "rows": rows, 
+            "rows": paginated_rows, 
             "total": total, 
             "query": query_text, 
             "collection_id": collection_id,

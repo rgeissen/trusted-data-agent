@@ -2208,6 +2208,29 @@ function wireCollectionInspectionEvents() {
         DOM.ragCollectionSearchInput.dataset._wired = 'true';
     }
     
+    // Wire infinite scroll pagination on table
+    const tableContainer = document.querySelector('#rag-collection-table-body')?.closest('.overflow-auto');
+    if (tableContainer && !tableContainer.dataset._scrollWired) {
+        let isLoading = false;
+        tableContainer.addEventListener('scroll', () => {
+            // Check if scrolled near bottom (within 200px)
+            if (tableContainer.scrollHeight - tableContainer.scrollTop - tableContainer.clientHeight < 200) {
+                // Only load more if we haven't already and there are more rows
+                if (!isLoading && state.ragCollectionHasMore && state.currentInspectedCollectionId !== null) {
+                    isLoading = true;
+                    console.log('[InfiniteScroll] Loading next segment...');
+                    fetchAndRenderCollectionRows({ 
+                        collectionId: state.currentInspectedCollectionId, 
+                        query: state.ragCollectionSearchTerm || ''
+                    }).finally(() => {
+                        isLoading = false;
+                    });
+                }
+            }
+        });
+        tableContainer.dataset._scrollWired = 'true';
+    }
+    
     // Wire table header sorting
     const thead = document.querySelector('#rag-collection-table-body')?.closest('table')?.querySelector('thead');
     if (thead && !thead.dataset._sortingWired) {
@@ -2221,8 +2244,14 @@ function wireCollectionInspectionEvents() {
                     state.ragCollectionSortKey = sortKey;
                     state.ragCollectionSortDirection = 'asc';
                 }
-                // Re-render with new sort - NO server fetch needed, sorting is client-side
-                renderCollectionRows(state.currentCollectionRows || [], state.currentCollectionTotal || 0, state.ragCollectionSearchTerm || '', state.currentCollectionName || '');
+                // Fetch sorted data from server (server-side sorting) - reset pagination
+                if (state.currentInspectedCollectionId !== null && state.currentInspectedCollectionId !== undefined) {
+                    fetchAndRenderCollectionRows({ 
+                        collectionId: state.currentInspectedCollectionId, 
+                        query: state.ragCollectionSearchTerm || '',
+                        refresh: true
+                    });
+                }
                 updateSortIndicators();
             });
         });
@@ -2232,16 +2261,39 @@ function wireCollectionInspectionEvents() {
 
 async function fetchAndRenderCollectionRows({ collectionId, query = '', refresh = false }) {
     if (collectionId === undefined || collectionId === null) return;
+    
+    // Reset pagination on refresh or new search
+    if (refresh || query !== state.ragCollectionSearchTerm) {
+        state.ragCollectionOffset = 0;
+        state.ragCollectionHasMore = true;
+    }
+    
+    // Store the search term for next comparison
+    state.ragCollectionSearchTerm = query;
+    
     if (DOM.ragCollectionLoading) {
-        DOM.ragCollectionLoading.textContent = query && query.length >= 3 ? 'Searching...' : 'Loading rows...';
+        if (state.ragCollectionOffset === 0) {
+            // Initial load
+            DOM.ragCollectionLoading.textContent = query && query.length >= 3 ? 'Searching...' : 'Loading rows...';
+        } else {
+            // Pagination load
+            DOM.ragCollectionLoading.textContent = 'Loading next segment...';
+        }
         DOM.ragCollectionLoading.style.display = 'block';
     }
     try {
         const params = new URLSearchParams();
-        params.set('limit', '25');
+        const pageSize = 50;  // Reduced from 100 to enable proper pagination batching
+        params.set('limit', pageSize.toString());
+        params.set('offset', state.ragCollectionOffset.toString());
         params.set('light', 'true');
         if (query && query.length >= 3) {
             params.set('q', query);
+        }
+        // Add sorting parameters
+        if (state.ragCollectionSortKey) {
+            params.set('sort_by', state.ragCollectionSortKey);
+            params.set('sort_order', state.ragCollectionSortDirection || 'asc');
         }
         const res = await fetch(`/rag/collections/${collectionId}/rows?${params.toString()}`);
         
@@ -2252,12 +2304,32 @@ async function fetchAndRenderCollectionRows({ collectionId, query = '', refresh 
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         
-        // Store current rows in state for client-side sorting/filtering
-        state.currentCollectionRows = data.rows || [];
-        state.currentCollectionTotal = data.total || 0;
+        const newRows = data.rows || [];
+        const totalAvailable = data.total || 0;
+        
+        // On first load/refresh, replace rows. On pagination, append rows.
+        if (state.ragCollectionOffset === 0) {
+            state.currentCollectionRows = newRows;
+        } else {
+            state.currentCollectionRows = (state.currentCollectionRows || []).concat(newRows);
+        }
+        
+        state.currentCollectionTotal = totalAvailable;
         state.currentCollectionName = data.collection_name || `Collection ${collectionId}`;
         
-        renderCollectionRows(state.currentCollectionRows, state.currentCollectionTotal, query, state.currentCollectionName);
+        // Update offset for next fetch
+        state.ragCollectionOffset += newRows.length;
+        state.ragCollectionHasMore = state.ragCollectionOffset < totalAvailable;
+        
+        // Re-render the table
+        if (state.ragCollectionOffset === newRows.length) {
+            // First load - full render
+            renderCollectionRows(state.currentCollectionRows, state.currentCollectionTotal, query, state.currentCollectionName);
+        } else {
+            // Append new rows - append to table
+            appendCollectionRows(newRows);
+        }
+        
         updateSortIndicators();
     } catch (e) {
         console.error('Failed to fetch collection rows', e);
@@ -2279,6 +2351,42 @@ async function fetchAndRenderCollectionRows({ collectionId, query = '', refresh 
 
 // Export fetchAndRenderCollectionRows so it can be called from other modules (e.g., eventHandlers.js)
 export { fetchAndRenderCollectionRows };
+
+/**
+ * Append new rows to the table (for infinite scroll pagination)
+ */
+function appendCollectionRows(newRows) {
+    if (!DOM.ragCollectionTableBody || !newRows || newRows.length === 0) return;
+    
+    newRows.forEach(r => {
+        const tr = document.createElement('tr');
+        const isSelected = state.currentSelectedCaseId === r.id;
+        const selectedClass = isSelected ? 'bg-orange-500/30 ring-1 ring-orange-400/50' : 'border-b border-gray-700';
+        tr.className = `${selectedClass} hover:bg-gray-800/40 cursor-pointer transition-colors`;
+        
+        const efficientBadge = r.is_most_efficient ? '<span class="px-2 py-0.5 rounded bg-green-600 text-white text-xs">Yes</span>' : '<span class="px-2 py-0.5 rounded bg-gray-600 text-white text-xs">No</span>';
+        
+        let feedbackBadge = '<span class="px-2 py-0.5 rounded bg-gray-600 text-white text-xs">—</span>';
+        if (r.user_feedback_score === 1) {
+            feedbackBadge = '<span class="px-2 py-0.5 rounded bg-green-600 text-white text-xs">👍</span>';
+        } else if (r.user_feedback_score === -1) {
+            feedbackBadge = '<span class="px-2 py-0.5 rounded bg-red-600 text-white text-xs">👎</span>';
+        }
+        
+        tr.innerHTML = `
+            <td class="px-2 py-2 font-mono text-xs text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis">${r.id}</td>
+            <td class="px-2 py-2 text-gray-200 whitespace-nowrap overflow-hidden text-ellipsis">${escapeHtml(r.user_query || '')}</td>
+            <td class="px-2 py-2 text-gray-300 whitespace-nowrap">${r.strategy_type || ''}</td>
+            <td class="px-2 py-2 whitespace-nowrap">${efficientBadge}</td>
+            <td class="px-2 py-2 whitespace-nowrap">${feedbackBadge}</td>
+            <td class="px-2 py-2 text-gray-300 whitespace-nowrap text-right">${r.output_tokens ?? ''}</td>
+            <td class="px-2 py-2 text-gray-400 whitespace-nowrap">${r.timestamp || ''}</td>
+        `;
+        tr.dataset.caseId = r.id;
+        tr.addEventListener('click', () => selectCaseRow(r.id));
+        DOM.ragCollectionTableBody.appendChild(tr);
+    });
+}
 
 function renderCollectionRows(rows, total, query, collectionName) {
     if (!DOM.ragCollectionTableBody) return;

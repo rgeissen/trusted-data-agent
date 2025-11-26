@@ -9,7 +9,7 @@
     "had_plan_improvements": false,
     "had_tactical_improvements": true,
     "timestamp": "2025-11-23T13:35:39.115645+00:00",
-    "user_feedback_score": 0,
+    "user_feedback_score": -1,
     "llm_config": {
       "provider": "Google",
       "model": "gemini-2.0-flash",
