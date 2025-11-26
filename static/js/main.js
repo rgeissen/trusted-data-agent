@@ -521,25 +521,48 @@ async function initializeRAGAutoCompletion() {
             // Handle profile selector navigation
             if (isShowingProfileSelector && currentProfiles.length > 0) {
                 const defaultProfileId = window.configState?.defaultProfileId;
+                const selectableProfiles = currentProfiles.filter(p => p.id !== defaultProfileId);
                 
                 if (e.key === 'ArrowDown') {
                     e.preventDefault();
+                    // If no selectable profiles, don't navigate
+                    if (selectableProfiles.length === 0) return;
+                    
                     let nextIndex = (profileSelectedIndex + 1) % currentProfiles.length;
+                    let iterations = 0;
+                    const maxIterations = currentProfiles.length;
+                    
                     // Skip default profile
-                    while (nextIndex < currentProfiles.length && currentProfiles[nextIndex].id === defaultProfileId) {
+                    while (iterations < maxIterations && currentProfiles[nextIndex].id === defaultProfileId) {
                         nextIndex = (nextIndex + 1) % currentProfiles.length;
+                        iterations++;
                     }
-                    profileSelectedIndex = nextIndex;
-                    highlightProfile(profileSelectedIndex);
+                    
+                    // Only update if we found a selectable profile
+                    if (iterations < maxIterations) {
+                        profileSelectedIndex = nextIndex;
+                        highlightProfile(profileSelectedIndex);
+                    }
                 } else if (e.key === 'ArrowUp') {
                     e.preventDefault();
+                    // If no selectable profiles, don't navigate
+                    if (selectableProfiles.length === 0) return;
+                    
                     let prevIndex = (profileSelectedIndex - 1 + currentProfiles.length) % currentProfiles.length;
+                    let iterations = 0;
+                    const maxIterations = currentProfiles.length;
+                    
                     // Skip default profile
-                    while (prevIndex >= 0 && currentProfiles[prevIndex].id === defaultProfileId) {
+                    while (iterations < maxIterations && currentProfiles[prevIndex].id === defaultProfileId) {
                         prevIndex = (prevIndex - 1 + currentProfiles.length) % currentProfiles.length;
+                        iterations++;
                     }
-                    profileSelectedIndex = prevIndex;
-                    highlightProfile(profileSelectedIndex);
+                    
+                    // Only update if we found a selectable profile
+                    if (iterations < maxIterations) {
+                        profileSelectedIndex = prevIndex;
+                        highlightProfile(profileSelectedIndex);
+                    }
                 } else if ((e.key === 'Tab' || e.key === 'Enter') && profileSelectedIndex >= 0) {
                     e.preventDefault();
                     // Only select if not default profile
