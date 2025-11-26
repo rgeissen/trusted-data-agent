@@ -595,6 +595,9 @@ details.resource-selected > summary {
     transition: width 0.3s ease-in-out, padding 0.3s ease-in-out, border 0.3s ease-in-out;
     flex-shrink: 0;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 #status-window.collapsed, #session-history-panel.collapsed {
     width: 0;
@@ -608,6 +611,47 @@ details.resource-selected > summary {
 }
 #status-window > *, #session-history-panel > * {
      transition: opacity 0.2s ease-in-out;
+}
+
+/* Enable scrolling in status window and session history content */
+#status-window-content {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    min-height: 0 !important;
+    /* Use flex to fill available space, then constrain with overflow */
+    flex: 1 1 auto !important;
+    will-change: overflow;
+    /* Important: set height explicitly to force scrollbar when content overflows */
+    height: 100% !important;
+    max-height: 100% !important;
+}
+
+/* Make scrollbar visible */
+#status-window-content::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+#status-window-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+#status-window-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3) !important;
+    border-radius: 4px !important;
+}
+
+#status-window-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5) !important;
+}
+
+#session-history-panel > div:nth-child(2) {
+    overflow-y: auto !important;
+    min-height: 0;
+}
+
+/* Ensure scroll area is properly constrained */
+#status-window-content > * {
+    box-sizing: border-box;
 }
 
 .session-item {
