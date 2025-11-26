@@ -213,10 +213,10 @@ export function subscribeToNotifications() {
             }
             case 'rest_task_complete':
                 {
-                    const { session_id, turn_id, user_input, final_answer } = data.payload;
+                    const { session_id, turn_id, user_input, final_answer, profile_tag } = data.payload;
                     if (session_id === state.currentSessionId) {
-                        // Add the Q&A to the main chat log
-                        UI.addMessage('user', user_input, turn_id, true, 'rest');
+                        // Add the Q&A to the main chat log with profile tag
+                        UI.addMessage('user', user_input, turn_id, true, 'rest', profile_tag);
                         UI.addMessage('assistant', final_answer, turn_id, true);
                         UI.moveSessionToTop(session_id);
                         UI.setExecutionState(false); // Reset UI execution state

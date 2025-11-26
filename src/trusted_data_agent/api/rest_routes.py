@@ -1209,6 +1209,14 @@ async def execute_query(session_id: str):
             if final_result_payload and task_status_dict and task_status_dict.get("status") == "complete":
                 notification_queues = APP_STATE.get("notification_queues", {}).get(user_uuid, set())
                 if notification_queues:
+                    # Get the session to retrieve profile tag
+                    profile_tag = None
+                    try:
+                        session_data = session_manager.get_session(user_uuid, session_id)
+                        profile_tag = session_data.get("profile_tag") if session_data else None
+                    except Exception as e:
+                        app_logger.warning(f"Could not retrieve profile tag for session {session_id}: {e}")
+                    
                     completion_notification = {
                         "type": "rest_task_complete",
                         "payload": {
@@ -1216,7 +1224,8 @@ async def execute_query(session_id: str):
                             "session_id": session_id,
                             "turn_id": final_result_payload.get("turn_id"),
                             "user_input": prompt,
-                            "final_answer": final_result_payload.get("final_answer")
+                            "final_answer": final_result_payload.get("final_answer"),
+                            "profile_tag": profile_tag
                         }
                     }
                     for queue in notification_queues:
@@ -2598,6 +2607,7 @@ async def create_profile():
         
         if success:
             app_logger.info(f"Created profile with tag: {data.get('tag')} (ID: {data.get('id')})")
+            
             return jsonify({
                 "status": "success",
                 "message": "Profile created successfully",
@@ -3147,6 +3157,7 @@ async def delete_profile(profile_id: str):
             app_logger.info(f"Removed deleted profile {profile_id} from active profiles list")
         
         app_logger.info(f"Deleted profile: {profile_id}")
+        
         return jsonify({
             "status": "success",
             "message": "Profile deleted successfully"
@@ -3175,6 +3186,7 @@ async def set_default_profile(profile_id: str):
         
         if success:
             app_logger.info(f"Set default profile: {profile_id}")
+            
             return jsonify({
                 "status": "success",
                 "message": "Default profile set successfully"
@@ -3223,6 +3235,7 @@ async def set_active_for_consumption_profiles():
             APP_STATE["disabled_tools"] = []
             APP_STATE["disabled_prompts"] = []
             app_logger.info("Cleared active for consumption profiles and disabled lists")
+            
             return jsonify({
                 "status": "success",
                 "message": "Active for consumption profiles cleared successfully"

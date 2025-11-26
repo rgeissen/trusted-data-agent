@@ -1710,7 +1710,7 @@ function initializeConfigTabs() {
 // UI RENDERING - PROFILES
 // ============================================================================
 
-function renderProfiles() {
+export function renderProfiles() {
     const container = document.getElementById('profiles-container');
     if (!container) return;
 
