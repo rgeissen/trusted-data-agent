@@ -1,156 +1,156 @@
 # Trusted Data Agent (TDA) Flowise Integration
 
 ## 1. Overview
-This document details the architecture and configuration of the Flowise workflows used to interface with the Trusted Data Agent (TDA) REST API. The integration is split into two distinct workflows to separate administrative configuration from user interaction.
-
-1.  **TDA Configure:** A one-time or on-demand workflow to initialize the agent’s connection to LLM and MCP services.
-2.  **TDA Conversation:** An interactive chat workflow that manages user sessions, submits asynchronous queries, and polls for results.
+This document details the architecture and configuration of the Flowise workflow used to interface with the Trusted Data Agent (TDA) REST API. The workflow handles user sessions, submits asynchronous queries, and polls for results using modern Bearer token authentication.
 
 ---
-## 2. Agent Flows
-The agent flows are provided as exemplary scripts that can be imported into the flowise environment:
-1. **TDA Configure Agent:** [TDA - Configure Agents.json](./scripts/TDA%20-%20Configure%20Agents.json)
-2. **TDA Conversation Agent:** [TDA - Conversation Agents.json](./scripts/TDA%20-%20Conversation%20Agents.json)
+## 2. Agent Flow
+The agent flow is provided as an exemplary script that can be imported into the Flowise environment:
+- **TDA Conversation Agent:** [TDA - Conversation Agents.json](./scripts/TDA%20-%20Conversation%20Agents.json)
 
 ---
 
-## 3. Workflow A: TDA Configure
-**Purpose:** This workflow performs the mandatory initialization of the TDA server. It must be executed successfully before any queries can be processed.
+## 3. Workflow: TDA Conversation
+**Purpose:** This is the primary user interface flow. It handles the asynchronous "Submit & Poll" pattern required by the TDA API, manages session state, and parses complex JSON responses. Uses modern Bearer token authentication instead of legacy user UUID headers.
 
 ### 3.1. Script Reference
-The agent flow is defined in [TDA - Configure Agents.json](./scripts/TDA%20-%20Configure%20Agents.json).
-
-### 3.2 Visual Architecture
-*(Reference: Screenshot 2025-11-15 at 18.36.24.png)*
-> **Note:** Insert the screenshot of the TDA Configure flow here.
-
-### 3.3 Node Configuration
-
-#### **Node 1: Start Node**
-Defines the global configuration variables required for the TDA connection.
-
-* **Variables:**
-    * `baseUrl`: The root address of the TDA server (e.g., `http://192.168.0.100:5050`).
-    * `provider`: The LLM provider (e.g., `Google`).
-    * `model`: The specific model ID (e.g., `gemini-2.0-flash`).
-    * `apiKey`: The API credential for the LLM provider.
-    * `mcpServerName`: Identifier for the Model Context Protocol server (e.g., `teradata_mcp_server`).
-    * `mcpServerHost`: Host address for the MCP server.
-    * `mcpServerPort`: Port number for the MCP server (e.g., `8888`).
-    * `mcpServerPath`: API path for the MCP server (e.g., `/mcp`).
-    * `tts_credentials_json`: (Optional) JSON string for Text-to-Speech credentials.
-
-#### **Node 2: HTTP Request (TDA Configure)**
-Sends the configuration payload to the TDA API.
-
-* **Method:** `POST`
-* **Endpoint:** `{{baseUrl}}/api/v1/configure`
-* **Headers:** `Content-Type: application/json`
-* **Body Structure:**
-    ```json
-    {
-      "provider": "{{provider}}",
-      "model": "{{model}}",
-      "credentials": {
-        "apiKey": "{{apiKey}}"
-      },
-      "mcp_server": {
-        "name": "{{mcpServerName}}",
-        "host": "{{mcpServerHost}}",
-        "port": {{mcpServerPort}},
-        "path": "{{mcpServerPath}}"
-      },
-      "tts_credentials_json": "{{tts_credentials_json}}"
-    }
-    ```
-    *Note: The `port` field is passed as a number (integer), not a string.*
-
----
-
-## 4. Workflow B: TDA Conversation
-**Purpose:** This is the primary user interface flow. It handles the asynchronous "Submit & Poll" pattern required by the TDA API, manages session state, and parses complex JSON responses.
-
-### 4.1. Script Reference
 The agent flow is defined in [TDA - Conversation Agents.json](./scripts/TDA%20-%20Conversation%20Agents.json).
 
-### 4.2 Visual Architecture
+### 3.2 Visual Architecture
 *(Reference: Screenshot 2025-11-15 at 18.36.36.png)*
 > **Note:** Insert the screenshot of the TDA Conversation flow here.
 
-### 4.3 Node Configuration
+### 3.3 Node Configuration
 
 #### **Node 1: Start Node**
 Accepts runtime variables from the chat interface or calling application.
 
 * **Variables:**
-    * `baseUrl`: The TDA server address.
-    * `userUuid`: A unique identifier for the user (required for API authentication).
+    * `baseUrl`: The TDA server address (e.g., `http://192.168.0.100:5000`).
+    * `jwtToken`: JWT token for authentication (used to obtain Bearer access token).
     * `prompt`: The natural language query from the user.
-    * `sessionId`: (Optional) An existing session ID to maintain context.
+    * `sessionId`: (Optional) An existing session ID to maintain context for multi-turn conversations.
+    * `profileId`: (Optional) Profile ID override to use a specific LLM/MCP combination (uses default if not provided).
 
-#### **Node 2: Custom Tool (TDA Request)**
-Executes the asynchronous API interaction logic.
+#### **Node 2: Custom Function (TDA Request)**
+Executes the modern REST API interaction logic with Bearer token authentication.
 
-* **Logic:**
-    1.  **Session Check:** Checks if `sessionId` is provided. If empty, calls `POST /v1/sessions` to generate a new one.
-    2.  **Submit Query:** Sends the `prompt` to `POST /v1/sessions/{id}/query` and receives a `task_id`.
-    3.  **Poll Loop:** Repeatedly checks `GET /v1/tasks/{task_id}` until the status is `complete`.
-    4.  **Output:** Returns the raw JSON result object.
+* **Authentication Flow:**
+    1.  **Get Access Token:** Uses `$jwtToken` to call `POST /api/v1/auth/tokens` and obtain a long-lived Bearer access token (365-day expiration).
+    2.  **Headers:** All subsequent API calls use `Authorization: Bearer {accessToken}`.
 
-#### **Node 3: Custom JS (Response Extractor)**
-Parses the raw output from the TDA Request node to isolate specific data payloads (specifically TTS data).
+* **Session & Query Logic:**
+    1.  **Session Check:** If `$sessionId` is empty/null, creates a new session via `POST /api/v1/sessions`.
+    2.  **Reuse:** If `$sessionId` is provided, reuses that existing session (enables multi-turn conversations).
+    3.  **Submit Query:** Sends the `$prompt` to `POST /api/v1/sessions/{sessionId}/query` with optional `profile_id` override in the payload.
+    4.  **Receive Task:** Returns `task_id` and `status_url`.
 
-* **Input Variable:** `$apiResponse` (Output from Node 2).
-* **Script:**
+* **Polling Logic:**
+    1.  **Poll Interval:** Checks status every 2 seconds.
+    2.  **Max Polls:** 360 polls (12-minute timeout).
+    3.  **Status Handling:**
+        * `complete`: Task finished, extract `result`.
+        * `error`: Task failed, throw error with details.
+        * `cancelled`: Task was cancelled by user/system.
+        * `pending` / `processing`: Continue polling.
+
+* **Output Variables:**
+    * `baseUrl`: Original base URL.
+    * `prompt`: Original prompt text.
+    * `sessionId`: Session ID (newly created or reused).
+    * `taskId`: Task ID from query submission.
+    * `result`: Full result object containing `tts_payload`.
+    * `finalAnswer`: Direct answer or executive summary extracted from result.
+    * `turnId`: Turn ID from result.
+    * `profileTag`: Profile tag from result.
+
+#### **Node 3: Custom Function (Response Extractor)**
+Parses the raw output from the TDA Request node to isolate TTS payload data and preserve metadata.
+
+* **Input Variables:**
+    * `$apiResponse`: Output from Node 2 (TDA Request).
+    * Flow state variables for reference: `$baseUrl`, `$jwtToken`, `$sessionId`, `$prompt`.
+
+* **Script Logic:**
     ```javascript
-    // Variable to hold the parsed object
-    let responseObj;
+    // Parse the API response from TDA Request
+    let responseObj = $apiResponse;
 
-    // Check if $apiResponse is a string that needs parsing
+    // If it's a string, parse it
     if (typeof $apiResponse === 'string') {
-      try {
-        responseObj = JSON.parse($apiResponse);
-      } catch (e) {
-        return { error: "Failed to parse apiResponse string." };
-      }
-    } else {
-      // If it's not a string, assume it's already an object
-      responseObj = $apiResponse;
+        try {
+            responseObj = JSON.parse($apiResponse);
+        } catch (e) {
+            return { error: "Failed to parse apiResponse" };
+        }
     }
 
-    // Check for tts_payload in the object
-    if (responseObj && responseObj.tts_payload) {
-      // Get the nested tts_payload object
-      const payload = responseObj.tts_payload;
+    // Check if we have an error
+    if (responseObj && responseObj.error) {
+        return { error: responseObj.error };
+    }
 
-      // Create the new, single target JSON
-      const targetJson = {
-        direct_answer: payload.direct_answer,
-        key_observations: payload.key_observations,
-        synthesis: payload.synthesis
-      };
-      
-      // Return the new object
-      return targetJson;
-
+    // Extract the result object
+    if (responseObj && responseObj.result) {
+        const result = responseObj.result;
+        
+        // Check for tts_payload in the result
+        if (result && result.tts_payload) {
+            const payload = result.tts_payload;
+            
+            // Return the extracted tts_payload with the key fields
+            return {
+                direct_answer: payload.direct_answer || '',
+                key_observations: payload.key_observations || '',
+                synthesis: payload.synthesis || '',
+                baseUrl: responseObj.baseUrl,
+                prompt: responseObj.prompt,
+                sessionId: responseObj.sessionId,
+                taskId: responseObj.taskId,
+                turnId: responseObj.turnId,
+                profileTag: responseObj.profileTag
+            };
+        } else {
+            // If no tts_payload, return the result as-is with main fields
+            return {
+                direct_answer: result.direct_answer || '',
+                key_observations: result.key_observations || '',
+                synthesis: result.synthesis || '',
+                baseUrl: responseObj.baseUrl,
+                prompt: responseObj.prompt,
+                sessionId: responseObj.sessionId,
+                taskId: responseObj.taskId,
+                turnId: responseObj.turnId,
+                profileTag: responseObj.profileTag
+            };
+        }
     } else {
-      // Handle cases where tts_payload is truly missing
-      return {
-        error: "tts_payload not found in the parsed apiResponse object."
-      };
+        return { error: "Invalid response structure" };
     }
     ```
 
+* **Output:** Structured object with extracted TTS payload and session metadata for downstream nodes.
+
 #### **Node 4: Formatter (Optional)**
-(Description depends on specific configuration, but generally used to convert the JSON object from Node 3 into a human-readable Markdown string for the chat window).
+Converts the JSON object from Node 3 into a human-readable Markdown string for the chat window.
+
+* **Input:** `$cleanData` (Output from Response Extractor).
+* **Output:** Formatted Markdown with Answer, Key Observations, and Synthesis sections.
 
 ---
 
-## 5. Troubleshooting
+## 4. Troubleshooting
 
 | Error | Probable Cause | Solution |
 | :--- | :--- | :--- |
-| **500 Internal Server Error (Configure)** | Invalid JSON format (e.g., Port sent as string). | Ensure `mcpServerPort` is passed as an integer in the JSON body. Verify `mcpServerName` contains no spaces. |
-| **405 Method Not Allowed** | Incorrect URL pathing. | Check if `baseUrl` includes the endpoint path (e.g., `/api/v1`). `baseUrl` should only contain `http://IP:PORT`. |
-| **Session ID Not Found** | Expired or invalid Session UUID. | Clear the `sessionId` input to force the workflow to generate a new session. |
-| **Task Timed Out** | Query complexity exceeds polling limit. | Increase the `maxPolls` variable in the TDA Request Custom Tool script. |
+| **Token failed: 401 Unauthorized** | Invalid or expired JWT token. | Verify the `jwtToken` is valid and hasn't expired. Regenerate if necessary. |
+| **Failed to get access token** | JWT token is invalid or revoked. | Check that the JWT token format is correct (typically starts with `tda_`). Regenerate from admin panel if needed. |
+| **Session failed** | Bearer token is invalid or expired. | Access tokens expire after 365 days. If issues persist, clear `sessionId` and restart the workflow. |
+| **Session {id} not found or expired** | The provided `sessionId` no longer exists. | Clear the `sessionId` input to force creation of a new session. |
+| **Query failed: 404** | Session ID is invalid or expired. | Retry without providing a `sessionId` to create a fresh session. |
+| **Task error** | Query execution failed in TDA backend. | Check TDA logs and verify profile configuration. |
+| **Task timeout** | Query complexity exceeds polling limit (360 polls × 2s = 12 minutes). | Increase `maxPolls` in the TDA Request custom function. Simplify query if possible. |
+| **Failed to parse apiResponse** | Response Extractor received invalid data format. | Verify TDA Request node output. Check for errors in the result object. |
+| **tts_payload not found** | Result doesn't contain expected TTS data structure. | Verify the profile being used returns TTS payload. Check agent execution logs. |
+| **baseUrl is not defined** | Flow state variable not properly initialized. | Ensure Start node has `baseUrl` set in initial Flow State. |
+| **Invalid response structure** | Result object structure doesn't match expectations. | Check TDA API response format. Verify profile configuration. |

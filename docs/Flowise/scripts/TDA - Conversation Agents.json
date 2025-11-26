@@ -180,24 +180,20 @@
           "startEphemeralMemory": "",
           "startState": [
             {
-              "key": "Connection_Result",
-              "value": ""
-            },
-            {
-              "key": "Connection_Status",
-              "value": ""
-            },
-            {
               "key": "baseUrl",
-              "value": "http://192.168.0.100:5050"
+              "value": "http://192.168.0.91:5000"
             },
             {
-              "key": "userUuid",
-              "value": ""
+              "key": "jwtToken",
+              "value": "tda_RxdOSgnLXswz02FwOnaez4PNvErpSYVm"
             },
             {
               "key": "sessionId",
-              "value": ""
+              "value": "ce99e4fc-f2fc-4359-a38b-b5129e747881"
+            },
+            {
+              "key": "profileId",
+              "value": "profile-1763993711628-vvbh23q09"
             }
           ],
           "startPersistState": ""
@@ -212,7 +208,7 @@
         "outputs": {},
         "selected": false
       },
-      "width": 103,
+      "width": 102,
       "height": 65,
       "selected": false,
       "dragging": false,
@@ -224,7 +220,7 @@
     {
       "id": "customFunctionAgentflow_1",
       "position": {
-        "x": 284.57621029559186,
+        "x": 285.1122292221396,
         "y": 86.31035974531679
       },
       "data": {
@@ -307,8 +303,8 @@
               "variableValue": "<p><span class=\"variable\" data-type=\"mention\" data-id=\"$flow.state.baseUrl\" data-label=\"$flow.state.baseUrl\">{{ $flow.state.baseUrl }}</span> </p>"
             },
             {
-              "variableName": "userUuid",
-              "variableValue": "<p><span class=\"variable\" data-type=\"mention\" data-id=\"$flow.state.userUuid\" data-label=\"$flow.state.userUuid\">{{ $flow.state.userUuid }}</span> </p>"
+              "variableName": "jwtToken",
+              "variableValue": "<p><span class=\"variable\" data-type=\"mention\" data-id=\"$flow.state.jwtToken\" data-label=\"$flow.state.jwtToken\">{{ $flow.state.jwtToken }}</span> </p>"
             },
             {
               "variableName": "prompt",
@@ -317,15 +313,14 @@
             {
               "variableName": "sessionId",
               "variableValue": "<p><span class=\"variable\" data-type=\"mention\" data-id=\"$flow.state.sessionId\" data-label=\"$flow.state.sessionId\">{{ $flow.state.sessionId }}</span> </p>"
-            }
-          ],
-          "customFunctionJavascriptFunction": "const fetch = require('node-fetch');\n\n// --- Configuration ---\n// $baseUrl, $userUuid, $prompt, $sessionId come from Input Variables\n\n// --- Helper Function for Polling ---\nconst sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));\n\nconst HEADERS = {\n    'Content-Type': 'application/json',\n    'X-TDA-User-UUID': $userUuid\n};\n\ntry {\n    let activeSessionId = $sessionId;\n\n    // === STEP 1: Check or Create Session ===\n    // If no session ID is provided, we create one.\n    if (!activeSessionId || activeSessionId.trim() === \"\") {\n        const sessionResp = await fetch(`${$baseUrl}/api/v1/sessions`, {\n            method: 'POST',\n            headers: HEADERS\n        });\n\n        if (!sessionResp.ok) throw new Error(`Session Create Failed: ${sessionResp.statusText}`);\n        const sessionData = await sessionResp.json();\n        activeSessionId = sessionData.session_id;\n        \n        // Optional: Log that we created a new session\n        // console.log(`Created new session: ${activeSessionId}`);\n    }\n\n    // === STEP 2: Submit the Query (API Section 3.3) ===\n    // We use activeSessionId (either the one provided or the one we just created)\n    const queryResponse = await fetch(`${$baseUrl}/api/v1/sessions/${activeSessionId}/query`, {\n        method: 'POST',\n        headers: HEADERS,\n        body: JSON.stringify({\n            prompt: $prompt \n        })\n    });\n\n    // Handle invalid session ID case (e.g. expired session provided)\n    if (queryResponse.status === 404) {\n        throw new Error(`Session ${activeSessionId} not found or expired. Please try again without a session ID.`);\n    }\n\n    if (queryResponse.status !== 202) {\n        throw new Error(`Failed to submit query: ${queryResponse.statusText}`);\n    }\n\n    const taskData = await queryResponse.json();\n    const statusUrl = taskData.status_url; \n\n    // === STEP 3: Poll for the Result (API Section 3.4) ===\n    let taskComplete = false;\n    let finalResult = null;\n    let pollCount = 0;\n    const maxPolls = 60; \n\n    while (!taskComplete && pollCount < maxPolls) {\n        // Construct full URL using baseUrl + relative statusUrl\n        const statusResponse = await fetch(`${$baseUrl}${statusUrl}`, {\n            headers: HEADERS\n        });\n        \n        const statusData = await statusResponse.json();\n\n        switch (statusData.status) {\n            case 'complete':\n                taskComplete = true;\n                finalResult = statusData.result;\n                break;\n            case 'error':\n                throw new Error(`Agent Error: ${JSON.stringify(statusData.result)}`);\n            case 'cancelled':\n                throw new Error('Task was cancelled');\n            case 'pending':\n            case 'processing':\n                pollCount++;\n                await sleep(2000);\n                break;\n            default:\n                throw new Error(`Unknown status: ${statusData.status}`);\n        }\n    }\n\n    if (!finalResult) throw new Error(\"Task timed out.\");\n\n    // === STEP 4: Return the Answer ===\n    if (finalResult.direct_answer) {\n        return finalResult.direct_answer;\n    } else if (finalResult.executive_summary) {\n        return finalResult.executive_summary;\n    } else {\n        return JSON.stringify(finalResult);\n    }\n\n} catch (e) {\n    return `Error: ${e.message}`;\n}",
-          "customFunctionUpdateState": [
+            },
             {
-              "key": "",
-              "value": ""
+              "variableName": "profileId",
+              "variableValue": "<p><span class=\"variable\" data-type=\"mention\" data-id=\"$flow.state.profileId\" data-label=\"$flow.state.profileId\">{{ $flow.state.profileId }}</span> </p>"
             }
           ],
+          "customFunctionJavascriptFunction": "/**\n * TDA Modern REST API Integration for Flowise\n * Adapted from legacy X-TDA-User-UUID approach to modern Bearer token authentication\n * \n * Input Variables Required:\n * - $baseUrl: TDA API endpoint (e.g., http://localhost:5000)\n * - $jwtToken: JWT token for authentication\n * - $prompt: The question/prompt to execute\n * - $sessionId (optional): Existing session ID to reuse\n * - $profileId (optional): Profile ID override (uses default if not provided)\n * \n * Output Variables Created:\n * - baseUrl: Original base URL\n * - prompt: Original prompt\n * - sessionId: Session ID (created or reused)\n * - taskId: Task ID from query submission\n * - result: Full result object with tts_payload\n * - finalAnswer: Direct answer or executive summary\n * - turnId: Turn ID from result\n * - profileTag: Profile tag from result\n */\n\nconst fetch = require('node-fetch');\n\n// --- Helper Function for Polling ---\nconst sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));\n\ntry {\n    // ===== STEP 1: Get/Create Access Token =====\n    // Modern approach: Use JWT token to get a long-lived access token\n    const tokenName = `flowise-token-${Date.now()}`;\n    const expiresInDays = 365;\n    \n    const tokenResponse = await fetch(`${$baseUrl}/api/v1/auth/tokens`, {\n        method: 'POST',\n        headers: {\n            'Content-Type': 'application/json',\n            'Authorization': `Bearer ${$jwtToken}`\n        },\n        body: JSON.stringify({\n            name: tokenName,\n            expires_in_days: expiresInDays\n        })\n    });\n    \n    if (!tokenResponse.ok) {\n        const error = await tokenResponse.json();\n        throw new Error(`Failed to get access token: ${error.error || tokenResponse.statusText}`);\n    }\n    \n    const tokenData = await tokenResponse.json();\n    const accessToken = tokenData.token;\n    \n    // === STEP 2: Create or Reuse Session ===\n    // Modern approach: Use Bearer token instead of X-TDA-User-UUID header\n    const HEADERS = {\n        'Content-Type': 'application/json',\n        'Authorization': `Bearer ${accessToken}`\n    };\n    \n    let activeSessionId = $sessionId;\n    \n    if (!activeSessionId || activeSessionId.trim() === '') {\n        const sessionResp = await fetch(`${$baseUrl}/api/v1/sessions`, {\n            method: 'POST',\n            headers: HEADERS\n        });\n        \n        if (!sessionResp.ok) {\n            throw new Error(`Session Create Failed: ${sessionResp.statusText}`);\n        }\n        \n        const sessionData = await sessionResp.json();\n        activeSessionId = sessionData.session_id;\n    }\n    \n    // === STEP 3: Submit the Query ===\n    // Modern approach: Can include profile_id override\n    const queryPayload = {\n        prompt: $prompt\n    };\n    \n    // Add profile override if provided\n    if ($profileId && $profileId.trim() !== '') {\n        queryPayload.profile_id = $profileId;\n    }\n    \n    const queryResponse = await fetch(`${$baseUrl}/api/v1/sessions/${activeSessionId}/query`, {\n        method: 'POST',\n        headers: HEADERS,\n        body: JSON.stringify(queryPayload)\n    });\n    \n    // Handle invalid session ID case (e.g. expired session provided)\n    if (queryResponse.status === 404) {\n        throw new Error(`Session ${activeSessionId} not found or expired. Please try again without a session ID.`);\n    }\n    \n    if (queryResponse.status !== 202) {\n        throw new Error(`Failed to submit query: ${queryResponse.statusText}`);\n    }\n    \n    const taskData = await queryResponse.json();\n    const taskId = taskData.task_id;\n    const statusUrl = taskData.status_url;\n    \n    // === STEP 4: Poll for the Result ===\n    let taskComplete = false;\n    let finalResult = null;\n    let pollCount = 0;\n    const maxPolls = 360; // 12 minutes with 2s intervals (same polling logic as legacy)\n    \n    while (!taskComplete && pollCount < maxPolls) {\n        // Construct full URL using baseUrl + relative statusUrl\n        const statusResponse = await fetch(`${$baseUrl}${statusUrl}`, {\n            headers: HEADERS\n        });\n        \n        const statusData = await statusResponse.json();\n        \n        switch (statusData.status) {\n            case 'complete':\n                taskComplete = true;\n                finalResult = statusData.result;\n                break;\n            case 'error':\n                throw new Error(`Agent Error: ${JSON.stringify(statusData.result)}`);\n            case 'cancelled':\n                throw new Error('Task was cancelled');\n            case 'pending':\n            case 'processing':\n                pollCount++;\n                await sleep(2000); // 2 second polling interval (same as legacy)\n                break;\n            default:\n                throw new Error(`Unknown status: ${statusData.status}`);\n        }\n    }\n    \n    if (!finalResult) {\n        throw new Error('Task timed out.');\n    }\n    \n    // === STEP 5: Return Output Variables ===\n    // Return the complete result object for Response Extractor to parse\n    return {\n        baseUrl: $baseUrl,\n        prompt: $prompt,\n        sessionId: activeSessionId,\n        taskId: taskId,\n        result: finalResult,\n        finalAnswer: finalResult.direct_answer || finalResult.executive_summary || JSON.stringify(finalResult),\n        turnId: finalResult.turn_id || '',\n        profileTag: finalResult.profile_tag || ''\n    };\n    \n} catch (e) {\n    return { error: `Error: ${e.message}` };\n}\n",
+          "customFunctionUpdateState": [],
           "undefined": ""
         },
         "outputAnchors": [
@@ -342,7 +337,7 @@
       "width": 156,
       "height": 65,
       "positionAbsolute": {
-        "x": 284.57621029559186,
+        "x": 285.1122292221396,
         "y": 86.31035974531679
       },
       "selected": false,
@@ -351,7 +346,7 @@
     {
       "id": "customFunctionAgentflow_0",
       "position": {
-        "x": 498.9911593402718,
+        "x": 498.45514041372405,
         "y": 86.63040396185524
       },
       "data": {
@@ -432,9 +427,25 @@
             {
               "variableName": "apiResponse",
               "variableValue": "<p><span class=\"variable\" data-type=\"mention\" data-id=\"customFunctionAgentflow_1\" data-label=\"customFunctionAgentflow_1\">{{ customFunctionAgentflow_1 }}</span> </p>"
+            },
+            {
+              "variableName": "baseUrl",
+              "variableValue": "<p><span class=\"variable\" data-type=\"mention\" data-id=\"$flow.state.baseUrl\" data-label=\"$flow.state.baseUrl\">{{ $flow.state.baseUrl }}</span> </p>"
+            },
+            {
+              "variableName": "jwtToken",
+              "variableValue": "<p><span class=\"variable\" data-type=\"mention\" data-id=\"$flow.state.jwtToken\" data-label=\"$flow.state.jwtToken\">{{ $flow.state.jwtToken }}</span> </p>"
+            },
+            {
+              "variableName": "sessionId",
+              "variableValue": "<p><span class=\"variable\" data-type=\"mention\" data-id=\"$flow.state.sessionId\" data-label=\"$flow.state.sessionId\">{{ $flow.state.sessionId }}</span> </p>"
+            },
+            {
+              "variableName": "prompt",
+              "variableValue": "<p><span class=\"variable\" data-type=\"mention\" data-id=\"question\" data-label=\"question\">{{ question }}</span> </p>"
             }
           ],
-          "customFunctionJavascriptFunction": "// Variable to hold the parsed object\nlet responseObj;\n\n// Check if $apiResponse is a string that needs parsing\nif (typeof $apiResponse === 'string') {\n  try {\n    responseObj = JSON.parse($apiResponse);\n  } catch (e) {\n    return { error: \"Failed to parse apiResponse string.\" };\n  }\n} else {\n  // If it's not a string, assume it's already an object\n  responseObj = $apiResponse;\n}\n\n// Now, check for tts_payload in the object\nif (responseObj && responseObj.tts_payload) {\n  \n  // Get the nested tts_payload object\n  const payload = responseObj.tts_payload;\n\n  // Create the new, single target JSON\n  const targetJson = {\n    direct_answer: payload.direct_answer,\n    key_observations: payload.key_observations,\n    synthesis: payload.synthesis\n  };\n  \n  // Return the new object\n  return targetJson;\n\n} else {\n  // Handle cases where tts_payload is truly missing\n  return {\n    error: \"tts_payload not found in the parsed apiResponse object.\"\n  };\n}",
+          "customFunctionJavascriptFunction": "// Parse the API response from TDA Request\nlet responseObj = $apiResponse;\n\n// If it's a string, parse it\nif (typeof $apiResponse === 'string') {\n    try {\n        responseObj = JSON.parse($apiResponse);\n    } catch (e) {\n        return { error: \"Failed to parse apiResponse\" };\n    }\n}\n\n// Check if we have an error\nif (responseObj && responseObj.error) {\n    return { error: responseObj.error };\n}\n\n// Extract the result object\nif (responseObj && responseObj.result) {\n    const result = responseObj.result;\n    \n    // Check for tts_payload in the result\n    if (result && result.tts_payload) {\n        const payload = result.tts_payload;\n        \n        // Return the extracted tts_payload with the key fields\n        return {\n            direct_answer: payload.direct_answer || '',\n            key_observations: payload.key_observations || '',\n            synthesis: payload.synthesis || '',\n            baseUrl: responseObj.baseUrl,\n            prompt: responseObj.prompt,\n            sessionId: responseObj.sessionId,\n            taskId: responseObj.taskId,\n            turnId: responseObj.turnId,\n            profileTag: responseObj.profileTag\n        };\n    } else {\n        // If no tts_payload, return the result as-is with main fields\n        return {\n            direct_answer: result.direct_answer || '',\n            key_observations: result.key_observations || '',\n            synthesis: result.synthesis || '',\n            baseUrl: responseObj.baseUrl,\n            prompt: responseObj.prompt,\n            sessionId: responseObj.sessionId,\n            taskId: responseObj.taskId,\n            turnId: responseObj.turnId,\n            profileTag: responseObj.profileTag\n        };\n    }\n} else {\n    return { error: \"Invalid response structure\" };\n}",
           "customFunctionUpdateState": ""
         },
         "outputAnchors": [
@@ -453,7 +464,7 @@
       "selected": false,
       "dragging": false,
       "positionAbsolute": {
-        "x": 498.9911593402718,
+        "x": 498.45514041372405,
         "y": 86.63040396185524
       }
     },
@@ -558,7 +569,7 @@
         "selected": false
       },
       "type": "agentFlow",
-      "width": 135,
+      "width": 134,
       "height": 65,
       "selected": false,
       "dragging": false,
