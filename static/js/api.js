@@ -447,6 +447,35 @@ export async function updateTurnFeedback(sessionId, turnId, vote) {
 }
 // --- MODIFICATION END ---
 
+// --- MODIFICATION START: Add updateRAGCaseFeedback function ---
+/**
+ * Sends a request to the backend to update the feedback (upvote/downvote) directly for a RAG case.
+ * This endpoint works independently of sessions and is used when the session may no longer exist.
+ * @param {string} caseId The RAG case ID (with or without 'case_' prefix).
+ * @param {string|null} vote The vote value: 'up', 'down', or null to clear.
+ * @returns {Promise<object>} A promise that resolves with the server's response.
+ */
+export async function updateRAGCaseFeedback(caseId, vote) {
+    if (!caseId) {
+        throw new Error("Case ID is required to update feedback.");
+    }
+    
+    const response = await fetch(`/api/rag/cases/${encodeURIComponent(caseId)}/feedback`, {
+        method: 'POST',
+        headers: _getHeaders(),
+        body: JSON.stringify({ vote }),
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+        throw new Error(result.message || `Failed to update case feedback (status ${response.status}).`);
+    }
+    
+    // Return the result including any warning
+    return result;
+}
+// --- MODIFICATION END ---
+
 // ============================================================================
 // PROFILE MANAGEMENT API
 // ============================================================================

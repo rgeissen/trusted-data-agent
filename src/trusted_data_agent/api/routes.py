@@ -827,6 +827,18 @@ async def get_collection_rows(collection_id):
                     })
             except Exception as ge:
                 app_logger.error(f"Sampling failed for collection '{collection_name}': {ge}", exc_info=True)
+        
+        # Override feedback scores from cache for consistency (cache is source of truth after updates)
+        retriever = APP_STATE.get('rag_retriever_instance')
+        if retriever and hasattr(retriever, 'get_feedback_score'):
+            for row in rows:
+                case_id = row.get('id')
+                if case_id:
+                    cached_feedback = retriever.get_feedback_score(case_id)
+                    if cached_feedback != row.get('user_feedback_score', 0):
+                        app_logger.debug(f"Using cached feedback for {case_id}: {cached_feedback} (was {row.get('user_feedback_score', 0)})")
+                        row['user_feedback_score'] = cached_feedback
+        
         return jsonify({
             "rows": rows, 
             "total": total, 
@@ -1675,4 +1687,113 @@ async def update_turn_feedback_route(session_id: str, turn_id: int):
         return jsonify({"status": "success", "message": f"Turn {turn_id} feedback updated."}), 200
     else:
         return jsonify({"status": "error", "message": "Failed to update turn feedback."}), 500
+# --- MODIFICATION END ---
+
+# --- MODIFICATION START: Add endpoint for direct RAG case feedback (works without session) ---
+@api_bp.route("/api/rag/cases/<case_id>/feedback", methods=["POST"])
+async def update_rag_case_feedback_route(case_id: str):
+    """
+    Updates the feedback (upvote/downvote) directly for a RAG case.
+    This endpoint works independently of sessions and is used when updating feedback
+    from the RAG collection view (e.g., when the session may no longer exist).
+    
+    Args:
+        case_id: The case ID (with or without 'case_' prefix)
+        vote: 'up', 'down', or None to clear
+    """
+    user_uuid = _get_user_uuid_from_request()
+    if not user_uuid:
+        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
+    
+    data = await request.get_json()
+    vote = data.get("vote")  # Expected: 'up', 'down', or None
+    
+    if vote not in ['up', 'down', None]:
+        return jsonify({"status": "error", "message": "Invalid vote. Must be 'up', 'down', or None."}), 400
+    
+    app_logger.info(f"Direct RAG case feedback update request for case {case_id}, user {user_uuid}: {vote}")
+    
+    try:
+        # Get the RAG retriever instance
+        retriever = APP_STATE.get('rag_retriever_instance')
+        if not retriever:
+            return jsonify({"status": "error", "message": "RAG system not initialized."}), 500
+        
+        # Convert vote to feedback score
+        feedback_score = 1 if vote == 'up' else -1 if vote == 'down' else 0
+        
+        # Update the case feedback directly (handles both JSON and ChromaDB updates)
+        try:
+            loop = asyncio.get_running_loop()
+            # We're in an async context
+            success = await retriever.update_case_feedback(case_id, feedback_score)
+        except RuntimeError:
+            # No running loop, create new one
+            success = await asyncio.new_event_loop().run_until_complete(
+                retriever.update_case_feedback(case_id, feedback_score)
+            )
+        
+        if success:
+            action = "upvoted" if vote == 'up' else "downvoted" if vote == 'down' else "cleared"
+            app_logger.info(f"Successfully {action} RAG case {case_id} by user {user_uuid}")
+            
+            # Check if the original session still exists (for warning purposes)
+            session_warning = None
+            case_metadata = None
+            try:
+                project_root = Path(__file__).resolve().parents[3]
+                cases_dir = project_root / 'rag' / 'tda_rag_cases'
+                file_stem = case_id if case_id.startswith('case_') else f'case_{case_id}'
+                case_path = cases_dir / f"{file_stem}.json"
+                
+                # Search in collection directories if not found at root
+                if not case_path.exists():
+                    for collection_dir in cases_dir.glob("collection_*"):
+                        if collection_dir.is_dir():
+                            potential_path = collection_dir / f"{file_stem}.json"
+                            if potential_path.exists():
+                                case_path = potential_path
+                                break
+                
+                if case_path.exists():
+                    with open(case_path, 'r', encoding='utf-8') as f:
+                        case_data = json.load(f)
+                    case_metadata = case_data.get('metadata', {})
+                    session_id = case_metadata.get('session_id')
+                    
+                    # Check if session file exists
+                    if session_id:
+                        sessions_root = project_root / 'tda_sessions'
+                        session_found = False
+                        if sessions_root.exists():
+                            for user_dir in sessions_root.iterdir():
+                                if user_dir.is_dir():
+                                    session_file = user_dir / f"{session_id}.json"
+                                    if session_file.exists():
+                                        session_found = True
+                                        break
+                        
+                        if not session_found:
+                            session_warning = f"Note: Original session (ID: {session_id[:8]}...) no longer exists, but RAG case has been updated successfully."
+                            app_logger.info(f"Session {session_id} not found for case {case_id}, but feedback updated anyway")
+            except Exception as e:
+                app_logger.debug(f"Could not check session existence: {e}")
+            
+            response_data = {
+                "status": "success", 
+                "message": f"Case {case_id} feedback {action}.",
+                "case_id": case_id,
+                "feedback_score": feedback_score
+            }
+            if session_warning:
+                response_data["warning"] = session_warning
+            
+            return jsonify(response_data), 200
+        else:
+            app_logger.warning(f"Failed to update feedback for case {case_id}: update_case_feedback returned False")
+            return jsonify({"status": "error", "message": f"Case {case_id} not found or failed to update."}), 404
+    
+    except Exception as e:
+        app_logger.error(f"Error updating RAG case feedback for case {case_id}: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": f"Failed to update case feedback: {str(e)}"}), 500
 # --- MODIFICATION END ---

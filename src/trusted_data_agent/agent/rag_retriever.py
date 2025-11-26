@@ -53,6 +53,9 @@ class RAGRetriever:
         # Store collections as a dict: {collection_id: chromadb_collection_object}
         self.collections = {}
         
+        # Initialize feedback cache: maps case_id -> feedback_score
+        self.feedback_cache = {}
+        
         # Initialize default collection if not already in APP_STATE
         self._ensure_default_collection()
         
@@ -64,6 +67,9 @@ class RAGRetriever:
         
         # Auto-rebuild ChromaDB from JSON files if collections are empty
         self._auto_rebuild_if_needed()
+        
+        # Load feedback cache from case files
+        self._load_feedback_cache()
         # --- MODIFICATION END ---
 
     def _ensure_default_collection(self):
@@ -460,9 +466,53 @@ class RAGRetriever:
             for coll_id in self.collections:
                 self._maintain_vector_store(coll_id)
 
+    def _load_feedback_cache(self):
+        """
+        Load all feedback scores from case files into memory cache.
+        Called at startup to build initial cache.
+        """
+        try:
+            self.feedback_cache = {}
+            
+            for collection_id in self.collections.keys():
+                collection_dir = self._get_collection_dir(collection_id)
+                if not collection_dir.exists():
+                    continue
+                
+                for case_file in collection_dir.glob('case_*.json'):
+                    try:
+                        with open(case_file, 'r', encoding='utf-8') as f:
+                            case_data = json.load(f)
+                        case_id = case_data.get('case_id', case_file.stem.replace('case_', ''))
+                        feedback = case_data.get('metadata', {}).get('user_feedback_score', 0)
+                        
+                        # Store both formats in cache for compatibility
+                        # ChromaDB returns case_id with "case_" prefix, filesystem ID without
+                        self.feedback_cache[case_id] = feedback
+                        self.feedback_cache[f'case_{case_id}'] = feedback
+                    except Exception as e:
+                        logger.debug(f"Error loading cache for {case_file}: {e}")
+            
+            logger.info(f"Loaded feedback cache with {len(self.feedback_cache)} entries")
+        except Exception as e:
+            logger.error(f"Error loading feedback cache: {e}")
+
+    def get_feedback_score(self, case_id: str) -> int:
+        """
+        Get feedback score from cache.
+        
+        Args:
+            case_id: The case ID to lookup
+            
+        Returns:
+            Feedback score (1, 0, or -1), defaults to 0 if not found
+        """
+        return self.feedback_cache.get(case_id, 0)
+
     async def update_case_feedback(self, case_id: str, feedback_score: int) -> bool:
         """
         Update user feedback for a RAG case.
+        Updates cache atomically with filesystem, then ChromaDB.
         
         Args:
             case_id: The case ID to update
@@ -493,11 +543,17 @@ class RAGRetriever:
             old_feedback = case_study["metadata"].get("user_feedback_score", 0)
             case_study["metadata"]["user_feedback_score"] = feedback_score
             
-            # Save updated case study
+            # Save updated case study to filesystem (reliable source of truth)
             with open(case_file, 'w', encoding='utf-8') as f:
                 json.dump(case_study, f, indent=2)
             
             logger.info(f"Updated case {case_id} feedback: {old_feedback} -> {feedback_score}")
+            
+            # Update cache immediately (used by get_collection_rows for instant consistency)
+            # Store both formats since ChromaDB returns "case_" prefixed IDs
+            self.feedback_cache[case_id] = feedback_score
+            self.feedback_cache[f'case_{case_id}'] = feedback_score
+            logger.debug(f"Updated feedback cache for case {case_id}: {feedback_score}")
             
             # Update ChromaDB metadata in all collections that contain this case
             for collection_id, collection in self.collections.items():

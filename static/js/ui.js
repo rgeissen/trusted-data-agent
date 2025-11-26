@@ -2207,6 +2207,33 @@ function wireCollectionInspectionEvents() {
         });
         DOM.ragCollectionSearchInput.dataset._wired = 'true';
     }
+    
+    // Wire table header sorting
+    const thead = document.querySelector('#rag-collection-table-body')?.closest('table')?.querySelector('thead');
+    if (thead && !thead.dataset._sortingWired) {
+        thead.querySelectorAll('th[data-sort-key]').forEach(th => {
+            th.addEventListener('click', () => {
+                const sortKey = th.dataset.sortKey;
+                // Toggle sort direction if clicking same column
+                if (state.ragCollectionSortKey === sortKey) {
+                    state.ragCollectionSortDirection = state.ragCollectionSortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    state.ragCollectionSortKey = sortKey;
+                    state.ragCollectionSortDirection = 'asc';
+                }
+                // Re-render with new sort - preserve current search term
+                if (state.currentInspectedCollectionId !== null && state.currentInspectedCollectionId !== undefined) {
+                    fetchAndRenderCollectionRows({ 
+                        collectionId: state.currentInspectedCollectionId, 
+                        query: state.ragCollectionSearchTerm,
+                        refresh: true 
+                    });
+                }
+                updateSortIndicators();
+            });
+        });
+        thead.dataset._sortingWired = 'true';
+    }
 }
 
 async function fetchAndRenderCollectionRows({ collectionId, query = '', refresh = false }) {
@@ -2223,10 +2250,16 @@ async function fetchAndRenderCollectionRows({ collectionId, query = '', refresh 
             params.set('q', query);
         }
         const res = await fetch(`/rag/collections/${collectionId}/rows?${params.toString()}`);
+        
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         
         renderCollectionRows(data.rows || [], data.total, query, data.collection_name || `Collection ${collectionId}`);
+        updateSortIndicators();
     } catch (e) {
         console.error('Failed to fetch collection rows', e);
         if (DOM.ragCollectionTableBody) {
@@ -2234,7 +2267,7 @@ async function fetchAndRenderCollectionRows({ collectionId, query = '', refresh 
             const isEmptyCollection = e.message && e.message.includes('not found');
             const message = isEmptyCollection 
                 ? 'No rows available.' 
-                : 'Error loading rows. Check console for details.';
+                : `Error loading rows: ${e.message}`;
             const colorClass = isEmptyCollection ? 'text-gray-400' : 'text-red-400';
             DOM.ragCollectionTableBody.innerHTML = `<tr><td colspan="7" class="px-2 py-2 ${colorClass}">${message}</td></tr>`;
         }
@@ -2245,16 +2278,50 @@ async function fetchAndRenderCollectionRows({ collectionId, query = '', refresh 
     }
 }
 
+// Export fetchAndRenderCollectionRows so it can be called from other modules (e.g., eventHandlers.js)
+export { fetchAndRenderCollectionRows };
+
 function renderCollectionRows(rows, total, query, collectionName) {
     if (!DOM.ragCollectionTableBody) return;
     DOM.ragCollectionTableBody.innerHTML = '';
-    if (!rows.length) {
+    
+    // Apply sorting to rows
+    const sortedRows = [...rows].sort((a, b) => {
+        const key = state.ragCollectionSortKey;
+        let aVal = a[key];
+        let bVal = b[key];
+        
+        // Handle null/undefined values
+        if (aVal == null && bVal == null) return 0;
+        if (aVal == null) return state.ragCollectionSortDirection === 'asc' ? 1 : -1;
+        if (bVal == null) return state.ragCollectionSortDirection === 'asc' ? -1 : 1;
+        
+        // Sort logic
+        let comparison = 0;
+        if (typeof aVal === 'string' && typeof bVal === 'string') {
+            comparison = aVal.localeCompare(bVal);
+        } else if (typeof aVal === 'number' && typeof bVal === 'number') {
+            comparison = aVal - bVal;
+        } else if (typeof aVal === 'boolean' && typeof bVal === 'boolean') {
+            comparison = aVal === bVal ? 0 : aVal ? 1 : -1;
+        } else {
+            comparison = String(aVal).localeCompare(String(bVal));
+        }
+        
+        return state.ragCollectionSortDirection === 'asc' ? comparison : -comparison;
+    });
+    
+    if (!sortedRows.length) {
         const message = query && query.length >= 3 ? 'No matches found.' : 'No rows available.';
         DOM.ragCollectionTableBody.innerHTML = `<tr><td colspan="7" class="px-2 py-2 text-gray-400">${message}</td></tr>`;
     } else {
-        rows.forEach(r => {
+        sortedRows.forEach(r => {
             const tr = document.createElement('tr');
-            tr.className = 'border-b border-gray-700 hover:bg-gray-800/40';
+            // Check if this row is currently selected and apply highlight
+            const isSelected = state.currentSelectedCaseId === r.id;
+            const selectedClass = isSelected ? 'bg-orange-500/30 ring-1 ring-orange-400/50' : 'border-b border-gray-700';
+            tr.className = `${selectedClass} hover:bg-gray-800/40 cursor-pointer transition-colors`;
+            
             const efficientBadge = r.is_most_efficient ? '<span class="px-2 py-0.5 rounded bg-green-600 text-white text-xs">Yes</span>' : '<span class="px-2 py-0.5 rounded bg-gray-600 text-white text-xs">No</span>';
             
             // Render feedback badge
@@ -2266,14 +2333,16 @@ function renderCollectionRows(rows, total, query, collectionName) {
             }
             
             tr.innerHTML = `
-                <td class="px-2 py-1 font-mono text-xs text-gray-300">${r.id}</td>
-                <td class="px-2 py-1 text-gray-200">${escapeHtml(r.user_query || '')}</td>
-                <td class="px-2 py-1 text-gray-300">${r.strategy_type || ''}</td>
-                <td class="px-2 py-1">${efficientBadge}</td>
-                <td class="px-2 py-1">${feedbackBadge}</td>
-                <td class="px-2 py-1 text-gray-300">${r.output_tokens ?? ''}</td>
-                <td class="px-2 py-1 text-gray-400">${r.timestamp || ''}</td>
+                <td class="px-2 py-2 font-mono text-xs text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis">${r.id}</td>
+                <td class="px-2 py-2 text-gray-200 whitespace-nowrap overflow-hidden text-ellipsis">${escapeHtml(r.user_query || '')}</td>
+                <td class="px-2 py-2 text-gray-300 whitespace-nowrap">${r.strategy_type || ''}</td>
+                <td class="px-2 py-2 whitespace-nowrap">${efficientBadge}</td>
+                <td class="px-2 py-2 whitespace-nowrap">${feedbackBadge}</td>
+                <td class="px-2 py-2 text-gray-300 whitespace-nowrap text-right">${r.output_tokens ?? ''}</td>
+                <td class="px-2 py-2 text-gray-400 whitespace-nowrap">${r.timestamp || ''}</td>
             `;
+            // Set data attribute AFTER innerHTML so it doesn't get overwritten
+            tr.dataset.caseId = r.id;
             tr.addEventListener('click', () => selectCaseRow(r.id));
             DOM.ragCollectionTableBody.appendChild(tr);
         });
@@ -2290,6 +2359,8 @@ function escapeHtml(str) {
 
 async function selectCaseRow(caseId) {
     if (!caseId) return;
+    // Update the selected case ID and highlight the row
+    updateSelectedCaseId(caseId);
     if (DOM.ragSelectedCaseDetails) {
         DOM.ragSelectedCaseDetails.classList.remove('hidden');
         DOM.ragSelectedCaseMetadata.textContent = 'Loading case details...';
@@ -2322,6 +2393,7 @@ async function selectCaseRow(caseId) {
                     <div class="inline-flex items-stretch rounded-md bg-gray-900/50 border border-white/10 overflow-hidden backdrop-blur-sm">
                         <button type="button" 
                                 class="case-feedback-btn px-2 py-0.5 flex items-center gap-1 ${upActive} hover:text-white hover:bg-gray-800/60 transition text-xs"
+                                data-case-id="${escapeHtml(caseData.case_id || caseId)}"
                                 data-session-id="${escapeHtml(sessionId)}" 
                                 data-turn-id="${turnId}" 
                                 data-vote="up"
@@ -2334,6 +2406,7 @@ async function selectCaseRow(caseId) {
                         <div class="w-px bg-white/10"></div>
                         <button type="button" 
                                 class="case-feedback-btn px-2 py-0.5 flex items-center gap-1 ${downActive} hover:text-white hover:bg-gray-800/60 transition text-xs"
+                                data-case-id="${escapeHtml(caseData.case_id || caseId)}"
                                 data-session-id="${escapeHtml(sessionId)}" 
                                 data-turn-id="${turnId}" 
                                 data-vote="down"
@@ -2414,6 +2487,117 @@ async function selectCaseRow(caseId) {
             DOM.ragSelectedCaseMetadata.textContent = 'Error loading case details.';
         }
     }
+}
+
+// Export selectCaseRow so it can be called from other modules (e.g., eventHandlers.js)
+export { selectCaseRow };
+
+/**
+ * Updates the selected case ID in state and refreshes row highlighting.
+ * Called when a case row is clicked or when feedback is updated.
+ * @param {string} caseId - The ID of the selected case
+ */
+function updateSelectedCaseId(caseId) {
+    state.currentSelectedCaseId = caseId;
+    // Highlight all rows - remove highlighting from all, add to selected
+    const allRows = document.querySelectorAll('#rag-collection-table-body tr[data-case-id]');
+    allRows.forEach(row => {
+        if (row.dataset.caseId === caseId) {
+            row.classList.remove('border-b', 'border-gray-700');
+            row.classList.add('bg-orange-500/30', 'ring-1', 'ring-orange-400/50');
+        } else {
+            row.classList.remove('bg-orange-500/30', 'ring-1', 'ring-orange-400/50');
+            row.classList.add('border-b', 'border-gray-700');
+        }
+    });
+}
+
+// Export updateSelectedCaseId so it can be called from event handlers
+export { updateSelectedCaseId };
+
+/**
+ * Updates the feedback badge for a specific row in the table without refreshing the entire table
+ * @param {string} caseId - The case ID to update
+ * @param {number} feedbackScore - The new feedback score (-1, 0, or 1)
+ */
+function updateTableRowFeedback(caseId, feedbackScore) {
+    const allRows = document.querySelectorAll('#rag-collection-table-body tr');
+    let row = null;
+    
+    // Try exact match first
+    for (const r of allRows) {
+        if (r.dataset.caseId === caseId) {
+            row = r;
+            break;
+        }
+    }
+    
+    // If not found, try with/without "case_" prefix
+    if (!row) {
+        const altCaseId = caseId.startsWith('case_') ? caseId.substring(5) : `case_${caseId}`;
+        for (const r of allRows) {
+            if (r.dataset.caseId === altCaseId) {
+                row = r;
+                break;
+            }
+        }
+    }
+    
+    if (!row) {
+        console.warn('[updateTableRowFeedback] Row not found for caseId:', caseId);
+        return;
+    }
+    
+    console.log('[updateTableRowFeedback] Row found, updating feedback badge');
+    
+    // Find the feedback badge cell (5th column, index 4)
+    const feedbackCell = row.cells[4];
+    if (!feedbackCell) {
+        console.warn('[updateTableRowFeedback] Feedback cell not found');
+        return;
+    }
+    
+    // Generate new feedback badge
+    let feedbackBadge = '<span class="px-2 py-0.5 rounded bg-gray-600 text-white text-xs">—</span>';
+    if (feedbackScore === 1) {
+        feedbackBadge = '<span class="px-2 py-0.5 rounded bg-green-600 text-white text-xs">👍</span>';
+    } else if (feedbackScore === -1) {
+        feedbackBadge = '<span class="px-2 py-0.5 rounded bg-red-600 text-white text-xs">👎</span>';
+    }
+    
+    // Update the cell
+    feedbackCell.innerHTML = feedbackBadge;
+    console.log('[updateTableRowFeedback] Feedback badge updated successfully');
+}
+
+// Export updateTableRowFeedback so it can be called from event handlers
+export { updateTableRowFeedback };
+
+/**
+ * Updates visual indicators on table headers to show current sort state
+ */
+function updateSortIndicators() {
+    const thead = document.querySelector('#rag-collection-table-body')?.closest('table')?.querySelector('thead');
+    if (!thead) return;
+    
+    thead.querySelectorAll('th[data-sort-key]').forEach(th => {
+        const sortKey = th.dataset.sortKey;
+        const span = th.querySelector('span');
+        if (!span) return;
+        
+        if (sortKey === state.ragCollectionSortKey) {
+            // Show active sort indicator
+            const arrow = state.ragCollectionSortDirection === 'asc' ? '↑' : '↓';
+            span.textContent = arrow;
+            span.className = 'text-xs text-orange-400 font-bold';
+            th.classList.add('bg-orange-500/20');
+        } else {
+            // Show default indicator
+            span.textContent = '↕';
+            span.className = 'text-xs text-gray-500';
+            th.classList.remove('bg-orange-500/20');
+        }
+    });
 }
 
 function renderCaseTrace() {

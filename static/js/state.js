@@ -53,8 +53,11 @@ export const state = {
     // --- MODIFICATION START: RAG Collection Inspection ---
     currentInspectedCollectionId: null,
     currentInspectedCollectionName: null,
+    currentSelectedCaseId: null, // Tracks the currently selected case row for highlighting
     ragCollectionRowsCache: {}, // keyed by collection ID for last fetched sample
     ragCollectionSearchTerm: '',
+    ragCollectionSortKey: 'timestamp', // Default sort column
+    ragCollectionSortDirection: 'desc', // 'asc' or 'desc'
     // --- MODIFICATION END ---
     // --- MODIFICATION START: Case Trace Rendering Controls ---
     showSystemLogsInCaseTrace: false, // Toggle for system log visibility in Selected Case Details

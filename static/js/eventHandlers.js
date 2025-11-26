@@ -1641,23 +1641,76 @@ export function initializeEventListeners() {
             e.preventDefault();
             const sessionId = caseFeedbackBtn.dataset.sessionId;
             const turnId = parseInt(caseFeedbackBtn.dataset.turnId);
+            const caseId = caseFeedbackBtn.dataset.caseId;
             const vote = caseFeedbackBtn.dataset.vote;
             
-            if (!sessionId || isNaN(turnId)) {
-                console.error('Missing session ID or turn ID on feedback button');
+            // Require either (sessionId + turnId) OR caseId
+            if ((!sessionId || isNaN(turnId)) && !caseId) {
+                console.error('Missing required data on feedback button (need either session+turn or case ID)');
                 return;
             }
             
             try {
-                // Import the API function
-                const { updateTurnFeedback } = await import('./api.js');
+                // Import the API functions
+                const { updateTurnFeedback, updateRAGCaseFeedback } = await import('./api.js');
                 
                 // Get current state from button classes
                 const isActive = caseFeedbackBtn.classList.contains('text-[#F15F22]');
                 const newVote = isActive ? null : vote;
                 
-                // Update backend
-                await updateTurnFeedback(sessionId, turnId, newVote);
+                // Update backend using appropriate endpoint
+                if (caseId) {
+                    // Direct RAG case feedback (doesn't require session)
+                    const result = await updateRAGCaseFeedback(caseId, newVote);
+                    console.log('[CaseFeedback] Result:', result);
+                    
+                    // Calculate new feedback score for immediate UI update
+                    const newScore = newVote === 'up' ? 1 : newVote === 'down' ? -1 : 0;
+                    
+                    // Immediately update table row feedback badge (before server refresh)
+                    const { updateTableRowFeedback } = await import('./ui.js');
+                    updateTableRowFeedback(caseId, newScore);
+                    console.log('[CaseFeedback] Updated table row feedback immediately for', caseId);
+                    
+                    // Display warning if session doesn't exist
+                    if (result.warning) {
+                        console.log('[CaseFeedback] Warning detected, showing banner:', result.warning);
+                        if (window.showAppBanner) {
+                            window.showAppBanner(result.warning, 'warning');
+                        } else {
+                            console.warn('[CaseFeedback] showAppBanner not available');
+                        }
+                    } else {
+                        // Show success message even without warning
+                        if (window.showAppBanner) {
+                            const action = newVote === 'up' ? 'marked helpful' : newVote === 'down' ? 'marked unhelpful' : 'cleared';
+                            window.showAppBanner(`RAG case ${action}`, 'success');
+                        }
+                    }
+                    
+                    // Refresh the collection table to show updated feedback from cache
+                    if (state.currentInspectedCollectionId !== undefined && state.currentInspectedCollectionId !== null) {
+                        console.log('[CaseFeedback] Refreshing table data after feedback change for case', caseId);
+                        // Import UI module to access fetchAndRenderCollectionRows
+                        const { fetchAndRenderCollectionRows } = await import('./ui.js');
+                        // Refresh the table with current search query
+                        await fetchAndRenderCollectionRows({ 
+                            collectionId: state.currentInspectedCollectionId, 
+                            query: state.ragCollectionSearchTerm || '',
+                            refresh: false 
+                        });
+                    }
+                    
+                    // Also refresh the case details panel to show updated feedback score
+                    console.log('[CaseFeedback] Refreshing case details for case', caseId);
+                    const { selectCaseRow } = await import('./ui.js');
+                    await selectCaseRow(caseId);
+                } else if (sessionId && !isNaN(turnId)) {
+                    // Session-based feedback
+                    await updateTurnFeedback(sessionId, turnId, newVote);
+                } else {
+                    throw new Error('Invalid feedback data');
+                }
                 
                 // Update UI: find both buttons in this container
                 const container = caseFeedbackBtn.closest('.inline-flex');
