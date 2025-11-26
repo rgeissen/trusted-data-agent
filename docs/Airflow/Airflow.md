@@ -1,77 +1,84 @@
-## TDA DAGs (tda_00* and tda_01*)
+## TDA DAG (tda_00_configure_with_questions)
 
-This README documents the purpose and usage of the TDA-related DAGs in the scripts folder. It focuses on the `tda_00*` and `tda_01*` scripts and how to operate them in a typical Airflow deployment.
+This README documents the modern TDA Airflow DAG for automating queries with the Trusted Data Agent. It uses the profile-based architecture with Bearer token authentication and async polling.
 
 ## Files
 
-- `tda_00_configure_app.py`
-  - Purpose: baseline configuration DAG. Reads required configuration values from Airflow Variables and POSTs a single `/api/v1/configure` request to the TDA API. Use this to set provider/model/apiKey and MCP server settings.
-  - Key Airflow artifacts used:
-    - Connection: `tda_api_conn` — Host should be the base URL of the TDA API (e.g. `http://tda-api:5050`).
-    - Variables (required): `tda_provider`, `tda_model`, `tda_api_key`.
-    - Variables (optional with defaults): `tda_mcp_name`, `tda_mcp_host`, `tda_mcp_port`, `tda_mcp_path`.
-  - Behavior: single synchronous POST using `requests.post(...).raise_for_status()` so the task waits for the response and fails on non-2xx.
-
-- `tda_01_configure_with_questions.py`
-  - Purpose: read a `questions.txt` file (one question per line) and run a submit+poll workflow for each question using the same session/submit/poll pattern that the TDA master workflow uses.
-  - Files used: `questions.txt` (placed in the same directory as the DAG). Lines starting with `#` are ignored.
-  - Key Airflow artifacts used:
-    - Connection: `tda_api_conn` — base URL of TDA API.
-    - Variables:
-      - `tda_user_uuid` (optional) — defaults to `airflow-dag-user-01` if not set.
-      - `tda_session_id` (optional) — if present, the DAG will reuse this session instead of creating a new one.
-  - Behavior:
-    - At DAG-parse time the DAG reads `questions.txt` and creates a `submit_Q{i}` and `wait_for_Q{i}` task for each question found.
-    - Each question is submitted to `/api/v1/sessions/<session_id>/query` and the returned `status_url` is polled until completion. The tasks use headers `X-TDA-User-UUID` matching the master workflow.
-    - Tasks are chained so each question's submit waits for the previous question's poll to finish (serial ordering).
-    - If you add/remove questions, the scheduler must reparse the DAG for changes to take effect (i.e., new runs use the updated task graph).
+- `tda_00_configure_with_questions.py`
+  - **Purpose**: Read a `questions.txt` file (one question per line) and run a session/submit/poll workflow for each question using Bearer token authentication and profile-based configuration.
+  - **Files used**: `questions.txt` (placed in the same directory as the DAG). Lines starting with `#` are ignored.
+  - **Key Airflow artifacts used**:
+    - Connection: `tda_api_conn` — base URL of TDA API (e.g., `http://localhost:5000`).
+    - Variables (required):
+      - `tda_jwt_token` — JWT token for creating long-lived access tokens.
+    - Variables (optional):
+      - `tda_access_token_name` — name for the created access token (defaults to auto-generated).
+      - `tda_access_token_expires_days` — token lifetime in days (defaults to 30).
+      - `tda_session_id` — reuse an existing session instead of creating a new one.
+      - `tda_profile_id` — override the default profile for query execution.
+  - **Behavior**:
+    - At DAG-parse time, the DAG reads `questions.txt` and creates tasks for each question.
+    - **Task 0** (`get_access_token`): Creates a long-lived access token from the JWT.
+    - **Task 1** (`get_or_create_session`): Creates a new session or reuses the existing one if `tda_session_id` is set.
+    - **Task 2+** (`submit_query_Qx` + `poll_query_Qx`): For each question:
+      - Submits the question to the session with optional profile override.
+      - Polls the task status asynchronously until completion.
+    - Uses Bearer token authentication on all requests (no legacy X-TDA-User-UUID headers).
+    - Tasks are chained so each question executes serially.
 
 - `questions.txt`
-  - Sample file (one question per line). Edit this file to change which questions the `tda_01*` DAG will run on the next DAG parse.
-
-- `README_tda_questions.md`
-  - Short usage notes for the questions-based DAG (also included in this folder).
+  - Sample file (one question per line). Edit this file to change which questions the DAG will run on the next DAG parse.
 
 ## How to run
 
-1. Ensure the Airflow Connection `tda_api_conn` is configured (Admin → Connections). The `Host` should contain the scheme+host[:port], e.g. `http://192.168.0.158:5050`.
-2. Ensure required Airflow Variables are set (Admin → Variables):
-   - For `tda_00_configure_app.py`: `tda_provider`, `tda_model`, `tda_api_key`.
-   - For `tda_01_configure_with_questions.py`: `tda_user_uuid` (optional) and optionally `tda_session_id`.
-3. Edit `questions.txt` (if using `tda_01_configure_with_questions.py`) with one question per line. Lines starting with `#` are ignored.
-4. Trigger the DAG(s) in the Airflow UI or via CLI.
+1. **Set up the Airflow Connection** (Admin → Connections):
+   - Connection ID: `tda_api_conn`
+   - Host: Base URL of TDA API (e.g., `http://localhost:5000`)
+   - Leave other fields empty
 
-Example curl to test endpoints from an Airflow worker (replace host and payload as appropriate):
+2. **Create required Airflow Variables** (Admin → Variables):
+   - `tda_jwt_token` (required): JWT token for authentication
+   - `tda_access_token_name` (optional): Name for the created access token
+   - `tda_access_token_expires_days` (optional): Token lifetime (default: 30)
 
+3. **Create optional Airflow Variables** (for advanced scenarios):
+   - `tda_session_id` (optional): Reuse an existing session ID
+   - `tda_profile_id` (optional): Override the default profile (profile-1234567890-abcdef)
+
+4. **Edit `questions.txt`** with one question per line. Example:
+   ```
+   # This is a comment
+   How many users are in the system?
+   What is the database version?
+   ```
+
+5. **Trigger the DAG** in the Airflow UI or via CLI.
+
+## How to find Profile IDs
+
+Use the TDA Configuration UI (Credentials → Profiles tab) to:
+1. Navigate to the **Profiles** tab
+2. Click the **copy button** next to each profile badge to copy its ID
+3. Use the copied ID in the `tda_profile_id` Airflow Variable
+
+Alternatively, use the REST API:
 ```bash
-curl -v 'http://192.168.0.158:5050/api/v1/sessions' -X POST -H 'X-TDA-User-UUID: airflow-dag-user-01'
-
-curl -v 'http://192.168.0.158:5050/api/v1/sessions/<session_id>/query' \
-  -H 'Content-Type: application/json' \
-  -H 'X-TDA-User-UUID: airflow-dag-user-01' \
-  -d '{"prompt":"what is the system version?"}'
+curl -X GET http://localhost:5000/api/v1/profiles \
+  -H "Authorization: Bearer {access_token}"
 ```
 
 ## Troubleshooting
 
-- HTTP 404 when using the questions DAG
-  - Symptom: Task logs show a 404 for the composed request URL (e.g. `http://192.168.0.158:5050/api/v1/ask`).
-  - Likely cause: the constructed path does not exist on the TDA server. The questions DAG was previously using `/api/v1/ask` by default; the master/session workflow uses `/api/v1/sessions/.../query`.
-  - Fixes:
-    - Prefer using `tda_01_configure_with_questions.py` (session/submit/poll) which uses `/api/v1/sessions/.../query` and then polls the returned `status_url` (matching the master DAG behavior).
-    - Verify `tda_api_conn` in Admin → Connections — Host should be base URL only (no extra path).
-    - Use curl from the Airflow worker to inspect available endpoints and validate the correct path.
-
-- Authentication / API key errors
-  - Ensure `tda_api_key` (if used by your API) or `tda_user_uuid` are set as Airflow Variables.
+- **Authentication errors**: Ensure `tda_jwt_token` is a valid JWT token from your TDA instance.
+- **Profile not found**: Verify the profile ID format (e.g., `profile-1234567890-abcdef`) in the `tda_profile_id` Variable.
+- **Session not found**: If using `tda_session_id`, ensure the session ID is valid and hasn't expired.
+- **Task failures**: Check the Airflow task logs for detailed error messages from the TDA API.
 
 ## Notes & recommendations
 
-- DAG parse vs run-time: the questions file is read at DAG parse time. If you edit `questions.txt`, wait for the scheduler to reparse the DAG (or trigger a DAG refresh) so new runs pick up changes.
-- For many questions, consider converting the DAG to dynamic task mapping or using a single-task iterator to reduce scheduler load.
-- If you want session reuse across DAG runs, consider updating `tda_01_configure_with_questions.py` to persist newly-created `session_id` back into Airflow Variable `tda_session_id`.
+- **DAG parse vs run-time**: The questions file is read at DAG parse time. If you edit `questions.txt`, wait for the scheduler to reparse the DAG for changes to take effect.
+- **Session reuse**: Set `tda_session_id` to reuse a session across multiple DAG runs for consistency.
+- **Profile override**: Use `tda_profile_id` to temporarily override the default profile for specific DAG runs.
+- **Token management**: Access tokens created by the DAG persist across runs. Use the TDA UI to manage and revoke tokens as needed.
 
-If you'd like, I can:
-- Persist the session ID to `tda_session_id` automatically after creation.
-- Convert the questions DAG to dynamic mapping (`.map`) for runtime mapping and better scalability.
-- Add a preflight endpoint check that fails fast with a clearer message if the base URL or endpoints are misconfigured.
+For many questions, consider converting the DAG to dynamic task mapping or using a single-task iterator to reduce scheduler load.

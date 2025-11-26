@@ -1761,17 +1761,28 @@ function renderProfiles() {
                     <div class="flex-1">
                         <div class="flex items-center gap-2 mb-1">
                             <h4 class="font-semibold text-white">${escapeHtml(profile.name || profile.tag)}</h4>
-                            ${profile.color ? `
-                            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-mono font-semibold border" 
-                                  style="background: linear-gradient(135deg, ${profile.color}30, ${profile.color}15); border-color: ${profile.color}50; color: ${profile.color};">
-                                <span class="w-2 h-2 rounded-full" style="background: ${profile.color};"></span>
-                                @${escapeHtml(profile.tag)}
-                            </span>
-                            ` : `
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-semibold bg-[#F15F22]/20 text-[#F15F22] border border-[#F15F22]/30">
-                                @${escapeHtml(profile.tag)}
-                            </span>
-                            `}
+                            <div class="flex items-center gap-1">
+                                ${profile.color ? `
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-mono font-semibold border" 
+                                      style="background: linear-gradient(135deg, ${profile.color}30, ${profile.color}15); border-color: ${profile.color}50; color: ${profile.color};">
+                                    <span class="w-2 h-2 rounded-full" style="background: ${profile.color};"></span>
+                                    @${escapeHtml(profile.tag)}
+                                </span>
+                                ` : `
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-semibold bg-[#F15F22]/20 text-[#F15F22] border border-[#F15F22]/30">
+                                    @${escapeHtml(profile.tag)}
+                                </span>
+                                `}
+                                <button type="button" data-action="copy-profile-id" data-profile-id="${profile.id}" 
+                                    class="inline-flex items-center justify-center p-1 ml-1 text-gray-400 hover:text-[#F15F22] transition-colors rounded hover:bg-white/5 group relative"
+                                    title="Copy Profile ID">
+                                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                    </svg>
+                                    <span class="text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity absolute left-full ml-2 bg-gray-800 px-2 py-1 rounded whitespace-nowrap pointer-events-none">Copied!</span>
+                                </button>
+                            </div>
                         </div>
                         <p class="text-sm text-gray-400 mb-3">${escapeHtml(profile.description)}</p>
                         <div class="text-sm text-gray-400 space-y-1">
@@ -2152,6 +2163,37 @@ function attachProfileEventListeners() {
             }
             
             showClassificationModal(profile);
+        });
+    });
+
+    // Copy Profile ID button
+    document.querySelectorAll('[data-action="copy-profile-id"]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const button = e.target.closest('[data-action="copy-profile-id"]');
+            const profileId = button.dataset.profileId;
+            const profile = configState.profiles.find(p => p.id === profileId);
+            
+            try {
+                await navigator.clipboard.writeText(profileId);
+                
+                // Show visual feedback - find the tooltip span
+                const tooltipSpan = button.querySelector('span');
+                if (tooltipSpan) {
+                    tooltipSpan.style.opacity = '1';
+                    setTimeout(() => {
+                        tooltipSpan.style.opacity = '0';
+                    }, 1500);
+                }
+                
+                // Show notification
+                showNotification('success', `Profile ID copied: ${profileId}`);
+            } catch (err) {
+                console.error('Failed to copy profile ID:', err);
+                showNotification('error', 'Failed to copy profile ID to clipboard');
+            }
         });
     });
 }
