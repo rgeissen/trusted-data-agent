@@ -145,8 +145,7 @@ async def register():
                     username=username,
                     email=email,
                     password_hash=password_hash,
-                    display_name=display_name or username,
-                    user_uuid=str(uuid.uuid4())
+                    display_name=display_name or username
                 )
                 
                 session.add(user)
