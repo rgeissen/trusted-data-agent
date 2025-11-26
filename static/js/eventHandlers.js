@@ -1688,21 +1688,9 @@ export function initializeEventListeners() {
                         }
                     }
                     
-                    // Refresh the collection table to show updated feedback from cache
-                    if (state.currentInspectedCollectionId !== undefined && state.currentInspectedCollectionId !== null) {
-                        console.log('[CaseFeedback] Refreshing table data after feedback change for case', caseId);
-                        // Import UI module to access fetchAndRenderCollectionRows
-                        const { fetchAndRenderCollectionRows } = await import('./ui.js');
-                        // Refresh the table with current search query
-                        await fetchAndRenderCollectionRows({ 
-                            collectionId: state.currentInspectedCollectionId, 
-                            query: state.ragCollectionSearchTerm || '',
-                            refresh: false 
-                        });
-                    }
-                    
-                    // Also refresh the case details panel to show updated feedback score
-                    console.log('[CaseFeedback] Refreshing case details for case', caseId);
+                    // Update the case details panel to show updated feedback score
+                    // (Don't refresh entire table - we already updated the row immediately above)
+                    console.log('[CaseFeedback] Refreshing case details panel for case', caseId);
                     const { selectCaseRow } = await import('./ui.js');
                     await selectCaseRow(caseId);
                 } else if (sessionId && !isNaN(turnId)) {

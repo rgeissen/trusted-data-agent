@@ -2221,14 +2221,8 @@ function wireCollectionInspectionEvents() {
                     state.ragCollectionSortKey = sortKey;
                     state.ragCollectionSortDirection = 'asc';
                 }
-                // Re-render with new sort - preserve current search term
-                if (state.currentInspectedCollectionId !== null && state.currentInspectedCollectionId !== undefined) {
-                    fetchAndRenderCollectionRows({ 
-                        collectionId: state.currentInspectedCollectionId, 
-                        query: state.ragCollectionSearchTerm,
-                        refresh: true 
-                    });
-                }
+                // Re-render with new sort - NO server fetch needed, sorting is client-side
+                renderCollectionRows(state.currentCollectionRows || [], state.currentCollectionTotal || 0, state.ragCollectionSearchTerm || '', state.currentCollectionName || '');
                 updateSortIndicators();
             });
         });
@@ -2258,7 +2252,12 @@ async function fetchAndRenderCollectionRows({ collectionId, query = '', refresh 
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         
-        renderCollectionRows(data.rows || [], data.total, query, data.collection_name || `Collection ${collectionId}`);
+        // Store current rows in state for client-side sorting/filtering
+        state.currentCollectionRows = data.rows || [];
+        state.currentCollectionTotal = data.total || 0;
+        state.currentCollectionName = data.collection_name || `Collection ${collectionId}`;
+        
+        renderCollectionRows(state.currentCollectionRows, state.currentCollectionTotal, query, state.currentCollectionName);
         updateSortIndicators();
     } catch (e) {
         console.error('Failed to fetch collection rows', e);
