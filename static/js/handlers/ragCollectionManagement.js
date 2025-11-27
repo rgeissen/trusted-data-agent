@@ -1532,18 +1532,19 @@ window.removeCollectionTemplateExample = function(exampleId) {
  * Check if LLM is configured and enable/disable the LLM population option
  */
 async function checkLlmConfiguration() {
-    // Check the actual backend status to see if system is configured
+    // Check if there are any active profiles available (not just default profile)
     let isLlmConfigured = false;
     
     try {
-        const response = await fetch('/api/status');
-        if (response.ok) {
-            const status = await response.json();
-            // System must be configured (isConfigured = true from backend)
-            isLlmConfigured = status.isConfigured === true;
+        // Check if user has any profiles configured
+        const profilesResponse = await fetch('/api/v1/profiles');
+        if (profilesResponse.ok) {
+            const profilesData = await profilesResponse.json();
+            // LLM is configured if user has at least one profile
+            isLlmConfigured = profilesData.profiles && profilesData.profiles.length > 0;
         }
     } catch (error) {
-        console.error('Failed to check configuration status:', error);
+        console.error('Failed to check LLM configuration:', error);
         isLlmConfigured = false;
     }
     
@@ -1572,29 +1573,37 @@ async function handleGenerateContext() {
         const databaseNameEl = document.getElementById('rag-collection-llm-database-name');
         const databaseName = databaseNameEl ? databaseNameEl.value.trim() : '';
         
-        // Get the default MCP context prompt name from template configuration (always fetch fresh)
-        let contextPromptName = 'base_databaseBusinessDesc'; // FIXED: Use correct default fallback
+        // Get the MCP context prompt name from user input (falls back to template default)
+        const mcpPromptEl = document.getElementById('rag-collection-llm-mcp-prompt');
+        let contextPromptName = mcpPromptEl ? mcpPromptEl.value.trim() : '';
         
-        try {
-            // Get selected template ID
-            const selectedTemplateId = ragCollectionTemplateType?.value || 'sql_query_v1';
-            
-            // Add cache-busting parameter to ensure fresh data
-            const configResponse = await fetch(`/api/v1/rag/templates/${selectedTemplateId}/config?_=${Date.now()}`);
-            
-            if (configResponse.ok) {
-                const responseData = await configResponse.json();
+        // If user didn't specify, fall back to template configuration
+        if (!contextPromptName) {
+            try {
+                // Get selected template ID
+                const selectedTemplateId = ragCollectionTemplateType?.value || 'sql_query_v1';
                 
-                // Handle both response formats: {config: {...}} or direct {...}
-                const configData = responseData.config || responseData;
+                // Add cache-busting parameter to ensure fresh data
+                const configResponse = await fetch(`/api/v1/rag/templates/${selectedTemplateId}/config?_=${Date.now()}`);
                 
-                if (configData.default_mcp_context_prompt) {
-                    contextPromptName = configData.default_mcp_context_prompt;
-                } else {
+                if (configResponse.ok) {
+                    const responseData = await configResponse.json();
+                    
+                    // Handle both response formats: {config: {...}} or direct {...}
+                    const configData = responseData.config || responseData;
+                    
+                    if (configData.default_mcp_context_prompt) {
+                        contextPromptName = configData.default_mcp_context_prompt;
+                    }
                 }
-            } else {
+            } catch (error) {
+                console.error('[MCP Prompt] Error loading template config:', error);
             }
-        } catch (error) {
+        }
+        
+        // Final fallback if still no prompt name
+        if (!contextPromptName) {
+            contextPromptName = 'base_databaseBusinessDesc';
         }
         
         
@@ -2549,6 +2558,22 @@ async function renderLlmFieldsForTemplate(templateId) {
             const fieldHtml = createLlmInputField(varName, varConfig);
             llmFieldsContainer.insertAdjacentHTML('beforeend', fieldHtml);
         }
+        
+        // Add MCP Context Prompt field after the dynamic fields
+        const mcpPromptFieldHtml = `
+            <div class="bg-gray-800/50 rounded-lg p-3 border border-gray-600">
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                    MCP Context Prompt
+                    <span class="text-red-400">*</span>
+                </label>
+                <input type="text" id="rag-collection-llm-mcp-prompt" 
+                       class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white text-sm"
+                       placeholder="e.g., base_databaseBusinessDesc"
+                       value="${data.plugin_info?.input_variables?.mcp_context_prompt?.default || 'base_databaseBusinessDesc'}">
+                <p class="text-xs text-gray-400 mt-1">Prompt used to retrieve database schema and context for question generation.</p>
+            </div>
+        `;
+        llmFieldsContainer.insertAdjacentHTML('beforeend', mcpPromptFieldHtml);
         
         // Attach event listeners to newly created fields for prompt preview auto-refresh
         for (const varName of Object.keys(inputVariables)) {
