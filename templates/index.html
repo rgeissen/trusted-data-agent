@@ -1103,6 +1103,18 @@
                         <p class="text-gray-400">Discover and subscribe to community-curated RAG collections</p>
                     </div>
 
+                    <!-- Tabs -->
+                    <div class="mb-6 border-b border-white/10">
+                        <div class="flex gap-4">
+                            <button id="marketplace-tab-browse" class="marketplace-tab px-4 py-3 text-white font-medium border-b-2 border-[#F15F22] transition-colors">
+                                Browse Marketplace
+                            </button>
+                            <button id="marketplace-tab-my-collections" class="marketplace-tab px-4 py-3 text-gray-400 font-medium border-b-2 border-transparent hover:text-white hover:border-white/20 transition-colors">
+                                My Collections
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Search and Filter Bar -->
                     <div class="glass-panel rounded-xl p-6 mb-6">
                         <div class="flex gap-4 items-end">
@@ -1128,15 +1140,15 @@
                     </div>
 
                     <!-- Collections Grid -->
-                    <div id="marketplace-collections-container" class="space-y-4">
+                    <div id="marketplace-collections-container">
                         <!-- Loading state -->
-                        <div id="marketplace-loading" class="text-center py-12">
+                        <div id="marketplace-loading" class="col-span-full text-center py-12">
                             <div class="inline-block w-8 h-8 border-4 border-[#F15F22]/30 border-t-[#F15F22] rounded-full animate-spin"></div>
                             <p class="text-gray-400 mt-4">Loading marketplace collections...</p>
                         </div>
 
                         <!-- Empty state -->
-                        <div id="marketplace-empty" class="hidden text-center py-12">
+                        <div id="marketplace-empty" class="hidden col-span-full text-center py-12">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                             </svg>
@@ -1145,7 +1157,7 @@
                         </div>
 
                         <!-- Collections will be dynamically inserted here -->
-                        <div id="marketplace-collections-list"></div>
+                        <div id="marketplace-collections-list" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
                     </div>
 
                     <!-- Pagination -->

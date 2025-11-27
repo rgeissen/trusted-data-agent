@@ -4639,6 +4639,9 @@ async def browse_marketplace_collections():
     }
     """
     try:
+        # Get current user for ownership check
+        user_uuid = _get_user_uuid_from_request()
+        
         # Parse query parameters
         visibility_filter = request.args.get("visibility", "public")
         search_query = request.args.get("search", "").lower()
@@ -4659,6 +4662,14 @@ async def browse_marketplace_collections():
             if not coll.get("is_marketplace_listed", False):
                 continue
             
+            # Skip collections with no owner (system collections)
+            if coll.get("owner_user_id") is None:
+                continue
+            
+            # Skip collections owned by the current user
+            if user_uuid and coll.get("owner_user_id") == user_uuid:
+                continue
+            
             # Check visibility filter
             coll_visibility = coll.get("visibility", "private")
             if visibility_filter == "public" and coll_visibility != "public":
@@ -4671,7 +4682,7 @@ async def browse_marketplace_collections():
                 if not (name_match or desc_match):
                     continue
             
-            # Add document count
+            # Add document count and ownership flag
             coll_copy = coll.copy()
             if coll["id"] in retriever.collections:
                 try:
@@ -4680,6 +4691,12 @@ async def browse_marketplace_collections():
                     coll_copy["count"] = 0
             else:
                 coll_copy["count"] = 0
+            
+            # Check if current user owns this collection
+            if user_uuid:
+                coll_copy["is_owner"] = retriever.is_user_collection_owner(coll["id"], user_uuid)
+            else:
+                coll_copy["is_owner"] = False
             
             marketplace_collections.append(coll_copy)
         
@@ -4953,6 +4970,10 @@ async def publish_collection_to_marketplace(collection_id: int):
         user_uuid = _get_user_uuid_from_request()
         if not user_uuid:
             return jsonify({"status": "error", "message": "Authentication required"}), 401
+        
+        # Prevent publishing the Default Collection (ID 0)
+        if collection_id == 0:
+            return jsonify({"status": "error", "message": "The Default Collection cannot be published to the marketplace"}), 400
         
         # Get retriever and validate ownership
         retriever = APP_STATE.get("rag_retriever_instance")

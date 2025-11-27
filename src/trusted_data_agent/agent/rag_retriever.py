@@ -77,33 +77,16 @@ class RAGRetriever:
         # --- MODIFICATION END ---
 
     def _ensure_default_collection(self):
-        """Ensures the default collection exists in persistent config and APP_STATE."""
+        """
+        DEPRECATED: Default collections are now created per-user in the database.
+        This method is kept for backward compatibility but does nothing.
+        Default collections are created automatically when users log in or register.
+        """
+        # Load collections from database into APP_STATE
         config_manager = get_config_manager()
-        
-        # Load collections from persistent config
         collections_list = config_manager.get_rag_collections()
-        
-        # Check if default collection already exists (ID = 0)
-        default_exists = any(c["id"] == 0 for c in collections_list)
-        
-        if not default_exists:
-            # Create default collection with no MCP server assignment
-            # User must explicitly assign MCP server before enabling
-            default_collection = {
-                "id": 0,  # Default collection always has ID 0
-                "name": "Default Collection",
-                "collection_name": APP_CONFIG.RAG_DEFAULT_COLLECTION_NAME,
-                "mcp_server_id": "",  # No MCP server assigned initially
-                "enabled": False,  # User must explicitly enable collections
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "description": "Default collection for RAG cases"
-            }
-            collections_list.append(default_collection)
-            config_manager.save_rag_collections(collections_list)
-            logger.info("Created default RAG collection with ID: 0 (no MCP server assigned)")
-        
-        # Sync to APP_STATE
         APP_STATE["rag_collections"] = collections_list
+        logger.debug(f"Loaded {len(collections_list)} collections from database")
     
     def get_collection_metadata(self, collection_id: int) -> Optional[Dict[str, Any]]:
         """Get metadata for a specific collection by ID."""
@@ -536,28 +519,30 @@ class RAGRetriever:
         collection_name = f"tda_rag_coll_{collection_id}_{uuid.uuid4().hex[:6]}"
         
         new_collection = {
-            "id": collection_id,
             "name": name,
             "collection_name": collection_name,
             "mcp_server_id": mcp_server_id,
             "enabled": True,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "description": description,
-            # --- MARKETPLACE PHASE 2: Add ownership tracking ---
             "owner_user_id": owner_user_id,
-            "visibility": "private",  # Default to private
-            "is_marketplace_listed": False,  # Not listed by default
+            "visibility": "private",
+            "is_marketplace_listed": False,
             "subscriber_count": 0,
             "marketplace_metadata": {}
-            # --- MARKETPLACE PHASE 2 END ---
         }
         
-        # Add to APP_STATE
-        collections_list.append(new_collection)
-        APP_STATE["rag_collections"] = collections_list
+        # Save to database
+        from trusted_data_agent.core.collection_db import get_collection_db
+        collection_db = get_collection_db()
+        try:
+            collection_id = collection_db.create_collection(new_collection)
+        except Exception as e:
+            logger.error(f"Failed to save collection to database: {e}", exc_info=True)
+            return None
         
-        # Persist to config file
-        config_manager.save_rag_collections(collections_list)
+        # Reload collections into APP_STATE
+        APP_STATE["rag_collections"] = config_manager.get_rag_collections()
         
         # Create ChromaDB collection only if it matches the current MCP server ID
         current_mcp_server_id = APP_CONFIG.CURRENT_MCP_SERVER_ID
@@ -603,11 +588,13 @@ class RAGRetriever:
             if collection_id in self.collections:
                 del self.collections[collection_id]
             
-            # Remove from APP_STATE
-            APP_STATE["rag_collections"] = [c for c in collections_list if c["id"] != collection_id]
+            # Delete from database
+            from trusted_data_agent.core.collection_db import get_collection_db
+            collection_db = get_collection_db()
+            collection_db.delete_collection(collection_id)
             
-            # Persist to config file
-            config_manager.save_rag_collections(APP_STATE["rag_collections"])
+            # Reload APP_STATE
+            APP_STATE["rag_collections"] = config_manager.get_rag_collections()
             
             logger.info(f"Removed collection '{collection_id}'")
             return True
@@ -635,10 +622,13 @@ class RAGRetriever:
             logger.warning(f"Cannot enable collection '{collection_id}': no MCP server assigned")
             return False
         
-        coll_meta["enabled"] = enabled
+        # Update in database
+        config_manager.update_rag_collection(collection_id, {"enabled": enabled})
         
-        # Persist to config file
-        config_manager.save_rag_collections(collections_list)
+        # Reload collections into APP_STATE
+        APP_STATE["rag_collections"] = config_manager.get_rag_collections()
+        collections_list = APP_STATE["rag_collections"]
+        coll_meta = next((c for c in collections_list if c["id"] == collection_id), None)
         
         # Check if collection matches current MCP server ID
         current_mcp_server_id = APP_CONFIG.CURRENT_MCP_SERVER_ID

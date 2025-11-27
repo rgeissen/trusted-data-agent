@@ -50,6 +50,30 @@ logger = logging.getLogger("quart.app")
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/v1/auth')
 
 
+def ensure_user_default_collection(user_id: str):
+    """
+    Ensure a user has a default collection.
+    Creates one if it doesn't exist.
+    """
+    from trusted_data_agent.core.collection_db import get_collection_db
+    
+    collection_db = get_collection_db()
+    
+    # Check if user already has a default collection
+    user_collections = collection_db.get_user_owned_collections(user_id)
+    has_default = any(
+        c.get('name') == 'Default Collection' 
+        for c in user_collections
+    )
+    
+    if not has_default:
+        try:
+            collection_db.create_default_collection(user_id)
+            logger.info(f"Created default collection for user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to create default collection for user {user_id}: {e}", exc_info=True)
+
+
 def log_audit_event(user_id: str, action: str, details: str, success: bool = True):
     """Helper to log audit events"""
     try:
@@ -172,6 +196,9 @@ async def register():
         )
         
         logger.info(f"New user registered: {user_username} (uuid: {user_uuid})")
+        
+        # Create default collection for new user
+        ensure_user_default_collection(user_uuid)
         
         return jsonify({
             'status': 'success',
@@ -320,6 +347,9 @@ async def login():
         )
         
         logger.info(f"User logged in: {user_username}")
+        
+        # Ensure user has a default collection
+        ensure_user_default_collection(user_uuid)
         
         return jsonify({
             'status': 'success',

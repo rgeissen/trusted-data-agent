@@ -295,93 +295,83 @@ class ConfigManager:
     
     def get_rag_collections(self, user_uuid: Optional[str] = None) -> list:
         """
-        Get RAG collections from the configuration.
+        Get RAG collections from the database.
         
         Args:
-            user_uuid: Optional user UUID for per-user configuration isolation
+            user_uuid: Optional user UUID to filter collections (owned + subscribed)
         
         Returns:
             List of RAG collection metadata dictionaries
         """
-        config = self.load_config(user_uuid)
-        return config.get("rag_collections", [])
+        from trusted_data_agent.core.collection_db import get_collection_db
+        collection_db = get_collection_db()
+        return collection_db.get_all_collections(user_uuid)
     
     def save_rag_collections(self, collections: list, user_uuid: Optional[str] = None) -> bool:
         """
-        Save RAG collections to the configuration.
+        Save RAG collections - DEPRECATED, collections now stored in database.
+        This method is kept for backward compatibility but does nothing.
         
         Args:
-            collections: List of RAG collection metadata dictionaries
-            user_uuid: Optional user UUID for per-user configuration isolation
+            collections: List of RAG collection metadata dictionaries (ignored)
+            user_uuid: Optional user UUID (ignored)
             
         Returns:
-            True if successful, False otherwise
+            Always returns True
         """
-        config = self.load_config(user_uuid)
-        config["rag_collections"] = collections
-        return self.save_config(config, user_uuid)
+        app_logger.warning("save_rag_collections called but collections are now in database")
+        return True
     
     def add_rag_collection(self, collection_metadata: Dict[str, Any], user_uuid: Optional[str] = None) -> bool:
         """
-        Add a new RAG collection to the configuration.
+        Add a new RAG collection to the database.
         
         Args:
             collection_metadata: Collection metadata dictionary
-            user_uuid: Optional user UUID for per-user configuration isolation
+            user_uuid: Optional user UUID (unused, owner is in collection_metadata)
             
         Returns:
             True if successful, False otherwise
         """
-        collections = self.get_rag_collections(user_uuid)
-        collections.append(collection_metadata)
-        return self.save_rag_collections(collections, user_uuid)
+        from trusted_data_agent.core.collection_db import get_collection_db
+        collection_db = get_collection_db()
+        try:
+            collection_db.create_collection(collection_metadata)
+            return True
+        except Exception as e:
+            app_logger.error(f"Failed to add collection: {e}", exc_info=True)
+            return False
     
     def update_rag_collection(self, collection_id: int, updates: Dict[str, Any], user_uuid: Optional[str] = None) -> bool:
         """
-        Update an existing RAG collection in the configuration.
+        Update an existing RAG collection in the database.
         
         Args:
             collection_id: ID of the collection to update
             updates: Dictionary of fields to update
-            user_uuid: Optional user UUID for per-user configuration isolation
+            user_uuid: Optional user UUID (unused)
             
         Returns:
             True if successful, False otherwise
         """
-        collections = self.get_rag_collections(user_uuid)
-        
-        for collection in collections:
-            if collection["id"] == collection_id:
-                collection.update(updates)
-                return self.save_rag_collections(collections, user_uuid)
-        
-        app_logger.warning(f"Collection with ID {collection_id} not found for update")
-        return False
+        from trusted_data_agent.core.collection_db import get_collection_db
+        collection_db = get_collection_db()
+        return collection_db.update_collection(collection_id, updates)
     
     def remove_rag_collection(self, collection_id: int, user_uuid: Optional[str] = None) -> bool:
         """
-        Remove a RAG collection from the configuration.
+        Remove a RAG collection from the database.
         
         Args:
             collection_id: ID of the collection to remove
-            user_uuid: Optional user UUID for per-user configuration isolation
+            user_uuid: Optional user UUID (unused)
             
         Returns:
             True if successful, False otherwise
         """
-        if collection_id == 0:
-            app_logger.warning("Cannot remove default collection (ID 0)")
-            return False
-        
-        collections = self.get_rag_collections(user_uuid)
-        original_count = len(collections)
-        collections = [c for c in collections if c["id"] != collection_id]
-        
-        if len(collections) == original_count:
-            app_logger.warning(f"Collection with ID {collection_id} not found for removal")
-            return False
-        
-        return self.save_rag_collections(collections, user_uuid)
+        from trusted_data_agent.core.collection_db import get_collection_db
+        collection_db = get_collection_db()
+        return collection_db.delete_collection(collection_id)
     
     # ========================================================================
     # MCP SERVER CONFIGURATION METHODS
