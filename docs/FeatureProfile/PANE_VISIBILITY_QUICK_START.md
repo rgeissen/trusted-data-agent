@@ -10,7 +10,7 @@
 |------|------|-----------|-------|
 | **Conversations** | ✅ Yes | ✅ Yes | ✅ Yes |
 | **Executions** | ❌ No | ✅ Yes | ✅ Yes |
-| **RAG Maintenance** | ❌ No | ✅ Yes | ✅ Yes |
+| **Intelligence** | ❌ No | ✅ Yes | ✅ Yes |
 | **Marketplace** | ✅ Yes | ✅ Yes | ✅ Yes |
 | **Credentials** | ✅ Yes | ✅ Yes | ✅ Yes |
 | **Administration** | ❌ No | ❌ No | ✅ Yes |

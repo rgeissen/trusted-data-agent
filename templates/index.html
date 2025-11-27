@@ -175,7 +175,7 @@
         <nav id="app-side-nav" class="collapsed flex flex-col h-full bg-black/30 p-4 border-r border-white/10 space-y-4">
             <!-- Navigation Links -->
             <div class="flex flex-col space-y-2">
-                <!-- Reordered: Conversation first, then Executions, RAG Maintenance, Marketplace, and Credentials last -->
+                <!-- Reordered: Conversation first, then Executions, Intelligence, Marketplace, and Credentials last -->
                 <a href="#" id="view-switch-conversation" data-view="conversation-view" class="view-switch-button flex items-center gap-x-3 px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7S2 13.866 2 10 5.582 3 10 3s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zm-4 0H9v2h2V9z" clip-rule="evenodd" />
@@ -194,7 +194,7 @@
                         <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4z" />
                         <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
                     </svg>
-                    <span class="nav-link-text font-semibold">RAG Maintenance</span>
+                    <span class="nav-link-text font-semibold">Intelligence</span>
                 </a>
                 <!-- NEW: RAG Marketplace View Link -->
                 <a href="#" id="view-switch-rag-marketplace" data-view="rag-marketplace-view" class="view-switch-button flex items-center gap-x-3 px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
@@ -511,7 +511,7 @@
                                                         <div class="mt-1.5 w-3 h-3 rounded-full bg-teradata-orange flex-shrink-0 shadow-lg shadow-teradata-orange/50"></div>
                                                         <div>
                                                             <p class="text-sm font-semibold text-teradata-orange">21-Nov-2025</p>
-                                                            <p class="text-base text-white font-medium">RAG Templates - Modular Plugin System</p>
+                                                            <p class="text-base text-white font-medium">Knowledge Templates - Modular Plugin System</p>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1085,7 +1085,7 @@
                 </div>
             </div>
 
-            <!-- VIEW 2: RAG Maintenance (New, placeholder view) -->
+            <!-- VIEW 2: Intelligence (New, placeholder view) -->
             <!-- VIEW 2A: RAG Marketplace (New, placeholder view) -->
             <div id="rag-marketplace-view" class="app-view w-full h-full p-8 flex items-center justify-center">
                 <div class="max-w-4xl mx-auto text-center space-y-8">
@@ -1172,7 +1172,7 @@
             <div id="rag-maintenance-view" class="app-view w-full h-full p-8 overflow-y-auto">
                 <div class="max-w-7xl mx-auto">
                     <div class="mb-6">
-                        <h1 class="text-3xl font-bold text-white header-title">RAG Impact Dashboard</h1>
+                        <h1 class="text-3xl font-bold text-white header-title">Knowledge Performance</h1>
                     </div>
 
                     <!-- RAG Impact KPI Cards -->
@@ -1303,8 +1303,8 @@
                     <!-- Collections Section -->
                     <div class="flex items-center justify-between mb-6">
                         <div>
-                            <h2 class="text-2xl font-bold text-white">Local Collections</h2>
-                            <p class="text-sm text-gray-400 mt-1">Manage your RAG knowledge base collections</p>
+                            <h2 class="text-2xl font-bold text-white">Knowledge Repositories</h2>
+                            <p class="text-sm text-gray-400 mt-1">Manage your RAG based collections</p>
                         </div>
                         <button id="add-rag-collection-btn" type="button" class="px-4 py-2 rounded-md bg-[#F15F22] hover:bg-[#D9501A] text-white font-medium text-sm flex items-center gap-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1325,8 +1325,8 @@
                     <div class="mb-6">
                         <div class="flex items-center justify-between mb-4">
                             <div>
-                                <h2 class="text-2xl font-bold text-white">RAG Templates</h2>
-                                <p class="text-sm text-gray-400 mt-1">Populate collections using predefined templates</p>
+                                <h2 class="text-2xl font-bold text-white">Knowledge Templates</h2>
+                                <p class="text-sm text-gray-400 mt-1">Populate Knowledge Repositories using predefined templates</p>
                             </div>
                         </div>
                         
@@ -1338,7 +1338,7 @@
                 </div>
             </div>
 
-            <!-- VIEW 2B: RAG Collection Inspection -->
+            <!-- VIEW 2B: Knowledge Collection Inspection -->
             <div id="rag-collection-inspect-view" class="app-view w-full h-full p-8">
                 <div class="max-w-7xl mx-auto flex flex-col h-full">
                     <div class="flex items-center justify-between mb-6">
@@ -2926,12 +2926,12 @@
         </div>
     </div>
     
-    <!-- Add RAG Collection Modal -->
+    <!-- Add Knowledge Collection Modal -->
     <div id="add-rag-collection-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
         <div id="add-rag-collection-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-3xl p-6 transform scale-95 opacity-0 max-h-[90vh] overflow-y-auto">
             <!-- Modal Header -->
             <div class="flex items-center justify-between mb-6">
-                <h2 class="text-2xl font-bold text-white">Add RAG Collection</h2>
+                <h2 class="text-2xl font-bold text-white">Add Knowledge Collection</h2>
                 <button type="button" id="add-rag-collection-modal-close" class="p-2 rounded-full text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -3302,12 +3302,12 @@
         </div>
     </div>
 
-    <!-- Edit RAG Collection Modal -->
+    <!-- Edit Knowledge Collection Modal -->
     <div id="edit-rag-collection-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
         <div id="edit-rag-collection-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-lg p-6 transform scale-95 opacity-0">
             <!-- Modal Header -->
             <div class="flex items-center justify-between mb-6">
-                <h2 class="text-2xl font-bold text-white">Edit RAG Collection</h2>
+                <h2 class="text-2xl font-bold text-white">Edit Knowledge Collection</h2>
                 <button type="button" id="edit-rag-collection-modal-close" class="p-2 rounded-full text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -3827,10 +3827,10 @@
                     </div>
                 </div>
 
-                <!-- RAG Collections Section -->
+                <!-- Knowledge Collections Section -->
                 <div class="border-t border-gray-800/50 pt-5">
                     <h4 class="text-sm font-medium text-gray-300 mb-3">
-                        RAG Collections
+                        Knowledge Collections
                     </h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>

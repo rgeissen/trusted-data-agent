@@ -18,7 +18,7 @@ export const conversationView = document.getElementById('conversation-view');
 export const ragMaintenanceView = document.getElementById('rag-maintenance-view');
 // NEW: RAG Marketplace view element
 export const ragMarketplaceView = document.getElementById('rag-marketplace-view');
-// NEW: RAG Maintenance collections container
+// NEW: Intelligence collections container
 export const ragMaintenanceCollectionsContainer = document.getElementById('rag-maintenance-collections-container');
 export const ragMaintenanceEmptyHint = document.getElementById('rag-maintenance-empty-hint');
 // NEW: RAG Collection Inspection view elements

@@ -1950,7 +1950,7 @@ export function handleViewSwitch(viewId) {
         }
     }, 100); // Use a small delay to catch any subsequent changes
 
-    // 6. If switching to RAG Maintenance, load collections and calculate KPIs
+    // 6. If switching to Intelligence, load collections and calculate KPIs
     if (viewId === 'rag-maintenance-view') {
         loadRagCollections();
         // Calculate and display RAG impact KPIs

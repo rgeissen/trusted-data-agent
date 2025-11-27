@@ -1190,7 +1190,7 @@ def initialize_default_panes(session):
     - Marketplace: all tiers
     - Credentials: all tiers
     - Executions: developer + admin
-    - RAG Maintenance: developer + admin
+    - Intelligence: developer + admin
     - Administration: admin only
     
     Args:
@@ -1222,7 +1222,7 @@ def initialize_default_panes(session):
         },
         {
             'pane_id': 'rag-maintenance',
-            'pane_name': 'RAG Maintenance',
+            'pane_name': 'Intelligence',
             'description': 'Manage RAG collections and templates',
             'display_order': 3,
             'visible_to_user': False,
@@ -1232,7 +1232,7 @@ def initialize_default_panes(session):
         {
             'pane_id': 'marketplace',
             'pane_name': 'Marketplace',
-            'description': 'Browse and install RAG templates',
+            'description': 'Browse and install Knowledge templates',
             'display_order': 4,
             'visible_to_user': True,
             'visible_to_developer': True,
