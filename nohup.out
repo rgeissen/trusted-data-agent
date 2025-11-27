@@ -1,0 +1,117 @@
+2025-11-27 20:07:13,981 - quart.app - INFO - License successfully validated for: GNU Affero General Public License v3.0 (Tier: App Developer)
+2025-11-27 20:07:13,983 - quart.app - INFO - Successfully decrypted and loaded base prompts.
+2025-11-27 20:07:14,778 - quart.app - INFO - Session directory ensured at: /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_sessions
+2025-11-27 20:07:15,116 - quart.app - INFO - Initializing authentication database at: sqlite:////Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_auth.db
+2025-11-27 20:07:15,120 - quart.app - INFO - Authentication database initialized successfully
+2025-11-27 20:07:15,124 - quart.app - INFO - Loaded JWT secret key from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_keys/jwt_secret.key
+2025-11-27 20:07:15,133 - quart.app - INFO - Database already has 6 user(s), skipping default admin creation
+2025-11-27 20:07:15,134 - quart.app - INFO - System settings initialized successfully
+2025-11-27 20:07:15,135 - quart.app - INFO - Document upload configurations initialized successfully
+2025-11-27 20:07:50,872 - quart.app - WARNING - Using default encryption key (development mode)
+2025-11-27 20:07:50,903 - quart.app - INFO - Hypercorn worker timeout set to 600 seconds.
+2025-11-27 20:07:50,903 - quart.app - INFO - Hypercorn read timeout set to 600 seconds.
+2025-11-27 20:07:50,903 - quart.app - INFO - Application starting up... Launching background tasks.
+2025-11-27 20:07:50,903 - quart.app - INFO - Initializing authentication database...
+2025-11-27 20:07:50,903 - quart.app - INFO - Initializing authentication database at: sqlite:////Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_auth.db
+2025-11-27 20:07:50,904 - quart.app - INFO - Authentication database initialized successfully
+2025-11-27 20:07:50,905 - quart.app - INFO - Database already has 6 user(s), skipping default admin creation
+2025-11-27 20:07:50,906 - quart.app - INFO - System settings initialized successfully
+2025-11-27 20:07:50,907 - quart.app - INFO - Document upload configurations initialized successfully
+2025-11-27 20:07:50,907 - quart.app - INFO - Authentication database initialized successfully
+2025-11-27 20:07:50,907 - quart.app - INFO - ConfigManager initialized with path: /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:07:50,907 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:07:50,907 - quart.app - INFO - MCP Classification (GLOBAL) from environment: True
+2025-11-27 20:07:50,908 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:07:50,908 - quart.app - INFO - Pre-loaded 7 RAG collections from persistent config
+2025-11-27 20:07:50,908 - quart.app - INFO - Initializing RAG Template Manager...
+2025-11-27 20:07:50,909 - quart.app - INFO - RAG Template Manager initialized with 2 template(s): ['sql_query_v1', 'sql_query_doc_context_v1']
+2025-11-27 20:07:50,909 - quart.app - INFO - Initializing RAGRetriever at startup with cases dir: /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/rag/tda_rag_cases
+2025-11-27 20:07:53,095 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:07:53,399 - quart.app - INFO - RAGRetriever initialized successfully at startup - ready for use
+2025-11-27 20:07:53,399 - quart.app - INFO - RAG processing worker started and waiting for queue items.
+2025-11-27 20:07:53,399 - quart.app - INFO - User context cleanup worker disabled (multi-user authentication enabled)
+2025-11-27 20:07:55,978 - quart.app - INFO - User 8b8f68cd-f86c-4775-80f2-6133b90ab7f8 subscribed to notifications.
+2025-11-27 20:08:07,491 - quart.app - INFO - Notification subscription cancelled for user 8b8f68cd-f86c-4775-80f2-6133b90ab7f8.
+2025-11-27 20:08:08,382 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:08,474 - quart.app - INFO - [AuthMe] User admin: tier=admin, is_admin=True
+2025-11-27 20:08:08,481 - quart.app - WARNING - REST API: No valid authentication token provided
+2025-11-27 20:08:08,483 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:08,485 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:08,486 - quart.app - INFO - User 8b8f68cd-f86c-4775-80f2-6133b90ab7f8 subscribed to notifications.
+2025-11-27 20:08:08,569 - quart.app - INFO - [PaneVisibility] Returning 6 panes for user admin (tier: admin)
+2025-11-27 20:08:08,583 - quart.app - WARNING - REST API: No valid authentication token provided
+2025-11-27 20:08:08,584 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:08,584 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:08,593 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:08,594 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:08,594 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:08,594 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:08,630 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:08,630 - quart.app - INFO - RAG Status Check: retriever_exists=True, collections_loaded=7, rag_active=True
+2025-11-27 20:08:08,652 - quart.app - WARNING - REST API: No valid authentication token provided
+2025-11-27 20:08:08,653 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:08,653 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:08,664 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:08,664 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:09,378 - quart.app - INFO - Notification subscription cancelled for user 8b8f68cd-f86c-4775-80f2-6133b90ab7f8.
+2025-11-27 20:08:09,385 - quart.app - INFO - [AuthMe] User admin: tier=admin, is_admin=True
+2025-11-27 20:08:10,811 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:10,845 - quart.app - INFO - [AuthMe] User admin: tier=admin, is_admin=True
+2025-11-27 20:08:10,854 - quart.app - WARNING - REST API: No valid authentication token provided
+2025-11-27 20:08:10,855 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:10,855 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:10,868 - quart.app - INFO - User 8b8f68cd-f86c-4775-80f2-6133b90ab7f8 subscribed to notifications.
+2025-11-27 20:08:10,882 - quart.app - INFO - [PaneVisibility] Returning 6 panes for user admin (tier: admin)
+2025-11-27 20:08:10,893 - quart.app - WARNING - REST API: No valid authentication token provided
+2025-11-27 20:08:10,893 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:10,894 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:10,926 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:10,927 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:10,928 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:10,928 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:11,007 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:11,007 - quart.app - INFO - RAG Status Check: retriever_exists=True, collections_loaded=7, rag_active=True
+2025-11-27 20:08:11,058 - quart.app - WARNING - REST API: No valid authentication token provided
+2025-11-27 20:08:11,058 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:11,058 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:11,072 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:11,073 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:11,278 - quart.app - INFO - Notification subscription cancelled for user 8b8f68cd-f86c-4775-80f2-6133b90ab7f8.
+2025-11-27 20:08:11,291 - quart.app - INFO - [AuthMe] User admin: tier=admin, is_admin=True
+2025-11-27 20:08:12,186 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:12,216 - quart.app - INFO - [AuthMe] User admin: tier=admin, is_admin=True
+2025-11-27 20:08:12,227 - quart.app - WARNING - REST API: No valid authentication token provided
+2025-11-27 20:08:12,227 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:12,227 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:12,238 - quart.app - INFO - User 8b8f68cd-f86c-4775-80f2-6133b90ab7f8 subscribed to notifications.
+2025-11-27 20:08:12,250 - quart.app - INFO - [PaneVisibility] Returning 6 panes for user admin (tier: admin)
+2025-11-27 20:08:12,260 - quart.app - WARNING - REST API: No valid authentication token provided
+2025-11-27 20:08:12,260 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:12,261 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:12,362 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:12,362 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:12,362 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:12,363 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:12,389 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:12,389 - quart.app - INFO - RAG Status Check: retriever_exists=True, collections_loaded=7, rag_active=True
+2025-11-27 20:08:12,405 - quart.app - WARNING - REST API: No valid authentication token provided
+2025-11-27 20:08:12,406 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:12,406 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:12,410 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:12,411 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:13,716 - quart.app - INFO - Loaded configuration from /Users/rainergeissendoerfer/my_private_code/trusted-data-agent/tda_config.json
+2025-11-27 20:08:13,729 - quart.app - INFO - [AuthMe] User admin: tier=admin, is_admin=True
+2025-11-27 20:08:13,760 - quart.app - INFO - [PaneVisibility] Returning 6 panes for user admin (tier: admin)
+2025-11-27 20:08:38,677 - quart.app - INFO - AUDIT: admin_user_create - User: 8b8f68cd-f86c-4775-80f2-6133b90ab7f8 - Admin action on user 97cf641c-fa71-4a2c-a3b3-c0b1e42cfb2d: Created user tesst - Status: success
+2025-11-27 20:10:58,226 - quart.app - INFO - Notification subscription cancelled for user 8b8f68cd-f86c-4775-80f2-6133b90ab7f8.
+
+--- CHARTING ENABLED: Charting configuration is active. ---
+
+
+--- ⚠️ VOICE FEATURE WARNING ---
+
+The 'GOOGLE_APPLICATION_CREDENTIALS' environment variable is not set.
+The voice conversation feature will require credentials to be provided in the config UI.
+
+--- Starting Hypercorn Server for Quart App ---
+Web client initialized and ready. Navigate to http://0.0.0.0:5050

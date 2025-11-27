@@ -15,6 +15,7 @@ import * as UI from './ui.js';
 import { handleViewSwitch } from './ui.js';
 import { initializeVoiceRecognition } from './voice.js';
 import { subscribeToNotifications } from './notifications.js';
+import { initializeMarketplace } from './handlers/marketplaceHandler.js';
 
 // Session header profile display
 function updateSessionHeaderProfile(defaultProfile, overrideProfile) {
@@ -739,6 +740,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ensureUserUUID(); // Get/Set the User UUID right away
     subscribeToNotifications();
     initializeRAGAutoCompletion();
+    initializeMarketplace();
 
     // Fetch GitHub star count - DEACTIVATED to conserve API credits
     // fetchGitHubStarCount();

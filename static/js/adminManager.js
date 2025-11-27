@@ -277,7 +277,9 @@ const AdminManager = {
             return;
         }
 
-        tbody.innerHTML = this.currentUsers.map(user => `
+        tbody.innerHTML = this.currentUsers
+            .filter(user => user.is_active !== false)  // Filter out inactive users
+            .map(user => `
             <tr class="bg-gray-800/50 hover:bg-gray-700/50 transition-colors">
                 <td class="px-6 py-4 font-medium text-white">${this.escapeHtml(user.username)}</td>
                 <td class="px-6 py-4 text-gray-300">${this.escapeHtml(user.email || '')}</td>
@@ -679,6 +681,14 @@ const AdminManager = {
      * Save user (create or update)
      */
     async saveUser(formData) {
+        // Prevent double submission
+        if (this._savingUser) {
+            console.log('[AdminManager] Save already in progress, ignoring duplicate request');
+            return;
+        }
+        
+        this._savingUser = true;
+        
         try {
             const userId = formData.id;
             const token = localStorage.getItem('tda_auth_token');
@@ -688,6 +698,7 @@ const AdminManager = {
             if (!isEdit) {
                 if (!formData.username || !formData.email || !formData.password) {
                     window.showNotification('error', 'Please fill in all required fields (username, email, password)');
+                    this._savingUser = false;
                     return;
                 }
             }
@@ -718,9 +729,10 @@ const AdminManager = {
             });
             
             const data = await response.json();
-            console.log('[AdminManager] Save user response:', data);
+            console.log('[AdminManager] Save user response:', { status: response.status, data });
             
-            if (data.status === 'success') {
+            // Check both HTTP status code and response data status
+            if (response.ok && data.status === 'success') {
                 window.showNotification('success', isEdit ? 'User updated successfully' : 'User created successfully');
                 this.hideUserModal();
                 await this.loadUsers();
@@ -730,6 +742,8 @@ const AdminManager = {
         } catch (error) {
             console.error('[AdminManager] Error saving user:', error);
             window.showNotification('error', 'Failed to save user');
+        } finally {
+            this._savingUser = false;
         }
     },
     

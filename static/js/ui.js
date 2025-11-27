@@ -1959,6 +1959,13 @@ export function handleViewSwitch(viewId) {
         }
     }
     
+    // 6b. If switching to Marketplace, refresh marketplace collections
+    if (viewId === 'rag-marketplace-view') {
+        if (window.refreshMarketplace) {
+            window.refreshMarketplace();
+        }
+    }
+    
     // 7. If switching to Executions view, initialize dashboard
     if (viewId === 'executions-view') {
         if (window.executionDashboard) {
@@ -2460,7 +2467,7 @@ function renderCollectionRows(rows, total, query, collectionName) {
     }
 }
 
-function escapeHtml(str) {
+export function escapeHtml(str) {
     return str.replace(/[&<>"]+/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 

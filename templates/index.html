@@ -1094,86 +1094,71 @@
                 </div>
             </div>
 
-            <!-- VIEW 2: Intelligence (New, placeholder view) -->
-            <!-- VIEW 2A: RAG Marketplace (New, placeholder view) -->
-            <div id="rag-marketplace-view" class="app-view w-full h-full p-8 flex items-center justify-center">
-                <div class="max-w-4xl mx-auto text-center space-y-8">
-                    <!-- Icon -->
-                    <div class="flex justify-center">
-                        <div class="w-24 h-24 bg-[#F15F22]/20 backdrop-blur-sm border border-[#F15F22]/30 rounded-2xl flex items-center justify-center shadow-lg">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-14 w-14 text-[#F15F22]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            <!-- VIEW 2A: RAG Marketplace -->
+            <div id="rag-marketplace-view" class="app-view w-full h-full overflow-y-auto">
+                <div class="max-w-7xl mx-auto p-8">
+                    <!-- Header -->
+                    <div class="mb-8">
+                        <h1 class="text-3xl font-bold text-white header-title mb-2">Knowledge Marketplace</h1>
+                        <p class="text-gray-400">Discover and subscribe to community-curated RAG collections</p>
+                    </div>
+
+                    <!-- Search and Filter Bar -->
+                    <div class="glass-panel rounded-xl p-6 mb-6">
+                        <div class="flex gap-4 items-end">
+                            <div class="flex-1">
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Search Collections</label>
+                                <input type="text" id="marketplace-search-input" 
+                                       placeholder="Search by name or description..."
+                                       class="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#F15F22]/50">
+                            </div>
+                            <div class="w-48">
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Visibility</label>
+                                <select id="marketplace-visibility-filter" 
+                                        class="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[#F15F22]/50">
+                                    <option value="public">Public</option>
+                                    <option value="unlisted">Unlisted</option>
+                                </select>
+                            </div>
+                            <button id="marketplace-search-btn" 
+                                    class="px-6 py-2 bg-[#F15F22] hover:bg-[#D9501A] text-white font-semibold rounded-lg transition-colors">
+                                Search
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Collections Grid -->
+                    <div id="marketplace-collections-container" class="space-y-4">
+                        <!-- Loading state -->
+                        <div id="marketplace-loading" class="text-center py-12">
+                            <div class="inline-block w-8 h-8 border-4 border-[#F15F22]/30 border-t-[#F15F22] rounded-full animate-spin"></div>
+                            <p class="text-gray-400 mt-4">Loading marketplace collections...</p>
+                        </div>
+
+                        <!-- Empty state -->
+                        <div id="marketplace-empty" class="hidden text-center py-12">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                             </svg>
+                            <h3 class="text-xl font-semibold text-white mb-2">No Collections Found</h3>
+                            <p class="text-gray-400">Try adjusting your search or filters</p>
                         </div>
+
+                        <!-- Collections will be dynamically inserted here -->
+                        <div id="marketplace-collections-list"></div>
                     </div>
-                    
-                    <!-- Heading -->
-                    <div class="space-y-4">
-                        <h1 class="text-4xl font-bold text-white">Community Knowledge Marketplace</h1>
-                        <p class="text-2xl font-semibold text-[#F15F22]">Coming Soon</p>
-                    </div>
-                    
-                    <!-- Value Proposition -->
-                    <div class="space-y-6 text-left bg-white/5 rounded-2xl p-8 backdrop-blur-sm border border-white/10">
-                        <h2 class="text-xl font-bold text-white text-center">The Power of Collective Intelligence</h2>
-                        
-                        <div class="space-y-4">
-                            <div class="flex items-start gap-4">
-                                <div class="flex-shrink-0 w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                    </svg>
-                                </div>
-                                <div class="flex-1">
-                                    <h3 class="text-lg font-semibold text-white mb-1">Share & Discover Execution Strategies</h3>
-                                    <p class="text-gray-400">Access community-curated knowledge bases of proven planner executions, optimized for specific MCP servers and use cases.</p>
-                                </div>
-                            </div>
-                            
-                            <div class="flex items-start gap-4">
-                                <div class="flex-shrink-0 w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                    </svg>
-                                </div>
-                                <div class="flex-1">
-                                    <h3 class="text-lg font-semibold text-white mb-1">Supercharge Efficiency</h3>
-                                    <p class="text-gray-400">Dramatically reduce token costs and improve execution speed by learning from battle-tested strategies that already work.</p>
-                                </div>
-                            </div>
-                            
-                            <div class="flex items-start gap-4">
-                                <div class="flex-shrink-0 w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                    </svg>
-                                </div>
-                                <div class="flex-1">
-                                    <h3 class="text-lg font-semibold text-white mb-1">Enable On-Prem Intelligence</h3>
-                                    <p class="text-gray-400">Augment smaller, local models with community knowledge, achieving enterprise-grade results while maintaining data sovereignty.</p>
-                                </div>
-                            </div>
-                            
-                            <div class="flex items-start gap-4">
-                                <div class="flex-shrink-0 w-8 h-8 bg-orange-500/20 rounded-lg flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                    </svg>
-                                </div>
-                                <div class="flex-1">
-                                    <h3 class="text-lg font-semibold text-white mb-1">Continuous Learning Loop</h3>
-                                    <p class="text-gray-400">The planner evolves with every shared execution, creating a self-improving ecosystem that benefits everyone.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- CTA -->
-                    <div class="pt-4">
-                        <p class="text-gray-400 text-lg">
-                            Building the future of collaborative AI intelligence. Stay tuned!
-                        </p>
+
+                    <!-- Pagination -->
+                    <div id="marketplace-pagination" class="hidden mt-8 flex justify-between items-center">
+                        <button id="marketplace-prev-btn" 
+                                class="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            Previous
+                        </button>
+                        <span id="marketplace-page-info" class="text-gray-400"></span>
+                        <button id="marketplace-next-btn" 
+                                class="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            Next
+                        </button>
                     </div>
                 </div>
             </div>
@@ -4898,6 +4883,203 @@
             <div class="flex justify-end mt-6">
                 <button id="close-token-display-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors">Close</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Fork Collection Modal -->
+    <div id="fork-collection-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
+        <div id="fork-collection-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-lg p-6 transform scale-95 opacity-0">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-white">Fork Collection</h2>
+                <button type="button" id="fork-collection-modal-close" class="p-2 rounded-full text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <form id="fork-collection-form" class="space-y-4">
+                <input type="hidden" id="fork-collection-id" name="collection_id">
+                
+                <!-- Source Collection Info -->
+                <div class="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <p class="text-sm text-gray-400 mb-2">Forking from:</p>
+                    <p id="fork-source-name" class="text-white font-semibold"></p>
+                    <p id="fork-source-description" class="text-sm text-gray-400 mt-1"></p>
+                </div>
+                
+                <div>
+                    <label for="fork-collection-name" class="block text-sm font-medium text-gray-300 mb-2">
+                        New Collection Name <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" id="fork-collection-name" name="new_name" required
+                           class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none text-white"
+                           placeholder="e.g., My SQL Patterns">
+                </div>
+                
+                <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+                    <div class="flex gap-3">
+                        <svg class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div class="text-sm text-blue-200">
+                            <p class="font-semibold mb-1">What is forking?</p>
+                            <p>Forking creates a complete copy of this collection including all RAG cases and vector embeddings. You'll own the fork and can modify it independently.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Modal Footer -->
+                <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-600">
+                    <button type="button" id="fork-collection-cancel" class="px-4 py-2 rounded-md bg-gray-600 hover:bg-gray-500 transition-colors font-semibold text-white">
+                        Cancel
+                    </button>
+                    <button type="submit" id="fork-collection-submit" class="px-4 py-2 rounded-md bg-[#F15F22] hover:bg-[#D9501A] transition-colors font-semibold text-white">
+                        Fork Collection
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Publish Collection Modal -->
+    <div id="publish-collection-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
+        <div id="publish-collection-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-lg p-6 transform scale-95 opacity-0">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-white">Publish to Marketplace</h2>
+                <button type="button" id="publish-collection-modal-close" class="p-2 rounded-full text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <form id="publish-collection-form" class="space-y-4">
+                <input type="hidden" id="publish-collection-id" name="collection_id">
+                
+                <!-- Collection Info -->
+                <div class="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <p class="text-sm text-gray-400 mb-2">Publishing:</p>
+                    <p id="publish-collection-name" class="text-white font-semibold"></p>
+                    <p id="publish-collection-description" class="text-sm text-gray-400 mt-1"></p>
+                </div>
+                
+                <div>
+                    <label for="publish-visibility" class="block text-sm font-medium text-gray-300 mb-2">
+                        Visibility <span class="text-red-400">*</span>
+                    </label>
+                    <select id="publish-visibility" name="visibility" required
+                            class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none text-white">
+                        <option value="">Select visibility...</option>
+                        <option value="public">Public - Anyone can discover and subscribe</option>
+                        <option value="unlisted">Unlisted - Only accessible via direct link</option>
+                    </select>
+                </div>
+                
+                <div class="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
+                    <div class="flex gap-3">
+                        <svg class="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div class="text-sm text-green-200">
+                            <p class="font-semibold mb-1">Share your knowledge</p>
+                            <p>Publishing makes your collection available in the marketplace. Others can subscribe to benefit from your curated RAG cases.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Modal Footer -->
+                <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-600">
+                    <button type="button" id="publish-collection-cancel" class="px-4 py-2 rounded-md bg-gray-600 hover:bg-gray-500 transition-colors font-semibold text-white">
+                        Cancel
+                    </button>
+                    <button type="submit" id="publish-collection-submit" class="px-4 py-2 rounded-md bg-green-600 hover:bg-green-700 transition-colors font-semibold text-white">
+                        Publish Collection
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Rate Collection Modal -->
+    <div id="rate-collection-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
+        <div id="rate-collection-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-lg p-6 transform scale-95 opacity-0">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-white">Rate Collection</h2>
+                <button type="button" id="rate-collection-modal-close" class="p-2 rounded-full text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <form id="rate-collection-form" class="space-y-4">
+                <input type="hidden" id="rate-collection-id" name="collection_id">
+                
+                <!-- Collection Info -->
+                <div class="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <p id="rate-collection-name" class="text-white font-semibold"></p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-3">
+                        Your Rating <span class="text-red-400">*</span>
+                    </label>
+                    <div class="flex gap-2">
+                        <button type="button" class="rate-star" data-rating="1">
+                            <svg class="w-8 h-8 text-gray-500 hover:text-yellow-400 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                            </svg>
+                        </button>
+                        <button type="button" class="rate-star" data-rating="2">
+                            <svg class="w-8 h-8 text-gray-500 hover:text-yellow-400 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                            </svg>
+                        </button>
+                        <button type="button" class="rate-star" data-rating="3">
+                            <svg class="w-8 h-8 text-gray-500 hover:text-yellow-400 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                            </svg>
+                        </button>
+                        <button type="button" class="rate-star" data-rating="4">
+                            <svg class="w-8 h-8 text-gray-500 hover:text-yellow-400 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                            </svg>
+                        </button>
+                        <button type="button" class="rate-star" data-rating="5">
+                            <svg class="w-8 h-8 text-gray-500 hover:text-yellow-400 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <input type="hidden" id="rate-collection-rating" name="rating" required>
+                </div>
+                
+                <div>
+                    <label for="rate-collection-review" class="block text-sm font-medium text-gray-300 mb-2">
+                        Review (Optional)
+                    </label>
+                    <textarea id="rate-collection-review" name="review" rows="4"
+                              class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none text-white resize-none"
+                              placeholder="Share your experience with this collection..."></textarea>
+                </div>
+                
+                <!-- Modal Footer -->
+                <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-600">
+                    <button type="button" id="rate-collection-cancel" class="px-4 py-2 rounded-md bg-gray-600 hover:bg-gray-500 transition-colors font-semibold text-white">
+                        Cancel
+                    </button>
+                    <button type="submit" id="rate-collection-submit" class="px-4 py-2 rounded-md bg-[#F15F22] hover:bg-[#D9501A] transition-colors font-semibold text-white">
+                        Submit Rating
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </body>

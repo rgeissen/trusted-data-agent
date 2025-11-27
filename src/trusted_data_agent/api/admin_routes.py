@@ -309,17 +309,20 @@ async def manage_users():
         try:
             import uuid
             
+            logger.info(f"Creating user with data: username={data.get('username')}, email={data.get('email')}")
+            
             with get_db_session() as session:
-                # Check if username already exists
-                existing = session.query(User).filter_by(username=data['username']).first()
+                # Check if username already exists (among active users only)
+                existing = session.query(User).filter_by(username=data['username'], is_active=True).first()
                 if existing:
+                    logger.warning(f"Username already exists: {data['username']}")
                     return jsonify({
                         "status": "error",
                         "message": "Username already exists"
                     }), 400
                 
-                # Check if email already exists
-                existing_email = session.query(User).filter_by(email=data['email']).first()
+                # Check if email already exists (among active users only)
+                existing_email = session.query(User).filter_by(email=data['email'], is_active=True).first()
                 if existing_email:
                     return jsonify({
                         "status": "error",
@@ -329,7 +332,6 @@ async def manage_users():
                 # Create new user
                 new_user = User(
                     id=str(uuid.uuid4()),
-                    user_uuid=str(uuid.uuid4()),
                     username=data['username'],
                     email=data['email'],
                     password_hash=hash_password(data['password']),
@@ -354,7 +356,7 @@ async def manage_users():
                     f"Created user {new_user.username}"
                 )
                 
-                return jsonify({
+                response_data = {
                     "status": "success",
                     "message": "User created successfully",
                     "user": {
@@ -364,7 +366,9 @@ async def manage_users():
                         "display_name": new_user.display_name,
                         "profile_tier": new_user.profile_tier
                     }
-                }), 201
+                }
+                logger.info(f"User creation successful, returning: {response_data}")
+                return jsonify(response_data), 201
                 
         except Exception as e:
             logger.error(f"Failed to create user: {e}", exc_info=True)
@@ -539,8 +543,8 @@ async def manage_user(user_id: str):
                     changes.append(f"display_name={user.display_name}")
                 
                 if 'email' in data:
-                    # Check if email is already taken by another user
-                    existing = session.query(User).filter_by(email=data['email']).first()
+                    # Check if email is already taken by another active user
+                    existing = session.query(User).filter_by(email=data['email'], is_active=True).first()
                     if existing and existing.id != user_id:
                         return jsonify({
                             "status": "error",
@@ -550,8 +554,8 @@ async def manage_user(user_id: str):
                     changes.append(f"email={user.email}")
                 
                 if 'username' in data:
-                    # Check if username is already taken by another user
-                    existing = session.query(User).filter_by(username=data['username']).first()
+                    # Check if username is already taken by another active user
+                    existing = session.query(User).filter_by(username=data['username'], is_active=True).first()
                     if existing and existing.id != user_id:
                         return jsonify({
                             "status": "error",
@@ -566,6 +570,7 @@ async def manage_user(user_id: str):
                     changes.append("password=***")
                 
                 user.updated_at = datetime.now(timezone.utc)
+                session.commit()
                 
                 # Log admin action
                 audit.log_admin_action(
@@ -602,6 +607,7 @@ async def manage_user(user_id: str):
                 # Soft delete by deactivating
                 user.is_active = False
                 user.updated_at = datetime.now(timezone.utc)
+                session.commit()
                 
                 # Log admin action
                 audit.log_admin_action(
@@ -645,6 +651,7 @@ async def unlock_user(user_id: str):
             user.failed_login_attempts = 0
             user.locked_until = None
             user.updated_at = datetime.now(timezone.utc)
+            session.commit()
             
             # Log admin action
             audit.log_admin_action(
@@ -733,6 +740,7 @@ async def change_user_tier(user_id: str):
             user.is_admin = (new_tier == PROFILE_TIER_ADMIN)
             
             user.updated_at = datetime.now(timezone.utc)
+            session.commit()
             
             # Log admin action
             audit.log_admin_action(
