@@ -203,8 +203,15 @@ async function reloadTemplateConfiguration() {
 /**
  * Generate and display the question generation prompt preview
  */
-function refreshQuestionGenerationPrompt() {
+async function refreshQuestionGenerationPrompt() {
     if (!ragCollectionLlmPromptPreview) return;
+    
+    // Get selected template
+    const selectedTemplateId = ragCollectionTemplateType?.value;
+    if (!selectedTemplateId) {
+        ragCollectionLlmPromptPreview.value = 'Please select a template first...';
+        return;
+    }
     
     // Get values from dynamically generated fields
     const contextTopicEl = document.getElementById('rag-collection-llm-context-topic');
@@ -228,47 +235,96 @@ function refreshQuestionGenerationPrompt() {
         return;
     }
     
-    // Build conversion rules section if provided
-    let conversionRulesSection = '';
-    if (conversionRules) {
-        conversionRulesSection = `
-7. CRITICAL: Follow these explicit ${targetDatabase} conversion rules:
-${conversionRules}`;
-    }
-    
-    // Generate the prompt template (without actual context)
-    const promptTemplate = `You are a SQL expert helping to generate test questions and queries for a RAG system.
+    try {
+        // Fetch template plugin info to get prompt configuration
+        const response = await fetch(`/api/v1/rag/templates/${selectedTemplateId}/plugin-info`);
+        const data = await response.json();
+        const promptConfig = data.plugin_info?.prompt_templates?.question_generation;
+        
+        if (!promptConfig) {
+            throw new Error('No prompt template found in manifest');
+        }
+        
+        // Build conversion rules section if provided
+        let conversionRulesSection = '';
+        if (conversionRules) {
+            const reqCount = promptConfig.requirements?.length || 0;
+            conversionRulesSection = `\n${reqCount + 1}. CRITICAL: Follow these explicit ${targetDatabase} conversion rules:\n${conversionRules}\n`;
+        }
+        
+        // Build requirements list
+        let requirementsText = '';
+        if (promptConfig.requirements) {
+            promptConfig.requirements.forEach((req, idx) => {
+                const reqText = req
+                    .replace(/{count}/g, count)
+                    .replace(/{subject}/g, subject)
+                    .replace(/{target_database}/g, targetDatabase)
+                    .replace(/{database_name}/g, databaseName);
+                requirementsText += `${idx + 1}. ${reqText}\n`;
+            });
+        }
+        
+        // Add conversion rules if present
+        if (conversionRulesSection) {
+            requirementsText += conversionRulesSection;
+        }
+        
+        // Add output format requirement
+        if (promptConfig.output_format) {
+            const outputFormatText = promptConfig.output_format.replace(/{database_name}/g, databaseName);
+            requirementsText += `${promptConfig.requirements.length + (conversionRules ? 2 : 1)}. ${outputFormatText}`;
+        }
+        
+        // Build approach section if present
+        let approachSection = '';
+        if (promptConfig.approach_instructions) {
+            const approachText = promptConfig.approach_instructions
+                .replace(/{target_database}/g, targetDatabase)
+                .replace(/{database_name}/g, databaseName);
+            approachSection = `\n${approachText}\n\n`;
+        }
+        
+        // Build critical guidelines
+        let guidelinesText = '';
+        if (promptConfig.critical_guidelines) {
+            guidelinesText = promptConfig.critical_guidelines.map(g => 
+                `- ${g.replace(/{count}/g, count)}`
+            ).join('\n');
+        }
+        
+        // Determine context label based on template
+        const contextLabel = selectedTemplateId.includes('doc_context') ? 
+            'Technical Documentation' : 'Database Context';
+        const contextPlaceholder = selectedTemplateId.includes('doc_context') ?
+            '[Document content will be extracted from uploaded files]' :
+            '[Database schema and table descriptions will be inserted here from Step 1]';
+        
+        // Build task description
+        const taskDescription = promptConfig.task_description
+            ?.replace(/{count}/g, count)
+            ?.replace(/{subject}/g, subject) || '';
+        
+        // Construct final prompt preview
+        const promptTemplate = `${promptConfig.system_role || ''}
 
-Based on the following database context, generate ${count} diverse, interesting business questions about "${subject}" along with the SQL queries that would answer them.
-
-Database Context:
-[Database schema and table descriptions will be inserted here from Step 1]
+${taskDescription}
+${approachSection}
+${contextLabel}:
+${contextPlaceholder}
 
 Requirements:
-1. Generate EXACTLY ${count} question/SQL pairs
-2. Questions should be natural language business questions about ${subject}
-3. SQL queries must be valid ${targetDatabase} syntax for the database schema shown above
-4. Use ${targetDatabase}-specific SQL syntax, functions, and conventions
-5. Questions should vary in complexity (simple to advanced)
-6. Use the database name "${databaseName}" in your queries${conversionRulesSection}
-7. Return your response as a valid JSON array with this exact structure:
-[
-  {
-    "question": "What is the total revenue by product category?",
-    "sql": "SELECT ProductType, SUM(Price * StockQuantity) as TotalValue FROM ${databaseName}.Products GROUP BY ProductType;"
-  },
-  {
-    "question": "Which customer has the highest order value?",
-    "sql": "SELECT CustomerID, CustomerName, MAX(OrderTotal) as MaxOrder FROM ${databaseName}.Orders GROUP BY CustomerID, CustomerName ORDER BY MaxOrder DESC LIMIT 1;"
-  }
-]
+${requirementsText}
 
-IMPORTANT: 
-- Write COMPLETE SQL queries - do NOT truncate them with "..." or similar
-- Your entire response must be ONLY the JSON array, with no other text before or after
-- Include all ${count} question/SQL pairs requested`;
-    
-    ragCollectionLlmPromptPreview.value = promptTemplate;
+CRITICAL GUIDELINES:
+${guidelinesText}`;
+        
+        ragCollectionLlmPromptPreview.value = promptTemplate;
+        
+    } catch (error) {
+        console.error('Failed to load prompt from template:', error);
+        ragCollectionLlmPromptPreview.value = `Error loading prompt template: ${error.message}`;
+    }
 }
 
 /**
@@ -324,6 +380,14 @@ async function openAddRagCollectionModal() {
         ragCollectionQuestionsResult.classList.add('hidden');
     }
     lastGeneratedQuestions = null;
+    
+    // Clear uploaded documents
+    uploadedDocuments = [];
+    const docList = document.getElementById('rag-collection-doc-list');
+    if (docList) {
+        docList.classList.add('hidden');
+        docList.innerHTML = '';
+    }
     
     // Reload template configuration to get latest default_mcp_context_prompt
     await reloadTemplateConfiguration();
@@ -1858,8 +1922,26 @@ function closeContextResultModal() {
  */
 async function handleGenerateQuestions() {
     try {
-        if (!lastGeneratedContext) {
-            showNotification('error', 'Please generate database context first');
+        // Determine which template is selected
+        const selectedTemplateId = ragCollectionTemplateType?.value || 'sql_query_v1';
+        
+        // Fetch template configuration
+        const response = await fetch(`/api/v1/rag/templates/${selectedTemplateId}/plugin-info`);
+        const data = await response.json();
+        const autoGenConfig = data.plugin_info?.population_modes?.auto_generate || {};
+        
+        const requiresMcpContext = autoGenConfig.requires_mcp_context !== false;
+        const inputMethod = autoGenConfig.input_method || 'mcp_context';
+        
+        // For templates requiring MCP context, validate it was generated
+        if (requiresMcpContext && !lastGeneratedContext) {
+            showNotification('error', 'Please generate database context first (Step 1)');
+            return;
+        }
+        
+        // For templates using document upload, require documents
+        if (inputMethod === 'document_upload' && (!uploadedDocuments || uploadedDocuments.length === 0)) {
+            showNotification('error', 'Please upload at least one document');
             return;
         }
         
@@ -1876,7 +1958,7 @@ async function handleGenerateQuestions() {
         const conversionRules = conversionRulesEl ? conversionRulesEl.value.trim() : '';
         
         if (!subject) {
-            showNotification('error', 'Please enter a subject');
+            showNotification('error', 'Please enter a subject/context topic');
             return;
         }
         
@@ -1897,34 +1979,68 @@ async function handleGenerateQuestions() {
         
         showNotification('info', `Generating ${count} ${targetDatabase} question/SQL pairs...`);
         
-        // Build request with database context from previous step
-        // Include full execution trace to provide complete schema information
-        const requestBody = {
-            subject: subject,
-            count: count,
-            database_context: lastGeneratedContext.final_answer_text,
-            execution_trace: lastGeneratedContext.execution_trace, // Include full trace for schema details
-            database_name: databaseName,
-            target_database: targetDatabase,
-            conversion_rules: conversionRules
-        };
+        let apiResponse;
+        const endpoint = autoGenConfig.generation_endpoint || '/api/v1/rag/generate-questions';
         
+        if (inputMethod === 'document_upload') {
+            // Document-based generation: Upload documents and generate questions
+            const formData = new FormData();
+            formData.append('subject', subject);
+            formData.append('count', count.toString());
+            formData.append('database_name', databaseName);
+            formData.append('target_database', targetDatabase);
+            if (conversionRules) {
+                formData.append('conversion_rules', conversionRules);
+            }
+            
+            // Add all uploaded documents
+            uploadedDocuments.forEach(file => {
+                formData.append('files', file);
+            });
+            
+            // Get authentication token (JWT stored after login)
+            const token = localStorage.getItem('tda_auth_token');
+            
+            // Call the generation endpoint from template config
+            apiResponse = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData  // No Content-Type header - browser sets it with boundary
+            });
+            
+        } else {
+            // MCP context-based generation: Use generated database context
+            const requestBody = {
+                subject: subject,
+                count: count,
+                database_context: lastGeneratedContext.final_answer_text,
+                execution_trace: lastGeneratedContext.execution_trace,
+                database_name: databaseName,
+                target_database: targetDatabase,
+                conversion_rules: conversionRules
+            };
+            
+            // Get authentication token (JWT stored after login)
+            const token = localStorage.getItem('tda_auth_token');
+            
+            apiResponse = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(requestBody)
+            });
+        }
         
-        // Call the generate-questions endpoint
-        const response = await fetch('/api/v1/rag/generate-questions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json();
+        if (!apiResponse.ok) {
+            const errorData = await apiResponse.json();
             throw new Error(errorData.message || 'Failed to generate questions');
         }
         
-        const result = await response.json();
+        const result = await apiResponse.json();
         
         // Store questions for later use
         lastGeneratedQuestions = result.questions;
@@ -2479,11 +2595,53 @@ async function switchTemplateFields() {
     if (!sqlFields) return;
     
     try {
+        // Fetch template plugin info to check population modes
+        const response = await fetch(`/api/v1/rag/templates/${selectedTemplateId}/plugin-info`);
+        const data = await response.json();
+        const populationModes = data.plugin_info?.population_modes || {};
+        
+        // Check if manual entry is supported from template manifest
+        const manualSupported = populationModes.manual?.supported !== false;
+        
+        // Get the manual entry radio button and its label
+        const manualEntryRadio = document.getElementById('rag-template-method-manual');
+        const manualEntryLabel = manualEntryRadio?.closest('label');
+        const llmRadio = document.getElementById('rag-template-method-llm');
+        
+        if (!manualSupported) {
+            // Disable manual entry option based on template manifest
+            if (manualEntryRadio) {
+                manualEntryRadio.disabled = true;
+                manualEntryRadio.checked = false;
+            }
+            if (manualEntryLabel) {
+                manualEntryLabel.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                manualEntryLabel.classList.remove('hover:border-teradata-orange/50');
+            }
+            
+            // Auto-select LLM generation
+            if (llmRadio) {
+                llmRadio.checked = true;
+            }
+        } else {
+            // Re-enable manual entry for templates that support it
+            if (manualEntryRadio) {
+                manualEntryRadio.disabled = false;
+            }
+            if (manualEntryLabel) {
+                manualEntryLabel.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                manualEntryLabel.classList.add('hover:border-teradata-orange/50');
+            }
+        }
+        
         // Use templateManager to render manual input fields dynamically
         await window.templateManager.renderTemplateFields(selectedTemplateId, sqlFields);
         
         // Render LLM auto-generate fields dynamically
         await renderLlmFieldsForTemplate(selectedTemplateId);
+        
+        // Trigger population method change to show the right UI
+        await handleTemplateMethodChange();
     } catch (error) {
         console.error('[Template Fields] Failed to render template fields:', error);
         sqlFields.innerHTML = '<p class="text-red-400 text-sm">Error loading template fields</p>';
@@ -2559,21 +2717,99 @@ async function renderLlmFieldsForTemplate(templateId) {
             llmFieldsContainer.insertAdjacentHTML('beforeend', fieldHtml);
         }
         
-        // Add MCP Context Prompt field after the dynamic fields
-        const mcpPromptFieldHtml = `
-            <div class="bg-gray-800/50 rounded-lg p-3 border border-gray-600">
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                    MCP Context Prompt
-                    <span class="text-red-400">*</span>
-                </label>
-                <input type="text" id="rag-collection-llm-mcp-prompt" 
-                       class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white text-sm"
-                       placeholder="e.g., base_databaseBusinessDesc"
-                       value="${data.plugin_info?.input_variables?.mcp_context_prompt?.default || 'base_databaseBusinessDesc'}">
-                <p class="text-xs text-gray-400 mt-1">Prompt used to retrieve database schema and context for question generation.</p>
-            </div>
-        `;
-        llmFieldsContainer.insertAdjacentHTML('beforeend', mcpPromptFieldHtml);
+        // Get template configuration for UI behavior
+        const autoGenConfig = data.plugin_info?.population_modes?.auto_generate || {};
+        const inputMethod = autoGenConfig.input_method || 'mcp_context';
+        const requiresMcpContext = autoGenConfig.requires_mcp_context !== false;
+        
+        // Hide/show context generation step based on template requirements
+        const generateContextSection = document.querySelector('[id*="rag-collection-generate-context"]')?.closest('.pt-3.border-t');
+        if (generateContextSection) {
+            if (requiresMcpContext) {
+                generateContextSection.style.display = '';
+            } else {
+                generateContextSection.style.display = 'none';
+            }
+        }
+        
+        // For templates without MCP context, show Step 2 immediately (no Step 1 needed)
+        const step2Section = document.getElementById('rag-collection-step2-section');
+        if (!requiresMcpContext && step2Section) {
+            step2Section.classList.remove('hidden');
+            // Update step number from 2 to 1
+            const stepBadge = step2Section.querySelector('.bg-purple-600');
+            if (stepBadge) {
+                stepBadge.textContent = '1';
+            }
+            const stepText = step2Section.querySelector('.text-purple-300');
+            if (stepText) {
+                stepText.textContent = 'Generate question/SQL pairs from uploaded documents';
+            }
+        }
+        
+        if (inputMethod === 'document_upload') {
+            // Add document upload field for Document Context template
+            const documentUploadHtml = `
+                <div class="bg-gray-800/50 rounded-lg p-4 border border-gray-600">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">
+                        Upload Documents
+                        <span class="text-red-400">*</span>
+                    </label>
+                    <div class="border-2 border-dashed border-gray-600 rounded-lg p-4 text-center hover:border-teradata-orange/50 transition-colors">
+                        <input type="file" id="rag-collection-doc-upload" 
+                               accept=".pdf,.txt,.doc,.docx" 
+                               multiple
+                               class="hidden">
+                        <label for="rag-collection-doc-upload" class="cursor-pointer">
+                            <div class="flex flex-col items-center gap-2">
+                                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                <div class="text-sm text-gray-300">Click to upload or drag and drop</div>
+                                <div class="text-xs text-gray-400">PDF, TXT, DOC, DOCX (Max 50MB each)</div>
+                            </div>
+                        </label>
+                    </div>
+                    <div id="rag-collection-doc-list" class="mt-3 space-y-2 hidden">
+                        <!-- Uploaded files will be listed here -->
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">Upload technical documentation, requirements, or business context documents. The LLM will analyze these to generate relevant question/SQL pairs.</p>
+                </div>
+            `;
+            llmFieldsContainer.insertAdjacentHTML('beforeend', documentUploadHtml);
+            
+            // Add event listener for file upload using event delegation
+            // Wait a bit longer to ensure DOM is fully ready
+            setTimeout(() => {
+                const fileInput = document.getElementById('rag-collection-doc-upload');
+                if (fileInput) {
+                    console.log('[Document Upload] Attaching event listener to file input');
+                    // Remove any existing listener first
+                    fileInput.removeEventListener('change', handleDocumentUpload);
+                    // Add the listener
+                    fileInput.addEventListener('change', handleDocumentUpload);
+                    console.log('[Document Upload] Event listener attached successfully');
+                } else {
+                    console.error('[Document Upload] File input element not found');
+                }
+            }, 100);
+        } else if (inputMethod === 'mcp_context') {
+            // Add MCP Context Prompt field for MCP-based templates
+            const mcpPromptFieldHtml = `
+                <div class="bg-gray-800/50 rounded-lg p-3 border border-gray-600">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">
+                        MCP Context Prompt
+                        <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" id="rag-collection-llm-mcp-prompt" 
+                           class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white text-sm"
+                           placeholder="e.g., base_databaseBusinessDesc"
+                           value="${data.plugin_info?.input_variables?.mcp_context_prompt?.default || 'base_databaseBusinessDesc'}">
+                    <p class="text-xs text-gray-400 mt-1">Prompt used to retrieve database schema and context for question generation.</p>
+                </div>
+            `;
+            llmFieldsContainer.insertAdjacentHTML('beforeend', mcpPromptFieldHtml);
+        }
         
         // Attach event listeners to newly created fields for prompt preview auto-refresh
         for (const varName of Object.keys(inputVariables)) {
@@ -2617,7 +2853,7 @@ function createLlmInputField(varName, varConfig) {
     
     if (type === 'integer' || type === 'number') {
         const min = varConfig.min || 1;
-        const max = varConfig.max || 100;
+        const max = varConfig.max || 1000;
         const defaultVal = varConfig.default || 5;
         
         return `
@@ -2662,6 +2898,154 @@ function createLlmInputField(varName, varConfig) {
         `;
     }
 }
+
+/**
+ * Handle document upload for Document Context template
+ */
+let uploadedDocuments = [];
+
+function handleDocumentUpload(event) {
+    console.log('[Document Upload] ===== HANDLER CALLED =====');
+    console.log('[Document Upload] Event:', event);
+    console.log('[Document Upload] Event type:', event.type);
+    console.log('[Document Upload] Target:', event.target);
+    console.log('[Document Upload] Target files:', event.target.files);
+    
+    const files = Array.from(event.target.files);
+    console.log('[Document Upload] Files array:', files);
+    console.log('[Document Upload] Files count:', files.length);
+    
+    if (files.length === 0) {
+        console.warn('[Document Upload] No files selected!');
+        return;
+    }
+    
+    const docList = document.getElementById('rag-collection-doc-list');
+    console.log('[Document Upload] Document list element:', docList);
+    
+    if (!docList) {
+        console.error('[Document Upload] Document list element not found');
+        return;
+    }
+    
+    // Filter valid files (max 50MB each)
+    const validFiles = files.filter(file => {
+        const maxSize = 50 * 1024 * 1024; // 50MB
+        console.log(`[Document Upload] Checking file: ${file.name}, size: ${file.size} bytes`);
+        if (file.size > maxSize) {
+            console.warn(`[Document Upload] File ${file.name} exceeds 50MB`);
+            showNotification('warning', `File ${file.name} exceeds 50MB and was skipped`);
+            return false;
+        }
+        return true;
+    });
+    
+    console.log('[Document Upload] Valid files count:', validFiles.length);
+    
+    if (validFiles.length === 0) {
+        console.warn('[Document Upload] No valid files after filtering');
+        return;
+    }
+    
+    // Add new files to existing ones (allows multiple uploads)
+    console.log('[Document Upload] Current uploadedDocuments:', uploadedDocuments);
+    uploadedDocuments = [...uploadedDocuments, ...validFiles];
+    console.log('[Document Upload] Updated uploadedDocuments:', uploadedDocuments);
+    
+    // Show document list
+    console.log('[Document Upload] Showing document list');
+    docList.classList.remove('hidden');
+    docList.innerHTML = '';
+    
+    // Render each uploaded document
+    console.log('[Document Upload] Rendering document list UI');
+    uploadedDocuments.forEach((file, index) => {
+        console.log(`[Document Upload] Rendering file ${index}: ${file.name}`);
+        const fileItem = `
+            <div class="flex items-center justify-between p-2 bg-gray-700 rounded border border-gray-600">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <div>
+                        <div class="text-sm text-white">${file.name}</div>
+                        <div class="text-xs text-gray-400">${(file.size / 1024).toFixed(1)} KB</div>
+                    </div>
+                </div>
+                <button type="button" class="text-red-400 hover:text-red-300" onclick="removeUploadedDocument(${index})">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        `;
+        docList.insertAdjacentHTML('beforeend', fileItem);
+    });
+    
+    console.log('[Document Upload] Document list rendered successfully');
+    console.log('[Document Upload] Showing success notification');
+    showNotification('success', `${validFiles.length} document(s) uploaded`);
+    
+    // Reset the file input so the same files can be selected again
+    event.target.value = '';
+    console.log('[Document Upload] File input reset');
+    
+    console.log('[Document Upload] ===== HANDLER COMPLETE =====');
+}
+
+/**
+ * Remove an uploaded document
+ */
+function removeUploadedDocument(index) {
+    console.log(`[Document Upload] Removing document at index ${index}`);
+    uploadedDocuments.splice(index, 1);
+    
+    const docList = document.getElementById('rag-collection-doc-list');
+    if (!docList) return;
+    
+    // If no documents left, hide the list
+    if (uploadedDocuments.length === 0) {
+        docList.classList.add('hidden');
+        docList.innerHTML = '';
+        showNotification('info', 'All documents removed');
+        return;
+    }
+    
+    // Re-render the document list
+    docList.innerHTML = '';
+    uploadedDocuments.forEach((file, idx) => {
+        const fileItem = `
+            <div class="flex items-center justify-between p-2 bg-gray-700 rounded border border-gray-600">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <div>
+                        <div class="text-sm text-white">${file.name}</div>
+                        <div class="text-xs text-gray-400">${(file.size / 1024).toFixed(1)} KB</div>
+                    </div>
+                </div>
+                <button type="button" class="text-red-400 hover:text-red-300" onclick="removeUploadedDocument(${idx})">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        `;
+        docList.insertAdjacentHTML('beforeend', fileItem);
+    });
+    
+    showNotification('success', 'Document removed');
+    
+    // Reset the file input so the same file can be selected again
+    const fileInput = document.getElementById('rag-collection-doc-upload');
+    if (fileInput) {
+        fileInput.value = '';
+    }
+}
+
+// Make removeUploadedDocument globally accessible
+window.removeUploadedDocument = removeUploadedDocument;
 
 /**
  * Load MCP tool name from template configuration

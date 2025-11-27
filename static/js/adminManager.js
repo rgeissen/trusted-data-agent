@@ -212,6 +212,10 @@ const AdminManager = {
         } else if (tabName === 'app-config-tab') {
             this.loadAppConfig();
             this.loadRateLimitSettings();
+            // Load document upload configurations
+            if (typeof DocumentUploadConfigManager !== 'undefined' && DocumentUploadConfigManager.loadConfigurations) {
+                DocumentUploadConfigManager.loadConfigurations();
+            }
         } else if (tabName === 'expert-settings-tab') {
             this.loadExpertSettings();
         } else if (tabName === 'system-prompts-tab') {

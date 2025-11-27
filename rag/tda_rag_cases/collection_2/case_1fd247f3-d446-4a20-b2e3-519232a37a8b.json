@@ -1,0 +1,59 @@
+{
+  "case_id": "1fd247f3-d446-4a20-b2e3-519232a37a8b",
+  "metadata": {
+    "session_id": "00000000-0000-0000-0000-000000000000",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "template-task-1fd247f3",
+    "collection_id": 2,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-27T15:59:10.706881+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Template",
+      "model": "sql_doc_context_v1",
+      "profile_tag": null,
+      "input_tokens": 200,
+      "output_tokens": 220
+    },
+    "is_most_efficient": true,
+    "template_generated": true,
+    "template_type": "sql_query",
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "database_name": "dbc"
+  },
+  "intent": {
+    "user_query": "How can you determine the depth of each AMP message queue (mailbox)?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Execute SQL query for  on dbc: SELECT 'Use the MailBoxDepth column in the resusagesawtV view.'",
+        "relevant_tools": [
+          "base_executeRawSQLStatement"
+        ],
+        "arguments": {
+          "sql": "SELECT 'Use the MailBoxDepth column in the resusagesawtV view.'",
+          "database_name": "dbc"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the query results.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

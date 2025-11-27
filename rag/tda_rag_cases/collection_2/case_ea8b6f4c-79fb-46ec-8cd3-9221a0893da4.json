@@ -1,0 +1,59 @@
+{
+  "case_id": "ea8b6f4c-79fb-46ec-8cd3-9221a0893da4",
+  "metadata": {
+    "session_id": "00000000-0000-0000-0000-000000000000",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "template-task-ea8b6f4c",
+    "collection_id": 2,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-27T15:59:11.386798+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Template",
+      "model": "sql_doc_context_v1",
+      "profile_tag": null,
+      "input_tokens": 200,
+      "output_tokens": 220
+    },
+    "is_most_efficient": true,
+    "template_generated": true,
+    "template_type": "sql_query",
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "database_name": "dbc"
+  },
+  "intent": {
+    "user_query": "What is the purpose of the `resusagesvprV` view?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Execute SQL query for  on dbc: SELECT 'The resusagesvprV view provides detailed statistics for each virtual processor (vproc) in the system.'",
+        "relevant_tools": [
+          "base_executeRawSQLStatement"
+        ],
+        "arguments": {
+          "sql": "SELECT 'The resusagesvprV view provides detailed statistics for each virtual processor (vproc) in the system.'",
+          "database_name": "dbc"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the query results.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

@@ -13,6 +13,54 @@ The RAG Template System enables automatic generation of RAG case studies through
 ✅ **UI-Based Workflow** - Complete end-to-end workflow in the web interface  
 ✅ **Template Validation** - Automatic validation of inputs and arguments
 
+## Available Templates
+
+### SQL Query Template - Business Context (`sql-query-basic`)
+
+Generate question/SQL pairs from database schema and business requirements using MCP context.
+
+**Features:**
+- Uses MCP tools to extract database schema (HELP TABLE, DESCRIBE, etc.)
+- LLM generates questions based on business context topic
+- Supports 1-1000 question/SQL pairs per generation
+- Works with any database supported by MCP tools (Teradata, PostgreSQL, MySQL, etc.)
+
+**Population Mode:**
+- **Auto-Generate (LLM)**: Generate from schema context
+- **Manual**: Enter question/SQL pairs directly
+
+**Use Cases:**
+- Generate training data from production schemas
+- Create diverse SQL query examples for specific databases
+- Build knowledge bases for business analytics scenarios
+
+### SQL Query Template - Document Context (`sql-query-doc-context`)
+
+Generate question/SQL pairs from technical documentation (PDF, TXT, DOC, DOCX) using document upload.
+
+**Features:**
+- Upload technical documentation (DBA guides, performance docs, operational manuals)
+- Provider-aware document processing (native upload for Google/Anthropic/Amazon, text extraction for others)
+- LLM extracts concepts and generates practical SQL questions
+- Supports multiple files up to 50MB each
+- Maximum 1000 question/SQL pairs per generation
+
+**Population Mode:**
+- **Auto-Generate (Document Upload)**: Upload documents and generate questions
+- **Manual**: Not supported (use document upload mode)
+
+**Use Cases:**
+- Convert DBA documentation into actionable SQL queries
+- Extract best practices from performance tuning guides
+- Generate troubleshooting queries from operational manuals
+- Build knowledge bases from vendor documentation
+
+**Document Upload Configuration:**
+Access the Document Upload Configuration in the Admin panel to customize:
+- Provider-specific upload methods (native vs. text extraction)
+- Maximum file sizes per provider
+- Enable/disable upload for specific providers
+
 ## Quick Start
 
 ### 1. Create a Collection
@@ -25,7 +73,9 @@ In the TDA web interface:
 
 ### 2. Generate Questions (LLM-Assisted)
 
-With **Auto-Generate (LLM)** selected:
+#### Option A: From Database Schema (Business Context Template)
+
+With **SQL Query Template - Business Context** selected:
 
 1. **Generate Context** - Execute a sample query to extract database schema
 2. **Enter Configuration**:
@@ -35,6 +85,22 @@ With **Auto-Generate (LLM)** selected:
 3. **Generate Questions** - LLM creates question/SQL pairs based on schema
 4. **Review & Edit** - Verify and modify generated examples
 5. **Populate Collection** - Add cases to the collection
+6. **Create Collection** - Finalize and activate
+
+#### Option B: From Documents (Document Context Template)
+
+With **SQL Query Template - Document Context** selected:
+
+1. **Upload Documents** - Click to upload PDF, TXT, DOC, or DOCX files
+   - Supports multiple files
+   - Max 50MB per file (varies by provider)
+2. **Enter Configuration**:
+   - **Context Topic**: e.g., "database performance tuning"
+   - **Num Examples**: 1-1000
+   - **Database Name**: Your target database
+3. **Generate Questions** - LLM analyzes documents and creates question/SQL pairs
+4. **Review & Edit** - Verify generated examples
+5. **Populate Collection** - Add cases to collection
 6. **Create Collection** - Finalize and activate
 
 ### 3. Manual Population
@@ -200,9 +266,12 @@ GET /api/v1/rag/templates
 GET /api/v1/rag/templates/{template_id}/plugin-info
 ```
 
-### Generate Questions (LLM)
+### Generate Questions from Schema (Business Context)
 ```bash
 POST /api/v1/rag/generate-questions
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN
+
 {
   "template_id": "sql_query_v1",
   "execution_context": "{...extracted schema...}",
@@ -210,6 +279,20 @@ POST /api/v1/rag/generate-questions
   "count": 10,
   "database_name": "sales_db"
 }
+```
+
+### Generate Questions from Documents (Document Context)
+```bash
+POST /api/v1/rag/generate-questions-from-documents
+Content-Type: multipart/form-data
+Authorization: Bearer YOUR_JWT_TOKEN
+
+Form Data:
+- subject: "performance tuning"
+- count: 10
+- database_name: "production_db"
+- target_database: "Teradata"
+- files: [dba_guide.pdf, optimization_tips.pdf]
 ```
 
 ### Populate Collection

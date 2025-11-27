@@ -1,12 +1,12 @@
 {
   "template_id": "sql_query_doc_context_v1",
   "template_name": "SQL Query Template - Document Context",
-  "template_version": "1.0.0",
+  "template_version": "1.1.0",
   "template_type": "sql_query",
-  "description": "Two-phase strategy: Execute SQL statement and generate final report. Uses technical documentation as context for generating operational database queries.",
+  "description": "Two-phase strategy: Execute SQL statement and generate final report. Uses technical documentation as context for generating operational database queries. Integrates DocumentUploadHandler abstraction for provider-aware document handling with admin-configurable behavior.",
   "status": "active",
   "created_at": "2025-11-21T00:00:00Z",
-  "updated_at": "2025-11-21T00:00:00Z",
+  "updated_at": "2025-11-27T00:00:00Z",
   "icon": {
     "type": "document-database",
     "color": "purple"
@@ -42,10 +42,25 @@
         "max_length": 200
       }
     },
+    "document_file": {
+      "type": "file",
+      "required": false,
+      "description": "Upload technical documentation file (PDF, Word, etc.) - will use document upload abstraction for provider-specific handling",
+      "placeholder": "performance_tuning_guide.pdf",
+      "validation": {
+        "allowed_extensions": [".pdf", ".doc", ".docx", ".txt"],
+        "max_size_mb": 32
+      },
+      "upload_config": {
+        "use_abstraction": true,
+        "provider_aware": true,
+        "fallback_to_extraction": true
+      }
+    },
     "document_content": {
       "type": "text",
-      "required": true,
-      "description": "Extracted text content from technical documentation (PDFs, guides, manuals)",
+      "required": false,
+      "description": "Extracted text content from technical documentation (alternative to file upload, or populated automatically from document_file)",
       "placeholder": "Database performance tuning guide contents...",
       "validation": {
         "min_length": 100,
@@ -151,6 +166,11 @@
       "value": "",
       "editable": true,
       "description": "Not used for document context (context comes from uploaded docs)"
+    },
+    "document_upload_handler": {
+      "enabled": true,
+      "provider_config_lookup": true,
+      "description": "Uses DocumentUploadHandler abstraction with database-backed configuration"
     }
   },
   "strategy_template": {
@@ -215,19 +235,36 @@
     "context_topic": {
       "not_empty": true
     },
-    "document_content": {
-      "not_empty": true,
-      "min_length": 100
+    "document_content_or_file": {
+      "at_least_one": ["document_file", "document_content"],
+      "description": "Either upload a document file or provide text content"
+    },
+    "document_processing": {
+      "use_upload_handler": true,
+      "handler_class": "DocumentUploadHandler",
+      "handler_method": "prepare_document_for_llm",
+      "auto_extract_text": true,
+      "respect_provider_config": true
     }
   },
   "usage_examples": [
     {
-      "name": "Find fragmented tables",
+      "name": "Find fragmented tables (with file upload)",
       "user_query": "Show me all tables with high fragmentation",
       "sql_statement": "SELECT DatabaseName, TableName, CurrentPerm, PeakPerm FROM DBC.TableSize WHERE (CurrentPerm - PeakPerm) / NULLIFZERO(PeakPerm) > 0.20 ORDER BY DatabaseName, TableName",
       "context_topic": "performance tuning",
       "database_name": "production",
-      "document_content": "[Excerpt from DBA Performance Guide] Table fragmentation occurs when... Check DBC.TableSize for fragmentation metrics..."
+      "document_file": "dba_performance_guide.pdf",
+      "note": "Uses document upload abstraction - native upload for supported providers (Google, Anthropic, Amazon), automatic text extraction fallback for others"
+    },
+    {
+      "name": "Find fragmented tables (with text content)",
+      "user_query": "Show me all tables with high fragmentation",
+      "sql_statement": "SELECT DatabaseName, TableName, CurrentPerm, PeakPerm FROM DBC.TableSize WHERE (CurrentPerm - PeakPerm) / NULLIFZERO(PeakPerm) > 0.20 ORDER BY DatabaseName, TableName",
+      "context_topic": "performance tuning",
+      "database_name": "production",
+      "document_content": "[Excerpt from DBA Performance Guide] Table fragmentation occurs when... Check DBC.TableSize for fragmentation metrics...",
+      "note": "Direct text content - bypasses document upload handler"
     },
     {
       "name": "Long running queries",
@@ -235,7 +272,8 @@
       "sql_statement": "SELECT QueryID, UserName, StartTime, AMPCPUTime, TotalIOCount FROM DBC.QryLogV WHERE AMPCPUTime > 300 ORDER BY AMPCPUTime DESC",
       "context_topic": "query monitoring",
       "database_name": "production",
-      "document_content": "[Excerpt from Query Monitoring Guide] Monitor long-running queries using DBC.QryLogV... AMPCPUTime threshold recommendations..."
+      "document_file": "query_monitoring_guide.pdf",
+      "note": "Provider-aware document handling based on admin configuration"
     },
     {
       "name": "Index analysis",
@@ -243,7 +281,33 @@
       "sql_statement": "SELECT DatabaseName, TableName FROM DBC.Tables WHERE TableKind = 'T' AND IndexType = 'N' ORDER BY DatabaseName, TableName",
       "context_topic": "index optimization",
       "database_name": "production",
-      "document_content": "[Excerpt from Index Best Practices] Tables without primary indexes... Check DBC.Tables for IndexType..."
+      "document_file": "index_best_practices.docx",
+      "note": "Supports multiple formats (.pdf, .doc, .docx, .txt) with automatic format detection"
     }
-  ]
+  ],
+  "document_upload_integration": {
+    "description": "This template integrates the DocumentUploadHandler abstraction layer",
+    "features": [
+      "Provider-aware document handling (native upload vs text extraction)",
+      "Database-backed configuration for admin-controlled behavior",
+      "Automatic format detection and validation",
+      "Graceful fallback to text extraction when native upload unavailable",
+      "Support for multiple document formats (.pdf, .doc, .docx, .txt)"
+    ],
+    "workflow": [
+      "1. User provides document_file or document_content",
+      "2. If document_file: DocumentUploadHandler.prepare_document_for_llm() called",
+      "3. Handler checks provider configuration from database",
+      "4. Native upload used if enabled and supported, otherwise text extraction",
+      "5. Extracted/prepared content used as context in Phase 1 SQL query generation"
+    ],
+    "configuration_source": "document_upload_configurations table (admin-managed via UI)",
+    "admin_controls": [
+      "Enable/disable document upload per provider",
+      "Force text extraction (disable native upload)",
+      "Override max file size limits",
+      "Override supported formats",
+      "Add admin notes for operational context"
+    ]
+  }
 }

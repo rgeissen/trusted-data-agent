@@ -1054,7 +1054,92 @@ Generate question/SQL pairs using LLM based on schema context and business requi
     * **Code**: `400 Bad Request` (invalid parameters)
     * **Code**: `500 Internal Server Error` (LLM generation failed)
 
-#### 3.6A.4. Populate Collection from Template
+#### 3.6A.4. Generate Questions from Documents
+
+Generate question/SQL pairs from uploaded technical documentation (PDF, TXT, DOC, DOCX). Uses the DocumentUploadHandler abstraction layer with provider-aware processing.
+
+* **Endpoint**: `POST /v1/rag/generate-questions-from-documents`
+* **Method**: `POST`
+* **Authentication**: Required (JWT token in Authorization header)
+* **Content-Type**: `multipart/form-data`
+* **Form Data**:
+    * `subject` (string, required): Technical domain or documentation topic (e.g., "database performance tuning")
+    * `count` (integer, optional): Number of question/SQL pairs to generate (default: 5, max: 1000)
+    * `database_name` (string, required): Target database name
+    * `target_database` (string, optional): Database type (default: "Teradata")
+    * `conversion_rules` (string, optional): SQL dialect conversion rules
+    * `files` (file[], required): One or more document files (PDF, TXT, DOC, DOCX)
+* **Example Request**:
+    ```bash
+    curl -X POST http://localhost:5000/api/v1/rag/generate-questions-from-documents \
+      -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+      -F "subject=performance tuning" \
+      -F "count=10" \
+      -F "database_name=production_db" \
+      -F "target_database=Teradata" \
+      -F "files=@dba_guide.pdf" \
+      -F "files=@optimization_tips.pdf"
+    ```
+* **Processing Details**:
+    * Provider-aware document handling (Google native upload, Anthropic/Amazon native, others use text extraction)
+    * Max file size determined by provider configuration (default: 20MB for Google, 10MB for Anthropic)
+    * Documents processed using DocumentUploadHandler abstraction
+    * Text extracted and passed to LLM for question generation
+* **Success Response**:
+    * **Code**: `200 OK`
+    * **Content**:
+        ```json
+        {
+          "status": "success",
+          "questions": [
+            {
+              "question": "How do I identify fragmented tables in Teradata?",
+              "sql": "SELECT DatabaseName, TableName, CurrentPerm, PeakPerm FROM DBC.TableSize WHERE (CurrentPerm - PeakPerm) / NULLIFZERO(PeakPerm) > 0.20;"
+            },
+            {
+              "question": "What is the query to find skewed tables?",
+              "sql": "SELECT DatabaseName, TableName, Skew FROM DBC.TableSize WHERE Skew > 30;"
+            }
+          ],
+          "count": 2,
+          "documents_processed": 2,
+          "total_document_size_mb": 15.2,
+          "provider": "Google",
+          "input_tokens": 2345,
+          "output_tokens": 678
+        }
+        ```
+* **Error Response**:
+    * **Code**: `401 Unauthorized` (missing or invalid JWT token)
+    * **Code**: `400 Bad Request` (validation errors)
+        ```json
+        {
+          "status": "error",
+          "message": "Subject is required"
+        }
+        ```
+    * **Code**: `400 Bad Request` (file size exceeded)
+        ```json
+        {
+          "status": "error",
+          "message": "File performance_guide.pdf exceeds maximum size of 20MB (actual: 25.3MB)"
+        }
+        ```
+    * **Code**: `503 Service Unavailable` (LLM not configured)
+        ```json
+        {
+          "status": "error",
+          "message": "LLM not configured for profile"
+        }
+        ```
+
+**Notes**:
+- Uses user's default profile configuration for LLM provider and model
+- Document processing method determined by provider capabilities
+- Supports multiple file uploads in single request
+- Files are temporarily stored and cleaned up after processing
+
+#### 3.6A.5. Populate Collection from Template
 
 Populate a RAG collection with generated or manual examples using a template.
 
@@ -2407,7 +2492,8 @@ If you continue to experience issues:
 | POST | `/api/v1/rag/collections/{id}/refresh` | Refresh vectors |
 | POST | `/api/v1/rag/collections/{id}/populate` | Populate from template |
 | GET | `/api/v1/rag/templates` | List templates |
-| POST | `/api/v1/rag/generate-questions` | Generate Q&A pairs |
+| POST | `/api/v1/rag/generate-questions` | Generate Q&A pairs (MCP context) |
+| POST | `/api/v1/rag/generate-questions-from-documents` | Generate Q&A pairs (documents) |
 
 ### HTTP Status Codes
 

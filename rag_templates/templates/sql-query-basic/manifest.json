@@ -51,6 +51,9 @@
     "auto_generate": {
       "supported": true,
       "requires_llm": true,
+      "requires_mcp_context": true,
+      "input_method": "mcp_context",
+      "generation_endpoint": "/api/v1/rag/generate-questions",
       "description": "LLM generates question/SQL pairs from business context and requirements",
       "input_variables": {
         "context_topic": {
@@ -77,6 +80,31 @@
           "description": "Number of question/SQL pairs to generate"
         }
       }
+    }
+  },
+  "prompt_templates": {
+    "question_generation": {
+      "system_role": "You are a SQL expert helping to generate test questions and queries for a RAG system.",
+      "task_description": "Based on the following database context, generate {count} diverse, interesting business questions about \"{subject}\" along with the SQL queries that would answer them.",
+      "requirements": [
+        "Generate EXACTLY {count} question/SQL pairs",
+        "Questions should be natural language business questions about {subject}",
+        "SQL queries must be valid {target_database} syntax for the database schema shown above",
+        "Use {target_database}-specific SQL syntax, functions, and conventions",
+        "Questions should vary in complexity (simple to advanced)",
+        "Use the database name \"{database_name}\" in your queries",
+        "CRITICAL: ONLY use tables and columns that are explicitly listed in the Database Context above",
+        "CRITICAL: Do NOT make assumptions about table names or column names - only use what you see in the schema",
+        "CRITICAL: Do NOT create joins between tables unless you can verify both tables exist in the schema"
+      ],
+      "output_format": "Return your response as a valid JSON array with this exact structure:\n[\n  {{\n    \"question\": \"What is the total revenue by product category?\",\n    \"sql\": \"SELECT ProductType, SUM(Price * StockQuantity) as TotalValue FROM {database_name}.Products GROUP BY ProductType;\"\n  }}\n]",
+      "critical_guidelines": [
+        "Write COMPLETE SQL queries - do NOT truncate them with \"...\" or similar",
+        "Your entire response must be ONLY the JSON array, with no other text before or after",
+        "Include all {count} question/SQL pairs requested",
+        "VALIDATE that every table and column in your SQL actually exists in the Database Context above",
+        "If the schema shows only one table, write queries for that single table only"
+      ]
     }
   },
   "metadata": {

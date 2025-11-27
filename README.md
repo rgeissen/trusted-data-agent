@@ -1167,6 +1167,7 @@ Under the AGPLv3, you are free to use, modify, and distribute this software. How
 
 This list reflects the recent enhancements and updates to the Trusted Data Agent, as shown on the application's welcome screen.
 
+*   **27-Nov-2025:** Document Upload Template - LLM-powered RAG generation from PDF/TXT/DOC/DOCX
 *   **25-Nov-2025:** Multi-User Authentication - JWT tokens, access tokens, user tiers
 *   **22-Nov-2025:** Profile System - Modular Configuration & Temporary Overrides
 *   **21-Nov-2025:** Knowledge Templates - Modular Plugin System

@@ -72,6 +72,9 @@ def init_database():
         # Initialize system settings
         _initialize_default_system_settings()
         
+        # Initialize document upload configurations
+        _initialize_document_upload_configs()
+        
         return True
     except Exception as e:
         logger.error(f"Failed to initialize authentication database: {e}", exc_info=True)
@@ -153,6 +156,50 @@ def _initialize_default_system_settings():
             
     except Exception as e:
         logger.error(f"Error initializing system settings: {e}", exc_info=True)
+
+
+def _initialize_document_upload_configs():
+    """
+    Initialize default document upload configurations for all LLM providers.
+    Sets up sensible defaults that can be overridden by admins.
+    """
+    from trusted_data_agent.auth.models import DocumentUploadConfig
+    
+    # Default configurations for all supported providers
+    # use_native_upload=True, enabled=True by default
+    # Admins can override these settings via the UI
+    default_providers = [
+        'Google',      # Native File API support
+        'Anthropic',   # Native base64 upload support
+        'Amazon',      # Bedrock with Claude models
+        'OpenAI',      # Vision models only
+        'Azure',       # Vision deployments only
+        'Friendli',    # Text extraction fallback
+        'Ollama'       # Text extraction fallback
+    ]
+    
+    try:
+        with get_db_session() as session:
+            for provider in default_providers:
+                # Check if config already exists
+                existing = session.query(DocumentUploadConfig).filter_by(provider=provider).first()
+                if not existing:
+                    config = DocumentUploadConfig(
+                        provider=provider,
+                        use_native_upload=True,
+                        enabled=True,
+                        max_file_size_mb=None,  # Use provider defaults from DocumentUploadConfig class
+                        supported_formats_override=None,  # Use provider defaults
+                        notes='Default configuration - auto-initialized'
+                    )
+                    session.add(config)
+                    logger.debug(f"Initialized document upload config for provider: {provider}")
+            
+            session.commit()
+            logger.info("Document upload configurations initialized successfully")
+            
+    except Exception as e:
+        logger.error(f"Error initializing document upload configs: {e}", exc_info=True)
 
 
 def drop_all_tables():

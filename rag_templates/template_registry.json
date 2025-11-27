@@ -18,7 +18,7 @@
       "plugin_directory": "sql-query-doc-context",
       "template_file": "sql-query-doc-context/sql_query_doc_context_v1.json",
       "manifest_file": "sql-query-doc-context/manifest.json",
-      "status": "coming_soon",
+      "status": "active",
       "display_order": 2,
       "category": "Database",
       "is_builtin": true

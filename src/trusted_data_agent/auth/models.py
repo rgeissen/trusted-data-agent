@@ -357,3 +357,44 @@ class SystemSettings(Base):
             'description': self.description,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+
+
+class DocumentUploadConfig(Base):
+    """Configuration for document upload capabilities per LLM provider."""
+    
+    __tablename__ = 'document_upload_config'
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    provider = Column(String(50), nullable=False, unique=True, index=True)  # Google, Anthropic, OpenAI, Amazon, Azure, Friendli, Ollama
+    
+    # Configuration flags
+    use_native_upload = Column(Boolean, nullable=False, default=True)  # Whether to use native upload API or fallback to text extraction
+    enabled = Column(Boolean, nullable=False, default=True)  # Whether this provider supports document upload at all
+    
+    # Override default limits (NULL = use provider defaults from DocumentUploadConfig class)
+    max_file_size_mb = Column(Integer, nullable=True)  # Override default file size limit
+    supported_formats_override = Column(Text, nullable=True)  # JSON array of formats like ["pdf", "docx", "txt"]
+    
+    # Additional configuration
+    notes = Column(Text, nullable=True)  # Admin notes about why config was changed
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    def __repr__(self):
+        return f"<DocumentUploadConfig(provider='{self.provider}', enabled={self.enabled}, native={self.use_native_upload})>"
+    
+    def to_dict(self):
+        """Convert document upload config to dictionary for API responses."""
+        return {
+            'id': self.id,
+            'provider': self.provider,
+            'use_native_upload': self.use_native_upload,
+            'enabled': self.enabled,
+            'max_file_size_mb': self.max_file_size_mb,
+            'supported_formats_override': self.supported_formats_override,
+            'notes': self.notes,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }

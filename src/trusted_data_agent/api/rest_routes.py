@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import uuid # Import uuid
 import copy # --- MODIFICATION START: Import copy ---
+from functools import wraps
 
 # --- MODIFICATION START: Import generate_task_id ---
 from quart import Blueprint, current_app, jsonify, request, abort
@@ -18,6 +19,7 @@ from trusted_data_agent.core import session_manager
 from trusted_data_agent.agent import execution_service
 from trusted_data_agent.core import configuration_service
 from langchain_mcp_adapters.client import MultiServerMCPClient
+from trusted_data_agent.auth.admin import require_admin
 
 from trusted_data_agent.agent.executor import PlanExecutor
 from langchain_mcp_adapters.prompts import load_mcp_prompt
@@ -495,6 +497,77 @@ async def execute_prompt_raw(prompt_name: str):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+def build_question_generation_prompt(prompt_config, context_content, variables):
+    """
+    Build a question generation prompt from template configuration.
+    
+    Args:
+        prompt_config: Dictionary with prompt template structure from manifest
+        context_content: The main context (database schema or document text)
+        variables: Dict with {subject, count, database_name, target_database, conversion_rules}
+    
+    Returns:
+        str: Formatted prompt ready for LLM
+    """
+    # Extract variables
+    subject = variables.get('subject', '')
+    count = variables.get('count', 5)
+    database_name = variables.get('database_name', '')
+    target_database = variables.get('target_database', 'Teradata')
+    conversion_rules = variables.get('conversion_rules', '')
+    context_label = variables.get('context_label', 'Technical Documentation')
+    
+    # Build conversion rules section if provided
+    conversion_rules_section = ""
+    if conversion_rules:
+        conversion_rules_section = f"\n{len(prompt_config.get('requirements', [])) + 1}. CRITICAL: Follow these explicit {target_database} conversion rules:\n{conversion_rules}\n"
+    
+    # Build requirements list
+    requirements = prompt_config.get('requirements', [])
+    requirements_text = ""
+    for i, req in enumerate(requirements, 1):
+        # Apply variable substitution
+        req_text = req.format(
+            count=count,
+            subject=subject,
+            target_database=target_database,
+            database_name=database_name
+        )
+        requirements_text += f"{i}. {req_text}\n"
+    
+    # Add conversion rules if present
+    if conversion_rules_section:
+        requirements_text += conversion_rules_section
+    
+    # Add final requirement for output format
+    requirements_text += f"{len(requirements) + (1 if conversion_rules else 0) + 1}. {prompt_config.get('output_format', '').format(database_name=database_name)}"
+    
+    # Build approach instructions if present
+    approach_section = ""
+    if 'approach_instructions' in prompt_config:
+        approach_section = f"\n{prompt_config['approach_instructions'].format(target_database=target_database, database_name=database_name)}\n\n"
+    
+    # Build critical guidelines
+    guidelines = prompt_config.get('critical_guidelines', [])
+    guidelines_text = "\n".join([f"- {g.format(count=count)}" for g in guidelines])
+    
+    # Construct final prompt
+    prompt = f"""{prompt_config.get('system_role', '')}
+
+{prompt_config.get('task_description', '').format(count=count, subject=subject)}
+{approach_section}
+{context_label}:
+{context_content}
+
+Requirements:
+{requirements_text}
+
+CRITICAL GUIDELINES:
+{guidelines_text}"""
+    
+    return prompt
+
+
 @rest_api_bp.route("/v1/rag/generate-questions", methods=["POST"])
 async def generate_rag_questions():
     """
@@ -519,20 +592,47 @@ async def generate_rag_questions():
     }
     """
     try:
-        # Get configuration
+        # Get authenticated user
+        user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({
+                "status": "error",
+                "message": "Authentication required"
+            }), 401
+        
+        # Validate user has a configured profile
+        is_valid, error_response = _validate_user_profile(user_uuid)
+        if not is_valid:
+            return jsonify(error_response), 400
+        
+        # Switch to user's default profile context
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        default_profile_id = config_manager.get_default_profile_id(user_uuid)
+        
+        from trusted_data_agent.core.configuration_service import switch_profile_context
+        profile_context = await switch_profile_context(default_profile_id, user_uuid, validate_llm=False)
+        
+        if "error" in profile_context:
+            return jsonify({
+                "status": "error",
+                "message": f"Failed to activate user profile: {profile_context.get('error')}"
+            }), 503
+        
+        # Get configuration from activated profile
         mcp_client = APP_STATE.get("mcp_client")
         if not mcp_client:
             return jsonify({
                 "status": "error",
-                "message": "MCP client not configured"
-            }), 400
+                "message": "MCP client not configured for profile"
+            }), 503
 
         llm_instance = APP_STATE.get('llm')
         if not llm_instance:
             return jsonify({
                 "status": "error",
-                "message": "LLM not configured"
-            }), 400
+                "message": "LLM not configured for profile"
+            }), 503
 
         # Get parameters from request
         data = await request.get_json() or {}
@@ -634,50 +734,44 @@ async def generate_rag_questions():
                 "message": "Database name is required"
             }), 400
         
-        # Build conversion rules section if provided
-        conversion_rules_section = ""
-        if conversion_rules:
-            conversion_rules_section = f"""
-10. CRITICAL: Follow these explicit {target_database} conversion rules:
-{conversion_rules}
-"""
-        
-        # Construct the prompt for generating questions
-        prompt_text = f"""You are a SQL expert helping to generate test questions and queries for a RAG system.
-
-Based on the following database context, generate {count} diverse, interesting business questions about "{subject}" along with the SQL queries that would answer them.
+        # Get template prompt configuration
+        try:
+            template_manager = APP_STATE.get('template_manager')
+            if not template_manager:
+                app_logger.warning("Template manager not available, using fallback prompt")
+                raise ValueError("Template manager not available")
+            
+            # Get plugin info which includes prompt templates
+            plugin_info = template_manager.get_plugin_info('sql_query_v1')
+            prompt_config = plugin_info.get('prompt_templates', {}).get('question_generation', {})
+            
+            if not prompt_config:
+                app_logger.warning("No prompt template found in manifest, using fallback")
+                raise ValueError("No prompt template in manifest")
+            
+            # Build prompt from template
+            prompt_text = build_question_generation_prompt(
+                prompt_config=prompt_config,
+                context_content=full_context,
+                variables={
+                    'subject': subject,
+                    'count': count,
+                    'database_name': database_name,
+                    'target_database': target_database,
+                    'conversion_rules': conversion_rules,
+                    'context_label': 'Database Context'
+                }
+            )
+            
+        except Exception as e:
+            app_logger.error(f"Failed to load prompt from template, using fallback: {e}")
+            # Fallback to simple prompt if template loading fails
+            prompt_text = f"""You are a SQL expert. Generate {count} question/SQL pairs about "{subject}" for database "{database_name}" using {target_database} syntax.
 
 Database Context:
 {full_context}
 
-Requirements:
-1. Generate EXACTLY {count} question/SQL pairs
-2. Questions should be natural language business questions about {subject}
-3. SQL queries must be valid {target_database} syntax for the database schema shown above
-4. Use {target_database}-specific SQL syntax, functions, and conventions
-5. Questions should vary in complexity (simple to advanced)
-6. Use the database name "{database_name}" in your queries
-7. CRITICAL: ONLY use tables and columns that are explicitly listed in the Database Context above
-8. CRITICAL: Do NOT make assumptions about table names or column names - only use what you see in the schema
-9. CRITICAL: Do NOT create joins between tables unless you can verify both tables exist in the schema{conversion_rules_section}
-11. Return your response as a valid JSON array with this exact structure:
-[
-  {{
-    "question": "What is the total revenue by product category?",
-    "sql": "SELECT ProductType, SUM(Price * StockQuantity) as TotalValue FROM {database_name}.Products GROUP BY ProductType;"
-  }},
-  {{
-    "question": "Which customer has the highest order value?",
-    "sql": "SELECT CustomerID, CustomerName, MAX(OrderTotal) as MaxOrder FROM {database_name}.Orders GROUP BY CustomerID, CustomerName ORDER BY MaxOrder DESC LIMIT 1;"
-  }}
-]
-
-IMPORTANT: 
-- Write COMPLETE SQL queries - do NOT truncate them with "..." or similar
-- Your entire response must be ONLY the JSON array, with no other text before or after
-- Include all {count} question/SQL pairs requested
-- VALIDATE that every table and column in your SQL actually exists in the Database Context above
-- If the schema shows only one table, write queries for that single table only"""
+Return ONLY a JSON array: [{{"question": "...", "sql": "..."}}]"""
 
         app_logger.info(f"Generating {count} RAG questions for subject '{subject}' in database '{database_name}' (context: {len(full_context)} chars)")
         
@@ -756,6 +850,381 @@ IMPORTANT:
         
     except Exception as e:
         app_logger.error(f"Error generating RAG questions: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@rest_api_bp.route("/v1/rag/generate-questions-from-documents", methods=["POST"])
+async def generate_rag_questions_from_documents():
+    """
+    Generate question/SQL pairs from uploaded documents for Document Context template.
+    
+    Request body (multipart/form-data):
+    {
+        "subject": "sales analysis",
+        "count": 5,
+        "database_name": "fitness_db",
+        "target_database": "Teradata",
+        "conversion_rules": "...",
+        "files": [document files]
+    }
+    
+    Returns:
+    {
+        "status": "success",
+        "questions": [
+            {"question": "What are...", "sql": "SELECT..."},
+            ...
+        ],
+        "count": 5
+    }
+    """
+    try:
+        # Get authenticated user
+        user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({
+                "status": "error",
+                "message": "Authentication required"
+            }), 401
+        
+        # Validate user has a configured profile
+        is_valid, error_response = _validate_user_profile(user_uuid)
+        if not is_valid:
+            return jsonify(error_response), 400
+        
+        # Switch to user's default profile context
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        default_profile_id = config_manager.get_default_profile_id(user_uuid)
+        
+        from trusted_data_agent.core.configuration_service import switch_profile_context
+        profile_context = await switch_profile_context(default_profile_id, user_uuid, validate_llm=False)
+        
+        if "error" in profile_context:
+            return jsonify({
+                "status": "error",
+                "message": f"Failed to activate user profile: {profile_context.get('error')}"
+            }), 503
+        
+        # Get configuration from activated profile
+        llm_instance = APP_STATE.get('llm')
+        if not llm_instance:
+            return jsonify({
+                "status": "error",
+                "message": "LLM not configured for profile"
+            }), 503
+        
+        # Get provider info from profile (as backup to llm_instance)
+        default_profile = config_manager.get_profile(default_profile_id, user_uuid)
+        llm_config_id = default_profile.get("llmConfigurationId") if default_profile else None
+        profile_provider = None
+        profile_model = None
+        
+        if llm_config_id:
+            # Get all LLM configurations and find the one matching our ID
+            all_llm_configs = config_manager.get_llm_configurations(user_uuid)
+            llm_config = next((cfg for cfg in all_llm_configs if cfg.get("id") == llm_config_id), None)
+            if llm_config:
+                profile_provider = llm_config.get("provider")
+                profile_model = llm_config.get("model")
+                app_logger.info(f"Profile LLM config: {profile_provider}/{profile_model}")
+
+        # Get form data
+        form_data = await request.form
+        files = await request.files
+        
+        subject = form_data.get('subject', '').strip()
+        count = int(form_data.get('count', 5))
+        database_name = form_data.get('database_name', '').strip()
+        target_database = form_data.get('target_database', 'Teradata').strip()
+        conversion_rules = form_data.get('conversion_rules', '').strip()
+        
+        # Validate inputs
+        if not subject:
+            return jsonify({
+                "status": "error",
+                "message": "Subject is required"
+            }), 400
+            
+        if not database_name:
+            return jsonify({
+                "status": "error",
+                "message": "Database name is required"
+            }), 400
+        
+        # Process uploaded documents using DocumentUploadHandler
+        from trusted_data_agent.llm.document_upload import DocumentUploadHandler
+        from trusted_data_agent.llm.document_upload_config_manager import DocumentUploadConfigManager
+        import tempfile
+        import os as os_module
+        
+        file_list = files.getlist('files')
+        
+        if not file_list or len(file_list) == 0:
+            return jsonify({
+                "status": "error",
+                "message": "At least one document file is required"
+            }), 400
+        
+        app_logger.info(f"Processing {len(file_list)} document(s) for question generation")
+        
+        # Get LLM provider information (handle both dict and object instances)
+        if isinstance(llm_instance, dict):
+            # Placeholder dict from configuration_service
+            provider_name = llm_instance.get('provider', 'Unknown')
+            model_name = llm_instance.get('model', None)
+        else:
+            # Actual LLM instance
+            provider_name = getattr(llm_instance, 'provider', 'Unknown')
+            model_name = getattr(llm_instance, 'model', None)
+        
+        # Fallback to profile config if llm_instance doesn't have provider
+        if provider_name == 'Unknown' and profile_provider:
+            provider_name = profile_provider
+            model_name = profile_model
+            app_logger.info(f"Using provider from profile config: {provider_name}/{model_name}")
+        
+        app_logger.info(f"Using provider: {provider_name}, model: {model_name}")
+        
+        # Check effective configuration for this provider
+        effective_config = DocumentUploadConfigManager.get_effective_config(provider_name)
+        
+        if not effective_config['enabled']:
+            return jsonify({
+                "status": "error",
+                "message": f"Document upload is disabled for provider: {provider_name}"
+            }), 400
+        
+        app_logger.info(f"Document upload config for {provider_name}: capability={effective_config['capability']}, native={effective_config['use_native_upload']}, max_size={effective_config['max_file_size_mb']}MB")
+        
+        # Initialize document handler
+        doc_handler = DocumentUploadHandler()
+        
+        # Process documents based on capability
+        processed_documents = []
+        temp_files = []  # Track temp files for cleanup
+        
+        try:
+            for file in file_list:
+                try:
+                    filename = file.filename
+                    app_logger.info(f"Processing document: {filename}")
+                    
+                    # Read file content (synchronous in Quart)
+                    file_content = file.read()
+                    
+                    # Validate file size
+                    file_size_mb = len(file_content) / (1024 * 1024)
+                    max_size = effective_config['max_file_size_mb']
+                    
+                    if file_size_mb > max_size:
+                        return jsonify({
+                            "status": "error",
+                            "message": f"File {filename} exceeds maximum size of {max_size}MB (actual: {file_size_mb:.1f}MB)"
+                        }), 400
+                    
+                    # Save to temporary file for processing
+                    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=os_module.path.splitext(filename)[1])
+                    temp_file.write(file_content)
+                    temp_file.flush()
+                    temp_file.close()
+                    temp_files.append(temp_file.name)
+                    
+                    app_logger.info(f"Saved {filename} to temporary file: {temp_file.name}")
+                    
+                    # Prepare document using abstraction layer
+                    prepared_doc = doc_handler.prepare_document_for_llm(
+                        file_path=temp_file.name,
+                        provider_name=provider_name,
+                        model_name=model_name,
+                        effective_config=effective_config
+                    )
+                    
+                    processed_documents.append({
+                        'filename': filename,
+                        'prepared': prepared_doc,
+                        'method': prepared_doc['method']
+                    })
+                    
+                    app_logger.info(f"Successfully processed {filename} using method: {prepared_doc['method']}")
+                    
+                except Exception as e:
+                    app_logger.error(f"Error processing file {file.filename}: {e}", exc_info=True)
+                    return jsonify({
+                        "status": "error",
+                        "message": f"Failed to process file {file.filename}: {str(e)}"
+                    }), 400
+            
+            if not processed_documents:
+                return jsonify({
+                    "status": "error",
+                    "message": "No documents could be processed"
+                }), 400
+            
+            # Combine document contents for context
+            # If using native upload, we'll pass metadata; otherwise use extracted text
+            if processed_documents[0]['method'] == 'text_extraction':
+                # Text extraction - combine all text
+                document_texts = [doc['prepared']['content'] for doc in processed_documents]
+                combined_document_content = "\n\n=== Document Separator ===\n\n".join(document_texts)
+                
+                app_logger.info(f"Extracted {len(combined_document_content)} characters from {len(document_texts)} document(s)")
+                
+                # Truncate if too long (keep first 50,000 chars to stay within token limits)
+                if len(combined_document_content) > 50000:
+                    combined_document_content = combined_document_content[:50000] + "\n\n[... content truncated ...]"
+                    app_logger.warning("Document content truncated to 50,000 characters")
+            else:
+                # Native upload - documents will be passed separately to LLM
+                # For now, still extract text for the prompt (future: pass native documents to LLM)
+                document_texts = []
+                for doc in processed_documents:
+                    if doc['method'] == 'native_google':
+                        # For Google, we have the file object but need text for prompt
+                        # Extract text as fallback for prompt context
+                        app_logger.info(f"Native Google upload: extracting text for prompt context from {doc['filename']}")
+                        text_result = doc_handler._extract_text_from_document(temp_files[processed_documents.index(doc)])
+                        document_texts.append(text_result['content'])
+                    elif doc['method'] == 'native_anthropic':
+                        # For Anthropic, decode base64 and extract text
+                        app_logger.info(f"Native Anthropic upload: extracting text for prompt context from {doc['filename']}")
+                        text_result = doc_handler._extract_text_from_document(temp_files[processed_documents.index(doc)])
+                        document_texts.append(text_result['content'])
+                    else:
+                        document_texts.append(doc['prepared']['content'])
+                
+                combined_document_content = "\n\n=== Document Separator ===\n\n".join(document_texts)
+                app_logger.info(f"Prepared {len(document_texts)} document(s) using {processed_documents[0]['method']}")
+        
+        finally:
+            # Cleanup temporary files
+            for temp_file in temp_files:
+                try:
+                    os_module.unlink(temp_file)
+                    app_logger.debug(f"Cleaned up temporary file: {temp_file}")
+                except Exception as e:
+                    app_logger.warning(f"Failed to cleanup temp file {temp_file}: {e}")
+        
+        # Get template prompt configuration
+        try:
+            template_manager = APP_STATE.get('template_manager')
+            if not template_manager:
+                app_logger.warning("Template manager not available, using fallback prompt")
+                raise ValueError("Template manager not available")
+            
+            # Get plugin info which includes prompt templates
+            plugin_info = template_manager.get_plugin_info('sql_query_doc_context_v1')
+            prompt_config = plugin_info.get('prompt_templates', {}).get('question_generation', {})
+            
+            if not prompt_config:
+                app_logger.warning("No prompt template found in manifest, using fallback")
+                raise ValueError("No prompt template in manifest")
+            
+            # Build prompt from template
+            prompt_text = build_question_generation_prompt(
+                prompt_config=prompt_config,
+                context_content=combined_document_content,
+                variables={
+                    'subject': subject,
+                    'count': count,
+                    'database_name': database_name,
+                    'target_database': target_database,
+                    'conversion_rules': conversion_rules,
+                    'context_label': 'Technical Documentation'
+                }
+            )
+            
+        except Exception as e:
+            app_logger.error(f"Failed to load prompt from template, using fallback: {e}")
+            # Fallback to simple prompt if template loading fails
+            prompt_text = f"""You are a SQL expert. Analyze the technical documentation and generate {count} question/SQL pairs about "{subject}" for database "{database_name}" using {target_database} syntax.
+
+Technical Documentation:
+{combined_document_content}
+
+Return ONLY a JSON array: [{{"question": "...", "sql": "..."}}]"""
+
+        app_logger.info(f"Generating {count} RAG questions from documents for subject '{subject}' in database '{database_name}'")
+        
+        # Call LLM directly using the handler
+        try:
+            response_text, input_tokens, output_tokens, provider, model = await llm_handler.call_llm_api(
+                llm_instance=llm_instance,
+                prompt=prompt_text,
+                user_uuid="api-document-question-generator",
+                session_id=None,
+                dependencies={'STATE': APP_STATE, 'CONFIG': APP_CONFIG},
+                reason="Generating RAG questions from documents",
+                disabled_history=True,
+                source='rag_document_question_generator'
+            )
+            
+            app_logger.info(f"LLM generated response with {input_tokens} input tokens, {output_tokens} output tokens")
+            
+        except Exception as e:
+            app_logger.error(f"Failed to generate questions with LLM: {e}", exc_info=True)
+            return jsonify({
+                "status": "error",
+                "message": f"LLM invocation failed: {str(e)}"
+            }), 500
+        
+        # Parse the JSON response
+        try:
+            # Try to extract JSON if wrapped in markdown code blocks
+            json_text = response_text.strip()
+            if json_text.startswith('```json'):
+                json_text = json_text[7:]
+            elif json_text.startswith('```'):
+                json_text = json_text[3:]
+            if json_text.endswith('```'):
+                json_text = json_text[:-3]
+            json_text = json_text.strip()
+            
+            questions = json.loads(json_text)
+            
+            if not isinstance(questions, list):
+                raise ValueError("Response is not a JSON array")
+            
+            # Validate structure
+            for q in questions:
+                if not isinstance(q, dict) or 'question' not in q or 'sql' not in q:
+                    raise ValueError("Invalid question structure")
+            
+            app_logger.info(f"Successfully generated {len(questions)} question/SQL pairs from documents")
+            
+            return jsonify({
+                "status": "success",
+                "questions": questions,
+                "count": len(questions),
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "documents_processed": len(processed_documents),
+                "processing_method": processed_documents[0]['method'] if processed_documents else 'unknown',
+                "provider": provider_name,
+                "native_upload_used": processed_documents[0]['method'] != 'text_extraction' if processed_documents else False
+            })
+            
+        except json.JSONDecodeError as e:
+            app_logger.error(f"Failed to parse LLM response as JSON: {e}")
+            app_logger.error(f"Response was: {response_text[:500]}")
+            return jsonify({
+                "status": "error",
+                "message": "LLM did not return valid JSON",
+                "raw_response": response_text[:1000]
+            }), 500
+        except ValueError as e:
+            app_logger.error(f"Invalid question structure: {e}")
+            return jsonify({
+                "status": "error",
+                "message": str(e),
+                "raw_response": response_text[:1000]
+            }), 500
+        
+    except Exception as e:
+        app_logger.error(f"Error generating RAG questions from documents: {e}", exc_info=True)
         return jsonify({
             "status": "error",
             "message": str(e)
@@ -934,6 +1403,267 @@ async def manage_classification_setting():
             "enable_mcp_classification": enable_classification,
             "message": f"Classification {'enabled' if enable_classification else 'disabled'}. Changes will take effect on next configuration."
         }), 200
+
+
+@rest_api_bp.route("/v1/config/document-upload-capabilities", methods=["GET"])
+async def get_document_upload_capabilities():
+    """
+    Get document upload capabilities for all LLM providers.
+    
+    Returns capability information including:
+    - Native upload support
+    - Supported file formats
+    - Max file size limits
+    - Provider-specific requirements
+    
+    Returns:
+    {
+        "status": "success",
+        "capabilities": {
+            "Google": {...},
+            "Anthropic": {...},
+            ...
+        }
+    }
+    """
+    try:
+        from trusted_data_agent.llm.document_upload import DocumentUploadHandler, DocumentUploadConfig
+        
+        # Get all provider configurations
+        capabilities = {}
+        for provider in ["Google", "Anthropic", "OpenAI", "Amazon", "Azure", "Friendli", "Ollama"]:
+            capabilities[provider] = DocumentUploadHandler.get_capability_info(provider)
+        
+        return jsonify({
+            "status": "success",
+            "capabilities": capabilities
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error fetching document upload capabilities: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@rest_api_bp.route("/v1/config/document-upload-capabilities/<provider>", methods=["GET"])
+async def get_provider_document_capability(provider: str):
+    """
+    Get document upload capability for a specific provider/model.
+    
+    Query parameters:
+    - model: Optional model name for model-specific capability detection
+    
+    Returns:
+    {
+        "status": "success",
+        "provider": "Anthropic",
+        "model": "claude-3-opus-20240229",
+        "capability": "native_full",
+        "supports_native": true,
+        "supported_formats": [".pdf", ".jpg", ...],
+        "max_file_size_mb": 32,
+        "description": "..."
+    }
+    """
+    try:
+        from trusted_data_agent.llm.document_upload import DocumentUploadHandler
+        
+        model = request.args.get('model')
+        capability_info = DocumentUploadHandler.get_capability_info(provider, model)
+        
+        return jsonify({
+            "status": "success",
+            **capability_info
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error fetching capability for {provider}: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+# =============================================================================
+# Document Upload Configuration Management (Admin)
+# =============================================================================
+
+@rest_api_bp.route("/v1/admin/config/document-upload", methods=["GET"])
+@require_admin
+async def get_all_document_upload_configs():
+    """
+    Get all document upload configurations with effective settings.
+    Admin only endpoint.
+    
+    Returns:
+    {
+        "status": "success",
+        "configs": [
+            {
+                "provider": "Google",
+                "enabled": true,
+                "use_native_upload": true,
+                "capability": "NATIVE_FULL",
+                "max_file_size_mb": 20,
+                "supported_formats": ["pdf", "jpg", ...],
+                "has_overrides": false,
+                "notes": null
+            },
+            ...
+        ]
+    }
+    """
+    try:
+        from trusted_data_agent.llm.document_upload_config_manager import DocumentUploadConfigManager
+        
+        # Get effective configs for all providers
+        all_providers = ['Google', 'Anthropic', 'Amazon', 'OpenAI', 'Azure', 'Friendli', 'Ollama']
+        configs = []
+        
+        for provider in all_providers:
+            effective_config = DocumentUploadConfigManager.get_effective_config(provider)
+            configs.append(effective_config)
+        
+        return jsonify({
+            "status": "success",
+            "configs": configs
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error fetching document upload configs: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@rest_api_bp.route("/v1/admin/config/document-upload/<provider>", methods=["GET"])
+@require_admin
+async def get_document_upload_config(provider: str):
+    """
+    Get document upload configuration for a specific provider.
+    Admin only endpoint.
+    
+    Returns effective configuration with overrides applied.
+    """
+    try:
+        from trusted_data_agent.llm.document_upload_config_manager import DocumentUploadConfigManager
+        
+        effective_config = DocumentUploadConfigManager.get_effective_config(provider)
+        
+        return jsonify({
+            "status": "success",
+            "config": effective_config
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error fetching config for {provider}: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@rest_api_bp.route("/v1/admin/config/document-upload/<provider>", methods=["PUT"])
+@require_admin
+async def update_document_upload_config(provider: str):
+    """
+    Update document upload configuration for a provider.
+    Admin only endpoint.
+    
+    Request body:
+    {
+        "use_native_upload": true,
+        "enabled": true,
+        "max_file_size_mb": 50,  # Optional override
+        "supported_formats_override": ["pdf", "docx"],  # Optional override
+        "notes": "Increased file size for special use case"
+    }
+    
+    Returns updated configuration.
+    """
+    try:
+        from trusted_data_agent.llm.document_upload_config_manager import DocumentUploadConfigManager
+        
+        data = await request.get_json()
+        
+        # Extract update parameters
+        use_native_upload = data.get('use_native_upload')
+        enabled = data.get('enabled')
+        max_file_size_mb = data.get('max_file_size_mb')
+        supported_formats_override = data.get('supported_formats_override')
+        notes = data.get('notes')
+        
+        # Update configuration
+        updated_config = DocumentUploadConfigManager.update_config(
+            provider=provider,
+            use_native_upload=use_native_upload,
+            enabled=enabled,
+            max_file_size_mb=max_file_size_mb,
+            supported_formats_override=supported_formats_override,
+            notes=notes
+        )
+        
+        if updated_config:
+            # Get effective config to return
+            effective_config = DocumentUploadConfigManager.get_effective_config(provider)
+            
+            return jsonify({
+                "status": "success",
+                "message": f"Configuration updated for {provider}",
+                "config": effective_config
+            }), 200
+        else:
+            return jsonify({
+                "status": "error",
+                "message": f"Failed to update configuration for {provider}"
+            }), 500
+            
+    except Exception as e:
+        app_logger.error(f"Error updating config for {provider}: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@rest_api_bp.route("/v1/admin/config/document-upload/<provider>/reset", methods=["POST"])
+@require_admin
+async def reset_document_upload_config(provider: str):
+    """
+    Reset document upload configuration to defaults for a provider.
+    Admin only endpoint.
+    
+    Removes all overrides and restores default settings.
+    """
+    try:
+        from trusted_data_agent.llm.document_upload_config_manager import DocumentUploadConfigManager
+        
+        reset_config = DocumentUploadConfigManager.reset_to_defaults(provider)
+        
+        if reset_config:
+            # Get effective config to return
+            effective_config = DocumentUploadConfigManager.get_effective_config(provider)
+            
+            return jsonify({
+                "status": "success",
+                "message": f"Configuration reset to defaults for {provider}",
+                "config": effective_config
+            }), 200
+        else:
+            return jsonify({
+                "status": "error",
+                "message": f"Failed to reset configuration for {provider}"
+            }), 500
+            
+    except Exception as e:
+        app_logger.error(f"Error resetting config for {provider}: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
 
 
 @rest_api_bp.route("/v1/sessions", methods=["POST"])
@@ -1733,6 +2463,7 @@ async def populate_collection_from_template(collection_id: int):
         
         # Validate required fields
         template_type = data.get("template_type")
+        template_id = data.get("template_id")  # New: support specific template ID
         examples_data = data.get("examples", [])
         
         if not template_type:
@@ -1744,6 +2475,10 @@ async def populate_collection_from_template(collection_id: int):
         # Currently only SQL template is supported
         if template_type != "sql_query":
             return jsonify({"status": "error", "message": f"Unsupported template_type: {template_type}. Only 'sql_query' is supported."}), 400
+        
+        # Default to sql_query_v1 if no specific template_id provided
+        if not template_id:
+            template_id = "sql_query_v1"
         
         # Parse examples based on template type
         if template_type == "sql_query":
@@ -1780,11 +2515,19 @@ async def populate_collection_from_template(collection_id: int):
         
         # Populate collection
         database_name = data.get("database_name")
-        mcp_tool_name = data.get("mcp_tool_name", "base_readQuery")
+        mcp_tool_name = data.get("mcp_tool_name")
         
-        app_logger.info(f"Populating collection {collection_id} with {len(examples)} examples")
+        # Use template-specific defaults if not provided
+        if not mcp_tool_name:
+            # Get default from template configuration
+            template_config = generator.template_manager.get_template_config(template_id)
+            mcp_tool_name = template_config.get("default_mcp_tool", "base_readQuery")
         
-        results = generator.populate_collection_from_sql_examples(
+        app_logger.info(f"Populating collection {collection_id} with {len(examples)} examples using template {template_id}")
+        
+        # Use generic populate method that works with any template
+        results = generator.populate_collection_from_template(
+            template_id=template_id,
             collection_id=collection_id,
             examples=examples,
             database_name=database_name,

@@ -13,6 +13,8 @@ from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timezone
 
 from trusted_data_agent.agent.rag_template_manager import get_template_manager
+from trusted_data_agent.llm.document_upload import DocumentUploadHandler
+from trusted_data_agent.llm.document_upload_config_manager import DocumentUploadConfigManager
 
 logger = logging.getLogger("rag_template_generator")
 
@@ -51,12 +53,77 @@ class RAGTemplateGenerator:
                 "estimated_input_tokens": 150,
                 "estimated_output_tokens": 180
             }
+    
+    def _process_document_upload(self, input_values: Dict[str, Any], template: Dict[str, Any], 
+                                 provider_name: str = None, model_name: str = None) -> Dict[str, Any]:
+        """
+        Process document_file input if present, using DocumentUploadHandler abstraction.
+        
+        Args:
+            input_values: Input values that may contain document_file
+            template: Template definition with validation rules
+            provider_name: Optional provider name for config lookup
+            model_name: Optional model name for capability check
+            
+        Returns:
+            Updated input_values with document_content populated from document_file
+        """
+        # Check if template uses document upload handler
+        validation_rules = template.get("validation_rules", {})
+        doc_processing = validation_rules.get("document_processing", {})
+        
+        if not doc_processing.get("use_upload_handler"):
+            return input_values
+        
+        # Check if document_file is provided
+        document_file = input_values.get("document_file")
+        if not document_file:
+            # No file provided, check if document_content exists
+            if not input_values.get("document_content"):
+                logger.warning("Neither document_file nor document_content provided")
+            return input_values
+        
+        logger.info(f"Processing document upload: {document_file}")
+        
+        # Get provider config if available
+        effective_config = None
+        if provider_name:
+            effective_config = DocumentUploadConfigManager.get_effective_config(provider_name)
+        
+        # Use DocumentUploadHandler to process the file
+        handler = DocumentUploadHandler()
+        
+        try:
+            result = handler.prepare_document_for_llm(
+                file_path=document_file,
+                provider_name=provider_name or "Google",  # Default to Google if not specified
+                model_name=model_name,
+                effective_config=effective_config
+            )
+            
+            # Populate document_content with extracted/prepared content
+            input_values = input_values.copy()
+            input_values["document_content"] = result.get("content", "")
+            
+            logger.info(f"Document processed using method: {result.get('method')}")
+            logger.info(f"Extracted content length: {len(result.get('content', ''))} characters")
+            
+            return input_values
+            
+        except Exception as e:
+            logger.error(f"Document processing failed: {e}", exc_info=True)
+            # Set error message as content
+            input_values = input_values.copy()
+            input_values["document_content"] = f"[Document processing failed: {str(e)}]"
+            return input_values
         
     def generate_case_from_template(
         self,
         template_id: str,
         collection_id: int,
-        input_values: Dict[str, Any]
+        input_values: Dict[str, Any],
+        provider_name: str = None,
+        model_name: str = None
     ) -> Dict[str, Any]:
         """
         Generate a RAG case from any template using template definition.
@@ -65,7 +132,9 @@ class RAGTemplateGenerator:
             template_id: The template identifier (e.g., "sql_query_v1")
             collection_id: The collection ID to associate this case with
             input_values: Dictionary of input variable values
-                         (e.g., {"user_query": "...", "sql_statement": "...", "database_name": "..."})
+                         (e.g., {"user_query": "...", "sql_statement": "...", "database_name": "...", "document_file": "..."})
+            provider_name: Optional provider name for document upload configuration
+            model_name: Optional model name for document upload capability check
             
         Returns:
             Complete case study dictionary ready to be saved
@@ -74,6 +143,9 @@ class RAGTemplateGenerator:
         template = self.template_manager.get_template(template_id)
         if not template:
             raise ValueError(f"Template {template_id} not found")
+        
+        # Process document upload if needed
+        input_values = self._process_document_upload(input_values, template, provider_name, model_name)
         
         # Get template configuration
         config = self.template_manager.get_template_config(template_id)
@@ -273,6 +345,120 @@ class RAGTemplateGenerator:
         
         return self.generate_case_from_template("sql_query_v1", collection_id, input_values)
     
+    def populate_collection_from_template(
+        self,
+        template_id: str,
+        collection_id: int,
+        examples: List[Tuple[str, str]],
+        database_name: Optional[str] = None,
+        mcp_tool_name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Populate a RAG collection using any template.
+        
+        Args:
+            template_id: Template identifier (e.g., "sql_query_v1", "sql_query_doc_context_v1")
+            collection_id: The collection ID to populate
+            examples: List of (user_query, sql_statement) tuples
+            database_name: Optional database name context
+            mcp_tool_name: The MCP tool name (uses template default if not provided)
+            
+        Returns:
+            Summary dictionary with statistics
+        """
+        # Get template
+        template = self.template_manager.get_template(template_id)
+        if not template:
+            raise ValueError(f"Template {template_id} not found")
+        
+        # Get template configuration for defaults
+        config = self.template_manager.get_template_config(template_id)
+        if not mcp_tool_name:
+            mcp_tool_name = config.get("default_mcp_tool", "base_readQuery")
+        
+        # Validate collection exists
+        collection_meta = self.rag_retriever.get_collection_metadata(collection_id)
+        if not collection_meta:
+            raise ValueError(f"Collection ID {collection_id} does not exist")
+        
+        logger.info(f"Populating collection {collection_id} ('{collection_meta['name']}') with {len(examples)} examples using template {template_id}...")
+        
+        results = {
+            "collection_id": collection_id,
+            "collection_name": collection_meta["name"],
+            "template_id": template_id,
+            "total_examples": len(examples),
+            "successful": 0,
+            "failed": 0,
+            "case_ids": [],
+            "errors": []
+        }
+        
+        collection_dir = self.rag_retriever._ensure_collection_dir(collection_id)
+        
+        for idx, (user_query, sql_statement) in enumerate(examples, 1):
+            try:
+                logger.info(f"Processing example {idx}/{len(examples)}: '{user_query[:50]}...'")
+                
+                # Build input values for template
+                input_values = {
+                    "user_query": user_query,
+                    "sql_statement": sql_statement,
+                    "mcp_tool_name": mcp_tool_name
+                }
+                
+                if database_name:
+                    input_values["database_name"] = database_name
+                
+                # Generate case using generic template method
+                case_study = self.generate_case_from_template(
+                    template_id=template_id,
+                    collection_id=collection_id,
+                    input_values=input_values
+                )
+                
+                case_id = case_study["case_id"]
+                
+                # Save to disk
+                case_file = collection_dir / f"case_{case_id}.json"
+                with open(case_file, 'w', encoding='utf-8') as f:
+                    json.dump(case_study, f, indent=2)
+                
+                # Add to ChromaDB
+                if collection_id in self.rag_retriever.collections:
+                    collection = self.rag_retriever.collections[collection_id]
+                    
+                    # Prepare metadata
+                    metadata = self.rag_retriever._prepare_chroma_metadata(case_study)
+                    document = user_query
+                    
+                    # Upsert to ChromaDB
+                    collection.upsert(
+                        ids=[case_id],
+                        documents=[document],
+                        metadatas=[metadata]
+                    )
+                    logger.debug(f"Added case {case_id[:8]}... to ChromaDB")
+                
+                results["successful"] += 1
+                results["case_ids"].append(case_id)
+                
+            except Exception as e:
+                logger.error(f"Failed to process example {idx}: {e}", exc_info=True)
+                results["failed"] += 1
+                results["errors"].append({
+                    "example_index": idx,
+                    "user_query": user_query,
+                    "error": str(e)
+                })
+        
+        logger.info(
+            f"Population complete for collection {collection_id}: "
+            f"{results['successful']} successful, {results['failed']} failed"
+        )
+        
+        return results
+    
     def populate_collection_from_sql_examples(
         self,
         collection_id: int,
@@ -282,6 +468,35 @@ class RAGTemplateGenerator:
     ) -> Dict[str, Any]:
         """
         Populate a RAG collection with multiple SQL examples.
+        DEPRECATED: Use populate_collection_from_template instead.
+        
+        Args:
+            collection_id: The collection ID to populate
+            examples: List of (user_query, sql_statement) tuples
+            database_name: Optional database name context
+            mcp_tool_name: The MCP tool name for SQL execution
+            
+        Returns:
+            Summary dictionary with statistics
+        """
+        # Delegate to generic method with sql_query_v1 template
+        return self.populate_collection_from_template(
+            template_id="sql_query_v1",
+            collection_id=collection_id,
+            examples=examples,
+            database_name=database_name,
+            mcp_tool_name=mcp_tool_name
+        )
+    
+    def _populate_collection_from_sql_examples_legacy(
+        self,
+        collection_id: int,
+        examples: List[Tuple[str, str]],
+        database_name: Optional[str] = None,
+        mcp_tool_name: str = "base_readQuery"
+    ) -> Dict[str, Any]:
+        """
+        Legacy implementation kept for reference.
         
         Args:
             collection_id: The collection ID to populate
