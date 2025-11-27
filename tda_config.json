@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "created_at": "2025-11-18T15:42:02.792618+00:00",
-  "last_modified": "2025-11-27T21:35:00.000000+00:00",
+  "last_modified": "2025-11-27T21:54:01.252686+00:00",
   "enable_mcp_classification": false,
   "rag_collections": [],
   "mcp_servers": [
@@ -1264,7 +1264,8 @@
         "classified_with_mode": "full",
         "last_classified": "2025-11-26T09:59:23.855109+00:00"
       },
-      "needs_reclassification": false
+      "needs_reclassification": false,
+      "isDefault": true
     },
     {
       "id": "profile-1764006444002-z0hdduce9",
@@ -2371,65 +2372,14 @@
         "last_classified": "2025-11-24T17:47:40.593491+00:00"
       },
       "needs_reclassification": true,
-      "inherit_classification": true
-    },
-    {
-      "id": "profile-1764260333060-6djepc7c4",
-      "name": "System Performance",
-      "tag": "PERF",
-      "description": "",
-      "llmConfigurationId": "1763819257483-fluhef2vk",
-      "mcpServerId": "1763483266562-a6kulj4xc",
-      "classification_mode": "light",
-      "tools": [
-        "base_columnDescription",
-        "base_databaseList",
-        "base_readQuery",
-        "base_tableAffinity",
-        "base_tableDDL",
-        "base_tableList",
-        "base_tablePreview",
-        "base_tableUsage",
-        "dba_databaseSpace",
-        "dba_resusageSummary",
-        "dba_tableSpace",
-        "dba_tableSqlList",
-        "dba_tableUsageImpact",
-        "dba_userSqlList",
-        "dba_databaseVersion",
-        "dba_flowControl",
-        "dba_featureUsage",
-        "dba_userDelay",
-        "dba_sessionInfo",
-        "dba_systemSpace"
-      ],
-      "prompts": [
-        "base_teradataQuery",
-        "base_query"
-      ],
-      "ragCollections": [
-        0,
-        2
-      ],
-      "autocompleteCollections": [
-        2
-      ],
       "inherit_classification": true,
-      "classification_results": {
-        "tools": {},
-        "prompts": {},
-        "resources": {},
-        "last_classified": null,
-        "classified_with_mode": null
-      },
-      "needs_reclassification": true
+      "isDefault": false
     }
   ],
   "active_profile_id": null,
   "default_profile_id": "profile-1763993711628-vvbh23q09",
   "active_for_consumption_profile_ids": [
     "profile-1764260333060-6djepc7c4",
-    "profile-1764006444002-z0hdduce9",
     "profile-1763993711628-vvbh23q09"
   ],
   "window_defaults": {

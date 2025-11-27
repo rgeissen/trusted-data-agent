@@ -131,73 +131,67 @@ class ConfigManager:
     
     def load_config(self, user_uuid: Optional[str] = None) -> Dict[str, Any]:
         """
-        Load configuration from tda_config.json.
-        
-        When CONFIGURATION_PERSISTENCE=false:
-        - If user_uuid is provided: Returns per-user isolated configuration
-        - If user_uuid is None: Returns shared configuration (backward compatibility)
+        Load per-user configuration from database (user_preferences).
+        If user has no configuration yet, bootstrap from tda_config.json template.
+        tda_config.json is read-only and never modified.
         
         Args:
-            user_uuid: Optional user UUID for per-user configuration isolation
+            user_uuid: User UUID for per-user configuration (required for per-user config)
         
         Returns:
             Configuration dictionary
         """
-        # Check if persistence is disabled - use in-memory cache
-        from trusted_data_agent.core.config import APP_CONFIG
-        if not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-            # Per-user configuration isolation when user_uuid is provided
-            if user_uuid:
-                # Update last access time
-                self._last_access[user_uuid] = datetime.now(timezone.utc)
-                
-                # Periodically clean up inactive users (every 100 accesses)
-                if len(self._last_access) > 0 and len(self._last_access) % 100 == 0:
-                    self._cleanup_inactive_users()
-                
-                if user_uuid not in self._user_configs:
-                    # First time for this user: create isolated config from base template
-                    base_config = None
-                    if self.config_path.exists():
-                        try:
-                            with open(self.config_path, 'r', encoding='utf-8') as f:
-                                base_config = json.load(f)
-                            app_logger.info(f"Loaded base configuration template for user {user_uuid}")
-                        except Exception as e:
-                            app_logger.warning(f"Failed to load config from disk: {e}. Using default.")
-                            base_config = self._get_default_config()
-                    else:
-                        app_logger.info(f"No config file found. Using default template for user {user_uuid}")
-                        base_config = self._get_default_config()
-                    
-                    # Create deep copy for this user
-                    self._user_configs[user_uuid] = copy.deepcopy(base_config)
-                    app_logger.info(f"Created isolated configuration for user {user_uuid}")
-                
-                return self._user_configs[user_uuid]
-            
-            # Legacy single-user mode (no user_uuid provided)
-            if self._memory_config is None:
-                # First time: load existing config from disk if it exists
-                if self.config_path.exists():
-                    try:
-                        with open(self.config_path, 'r', encoding='utf-8') as f:
-                            self._memory_config = json.load(f)
-                        app_logger.info("Loaded existing configuration into memory (persistence disabled)")
-                    except Exception as e:
-                        app_logger.warning(f"Failed to load config from disk: {e}. Using default.")
-                        self._memory_config = self._get_default_config()
-                else:
-                    app_logger.info("No config file found. Initializing in-memory configuration (persistence disabled)")
-                    self._memory_config = self._get_default_config()
-            return self._memory_config
+        # If no user_uuid, return read-only bootstrap template from tda_config.json
+        if not user_uuid:
+            return self._load_bootstrap_template()
         
+        # Update last access time for memory cache
+        self._last_access[user_uuid] = datetime.now(timezone.utc)
+        
+        # Periodically clean up inactive users (every 100 accesses)
+        if len(self._last_access) > 0 and len(self._last_access) % 100 == 0:
+            self._cleanup_inactive_users()
+        
+        # Check memory cache first
+        if user_uuid in self._user_configs:
+            return self._user_configs[user_uuid]
+        
+        # Load from database
+        try:
+            from trusted_data_agent.auth.database import get_db_session
+            from trusted_data_agent.auth.models import UserPreference
+            
+            with get_db_session() as session:
+                prefs = session.query(UserPreference).filter_by(user_id=user_uuid).first()
+                
+                if prefs and prefs.preferences_json:
+                    # Load existing per-user configuration from database
+                    user_config = json.loads(prefs.preferences_json)
+                    self._user_configs[user_uuid] = user_config
+                    app_logger.info(f"Loaded configuration from database for user {user_uuid}")
+                    return user_config
+        except Exception as e:
+            app_logger.error(f"Error loading config from database for user {user_uuid}: {e}", exc_info=True)
+        
+        # No configuration in database - bootstrap from tda_config.json template
+        app_logger.info(f"No configuration found for user {user_uuid} - bootstrapping from tda_config.json")
+        bootstrap_config = self._load_bootstrap_template()
+        
+        # Create deep copy for this user
+        user_config = copy.deepcopy(bootstrap_config)
+        self._user_configs[user_uuid] = user_config
+        
+        # Save to database for future loads
+        self.save_config(user_config, user_uuid)
+        
+        return user_config
+    
+    def _load_bootstrap_template(self) -> Dict[str, Any]:
+        """Load read-only bootstrap template from tda_config.json."""
         try:
             if not self.config_path.exists():
-                app_logger.info(f"Config file not found at {self.config_path}. Creating default config.")
-                default_config = self._get_default_config()
-                self.save_config(default_config)
-                return default_config
+                app_logger.warning(f"Config file not found at {self.config_path}. Using default config.")
+                return self._get_default_config()
             
             with open(self.config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
@@ -210,22 +204,11 @@ class ConfigManager:
                     f"got {schema_version}. Using existing config as-is."
                 )
             
-            # Note: Credentials should never exist in tda_config.json as they are always
-            # stripped during save_config(). This is a defense-in-depth measure in case
-            # the file was manually edited or came from an older version.
-            app_logger.info(f"Loaded configuration from {self.config_path}")
             return config
             
         except json.JSONDecodeError as e:
             app_logger.error(f"Invalid JSON in config file: {e}. Using default config.")
-            default_config = self._get_default_config()
-            # Backup corrupted file
-            if self.config_path.exists():
-                backup_path = self.config_path.with_suffix('.json.backup')
-                self.config_path.rename(backup_path)
-                app_logger.info(f"Backed up corrupted config to {backup_path}")
-            self.save_config(default_config)
-            return default_config
+            return self._get_default_config()
             
         except Exception as e:
             app_logger.error(f"Error loading config file: {e}. Using default config.", exc_info=True)
@@ -233,64 +216,49 @@ class ConfigManager:
     
     def save_config(self, config: Dict[str, Any], user_uuid: Optional[str] = None) -> bool:
         """
-        Save configuration to tda_config.json.
-        
-        When CONFIGURATION_PERSISTENCE=false:
-        - If user_uuid is provided: Saves to per-user isolated configuration
-        - If user_uuid is None: Saves to shared configuration (backward compatibility)
-        
-        SECURITY: Credentials are NEVER saved to tda_config.json.
-        They are always stripped before saving, regardless of CONFIGURATION_PERSISTENCE setting.
-        Credentials should only exist in browser localStorage.
+        Save per-user configuration to database (user_preferences).
+        tda_config.json is never modified - it serves only as bootstrap template.
         
         Args:
             config: Configuration dictionary to save
-            user_uuid: Optional user UUID for per-user configuration isolation
+            user_uuid: User UUID for per-user configuration storage (required)
             
         Returns:
             True if successful, False otherwise
         """
         try:
-            # Check if persistence is enabled
-            from trusted_data_agent.core.config import APP_CONFIG
-            if not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-                # Update last_modified timestamp
-                config["last_modified"] = datetime.now(timezone.utc).isoformat()
-                
-                # Per-user configuration isolation
-                if user_uuid:
-                    self._user_configs[user_uuid] = config
-                    self._last_access[user_uuid] = datetime.now(timezone.utc)
-                    app_logger.info(f"Configuration saved to memory for user {user_uuid}")
-                else:
-                    # Legacy single-user mode
-                    self._memory_config = config
-                    app_logger.info("Configuration persistence disabled - saving to memory only")
-                
-                return True
-            
-            # SECURITY: Always strip credentials before saving
-            config = self._strip_credentials(config)
+            if not user_uuid:
+                app_logger.warning("save_config called without user_uuid - configuration not saved (tda_config.json is read-only)")
+                return False
             
             # Update last_modified timestamp
             config["last_modified"] = datetime.now(timezone.utc).isoformat()
             
-            # Ensure parent directory exists
-            self.config_path.parent.mkdir(parents=True, exist_ok=True)
+            # Store in per-user memory cache
+            self._user_configs[user_uuid] = config
+            self._last_access[user_uuid] = datetime.now(timezone.utc)
             
-            # Write to temporary file first, then rename (atomic operation)
-            temp_path = self.config_path.with_suffix('.json.tmp')
-            with open(temp_path, 'w', encoding='utf-8') as f:
-                json.dump(config, f, indent=2, ensure_ascii=False)
+            # Persist to database (user_preferences.preferences_json)
+            from trusted_data_agent.auth.database import get_db_session
+            from trusted_data_agent.auth.models import UserPreference
             
-            # Atomic rename
-            temp_path.replace(self.config_path)
+            with get_db_session() as session:
+                prefs = session.query(UserPreference).filter_by(user_id=user_uuid).first()
+                if not prefs:
+                    prefs = UserPreference(user_id=user_uuid)
+                    session.add(prefs)
+                
+                # Store config in preferences_json (excluding credentials for security)
+                safe_config = self._strip_credentials(config)
+                prefs.preferences_json = json.dumps(safe_config)
+                prefs.updated_at = datetime.utcnow()
+                session.commit()
             
-            app_logger.info(f"Saved configuration to {self.config_path} (credentials stripped)")
+            app_logger.info(f"Configuration saved to database for user {user_uuid}")
             return True
             
         except Exception as e:
-            app_logger.error(f"Error saving config file: {e}", exc_info=True)
+            app_logger.error(f"Error saving config for user {user_uuid}: {e}", exc_info=True)
             return False
     
     def get_rag_collections(self, user_uuid: Optional[str] = None) -> list:

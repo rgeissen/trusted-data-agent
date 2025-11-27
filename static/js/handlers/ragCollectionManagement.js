@@ -187,7 +187,12 @@ async function reloadTemplateConfiguration() {
     try {
         const templateId = ragCollectionTemplateType?.value || 'sql_query_v1';
         // Add cache-busting parameter to force fresh load
-        const response = await fetch(`/api/v1/rag/templates/${templateId}/config?_=${Date.now()}`);
+        const token = localStorage.getItem('tda_auth_token');
+        const response = await fetch(`/api/v1/rag/templates/${templateId}/config?_=${Date.now()}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (response.ok) {
             const configData = await response.json();
             return configData;
@@ -968,7 +973,12 @@ async function calculateRagImpactKPIs() {
     
     try {
         // Fetch all collections to calculate metrics
-        const response = await fetch('/api/v1/rag/collections');
+        const token = localStorage.getItem('tda_auth_token');
+        const response = await fetch('/api/v1/rag/collections', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (!response.ok) {
             console.error('[RAG KPI] Failed to fetch collections:', response.status, response.statusText);
             updateKPIDisplay({
@@ -1601,7 +1611,12 @@ async function checkLlmConfiguration() {
     
     try {
         // Check if user has any profiles configured
-        const profilesResponse = await fetch('/api/v1/profiles');
+        const token = localStorage.getItem('tda_auth_token');
+        const profilesResponse = await fetch('/api/v1/profiles', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (profilesResponse.ok) {
             const profilesData = await profilesResponse.json();
             // LLM is configured if user has at least one profile

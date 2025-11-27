@@ -50,12 +50,77 @@ logger = logging.getLogger("quart.app")
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/v1/auth')
 
 
+def ensure_user_default_profile(user_id: str):
+    """
+    Ensure a user has MCP servers, LLM configurations, and a default profile.
+    Bootstraps from tda_config.json if this is the user's first login.
+    All configuration is stored per-user in database (user_preferences).
+    tda_config.json is never modified - it's read-only bootstrap template.
+    """
+    from trusted_data_agent.core.config_manager import get_config_manager
+    
+    try:
+        config_manager = get_config_manager()
+        
+        # Check if user already has configuration (check for profiles)
+        existing_profiles = config_manager.get_profiles(user_id)
+        if existing_profiles:
+            logger.debug(f"User {user_id} already has {len(existing_profiles)} profiles - skipping bootstrap")
+            return
+        
+        # First time for this user - bootstrap from tda_config.json
+        logger.info(f"Bootstrapping configuration for user {user_id} from tda_config.json")
+        
+        # Load bootstrap template (read-only from tda_config.json)
+        bootstrap_config = config_manager._load_bootstrap_template()
+        
+        # Get MCP servers and LLM configs from bootstrap template
+        mcp_servers = bootstrap_config.get('mcp_servers', [])
+        llm_configs = bootstrap_config.get('llm_configurations', [])
+        
+        if not mcp_servers:
+            logger.warning(f"No MCP servers in tda_config.json - user {user_id} will have no MCP servers")
+        
+        if not llm_configs:
+            logger.warning(f"No LLM configurations in tda_config.json - user {user_id} will have no LLM configs")
+        
+        # User's config will be bootstrapped automatically by load_config
+        # which creates a deep copy from tda_config.json template
+        # This ensures MCP servers and LLM configs are copied to user's database storage
+        user_config = config_manager.load_config(user_id)
+        
+        # Create default profile if we have both MCP server and LLM config
+        if mcp_servers and llm_configs:
+            import time
+            profile_id = f"{int(time.time() * 1000)}-default"
+            profile_data = {
+                'id': profile_id,
+                'name': 'Default Profile',
+                'tag': 'default',
+                'llmConfigurationId': llm_configs[0].get('id'),
+                'mcpServerId': mcp_servers[0].get('id'),
+                'isDefault': True
+            }
+            
+            success = config_manager.add_profile(profile_data, user_id)
+            if success:
+                logger.info(f"Bootstrapped user {user_id}: {len(mcp_servers)} MCP servers, {len(llm_configs)} LLM configs, 1 default profile")
+            else:
+                logger.error(f"Failed to create default profile for user {user_id}")
+        else:
+            logger.warning(f"User {user_id} bootstrapped with incomplete configuration (missing MCP or LLM)")
+        
+    except Exception as e:
+        logger.error(f"Failed to bootstrap configuration for user {user_id}: {e}", exc_info=True)
+
+
 def ensure_user_default_collection(user_id: str):
     """
     Ensure a user has a default collection.
     Creates one if it doesn't exist.
     """
     from trusted_data_agent.core.collection_db import get_collection_db
+    from trusted_data_agent.core.config_manager import get_config_manager
     
     collection_db = get_collection_db()
     
@@ -68,8 +133,16 @@ def ensure_user_default_collection(user_id: str):
     
     if not has_default:
         try:
-            collection_db.create_default_collection(user_id)
-            logger.info(f"Created default collection for user {user_id}")
+            # Get active MCP server ID from config (may be None for fresh installs)
+            config_manager = get_config_manager()
+            mcp_server_id = config_manager.get_active_mcp_server_id() or ""
+            
+            collection_db.create_default_collection(user_id, mcp_server_id)
+            
+            if mcp_server_id:
+                logger.info(f"Created default collection for user {user_id} with MCP server {mcp_server_id}")
+            else:
+                logger.info(f"Created default collection for user {user_id} (no MCP server configured yet)")
         except Exception as e:
             logger.error(f"Failed to create default collection for user {user_id}: {e}", exc_info=True)
 
@@ -196,6 +269,9 @@ async def register():
         )
         
         logger.info(f"New user registered: {user_username} (uuid: {user_uuid})")
+        
+        # Create default profile for new user (bootstrap from tda_config.json)
+        ensure_user_default_profile(user_uuid)
         
         # Create default collection for new user
         ensure_user_default_collection(user_uuid)
@@ -347,6 +423,9 @@ async def login():
         )
         
         logger.info(f"User logged in: {user_username}")
+        
+        # Ensure user has a default profile (bootstrap from tda_config.json)
+        ensure_user_default_profile(user_uuid)
         
         # Ensure user has a default collection
         ensure_user_default_collection(user_uuid)

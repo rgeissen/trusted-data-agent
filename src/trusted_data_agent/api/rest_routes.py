@@ -359,15 +359,51 @@ async def execute_prompt_raw(prompt_name: str):
     }
     """
     try:
+        # Try to get global MCP client (works if system is configured globally)
         mcp_client = APP_STATE.get("mcp_client")
+        server_name = APP_CONFIG.CURRENT_MCP_SERVER_NAME
+        llm_instance = APP_STATE.get('llm')
+        
+        # If no global config, try to get from authenticated user's profile
+        if not mcp_client or not server_name or not llm_instance:
+            user_uuid = _get_user_uuid_from_request()
+            if not user_uuid:
+                return jsonify({"status": "error", "message": "Authentication required and no global MCP/LLM configured"}), 401
+            
+            # Get user's default profile
+            from trusted_data_agent.core.config_manager import get_config_manager
+            config_manager = get_config_manager()
+            default_profile_id = config_manager.get_default_profile_id(user_uuid)
+            if not default_profile_id:
+                return jsonify({"status": "error", "message": "No default profile configured. Please set up a profile in Configuration panel."}), 400
+            
+            default_profile = config_manager.get_profile(default_profile_id, user_uuid)
+            if not default_profile:
+                return jsonify({"status": "error", "message": "Default profile not found"}), 400
+            
+            # Get MCP server from profile
+            mcp_server_id = default_profile.get("mcpServerId")
+            if mcp_server_id and not server_name:
+                mcp_servers = config_manager.get_mcp_servers()
+                mcp_server = next((s for s in mcp_servers if s.get("id") == mcp_server_id), None)
+                if mcp_server:
+                    server_name = mcp_server.get("name")
+            
+            # Get user's MCP client if not available globally
+            if not mcp_client:
+                from trusted_data_agent.core.config import get_user_mcp_client
+                mcp_client = get_user_mcp_client(user_uuid)
+            
+            # Get user's LLM if not available globally
+            if not llm_instance:
+                from trusted_data_agent.core.config import get_user_llm
+                llm_instance = get_user_llm(user_uuid)
+        
+        # Final validation
         if not mcp_client:
             return jsonify({"status": "error", "message": "MCP client not configured"}), 400
-
-        server_name = APP_CONFIG.CURRENT_MCP_SERVER_NAME
         if not server_name:
             return jsonify({"status": "error", "message": "MCP server not configured"}), 400
-            
-        llm_instance = APP_STATE.get('llm')
         if not llm_instance:
             return jsonify({"status": "error", "message": "LLM not configured"}), 400
 
@@ -633,6 +669,13 @@ async def generate_rag_questions():
                 "status": "error",
                 "message": "LLM not configured for profile"
             }), 503
+        
+        # Check if LLM is a placeholder (credentials not configured)
+        if isinstance(llm_instance, dict) and llm_instance.get('placeholder'):
+            return jsonify({
+                "status": "error",
+                "message": f"LLM credentials not configured. Please add credentials for {llm_instance.get('provider')} in the Configuration panel."
+            }), 503
 
         # Get parameters from request
         data = await request.get_json() or {}
@@ -644,6 +687,15 @@ async def generate_rag_questions():
         target_database = data.get('target_database', 'Teradata').strip()
         conversion_rules = data.get('conversion_rules', '').strip()
         
+        # DEBUG: Log execution_trace structure
+        app_logger.info(f"[DEBUG] execution_trace type: {type(execution_trace)}")
+        if execution_trace and isinstance(execution_trace, list) and len(execution_trace) > 0:
+            app_logger.info(f"[DEBUG] First trace_item type: {type(execution_trace[0])}")
+            app_logger.info(f"[DEBUG] First trace_item: {execution_trace[0]}")
+            if isinstance(execution_trace[0], dict):
+                action_value = execution_trace[0].get('action')
+                app_logger.info(f"[DEBUG] First action type: {type(action_value)}, value: {action_value}")
+        
         # Extract meaningful content from execution trace
         # Skip TDA_SystemLog (clutter), extract everything else
         schema_details = ""
@@ -654,6 +706,11 @@ async def generate_rag_questions():
                     
                 action = trace_item.get('action', {})
                 result = trace_item.get('result', {})
+                
+                # Ensure action is a dict before trying to access it
+                if not isinstance(action, dict):
+                    continue
+                
                 tool_name = action.get('tool_name', '')
                 
                 # Skip system log messages (clutter) - only hardcoded TDA_ function

@@ -2021,7 +2021,13 @@ export async function loadRagCollections() {
         if (DOM.ragMaintenanceEmptyHint) {
             DOM.ragMaintenanceEmptyHint.textContent = 'Loading collections...';
         }
-        const res = await fetch('/api/v1/rag/collections');
+        // Get authentication token
+        const token = localStorage.getItem('tda_auth_token');
+        const res = await fetch('/api/v1/rag/collections', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         const data = await res.json();
         const collections = (data && data.collections) ? data.collections : [];
         DOM.ragMaintenanceCollectionsContainer.innerHTML = '';
@@ -2302,7 +2308,13 @@ async function fetchAndRenderCollectionRows({ collectionId, query = '', refresh 
             params.set('sort_by', state.ragCollectionSortKey);
             params.set('sort_order', state.ragCollectionSortDirection || 'asc');
         }
-        const res = await fetch(`/rag/collections/${collectionId}/rows?${params.toString()}`);
+        // Get authentication token
+        const token = localStorage.getItem('tda_auth_token');
+        const res = await fetch(`/rag/collections/${collectionId}/rows?${params.toString()}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         
         if (!res.ok) {
             throw new Error(`HTTP error! status: ${res.status}`);
@@ -2485,7 +2497,13 @@ async function selectCaseRow(caseId) {
         }
     }
     try {
-        const res = await fetch(`/rag/cases/${encodeURIComponent(caseId)}`);
+        // Get authentication token
+        const token = localStorage.getItem('tda_auth_token');
+        const res = await fetch(`/rag/cases/${encodeURIComponent(caseId)}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         const caseData = data.case || {};
