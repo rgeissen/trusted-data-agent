@@ -6,14 +6,14 @@ import requests
 from airflow.sdk import dag, task
 from airflow.sdk import BaseHook
 import pendulum # Used for start_date calculation
-# Airflow model imports are still generally compatible
-from airflow.models import Variable
+
+from airflow.sdk import Variable
 # The days_ago function is removed in Airflow 3
 # from airflow.utils.dates import days_ago 
 from airflow.exceptions import AirflowException
 
 # --- CONFIGURATION ---
-DAG_ID = 'tda_00_configure_with_questions'
+DAG_ID = 'tda_00_execute_questions'
 CONN_ID = 'tda_api_conn'
 
 default_args = {
@@ -31,7 +31,7 @@ default_args = {
     tags=['tda', 'setup'], 
     catchup=False
 )
-def tda_configure_from_file():
+def tda_execute_questions():
     """
     Uses the session / submit / poll pattern with access token authentication.
     Reads questions from `questions.txt` and requires a default profile.
@@ -42,39 +42,21 @@ def tda_configure_from_file():
     def get_base_url():
         return BaseHook.get_connection(CONN_ID).host
 
-    # --- TASK 0: Get Access Token ---
+    # --- TASK 0: Get API Key ---
     @task()
-    def get_access_token():
+    def get_api_key():
         """
-        Get or create a long-lived access token.
-        Requires: Airflow Variable 'tda_jwt_token' with a valid JWT token.
+        Get the TDA API key from an Airflow Variable.
+        Requires: Airflow Variable 'tda_api_key' with a valid TDA API key.
         """
-        jwt_token = Variable.get("tda_jwt_token", default_var=None)
-        if not jwt_token:
+        api_key = Variable.get("tda_api_key", default=None)
+        if not api_key:
             raise AirflowException(
-                "Missing Airflow Variable 'tda_jwt_token'. "
-                "Please set it to a valid JWT token from /auth/login."
+                "Missing Airflow Variable 'tda_api_key'. "
+                "Please set it to a valid TDA API key."
             )
-        
-        token_name = Variable.get("tda_access_token_name", default_var="airflow-dag-token")
-        expires_days = int(Variable.get("tda_access_token_expires_days", default_var=90))
-        
-        url = f"{get_base_url()}/api/v1/auth/tokens"
-        headers = {"Authorization": f"Bearer {jwt_token}"}
-        payload = {"name": token_name, "expires_in_days": expires_days}
-        
-        try:
-            resp = requests.post(url, json=payload, headers=headers, timeout=10)
-            resp.raise_for_status()
-            access_token = resp.json().get('token')
-            if not access_token:
-                raise AirflowException("No access token returned from API")
-            print(f"✅ Access token obtained: {access_token[:20]}...")
-            return access_token
-        except requests.exceptions.ConnectionError:
-            raise AirflowException(f"Could not connect to TDA API at {url}. Is it running?")
-        except Exception as e:
-            raise AirflowException(f"Failed to get access token: {e}")
+        print("✅ TDA API key loaded.")
+        return api_key.strip()
 
     # --- HELPER: Debug printer ---
     def log_full_request(prepped_req):
@@ -89,21 +71,21 @@ def tda_configure_from_file():
 
     # --- TASK 1: Get or Create Session ---
     @task()
-    def get_or_create_session(access_token: str):
+    def get_or_create_session(api_key: str):
         """
         Reuse existing session if tda_session_id is set, otherwise create new one.
         Requires user to have a default profile configured.
         Profile must have both LLM Provider and MCP Server.
         """
         # Check if reusing existing session
-        existing_session_id = Variable.get('tda_session_id', default_var=None)
+        existing_session_id = Variable.get('tda_session_id', default=None)
         if existing_session_id and len(existing_session_id.strip()) > 0:
             print(f"✅ Reusing existing session: {existing_session_id}")
             return existing_session_id.strip()
         
         # Create new session
         url = f"{get_base_url()}/api/v1/sessions"
-        headers = {"Authorization": f"Bearer {access_token}"}
+        headers = {"Authorization": f"Bearer {api_key}"}
         
         session = requests.Session()
         req = requests.Request('POST', url, headers=headers)
@@ -129,19 +111,19 @@ def tda_configure_from_file():
 
     # --- TASK 2: Submit Query ---
     @task()
-    def submit_query(access_token: str, session_id: str, question: str):
+    def submit_query(api_key: str, session_id: str, question: str):
         """
         Submit a query to a session.
         Optionally use a different profile via tda_profile_id variable.
         Returns task_id for polling.
         """
         url = f"{get_base_url()}/api/v1/sessions/{session_id}/query"
-        headers = {"Authorization": f"Bearer {access_token}"}
+        headers = {"Authorization": f"Bearer {api_key}"}
         
         payload = {'prompt': question}
         
         # Optional: Override profile if tda_profile_id is set
-        profile_id = Variable.get('tda_profile_id', default_var=None)
+        profile_id = Variable.get('tda_profile_id', default=None)
         if profile_id and len(profile_id.strip()) > 0:
             payload['profile_id'] = profile_id.strip()
             print(f"Using profile override: {profile_id}")
@@ -163,13 +145,13 @@ def tda_configure_from_file():
 
     # --- TASK 3: Poll for Completion ---
     @task()
-    def poll_until_complete(access_token: str, task_start_data: dict):
+    def poll_until_complete(api_key: str, task_start_data: dict):
         """
         Poll task status until completion.
         """
         status_url_path = task_start_data['status_url']
         full_url = f"{get_base_url()}{status_url_path}"
-        headers = {"Authorization": f"Bearer {access_token}"}
+        headers = {"Authorization": f"Bearer {api_key}"}
 
         print(f"Starting polling loop for: {full_url}")
 
@@ -192,8 +174,8 @@ def tda_configure_from_file():
             time.sleep(5)
 
     # --- WORKFLOW DEFINITION ---
-    access_token = get_access_token()
-    session_id = get_or_create_session(access_token)
+    api_key = get_api_key()
+    session_id = get_or_create_session(api_key)
 
     # Read questions file
     dag_folder = os.path.dirname(__file__)
@@ -219,8 +201,8 @@ def tda_configure_from_file():
 
     prev_wait = None
     for idx, q in enumerate(questions, start=1):
-        submit = submit_query.override(task_id=f'submit_Q{idx}')(access_token=access_token, session_id=session_id, question=q)
-        wait = poll_until_complete.override(task_id=f'wait_for_Q{idx}')(access_token=access_token, task_start_data=submit)
+        submit = submit_query.override(task_id=f'submit_Q{idx}')(api_key=api_key, session_id=session_id, question=q)
+        wait = poll_until_complete.override(task_id=f'wait_for_Q{idx}')(api_key=api_key, task_start_data=submit)
 
         # Chain tasks: wait for prev before submitting next
         if prev_wait:
@@ -229,4 +211,4 @@ def tda_configure_from_file():
         prev_wait = wait
 
 
-configure_from_file_dag = tda_configure_from_file()
+execute_questions_dag = tda_execute_questions()
