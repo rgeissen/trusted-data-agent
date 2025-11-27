@@ -1,20 +1,20 @@
 # Trusted Data Agent (TDA) Flowise Integration
 
 ## 1. Overview
-This document details the architecture and configuration of the Flowise workflow used to interface with the Trusted Data Agent (TDA) REST API. The workflow handles user sessions, submits asynchronous queries, and polls for results using modern Bearer token authentication.
+This document details the architecture and configuration of the Flowise workflow used to interface with the Trusted Data Agent (TDA) REST API. The workflow handles user sessions, submits asynchronous queries, and polls for results using a direct Bearer token.
 
 ---
 ## 2. Agent Flow
 The agent flow is provided as an exemplary script that can be imported into the Flowise environment:
-- **TDA Conversation Agent:** [TDA - Conversation Agents.json](./scripts/TDA%20-%20Conversation%20Agents.json)
+- **TDA Conversation Agent:** [TDA Conversation Agents.json](./scripts/TDA%20Conversation%20Agents.json)
 
 ---
 
 ## 3. Workflow: TDA Conversation
-**Purpose:** This is the primary user interface flow. It handles the asynchronous "Submit & Poll" pattern required by the TDA API, manages session state, and parses complex JSON responses. Uses modern Bearer token authentication instead of legacy user UUID headers.
+**Purpose:** This is the primary user interface flow. It handles the asynchronous "Submit & Poll" pattern required by the TDA API, manages session state, and parses complex JSON responses. It uses a direct Bearer token for authentication.
 
 ### 3.1. Script Reference
-The agent flow is defined in [TDA - Conversation Agents.json](./scripts/TDA%20-%20Conversation%20Agents.json).
+The agent flow is defined in [TDA Conversation Agents.json](./scripts/TDA%20Conversation%20Agents.json).
 
 ### 3.2 Visual Architecture
 *(Reference: Screenshot 2025-11-15 at 18.36.36.png)*
@@ -27,7 +27,7 @@ Accepts runtime variables from the chat interface or calling application.
 
 * **Variables:**
     * `baseUrl`: The TDA server address (e.g., `http://192.168.0.100:5000`).
-    * `jwtToken`: JWT token for authentication (used to obtain Bearer access token).
+    * `apiToken`: Direct API token for authentication.
     * `prompt`: The natural language query from the user.
     * `sessionId`: (Optional) An existing session ID to maintain context for multi-turn conversations.
     * `profileId`: (Optional) Profile ID override to use a specific LLM/MCP combination (uses default if not provided).
@@ -36,8 +36,7 @@ Accepts runtime variables from the chat interface or calling application.
 Executes the modern REST API interaction logic with Bearer token authentication.
 
 * **Authentication Flow:**
-    1.  **Get Access Token:** Uses `$jwtToken` to call `POST /api/v1/auth/tokens` and obtain a long-lived Bearer access token (365-day expiration).
-    2.  **Headers:** All subsequent API calls use `Authorization: Bearer {accessToken}`.
+    1.  **Headers:** All API calls use `Authorization: Bearer {apiToken}`. The `$apiToken` is passed directly from the Start Node.
 
 * **Session & Query Logic:**
     1.  **Session Check:** If `$sessionId` is empty/null, creates a new session via `POST /api/v1/sessions`.
@@ -69,7 +68,7 @@ Parses the raw output from the TDA Request node to isolate TTS payload data and 
 
 * **Input Variables:**
     * `$apiResponse`: Output from Node 2 (TDA Request).
-    * Flow state variables for reference: `$baseUrl`, `$jwtToken`, `$sessionId`, `$prompt`.
+    * Flow state variables for reference: `$baseUrl`, `$apiToken`, `$sessionId`, `$prompt`.
 
 * **Script Logic:**
     ```javascript
@@ -143,9 +142,8 @@ Converts the JSON object from Node 3 into a human-readable Markdown string for t
 
 | Error | Probable Cause | Solution |
 | :--- | :--- | :--- |
-| **Token failed: 401 Unauthorized** | Invalid or expired JWT token. | Verify the `jwtToken` is valid and hasn't expired. Regenerate if necessary. |
-| **Failed to get access token** | JWT token is invalid or revoked. | Check that the JWT token format is correct (typically starts with `tda_`). Regenerate from admin panel if needed. |
-| **Session failed** | Bearer token is invalid or expired. | Access tokens expire after 365 days. If issues persist, clear `sessionId` and restart the workflow. |
+| **Token failed: 401 Unauthorized** | Invalid or expired API token. | Verify the `apiToken` is valid and hasn't expired. Regenerate if necessary from the TDA admin panel. |
+| **Session failed** | The API token is invalid or does not have permissions for the session endpoint. | Verify the `apiToken` is correct and has the necessary rights. |
 | **Session {id} not found or expired** | The provided `sessionId` no longer exists. | Clear the `sessionId` input to force creation of a new session. |
 | **Query failed: 404** | Session ID is invalid or expired. | Retry without providing a `sessionId` to create a fresh session. |
 | **Task error** | Query execution failed in TDA backend. | Check TDA logs and verify profile configuration. |
