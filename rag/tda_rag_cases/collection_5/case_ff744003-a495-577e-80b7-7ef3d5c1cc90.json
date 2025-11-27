@@ -1,0 +1,67 @@
+{
+  "case_id": "ff744003-a495-577e-80b7-7ef3d5c1cc90",
+  "metadata": {
+    "session_id": "aef20d1f-123f-41f2-83d6-bd05ac024bc7",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "task-b5411eb9-c779-4ff7-87aa-c64696f35a53",
+    "collection_id": 5,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-26T14:50:25.060392+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "profile_tag": "GOGET",
+      "input_tokens": 8340,
+      "output_tokens": 219
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 3,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1,
+        "3": 1
+      },
+      "total_steps": 3
+    },
+    "forked_from": 0,
+    "forked_at": "2025-11-27T18:34:35.409192+00:00"
+  },
+  "intent": {
+    "user_query": "is there a fitness database on the system?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Get a list of all databases to check for the existence of a fitness database.",
+        "relevant_tools": [
+          "base_databaseList"
+        ],
+        "arguments": {}
+      },
+      {
+        "phase": 2,
+        "goal": "Filter the list of databases to find the database related to fitness.",
+        "relevant_tools": [
+          "TDA_LLMFilter"
+        ],
+        "arguments": {
+          "goal": "Find the database related to fitness",
+          "data_to_filter": "result_of_phase_1"
+        }
+      },
+      {
+        "phase": 3,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "case_id": "749f2fc8-ef30-5737-b1f6-26898ac2cd56",
+  "metadata": {
+    "session_id": "d330a951-f2c6-448d-9a85-33240f08adc2",
+    "turn_id": 4,
+    "is_success": true,
+    "task_id": "task-59240239-c7e0-4399-a90a-696ebdec0ec1",
+    "collection_id": 4,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-23T13:30:32.041619+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "profile_tag": "GOGET",
+      "input_tokens": 21698,
+      "output_tokens": 121
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "forked_from": 0,
+    "forked_at": "2025-11-27T18:32:15.795280+00:00"
+  },
+  "intent": {
+    "user_query": "What's in fitness_db?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Get a list of all tables in the 'fitness_db' database.",
+        "relevant_tools": [
+          "base_tableList"
+        ],
+        "arguments": {
+          "database_name": "fitness_db"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

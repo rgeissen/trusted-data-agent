@@ -9,6 +9,10 @@ import uuid
 import copy
 from datetime import datetime, timezone
 # --- MODIFICATION END ---
+# --- MARKETPLACE PHASE 2: Import database models for subscriptions ---
+from trusted_data_agent.auth.database import get_db_session
+from trusted_data_agent.auth.models import CollectionSubscription
+# --- MARKETPLACE PHASE 2 END ---
 
 # Disable tqdm progress bars from ChromaDB
 os.environ['TQDM_DISABLE'] = '1'
@@ -105,6 +109,127 @@ class RAGRetriever:
         """Get metadata for a specific collection by ID."""
         collections_list = APP_STATE.get("rag_collections", [])
         return next((c for c in collections_list if c["id"] == collection_id), None)
+    
+    def _get_user_accessible_collections(self, user_id: Optional[str] = None) -> List[int]:
+        """
+        Get collection IDs accessible to a specific user.
+        
+        Args:
+            user_id: User UUID. If None, returns only public collections.
+            
+        Returns:
+            List of collection IDs the user can access (owned + subscribed)
+            
+        Access rules:
+        - Admin users (owner_user_id is None): Accessible to everyone
+        - Owner: User owns the collection (owner_user_id matches)
+        - Subscribed: User has an active subscription
+        - Public: Collection visibility is 'public' or 'unlisted'
+        """
+        accessible_ids = []
+        collections_list = APP_STATE.get("rag_collections", [])
+        
+        for coll in collections_list:
+            coll_id = coll["id"]
+            owner_id = coll.get("owner_user_id")
+            visibility = coll.get("visibility", "private")
+            
+            # Rule 1: Admin-owned collections (owner_user_id is None) are accessible to all
+            if owner_id is None:
+                accessible_ids.append(coll_id)
+                continue
+            
+            # Rule 2: User owns the collection
+            if user_id and owner_id == user_id:
+                accessible_ids.append(coll_id)
+                continue
+            
+            # Rule 3: Public or unlisted collections
+            if visibility in ["public", "unlisted"]:
+                accessible_ids.append(coll_id)
+                continue
+            
+            # Rule 4: User has active subscription
+            if user_id:
+                try:
+                    with get_db_session() as session:
+                        subscription = session.query(CollectionSubscription).filter_by(
+                            user_id=user_id,
+                            source_collection_id=coll_id,
+                            enabled=True
+                        ).first()
+                        if subscription:
+                            accessible_ids.append(coll_id)
+                except Exception as e:
+                    logger.warning(f"Error checking subscription for collection {coll_id}: {e}")
+        
+        return accessible_ids
+    
+    def is_user_collection_owner(self, collection_id: int, user_id: Optional[str]) -> bool:
+        """
+        Check if a user owns a specific collection.
+        
+        Args:
+            collection_id: Collection ID
+            user_id: User UUID
+            
+        Returns:
+            True if user is the owner or collection is admin-owned (owner_user_id is None)
+        """
+        coll_meta = self.get_collection_metadata(collection_id)
+        if not coll_meta:
+            return False
+        
+        owner_id = coll_meta.get("owner_user_id")
+        
+        # Admin-owned collections (owner_user_id is None) are considered owned by admins
+        if owner_id is None:
+            # Check if user is admin
+            if user_id:
+                try:
+                    from trusted_data_agent.auth.database import get_db_session
+                    from trusted_data_agent.auth.models import User
+                    with get_db_session() as session:
+                        user = session.query(User).filter_by(id=user_id).first()
+                        return user and user.is_admin
+                except Exception as e:
+                    logger.warning(f"Error checking admin status: {e}")
+                    return False
+            return False
+        
+        # User owns the collection
+        return owner_id == user_id
+    
+    def is_subscribed_collection(self, collection_id: int, user_id: Optional[str]) -> bool:
+        """
+        Check if a collection is accessed via subscription (not owned).
+        
+        Args:
+            collection_id: Collection ID
+            user_id: User UUID
+            
+        Returns:
+            True if user has active subscription but doesn't own the collection
+        """
+        if not user_id:
+            return False
+        
+        # Check if user is owner
+        if self.is_user_collection_owner(collection_id, user_id):
+            return False
+        
+        # Check if user has active subscription
+        try:
+            with get_db_session() as session:
+                subscription = session.query(CollectionSubscription).filter_by(
+                    user_id=user_id,
+                    source_collection_id=collection_id,
+                    enabled=True
+                ).first()
+                return subscription is not None
+        except Exception as e:
+            logger.warning(f"Error checking subscription status: {e}")
+            return False
     
     def _get_collection_dir(self, collection_id: int) -> Path:
         """Returns the directory path for a specific collection."""
@@ -276,7 +401,114 @@ class RAGRetriever:
             except Exception as e:
                 logger.error(f"Failed to auto-rebuild collection '{coll_id}': {e}", exc_info=True)
     
-    def add_collection(self, name: str, description: str = "", mcp_server_id: Optional[str] = None) -> Optional[int]:
+    def fork_collection(self, source_collection_id: int, new_name: str, new_description: str = "", owner_user_id: Optional[str] = None, mcp_server_id: Optional[str] = None) -> Optional[int]:
+        """
+        Fork (copy) an existing collection to create an independent copy.
+        
+        Args:
+            source_collection_id: ID of the collection to fork
+            new_name: Name for the new forked collection
+            new_description: Description for the new collection
+            owner_user_id: Owner of the new collection
+            mcp_server_id: MCP server ID for the new collection (required)
+            
+        Returns:
+            New collection ID if successful, None otherwise
+            
+        Note:
+            This creates a complete copy including:
+            - All ChromaDB embeddings and metadata
+            - All JSON case files
+            - Independent collection that can be modified without affecting the source
+        """
+        if mcp_server_id is None:
+            logger.error("Cannot fork collection: mcp_server_id is required")
+            return None
+        
+        # Verify source collection exists
+        source_meta = self.get_collection_metadata(source_collection_id)
+        if not source_meta:
+            logger.error(f"Cannot fork: Source collection {source_collection_id} does not exist")
+            return None
+        
+        # Create new collection
+        new_collection_id = self.add_collection(new_name, new_description, mcp_server_id, owner_user_id=owner_user_id)
+        if new_collection_id is None:
+            logger.error("Failed to create new collection during fork")
+            return None
+        
+        try:
+            # Copy ChromaDB data if source collection is loaded
+            if source_collection_id in self.collections:
+                source_collection = self.collections[source_collection_id]
+                
+                # Ensure target collection is loaded (may not be if MCP server differs)
+                if new_collection_id not in self.collections:
+                    new_meta = self.get_collection_metadata(new_collection_id)
+                    if new_meta:
+                        target_collection = self.client.get_or_create_collection(
+                            name=new_meta["collection_name"],
+                            embedding_function=self.embedding_function,
+                            metadata={"hnsw:space": "cosine"}
+                        )
+                        self.collections[new_collection_id] = target_collection
+                        logger.info(f"Loaded forked collection {new_collection_id} into retriever for copying")
+                else:
+                    target_collection = self.collections[new_collection_id]
+                
+                # Get all documents from source
+                results = source_collection.get(include=["documents", "metadatas", "embeddings"])
+                
+                if results["ids"]:
+                    # Copy to target collection
+                    target_collection.add(
+                        ids=results["ids"],
+                        documents=results["documents"],
+                        metadatas=results["metadatas"],
+                        embeddings=results["embeddings"]
+                    )
+                    logger.info(f"Copied {len(results['ids'])} documents from collection {source_collection_id} to {new_collection_id}")
+            
+            # Copy JSON case files
+            source_dir = self._get_collection_dir(source_collection_id)
+            target_dir = self._ensure_collection_dir(new_collection_id)
+            
+            case_files = list(source_dir.glob("case_*.json"))
+            copied_files = 0
+            
+            for case_file in case_files:
+                try:
+                    # Read source case
+                    with open(case_file, 'r', encoding='utf-8') as f:
+                        case_data = json.load(f)
+                    
+                    # Update metadata with new collection_id
+                    case_data.setdefault("metadata", {})["collection_id"] = new_collection_id
+                    case_data.setdefault("metadata", {})["forked_from"] = source_collection_id
+                    case_data.setdefault("metadata", {})["forked_at"] = datetime.now(timezone.utc).isoformat()
+                    
+                    # Write to target directory
+                    target_file = target_dir / case_file.name
+                    with open(target_file, 'w', encoding='utf-8') as f:
+                        json.dump(case_data, f, indent=2)
+                    
+                    copied_files += 1
+                except Exception as e:
+                    logger.error(f"Failed to copy case file {case_file.name}: {e}")
+            
+            logger.info(f"Successfully forked collection {source_collection_id} to {new_collection_id}. Copied {copied_files} case files.")
+            return new_collection_id
+            
+        except Exception as e:
+            logger.error(f"Failed to fork collection {source_collection_id}: {e}", exc_info=True)
+            # Clean up failed fork
+            try:
+                self.delete_collection(new_collection_id)
+            except:
+                pass
+            return None
+    
+    def add_collection(self, name: str, description: str = "", mcp_server_id: Optional[str] = None, owner_user_id: Optional[str] = None) -> Optional[int]:
         """
         Adds a new RAG collection and enables it.
         
@@ -310,7 +542,14 @@ class RAGRetriever:
             "mcp_server_id": mcp_server_id,
             "enabled": True,
             "created_at": datetime.now(timezone.utc).isoformat(),
-            "description": description
+            "description": description,
+            # --- MARKETPLACE PHASE 2: Add ownership tracking ---
+            "owner_user_id": owner_user_id,
+            "visibility": "private",  # Default to private
+            "is_marketplace_listed": False,  # Not listed by default
+            "subscriber_count": 0,
+            "marketplace_metadata": {}
+            # --- MARKETPLACE PHASE 2 END ---
         }
         
         # Add to APP_STATE
@@ -647,11 +886,19 @@ class RAGRetriever:
         except Exception as e:
             logger.error(f"Error re-evaluating champion: {e}", exc_info=True)
 
-    def _maintain_vector_store(self, collection_id: int):
+    def _maintain_vector_store(self, collection_id: int, user_id: Optional[str] = None):
         """
         Maintains the ChromaDB vector store for a specific collection by synchronizing it with the
         JSON case files on disk. It adds new cases, removes deleted ones,
         and updates existing ones if their metadata has changed.
+        
+        Args:
+            collection_id: Collection ID to maintain
+            user_id: User UUID (used to check ownership for subscribed collections)
+            
+        Note:
+            Subscribed collections cannot be maintained by subscribers - only owners can
+            modify the source collection. This preserves the reference-based model.
         """
         # Ensure collection_id is an integer
         if isinstance(collection_id, str):
@@ -660,6 +907,12 @@ class RAGRetriever:
         if collection_id not in self.collections:
             logger.warning(f"Cannot maintain vector store: collection '{collection_id}' not loaded")
             return
+        
+        # --- MARKETPLACE PHASE 2: Skip maintenance for subscribed collections ---
+        if user_id and self.is_subscribed_collection(collection_id, user_id):
+            logger.info(f"Skipping maintenance for collection '{collection_id}': User '{user_id}' is a subscriber (not owner). Only owners can maintain collections.")
+            return
+        # --- MARKETPLACE PHASE 2 END ---
         
         collection = self.collections[collection_id]
         collection_dir = self._get_collection_dir(collection_id)

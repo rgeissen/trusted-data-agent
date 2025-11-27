@@ -2049,18 +2049,35 @@ async def cancel_task(task_id: str):
 
 @rest_api_bp.route("/v1/rag/collections", methods=["GET"])
 async def get_rag_collections():
-    """Get all RAG collections with their active status and document counts."""
+    """Get RAG collections accessible to the authenticated user (owned + subscribed)."""
     try:
-        collections = APP_STATE.get("rag_collections", [])
+        # --- MARKETPLACE PHASE 2: Filter by user access ---
+        user_uuid = _get_user_uuid_from_request()
         retriever = APP_STATE.get("rag_retriever_instance")
+        
+        if not retriever:
+            return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
+        
+        # Get collections accessible to this user
+        accessible_ids = retriever._get_user_accessible_collections(user_uuid)
+        all_collections = APP_STATE.get("rag_collections", [])
+        
+        # Filter to only accessible collections
+        accessible_collections = [c for c in all_collections if c["id"] in accessible_ids]
+        # --- MARKETPLACE PHASE 2 END ---
         
         # Add 'is_active' field and 'count' to indicate if collection is actually loaded and how many docs it has
         enhanced_collections = []
-        for coll in collections:
+        for coll in accessible_collections:
             coll_copy = coll.copy()
             # A collection is active if it's loaded in the retriever's collections dict
             is_active = retriever and coll["id"] in retriever.collections if retriever else False
             coll_copy["is_active"] = is_active
+            
+            # --- MARKETPLACE PHASE 2: Add ownership indicators ---
+            coll_copy["is_owned"] = retriever.is_user_collection_owner(coll["id"], user_uuid)
+            coll_copy["is_subscribed"] = retriever.is_subscribed_collection(coll["id"], user_uuid)
+            # --- MARKETPLACE PHASE 2 END ---
             
             # Get document count if collection is active
             if is_active and retriever:
@@ -2088,6 +2105,12 @@ async def get_rag_collections():
 async def create_rag_collection():
     """Create a new RAG collection."""
     try:
+        # --- MARKETPLACE PHASE 2: Get authenticated user ---
+        user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({"status": "error", "message": "Authentication required"}), 401
+        # --- MARKETPLACE PHASE 2 END ---
+        
         data = await request.get_json()
         
         # Validate required fields
@@ -2107,7 +2130,9 @@ async def create_rag_collection():
         if not retriever:
             return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
         
-        collection_id = retriever.add_collection(name, description, mcp_server_id)
+        # --- MARKETPLACE PHASE 2: Pass owner_user_id ---
+        collection_id = retriever.add_collection(name, description, mcp_server_id, owner_user_id=user_uuid)
+        # --- MARKETPLACE PHASE 2 END ---
         
         if collection_id is not None:
             app_logger.info(f"Created RAG collection with ID: {collection_id}, MCP server: {mcp_server_id}")
@@ -2130,6 +2155,9 @@ async def update_rag_collection(collection_id: int):
     """Update a RAG collection's metadata (name, MCP server, description)."""
     try:
         user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({"status": "error", "message": "Authentication required"}), 401
+        
         from trusted_data_agent.core.config_manager import get_config_manager
         
         data = await request.get_json()
@@ -2142,6 +2170,12 @@ async def update_rag_collection(collection_id: int):
         
         if not coll_meta:
             return jsonify({"status": "error", "message": f"Collection with ID {collection_id} not found"}), 404
+        
+        # --- MARKETPLACE PHASE 2: Validate ownership ---
+        retriever = APP_STATE.get("rag_retriever_instance")
+        if retriever and not retriever.is_user_collection_owner(collection_id, user_uuid):
+            return jsonify({"status": "error", "message": "Only collection owners can update collections"}), 403
+        # --- MARKETPLACE PHASE 2 END ---
         
         # ENFORCEMENT: Prevent removing mcp_server_id from ANY collection
         if "mcp_server_id" in data:
@@ -2182,7 +2216,15 @@ async def update_rag_collection(collection_id: int):
 async def delete_rag_collection(collection_id: int):
     """Delete a RAG collection."""
     try:
+        # --- MARKETPLACE PHASE 2: Validate ownership ---
+        user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({"status": "error", "message": "Authentication required"}), 401
+        
         retriever = APP_STATE.get("rag_retriever_instance")
+        if retriever and not retriever.is_user_collection_owner(collection_id, user_uuid):
+            return jsonify({"status": "error", "message": "Only collection owners can delete collections"}), 403
+        # --- MARKETPLACE PHASE 2 END ---
         if not retriever:
             return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
         
