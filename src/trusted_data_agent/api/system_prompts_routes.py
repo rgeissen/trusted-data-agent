@@ -33,7 +33,7 @@ def require_prompt_engineer_or_enterprise(f):
     @wraps(f)
     async def decorated_function(*args, **kwargs):
         # Get current user (this validates the token)
-        user_data = await get_current_user()
+        user_data = get_current_user()
         if not user_data:
             return jsonify({"success": False, "message": "Authentication required"}), 401
         
