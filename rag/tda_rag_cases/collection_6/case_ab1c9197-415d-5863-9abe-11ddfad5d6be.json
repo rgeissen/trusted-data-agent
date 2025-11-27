@@ -1,0 +1,46 @@
+{
+  "case_id": "ab1c9197-415d-5863-9abe-11ddfad5d6be",
+  "metadata": {
+    "session_id": "87ebb982-5e22-4307-b7a2-fb079ee27fa0",
+    "turn_id": 2,
+    "is_success": true,
+    "task_id": "task-d8254bfe-301b-43a1-a3cc-54339c6408b5",
+    "collection_id": 6,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-26T14:35:12.006187+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Friendli",
+      "model": "google/gemma-3-27b-it",
+      "profile_tag": "FRGOT",
+      "input_tokens": 10020,
+      "output_tokens": 157
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 1,
+      "steps_per_phase": {
+        "1": 1
+      },
+      "total_steps": 1
+    },
+    "forked_from": 0,
+    "forked_at": "2025-11-27T18:39:04.303031+00:00"
+  },
+  "intent": {
+    "user_query": "Tell me about yourself"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Since the user asked 'Tell me about yourself', provide a conversational response.",
+        "relevant_tools": [
+          "TDA_LLMTask"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

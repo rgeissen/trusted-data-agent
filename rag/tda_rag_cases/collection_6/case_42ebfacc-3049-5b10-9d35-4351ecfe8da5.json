@@ -1,0 +1,55 @@
+{
+  "case_id": "42ebfacc-3049-5b10-9d35-4351ecfe8da5",
+  "metadata": {
+    "session_id": "ae73a39a-dd7d-48a0-ab29-925773f56225",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "task-394e8828-07f8-4c7c-809a-2a3e404e4831",
+    "collection_id": 6,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": true,
+    "timestamp": "2025-11-23T13:35:39.115645+00:00",
+    "user_feedback_score": -1,
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "profile_tag": "GOGET",
+      "input_tokens": 14240,
+      "output_tokens": 70
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "forked_from": 0,
+    "forked_at": "2025-11-27T18:39:04.296466+00:00"
+  },
+  "intent": {
+    "user_query": "What is s"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "The user's request is unclear and requires clarification.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

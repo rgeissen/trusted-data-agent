@@ -1,0 +1,46 @@
+{
+  "case_id": "c726388c-901b-5d3f-901a-a1cd982d1883",
+  "metadata": {
+    "session_id": "87ebb982-5e22-4307-b7a2-fb079ee27fa0",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "task-af99579c-4dd1-4fd9-ad98-f5183a7efc1f",
+    "collection_id": 6,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-26T14:35:06.716084+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "profile_tag": "GOGET",
+      "input_tokens": 8317,
+      "output_tokens": 69
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 1,
+      "steps_per_phase": {
+        "1": 1
+      },
+      "total_steps": 1
+    },
+    "forked_from": 0,
+    "forked_at": "2025-11-27T18:39:04.293374+00:00"
+  },
+  "intent": {
+    "user_query": "What is your name?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Since the user asked what is my name, provide a canned conversational answer.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

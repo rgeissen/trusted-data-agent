@@ -1,0 +1,55 @@
+{
+  "case_id": "ff5a56b9-d618-5b40-a303-d0fe82a003b6",
+  "metadata": {
+    "session_id": "0354b2b9-3e59-4e2b-87d4-52fe705cf85d",
+    "turn_id": 2,
+    "is_success": true,
+    "task_id": "task-e6eca1a9-000e-4e48-9b3d-e99de193980f",
+    "collection_id": 6,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-25T08:38:27.577187+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Friendli",
+      "model": "google/gemma-3-27b-it",
+      "profile_tag": "FRGOT",
+      "input_tokens": 13297,
+      "output_tokens": 175
+    },
+    "is_most_efficient": false,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "forked_from": 0,
+    "forked_at": "2025-11-27T18:39:04.300316+00:00"
+  },
+  "intent": {
+    "user_query": "what is the current date?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Get the current system date.",
+        "relevant_tools": [
+          "TDA_CurrentDate"
+        ],
+        "arguments": {}
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

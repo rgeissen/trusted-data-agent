@@ -1,0 +1,92 @@
+{
+  "case_id": "20cbccb5-1528-5494-b9b4-8a5e63e1a1a0",
+  "metadata": {
+    "session_id": "c252a62a-36aa-4e1c-bed4-7769f929aeed",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "task-4c5c57dd-b72d-4f32-8946-8fb12e8e3a70",
+    "collection_id": 6,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-26T17:50:49.219153+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "profile_tag": "GOGET",
+      "input_tokens": 8599,
+      "output_tokens": 384
+    },
+    "is_most_efficient": false,
+    "strategy_metrics": {
+      "phase_count": 4,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1,
+        "3": 5,
+        "4": 1
+      },
+      "total_steps": 8
+    },
+    "forked_from": 0,
+    "forked_at": "2025-11-27T18:39:04.294100+00:00"
+  },
+  "intent": {
+    "user_query": "what is the system utilization for the past 5 days?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Get the current date to determine the start date for the past 5 days.",
+        "relevant_tools": [
+          "TDA_CurrentDate"
+        ],
+        "arguments": {}
+      },
+      {
+        "phase": 2,
+        "goal": "Calculate the date range for the past 5 days, starting from the current date.",
+        "relevant_tools": [
+          "TDA_DateRange"
+        ],
+        "arguments": {
+          "start_date": "result_of_phase_1",
+          "date_phrase": "past 5 days"
+        }
+      },
+      {
+        "phase": 3,
+        "goal": "Retrieve Teradata system usage summary metrics for the specified date range.",
+        "relevant_tools": [
+          "dba_resusageSummary"
+        ],
+        "type": "loop",
+        "loop_over": "result_of_phase_2",
+        "arguments": {
+          "dimensions": [
+            "LogDate",
+            "hourOfDay",
+            "dayOfWeek",
+            "workloadType",
+            "workloadComplexity",
+            "UserName",
+            "AppId"
+          ],
+          "date": {
+            "source": "loop_item",
+            "key": "date"
+          }
+        }
+      },
+      {
+        "phase": 4,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

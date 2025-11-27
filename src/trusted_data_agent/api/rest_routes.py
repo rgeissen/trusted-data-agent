@@ -4612,3 +4612,490 @@ async def get_session_details(session_id: str):
     except Exception as e:
         app_logger.error(f"Error getting session details: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
+
+
+# ============================================================================
+# MARKETPLACE API ENDPOINTS - PHASE 3
+# ============================================================================
+
+@rest_api_bp.route("/v1/marketplace/collections", methods=["GET"])
+async def browse_marketplace_collections():
+    """
+    Browse public marketplace collections.
+    
+    Query parameters:
+    - visibility: Filter by visibility (public, unlisted). Default: public
+    - search: Search in name and description
+    - limit: Max results (default: 50)
+    - offset: Pagination offset (default: 0)
+    
+    Returns:
+    {
+        "status": "success",
+        "collections": [...],
+        "total": 123,
+        "limit": 50,
+        "offset": 0
+    }
+    """
+    try:
+        # Parse query parameters
+        visibility_filter = request.args.get("visibility", "public")
+        search_query = request.args.get("search", "").lower()
+        limit = int(request.args.get("limit", 50))
+        offset = int(request.args.get("offset", 0))
+        
+        # Get all collections
+        all_collections = APP_STATE.get("rag_collections", [])
+        retriever = APP_STATE.get("rag_retriever_instance")
+        
+        if not retriever:
+            return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
+        
+        # Filter marketplace-listed collections
+        marketplace_collections = []
+        for coll in all_collections:
+            # Must be marketplace-listed
+            if not coll.get("is_marketplace_listed", False):
+                continue
+            
+            # Check visibility filter
+            coll_visibility = coll.get("visibility", "private")
+            if visibility_filter == "public" and coll_visibility != "public":
+                continue
+            
+            # Search filter (if provided)
+            if search_query:
+                name_match = search_query in coll.get("name", "").lower()
+                desc_match = search_query in coll.get("description", "").lower()
+                if not (name_match or desc_match):
+                    continue
+            
+            # Add document count
+            coll_copy = coll.copy()
+            if coll["id"] in retriever.collections:
+                try:
+                    coll_copy["count"] = retriever.collections[coll["id"]].count()
+                except:
+                    coll_copy["count"] = 0
+            else:
+                coll_copy["count"] = 0
+            
+            marketplace_collections.append(coll_copy)
+        
+        # Sort by subscriber_count (most popular first)
+        marketplace_collections.sort(key=lambda c: c.get("subscriber_count", 0), reverse=True)
+        
+        # Pagination
+        total = len(marketplace_collections)
+        paginated = marketplace_collections[offset:offset + limit]
+        
+        return jsonify({
+            "status": "success",
+            "collections": paginated,
+            "total": total,
+            "limit": limit,
+            "offset": offset
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error browsing marketplace collections: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/marketplace/collections/<int:collection_id>/subscribe", methods=["POST"])
+async def subscribe_to_collection(collection_id: int):
+    """
+    Subscribe to a marketplace collection.
+    
+    Creates a subscription that allows the user to query the collection
+    without copying data (reference-based model).
+    
+    Returns:
+    {
+        "status": "success",
+        "subscription_id": "uuid",
+        "collection_id": 123,
+        "message": "Successfully subscribed to collection"
+    }
+    """
+    try:
+        # Get authenticated user
+        user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({"status": "error", "message": "Authentication required"}), 401
+        
+        # Get retriever and validate collection exists
+        retriever = APP_STATE.get("rag_retriever_instance")
+        if not retriever:
+            return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
+        
+        coll_meta = retriever.get_collection_metadata(collection_id)
+        if not coll_meta:
+            return jsonify({"status": "error", "message": "Collection not found"}), 404
+        
+        # Check if collection is available for subscription
+        visibility = coll_meta.get("visibility", "private")
+        is_listed = coll_meta.get("is_marketplace_listed", False)
+        
+        if visibility == "private" and not is_listed:
+            return jsonify({"status": "error", "message": "Collection is private and not available for subscription"}), 403
+        
+        # Check if user already owns this collection
+        if retriever.is_user_collection_owner(collection_id, user_uuid):
+            return jsonify({"status": "error", "message": "You already own this collection"}), 400
+        
+        # Check if already subscribed
+        if retriever.is_subscribed_collection(collection_id, user_uuid):
+            return jsonify({"status": "error", "message": "You are already subscribed to this collection"}), 400
+        
+        # Create subscription
+        from trusted_data_agent.auth.database import get_db_session
+        from trusted_data_agent.auth.models import CollectionSubscription
+        from trusted_data_agent.core.config_manager import get_config_manager
+        
+        with get_db_session() as session:
+            subscription = CollectionSubscription(
+                user_id=user_uuid,
+                source_collection_id=collection_id,
+                enabled=True
+            )
+            session.add(subscription)
+            session.flush()  # Get the ID
+            subscription_id = subscription.id
+        
+        # Increment subscriber count
+        config_manager = get_config_manager()
+        collections_list = APP_STATE.get("rag_collections", [])
+        for coll in collections_list:
+            if coll["id"] == collection_id:
+                coll["subscriber_count"] = coll.get("subscriber_count", 0) + 1
+                break
+        
+        APP_STATE["rag_collections"] = collections_list
+        config_manager.save_rag_collections(collections_list)
+        
+        app_logger.info(f"User {user_uuid} subscribed to collection {collection_id}")
+        
+        return jsonify({
+            "status": "success",
+            "subscription_id": subscription_id,
+            "collection_id": collection_id,
+            "message": "Successfully subscribed to collection"
+        }), 201
+        
+    except Exception as e:
+        app_logger.error(f"Error subscribing to collection: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/marketplace/subscriptions/<subscription_id>", methods=["DELETE"])
+async def unsubscribe_from_collection(subscription_id: str):
+    """
+    Unsubscribe from a collection.
+    
+    Removes the subscription and decrements the subscriber count.
+    
+    Returns:
+    {
+        "status": "success",
+        "message": "Successfully unsubscribed"
+    }
+    """
+    try:
+        # Get authenticated user
+        user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({"status": "error", "message": "Authentication required"}), 401
+        
+        from trusted_data_agent.auth.database import get_db_session
+        from trusted_data_agent.auth.models import CollectionSubscription
+        from trusted_data_agent.core.config_manager import get_config_manager
+        
+        with get_db_session() as session:
+            # Find subscription
+            subscription = session.query(CollectionSubscription).filter_by(
+                id=subscription_id,
+                user_id=user_uuid
+            ).first()
+            
+            if not subscription:
+                return jsonify({"status": "error", "message": "Subscription not found or you don't have permission"}), 404
+            
+            collection_id = subscription.source_collection_id
+            
+            # Delete subscription
+            session.delete(subscription)
+        
+        # Decrement subscriber count
+        config_manager = get_config_manager()
+        collections_list = APP_STATE.get("rag_collections", [])
+        for coll in collections_list:
+            if coll["id"] == collection_id:
+                coll["subscriber_count"] = max(0, coll.get("subscriber_count", 0) - 1)
+                break
+        
+        APP_STATE["rag_collections"] = collections_list
+        config_manager.save_rag_collections(collections_list)
+        
+        app_logger.info(f"User {user_uuid} unsubscribed from collection {collection_id}")
+        
+        return jsonify({
+            "status": "success",
+            "message": "Successfully unsubscribed"
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error unsubscribing: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/marketplace/collections/<int:collection_id>/fork", methods=["POST"])
+async def fork_marketplace_collection(collection_id: int):
+    """
+    Fork a collection to create an independent copy.
+    
+    Request body:
+    {
+        "name": "My Forked Collection",
+        "description": "Custom description",
+        "mcp_server_id": "my-mcp-server"
+    }
+    
+    Returns:
+    {
+        "status": "success",
+        "collection_id": 123,
+        "message": "Collection forked successfully"
+    }
+    """
+    try:
+        # Get authenticated user
+        user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({"status": "error", "message": "Authentication required"}), 401
+        
+        # Parse request
+        data = await request.get_json()
+        new_name = data.get("name")
+        new_description = data.get("description", "")
+        mcp_server_id = data.get("mcp_server_id")
+        
+        if not new_name:
+            return jsonify({"status": "error", "message": "Collection name is required"}), 400
+        
+        if not mcp_server_id:
+            return jsonify({"status": "error", "message": "mcp_server_id is required"}), 400
+        
+        # Get retriever
+        retriever = APP_STATE.get("rag_retriever_instance")
+        if not retriever:
+            return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
+        
+        # Verify source collection exists and is accessible
+        coll_meta = retriever.get_collection_metadata(collection_id)
+        if not coll_meta:
+            return jsonify({"status": "error", "message": "Source collection not found"}), 404
+        
+        # Check access (must be owner, subscriber, or public)
+        accessible_ids = retriever._get_user_accessible_collections(user_uuid)
+        if collection_id not in accessible_ids:
+            return jsonify({"status": "error", "message": "You don't have access to this collection"}), 403
+        
+        # Fork the collection
+        forked_id = retriever.fork_collection(
+            source_collection_id=collection_id,
+            new_name=new_name,
+            new_description=new_description,
+            owner_user_id=user_uuid,
+            mcp_server_id=mcp_server_id
+        )
+        
+        if forked_id:
+            app_logger.info(f"User {user_uuid} forked collection {collection_id} -> {forked_id}")
+            return jsonify({
+                "status": "success",
+                "collection_id": forked_id,
+                "source_collection_id": collection_id,
+                "message": "Collection forked successfully"
+            }), 201
+        else:
+            return jsonify({"status": "error", "message": "Failed to fork collection"}), 500
+        
+    except Exception as e:
+        app_logger.error(f"Error forking collection: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/rag/collections/<int:collection_id>/publish", methods=["POST"])
+async def publish_collection_to_marketplace(collection_id: int):
+    """
+    Publish a collection to the marketplace.
+    
+    Request body:
+    {
+        "visibility": "public",  // or "unlisted"
+        "marketplace_metadata": {
+            "category": "analytics",
+            "tags": ["sql", "reporting"],
+            "long_description": "..."
+        }
+    }
+    
+    Returns:
+    {
+        "status": "success",
+        "message": "Collection published to marketplace"
+    }
+    """
+    try:
+        # Get authenticated user
+        user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({"status": "error", "message": "Authentication required"}), 401
+        
+        # Get retriever and validate ownership
+        retriever = APP_STATE.get("rag_retriever_instance")
+        if not retriever:
+            return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
+        
+        if not retriever.is_user_collection_owner(collection_id, user_uuid):
+            return jsonify({"status": "error", "message": "Only collection owners can publish collections"}), 403
+        
+        # Parse request
+        data = await request.get_json()
+        visibility = data.get("visibility", "public")
+        marketplace_metadata = data.get("marketplace_metadata", {})
+        
+        if visibility not in ["public", "unlisted"]:
+            return jsonify({"status": "error", "message": "Visibility must be 'public' or 'unlisted'"}), 400
+        
+        # Update collection metadata
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        collections_list = APP_STATE.get("rag_collections", [])
+        
+        coll_found = False
+        for coll in collections_list:
+            if coll["id"] == collection_id:
+                coll["visibility"] = visibility
+                coll["is_marketplace_listed"] = True
+                coll["marketplace_metadata"] = marketplace_metadata
+                coll_found = True
+                break
+        
+        if not coll_found:
+            return jsonify({"status": "error", "message": "Collection not found"}), 404
+        
+        # Save changes
+        APP_STATE["rag_collections"] = collections_list
+        config_manager.save_rag_collections(collections_list)
+        
+        app_logger.info(f"User {user_uuid} published collection {collection_id} with visibility '{visibility}'")
+        
+        return jsonify({
+            "status": "success",
+            "message": "Collection published to marketplace",
+            "visibility": visibility
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error publishing collection: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/marketplace/collections/<int:collection_id>/rate", methods=["POST"])
+async def rate_marketplace_collection(collection_id: int):
+    """
+    Rate and review a marketplace collection.
+    
+    Request body:
+    {
+        "rating": 5,  // 1-5 stars
+        "comment": "Great collection!"  // Optional
+    }
+    
+    Returns:
+    {
+        "status": "success",
+        "rating_id": "uuid",
+        "message": "Rating submitted successfully"
+    }
+    """
+    try:
+        # Get authenticated user
+        user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({"status": "error", "message": "Authentication required"}), 401
+        
+        # Parse request
+        data = await request.get_json()
+        rating_value = data.get("rating")
+        comment = data.get("comment", "")
+        
+        # Validate rating
+        if rating_value is None:
+            return jsonify({"status": "error", "message": "Rating is required"}), 400
+        
+        if not isinstance(rating_value, int) or rating_value < 1 or rating_value > 5:
+            return jsonify({"status": "error", "message": "Rating must be an integer between 1 and 5"}), 400
+        
+        # Verify collection exists
+        retriever = APP_STATE.get("rag_retriever_instance")
+        if not retriever:
+            return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
+        
+        coll_meta = retriever.get_collection_metadata(collection_id)
+        if not coll_meta:
+            return jsonify({"status": "error", "message": "Collection not found"}), 404
+        
+        # Check if collection is marketplace-listed
+        if not coll_meta.get("is_marketplace_listed", False):
+            return jsonify({"status": "error", "message": "Collection is not listed in the marketplace"}), 400
+        
+        # Cannot rate your own collection
+        if retriever.is_user_collection_owner(collection_id, user_uuid):
+            return jsonify({"status": "error", "message": "You cannot rate your own collection"}), 400
+        
+        # Create or update rating
+        from trusted_data_agent.auth.database import get_db_session
+        from trusted_data_agent.auth.models import CollectionRating
+        
+        with get_db_session() as session:
+            # Check for existing rating
+            existing_rating = session.query(CollectionRating).filter_by(
+                collection_id=collection_id,
+                user_id=user_uuid
+            ).first()
+            
+            if existing_rating:
+                # Update existing rating
+                existing_rating.rating = rating_value
+                existing_rating.comment = comment
+                existing_rating.updated_at = datetime.now(timezone.utc)
+                rating_id = existing_rating.id
+                message = "Rating updated successfully"
+            else:
+                # Create new rating
+                new_rating = CollectionRating(
+                    collection_id=collection_id,
+                    user_id=user_uuid,
+                    rating=rating_value,
+                    comment=comment
+                )
+                session.add(new_rating)
+                session.flush()
+                rating_id = new_rating.id
+                message = "Rating submitted successfully"
+        
+        app_logger.info(f"User {user_uuid} rated collection {collection_id}: {rating_value}/5")
+        
+        return jsonify({
+            "status": "success",
+            "rating_id": rating_id,
+            "message": message
+        }), 201 if message.startswith("Rating submitted") else 200
+        
+    except Exception as e:
+        app_logger.error(f"Error rating collection: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
