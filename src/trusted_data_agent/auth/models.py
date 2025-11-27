@@ -359,6 +359,95 @@ class SystemSettings(Base):
         }
 
 
+class CollectionSubscription(Base):
+    """User subscriptions to shared marketplace RAG collections (reference-based)."""
+    
+    __tablename__ = 'collection_subscriptions'
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    source_collection_id = Column(Integer, nullable=False, index=True)  # References collection ID in tda_config.json
+    
+    # Subscription configuration
+    enabled = Column(Boolean, default=True, nullable=False)  # Can be toggled on/off without unsubscribing
+    
+    # Timestamps
+    subscribed_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    last_synced_at = Column(DateTime(timezone=True), nullable=True)  # For future sync tracking
+    
+    # Relationships
+    user = relationship("User")
+    
+    # Indexes
+    __table_args__ = (
+        Index('idx_subscription_user_collection', 'user_id', 'source_collection_id', unique=True),
+    )
+    
+    def __repr__(self):
+        return f"<CollectionSubscription(user_id='{self.user_id}', collection_id={self.source_collection_id}, enabled={self.enabled})>"
+    
+    def to_dict(self):
+        """Convert subscription to dictionary for API responses."""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'source_collection_id': self.source_collection_id,
+            'enabled': self.enabled,
+            'subscribed_at': self.subscribed_at.isoformat() if self.subscribed_at else None,
+            'last_synced_at': self.last_synced_at.isoformat() if self.last_synced_at else None
+        }
+
+
+class CollectionRating(Base):
+    """User ratings and reviews for marketplace RAG collections."""
+    
+    __tablename__ = 'collection_ratings'
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    collection_id = Column(Integer, nullable=False, index=True)  # References collection ID in tda_config.json
+    user_id = Column(String(36), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    
+    # Rating details
+    rating = Column(Integer, nullable=False)  # 1-5 stars
+    comment = Column(Text, nullable=True)  # Optional review text
+    helpful_count = Column(Integer, default=0, nullable=False)  # For future "helpful" voting
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    user = relationship("User")
+    
+    # Indexes
+    __table_args__ = (
+        Index('idx_rating_collection_user', 'collection_id', 'user_id', unique=True),
+        Index('idx_rating_collection', 'collection_id'),
+    )
+    
+    def __repr__(self):
+        return f"<CollectionRating(collection_id={self.collection_id}, user_id='{self.user_id}', rating={self.rating})>"
+    
+    def to_dict(self, include_user_info: bool = False):
+        """Convert rating to dictionary for API responses."""
+        data = {
+            'id': self.id,
+            'collection_id': self.collection_id,
+            'user_id': self.user_id,
+            'rating': self.rating,
+            'comment': self.comment,
+            'helpful_count': self.helpful_count,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+        
+        if include_user_info and self.user:
+            data['username'] = self.user.username
+            data['user_display_name'] = self.user.display_name or self.user.username
+        
+        return data
+
+
 class DocumentUploadConfig(Base):
     """Configuration for document upload capabilities per LLM provider."""
     

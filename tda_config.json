@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "created_at": "2025-11-18T15:42:02.792618+00:00",
-  "last_modified": "2025-11-27T16:32:06.945707+00:00",
+  "last_modified": "2025-11-27T18:22:46.860714+00:00",
   "enable_mcp_classification": false,
   "rag_collections": [
     {
@@ -11,7 +11,12 @@
       "mcp_server_id": "1763483266562-a6kulj4xc",
       "enabled": true,
       "created_at": "2025-11-18T15:42:05.339081+00:00",
-      "description": "Default collection for RAG cases"
+      "description": "Default collection for RAG cases",
+      "owner_user_id": null,
+      "visibility": "private",
+      "is_marketplace_listed": false,
+      "subscriber_count": 0,
+      "marketplace_metadata": {}
     },
     {
       "id": 1,
@@ -20,7 +25,12 @@
       "mcp_server_id": "1763483266562-a6kulj4xc",
       "enabled": true,
       "created_at": "2025-11-23T08:51:21.572407+00:00",
-      "description": ""
+      "description": "",
+      "owner_user_id": null,
+      "visibility": "private",
+      "is_marketplace_listed": false,
+      "subscriber_count": 0,
+      "marketplace_metadata": {}
     },
     {
       "id": 2,
@@ -29,7 +39,12 @@
       "mcp_server_id": "1763483266562-a6kulj4xc",
       "enabled": true,
       "created_at": "2025-11-27T15:59:10.435713+00:00",
-      "description": "Performance Analysis"
+      "description": "Performance Analysis",
+      "owner_user_id": null,
+      "visibility": "private",
+      "is_marketplace_listed": false,
+      "subscriber_count": 0,
+      "marketplace_metadata": {}
     }
   ],
   "mcp_servers": [
