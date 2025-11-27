@@ -45,8 +45,8 @@ class CollectionDatabase:
             # User view - owned + subscribed collections
             cursor.execute("""
                 SELECT DISTINCT c.* FROM collections c
-                LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id
-                WHERE c.owner_user_id = ? OR cs.user_uuid = ?
+                LEFT JOIN collection_subscriptions cs ON c.id = cs.source_collection_id
+                WHERE c.owner_user_id = ? OR cs.user_id = ?
                 ORDER BY c.id
             """, (user_id, user_id))
         

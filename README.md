@@ -412,7 +412,42 @@ pip install -e .
 
 The `-e` flag stands for "editable," meaning any changes you make to the source code will be immediately effective without needing to reinstall.
 
-### Step 6: Start the Application
+### Step 6: Bootstrap Configuration (Optional)
+
+The application uses a **bootstrap configuration system** with `tda_config.json` as a read-only template. This file provides default profiles, MCP servers, and LLM configurations that are copied to each user on their first login.
+
+**Understanding the Bootstrap System:**
+
+- **tda_config.json** - Read-only template containing default configurations
+- **First Login** - Configuration is copied from template to user's database record
+- **Per-User Storage** - All subsequent changes are stored in the user's database (isolated from other users)
+- **Future Users** - New users automatically receive the current template configuration
+- **Admin Customization** - Administrators can modify `tda_config.json` to customize defaults for future users
+
+**Default Bootstrap Configuration:**
+
+The template includes:
+- **2 Profiles**: Google "Reduced Stack" (GOGET, default) and Friendly AI "Reduced Stack" (FRGOT)
+- **1 MCP Server**: Teradata MCP (requires configuration of host/port)
+- **6 LLM Configurations**: Google, Anthropic, OpenAI, Azure, AWS Bedrock, Friendli.AI (require API keys)
+- **30 Tools** and **1 Prompt** enabled by default in profiles
+
+**Customizing the Bootstrap (Optional):**
+
+Before starting the application for the first time, you can customize `tda_config.json` to pre-configure settings for all future users:
+
+1. **Edit `tda_config.json`** in the project root
+2. **Modify MCP Servers** - Add your production MCP server connection details
+3. **Adjust Profiles** - Change default profiles, tools, or prompts
+4. **Set LLM Defaults** - Pre-configure LLM provider settings (API keys should still be entered per-user)
+
+**⚠️ Important Notes:**
+- Changes to `tda_config.json` **only affect new users** created after the modification
+- Existing users retain their database-stored configuration (not affected by template changes)
+- Each user's configuration is **completely isolated** - changes by one user don't affect others
+- The application **never modifies** `tda_config.json` - it remains a read-only template
+
+### Step 7: Start the Application
 
 The application uses a **multi-user authentication system** with JWT tokens and encrypted credential storage. Authentication is **always required** for all users.
 
@@ -427,13 +462,17 @@ The application will:
 - Initialize default admin account: `admin` / `admin` (⚠️ **change immediately!**)
 - Start the web server on `http://localhost:5000`
 
-### Step 7: First Login and Security
+### Step 8: First Login and Security
 
 1. **Open your browser** to `http://localhost:5000`
 2. **Login** with default credentials: `admin` / `admin`
 3. **⚠️ IMPORTANT:** Immediately change the admin password in the **Administration** panel
-4. **Create user accounts** for your team (admin users can create additional users)
-5. **Configure credentials** through the **Credentials** panel
+4. **Bootstrap Applied** - On first login, your account receives the template configuration from `tda_config.json`
+5. **Configure Credentials** - Complete your setup in the **Credentials** panel:
+   - Add API keys for LLM providers
+   - Configure MCP server connection details (host, port, path)
+   - Enable/disable profiles as needed
+6. **Create User Accounts** - Admin users can create additional users (each receives the bootstrap configuration)
 
 **Authentication Features:**
 - ✅ JWT tokens (24-hour expiry) for web UI sessions
@@ -442,6 +481,7 @@ The application will:
 - ✅ User tiers: `user`, `developer`, `admin`
 - ✅ Soft-delete audit trail for revoked tokens
 - ✅ Session management with persistent context
+- ✅ Bootstrap configuration copied to each user on first login
 - ℹ️ Rate limiting disabled by default (configurable in Administration → App Config)
 
 **Supported LLM Providers:**

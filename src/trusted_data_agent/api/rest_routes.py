@@ -2115,12 +2115,13 @@ async def get_rag_collections():
         if not retriever:
             return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
         
-        # Get collections accessible to this user
-        accessible_ids = retriever._get_user_accessible_collections(user_uuid)
-        all_collections = APP_STATE.get("rag_collections", [])
-        
-        # Filter to only accessible collections
-        accessible_collections = [c for c in all_collections if c["id"] in accessible_ids]
+        # Get collections directly from database (always fresh)
+        from trusted_data_agent.core.collection_db import get_collection_db
+        collection_db = get_collection_db()
+        accessible_collections = collection_db.get_all_collections(user_id=user_uuid)
+        app_logger.info(f"GET /v1/rag/collections for user {user_uuid}: Found {len(accessible_collections)} collections")
+        for coll in accessible_collections:
+            app_logger.info(f"  - Collection {coll['id']}: {coll['name']}")
         # --- MARKETPLACE PHASE 2 END ---
         
         # Add 'is_active' field and 'count' to indicate if collection is actually loaded and how many docs it has
@@ -5048,26 +5049,26 @@ async def publish_collection_to_marketplace(collection_id: int):
         if visibility not in ["public", "unlisted"]:
             return jsonify({"status": "error", "message": "Visibility must be 'public' or 'unlisted'"}), 400
         
-        # Update collection metadata
-        from trusted_data_agent.core.config_manager import get_config_manager
-        config_manager = get_config_manager()
-        collections_list = APP_STATE.get("rag_collections", [])
+        # Update collection in database
+        from trusted_data_agent.core.collection_db import get_collection_db
+        collection_db = get_collection_db()
         
-        coll_found = False
-        for coll in collections_list:
-            if coll["id"] == collection_id:
-                coll["visibility"] = visibility
-                coll["is_marketplace_listed"] = True
-                coll["marketplace_metadata"] = marketplace_metadata
-                coll_found = True
-                break
+        # Prepare update data
+        updates = {
+            "visibility": visibility,
+            "is_marketplace_listed": True,
+            "marketplace_metadata": marketplace_metadata
+        }
         
-        if not coll_found:
+        # Update in database
+        success = collection_db.update_collection(collection_id, updates)
+        if not success:
             return jsonify({"status": "error", "message": "Collection not found"}), 404
         
-        # Save changes
-        APP_STATE["rag_collections"] = collections_list
-        config_manager.save_rag_collections(collections_list)
+        # Reload collections into APP_STATE
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        APP_STATE["rag_collections"] = config_manager.get_rag_collections()
         
         app_logger.info(f"User {user_uuid} published collection {collection_id} with visibility '{visibility}'")
         

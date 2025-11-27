@@ -2029,7 +2029,19 @@ export async function loadRagCollections() {
             }
         });
         const data = await res.json();
-        const collections = (data && data.collections) ? data.collections : [];
+        let collections = (data && data.collections) ? data.collections : [];
+        
+        // Sort collections: Default Collection first, then by ID
+        collections.sort((a, b) => {
+            // Default Collection (name contains "Default") always first
+            const aIsDefault = a.name.includes('Default Collection');
+            const bIsDefault = b.name.includes('Default Collection');
+            if (aIsDefault && !bIsDefault) return -1;
+            if (!aIsDefault && bIsDefault) return 1;
+            // Otherwise sort by ID
+            return a.id - b.id;
+        });
+        
         DOM.ragMaintenanceCollectionsContainer.innerHTML = '';
         if (!collections.length) {
             const emptyMsg = document.createElement('div');
@@ -2060,14 +2072,56 @@ export async function loadRagCollections() {
             titleSection.appendChild(title);
             titleSection.appendChild(collectionId);
             
+            // Status and indicator badges container
+            const badgesContainer = document.createElement('div');
+            badgesContainer.className = 'flex flex-col gap-1 items-end';
+            
+            // Active/Disabled badge
             const statusBadge = document.createElement('span');
             statusBadge.className = col.enabled 
                 ? 'px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400' 
                 : 'px-2 py-1 text-xs rounded-full bg-gray-500/20 text-gray-400';
             statusBadge.textContent = col.enabled ? 'Active' : 'Disabled';
+            badgesContainer.appendChild(statusBadge);
+            
+            // Ownership/Subscription indicators
+            const indicatorsRow = document.createElement('div');
+            indicatorsRow.className = 'flex gap-1';
+            
+            // Owner indicator (if user owns this collection)
+            if (col.is_owned) {
+                const ownerBadge = document.createElement('span');
+                ownerBadge.className = 'px-2 py-1 text-xs rounded-full bg-blue-500/20 text-blue-400';
+                ownerBadge.textContent = '👤 Owner';
+                ownerBadge.title = 'You own this collection';
+                indicatorsRow.appendChild(ownerBadge);
+            }
+            
+            // Subscribed indicator (if user is subscribed but doesn't own it)
+            if (col.is_subscribed && !col.is_owned) {
+                const subscribedBadge = document.createElement('span');
+                subscribedBadge.className = 'px-2 py-1 text-xs rounded-full bg-purple-500/20 text-purple-400';
+                subscribedBadge.textContent = '📌 Subscribed';
+                subscribedBadge.title = 'You are subscribed to this collection';
+                indicatorsRow.appendChild(subscribedBadge);
+            }
+            
+            // Published to marketplace indicator
+            if (col.is_marketplace_listed) {
+                const publishedBadge = document.createElement('span');
+                publishedBadge.className = 'px-2 py-1 text-xs rounded-full bg-orange-500/20 text-orange-400';
+                const visibilityIcon = col.visibility === 'public' ? '🌐' : '🔗';
+                publishedBadge.textContent = `${visibilityIcon} ${col.visibility === 'public' ? 'Public' : 'Unlisted'}`;
+                publishedBadge.title = `Published to marketplace (${col.visibility})`;
+                indicatorsRow.appendChild(publishedBadge);
+            }
+            
+            if (indicatorsRow.children.length > 0) {
+                badgesContainer.appendChild(indicatorsRow);
+            }
             
             header.appendChild(titleSection);
-            header.appendChild(statusBadge);
+            header.appendChild(badgesContainer);
             
             // MCP Server info - look up name from ID using window.configState
             const mcpInfo = document.createElement('p');

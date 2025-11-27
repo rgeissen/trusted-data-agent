@@ -562,11 +562,17 @@ async function handleAddRagCollection(event) {
     
     try {
         // Step 1: Create the collection
+        const authToken = localStorage.getItem('tda_auth_token');
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+        }
+        
         const createResponse = await fetch('/api/v1/rag/collections', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: headers,
             body: JSON.stringify({
                 name: name,
                 mcp_server_id: mcpServerId,
@@ -1708,11 +1714,17 @@ async function handleGenerateContext() {
         }
         
         // Call the execute-raw endpoint
+        const authToken = localStorage.getItem('tda_auth_token');
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+        }
+        
         const response = await fetch(`/api/v1/prompts/${contextPromptName}/execute-raw`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: headers,
             body: JSON.stringify(requestBody)
         });
         
