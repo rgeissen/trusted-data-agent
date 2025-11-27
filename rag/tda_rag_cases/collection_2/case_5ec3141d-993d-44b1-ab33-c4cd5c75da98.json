@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'Monitor Primary and Compute Cluster APIs are used.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'Monitor Primary and Compute Cluster APIs are used.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'Monitor Primary and Compute Cluster APIs are used.'"
         }
       },
       {

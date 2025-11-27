@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'Use the resusagesawtV view to get a historical view of AWT utilization.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'Use the resusagesawtV view to get a historical view of AWT utilization.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'Use the resusagesawtV view to get a historical view of AWT utilization.'"
         }
       },
       {

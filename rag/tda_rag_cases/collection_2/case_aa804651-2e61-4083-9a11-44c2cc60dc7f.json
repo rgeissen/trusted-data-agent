@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'The path_component_id column represents the operational group (primary cluster or compute cluster) ID.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'The path_component_id column represents the operational group (primary cluster or compute cluster) ID.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'The path_component_id column represents the operational group (primary cluster or compute cluster) ID.'"
         }
       },
       {

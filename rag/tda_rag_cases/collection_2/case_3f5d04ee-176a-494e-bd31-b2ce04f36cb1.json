@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'The ComputeProfileHistoryV view provides detailed information about the events that determine a change to the state of your compute cluster.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'The ComputeProfileHistoryV view provides detailed information about the events that determine a change to the state of your compute cluster.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'The ComputeProfileHistoryV view provides detailed information about the events that determine a change to the state of your compute cluster.'"
         }
       },
       {

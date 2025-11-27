@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'The resusagespsV view provides detailed statistics for each workload definition on the system.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'The resusagespsV view provides detailed statistics for each workload definition on the system.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'The resusagespsV view provides detailed statistics for each workload definition on the system.'"
         }
       },
       {

@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT ObjectDatabaseName from td_metric_svc.dbqlobjV Where QueryId=100;",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT ObjectDatabaseName from td_metric_svc.dbqlobjV Where QueryId=100;",
-          "database_name": "dbc"
+          "sql": "SELECT ObjectDatabaseName from td_metric_svc.dbqlobjV Where QueryId=100;"
         }
       },
       {

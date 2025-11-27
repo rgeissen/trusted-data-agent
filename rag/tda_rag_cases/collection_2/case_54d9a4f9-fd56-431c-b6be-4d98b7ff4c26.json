@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'Monitoring current and past performance data is possible.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'Monitoring current and past performance data is possible.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'Monitoring current and past performance data is possible.'"
         }
       },
       {

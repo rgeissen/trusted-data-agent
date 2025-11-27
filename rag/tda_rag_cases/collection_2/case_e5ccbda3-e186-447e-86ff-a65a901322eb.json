@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT NodeMbs FROM td_metric_svc.resusagespmaV;",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT NodeMbs FROM td_metric_svc.resusagespmaV;",
-          "database_name": "dbc"
+          "sql": "SELECT NodeMbs FROM td_metric_svc.resusagespmaV;"
         }
       },
       {

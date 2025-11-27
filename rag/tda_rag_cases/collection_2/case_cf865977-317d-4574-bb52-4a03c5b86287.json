@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT NodeID, LdvName, LdvReadRespTot, LdvWriteRespTot FROM td_metric_svc.resusagesldvV;",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT NodeID, LdvName, LdvReadRespTot, LdvWriteRespTot FROM td_metric_svc.resusagesldvV;",
-          "database_name": "dbc"
+          "sql": "SELECT NodeID, LdvName, LdvReadRespTot, LdvWriteRespTot FROM td_metric_svc.resusagesldvV;"
         }
       },
       {

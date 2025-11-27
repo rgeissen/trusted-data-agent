@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT VprId, VprType, NetPtPReadKB, NetPtPWriteKB FROM td_metric_svc.resusagesvprV WHERE VprType = 'PE';",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT VprId, VprType, NetPtPReadKB, NetPtPWriteKB FROM td_metric_svc.resusagesvprV WHERE VprType = 'PE';",
-          "database_name": "dbc"
+          "sql": "SELECT VprId, VprType, NetPtPReadKB, NetPtPWriteKB FROM td_metric_svc.resusagesvprV WHERE VprType = 'PE';"
         }
       },
       {

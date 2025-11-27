@@ -83,8 +83,8 @@
       "type": "string",
       "required": false,
       "description": "MCP tool to use for SQL execution",
-      "placeholder": "base_executeRawSQLStatement",
-      "default": "base_executeRawSQLStatement"
+      "placeholder": "base_readQuery",
+      "default": "base_readQuery"
     },
     "target_database": {
       "type": "string",
@@ -157,7 +157,7 @@
     },
     "default_mcp_tool": {
       "type": "string",
-      "value": "base_executeRawSQLStatement",
+      "value": "base_readQuery",
       "editable": true,
       "description": "Default MCP tool for SQL execution"
     },
@@ -198,11 +198,7 @@
         "arguments": {
           "sql": {
             "source": "sql_statement",
-            "description": "The SQL query to execute"
-          },
-          "database_name": {
-            "source": "database_name",
-            "condition": "if database_name"
+            "description": "The SQL query to execute (includes database name)"
           }
         }
       },

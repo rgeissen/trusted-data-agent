@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT SUM(RowsInserted),FROM_TZ(CAST(CollectTimeStamp AS TIMESTAMP), 'America/Los_Angeles')  FROM td_metric_svc.dbqlutilityV WHERE EXTRACT(month FROM TheDate) = EXTRACT(month FROM CURRENT_DATE) GROUP BY 2;",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT SUM(RowsInserted),FROM_TZ(CAST(CollectTimeStamp AS TIMESTAMP), 'America/Los_Angeles')  FROM td_metric_svc.dbqlutilityV WHERE EXTRACT(month FROM TheDate) = EXTRACT(month FROM CURRENT_DATE) GROUP BY 2;",
-          "database_name": "dbc"
+          "sql": "SELECT SUM(RowsInserted),FROM_TZ(CAST(CollectTimeStamp AS TIMESTAMP), 'America/Los_Angeles')  FROM td_metric_svc.dbqlutilityV WHERE EXTRACT(month FROM TheDate) = EXTRACT(month FROM CURRENT_DATE) GROUP BY 2;"
         }
       },
       {

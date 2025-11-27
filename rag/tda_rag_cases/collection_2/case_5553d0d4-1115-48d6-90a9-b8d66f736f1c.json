@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'limit concurrency of queries entering the database based on speci\ufb01ed characteristics of the query'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'limit concurrency of queries entering the database based on speci\ufb01ed characteristics of the query'",
-          "database_name": "dbc"
+          "sql": "SELECT 'limit concurrency of queries entering the database based on speci\ufb01ed characteristics of the query'"
         }
       },
       {

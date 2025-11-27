@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'The CPUUServ column represents the time in centiseconds CPU is busy executing kernel system calls or servicing I/O and timer hardware interrupts.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'The CPUUServ column represents the time in centiseconds CPU is busy executing kernel system calls or servicing I/O and timer hardware interrupts.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'The CPUUServ column represents the time in centiseconds CPU is busy executing kernel system calls or servicing I/O and timer hardware interrupts.'"
         }
       },
       {

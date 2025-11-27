@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'The MailBoxDepth column represents the current depth of the AMP work mailbox at the end of the period.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'The MailBoxDepth column represents the current depth of the AMP work mailbox at the end of the period.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'The MailBoxDepth column represents the current depth of the AMP work mailbox at the end of the period.'"
         }
       },
       {

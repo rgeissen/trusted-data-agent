@@ -414,17 +414,28 @@ async function initializeRAGAutoCompletion() {
             return;
         }
 
-        // Check if query starts with @TAG for profile override
+        // Determine which profile to use for collection filtering
         let profileId = window.configState?.defaultProfileId || null;
-        const tagMatch = queryText.match(/^@(\w+)\s/);
         
-        if (tagMatch && window.configState?.profiles) {
-            const tag = tagMatch[1].toUpperCase();
+        // Priority 1: Check if there's an active profile badge (user selected via @TAG)
+        if (activeTagPrefix && window.configState?.profiles) {
+            const tag = activeTagPrefix.replace('@', '').trim();
             const overrideProfile = window.configState.profiles.find(p => p.tag === tag);
             if (overrideProfile) {
                 profileId = overrideProfile.id;
-                // Remove @TAG from query for autocomplete search
-                queryText = queryText.substring(tagMatch[0].length);
+            }
+        }
+        // Priority 2: Check if query text starts with @TAG (not yet selected)
+        else {
+            const tagMatch = queryText.match(/^@(\w+)\s/);
+            if (tagMatch && window.configState?.profiles) {
+                const tag = tagMatch[1].toUpperCase();
+                const overrideProfile = window.configState.profiles.find(p => p.tag === tag);
+                if (overrideProfile) {
+                    profileId = overrideProfile.id;
+                    // Remove @TAG from query for autocomplete search
+                    queryText = queryText.substring(tagMatch[0].length);
+                }
             }
         }
         

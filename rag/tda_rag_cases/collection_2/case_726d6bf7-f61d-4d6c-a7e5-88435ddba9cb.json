@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'Use the resusagescpuV view to evaluate parallelism of CPUs within a node.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'Use the resusagescpuV view to evaluate parallelism of CPUs within a node.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'Use the resusagescpuV view to evaluate parallelism of CPUs within a node.'"
         }
       },
       {

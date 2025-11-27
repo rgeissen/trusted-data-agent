@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'Teradata access to help with query optimization, you can grant Teradata access to views in the table.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'Teradata access to help with query optimization, you can grant Teradata access to views in the table.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'Teradata access to help with query optimization, you can grant Teradata access to views in the table.'"
         }
       },
       {

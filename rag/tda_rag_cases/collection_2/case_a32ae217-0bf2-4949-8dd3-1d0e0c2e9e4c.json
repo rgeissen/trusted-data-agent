@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'Bring Your Own Viewpoint (BYOVP) model establishes basic connectivity between an existing multisystem Viewpoint implementation of Viewpoint, and the primary cluster of a VantageCloud Lake environment.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'Bring Your Own Viewpoint (BYOVP) model establishes basic connectivity between an existing multisystem Viewpoint implementation of Viewpoint, and the primary cluster of a VantageCloud Lake environment.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'Bring Your Own Viewpoint (BYOVP) model establishes basic connectivity between an existing multisystem Viewpoint implementation of Viewpoint, and the primary cluster of a VantageCloud Lake environment.'"
         }
       },
       {

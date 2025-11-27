@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'StartTime timestamp for the compute cluster event online and EndTime timestamp for the compute cluster event offline/dropped.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'StartTime timestamp for the compute cluster event online and EndTime timestamp for the compute cluster event offline/dropped.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'StartTime timestamp for the compute cluster event online and EndTime timestamp for the compute cluster event offline/dropped.'"
         }
       },
       {

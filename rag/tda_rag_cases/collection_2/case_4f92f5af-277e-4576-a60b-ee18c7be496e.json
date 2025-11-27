@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT CmdDDLStmts, CmdDeleteStmts, CmdInsertStmts, CmdSelectStmts from td_metric_svc.dbqlhstV",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT CmdDDLStmts, CmdDeleteStmts, CmdInsertStmts, CmdSelectStmts from td_metric_svc.dbqlhstV",
-          "database_name": "dbc"
+          "sql": "SELECT CmdDDLStmts, CmdDeleteStmts, CmdInsertStmts, CmdSelectStmts from td_metric_svc.dbqlhstV"
         }
       },
       {

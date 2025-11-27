@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT DatabaseName, TableName FROM TDSTATS.AutoDBAObjects WHERE AUTODBA IS NOT NULL AND DatabaseName IN (SELECT ObjectName FROM TDWM.TDWMEventMapping WHERE ObjectType = 'DATABASE');",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT DatabaseName, TableName FROM TDSTATS.AutoDBAObjects WHERE AUTODBA IS NOT NULL AND DatabaseName IN (SELECT ObjectName FROM TDWM.TDWMEventMapping WHERE ObjectType = 'DATABASE');",
-          "database_name": "dbc"
+          "sql": "SELECT DatabaseName, TableName FROM TDSTATS.AutoDBAObjects WHERE AUTODBA IS NOT NULL AND DatabaseName IN (SELECT ObjectName FROM TDWM.TDWMEventMapping WHERE ObjectType = 'DATABASE');"
         }
       },
       {

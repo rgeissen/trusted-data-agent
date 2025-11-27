@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT VprId, VprType, FilePDbAcqReadKB, FilePCiAcqReadKB FROM td_metric_svc.resusagesvprV WHERE VprType = 'AMP';",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT VprId, VprType, FilePDbAcqReadKB, FilePCiAcqReadKB FROM td_metric_svc.resusagesvprV WHERE VprType = 'AMP';",
-          "database_name": "dbc"
+          "sql": "SELECT VprId, VprType, FilePDbAcqReadKB, FilePCiAcqReadKB FROM td_metric_svc.resusagesvprV WHERE VprType = 'AMP';"
         }
       },
       {

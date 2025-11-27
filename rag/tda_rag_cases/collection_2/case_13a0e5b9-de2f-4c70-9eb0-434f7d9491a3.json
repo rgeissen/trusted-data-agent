@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT UserName, SessionNo, Blk_1_LMode, Blk_1_OType FROM TD_Metric_SVC.dbqlogV WHERE AMPState = 'BLOCKED';",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT UserName, SessionNo, Blk_1_LMode, Blk_1_OType FROM TD_Metric_SVC.dbqlogV WHERE AMPState = 'BLOCKED';",
-          "database_name": "dbc"
+          "sql": "SELECT UserName, SessionNo, Blk_1_LMode, Blk_1_OType FROM TD_Metric_SVC.dbqlogV WHERE AMPState = 'BLOCKED';"
         }
       },
       {

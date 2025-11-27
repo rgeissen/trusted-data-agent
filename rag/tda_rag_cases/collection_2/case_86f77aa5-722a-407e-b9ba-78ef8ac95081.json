@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'The CPUIdle column represents the time in centiseconds the CPU is idle and not waiting for I/O.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'The CPUIdle column represents the time in centiseconds the CPU is idle and not waiting for I/O.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'The CPUIdle column represents the time in centiseconds the CPU is idle and not waiting for I/O.'"
         }
       },
       {

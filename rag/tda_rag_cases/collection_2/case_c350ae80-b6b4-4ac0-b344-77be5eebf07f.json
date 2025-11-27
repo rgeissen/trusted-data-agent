@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'The CPUFrequencyMHz column represents CPU Frequencies in MHz.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'The CPUFrequencyMHz column represents CPU Frequencies in MHz.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'The CPUFrequencyMHz column represents CPU Frequencies in MHz.'"
         }
       },
       {

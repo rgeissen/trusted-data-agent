@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'Past resource usage and query performance data are offloaded into foreign tables in object storage.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'Past resource usage and query performance data are offloaded into foreign tables in object storage.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'Past resource usage and query performance data are offloaded into foreign tables in object storage.'"
         }
       },
       {

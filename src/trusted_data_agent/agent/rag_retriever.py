@@ -749,21 +749,31 @@ class RAGRetriever:
             return case_data["conversational_response"].get("summary", "Conversational response.")
         return "Strategy details unavailable."
 
-    def retrieve_examples(self, query: str, k: int = 1, min_score: float = 0.7) -> List[Dict[str, Any]]:
+    def retrieve_examples(self, query: str, k: int = 1, min_score: float = 0.7, allowed_collection_ids: set = None) -> List[Dict[str, Any]]:
         """
         Retrieves the top-k most relevant and efficient RAG cases based on the query.
         Queries all active collections and aggregates results by similarity score.
+        
+        Args:
+            query: Search query text
+            k: Number of examples to retrieve
+            min_score: Minimum similarity score threshold
+            allowed_collection_ids: Optional set of collection IDs to filter by (for profile-based filtering)
         """
-        logger.info(f"Retrieving top {k} RAG examples for query: '{query}' (min_score: {min_score})")
+        logger.info(f"Retrieving top {k} RAG examples for query: '{query}' (min_score: {min_score}, allowed_collections: {allowed_collection_ids})")
         
         if not self.collections:
             logger.warning("No active collections to retrieve examples from")
             return []
         
-        # --- MODIFICATION START: Query all active collections ---
+        # --- MODIFICATION START: Query all active collections with optional filtering ---
         all_candidate_cases = []
         
         for collection_id, collection in self.collections.items():
+            # Skip collections not in the allowed set (if filtering is active)
+            if allowed_collection_ids is not None and collection_id not in allowed_collection_ids:
+                logger.debug(f"Skipping collection '{collection_id}' - not in allowed collections for profile")
+                continue
             try:
                 query_results = collection.query(
                     query_texts=[query],

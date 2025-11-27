@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'The Location column represents the file path in object storage for metric data objects.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'The Location column represents the file path in object storage for metric data objects.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'The Location column represents the file path in object storage for metric data objects.'"
         }
       },
       {

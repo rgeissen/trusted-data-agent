@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'The NodeType column indicates the node (cloud compute instance) family.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'The NodeType column indicates the node (cloud compute instance) family.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'The NodeType column indicates the node (cloud compute instance) family.'"
         }
       },
       {

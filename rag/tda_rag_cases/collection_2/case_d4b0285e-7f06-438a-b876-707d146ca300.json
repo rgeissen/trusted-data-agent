@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'Requires signi\ufb01cantly less workload management as compared to other Vantage offerings. Simplicity and ease of use, relying as much as possible on the natural boundaries created by distinct primary clusters and compute clusters are primary characteristics.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'Requires signi\ufb01cantly less workload management as compared to other Vantage offerings. Simplicity and ease of use, relying as much as possible on the natural boundaries created by distinct primary clusters and compute clusters are primary characteristics.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'Requires signi\ufb01cantly less workload management as compared to other Vantage offerings. Simplicity and ease of use, relying as much as possible on the natural boundaries created by distinct primary clusters and compute clusters are primary characteristics.'"
         }
       },
       {

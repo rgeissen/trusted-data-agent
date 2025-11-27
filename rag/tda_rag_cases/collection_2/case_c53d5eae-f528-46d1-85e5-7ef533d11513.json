@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'The td_metric_svc database contains the foreign table and view definitions.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'The td_metric_svc database contains the foreign table and view definitions.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'The td_metric_svc database contains the foreign table and view definitions.'"
         }
       },
       {

@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT * FROM TABLE (TD_SYSFNLIB.TD_get_COD_limits()) AS d;",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT * FROM TABLE (TD_SYSFNLIB.TD_get_COD_limits()) AS d;",
-          "database_name": "dbc"
+          "sql": "SELECT * FROM TABLE (TD_SYSFNLIB.TD_get_COD_limits()) AS d;"
         }
       },
       {

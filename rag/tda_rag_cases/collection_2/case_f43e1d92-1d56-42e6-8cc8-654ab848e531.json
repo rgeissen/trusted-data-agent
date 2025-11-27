@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT NosTables FROM td_metric_svc.resusagespmaV WHERE NosTables > 0;",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT NosTables FROM td_metric_svc.resusagespmaV WHERE NosTables > 0;",
-          "database_name": "dbc"
+          "sql": "SELECT NosTables FROM td_metric_svc.resusagespmaV WHERE NosTables > 0;"
         }
       },
       {

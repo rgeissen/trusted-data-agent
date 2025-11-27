@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'The CPUUExec column represents the time in centiseconds CPU is busy executing user execution code.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'The CPUUExec column represents the time in centiseconds CPU is busy executing user execution code.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'The CPUUExec column represents the time in centiseconds CPU is busy executing user execution code.'"
         }
       },
       {

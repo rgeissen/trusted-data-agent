@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT ObjectName, ObjectType FROM TDWM.TDWMEventMapping WHERE ObjectType IN ('Performance Group', 'Resource Partition');",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT ObjectName, ObjectType FROM TDWM.TDWMEventMapping WHERE ObjectType IN ('Performance Group', 'Resource Partition');",
-          "database_name": "dbc"
+          "sql": "SELECT ObjectName, ObjectType FROM TDWM.TDWMEventMapping WHERE ObjectType IN ('Performance Group', 'Resource Partition');"
         }
       },
       {

@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT 'The SummaryFlag column indicates the summarization status of the row.'",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT 'The SummaryFlag column indicates the summarization status of the row.'",
-          "database_name": "dbc"
+          "sql": "SELECT 'The SummaryFlag column indicates the summarization status of the row.'"
         }
       },
       {

@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT VprId, MemPDbKBResCU, MemPCiKBResCU FROM td_metric_svc.resusagesvprV;",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT VprId, MemPDbKBResCU, MemPCiKBResCU FROM td_metric_svc.resusagesvprV;",
-          "database_name": "dbc"
+          "sql": "SELECT VprId, MemPDbKBResCU, MemPCiKBResCU FROM td_metric_svc.resusagesvprV;"
         }
       },
       {

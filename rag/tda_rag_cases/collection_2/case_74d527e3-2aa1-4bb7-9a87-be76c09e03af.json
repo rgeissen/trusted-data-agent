@@ -39,11 +39,10 @@
         "phase": 1,
         "goal": "Execute SQL query for  on dbc: SELECT a.Nodetype, sum(a.ReadKB), sum(a.WriteKB)  from td_metric_svc.resusagespdskV a,  td_metric_svc.ResUsagePmaV b  where a.NodeId=b.NodeId  group by 1",
         "relevant_tools": [
-          "base_executeRawSQLStatement"
+          "base_readQuery"
         ],
         "arguments": {
-          "sql": "SELECT a.Nodetype, sum(a.ReadKB), sum(a.WriteKB)  from td_metric_svc.resusagespdskV a,  td_metric_svc.ResUsagePmaV b  where a.NodeId=b.NodeId  group by 1",
-          "database_name": "dbc"
+          "sql": "SELECT a.Nodetype, sum(a.ReadKB), sum(a.WriteKB)  from td_metric_svc.resusagespdskV a,  td_metric_svc.ResUsagePmaV b  where a.NodeId=b.NodeId  group by 1"
         }
       },
       {

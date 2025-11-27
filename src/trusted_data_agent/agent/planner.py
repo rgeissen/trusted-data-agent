@@ -827,9 +827,33 @@ class Planner:
 
         rag_few_shot_examples_str = ""
         if self.rag_retriever:
+            # Determine which collections to query based on profile
+            allowed_collection_ids = None
+            if self.executor.profile_override_id or self.executor.user_uuid:
+                try:
+                    from trusted_data_agent.core.config_manager import get_config_manager
+                    config_manager = get_config_manager()
+                    profiles = config_manager.get_profiles()
+                    
+                    # Use override profile if active, otherwise use default
+                    profile_id = self.executor.profile_override_id
+                    if not profile_id:
+                        profile_id = config_manager.get_default_profile_id()
+                    
+                    if profile_id:
+                        profile = next((p for p in profiles if p.get("id") == profile_id), None)
+                        if profile:
+                            autocomplete_collections = profile.get("autocompleteCollections", ["*"])
+                            if autocomplete_collections != ["*"]:
+                                allowed_collection_ids = set(autocomplete_collections)
+                                app_logger.info(f"RAG retrieval filtered to collections: {allowed_collection_ids} (profile: {profile.get('name')})")
+                except Exception as e:
+                    app_logger.warning(f"Failed to get profile collections for RAG filtering: {e}")
+            
             retrieved_cases = self.rag_retriever.retrieve_examples(
                 query=self.executor.original_user_input,
-                k=APP_CONFIG.RAG_NUM_EXAMPLES
+                k=APP_CONFIG.RAG_NUM_EXAMPLES,
+                allowed_collection_ids=allowed_collection_ids
             )
             if retrieved_cases:
                 if self.event_handler:
