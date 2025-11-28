@@ -107,15 +107,25 @@ async def get_application_status(current_user):
 
     # Check RAG status
     rag_retriever = APP_STATE.get('rag_retriever_instance')
-    rag_collections = APP_STATE.get('rag_collections', [])
-    active_collections = [c for c in rag_collections if c.get('enabled', False)]
-    # RAG is active if retriever exists AND has actually loaded collections
-    rag_active = bool(rag_retriever and rag_retriever.collections if rag_retriever else False)
     
-    # Debug logging
-    app_logger.info(f"RAG Status Check: retriever_exists={bool(rag_retriever)}, "
-                   f"collections_loaded={len(rag_retriever.collections) if rag_retriever else 0}, "
-                   f"rag_active={rag_active}")
+    # Check database for user's collections (more reliable than in-memory state)
+    # This ensures RAG shows as active even when collections are created but not yet loaded
+    rag_active = False
+    if rag_retriever and APP_CONFIG.RAG_ENABLED:
+        try:
+            from trusted_data_agent.core.collection_db import get_collection_db
+            collection_db = get_collection_db()
+            user_collections = collection_db.get_all_collections(user_id=user_uuid)
+            # RAG is active if user has at least one collection (enabled or not)
+            rag_active = len(user_collections) > 0
+            app_logger.debug(f"RAG Status Check: retriever_exists=True, user_collections={len(user_collections)}, rag_active={rag_active}")
+        except Exception as e:
+            app_logger.warning(f"Failed to check RAG collections from database: {e}")
+            # Fallback to checking in-memory collections
+            rag_active = bool(rag_retriever.collections)
+            app_logger.debug(f"RAG Status Check (fallback): collections_loaded={len(rag_retriever.collections)}, rag_active={rag_active}")
+    else:
+        app_logger.debug(f"RAG Status Check: retriever_exists={bool(rag_retriever)}, rag_enabled={APP_CONFIG.RAG_ENABLED}, rag_active=False")
     
     if is_configured:
         status_payload = {

@@ -449,6 +449,21 @@ async def switch_profile_context(profile_id: str, user_uuid: str, validate_llm: 
             app_logger.info(f"No cached classification, running classification for profile {profile_id}")
             await mcp_adapter.load_and_categorize_mcp_resources(APP_STATE, user_uuid, profile_id)
             
+            # After first classification, initialize profile's enabled tools/prompts with ALL discovered capabilities
+            # This makes all capabilities enabled by default, simplifying the selection process
+            profile = config_manager.get_profile(profile_id, user_uuid)
+            if profile and (not profile.get("tools") or len(profile.get("tools", [])) == 0):
+                # Get all discovered tools from APP_STATE
+                all_tools = list(APP_STATE.get('mcp_tools', {}).keys())
+                all_prompts = list(APP_STATE.get('mcp_prompts', {}).keys())
+                
+                if all_tools or all_prompts:
+                    app_logger.info(f"Initializing profile {profile_id} with all discovered capabilities: {len(all_tools)} tools, {len(all_prompts)} prompts")
+                    config_manager.update_profile(profile_id, {
+                        "tools": all_tools,
+                        "prompts": all_prompts
+                    }, user_uuid)
+            
             # Clear needs_reclassification flag after successful classification
             config_manager.update_profile(profile_id, {"needs_reclassification": False}, user_uuid)
             app_logger.info(f"Cleared needs_reclassification flag for profile {profile_id} after classification")
