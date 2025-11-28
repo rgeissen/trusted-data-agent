@@ -123,7 +123,8 @@ class RAGTemplateGenerator:
         collection_id: int,
         input_values: Dict[str, Any],
         provider_name: str = None,
-        model_name: str = None
+        model_name: str = None,
+        user_uuid: str = None
     ) -> Dict[str, Any]:
         """
         Generate a RAG case from any template using template definition.
@@ -135,6 +136,7 @@ class RAGTemplateGenerator:
                          (e.g., {"user_query": "...", "sql_statement": "...", "database_name": "...", "document_file": "..."})
             provider_name: Optional provider name for document upload configuration
             model_name: Optional model name for document upload capability check
+            user_uuid: Optional user ID for case attribution (defaults to template session ID if not provided)
             
         Returns:
             Complete case study dictionary ready to be saved
@@ -164,6 +166,7 @@ class RAGTemplateGenerator:
             "had_plan_improvements": False,
             "had_tactical_improvements": False,
             "timestamp": datetime.now(timezone.utc).isoformat(),
+            "user_uuid": user_uuid or self.TEMPLATE_SESSION_ID,
             "user_feedback_score": output_config.get("user_feedback_score", {}).get("value", 0),
             "llm_config": {
                 "provider": output_config.get("llm_config", {}).get("provider", {}).get("value", "Template"),
@@ -324,7 +327,8 @@ class RAGTemplateGenerator:
         collection_id: int,
         database_name: Optional[str] = None,
         table_names: Optional[List[str]] = None,
-        mcp_tool_name: Optional[str] = None
+        mcp_tool_name: Optional[str] = None,
+        user_uuid: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Generate a RAG case from the SQL template (backwards compatibility wrapper).
@@ -343,7 +347,7 @@ class RAGTemplateGenerator:
         if mcp_tool_name:
             input_values["mcp_tool_name"] = mcp_tool_name
         
-        return self.generate_case_from_template("sql_query_v1", collection_id, input_values)
+        return self.generate_case_from_template("sql_query_v1", collection_id, input_values, user_uuid=user_uuid)
     
     def populate_collection_from_template(
         self,

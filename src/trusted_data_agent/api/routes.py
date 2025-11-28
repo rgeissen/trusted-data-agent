@@ -810,11 +810,31 @@ async def get_collection_rows(collection_id):
 
         rows = []
         total = 0
+        
+        # --- MODIFICATION START: Get user context for access filtering ---
+        user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
+        
+        # Determine if we need to filter by user_uuid
+        retriever = APP_STATE.get('rag_retriever_instance')
+        from trusted_data_agent.agent.rag_access_context import RAGAccessContext
+        
+        where_filter = None
+        if retriever:
+            rag_context = RAGAccessContext(user_id=user_uuid, retriever=retriever)
+            access_type = rag_context.get_access_type(collection_id)
+            
+            # For owned collections, filter to show only current user's cases
+            if access_type == "owned":
+                where_filter = {"user_uuid": {"$eq": user_uuid}}
+        # --- MODIFICATION END ---
+        
         if query_text and len(query_text) >= 3:
             # Similarity search path
             try:
                 query_results = collection.query(
-                    query_texts=[query_text], n_results=limit, include=["metadatas", "distances"]
+                    query_texts=[query_text], n_results=limit, include=["metadatas", "distances"], where=where_filter
                 )
                 if query_results and query_results.get("ids"):
                     total = len(query_results["ids"][0])
@@ -846,7 +866,7 @@ async def get_collection_rows(collection_id):
             # Sampling path: attempt limited get; fallback to slice
             try:
                 # ChromaDB doesn't always expose a limit param; retrieve all then slice
-                all_results = collection.get(include=["metadatas"])
+                all_results = collection.get(include=["metadatas"], where=where_filter)
                 ids = all_results.get("ids", [])
                 metas = all_results.get("metadatas", [])
                 total = len(ids)
@@ -919,8 +939,15 @@ async def get_rag_case_details(case_id: str):
       3. Search session logs (tda_sessions/<user_uuid>/<session_id>.json)
          - First try match by turn_id
          - If not found, fallback to match by task_id
+      4. Validate user has read access to the case's collection
     """
     try:
+        # --- MODIFICATION START: Extract user context ---
+        user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
+        # --- MODIFICATION END ---
+        
         # Determine project root (4 levels up from this file)
         project_root = Path(__file__).resolve().parents[3]
         cases_dir = project_root / 'rag' / 'tda_rag_cases'
@@ -952,6 +979,18 @@ async def get_rag_case_details(case_id: str):
         session_id = metadata.get('session_id')
         turn_id = metadata.get('turn_id')
         task_id = metadata.get('task_id')
+        
+        # --- MODIFICATION START: Validate user access to case's collection ---
+        from trusted_data_agent.agent.rag_access_context import RAGAccessContext
+        collection_id = metadata.get('collection_id', 0)
+        retriever = APP_STATE.get('rag_retriever_instance')
+        
+        if retriever:
+            rag_context = RAGAccessContext(user_id=user_uuid, retriever=retriever)
+            if not rag_context.validate_collection_access(collection_id, write=False):
+                app_logger.warning(f"User {user_uuid} attempted to access case {case_id} from collection {collection_id} without read access")
+                return jsonify({"error": "You do not have access to this case."}), 403
+        # --- MODIFICATION END ---
 
         session_turn_summary = None
         join_method = None
@@ -1776,6 +1815,39 @@ async def update_rag_case_feedback_route(case_id: str):
         retriever = APP_STATE.get('rag_retriever_instance')
         if not retriever:
             return jsonify({"status": "error", "message": "RAG system not initialized."}), 500
+        
+        # --- MODIFICATION START: Validate user has access to case's collection ---
+        from trusted_data_agent.agent.rag_access_context import RAGAccessContext
+        
+        # Load case metadata to get collection_id
+        project_root = Path(__file__).resolve().parents[3]
+        cases_dir = project_root / 'rag' / 'tda_rag_cases'
+        file_stem = case_id if case_id.startswith('case_') else f'case_{case_id}'
+        
+        case_path = cases_dir / f"{file_stem}.json"
+        if not case_path.exists():
+            # Search in collection subdirectories
+            for collection_dir in cases_dir.glob("collection_*"):
+                if collection_dir.is_dir():
+                    potential_path = collection_dir / f"{file_stem}.json"
+                    if potential_path.exists():
+                        case_path = potential_path
+                        break
+        
+        if not case_path.exists():
+            return jsonify({"status": "error", "message": f"Case '{file_stem}' not found."}), 404
+        
+        with open(case_path, 'r', encoding='utf-8') as f:
+            case_data = json.load(f)
+        
+        collection_id = case_data.get('metadata', {}).get('collection_id', 0)
+        
+        # Validate access (user must own or be subscribed to the collection)
+        rag_context = RAGAccessContext(user_id=user_uuid, retriever=retriever)
+        if not rag_context.validate_collection_access(collection_id, write=False):
+            app_logger.warning(f"User {user_uuid} attempted to update feedback for case {case_id} from collection {collection_id} without access")
+            return jsonify({"status": "error", "message": "You do not have access to this case."}), 403
+        # --- MODIFICATION END ---
         
         # Convert vote to feedback score
         feedback_score = 1 if vote == 'up' else -1 if vote == 'down' else 0
