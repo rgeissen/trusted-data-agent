@@ -610,13 +610,14 @@ class ConfigManager:
         """
         Dynamically calculate disabled tools for a profile.
         This is the set difference: all_tools - enabled_tools
+        TDA_ tools are NEVER disabled (mandatory core capabilities).
         
         Args:
             profile_id: Profile ID
             user_uuid: Optional user UUID for per-user configuration isolation
             
         Returns:
-            List of disabled tool names for this profile
+            List of disabled tool names for this profile (excluding TDA_ tools)
         """
         profile = next((p for p in self.get_profiles(user_uuid) if p.get("id") == profile_id), None)
         if not profile:
@@ -634,19 +635,23 @@ class ConfigManager:
         
         enabled_tools = set(self.get_profile_enabled_tools(profile_id, user_uuid))
         
-        return list(all_tools - enabled_tools)
+        # Calculate disabled tools, but exclude TDA_ tools (they are ALWAYS enabled)
+        disabled_tools = {tool for tool in all_tools if tool not in enabled_tools and not tool.startswith('TDA_')}
+        
+        return list(disabled_tools)
     
     def get_profile_disabled_prompts(self, profile_id: str, user_uuid: Optional[str] = None) -> list:
         """
         Dynamically calculate disabled prompts for a profile.
         This is the set difference: all_prompts - enabled_prompts
+        TDA_ prompts are NEVER disabled (mandatory core capabilities).
         
         Args:
             profile_id: Profile ID
             user_uuid: Optional user UUID for per-user configuration isolation
             
         Returns:
-            List of disabled prompt names for this profile
+            List of disabled prompt names for this profile (excluding TDA_ prompts)
         """
         profile = next((p for p in self.get_profiles(user_uuid) if p.get("id") == profile_id), None)
         if not profile:
@@ -664,7 +669,10 @@ class ConfigManager:
         
         enabled_prompts = set(self.get_profile_enabled_prompts(profile_id, user_uuid))
         
-        return list(all_prompts - enabled_prompts)
+        # Calculate disabled prompts, but exclude TDA_ prompts (they are ALWAYS enabled)
+        disabled_prompts = {prompt for prompt in all_prompts if prompt not in enabled_prompts and not prompt.startswith('TDA_')}
+        
+        return list(disabled_prompts)
 
     # ========================================================================
     # PROFILE CONFIGURATION METHODS
