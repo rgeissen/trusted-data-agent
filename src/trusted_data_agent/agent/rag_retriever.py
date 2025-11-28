@@ -183,6 +183,43 @@ class RAGRetriever:
         # User owns the collection
         return owner_id == user_id
     
+    def _get_user_default_collection_id(self, user_id: str) -> Optional[int]:
+        """
+        Get the user's default collection ID.
+        
+        Args:
+            user_id: User UUID
+            
+        Returns:
+            Collection ID of user's default collection, or None if not found
+        """
+        if not user_id:
+            return None
+            
+        try:
+            from trusted_data_agent.core.config_manager import get_config_manager
+            config_manager = get_config_manager()
+            
+            # Get all collections
+            collections = APP_STATE.get("rag_collections", [])
+            
+            # Find user's owned collections
+            user_collections = [c for c in collections if c.get("owner_user_id") == user_id]
+            
+            if not user_collections:
+                logger.warning(f"No collections found for user {user_id}")
+                return None
+            
+            # Return the first collection (typically the default one created at registration)
+            # Collections are sorted by ID, so the first one is usually the default
+            default_collection = user_collections[0]
+            logger.debug(f"Found default collection {default_collection['id']} for user {user_id}")
+            return default_collection["id"]
+            
+        except Exception as e:
+            logger.error(f"Error getting default collection for user {user_id}: {e}", exc_info=True)
+            return None
+    
     def is_subscribed_collection(self, collection_id: int, user_id: Optional[str]) -> bool:
         """
         Check if a collection is accessed via subscription (not owned).
@@ -1423,27 +1460,33 @@ class RAGRetriever:
         --- MODIFICATION: Added rag_context parameter for multi-user support ---
         """
         try:
-            # --- MODIFICATION START: Extract user_uuid and validate access ---
+            # --- MODIFICATION START: Extract user_uuid first ---
             # Extract user_uuid from turn_summary or rag_context
             user_uuid = turn_summary.get("user_uuid")
             
-            # Validate user has write access to collection
             if rag_context:
-                if not rag_context.validate_collection_access(collection_id, write=True):
-                    logger.error(f"User {user_uuid} cannot write to collection {collection_id}. Skipping RAG processing.")
-                    return
                 user_uuid = rag_context.user_id  # Use context's user_id as authoritative
             
             if not user_uuid:
                 logger.warning("Skipping RAG processing: user_uuid not found in turn_summary or rag_context.")
                 return
-            # --- MODIFICATION END ---
             
-            # 1. Determine which collection to use first
+            # 1. Determine which collection to use BEFORE validating access
             if collection_id is None:
-                collection_id = 0  # Default collection ID
+                # Get user's default collection instead of hardcoding 0
+                collection_id = self._get_user_default_collection_id(user_uuid)
+                if collection_id is None:
+                    logger.warning(f"No default collection found for user {user_uuid}. Skipping RAG processing.")
+                    return
+                logger.info(f"Using user's default collection {collection_id} for RAG case storage")
             
-            # 2. Extract & Filter (pass collection_id so it's stored in case metadata)
+            # 2. NOW validate user has write access to the determined collection
+            if rag_context:
+                if not rag_context.validate_collection_access(collection_id, write=True):
+                    logger.error(f"User {user_uuid} cannot write to collection {collection_id}. Skipping RAG processing.")
+                    return
+            
+            # 3. Extract & Filter (pass collection_id so it's stored in case metadata)
             case_study = self._extract_case_from_turn_summary(turn_summary, collection_id)
             
             if not case_study or "successful_strategy" not in case_study:
@@ -1454,7 +1497,7 @@ class RAGRetriever:
             case_study["metadata"]["user_uuid"] = user_uuid
             # --- MODIFICATION END ---
 
-            # 3. Verify collection is active
+            # 4. Verify collection is active
 
             if collection_id not in self.collections:
                 logger.warning(f"Collection '{collection_id}' not found or not active. Skipping RAG processing.")
@@ -1462,7 +1505,7 @@ class RAGRetriever:
             
             collection = self.collections[collection_id]
 
-            # 3. Get new case data
+            # 5. Get new case data
             new_case_id = case_study["case_id"]
             new_query = case_study["intent"]["user_query"]
             new_tokens = case_study["metadata"].get("llm_config", {}).get("output_tokens", 0)

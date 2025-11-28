@@ -47,7 +47,9 @@ root_logger.setLevel(logging.INFO)
 logging.getLogger('chromadb.telemetry.product.posthog').setLevel(logging.WARNING)
 logging.getLogger('sentence_transformers').setLevel(logging.WARNING)
 logging.getLogger('rag_template_manager').setLevel(logging.WARNING)
-logging.getLogger('rag_retriever').setLevel(logging.WARNING)
+# --- TEMPORARILY ENABLE RAG RETRIEVER LOGGING FOR DEBUGGING ---
+logging.getLogger('rag_retriever').setLevel(logging.INFO)
+logging.getLogger('rag_access_context').setLevel(logging.INFO)
 
 app_logger = logging.getLogger("quart.app")
 # --- MODIFICATION START: Set Quart App Logger Level to INFO ---
