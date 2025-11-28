@@ -1949,6 +1949,24 @@ function attachProfileEventListeners() {
                     renderLLMProviders(); // Re-render to update default/active badges
                     renderMCPServers(); // Re-render to update default/active badges
                     
+                    // Update status indicators after activation
+                    DOM.mcpStatusDot.classList.remove('disconnected');
+                    DOM.mcpStatusDot.classList.add('connected');
+                    DOM.llmStatusDot.classList.remove('disconnected', 'busy');
+                    DOM.llmStatusDot.classList.add('idle');
+                    
+                    // Update RAG indicator
+                    if (DOM.ragStatusDot) {
+                        const status = await API.checkServerStatus();
+                        if (status.rag_active) {
+                            DOM.ragStatusDot.classList.remove('disconnected');
+                            DOM.ragStatusDot.classList.add('connected');
+                        } else {
+                            DOM.ragStatusDot.classList.remove('connected');
+                            DOM.ragStatusDot.classList.add('disconnected');
+                        }
+                    }
+                    
                     const message = wasSetAsDefault 
                         ? `Profile "${profile ? profile.name : 'Profile'}" activated and set as default. Click "Reclassify" to classify tools and prompts.`
                         : `Profile "${profile ? profile.name : 'Profile'}" activated successfully. Click "Reclassify" to classify tools and prompts.`;

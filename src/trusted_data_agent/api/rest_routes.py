@@ -3449,9 +3449,8 @@ async def create_profile():
                 "classified_with_mode": None
             }
         
-        # New profiles need classification
-        if "needs_reclassification" not in data:
-            data["needs_reclassification"] = True
+        # New profiles don't need reclassification warning - they've never been classified
+        # The flag will be set automatically when provider configuration changes after first classification
         
         success = config_manager.add_profile(data, user_uuid)
         
@@ -3873,7 +3872,13 @@ async def update_profile(profile_id: str):
             return jsonify({"status": "error", "message": f"Profile '{profile_id}' not found"}), 404
         
         # Track if reclassification is needed
+        # Only flag reclassification when provider configuration changes AND profile was previously classified
+        # New/never-classified profiles should not show reclassification warning
         needs_reclassification = False
+        
+        # Check if this profile has ever been classified
+        classification_results = current_profile.get("classification_results", {})
+        was_previously_classified = classification_results.get("last_classified") is not None
         
         # Validate classification_mode if provided
         if "classification_mode" in data:
@@ -3892,14 +3897,18 @@ async def update_profile(profile_id: str):
                     "last_classified": None,
                     "classified_with_mode": None
                 }
-                needs_reclassification = True
-                app_logger.info(f"Classification mode changed for profile {profile_id}, clearing cached results")
+                # Only flag if profile was previously classified
+                if was_previously_classified:
+                    needs_reclassification = True
+                    app_logger.info(f"Classification mode changed for profile {profile_id}, clearing cached results")
+                else:
+                    app_logger.info(f"Classification mode changed for never-classified profile {profile_id}, no reclassification flag needed")
         
         # Check if MCP server changed (affects available tools/prompts)
         if "mcpServerId" in data:
             current_server = current_profile.get("mcpServerId")
             new_server = data["mcpServerId"]
-            if current_server != new_server:
+            if current_server != new_server and was_previously_classified:
                 needs_reclassification = True
                 app_logger.info(f"MCP server changed for profile {profile_id}, reclassification needed")
         
@@ -3907,7 +3916,7 @@ async def update_profile(profile_id: str):
         if "mcp_servers" in data:
             current_servers = current_profile.get("mcp_servers", [])
             new_servers = data["mcp_servers"]
-            if current_servers != new_servers:
+            if current_servers != new_servers and was_previously_classified:
                 needs_reclassification = True
                 app_logger.info(f"MCP servers changed for profile {profile_id}, reclassification needed")
         
@@ -3915,7 +3924,7 @@ async def update_profile(profile_id: str):
         if "llmConfigurationId" in data:
             current_llm_config = current_profile.get("llmConfigurationId")
             new_llm_config = data["llmConfigurationId"]
-            if current_llm_config != new_llm_config and current_profile.get("classification_mode") == "full":
+            if current_llm_config != new_llm_config and current_profile.get("classification_mode") == "full" and was_previously_classified:
                 needs_reclassification = True
                 app_logger.info(f"LLM configuration changed for profile {profile_id} (full mode), reclassification recommended")
         
@@ -3923,24 +3932,9 @@ async def update_profile(profile_id: str):
         if "llm_provider" in data or "llm_model" in data:
             provider_changed = "llm_provider" in data and current_profile.get("llm_provider") != data["llm_provider"]
             model_changed = "llm_model" in data and current_profile.get("llm_model") != data["llm_model"]
-            if (provider_changed or model_changed) and current_profile.get("classification_mode") == "full":
+            if (provider_changed or model_changed) and current_profile.get("classification_mode") == "full" and was_previously_classified:
                 needs_reclassification = True
                 app_logger.info(f"LLM configuration changed for profile {profile_id} (full mode), reclassification recommended")
-        
-        # Check if tools or prompts selection changed
-        if "tools" in data:
-            current_tools = current_profile.get("tools", [])
-            new_tools = data["tools"]
-            if current_tools != new_tools:
-                needs_reclassification = True
-                app_logger.info(f"Tools selection changed for profile {profile_id}, reclassification needed")
-        
-        if "prompts" in data:
-            current_prompts = current_profile.get("prompts", [])
-            new_prompts = data["prompts"]
-            if current_prompts != new_prompts:
-                needs_reclassification = True
-                app_logger.info(f"Prompts selection changed for profile {profile_id}, reclassification needed")
         
         # Set the reclassification flag
         if needs_reclassification:
@@ -4069,17 +4063,22 @@ async def set_active_for_consumption_profiles():
             # (For simplicity, we use the first profile's settings)
             primary_profile_id = profile_ids[0]
             
-            # Check if profile needs classification
+            # Check if profile needs classification (either never classified or explicitly needs reclassification)
             from trusted_data_agent.core import configuration_service
             profile = config_manager.get_profile(primary_profile_id, user_uuid)
             
-            if profile and profile.get('needs_reclassification', False):
-                # Check if classification is actually empty
+            if profile:
+                # Check if classification is empty or missing
                 classification_results = config_manager.get_profile_classification(primary_profile_id, user_uuid)
                 tools_dict = classification_results.get('tools', {}) if classification_results else {}
+                prompts_dict = classification_results.get('prompts', {}) if classification_results else {}
                 total_tools = sum(len(tools) for tools in tools_dict.values()) if tools_dict else 0
+                total_prompts = sum(len(prompts) for prompts in prompts_dict.values()) if prompts_dict else 0
                 
-                if total_tools == 0:
+                # Profile needs classification if it has no tools/prompts OR needs_reclassification flag is set
+                needs_classification = (total_tools == 0 and total_prompts == 0) or profile.get('needs_reclassification', False)
+                
+                if needs_classification:
                     app_logger.info(f"Profile {primary_profile_id} needs classification, triggering context switch")
                     # Use switch_profile_context to trigger classification
                     result = await configuration_service.switch_profile_context(primary_profile_id, user_uuid)

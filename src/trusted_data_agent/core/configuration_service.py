@@ -442,7 +442,9 @@ async def switch_profile_context(profile_id: str, user_uuid: str, validate_llm: 
         app_logger.info(f"Profile {profile_id} fully initialized and validated")
         
         # Try to load cached classification
+        app_logger.info(f"Checking for cached classification for profile {profile_id}...")
         cached_loaded = load_profile_classification_into_state(profile_id, user_uuid)
+        app_logger.info(f"Cached classification loaded: {cached_loaded}")
         
         # If no cache, run classification
         if not cached_loaded:
@@ -467,6 +469,8 @@ async def switch_profile_context(profile_id: str, user_uuid: str, validate_llm: 
             # Clear needs_reclassification flag after successful classification
             config_manager.update_profile(profile_id, {"needs_reclassification": False}, user_uuid)
             app_logger.info(f"Cleared needs_reclassification flag for profile {profile_id} after classification")
+        else:
+            app_logger.info(f"Using cached classification for profile {profile_id}, skipping reclassification")
         
         # Calculate disabled tools/prompts from profile's enabled lists
         APP_STATE["disabled_tools"] = config_manager.get_profile_disabled_tools(profile_id, user_uuid)

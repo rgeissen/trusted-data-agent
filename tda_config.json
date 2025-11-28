@@ -85,7 +85,6 @@
         "classified_with_mode": null,
         "last_classified": null
       },
-      "needs_reclassification": true,
       "isDefault": false
     },
     {
@@ -111,7 +110,6 @@
         "classified_with_mode": null,
         "last_classified": null
       },
-      "needs_reclassification": true,
       "inherit_classification": true,
       "isDefault": false
     }
