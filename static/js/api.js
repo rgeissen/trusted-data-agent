@@ -527,6 +527,18 @@ export async function deleteProfile(profileId) {
     return await res.json();
 }
 
+export async function getProfileClassification(profileId) {
+    const res = await fetch(`/api/v1/profiles/${profileId}/classification`, {
+        method: 'GET',
+        headers: _getHeaders(false)
+    });
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to get profile classification');
+    }
+    return await res.json();
+}
+
 export async function setDefaultProfile(profileId) {
     const res = await fetch(`/api/v1/profiles/${profileId}/set_default`, {
         method: 'POST',

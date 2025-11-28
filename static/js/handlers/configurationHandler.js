@@ -2153,16 +2153,34 @@ function attachProfileEventListeners() {
     });
 
     document.querySelectorAll('[data-action="show-classification"]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
             const profileId = e.target.dataset.profileId;
             const profile = configState.profiles.find(p => p.id === profileId);
             
-            if (!profile || !profile.classification_results) {
-                showNotification('error', 'No classification results available');
+            if (!profile) {
+                showNotification('error', 'Profile not found');
                 return;
             }
             
-            showClassificationModal(profile);
+            try {
+                // Fetch fresh classification results from API (with authentication)
+                const result = await API.getProfileClassification(profileId);
+                
+                if (result.status === 'success') {
+                    // Update profile with fresh classification results
+                    const profileWithResults = {
+                        ...profile,
+                        classification_results: result.classification_results,
+                        classification_mode: result.classification_mode
+                    };
+                    showClassificationModal(profileWithResults);
+                } else {
+                    showNotification('error', result.message || 'Failed to load classification results');
+                }
+            } catch (error) {
+                console.error('Show classification error:', error);
+                showNotification('error', 'Failed to load classification results');
+            }
         });
     });
 

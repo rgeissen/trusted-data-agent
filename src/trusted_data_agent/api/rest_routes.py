@@ -3483,7 +3483,8 @@ async def activate_profile(profile_id: str):
     
     try:
         # Check if profile needs reclassification
-        config_manager = ConfigManager()
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
         profile = config_manager.get_profile(profile_id, user_uuid)
         
         if not profile:
@@ -3597,8 +3598,8 @@ async def get_profile_classification(profile_id: str):
     Returns the cached classification structure (tools, prompts, resources).
     """
     user_uuid = _get_user_uuid_from_request()
-    from trusted_data_agent.core.config_manager import ConfigManager
-    config_manager = ConfigManager()
+    from trusted_data_agent.core.config_manager import get_config_manager
+    config_manager = get_config_manager()
     
     # Verify profile exists and belongs to user
     profile = config_manager.get_profile(profile_id, user_uuid)
@@ -3611,6 +3612,11 @@ async def get_profile_classification(profile_id: str):
     # Get classification results
     classification_results = config_manager.get_profile_classification(profile_id, user_uuid)
     classification_mode = profile.get('classification_mode', 'light')
+    
+    # Log what we're returning
+    tool_count = sum(len(tools) for tools in classification_results.get('tools', {}).values())
+    prompt_count = sum(len(prompts) for prompts in classification_results.get('prompts', {}).values())
+    app_logger.info(f"Returning classification for profile {profile_id}: {len(classification_results.get('tools', {}))} tool categories with {tool_count} tools, {len(classification_results.get('prompts', {}))} prompt categories with {prompt_count} prompts")
     
     return jsonify({
         "status": "success",
@@ -3628,10 +3634,10 @@ async def reclassify_profile(profile_id: str):
     Initializes temporary LLM and MCP clients for classification if not already present.
     """
     user_uuid = _get_user_uuid_from_request()
-    from trusted_data_agent.core.config_manager import ConfigManager
+    from trusted_data_agent.core.config_manager import get_config_manager
     from trusted_data_agent.auth.admin import get_current_user_from_request
     
-    config_manager = ConfigManager()
+    config_manager = get_config_manager()
     
     # Get current user for credential lookup (when auth is enabled)
     current_user = get_current_user_from_request()
@@ -4062,6 +4068,24 @@ async def set_active_for_consumption_profiles():
             # Update APP_STATE with disabled lists from the first active profile
             # (For simplicity, we use the first profile's settings)
             primary_profile_id = profile_ids[0]
+            
+            # Check if profile needs classification
+            from trusted_data_agent.core import configuration_service
+            profile = config_manager.get_profile(primary_profile_id, user_uuid)
+            
+            if profile and profile.get('needs_reclassification', False):
+                # Check if classification is actually empty
+                classification_results = config_manager.get_profile_classification(primary_profile_id, user_uuid)
+                tools_dict = classification_results.get('tools', {}) if classification_results else {}
+                total_tools = sum(len(tools) for tools in tools_dict.values()) if tools_dict else 0
+                
+                if total_tools == 0:
+                    app_logger.info(f"Profile {primary_profile_id} needs classification, triggering context switch")
+                    # Use switch_profile_context to trigger classification
+                    result = await configuration_service.switch_profile_context(primary_profile_id, user_uuid)
+                    if result["status"] != "success":
+                        return jsonify(result), 400
+            
             APP_STATE["disabled_tools"] = config_manager.get_profile_disabled_tools(primary_profile_id, user_uuid)
             APP_STATE["disabled_prompts"] = config_manager.get_profile_disabled_prompts(primary_profile_id, user_uuid)
             
@@ -4150,19 +4174,16 @@ async def test_profile(profile_id: str):
         else:
             results["mcp_connection"] = {"status": "warning", "message": "No MCP server configured."}
 
-        # Test RAG collections
+        # Test RAG collections (check database for user-accessible collections)
         try:
-            import chromadb
-            from trusted_data_agent.core.config import APP_CONFIG
-            from pathlib import Path
+            from trusted_data_agent.core.collection_db import get_collection_db
+            collection_db = get_collection_db()
             
-            # Get the RAG persist directory
-            rag_path = Path(APP_CONFIG.RAG_PERSIST_DIR).resolve()
-            chroma_client = chromadb.PersistentClient(path=str(rag_path))
-            collections = chroma_client.list_collections()
+            # Get collections accessible to this user
+            user_collections = collection_db.get_all_collections(user_id=user_uuid)
             
-            if collections and len(collections) > 0:
-                results["rag_collections"] = {"status": "success", "message": f"RAG collections available ({len(collections)} collection(s))."}
+            if user_collections and len(user_collections) > 0:
+                results["rag_collections"] = {"status": "success", "message": f"RAG collections available ({len(user_collections)} collection(s))."}
             else:
                 results["rag_collections"] = {"status": "warning", "message": "No RAG collections found."}
         except Exception as rag_error:
@@ -4709,8 +4730,10 @@ async def browse_marketplace_collections():
         limit = int(request.args.get("limit", 50))
         offset = int(request.args.get("offset", 0))
         
-        # Get all collections
-        all_collections = APP_STATE.get("rag_collections", [])
+        # Get all collections from database
+        from trusted_data_agent.core.collection_db import get_collection_db
+        collection_db = get_collection_db()
+        all_collections = collection_db.get_all_collections()
         retriever = APP_STATE.get("rag_retriever_instance")
         
         if not retriever:
@@ -4842,16 +4865,13 @@ async def subscribe_to_collection(collection_id: int):
             session.flush()  # Get the ID
             subscription_id = subscription.id
         
-        # Increment subscriber count
-        config_manager = get_config_manager()
-        collections_list = APP_STATE.get("rag_collections", [])
-        for coll in collections_list:
-            if coll["id"] == collection_id:
-                coll["subscriber_count"] = coll.get("subscriber_count", 0) + 1
-                break
-        
-        APP_STATE["rag_collections"] = collections_list
-        config_manager.save_rag_collections(collections_list)
+        # Increment subscriber count in database
+        from trusted_data_agent.core.collection_db import get_collection_db
+        collection_db = get_collection_db()
+        current_coll = collection_db.get_collection_by_id(collection_id)
+        if current_coll:
+            new_count = current_coll.get("subscriber_count", 0) + 1
+            collection_db.update_collection(collection_id, {"subscriber_count": new_count})
         
         app_logger.info(f"User {user_uuid} subscribed to collection {collection_id}")
         
@@ -4905,16 +4925,13 @@ async def unsubscribe_from_collection(subscription_id: str):
             # Delete subscription
             session.delete(subscription)
         
-        # Decrement subscriber count
-        config_manager = get_config_manager()
-        collections_list = APP_STATE.get("rag_collections", [])
-        for coll in collections_list:
-            if coll["id"] == collection_id:
-                coll["subscriber_count"] = max(0, coll.get("subscriber_count", 0) - 1)
-                break
-        
-        APP_STATE["rag_collections"] = collections_list
-        config_manager.save_rag_collections(collections_list)
+        # Decrement subscriber count in database
+        from trusted_data_agent.core.collection_db import get_collection_db
+        collection_db = get_collection_db()
+        current_coll = collection_db.get_collection_by_id(collection_id)
+        if current_coll:
+            new_count = max(0, current_coll.get("subscriber_count", 0) - 1)
+            collection_db.update_collection(collection_id, {"subscriber_count": new_count})
         
         app_logger.info(f"User {user_uuid} unsubscribed from collection {collection_id}")
         

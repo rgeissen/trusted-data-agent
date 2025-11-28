@@ -235,8 +235,8 @@ async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None, 
     # Get classification mode from profile if provided
     classification_mode = 'light'  # default
     if profile_id:
-        from trusted_data_agent.core.config_manager import ConfigManager
-        config_manager = ConfigManager()
+        from trusted_data_agent.core.config_manager import get_config_manager
+        config_manager = get_config_manager()
         profile = config_manager.get_profile(profile_id, user_uuid)
         if profile:
             classification_mode = profile.get('classification_mode', 'light')
@@ -283,12 +283,14 @@ async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None, 
             ))
 
         loaded_tools = processed_tools
+        app_logger.info(f"Loaded {len(loaded_tools)} tools from MCP server")
 
         loaded_prompts = []
         try:
             list_prompts_result = await temp_session.list_prompts()
             if hasattr(list_prompts_result, 'prompts'):
                 loaded_prompts = list_prompts_result.prompts
+                app_logger.info(f"Loaded {len(loaded_prompts)} prompts from MCP server")
         except Exception as e:
             app_logger.error(f"CRITICAL ERROR while loading prompts: {e}", exc_info=True)
 
@@ -344,7 +346,7 @@ async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None, 
         # 'full': LLM-based semantic categorization
         
         if classification_mode == 'light':
-            app_logger.info("Classification mode 'light': using generic single-category structure.")
+            app_logger.info(f"Classification mode 'light': using generic single-category structure. Processing {len(loaded_tools)} tools, {len(loaded_prompts)} prompts, {len(loaded_resources)} resources")
             classified_data = {}
             skip_classification = True
         elif classification_mode == 'full':
@@ -539,8 +541,8 @@ async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None, 
         
         # Save classification results to profile if profile_id provided
         if profile_id:
-            from trusted_data_agent.core.config_manager import ConfigManager
-            config_manager = ConfigManager()
+            from trusted_data_agent.core.config_manager import get_config_manager
+            config_manager = get_config_manager()
             
             classification_results = {
                 'tools': STATE.get('structured_tools', {}),
@@ -554,7 +556,10 @@ async def load_and_categorize_mcp_resources(STATE: dict, user_uuid: str = None, 
                 classification_results=classification_results,
                 user_uuid=user_uuid
             )
-            app_logger.info(f"Saved classification results to profile {profile_id} (mode: {classification_mode})")
+            tool_count = sum(len(tools) for tools in classification_results['tools'].values())
+            prompt_count = sum(len(prompts) for prompts in classification_results['prompts'].values())
+            resource_count = sum(len(resources) for resources in classification_results['resources'].values())
+            app_logger.info(f"Saved classification results to profile {profile_id} (mode: {classification_mode}): {len(classification_results['tools'])} tool categories with {tool_count} tools, {len(classification_results['prompts'])} prompt categories with {prompt_count} prompts, {len(classification_results['resources'])} resource categories with {resource_count} resources")
 
 
 def _transform_chart_data(data: any) -> list[dict]:

@@ -64,9 +64,16 @@ def load_profile_classification_into_state(profile_id: str, user_uuid: str) -> b
     
     classification_results = config_manager.get_profile_classification(target_profile_id, user_uuid)
     
-    # Check if we have cached results
-    if not classification_results or not classification_results.get('tools'):
-        app_logger.info(f"No cached classification for profile {target_profile_id}, will run classification")
+    # Check if we have cached results with actual content
+    tools_dict = classification_results.get('tools', {}) if classification_results else {}
+    prompts_dict = classification_results.get('prompts', {}) if classification_results else {}
+    
+    # Count actual tools/prompts in the classification
+    total_tools = sum(len(tools) for tools in tools_dict.values()) if tools_dict else 0
+    total_prompts = sum(len(prompts) for prompts in prompts_dict.values()) if prompts_dict else 0
+    
+    if not classification_results or (total_tools == 0 and total_prompts == 0):
+        app_logger.info(f"No cached classification for profile {target_profile_id} (empty or missing), will run classification")
         return False
     
     # Check if classification mode matches what was used

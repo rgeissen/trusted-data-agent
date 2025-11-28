@@ -622,8 +622,16 @@ class ConfigManager:
         if not profile:
             return []
         
-        mcp_server_id = profile.get("mcpServerId")
-        all_tools = set(self.get_all_mcp_tools(mcp_server_id, user_uuid))
+        # Get all tools from APP_STATE (populated from live MCP server during classification)
+        # Fallback to config file if APP_STATE not available
+        from trusted_data_agent.core.config import APP_STATE
+        all_tools = set(APP_STATE.get('mcp_tools', {}).keys()) if APP_STATE.get('mcp_tools') else set()
+        
+        # If APP_STATE has no tools yet, fallback to config file (for backwards compatibility)
+        if not all_tools:
+            mcp_server_id = profile.get("mcpServerId")
+            all_tools = set(self.get_all_mcp_tools(mcp_server_id, user_uuid))
+        
         enabled_tools = set(self.get_profile_enabled_tools(profile_id, user_uuid))
         
         return list(all_tools - enabled_tools)
@@ -644,8 +652,16 @@ class ConfigManager:
         if not profile:
             return []
         
-        mcp_server_id = profile.get("mcpServerId")
-        all_prompts = set(self.get_all_mcp_prompts(mcp_server_id, user_uuid))
+        # Get all prompts from APP_STATE (populated from live MCP server during classification)
+        # Fallback to config file if APP_STATE not available
+        from trusted_data_agent.core.config import APP_STATE
+        all_prompts = set(APP_STATE.get('mcp_prompts', {}).keys()) if APP_STATE.get('mcp_prompts') else set()
+        
+        # If APP_STATE has no prompts yet, fallback to config file (for backwards compatibility)
+        if not all_prompts:
+            mcp_server_id = profile.get("mcpServerId")
+            all_prompts = set(self.get_all_mcp_prompts(mcp_server_id, user_uuid))
+        
         enabled_prompts = set(self.get_profile_enabled_prompts(profile_id, user_uuid))
         
         return list(all_prompts - enabled_prompts)
