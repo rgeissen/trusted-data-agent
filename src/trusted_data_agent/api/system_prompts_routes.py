@@ -5,7 +5,7 @@ from quart import Blueprint, jsonify, request
 from functools import wraps
 
 from trusted_data_agent.core.config import APP_STATE
-from trusted_data_agent.auth.middleware import get_current_user
+from trusted_data_agent.auth.middleware import require_auth
 
 system_prompts_bp = Blueprint('system_prompts', __name__, url_prefix='/api/v1/system-prompts')
 app_logger = logging.getLogger("quart.app")
@@ -29,14 +29,11 @@ AVAILABLE_PROMPTS = [
 def require_prompt_engineer_or_enterprise(f):
     """
     Decorator to require Prompt Engineer or Enterprise license tier.
+    Must be used with @require_auth decorator.
+    current_user is injected by @require_auth as the first parameter.
     """
     @wraps(f)
-    async def decorated_function(*args, **kwargs):
-        # Get current user (this validates the token)
-        user_data = get_current_user()
-        if not user_data:
-            return jsonify({"success": False, "message": "Authentication required"}), 401
-        
+    async def decorated_function(current_user, *args, **kwargs):
         # Check license tier from APP_STATE
         license_info = APP_STATE.get('license_info') or {}
         license_tier = license_info.get('tier', 'Unknown')
@@ -47,14 +44,15 @@ def require_prompt_engineer_or_enterprise(f):
                 "message": f"System Prompt Editor requires 'Prompt Engineer' or 'Enterprise' license tier. Current tier: {license_tier}"
             }), 403
         
-        return await f(*args, **kwargs)
+        return await f(current_user, *args, **kwargs)
     
     return decorated_function
 
 
 @system_prompts_bp.route('/<prompt_name>', methods=['GET'])
+@require_auth
 @require_prompt_engineer_or_enterprise
-async def get_system_prompt(prompt_name):
+async def get_system_prompt(current_user, prompt_name):
     """
     Get the current content of a system prompt.
     Checks for override in prompt_overrides/ directory first, then falls back to encrypted default.
@@ -104,8 +102,9 @@ async def get_system_prompt(prompt_name):
 
 
 @system_prompts_bp.route('/<prompt_name>', methods=['PUT'])
+@require_auth
 @require_prompt_engineer_or_enterprise
-async def update_system_prompt(prompt_name):
+async def update_system_prompt(current_user, prompt_name):
     """
     Save a system prompt override to prompt_overrides/ directory.
     """
@@ -153,8 +152,9 @@ async def update_system_prompt(prompt_name):
 
 
 @system_prompts_bp.route('/<prompt_name>', methods=['DELETE'])
+@require_auth
 @require_prompt_engineer_or_enterprise
-async def delete_system_prompt_override(prompt_name):
+async def delete_system_prompt_override(current_user, prompt_name):
     """
     Delete a system prompt override, reverting to the encrypted default.
     """
@@ -194,8 +194,9 @@ async def delete_system_prompt_override(prompt_name):
 
 
 @system_prompts_bp.route('/list', methods=['GET'])
+@require_auth
 @require_prompt_engineer_or_enterprise
-async def list_system_prompts():
+async def list_system_prompts(current_user):
     """
     List all available system prompts with their override status.
     """

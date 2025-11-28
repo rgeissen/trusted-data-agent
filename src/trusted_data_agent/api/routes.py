@@ -16,6 +16,7 @@ from quart import Blueprint, request, jsonify, render_template, Response, abort
 from langchain_mcp_adapters.prompts import load_mcp_prompt
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
+from trusted_data_agent.auth.middleware import require_auth, optional_auth
 from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
 from trusted_data_agent.core import session_manager
 from trusted_data_agent.agent.prompts import PROVIDER_SYSTEM_PROMPTS
@@ -75,14 +76,15 @@ async def register_page():
     return await render_template("register.html")
 
 @api_bp.route("/api/status")
-async def get_application_status():
+@optional_auth
+async def get_application_status(current_user):
     """
     Returns the current configuration status of the application.
     This is used by the front end on startup to synchronize its state.
     Authentication is required - returns not configured if user not authenticated.
     """
     # Get user UUID - if not authenticated, return not configured
-    user_uuid = _get_user_uuid_from_request()
+    user_uuid = current_user.id if current_user else None
     if not user_uuid:
         return jsonify({
             "isConfigured": False,
@@ -136,7 +138,8 @@ async def get_application_status():
         return jsonify(status_payload)
 
 @api_bp.route("/api/questions")
-async def get_rag_questions():
+@optional_auth
+async def get_rag_questions(current_user):
     """
     Returns semantically relevant questions from the RAG knowledge base.
     Supports profile-based filtering and semantic ranking.
@@ -148,7 +151,6 @@ async def get_rag_questions():
     """
     from trusted_data_agent.core.config_manager import get_config_manager
     from trusted_data_agent.agent.rag_access_context import RAGAccessContext
-    from trusted_data_agent.auth.middleware import get_current_user
     
     query_text = request.args.get('query', '').strip()
     profile_id = request.args.get('profile_id', '').strip()
@@ -159,8 +161,7 @@ async def get_rag_questions():
         return jsonify({"questions": []})
     
     # Get user context for access control
-    user = get_current_user()
-    user_uuid = user.get("user_id") if user else None
+    user_uuid = current_user.id if current_user else None
     rag_context = RAGAccessContext(user_uuid, retriever) if user_uuid else None
     
     # Determine which collections to query based on profile and user access
@@ -1037,15 +1038,14 @@ async def get_rag_case_details(case_id: str):
         return jsonify({"error": "Failed to retrieve case details"}), 500
 
 @api_bp.route("/sessions", methods=["GET"])
-async def get_sessions():
+@require_auth
+async def get_sessions(current_user):
     """Returns a list of all active chat sessions for the requesting user.
     
     Query Parameters:
         all_users (bool): If true and user has VIEW_ALL_SESSIONS feature, returns sessions from all users
     """
-    user_uuid = _get_user_uuid_from_request()
-    if not user_uuid:
-        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
+    user_uuid = current_user.id
     
     # Check if requesting all users' sessions
     all_users = request.args.get('all_users', 'false').lower() == 'true'
@@ -1077,11 +1077,10 @@ async def get_sessions():
     return jsonify(sessions)
 
 @api_bp.route("/session/<session_id>", methods=["GET"])
-async def get_session_history(session_id):
+@require_auth
+async def get_session_history(current_user, session_id):
     """Retrieves the chat history and token counts for a specific session."""
-    user_uuid = _get_user_uuid_from_request()
-    if not user_uuid:
-        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
+    user_uuid = current_user.id
     
     session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
     if session_data:
@@ -1110,11 +1109,10 @@ async def get_session_history(session_id):
     return jsonify({"error": "Session not found"}), 404
 
 @api_bp.route("/api/session/<session_id>/rename", methods=["POST"])
-async def rename_session(session_id: str):
+@require_auth
+async def rename_session(current_user, session_id: str):
     """Renames a specific session for the requesting user."""
-    user_uuid = _get_user_uuid_from_request()
-    if not user_uuid:
-        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
+    user_uuid = current_user.id
     data = await request.get_json()
     new_name = data.get("newName")
 
@@ -1135,11 +1133,10 @@ async def rename_session(session_id: str):
         return jsonify({"status": "error", "message": "Failed to update session name on the server."}), 500
 
 @api_bp.route("/api/session/<session_id>", methods=["DELETE"])
-async def delete_session_endpoint(session_id: str):
+@require_auth
+async def delete_session_endpoint(current_user, session_id: str):
     """Deletes a specific session for the requesting user."""
-    user_uuid = _get_user_uuid_from_request()
-    if not user_uuid:
-        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
+    user_uuid = current_user.id
     app_logger.info(f"DELETE request received for session {session_id} from user {user_uuid}.")
 
     try:
@@ -1156,11 +1153,10 @@ async def delete_session_endpoint(session_id: str):
 
 # --- MODIFICATION START: Add new endpoint for purging session memory ---
 @api_bp.route("/api/session/<session_id>/purge_memory", methods=["POST"])
-async def purge_memory(session_id: str):
+@require_auth
+async def purge_memory(current_user, session_id: str):
     """Purges the agent's LLM context memory (`chat_object`) for a session."""
-    user_uuid = _get_user_uuid_from_request()
-    if not user_uuid:
-        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
+    user_uuid = current_user.id
     app_logger.info(f"Purge memory request for session {session_id}, user {user_uuid}")
 
     success = session_manager.purge_session_memory(user_uuid, session_id)
@@ -1176,11 +1172,10 @@ async def purge_memory(session_id: str):
 
 # --- MODIFICATION START: Add endpoints for /plan and /details ---
 @api_bp.route("/api/session/<session_id>/turn/<int:turn_id>/plan", methods=["GET"])
-async def get_turn_plan(session_id: str, turn_id: int):
+@require_auth
+async def get_turn_plan(current_user, session_id: str, turn_id: int):
     """Retrieves the original plan for a specific turn in a session."""
-    user_uuid = _get_user_uuid_from_request()
-    if not user_uuid:
-        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
+    user_uuid = current_user.id
     session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
     if not session_data:
         return jsonify({"error": "Session not found"}), 404
@@ -1199,11 +1194,10 @@ async def get_turn_plan(session_id: str, turn_id: int):
         return jsonify({"error": f"Original plan not found for turn {turn_id}."}), 404
 
 @api_bp.route("/api/session/<session_id>/turn/<int:turn_id>/details", methods=["GET"])
-async def get_turn_details(session_id: str, turn_id: int):
+@require_auth
+async def get_turn_details(current_user, session_id: str, turn_id: int):
     """Retrieves the full details (plan and trace) for a specific turn."""
-    user_uuid = _get_user_uuid_from_request()
-    if not user_uuid:
-        return jsonify({"status": "error", "message": "Authentication required. Please login."}), 401
+    user_uuid = current_user.id
     session_data = session_manager.get_session(user_uuid=user_uuid, session_id=session_id)
     if not session_data:
         return jsonify({"error": "Session not found"}), 404
