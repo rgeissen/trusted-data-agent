@@ -1232,18 +1232,18 @@ class RAGRetriever:
                     continue
                 action = entry.get("action", {})
                 if isinstance(action, dict) and action.get("tool_name") == "TDA_ContextReport":
-                    logger.debug(f"  -> Skipping turn {turn.get('turn')} due to TDA_ContextReport usage.")
+                    logger.info(f"  -> Skipping turn {turn.get('turn')} due to TDA_ContextReport usage.")
                     return None
             
             # --- MODIFICATION START: Stricter success checking ---
             original_plan = turn.get("original_plan")
             if not original_plan or not isinstance(original_plan, list):
-                logger.debug(f"  -> Skipping turn {turn.get('turn')}: 'original_plan' is missing or not a list.")
+                logger.info(f"  -> Skipping turn {turn.get('turn')}: 'original_plan' is missing or not a list.")
                 return None
 
             required_phases = {p.get("phase") for p in original_plan if isinstance(p, dict) and p.get("phase") is not None}
             if not required_phases:
-                logger.debug(f"  -> Skipping turn {turn.get('turn')}: 'original_plan' has no valid phases.")
+                logger.info(f"  -> Skipping turn {turn.get('turn')}: 'original_plan' has no valid phases.")
                 return None
             
             completed_phases = set()
@@ -1252,6 +1252,7 @@ class RAGRetriever:
             successful_actions_map = {}
             had_plan_improvements = False
             had_tactical_improvements = False
+            has_orchestration = False  # Track if System Orchestration occurred
             # --- MODIFICATION END ---
 
             for entry in trace:
@@ -1293,6 +1294,15 @@ class RAGRetriever:
                 
                 if is_successful_result and action_is_dict:
                     tool_name = action.get("tool_name")
+                    
+                    # --- MODIFICATION START: Detect System Orchestration ---
+                    if tool_name == "TDA_SystemOrchestration":
+                        has_orchestration = True
+                        phase_num = action.get("metadata", {}).get("phase_number")
+                        if phase_num is not None:
+                            completed_phases.add(phase_num)
+                    # --- MODIFICATION END ---
+                    
                     if tool_name and tool_name != "TDA_SystemLog":
                         # --- MODIFICATION START: Use phase_number (can be None) ---
                         phase_num = action.get("metadata", {}).get("phase_number")
@@ -1335,13 +1345,26 @@ class RAGRetriever:
                                     "arguments": action.get("arguments", {})
                                 }
             
-            # --- MODIFICATION START: Apply new success criteria ---
-            is_success = (not has_critical_error) and (required_phases == completed_phases)
+            # --- MODIFICATION START: Apply success criteria with orchestration awareness ---
+            # Normal execution: required_phases == completed_phases
+            # Orchestrated execution: Allow subset match if orchestration occurred and has successful actions
+            #   System Orchestration can intelligently optimize/merge phases at runtime
+            if has_orchestration:
+                phase_match = (len(completed_phases) > 0 and 
+                              completed_phases.issubset(required_phases) and 
+                              len(successful_actions_map) > 0)
+            else:
+                phase_match = (required_phases == completed_phases)
+            
+            is_success = (not has_critical_error) and phase_match
             if not is_success:
-                logger.debug(f"  -> Marking turn {turn.get('turn')} as NOT successful. "
+                logger.info(f"  -> Skipping turn {turn.get('turn')} - NOT successful. "
                              f"HasError: {has_critical_error}, "
-                             f"Required: {required_phases}, "
-                             f"Completed: {completed_phases}")
+                             f"HasOrchestration: {has_orchestration}, "
+                             f"Required phases: {required_phases}, "
+                             f"Completed phases: {completed_phases}, "
+                             f"Successful actions: {len(successful_actions_map)}")
+                return None
             # --- MODIFICATION END ---
 
             # --- MODIFICATION START: Convert feedback string to score ---
@@ -1358,9 +1381,10 @@ class RAGRetriever:
                 "case_id": case_id,
                 "metadata": {
                     "session_id": session_id, "turn_id": turn.get("turn"), "is_success": is_success,
-                    # --- MODIFICATION START: Add task_id and collection_id ---
+                    # --- MODIFICATION START: Add task_id, collection_id, and orchestration flag ---
                     "task_id": turn.get("task_id"),
                     "collection_id": collection_id if collection_id is not None else 0,
+                    "has_orchestration": has_orchestration,  # Flag for System Orchestration usage
                     # --- MODIFICATION END ---
                     "had_plan_improvements": had_plan_improvements, "had_tactical_improvements": had_tactical_improvements,
                     "timestamp": turn.get("timestamp"),
@@ -1431,9 +1455,11 @@ class RAGRetriever:
             "timestamp": case_study["metadata"]["timestamp"],
             "task_id": case_study["metadata"].get("task_id") or "",  # Convert None to empty string
             "collection_id": case_study["metadata"].get("collection_id", 0),
+            "is_success": case_study["metadata"].get("is_success", False),  # --- MODIFICATION: Add success flag ---
             "is_most_efficient": case_study["metadata"].get("is_most_efficient", False),
             "had_plan_improvements": case_study["metadata"].get("had_plan_improvements", False),
             "had_tactical_improvements": case_study["metadata"].get("had_tactical_improvements", False),
+            "has_orchestration": case_study["metadata"].get("has_orchestration", False),  # --- MODIFICATION: Add orchestration flag ---
             "output_tokens": case_study["metadata"].get("llm_config", {}).get("output_tokens", 0),
             "user_feedback_score": case_study["metadata"].get("user_feedback_score", 0),
             # Store the full case data as a JSON string

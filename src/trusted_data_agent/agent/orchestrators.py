@@ -81,6 +81,31 @@ async def execute_date_range_orchestrator(executor, command: dict, date_param_na
             "step": "System Orchestration", "type": "workaround",
             "details": f"Detected date range query ('{date_phrase}') for single-day tool ('{tool_name}')."
         })
+        
+        # Log orchestration event to turn_action_history for RAG processing visibility
+        phase_num = phase.get("phase", executor.current_phase_index + 1)
+        orchestration_event = {
+            "action": {
+                "tool_name": "TDA_SystemOrchestration",
+                "arguments": {
+                    "orchestration_type": "date_range",
+                    "target_tool": tool_name,
+                    "date_phrase": date_phrase,
+                    "date_param_name": date_param_name
+                },
+                "metadata": {
+                    "phase_number": phase_num,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "is_orchestration": True
+                }
+            },
+            "result": {
+                "status": "orchestration_started",
+                "metadata": {"comment": "Date range orchestration initiated"},
+                "results": []
+            }
+        }
+        executor.turn_action_history.append(orchestration_event)
 
         date_command = {"tool_name": "TDA_CurrentDate"}
         # --- MODIFICATION START: Pass user_uuid ---
@@ -164,6 +189,25 @@ async def execute_date_range_orchestrator(executor, command: dict, date_param_na
     
     executor._add_to_structured_data(final_tool_output)
     executor.last_tool_output = final_tool_output
+    
+    # Log orchestration completion to turn_action_history
+    orchestration_complete_event = {
+        "action": {
+            "tool_name": "TDA_SystemOrchestration",
+            "arguments": {
+                "orchestration_type": "date_range_complete",
+                "target_tool": tool_name,
+                "num_iterations": len(date_list)
+            },
+            "metadata": {
+                "phase_number": phase_num,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "is_orchestration": True
+            }
+        },
+        "result": final_tool_output
+    }
+    executor.turn_action_history.append(orchestration_complete_event)
 
 # --- MODIFICATION START: Add user_uuid ---
 async def execute_column_iteration(executor, command: dict):
