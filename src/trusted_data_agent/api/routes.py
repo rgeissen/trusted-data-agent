@@ -147,6 +147,8 @@ async def get_rag_questions():
     - limit: Maximum number of results (default: 10)
     """
     from trusted_data_agent.core.config_manager import get_config_manager
+    from trusted_data_agent.agent.rag_access_context import RAGAccessContext
+    from trusted_data_agent.auth.middleware import get_current_user
     
     query_text = request.args.get('query', '').strip()
     profile_id = request.args.get('profile_id', '').strip()
@@ -156,7 +158,12 @@ async def get_rag_questions():
     if not retriever:
         return jsonify({"questions": []})
     
-    # Determine which collections to query based on profile
+    # Get user context for access control
+    user = get_current_user()
+    user_uuid = user.get("user_id") if user else None
+    rag_context = RAGAccessContext(user_uuid, retriever) if user_uuid else None
+    
+    # Determine which collections to query based on profile and user access
     allowed_collection_ids = None
     if profile_id:
         config_manager = get_config_manager()
@@ -168,7 +175,15 @@ async def get_rag_questions():
             if autocomplete_collections != ["*"]:
                 allowed_collection_ids = set(autocomplete_collections)
     
-    # If no query text, fall back to getting all unique questions (filtered by profile)
+    # Intersect with user-accessible collections if context available
+    if rag_context:
+        user_accessible = rag_context.accessible_collections
+        if allowed_collection_ids is None:
+            allowed_collection_ids = user_accessible
+        else:
+            allowed_collection_ids = allowed_collection_ids & user_accessible
+    
+    # If no query text, fall back to getting all unique questions (filtered by profile and user)
     if not query_text:
         questions = set()
         for coll_id, collection in retriever.collections.items():
@@ -177,13 +192,18 @@ async def get_rag_questions():
                 continue
                 
             try:
+                # Build where clause with user filtering if context available
+                where_clause = {"$and": [
+                    {"strategy_type": {"$eq": "successful"}},
+                    {"is_most_efficient": {"$eq": True}},
+                    {"user_feedback_score": {"$gte": 0}}  # Exclude downvoted cases
+                ]}
+                if rag_context and user_uuid:
+                    where_clause["$and"].append({"user_uuid": {"$eq": user_uuid}})
+                
                 # Only get questions from successful and most efficient cases (not downvoted)
                 results = collection.get(
-                    where={"$and": [
-                        {"strategy_type": {"$eq": "successful"}},
-                        {"is_most_efficient": {"$eq": True}},
-                        {"user_feedback_score": {"$gte": 0}}  # Exclude downvoted cases
-                    ]},
+                    where=where_clause,
                     include=["metadatas"]
                 )
                 for metadata in results.get("metadatas", []):
@@ -204,15 +224,20 @@ async def get_rag_questions():
             continue
             
         try:
+            # Build where clause with user filtering if context available
+            where_clause = {"$and": [
+                {"strategy_type": {"$eq": "successful"}},
+                {"is_most_efficient": {"$eq": True}},
+                {"user_feedback_score": {"$gte": 0}}  # Exclude downvoted cases
+            ]}
+            if rag_context and user_uuid:
+                where_clause["$and"].append({"user_uuid": {"$eq": user_uuid}})
+            
             # Only query successful and most efficient cases (not downvoted)
             results = collection.query(
                 query_texts=[query_text],
                 n_results=limit,
-                where={"$and": [
-                    {"strategy_type": {"$eq": "successful"}},
-                    {"is_most_efficient": {"$eq": True}},
-                    {"user_feedback_score": {"$gte": 0}}  # Exclude downvoted cases
-                ]},
+                where=where_clause,
                 include=["metadatas", "distances"]
             )
             

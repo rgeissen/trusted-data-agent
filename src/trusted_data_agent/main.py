@@ -107,18 +107,27 @@ async def rag_processing_worker():
             if retriever and turn_summary and APP_CONFIG.RAG_ENABLED:
                 # Get the collection ID from the turn summary (where the base RAG example came from)
                 collection_id = turn_summary.get('rag_source_collection_id')
+                user_uuid = turn_summary.get('user_uuid')  # --- MODIFICATION: Extract user_uuid ---
                 collection_info = f" to collection {collection_id}" if collection_id is not None else " (no RAG base, using default)"
                 app_logger.info(f"RAG worker: Processing turn {turn_summary.get('turn')} from session {turn_summary.get('session_id')}{collection_info}.")
                 
-                # Process the turn and get the case_id, passing the collection_id
-                case_id = await retriever.process_turn_for_rag(turn_summary, collection_id=collection_id)
+                # --- MODIFICATION START: Create context and pass to process_turn_for_rag ---
+                from trusted_data_agent.agent.rag_access_context import RAGAccessContext
+                rag_context = RAGAccessContext(user_id=user_uuid, retriever=retriever)
+                
+                # Process the turn and get the case_id, passing the context
+                case_id = await retriever.process_turn_for_rag(
+                    turn_summary, 
+                    collection_id=collection_id,
+                    rag_context=rag_context  # --- MODIFICATION: Pass context ---
+                )
+                # --- MODIFICATION END ---
                 
                 # If a case was created, store the case_id in the session
                 if case_id:
                     from trusted_data_agent.core import session_manager
                     session_id = turn_summary.get('session_id')
                     turn_id = turn_summary.get('turn')
-                    user_uuid = turn_summary.get('user_uuid')
                     
                     if session_id and turn_id and user_uuid:
                         try:

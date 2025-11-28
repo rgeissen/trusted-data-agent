@@ -992,7 +992,8 @@ class RAGRetriever:
             return case_data["conversational_response"].get("summary", "Conversational response.")
         return "Strategy details unavailable."
 
-    def retrieve_examples(self, query: str, k: int = 1, min_score: float = 0.7, allowed_collection_ids: set = None) -> List[Dict[str, Any]]:
+    def retrieve_examples(self, query: str, k: int = 1, min_score: float = 0.7, allowed_collection_ids: set = None, 
+                         rag_context: Optional['RAGAccessContext'] = None) -> List[Dict[str, Any]]:
         """
         Retrieves the top-k most relevant and efficient RAG cases based on the query.
         Queries all active collections and aggregates results by similarity score.
@@ -1002,6 +1003,8 @@ class RAGRetriever:
             k: Number of examples to retrieve
             min_score: Minimum similarity score threshold
             allowed_collection_ids: Optional set of collection IDs to filter by (for profile-based filtering)
+            rag_context: Optional RAGAccessContext for user-aware filtering. If provided, only retrieves from accessible collections.
+                        --- MODIFICATION: Added rag_context parameter for multi-user support ---
         """
         logger.info(f"Retrieving top {k} RAG examples for query: '{query}' (min_score: {min_score}, allowed_collections: {allowed_collection_ids})")
         
@@ -1009,51 +1012,75 @@ class RAGRetriever:
             logger.warning("No active collections to retrieve examples from")
             return []
         
+        # --- MODIFICATION START: Apply rag_context to filter accessible collections ---
+        # If rag_context is provided, only query user-accessible collections
+        if rag_context:
+            accessible = rag_context.accessible_collections
+            if allowed_collection_ids:
+                # Intersect context-accessible with profile-allowed
+                effective_allowed = accessible & allowed_collection_ids
+            else:
+                effective_allowed = accessible
+            logger.debug(f"RAG context applied: user {rag_context.user_id} can access {len(effective_allowed)} collections")
+        else:
+            effective_allowed = allowed_collection_ids
+        # --- MODIFICATION END ---
+        
         # --- MODIFICATION START: Query all active collections with optional filtering ---
         all_candidate_cases = []
         
         for collection_id, collection in self.collections.items():
             # Skip collections not in the allowed set (if filtering is active)
-            if allowed_collection_ids is not None and collection_id not in allowed_collection_ids:
-                logger.debug(f"Skipping collection '{collection_id}' - not in allowed collections for profile")
+            if effective_allowed is not None and collection_id not in effective_allowed:
+                logger.debug(f"Skipping collection '{collection_id}' - not accessible to user or not in profile filter")
                 continue
             try:
+                # --- MODIFICATION: Use context-aware query builder ---
+                if rag_context:
+                    where_filter = rag_context.build_query_filter(
+                        collection_id=collection_id,
+                        strategy_type={"$eq": "successful"},
+                        is_most_efficient={"$eq": True},
+                        user_feedback_score={"$gte": 0}
+                    )
+                else:
+                    where_filter = {"$and": [
+                        {"strategy_type": {"$eq": "successful"}},
+                        {"is_most_efficient": {"$eq": True}},
+                        {"user_feedback_score": {"$gte": 0}}
+                    ]}
+                
                 query_results = collection.query(
                     query_texts=[query],
                     n_results=k * 10,  # Retrieve more candidates to filter
-                    where={"$and": [
-                        {"strategy_type": {"$eq": "successful"}},
-                        {"is_most_efficient": {"$eq": True}},
-                        {"user_feedback_score": {"$gte": 0}}  # Exclude downvoted cases
-                    ]},  # Only retrieve successful, most efficient, non-downvoted cases
+                    where=where_filter,
                     include=["metadatas", "distances"]
                 )
-                
-                if query_results and query_results["ids"] and query_results["ids"][0]:
-                    for i in range(len(query_results["ids"][0])):
-                        case_id = query_results["ids"][0][i]
-                        metadata = query_results["metadatas"][0][i]
-                        distance = query_results["distances"][0][i]
-                        
-                        similarity_score = 1 - distance 
+                # --- MODIFICATION END ---
+                for i in range(len(query_results["ids"][0])):
+                    case_id = query_results["ids"][0][i]
+                    metadata = query_results["metadatas"][0][i]
+                    distance = query_results["distances"][0][i]
+                    
+                    similarity_score = 1 - distance 
 
-                        if similarity_score < min_score:
-                            logger.debug(f"Skipping case {case_id} from collection '{collection_id}' due to low similarity score: {similarity_score:.2f}")
-                            continue
-                        
-                        full_case_data = json.loads(metadata["full_case_data"])
-                        
-                        all_candidate_cases.append({
-                            "case_id": case_id,
-                            "collection_id": collection_id,  # Track which collection this came from
-                            "user_query": metadata["user_query"],
-                            "strategy_type": metadata.get("strategy_type", "unknown"),
-                            "full_case_data": full_case_data,
-                            "similarity_score": similarity_score,
-                            "is_most_efficient": metadata.get("is_most_efficient"),
-                            "had_plan_improvements": full_case_data.get("metadata", {}).get("had_plan_improvements", False),
-                            "had_tactical_improvements": full_case_data.get("metadata", {}).get("had_tactical_improvements", False)
-                        })
+                    if similarity_score < min_score:
+                        logger.debug(f"Skipping case {case_id} from collection '{collection_id}' due to low similarity score: {similarity_score:.2f}")
+                        continue
+                    
+                    full_case_data = json.loads(metadata["full_case_data"])
+                    
+                    all_candidate_cases.append({
+                        "case_id": case_id,
+                        "collection_id": collection_id,  # Track which collection this came from
+                        "user_query": metadata["user_query"],
+                        "strategy_type": metadata.get("strategy_type", "unknown"),
+                        "full_case_data": full_case_data,
+                        "similarity_score": similarity_score,
+                        "is_most_efficient": metadata.get("is_most_efficient"),
+                        "had_plan_improvements": full_case_data.get("metadata", {}).get("had_plan_improvements", False),
+                        "had_tactical_improvements": full_case_data.get("metadata", {}).get("had_tactical_improvements", False)
+                    })
             except Exception as e:
                 logger.error(f"Error querying collection '{collection_id}': {e}", exc_info=True)
         
@@ -1361,6 +1388,7 @@ class RAGRetriever:
 
         metadata = {
             "case_id": case_study["case_id"],
+            "user_uuid": case_study["metadata"].get("user_uuid") or "",  # --- MODIFICATION: Add user_uuid for multi-user support ---
             "user_query": case_study["intent"]["user_query"],
             "strategy_type": strategy_type,
             "timestamp": case_study["metadata"]["timestamp"],
@@ -1380,13 +1408,37 @@ class RAGRetriever:
         
         return metadata
 
-    async def process_turn_for_rag(self, turn_summary: dict, collection_id: Optional[int] = None):
+    async def process_turn_for_rag(self, turn_summary: dict, collection_id: Optional[int] = None,
+                                  rag_context: Optional['RAGAccessContext'] = None):
         """
         The main "consumer" method. It processes a single turn summary,
         determines its efficiency, and transactionally updates the vector store.
         If collection_id is not specified, uses the default collection (ID 0).
+        
+        Args:
+            turn_summary: The turn data to process.
+            collection_id: The collection this case belongs to.
+            rag_context: Optional RAGAccessContext for access control. If provided, validates access.
+        
+        --- MODIFICATION: Added rag_context parameter for multi-user support ---
         """
         try:
+            # --- MODIFICATION START: Extract user_uuid and validate access ---
+            # Extract user_uuid from turn_summary or rag_context
+            user_uuid = turn_summary.get("user_uuid")
+            
+            # Validate user has write access to collection
+            if rag_context:
+                if not rag_context.validate_collection_access(collection_id, write=True):
+                    logger.error(f"User {user_uuid} cannot write to collection {collection_id}. Skipping RAG processing.")
+                    return
+                user_uuid = rag_context.user_id  # Use context's user_id as authoritative
+            
+            if not user_uuid:
+                logger.warning("Skipping RAG processing: user_uuid not found in turn_summary or rag_context.")
+                return
+            # --- MODIFICATION END ---
+            
             # 1. Determine which collection to use first
             if collection_id is None:
                 collection_id = 0  # Default collection ID
@@ -1397,6 +1449,10 @@ class RAGRetriever:
             if not case_study or "successful_strategy" not in case_study:
                 logger.debug("Skipping RAG processing: Turn was not a successful strategy.")
                 return
+            
+            # --- MODIFICATION: Store user_uuid in case metadata ---
+            case_study["metadata"]["user_uuid"] = user_uuid
+            # --- MODIFICATION END ---
 
             # 3. Verify collection is active
 
@@ -1415,13 +1471,26 @@ class RAGRetriever:
             logger.info(f"Processing RAG case {new_case_id} for collection '{collection_id}', query: '{new_query[:50]}...' (Tokens: {new_tokens})")
 
             # 4. Query ChromaDB for existing "most efficient" in this collection
-            existing_cases = collection.get(
-                where={"$and": [
+            # --- MODIFICATION: Use rag_context to build query filter with user isolation ---
+            if rag_context:
+                where_filter = rag_context.build_query_filter(
+                    collection_id=collection_id,
+                    user_query={"$eq": new_query},
+                    is_most_efficient={"$eq": True}
+                )
+            else:
+                # Fallback: use user_uuid for filtering if no context provided
+                where_filter = {"$and": [
                     {"user_query": {"$eq": new_query}},
+                    {"user_uuid": {"$eq": user_uuid}},
                     {"is_most_efficient": {"$eq": True}}
-                ]},
+                ]}
+            
+            existing_cases = collection.get(
+                where=where_filter,
                 include=["metadatas"]
             )
+            # --- MODIFICATION END ---
 
             old_best_case_id = None
             old_best_case_tokens = float('inf')

@@ -17,6 +17,7 @@ from trusted_data_agent.agent.prompts import (
     SQL_CONSOLIDATION_PROMPT
 )
 from trusted_data_agent.agent.rag_retriever import RAGRetriever # Import RAGRetriever
+from trusted_data_agent.agent.rag_access_context import RAGAccessContext  # --- MODIFICATION: Import RAGAccessContext ---
 
 if TYPE_CHECKING:
     from trusted_data_agent.agent.executor import PlanExecutor
@@ -850,11 +851,19 @@ class Planner:
                 except Exception as e:
                     app_logger.warning(f"Failed to get profile collections for RAG filtering: {e}")
             
+            # --- MODIFICATION START: Create RAGAccessContext for user-aware retrieval ---
+            rag_context = RAGAccessContext(
+                user_id=self.executor.user_uuid,
+                retriever=self.rag_retriever
+            )
+            
             retrieved_cases = self.rag_retriever.retrieve_examples(
                 query=self.executor.original_user_input,
                 k=APP_CONFIG.RAG_NUM_EXAMPLES,
-                allowed_collection_ids=allowed_collection_ids
+                allowed_collection_ids=allowed_collection_ids,
+                rag_context=rag_context  # --- MODIFICATION: Pass context ---
             )
+            # --- MODIFICATION END ---
             if retrieved_cases:
                 if self.event_handler:
                     # Send the full case data of the first (most relevant) case
