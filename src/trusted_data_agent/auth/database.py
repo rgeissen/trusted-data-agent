@@ -66,6 +66,9 @@ def init_database():
         Base.metadata.create_all(bind=engine)
         logger.info("Authentication database initialized successfully")
         
+        # Create collections table (for marketplace)
+        _create_collections_table()
+        
         # Create default admin account if no users exist
         _create_default_admin_if_needed()
         
@@ -79,6 +82,70 @@ def init_database():
     except Exception as e:
         logger.error(f"Failed to initialize authentication database: {e}", exc_info=True)
         return False
+
+
+def _create_collections_table():
+    """
+    Create the collections table for the marketplace feature.
+    Safe to call multiple times (won't recreate if exists).
+    """
+    import sqlite3
+    
+    try:
+        conn = sqlite3.connect(DATABASE_URL.replace('sqlite:///', ''))
+        cursor = conn.cursor()
+        
+        # Create collections table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS collections (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name VARCHAR(255) NOT NULL,
+                collection_name VARCHAR(255) NOT NULL UNIQUE,
+                mcp_server_id VARCHAR(100),
+                enabled BOOLEAN NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL,
+                description TEXT,
+                owner_user_id VARCHAR(36) NOT NULL,
+                visibility VARCHAR(20) NOT NULL DEFAULT 'private',
+                is_marketplace_listed BOOLEAN NOT NULL DEFAULT 0,
+                subscriber_count INTEGER NOT NULL DEFAULT 0,
+                marketplace_category VARCHAR(50),
+                marketplace_tags TEXT,
+                marketplace_long_description TEXT,
+                FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
+        
+        # Create indexes for common queries
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_collections_owner ON collections(owner_user_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_collections_marketplace ON collections(is_marketplace_listed, visibility)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_collections_name ON collections(collection_name)")
+        
+        # Create collection_subscriptions table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS collection_subscriptions (
+                id VARCHAR(36) PRIMARY KEY,
+                user_id VARCHAR(36) NOT NULL,
+                source_collection_id INTEGER NOT NULL,
+                enabled BOOLEAN NOT NULL DEFAULT 1,
+                subscribed_at DATETIME NOT NULL,
+                last_synced_at DATETIME,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (source_collection_id) REFERENCES collections(id) ON DELETE CASCADE
+            )
+        """)
+        
+        cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_subscription_user_collection ON collection_subscriptions(user_id, source_collection_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_subscription_user ON collection_subscriptions(user_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_subscription_collection ON collection_subscriptions(source_collection_id)")
+        
+        conn.commit()
+        conn.close()
+        
+        logger.info("Collections and subscriptions tables initialized successfully")
+        
+    except Exception as e:
+        logger.error(f"Error creating collections table: {e}", exc_info=True)
 
 
 def _create_default_admin_if_needed():

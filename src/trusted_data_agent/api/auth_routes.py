@@ -50,6 +50,54 @@ logger = logging.getLogger("quart.app")
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/v1/auth')
 
 
+def _ensure_user_default_collection(user_id: str, mcp_servers: list):
+    """
+    Ensure a user has a Default Collection created in the database.
+    This is called during first login bootstrap.
+    """
+    from trusted_data_agent.core.collection_db import get_collection_db
+    from datetime import datetime, timezone
+    
+    logger.info(f"_ensure_user_default_collection called for user {user_id}")
+    
+    try:
+        collection_db = get_collection_db()
+        
+        # Check if user already has a Default Collection
+        user_collections = collection_db.get_user_owned_collections(user_id)
+        has_default = any('Default Collection' in c.get('name', '') for c in user_collections)
+        
+        if has_default:
+            logger.debug(f"User {user_id} already has a Default Collection")
+            return
+        
+        # Create Default Collection
+        mcp_server_id = mcp_servers[0].get('id') if mcp_servers else ''
+        
+        collection_data = {
+            'name': 'Default Collection',
+            'collection_name': f'default_collection_{user_id[:8]}',
+            'mcp_server_id': mcp_server_id,
+            'enabled': True,
+            'created_at': datetime.now(timezone.utc).isoformat(),
+            'description': 'Default collection for storing RAG cases',
+            'owner_user_id': user_id,
+            'visibility': 'private',
+            'is_marketplace_listed': False,
+            'subscriber_count': 0,
+            'marketplace_metadata': {}
+        }
+        
+        collection_id = collection_db.create_collection(collection_data)
+        if collection_id:
+            logger.info(f"Created Default Collection (ID: {collection_id}) for user {user_id}")
+        else:
+            logger.error(f"Failed to create Default Collection for user {user_id}")
+            
+    except Exception as e:
+        logger.error(f"Error creating Default Collection for user {user_id}: {e}", exc_info=True)
+
+
 def ensure_user_default_profile(user_id: str):
     """
     Ensure a user has MCP servers, LLM configurations, and a default profile.
@@ -109,6 +157,10 @@ def ensure_user_default_profile(user_id: str):
                 logger.error(f"Failed to create default profile for user {user_id}")
         else:
             logger.warning(f"User {user_id} bootstrapped with incomplete configuration (missing MCP or LLM)")
+        
+        # Create Default Collection for this user
+        logger.info(f"Creating Default Collection for user {user_id}")
+        _ensure_user_default_collection(user_id, mcp_servers)
         
     except Exception as e:
         logger.error(f"Failed to bootstrap configuration for user {user_id}: {e}", exc_info=True)

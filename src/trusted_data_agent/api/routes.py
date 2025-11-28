@@ -676,9 +676,10 @@ async def get_collection_rows(collection_id):
       light (bool): if true, omits full_case_data from response for lighter payload
     """
     try:
-        # Look up collection metadata by ID
-        collections_list = APP_STATE.get("rag_collections", [])
-        collection_meta = next((c for c in collections_list if c["id"] == collection_id), None)
+        # Look up collection metadata by ID from database (not stale APP_STATE)
+        from trusted_data_agent.core.collection_db import get_collection_db
+        collection_db = get_collection_db()
+        collection_meta = collection_db.get_collection_by_id(collection_id)
         
         if not collection_meta:
             return jsonify({"error": f"Collection with ID {collection_id} not found."}), 404

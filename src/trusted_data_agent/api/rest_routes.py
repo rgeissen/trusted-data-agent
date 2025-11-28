@@ -2407,9 +2407,16 @@ async def get_rag_collection_rows(collection_id: int):
         if not retriever:
             return jsonify({"error": "RAG retriever not initialized"}), 500
         
-        # Check if collection is loaded
+        # Check if collection is loaded in ChromaDB
         if collection_id not in retriever.collections:
-            return jsonify({"error": f"Collection {collection_id} is not loaded"}), 404
+            # Collection exists in database but not loaded in ChromaDB yet
+            # Return empty result instead of 404
+            return jsonify({
+                "rows": [],
+                "total": 0,
+                "collection_id": collection_id,
+                "message": "Collection is empty. Add some RAG cases to get started."
+            }), 200
         
         # Get the ChromaDB collection
         collection = retriever.collections[collection_id]
@@ -3530,24 +3537,20 @@ async def activate_profile(profile_id: str):
             test_results["mcp_server"] = {"status": "error", "message": f"MCP test failed: {str(mcp_error)}"}
             all_tests_passed = False
         
-        # Test RAG collections
+        # Test RAG collections (check database, not ChromaDB)
         try:
-            import chromadb
-            from trusted_data_agent.core.config import APP_CONFIG
-            from pathlib import Path
+            from trusted_data_agent.core.collection_db import get_collection_db
+            collection_db = get_collection_db()
+            user_collections = collection_db.get_all_collections(user_id=user_uuid)
             
-            rag_path = Path(APP_CONFIG.RAG_PERSIST_DIR).resolve()
-            chroma_client = chromadb.PersistentClient(path=str(rag_path))
-            collections = chroma_client.list_collections()
-            
-            if collections and len(collections) > 0:
-                test_results["rag_collections"] = {"status": "success", "message": f"RAG collections available ({len(collections)} collection(s))."}
+            if user_collections and len(user_collections) > 0:
+                test_results["rag_collections"] = {"status": "success", "message": f"RAG collections available ({len(user_collections)} collection(s))."}
             else:
-                test_results["rag_collections"] = {"status": "warning", "message": "No RAG collections found."}
+                test_results["rag_collections"] = {"status": "warning", "message": "No RAG collections configured. A Default Collection will be created on first use."}
                 # Warning doesn't fail activation
         except Exception as rag_error:
-            test_results["rag_collections"] = {"status": "error", "message": f"RAG test failed: {str(rag_error)}"}
-            all_tests_passed = False
+            test_results["rag_collections"] = {"status": "warning", "message": f"RAG test skipped: {str(rag_error)}"}
+            # Don't fail activation for RAG issues
         
         # If tests failed, return error
         if not all_tests_passed:
