@@ -13,6 +13,15 @@ from datetime import datetime, timezone
 
 logger = logging.getLogger("rag_template_manager")
 
+# Try to import jsonschema for validation
+try:
+    import jsonschema
+    from jsonschema import Draft7Validator
+    JSONSCHEMA_AVAILABLE = True
+except ImportError:
+    JSONSCHEMA_AVAILABLE = False
+    logger.warning("jsonschema not available - template validation will be limited")
+
 
 class RAGTemplateManager:
     """
@@ -55,6 +64,10 @@ class RAGTemplateManager:
         self.templates: Dict[str, Dict[str, Any]] = {}
         self.plugin_manifests: Dict[str, Dict[str, Any]] = {}  # Store plugin metadata
         
+        # Load JSON schemas for validation
+        self.schemas: Dict[str, Any] = {}
+        self._load_schemas()
+        
         # Ensure directories exist
         self.templates_dir.mkdir(parents=True, exist_ok=True)
         self.templates_subdir.mkdir(parents=True, exist_ok=True)
@@ -62,6 +75,38 @@ class RAGTemplateManager:
         # Load templates
         self._load_registry()
         self._load_templates()
+    
+    def _load_schemas(self):
+        """Load JSON schemas for template validation."""
+        schemas_dir = self.templates_dir / "schemas"
+        
+        if not JSONSCHEMA_AVAILABLE:
+            logger.warning("jsonschema library not installed - skipping schema loading")
+            return
+        
+        if not schemas_dir.exists():
+            logger.warning(f"Schemas directory not found: {schemas_dir}")
+            return
+        
+        # Load planner template schema
+        planner_schema_file = schemas_dir / "planner-schema.json"
+        if planner_schema_file.exists():
+            try:
+                with open(planner_schema_file, 'r', encoding='utf-8') as f:
+                    self.schemas['planner'] = json.load(f)
+                logger.info("Loaded planner template schema")
+            except Exception as e:
+                logger.error(f"Failed to load planner schema: {e}", exc_info=True)
+        
+        # Load knowledge template schema
+        knowledge_schema_file = schemas_dir / "knowledge-template-schema.json"
+        if knowledge_schema_file.exists():
+            try:
+                with open(knowledge_schema_file, 'r', encoding='utf-8') as f:
+                    self.schemas['knowledge'] = json.load(f)
+                logger.info("Loaded knowledge template schema")
+            except Exception as e:
+                logger.error(f"Failed to load knowledge schema: {e}", exc_info=True)
     
     def _load_registry(self):
         """Load the template registry from disk."""
@@ -148,7 +193,49 @@ class RAGTemplateManager:
                 logger.error(f"Failed to load template {template_id}: {e}", exc_info=True)
     
     def _validate_template(self, template_data: Dict[str, Any]) -> bool:
-        """Validate that a template has required fields based on its type."""
+        """
+        Validate that a template has required fields and matches JSON schema.
+        
+        Performs two levels of validation:
+        1. JSON schema validation (if jsonschema available and schema loaded)
+        2. Fallback basic field validation
+        """
+        template_type = template_data.get("template_type", "")
+        
+        # Determine which schema to use
+        schema_type = None
+        if template_type == "knowledge_repository" or "knowledge" in template_type:
+            schema_type = "knowledge"
+        else:
+            schema_type = "planner"
+        
+        # Try JSON schema validation first
+        if JSONSCHEMA_AVAILABLE and schema_type in self.schemas:
+            try:
+                schema = self.schemas[schema_type]
+                validator = Draft7Validator(schema)
+                errors = list(validator.iter_errors(template_data))
+                
+                if errors:
+                    logger.error(f"Template schema validation failed for {template_data.get('template_id', 'unknown')}:")
+                    for error in errors[:5]:  # Show first 5 errors
+                        path = ".".join(str(p) for p in error.path) if error.path else "root"
+                        logger.error(f"  - {path}: {error.message}")
+                    if len(errors) > 5:
+                        logger.error(f"  ... and {len(errors) - 5} more errors")
+                    return False
+                
+                logger.debug(f"Template passed JSON schema validation ({schema_type} schema)")
+                return True
+                
+            except Exception as e:
+                logger.warning(f"Schema validation failed with exception: {e}. Falling back to basic validation.")
+        
+        # Fallback to basic validation
+        return self._validate_template_basic(template_data, template_type)
+    
+    def _validate_template_basic(self, template_data: Dict[str, Any], template_type: str) -> bool:
+        """Basic field validation fallback when JSON schema validation unavailable."""
         # Common required fields for all templates
         common_required = [
             "template_id",
@@ -160,8 +247,6 @@ class RAGTemplateManager:
             if field not in template_data:
                 logger.error(f"Template missing required field: {field}")
                 return False
-        
-        template_type = template_data.get("template_type", "")
         
         # Knowledge repository templates have different required fields
         if template_type == "knowledge_repository" or "knowledge" in template_type:
