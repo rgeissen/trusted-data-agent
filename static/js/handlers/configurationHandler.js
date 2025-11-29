@@ -1618,14 +1618,17 @@ export async function reconnectAndLoad() {
                     const currentSessionId = state.currentSessionId;
                     const sessions = await API.loadAllSessions();
                     
+                    // Filter out archived sessions from the conversation view selector
+                    const activeSessions = sessions ? sessions.filter(s => !s.archived) : [];
+                    
                     // Populate session list UI
                     DOM.sessionList.innerHTML = '';
                     
-                    if (sessions && Array.isArray(sessions) && sessions.length > 0) {
+                    if (activeSessions && Array.isArray(activeSessions) && activeSessions.length > 0) {
                         // Populate session list dropdown/sidebar
-                        const sessionToLoad = sessions.find(s => s.id === currentSessionId) ? currentSessionId : sessions[0].id;
+                        const sessionToLoad = activeSessions.find(s => s.id === currentSessionId) ? currentSessionId : activeSessions[0].id;
                         
-                        sessions.forEach((session) => {
+                        activeSessions.forEach((session) => {
                             const isActive = session.id === sessionToLoad;
                             const sessionItem = UI.addSessionToList(session, isActive);
                             DOM.sessionList.appendChild(sessionItem);
@@ -1634,7 +1637,7 @@ export async function reconnectAndLoad() {
                         // Load the selected session
                         await handleLoadSession(sessionToLoad);
                     } else {
-                        // No sessions exist, create a new one
+                        // No active sessions exist, create a new one
                         await handleStartNewSession();
                     }
                     
