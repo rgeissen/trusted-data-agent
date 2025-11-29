@@ -1,6 +1,6 @@
 /**
  * Execution Dashboard Controller
- * Manages the three-tier execution intelligence dashboard
+ * Manages the three-tier execution insights dashboard
  */
 
 class ExecutionDashboard {

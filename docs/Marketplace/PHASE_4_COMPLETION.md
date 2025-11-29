@@ -2,7 +2,7 @@
 
 ## Overview
 
-Phase 4 completes the knowledge marketplace feature by implementing a fully functional user interface that integrates with the backend APIs from Phase 3. Users can now browse, search, subscribe, fork, publish, and rate RAG collections through an intuitive web interface.
+Phase 4 completes the intelligence marketplace feature by implementing a fully functional user interface that integrates with the backend APIs from Phase 3. Users can now browse, search, subscribe, fork, publish, and rate RAG collections through an intuitive web interface.
 
 ## Implementation Summary
 

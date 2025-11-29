@@ -1,6 +1,6 @@
 /**
  * Marketplace Handler
- * Manages UI interactions for the knowledge marketplace
+ * Manages UI interactions for the intelligence marketplace
  */
 
 // Import utility functions

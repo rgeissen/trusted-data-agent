@@ -1248,7 +1248,7 @@ def initialize_default_panes(session):
         },
         {
             'pane_id': 'credentials',
-            'pane_name': 'Credentials',
+            'pane_name': 'Setup',
             'description': 'Configure LLM and MCP credentials',
             'display_order': 5,
             'visible_to_user': True,

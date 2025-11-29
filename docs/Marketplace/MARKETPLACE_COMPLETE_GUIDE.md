@@ -1,8 +1,8 @@
-# Knowledge Marketplace - Complete Feature Documentation
+# Intelligence Marketplace - Complete Feature Documentation
 
 ## Executive Summary
 
-The Knowledge Marketplace is a comprehensive feature enabling users to share, discover, and leverage community-curated RAG (Retrieval-Augmented Generation) collections. This marketplace transforms isolated knowledge bases into a collaborative ecosystem where users benefit from proven execution patterns and domain expertise.
+The Intelligence Marketplace is a comprehensive feature enabling users to share, discover, and leverage community-curated RAG (Retrieval-Augmented Generation) collections. This marketplace transforms isolated knowledge bases into a collaborative ecosystem where users benefit from proven execution patterns and domain expertise.
 
 **Implementation Date:** 2024  
 **Total Implementation:** 4 Phases  
@@ -797,7 +797,7 @@ All endpoints return standardized error format:
 
 ## Conclusion
 
-The Knowledge Marketplace transforms the Trusted Data Agent from a single-user tool into a collaborative platform. By enabling users to share, discover, and reuse proven RAG collections, the marketplace:
+The Intelligence Marketplace transforms the Trusted Data Agent from a single-user tool into a collaborative platform. By enabling users to share, discover, and reuse proven RAG collections, the marketplace:
 
 - **Reduces token costs** through pattern reuse
 - **Improves quality** via community ratings

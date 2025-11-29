@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**Feature:** Knowledge Marketplace for RAG Collections  
+**Feature:** Intelligence Marketplace for RAG Collections  
 **Status:** ✅ **COMPLETE** (Phases 1-4)  
 **Implementation Period:** 2024  
 **Total Development Time:** ~40 hours  

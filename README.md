@@ -490,7 +490,7 @@ The application will:
 2. **Login** with default credentials: `admin` / `admin`
 3. **⚠️ IMPORTANT:** Immediately change the admin password in the **Administration** panel
 4. **Bootstrap Applied** - On first login, your account receives the template configuration from `tda_config.json`
-5. **Configure Credentials** - Complete your setup in the **Credentials** panel:
+5. **Configure Setup** - Complete your setup in the **Setup** panel:
    - Add API keys for LLM providers
    - Configure MCP server connection details (host, port, path)
    - Enable/disable profiles as needed
@@ -567,7 +567,7 @@ The Trusted Data Agent uses a modern, modular configuration system that separate
 
 1. **Login:** Navigate to `http://localhost:5000` and login with your credentials.
 
-2. **Navigate to Credentials:** Click on the **Credentials** panel in the left sidebar (person icon).
+2. **Navigate to Setup:** Click on the **Setup** panel in the left sidebar (person icon).
 
 3. **MCP Servers Tab:** Select the "MCP Servers" tab and configure one or more MCP Server connections:
    - **Name:** A friendly identifier for this server (e.g., "Production Database", "Dev Environment")
@@ -640,7 +640,7 @@ The application provides a multi-panel interface accessible through the left sid
 2. **Executions** - Real-time dashboard for monitoring all agent tasks
 3. **Intelligence** - Manage knowledge base collections and Planner Repository Constructors
 4. **Marketplace** - Browse and install Planner Repository Constructors from the community
-5. **Credentials** - Configure LLM providers, MCP Servers, and profiles
+5. **Setup** - Configure LLM providers, MCP Servers, and profiles
 6. **Administration** - User management and system settings (admin only)
 
 #### The Conversation Panel
@@ -720,9 +720,9 @@ The **Marketplace** panel provides access to community-contributed Planner Repos
 
 Templates extend the agent's capabilities with specialized knowledge domains, industry-specific workflows, and pre-configured analysis patterns.
 
-#### The Credentials Panel
+#### The Setup Panel
 
-The **Credentials** panel is where you configure all external connections and create profiles. This is typically the first panel you'll use when setting up the application:
+The **Setup** panel is where you configure all external connections and create profiles. This is typically the first panel you'll use when setting up the application:
 
 * **MCP Servers Tab:**
   - Configure Model Context Protocol server connections
@@ -775,12 +775,12 @@ The **Administration** panel provides system-level management capabilities (visi
 
 * **Sidebar Toggle:** Click the hamburger menu (☰) or use keyboard shortcut to expand/collapse the navigation sidebar
 * **Panel Switching:** Click any panel name in the sidebar to instantly switch views
-* **Multi-Panel Workflow:** Open the Credentials panel to configure connections, then switch to Conversations to start chatting
+* **Multi-Panel Workflow:** Open the Setup panel to configure connections, then switch to Conversations to start chatting
 * **Monitoring While Working:** Keep the Executions panel open in a separate browser tab to monitor long-running tasks
 * **Keyboard Shortcuts:** Use `Ctrl/Cmd + Number` to jump directly to panels (where supported)
 
 **Example Workflow:**
-1. **Credentials** → Configure LLM providers and MCP servers → Create profiles
+1. **Setup** → Configure LLM providers and MCP servers → Create profiles
 2. **Marketplace** → Browse and install Planner Repository Constructors for your domain
 3. **Intelligence** → Populate knowledge collections with your knowledge base
 4. **Conversations** → Start chatting with the agent using your enriched context
@@ -953,7 +953,7 @@ The REST API uses **Bearer token authentication** for all protected endpoints. Y
 
 **Creating Access Tokens:**
 
-1. Navigate to **Credentials** → **Advanced Settings**
+1. Navigate to **Setup** → **Advanced Settings**
 2. Click **"Create Token"**
 3. Provide a descriptive name (e.g., "Production Server", "CI/CD Pipeline")
 4. Set expiration (default: 90 days, or never expires)
@@ -1036,7 +1036,7 @@ Once you have a conversation that successfully executes your desired workflow, y
 With your workflow defined, you can transition to the REST API for operational use cases. This is done by sending your prompts to the appropriate API endpoint using an access token for authentication.
 
 **Create an Access Token:**
-1. Navigate to **Credentials** → **Advanced Settings** → **Access Token Management**
+1. Navigate to **Setup** → **Advanced Settings** → **Access Token Management**
 2. Click **"Create Token"** and provide a name (e.g., "Production Automation")
 3. Copy the token immediately (shown only once!)
 4. Store securely in your environment or secrets manager

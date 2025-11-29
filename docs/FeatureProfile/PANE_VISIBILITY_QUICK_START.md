@@ -12,7 +12,7 @@
 | **Executions** | ❌ No | ✅ Yes | ✅ Yes |
 | **Intelligence** | ❌ No | ✅ Yes | ✅ Yes |
 | **Marketplace** | ✅ Yes | ✅ Yes | ✅ Yes |
-| **Credentials** | ✅ Yes | ✅ Yes | ✅ Yes |
+| **Setup** | ✅ Yes | ✅ Yes | ✅ Yes |
 | **Administration** | ❌ No | ❌ No | ✅ Yes |
 
 ## Quick Start
