@@ -2477,7 +2477,7 @@ async function fetchAndRenderCollectionRows({ collectionId, query = '', refresh 
         }
         // Get authentication token
         const token = localStorage.getItem('tda_auth_token');
-        const res = await fetch(`/rag/collections/${collectionId}/rows?${params.toString()}`, {
+        const res = await fetch(`/api/v1/rag/collections/${collectionId}/rows?${params.toString()}`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }

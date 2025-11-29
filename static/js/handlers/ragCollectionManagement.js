@@ -2821,28 +2821,48 @@ async function renderLlmFieldsForTemplate(templateId) {
         const inputMethod = autoGenConfig.input_method || 'mcp_context';
         const requiresMcpContext = autoGenConfig.requires_mcp_context !== false;
         
-        // Hide/show context generation step based on template requirements
-        const generateContextSection = document.querySelector('[id*="rag-collection-generate-context"]')?.closest('.pt-3.border-t');
-        if (generateContextSection) {
+        // Hide/show Step 1 (Generate Context) based on template requirements
+        const step1Section = document.getElementById('rag-collection-step1-section');
+        if (step1Section) {
             if (requiresMcpContext) {
-                generateContextSection.style.display = '';
+                step1Section.classList.remove('hidden');
             } else {
-                generateContextSection.style.display = 'none';
+                step1Section.classList.add('hidden');
             }
         }
         
-        // For templates without MCP context, show Step 2 immediately (no Step 1 needed)
+        // For templates without MCP context, show Step 2 immediately and renumber it as Step 1
         const step2Section = document.getElementById('rag-collection-step2-section');
-        if (!requiresMcpContext && step2Section) {
-            step2Section.classList.remove('hidden');
-            // Update step number from 2 to 1
-            const stepBadge = step2Section.querySelector('.bg-purple-600');
-            if (stepBadge) {
-                stepBadge.textContent = '1';
-            }
-            const stepText = step2Section.querySelector('.text-purple-300');
-            if (stepText) {
-                stepText.textContent = 'Generate question/SQL pairs from uploaded documents';
+        if (step2Section) {
+            if (!requiresMcpContext) {
+                step2Section.classList.remove('hidden');
+                // Update step number from 2 to 1
+                const stepBadge = step2Section.querySelector('.bg-purple-600');
+                if (stepBadge) {
+                    stepBadge.textContent = '1';
+                }
+                const stepTitle = step2Section.querySelector('h4');
+                if (stepTitle) {
+                    stepTitle.textContent = 'Generate Questions';
+                }
+                const stepDescription = step2Section.querySelector('.text-xs.text-gray-400');
+                if (stepDescription) {
+                    stepDescription.textContent = 'Create question/SQL pairs from documents';
+                }
+            } else {
+                // Reset to Step 2 for MCP-based templates
+                const stepBadge = step2Section.querySelector('.bg-purple-600');
+                if (stepBadge) {
+                    stepBadge.textContent = '2';
+                }
+                const stepTitle = step2Section.querySelector('h4');
+                if (stepTitle) {
+                    stepTitle.textContent = 'Generate Questions';
+                }
+                const stepDescription = step2Section.querySelector('.text-xs.text-gray-400');
+                if (stepDescription) {
+                    stepDescription.textContent = 'Create question/SQL pairs';
+                }
             }
         }
         
