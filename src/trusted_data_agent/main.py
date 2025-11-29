@@ -202,12 +202,14 @@ def create_app():
     from trusted_data_agent.api.auth_routes import auth_bp
     from trusted_data_agent.api.admin_routes import admin_api_bp
     from trusted_data_agent.api.system_prompts_routes import system_prompts_bp
+    from trusted_data_agent.api.knowledge_routes import knowledge_api_bp
 
     app.register_blueprint(api_bp)
     app.register_blueprint(rest_api_bp, url_prefix="/api")
     app.register_blueprint(auth_bp)  # Auth routes are already prefixed with /api/v1/auth
     app.register_blueprint(admin_api_bp, url_prefix="/api")  # Phase 4 admin & credential management
     app.register_blueprint(system_prompts_bp)  # System prompts management
+    app.register_blueprint(knowledge_api_bp, url_prefix="/api")  # Knowledge repository endpoints
 
     @app.after_request
     async def add_security_headers(response):

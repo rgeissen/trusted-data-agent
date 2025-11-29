@@ -150,8 +150,9 @@ class CollectionDatabase:
                 name, collection_name, mcp_server_id, enabled, created_at,
                 description, owner_user_id, visibility, is_marketplace_listed,
                 subscriber_count, marketplace_category, marketplace_tags,
-                marketplace_long_description
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                marketplace_long_description, repository_type, chunking_strategy,
+                chunk_size, chunk_overlap
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             collection_data['name'],
             collection_data['collection_name'],
@@ -165,7 +166,11 @@ class CollectionDatabase:
             collection_data.get('subscriber_count', 0),
             marketplace_metadata.get('category', ''),
             json.dumps(marketplace_tags) if marketplace_tags else '',
-            marketplace_metadata.get('long_description', '')
+            marketplace_metadata.get('long_description', ''),
+            collection_data.get('repository_type', 'planner'),
+            collection_data.get('chunking_strategy', 'none'),
+            collection_data.get('chunk_size', 1000),
+            collection_data.get('chunk_overlap', 200)
         ))
         
         collection_id = cursor.lastrowid

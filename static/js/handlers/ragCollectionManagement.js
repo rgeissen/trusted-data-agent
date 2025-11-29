@@ -3538,6 +3538,88 @@ if (document.readyState === 'loading') {
     initializeTemplateSystem();
 }
 
+// ========================================
+// Repository Tab Switching
+// ========================================
+
+/**
+ * Initialize repository tabs for Planner Repositories and Knowledge Repositories
+ */
+function initializeRepositoryTabs() {
+    const plannerRepoTab = document.getElementById('planner-repo-tab');
+    const knowledgeRepoTab = document.getElementById('knowledge-repo-tab');
+    const plannerRepoContent = document.getElementById('planner-repo-content');
+    const knowledgeRepoContent = document.getElementById('knowledge-repo-content');
+    
+    if (!plannerRepoTab || !knowledgeRepoTab || !plannerRepoContent || !knowledgeRepoContent) {
+        console.warn('[Repository Tabs] Tab elements not found');
+        return;
+    }
+    
+    // Tab click handler
+    const switchTab = (activeTab, activeContent, inactiveTab, inactiveContent) => {
+        // Update tab styling
+        activeTab.classList.remove('border-transparent', 'text-gray-400');
+        activeTab.classList.add('border-[#F15F22]', 'text-[#F15F22]');
+        
+        inactiveTab.classList.remove('border-[#F15F22]', 'text-[#F15F22]');
+        inactiveTab.classList.add('border-transparent', 'text-gray-400');
+        
+        // Update content visibility
+        activeContent.classList.remove('hidden');
+        inactiveContent.classList.add('hidden');
+    };
+    
+    // Planner Repositories tab click
+    plannerRepoTab.addEventListener('click', () => {
+        switchTab(plannerRepoTab, plannerRepoContent, knowledgeRepoTab, knowledgeRepoContent);
+    });
+    
+    // Knowledge Repositories tab click
+    knowledgeRepoTab.addEventListener('click', () => {
+        switchTab(knowledgeRepoTab, knowledgeRepoContent, plannerRepoTab, plannerRepoContent);
+        
+        // Load Knowledge repositories when tab is clicked
+        if (window.knowledgeRepositoryHandler) {
+            window.knowledgeRepositoryHandler.loadKnowledgeRepositories();
+        }
+    });
+    
+    console.log('[Repository Tabs] Initialized successfully');
+}
+
+/**
+ * Initialize Knowledge repository handlers
+ */
+async function initializeKnowledgeRepositoryHandlers() {
+    try {
+        const { initializeKnowledgeRepositoryHandlers, loadKnowledgeRepositories } = await import('./knowledgeRepositoryHandler.js');
+        
+        // Initialize handlers
+        initializeKnowledgeRepositoryHandlers();
+        
+        // Store functions globally for tab switching
+        window.knowledgeRepositoryHandler = {
+            loadKnowledgeRepositories
+        };
+        
+        console.log('[Knowledge] Knowledge repository handlers loaded');
+    } catch (error) {
+        console.error('[Knowledge] Failed to load Knowledge repository handlers:', error);
+    }
+}
+
+// Initialize repository tabs and Knowledge handlers on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeRepositoryTabs();
+        initializeKnowledgeRepositoryHandlers();
+    });
+} else {
+    initializeRepositoryTabs();
+    initializeKnowledgeRepositoryHandlers();
+}
+
 // Export functions for use in other modules
 window.ragCollectionManagement = {
     toggleRagCollection,

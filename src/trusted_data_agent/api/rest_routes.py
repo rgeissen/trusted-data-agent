@@ -2175,30 +2175,40 @@ async def create_rag_collection():
         if not data.get("name"):
             return jsonify({"status": "error", "message": "Collection name is required"}), 400
         
-        # ENFORCEMENT: mcp_server_id is now required for all new collections
-        if not data.get("mcp_server_id"):
-            return jsonify({"status": "error", "message": "mcp_server_id is required. Collections must be associated with an MCP server."}), 400
-        
         name = data["name"]
-        mcp_server_id = data["mcp_server_id"]
+        repository_type = data.get("repository_type", "planner")
+        
+        # ENFORCEMENT: mcp_server_id is required for planner repositories only
+        mcp_server_id = data.get("mcp_server_id")
+        if repository_type == "planner" and not mcp_server_id:
+            return jsonify({"status": "error", "message": "mcp_server_id is required for planner repositories. Collections must be associated with an MCP server."}), 400
+        
         description = data.get("description", "")
+        chunking_strategy = data.get("chunking_strategy", "none")
+        chunk_size = data.get("chunk_size", 1000)
+        chunk_overlap = data.get("chunk_overlap", 200)
         
         # Add collection via RAG retriever
         retriever = APP_STATE.get("rag_retriever_instance")
         if not retriever:
             return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
         
-        # --- MARKETPLACE PHASE 2: Pass owner_user_id ---
-        collection_id = retriever.add_collection(name, description, mcp_server_id, owner_user_id=user_uuid)
+        # --- MARKETPLACE PHASE 2: Pass owner_user_id and repository configuration ---
+        collection_id = retriever.add_collection(
+            name, description, mcp_server_id, owner_user_id=user_uuid,
+            repository_type=repository_type, chunking_strategy=chunking_strategy,
+            chunk_size=chunk_size, chunk_overlap=chunk_overlap
+        )
         # --- MARKETPLACE PHASE 2 END ---
         
         if collection_id is not None:
-            app_logger.info(f"Created RAG collection with ID: {collection_id}, MCP server: {mcp_server_id}")
+            app_logger.info(f"Created {repository_type} RAG collection with ID: {collection_id}, MCP server: {mcp_server_id}")
             return jsonify({
                 "status": "success", 
                 "message": "Collection created successfully", 
                 "collection_id": collection_id,
-                "mcp_server_id": mcp_server_id
+                "mcp_server_id": mcp_server_id,
+                "repository_type": repository_type
             }), 201
         else:
             return jsonify({"status": "error", "message": "Failed to create collection"}), 500

@@ -116,6 +116,28 @@ The Trusted Data Agent transcends typical data chat applications by delivering a
 
 * **REST API Population**: Programmatically populate RAG collections with examples via the comprehensive REST API for CI/CD integration and automated knowledge base updates.
 
+### Two-Tier Repository Architecture
+
+The application supports two distinct types of repositories, each serving a different purpose in the AI agent ecosystem:
+
+#### Planner Repositories
+**Purpose:** Store execution strategies and planning patterns
+- Capture successful agent interactions as few-shot learning examples
+- Contain SQL query patterns, API workflows, and proven execution traces
+- Retrieved by the RAG system to guide future planning decisions
+- Automatically populated from agent execution history or via Planner Repository Constructors
+- Enable the agent to learn from past successes and improve over time
+
+#### Knowledge Repositories
+**Purpose:** Provide reference documentation and domain knowledge
+- Store general documents, technical manuals, and business context
+- Accessible to the planner via RAG during execution
+- Enable the agent to query relevant background information when making decisions
+- Support for PDF, TXT, DOCX, and other document formats
+- *Note: Planner integration coming soon*
+
+This separation ensures that execution patterns (how to accomplish tasks) remain distinct from domain knowledge (what the agent needs to know), while both can be leveraged through the unified RAG system.
+
 ## The Heart of the Application - The Engine & its Fusion Optimizer
 
 The Trusted Data Agent is engineered to be far more than a simple LLM wrapper. Its revolutionary core is the **Fusion Optimizer**, a multi-layered engine designed for resilient, intelligent, and efficient task execution in complex enterprise environments. It transforms the agent from a mere tool into a reliable analytical partner.
@@ -659,19 +681,24 @@ This panel is especially valuable for monitoring REST API-triggered workloads an
 
 #### The Intelligence Panel
 
-The **Intelligence** panel is your control center for managing the Retrieval-Augmented Generation (RAG) knowledge base:
+The **Intelligence** panel is your control center for managing both types of repositories in the system:
 
-* **Collections Management:**
-  - View all RAG collections with document counts and metadata
-  - Create, update, or delete collections
-  - Inspect individual documents and their embeddings
+* **Planner Repositories:**
+  - Execution strategies and planning patterns from successful agent interactions
+  - View, create, update, or delete collections
+  - Inspect individual execution traces and their embeddings
   - Bulk import/export collection data
   
-* **Template Management:**
-  - Browse installed Planner Repository Constructors
-  - Configure template parameters
-  - View template usage statistics
-  - Enable/disable specific templates
+* **Knowledge Repositories:**
+  - General documents and reference materials (coming soon)
+  - Upload PDF, TXT, DOCX files for RAG-based retrieval
+  - Planner integration in development
+  
+* **Planner Repository Constructors:**
+  - Browse installed constructors (templates for building Planner Repositories)
+  - Configure constructor parameters
+  - View usage statistics
+  - Enable/disable specific constructors
 
 * **Content Operations:**
   - Generate contextual questions for documents

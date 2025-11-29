@@ -528,23 +528,29 @@ class RAGRetriever:
                 pass
             return None
     
-    def add_collection(self, name: str, description: str = "", mcp_server_id: Optional[str] = None, owner_user_id: Optional[str] = None) -> Optional[int]:
+    def add_collection(self, name: str, description: str = "", mcp_server_id: Optional[str] = None, owner_user_id: Optional[str] = None, 
+                      repository_type: str = "planner", chunking_strategy: str = "none", chunk_size: int = 1000, chunk_overlap: int = 200) -> Optional[int]:
         """
         Adds a new RAG collection and enables it.
         
         Args:
             name: Display name for the collection
             description: Collection description
-            mcp_server_id: Associated MCP server ID (REQUIRED for non-default collections)
+            mcp_server_id: Associated MCP server ID (REQUIRED for planner repositories, optional for knowledge)
+            owner_user_id: User ID of the collection owner
+            repository_type: Type of repository - "planner" or "knowledge" (default: "planner")
+            chunking_strategy: Chunking strategy for knowledge repositories (default: "none")
+            chunk_size: Size of chunks in characters (default: 1000)
+            chunk_overlap: Overlap between chunks (default: 200)
             
         Returns:
             The numeric collection ID if successful, None otherwise
         """
         config_manager = get_config_manager()
         
-        # Enforcement: mcp_server_id is required for new collections
-        if mcp_server_id is None:
-            logger.error("Cannot add collection: mcp_server_id is required")
+        # Enforcement: mcp_server_id is required for planner collections only
+        if repository_type == "planner" and mcp_server_id is None:
+            logger.error("Cannot add planner collection: mcp_server_id is required")
             return None
         
         # Generate unique numeric ID
@@ -566,7 +572,11 @@ class RAGRetriever:
             "visibility": "private",
             "is_marketplace_listed": False,
             "subscriber_count": 0,
-            "marketplace_metadata": {}
+            "marketplace_metadata": {},
+            "repository_type": repository_type,
+            "chunking_strategy": chunking_strategy,
+            "chunk_size": chunk_size,
+            "chunk_overlap": chunk_overlap
         }
         
         # Save to database

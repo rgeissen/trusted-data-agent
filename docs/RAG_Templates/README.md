@@ -1,8 +1,10 @@
-# RAG Template System - User Guide
+# Planner Repository Constructors - User Guide
 
 ## Overview
 
-The RAG Template System enables automatic generation of RAG case studies through a modular plugin architecture. Templates define reusable patterns for specific use cases (SQL queries, API calls, workflows) and support both manual and LLM-assisted population.
+The **Planner Repository Constructor** system enables automatic generation of execution strategies and planning patterns through a modular plugin architecture. These constructors build **Planner Repositories** - specialized RAG collections that store proven execution traces, SQL query patterns, and successful agent interactions. Constructors define reusable patterns for specific use cases (SQL queries, API calls, workflows) and support both manual and LLM-assisted population.
+
+**Note:** Planner Repositories are distinct from Knowledge Repositories (general document stores). Planner Repositories contain execution patterns that guide the agent's decision-making, while Knowledge Repositories (coming soon) will provide reference documentation accessible during planning.
 
 ## Key Features
 

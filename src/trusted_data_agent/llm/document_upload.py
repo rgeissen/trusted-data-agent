@@ -275,7 +275,7 @@ class DocumentUploadHandler:
                     app_logger.warning("python-docx not installed, cannot extract Word text")
                     return {'content': "[Word text extraction not available - python-docx not installed]"}
             
-            elif file_extension.lower() == '.txt':
+            elif file_extension.lower() in ['.txt', '.md', '.markdown']:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     text = f.read()
                 return {'content': text}

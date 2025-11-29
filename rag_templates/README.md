@@ -1,6 +1,10 @@
-# RAG Template Library
+# Planner Repository Constructor Library
 
-This directory contains the template library for RAG case generation.
+This directory contains the constructor library for building **Planner Repositories** - specialized RAG collections that store execution strategies and planning patterns. These constructors enable automatic generation of proven execution traces that guide the agent's decision-making process.
+
+**Repository Types:**
+- **Planner Repositories** (built by these constructors): Execution patterns and strategies
+- **Knowledge Repositories** (separate system): General documents and reference materials
 
 ## Structure
 
