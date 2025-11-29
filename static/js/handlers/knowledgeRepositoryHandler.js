@@ -3,8 +3,7 @@
  * Manages Knowledge repository creation, document upload, and metadata management
  */
 
-import { domElements, state } from '../state.js';
-import { showStatusMessage } from '../uiUtils.js';
+import { state } from '../state.js';
 
 /**
  * Initialize Knowledge repository handlers
@@ -49,14 +48,35 @@ export function initializeKnowledgeRepositoryHandlers() {
         modalForm.addEventListener('submit', handleKnowledgeRepositorySubmit);
     }
     
-    // Chunking strategy change handler
+    // Chunking strategy change handler with auto-preview
     const chunkingSelect = document.getElementById('knowledge-repo-chunking');
     if (chunkingSelect) {
-        chunkingSelect.addEventListener('change', handleChunkingStrategyChange);
+        chunkingSelect.addEventListener('change', (e) => {
+            handleChunkingStrategyChange(e);
+            triggerAutoPreview();
+        });
+    }
+    
+    // Chunk parameter change handlers with auto-preview
+    const chunkSizeInput = document.getElementById('knowledge-repo-chunk-size');
+    const chunkOverlapInput = document.getElementById('knowledge-repo-chunk-overlap');
+    
+    if (chunkSizeInput) {
+        chunkSizeInput.addEventListener('change', triggerAutoPreview);
+    }
+    
+    if (chunkOverlapInput) {
+        chunkOverlapInput.addEventListener('change', triggerAutoPreview);
     }
     
     // File upload handlers
     initializeFileUpload();
+    
+    // Preview button handler
+    const previewBtn = document.getElementById('knowledge-repo-preview-btn');
+    if (previewBtn) {
+        previewBtn.addEventListener('click', handlePreviewChunking);
+    }
     
     console.log('[Knowledge] Knowledge repository handlers initialized');
 }
@@ -91,6 +111,14 @@ function openKnowledgeRepositoryModal() {
     // Hide chunk params initially
     const chunkParams = document.getElementById('knowledge-repo-chunk-params');
     if (chunkParams) chunkParams.classList.add('hidden');
+    
+    // Reset preview state
+    const previewEmpty = document.getElementById('knowledge-repo-preview-empty');
+    const previewResults = document.getElementById('knowledge-repo-preview-results');
+    const preview = document.getElementById('knowledge-repo-preview');
+    if (previewEmpty) previewEmpty.classList.remove('hidden');
+    if (previewResults) previewResults.classList.add('hidden');
+    if (preview) preview.classList.add('hidden');
     
     // Show modal with animation
     modalOverlay.classList.remove('hidden');
@@ -183,15 +211,17 @@ function handleFiles(files) {
     const validFiles = filesArray.filter(file => {
         const ext = file.name.split('.').pop().toLowerCase();
         const validExts = ['pdf', 'txt', 'docx', 'md'];
-        const maxSize = 10 * 1024 * 1024; // 10MB
+        const maxSize = 50 * 1024 * 1024; // 50MB
         
         if (!validExts.includes(ext)) {
-            showStatusMessage(`File ${file.name} has invalid format. Supported: PDF, TXT, DOCX, MD`, 'error');
+            console.error(`[Knowledge] File ${file.name} has invalid format. Supported: PDF, TXT, DOCX, MD`);
+            alert(`File ${file.name} has invalid format. Supported: PDF, TXT, DOCX, MD`);
             return false;
         }
         
         if (file.size > maxSize) {
-            showStatusMessage(`File ${file.name} exceeds 10MB limit`, 'error');
+            console.error(`[Knowledge] File ${file.name} exceeds 50MB limit`);
+            alert(`File ${file.name} exceeds 50MB limit`);
             return false;
         }
         
@@ -206,9 +236,14 @@ function handleFiles(files) {
     // Update UI
     displayFileList();
     
-    // Show metadata section
+    // Show metadata and preview sections
     const metadata = document.getElementById('knowledge-repo-metadata');
+    const preview = document.getElementById('knowledge-repo-preview');
     if (metadata) metadata.classList.remove('hidden');
+    if (preview) preview.classList.remove('hidden');
+    
+    // Auto-generate preview
+    setTimeout(() => triggerAutoPreview(), 100);
 }
 
 /**
@@ -280,11 +315,22 @@ async function handleKnowledgeRepositorySubmit(e) {
     const progressBar = document.getElementById('knowledge-repo-progress-bar');
     
     try {
-        // Get form data
-        const name = document.getElementById('knowledge-repo-name').value.trim();
-        const description = document.getElementById('knowledge-repo-description').value.trim();
-        const chunkingStrategy = document.getElementById('knowledge-repo-chunking').value;
-        const embeddingModel = document.getElementById('knowledge-repo-embedding').value;
+        // Get form values
+        const nameInput = document.getElementById('knowledge-repo-name');
+        const descInput = document.getElementById('knowledge-repo-description');
+        const chunkingInput = document.getElementById('knowledge-repo-chunking');
+        const embeddingInput = document.getElementById('knowledge-repo-embedding');
+        
+        if (!nameInput) {
+            console.error('[Knowledge] Name input field not found');
+            alert('Form error: Name field not found');
+            return;
+        }
+        
+        const name = nameInput.value.trim();
+        const description = descInput?.value.trim() || '';
+        const chunkingStrategy = chunkingInput?.value || 'semantic';
+        const embeddingModel = embeddingInput?.value || 'default';
         
         let chunkSize = 1000;
         let chunkOverlap = 200;
@@ -301,7 +347,8 @@ async function handleKnowledgeRepositorySubmit(e) {
         
         // Validate
         if (!name) {
-            showStatusMessage('Repository name is required', 'error');
+            console.error('[Knowledge] Repository name is required');
+            alert('Repository name is required');
             return;
         }
         
@@ -317,20 +364,20 @@ async function handleKnowledgeRepositorySubmit(e) {
         }
         
         // Step 1: Create collection
-        const createResponse = await fetch('/api/v1/rag/collection', {
+        const token = localStorage.getItem('tda_auth_token');
+        const createResponse = await fetch('/api/v1/rag/collections', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${state.token}`
+                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
-                collection_name: name,
+                name: name,
                 description: description || 'Knowledge repository',
                 repository_type: 'knowledge',
                 chunking_strategy: chunkingStrategy,
                 chunk_size: chunkSize,
-                chunk_overlap: chunkOverlap,
-                embedding_model: embeddingModel
+                chunk_overlap: chunkOverlap
             })
         });
         
@@ -369,7 +416,7 @@ async function handleKnowledgeRepositorySubmit(e) {
                 const uploadResponse = await fetch(`/api/v1/knowledge/repositories/${collectionId}/documents`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${state.token}`
+                        'Authorization': `Bearer ${token}`
                     },
                     body: formData
                 });
@@ -377,7 +424,7 @@ async function handleKnowledgeRepositorySubmit(e) {
                 if (!uploadResponse.ok) {
                     const error = await uploadResponse.json();
                     console.warn(`Failed to upload ${file.name}:`, error.message);
-                    showStatusMessage(`Warning: Failed to upload ${file.name}`, 'warning');
+                    console.warn(`[Knowledge] Warning: Failed to upload ${file.name}`);
                 } else {
                     console.log(`Successfully uploaded ${file.name}`);
                 }
@@ -392,7 +439,8 @@ async function handleKnowledgeRepositorySubmit(e) {
         
         // Success
         if (progressText) progressText.textContent = 'Repository created successfully!';
-        showStatusMessage(`Knowledge repository "${name}" created successfully!`, 'success');
+        console.log(`[Knowledge] Repository "${name}" created successfully!`);
+        alert(`Knowledge repository "${name}" created successfully!`);
         
         // Wait a moment then close modal
         setTimeout(() => {
@@ -407,7 +455,7 @@ async function handleKnowledgeRepositorySubmit(e) {
         
     } catch (error) {
         console.error('[Knowledge] Error creating repository:', error);
-        showStatusMessage(error.message || 'Failed to create Knowledge repository', 'error');
+        alert(error.message || 'Failed to create Knowledge repository');
         
         if (submitBtn) {
             submitBtn.disabled = false;
@@ -428,9 +476,10 @@ export async function loadKnowledgeRepositories() {
     if (!container) return;
     
     try {
+        const token = localStorage.getItem('tda_auth_token');
         const response = await fetch('/api/v1/rag/collections', {
             headers: {
-                'Authorization': `Bearer ${state.token}`
+                'Authorization': `Bearer ${token}`
             }
         });
         
@@ -510,4 +559,229 @@ function createKnowledgeRepositoryCard(repo) {
             </div>
         </div>
     `;
+}
+
+/**
+ * Render more chunks (for infinite scroll)
+ */
+function renderMoreChunks(count = 5) {
+    const previewChunks = document.getElementById('knowledge-repo-preview-chunks');
+    if (!previewChunks || !window.previewChunksData) return;
+    
+    const chunks = window.previewChunksData;
+    const startIdx = window.previewChunksDisplayed || 0;
+    const endIdx = Math.min(startIdx + count, chunks.length);
+    
+    // Remove "load more" indicator if it exists
+    const loadMoreIndicator = previewChunks.querySelector('.load-more-indicator');
+    if (loadMoreIndicator) loadMoreIndicator.remove();
+    
+    // Render chunks
+    for (let idx = startIdx; idx < endIdx; idx++) {
+        const chunk = chunks[idx];
+        const chunkEl = document.createElement('div');
+        chunkEl.className = 'bg-gray-700/50 rounded-lg p-4 border border-gray-600 hover:border-purple-500/50 transition-colors';
+        
+        const isTruncated = chunk.text.length > 500;
+        const chunkId = `chunk-preview-${idx}`;
+        
+        chunkEl.innerHTML = `
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-sm font-semibold text-purple-300">Chunk ${idx + 1}</span>
+                <span class="text-xs px-2 py-1 rounded-full bg-gray-600 text-gray-300">${chunk.text.length} chars</span>
+            </div>
+            <div id="${chunkId}-text" class="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed">
+                ${isTruncated ? chunk.text.substring(0, 500) + '...' : chunk.text}
+            </div>
+            ${isTruncated ? `
+                <button id="${chunkId}-toggle" class="mt-3 text-xs text-purple-400 hover:text-purple-300 underline transition-colors">
+                    Show full chunk
+                </button>
+            ` : ''}
+        `;
+        
+        // Add toggle functionality if truncated
+        if (isTruncated) {
+            const toggleBtn = chunkEl.querySelector(`#${chunkId}-toggle`);
+            const textDiv = chunkEl.querySelector(`#${chunkId}-text`);
+            let isExpanded = false;
+            
+            toggleBtn.addEventListener('click', () => {
+                isExpanded = !isExpanded;
+                textDiv.textContent = isExpanded ? chunk.text : chunk.text.substring(0, 500) + '...';
+                toggleBtn.textContent = isExpanded ? 'Show less' : 'Show full chunk';
+            });
+        }
+        
+        previewChunks.appendChild(chunkEl);
+    }
+    
+    window.previewChunksDisplayed = endIdx;
+    
+    // Add "scroll for more" indicator if there are more chunks
+    if (endIdx < chunks.length) {
+        const moreEl = document.createElement('div');
+        moreEl.className = 'load-more-indicator text-center py-3 text-sm text-gray-400 flex items-center justify-center gap-2';
+        moreEl.innerHTML = `
+            <svg class="animate-bounce w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+            </svg>
+            <span>Scroll down to load ${Math.min(5, chunks.length - endIdx)} more chunks (${chunks.length - endIdx} remaining)</span>
+        `;
+        previewChunks.appendChild(moreEl);
+    }
+}
+
+/**
+ * Setup infinite scroll for preview chunks
+ */
+function setupInfiniteScroll() {
+    const previewChunks = document.getElementById('knowledge-repo-preview-chunks');
+    if (!previewChunks) return;
+    
+    // Find the scrollable parent container (has overflow-y-auto class)
+    const scrollContainer = previewChunks.parentElement;
+    if (!scrollContainer) return;
+    
+    // Remove existing listener if any
+    if (window.previewScrollListener) {
+        scrollContainer.removeEventListener('scroll', window.previewScrollListener);
+    }
+    
+    // Create scroll listener
+    window.previewScrollListener = () => {
+        const scrollTop = scrollContainer.scrollTop;
+        const scrollHeight = scrollContainer.scrollHeight;
+        const clientHeight = scrollContainer.clientHeight;
+        
+        // Load more when scrolled to bottom (with 100px threshold)
+        if (scrollTop + clientHeight >= scrollHeight - 100) {
+            if (window.previewChunksData && window.previewChunksDisplayed < window.previewChunksData.length) {
+                renderMoreChunks(5);
+            }
+        }
+    };
+    
+    scrollContainer.addEventListener('scroll', window.previewScrollListener);
+}
+
+/**
+ * Trigger auto-preview when files or settings change
+ */
+function triggerAutoPreview() {
+    // Only auto-preview if files are selected
+    if (!selectedFiles || selectedFiles.length === 0) {
+        return;
+    }
+    
+    // Debounce to avoid rapid consecutive calls
+    if (window.previewTimeout) {
+        clearTimeout(window.previewTimeout);
+    }
+    
+    window.previewTimeout = setTimeout(() => {
+        handlePreviewChunking(true); // Pass true to indicate auto-preview
+    }, 300);
+}
+
+/**
+ * Handle chunking preview
+ */
+async function handlePreviewChunking(isAutoPreview = false) {
+    if (selectedFiles.length === 0) {
+        if (!isAutoPreview) {
+            alert('Please select at least one document to preview chunking');
+        }
+        return;
+    }
+    
+    const previewBtn = document.getElementById('knowledge-repo-preview-btn');
+    const previewResults = document.getElementById('knowledge-repo-preview-results');
+    const previewStats = document.getElementById('knowledge-repo-preview-stats');
+    const previewChunks = document.getElementById('knowledge-repo-preview-chunks');
+    
+    if (!previewBtn || !previewResults || !previewStats || !previewChunks) return;
+    
+    // Get chunking configuration
+    const chunkingStrategy = document.getElementById('knowledge-repo-chunking')?.value || 'semantic';
+    let chunkSize = 1000;
+    let chunkOverlap = 200;
+    
+    if (chunkingStrategy === 'fixed_size') {
+        chunkSize = parseInt(document.getElementById('knowledge-repo-chunk-size')?.value || '1000');
+        chunkOverlap = parseInt(document.getElementById('knowledge-repo-chunk-overlap')?.value || '200');
+    }
+    
+    // Disable button and show loading
+    previewBtn.disabled = true;
+    previewBtn.textContent = 'Generating Preview...';
+    previewResults.classList.remove('hidden');
+    previewChunks.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">Processing...</p>';
+    
+    try {
+        // For now, we'll use the first file for preview
+        const file = selectedFiles[0];
+        
+        // Create FormData to send file
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('chunking_strategy', chunkingStrategy);
+        formData.append('chunk_size', chunkSize);
+        formData.append('chunk_overlap', chunkOverlap);
+        
+        // Call preview API endpoint (we'll need to create this)
+        const token = localStorage.getItem('tda_auth_token');
+        const response = await fetch('/api/v1/knowledge/preview-chunking', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to generate preview');
+        }
+        
+        const data = await response.json();
+        const chunks = data.chunks || [];
+        
+        // Update stats
+        const totalChars = data.total_characters || chunks.reduce((sum, chunk) => sum + chunk.text.length, 0);
+        const isTruncated = data.is_preview_truncated;
+        const fullDocChars = data.full_document_characters;
+        const previewNote = data.preview_note;
+        
+        let statsText = `${chunks.length} chunks • ${totalChars.toLocaleString()} chars`;
+        if (isTruncated && previewNote) {
+            statsText += ` • ${previewNote}`;
+        } else if (isTruncated) {
+            statsText += ` • Preview (full doc: ${fullDocChars.toLocaleString()} chars)`;
+        } else {
+            statsText += ` • Avg ${Math.round(totalChars / chunks.length)} chars/chunk`;
+        }
+        previewStats.textContent = statsText;
+        
+        // Hide empty state, show results
+        const previewEmpty = document.getElementById('knowledge-repo-preview-empty');
+        if (previewEmpty) previewEmpty.classList.add('hidden');
+        
+        // Store chunks for infinite scroll
+        window.previewChunksData = chunks;
+        window.previewChunksDisplayed = 0;
+        
+        // Clear and setup infinite scroll
+        previewChunks.innerHTML = '';
+        renderMoreChunks(5); // Initial load: 5 chunks
+        
+        // Setup infinite scroll listener
+        setupInfiniteScroll();
+        
+    } catch (error) {
+        console.error('[Knowledge] Preview error:', error);
+        previewChunks.innerHTML = `<p class="text-sm text-red-400 text-center py-4">Failed to generate preview: ${error.message}</p>`;
+    } finally {
+        previewBtn.disabled = false;
+        previewBtn.textContent = 'Preview Segmentation';
+    }
 }

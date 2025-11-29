@@ -3488,12 +3488,12 @@
     
     <!-- Add Knowledge Repository Modal -->
     <div id="add-knowledge-repository-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0 p-4">
-        <div id="add-knowledge-repository-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-[1400px] transform scale-95 opacity-0 h-[90vh] flex flex-col">
+        <div id="add-knowledge-repository-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-[1400px] transform scale-95 opacity-0 max-h-[95vh] flex flex-col">
             <!-- Modal Header -->
-            <div class="flex items-center justify-between p-6 pb-4 border-b border-gray-700 flex-shrink-0">
+            <div class="flex items-center justify-between p-6 pb-4 border-b border-gray-700">
                 <div>
                     <h2 class="text-2xl font-bold text-white">Create Knowledge Repository</h2>
-                    <p class="text-sm text-gray-400 mt-1">Configure your document storage and preview chunking strategy in real-time</p>
+                    <p class="text-sm text-gray-400 mt-1">Configure your document storage and preview chunking strategy</p>
                 </div>
                 <button type="button" id="add-knowledge-repository-modal-close" class="p-2 rounded-full text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3503,198 +3503,226 @@
             </div>
             
             <!-- Modal Body - Two Column Layout -->
-            <form id="add-knowledge-repository-form" class="flex-1 overflow-hidden flex min-h-0">
+            <form id="add-knowledge-repository-form" class="flex-1 overflow-hidden flex">
                 <!-- Left Column - Configuration -->
-                <div class="w-[45%] p-6 space-y-5 overflow-y-auto">
-                    <!-- Basic Info -->
+                <div class="w-1/2 p-6 space-y-5 overflow-y-auto border-r border-gray-700">
+                    <!-- Basic Info Section -->
                     <div class="space-y-3">
+                    <div>
+                        <label for="knowledge-repo-name" class="block text-sm font-medium text-gray-300 mb-2">
+                            Repository Name <span class="text-red-400">*</span>
+                        </label>
+                        <input type="text" id="knowledge-repo-name" name="name" required
+                               class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white"
+                               placeholder="e.g., Product Documentation">
+                    </div>
+                    
+                    <div>
+                        <label for="knowledge-repo-description" class="block text-sm font-medium text-gray-300 mb-2">
+                            Description
+                        </label>
+                        <textarea id="knowledge-repo-description" name="description" rows="2"
+                                  class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white resize-none"
+                                  placeholder="Describe the knowledge contained in this repository..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Separator -->
+                <div class="border-t border-gray-600"></div>
+
+                <!-- Document Processing Configuration -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-semibold text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Document Processing
+                    </h3>
+
+                    <!-- Chunking Strategy -->
+                    <div>
+                        <label for="knowledge-repo-chunking" class="block text-sm font-medium text-gray-300 mb-2">
+                            Chunking Strategy <span class="text-red-400">*</span>
+                        </label>
+                        <select id="knowledge-repo-chunking" name="chunking_strategy" required
+                                class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white">
+                            <option value="semantic">Semantic - Smart splitting based on meaning (recommended)</option>
+                            <option value="paragraph">Paragraph - Split by paragraphs</option>
+                            <option value="sentence">Sentence - Split by sentences</option>
+                            <option value="fixed_size">Fixed Size - Split by character count</option>
+                        </select>
+                        <p class="mt-1 text-xs text-gray-400">How documents will be divided into chunks for retrieval</p>
+                    </div>
+
+                    <!-- Chunk Size and Overlap (shown for fixed_size strategy) -->
+                    <div id="knowledge-repo-chunk-params" class="grid grid-cols-2 gap-4 hidden">
                         <div>
-                            <label for="knowledge-repo-name" class="block text-sm font-medium text-gray-300 mb-2">
-                                Repository Name <span class="text-red-400">*</span>
+                            <label for="knowledge-repo-chunk-size" class="block text-sm font-medium text-gray-300 mb-2">
+                                Chunk Size (characters)
                             </label>
-                            <input type="text" id="knowledge-repo-name" name="name" required
-                                   class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white"
-                                   placeholder="e.g., Product Documentation">
+                            <input type="number" id="knowledge-repo-chunk-size" name="chunk_size" value="1000" min="100" max="5000"
+                                   class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white">
                         </div>
-                        
                         <div>
-                            <label for="knowledge-repo-description" class="block text-sm font-medium text-gray-300 mb-2">
-                                Description
+                            <label for="knowledge-repo-chunk-overlap" class="block text-sm font-medium text-gray-300 mb-2">
+                                Chunk Overlap (characters)
                             </label>
-                            <textarea id="knowledge-repo-description" name="description" rows="2"
-                                      class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white resize-none"
-                                      placeholder="Describe the knowledge contained in this repository..."></textarea>
+                            <input type="number" id="knowledge-repo-chunk-overlap" name="chunk_overlap" value="200" min="0" max="1000"
+                                   class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white">
                         </div>
                     </div>
 
-                    <!-- Document Processing -->
-                    <div class="space-y-3 pt-3 border-t border-gray-700">
-                        <h3 class="text-base font-semibold text-white flex items-center gap-2">
-                            <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                            Processing Strategy
-                        </h3>
+                    <!-- Embedding Model -->
+                    <div>
+                        <label for="knowledge-repo-embedding" class="block text-sm font-medium text-gray-300 mb-2">
+                            Embedding Model <span class="text-red-400">*</span>
+                        </label>
+                        <select id="knowledge-repo-embedding" name="embedding_model" required
+                                class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white">
+                            <option value="all-MiniLM-L6-v2">all-MiniLM-L6-v2 (fast, lightweight - 384 dimensions)</option>
+                            <option value="all-mpnet-base-v2">all-mpnet-base-v2 (balanced - 768 dimensions)</option>
+                            <option value="all-distilroberta-v1">all-distilroberta-v1 (high quality - 768 dimensions)</option>
+                        </select>
+                        <p class="mt-1 text-xs text-gray-400">Model used to create embeddings for semantic search</p>
+                    </div>
+                </div>
 
-                        <div>
-                            <label for="knowledge-repo-chunking" class="block text-sm font-medium text-gray-300 mb-2">
-                                Chunking Method <span class="text-red-400">*</span>
-                            </label>
-                            <select id="knowledge-repo-chunking" name="chunking_strategy" required
-                                    class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white">
-                                <option value="semantic">🧠 Semantic - Smart splitting based on meaning</option>
-                                <option value="paragraph">📋 Paragraph - Split by paragraphs</option>
-                                <option value="sentence">✍️ Sentence - Split by sentences</option>
-                                <option value="fixed_size">📏 Fixed Size - Split by character count</option>
-                            </select>
-                            <p class="mt-1 text-xs text-gray-400">Controls how documents are divided for retrieval</p>
+                <!-- Separator -->
+                <div class="border-t border-gray-600"></div>
+
+                <!-- Document Upload Section -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-semibold text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        Initial Documents
+                    </h3>
+                    <p class="text-sm text-gray-400">Upload documents to populate your Knowledge repository (you can add more later)</p>
+
+                    <!-- Drag & Drop Area -->
+                    <div id="knowledge-repo-dropzone" 
+                         class="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-teradata-orange hover:bg-gray-700/20 transition-all">
+                        <svg class="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        <p class="text-gray-300 font-medium mb-1">Drop files here or click to browse</p>
+                        <p class="text-xs text-gray-400">Supported: PDF, TXT, DOCX, MD (max 10MB each)</p>
+                        <input type="file" id="knowledge-repo-file-input" multiple accept=".pdf,.txt,.docx,.md" class="hidden">
+                    </div>
+
+                    <!-- File List -->
+                    <div id="knowledge-repo-file-list" class="space-y-2 hidden">
+                        <h4 class="text-sm font-medium text-gray-300">Selected Files:</h4>
+                        <div id="knowledge-repo-files-container" class="space-y-2 max-h-40 overflow-y-auto">
+                            <!-- File items will be added here -->
                         </div>
+                    </div>
 
-                        <div id="knowledge-repo-chunk-params" class="grid grid-cols-2 gap-3 hidden">
+                    <!-- Document Metadata (shown when files are selected) -->
+                    <div id="knowledge-repo-metadata" class="hidden space-y-3 bg-gray-700/30 rounded-lg p-4">
+                        <h4 class="text-sm font-medium text-gray-300">Document Metadata (optional)</h4>
+                        <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label for="knowledge-repo-chunk-size" class="block text-xs text-gray-400 mb-1">Chunk Size</label>
-                                <input type="number" id="knowledge-repo-chunk-size" name="chunk_size" value="1000" min="100" max="5000"
-                                       class="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-teradata-orange outline-none text-white text-sm">
+                                <label for="knowledge-repo-category" class="block text-xs text-gray-400 mb-1">Category</label>
+                                <input type="text" id="knowledge-repo-category" name="category"
+                                       class="w-full p-2 bg-gray-600 border border-gray-500 rounded-md focus:ring-2 focus:ring-teradata-orange outline-none text-white text-sm"
+                                       placeholder="e.g., Manual, Guide, API Docs">
                             </div>
                             <div>
-                                <label for="knowledge-repo-chunk-overlap" class="block text-xs text-gray-400 mb-1">Chunk Overlap</label>
-                                <input type="number" id="knowledge-repo-chunk-overlap" name="chunk_overlap" value="200" min="0" max="1000"
-                                       class="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-teradata-orange outline-none text-white text-sm">
+                                <label for="knowledge-repo-author" class="block text-xs text-gray-400 mb-1">Author</label>
+                                <input type="text" id="knowledge-repo-author" name="author"
+                                       class="w-full p-2 bg-gray-600 border border-gray-500 rounded-md focus:ring-2 focus:ring-teradata-orange outline-none text-white text-sm"
+                                       placeholder="e.g., Engineering Team">
                             </div>
                         </div>
-
                         <div>
-                            <label for="knowledge-repo-embedding" class="block text-sm font-medium text-gray-300 mb-2">
-                                Embedding Model <span class="text-red-400">*</span>
-                            </label>
-                            <select id="knowledge-repo-embedding" name="embedding_model" required
-                                    class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-teradata-orange outline-none text-white">
-                                <option value="all-MiniLM-L6-v2">all-MiniLM-L6-v2 (fast, lightweight)</option>
-                                <option value="all-mpnet-base-v2">all-mpnet-base-v2 (balanced)</option>
-                                <option value="all-distilroberta-v1">all-distilroberta-v1 (high quality)</option>
-                            </select>
+                            <label for="knowledge-repo-tags" class="block text-xs text-gray-400 mb-1">Tags (comma-separated)</label>
+                            <input type="text" id="knowledge-repo-tags" name="tags"
+                                   class="w-full p-2 bg-gray-600 border border-gray-500 rounded-md focus:ring-2 focus:ring-teradata-orange outline-none text-white text-sm"
+                                   placeholder="e.g., database, sql, tutorial">
                         </div>
                     </div>
+                </div>
 
-                    <!-- Document Upload -->
-                    <div class="space-y-3 pt-3 border-t border-gray-700">
-                        <h3 class="text-base font-semibold text-white flex items-center gap-2">
-                            <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                <!-- Progress Section (hidden initially) -->
+                <div id="knowledge-repo-progress" class="hidden space-y-3 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-5 h-5 text-blue-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <div class="flex-1">
+                            <p id="knowledge-repo-progress-text" class="text-sm font-medium text-blue-300">Processing documents...</p>
+                            <div class="w-full bg-gray-700 rounded-full h-2 mt-2">
+                                <div id="knowledge-repo-progress-bar" class="bg-blue-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chunking Preview Section (shown when files are selected) -->
+                <div id="knowledge-repo-preview" class="hidden space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-white flex items-center gap-2">
+                            <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                             </svg>
-                            Initial Documents
+                            Chunking Preview
                         </h3>
-
-                        <div id="knowledge-repo-dropzone" 
-                             class="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center cursor-pointer hover:border-teradata-orange hover:bg-gray-700/20 transition-all">
-                            <svg class="w-10 h-10 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                            </svg>
-                            <p class="text-gray-300 font-medium mb-1">Drop files or click to browse</p>
-                            <p class="text-xs text-gray-400">PDF, TXT, DOCX, MD (max 50MB)</p>
-                            <input type="file" id="knowledge-repo-file-input" multiple accept=".pdf,.txt,.docx,.md" class="hidden">
-                        </div>
-
-                        <div id="knowledge-repo-file-list" class="space-y-2 hidden">
-                            <h4 class="text-sm font-medium text-gray-300">Selected Files:</h4>
-                            <div id="knowledge-repo-files-container" class="space-y-2 max-h-32 overflow-y-auto">
-                                <!-- File items will be added here -->
-                            </div>
-                        </div>
-
-                        <div id="knowledge-repo-metadata" class="hidden space-y-2 bg-gray-700/30 rounded-lg p-3">
-                            <h4 class="text-xs font-medium text-gray-300">Metadata (optional)</h4>
-                            <div class="grid grid-cols-2 gap-2">
-                                <input type="text" id="knowledge-repo-category" placeholder="Category"
-                                       class="p-2 bg-gray-600 border border-gray-500 rounded-lg focus:ring-2 focus:ring-teradata-orange outline-none text-white text-sm">
-                                <input type="text" id="knowledge-repo-author" placeholder="Author"
-                                       class="p-2 bg-gray-600 border border-gray-500 rounded-lg focus:ring-2 focus:ring-teradata-orange outline-none text-white text-sm">
-                            </div>
-                            <input type="text" id="knowledge-repo-tags" placeholder="Tags (comma-separated)"
-                                   class="w-full p-2 bg-gray-600 border border-gray-500 rounded-lg focus:ring-2 focus:ring-teradata-orange outline-none text-white text-sm">
-                        </div>
+                        <button type="button" id="knowledge-repo-preview-btn" 
+                                class="px-3 py-1 rounded-md bg-purple-600 hover:bg-purple-500 text-sm text-white transition-colors">
+                            Preview Segmentation
+                        </button>
                     </div>
-
-                    <!-- Progress -->
-                    <div id="knowledge-repo-progress" class="hidden space-y-2 bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
-                        <div class="flex items-center gap-2">
-                            <svg class="w-4 h-4 text-blue-400 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <div class="flex-1 min-w-0">
-                                <p id="knowledge-repo-progress-text" class="text-sm font-medium text-blue-300 truncate">Processing...</p>
-                                <div class="w-full bg-gray-700 rounded-full h-1.5 mt-1">
-                                    <div id="knowledge-repo-progress-bar" class="bg-blue-500 h-1.5 rounded-full transition-all" style="width: 0%"></div>
+                    <p class="text-sm text-gray-400">Preview how your documents will be segmented before creating the repository</p>
+                    
+                    <!-- Preview Results -->
+                    <div id="knowledge-repo-preview-results" class="hidden space-y-3">
+                        <div class="bg-gray-700/30 rounded-lg p-4 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-300">Preview Statistics</span>
+                                <span id="knowledge-repo-preview-stats" class="text-xs text-gray-400">—</span>
+                            </div>
+                            <div class="max-h-64 overflow-y-auto space-y-2">
+                                <div id="knowledge-repo-preview-chunks" class="space-y-2">
+                                    <!-- Chunk previews will be inserted here -->
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Right Column - Live Preview -->
-                <div class="w-[55%] p-6 bg-gray-800/30 flex flex-col min-h-0">
-                    <div class="flex items-center justify-between mb-4 flex-shrink-0">
-                        <div class="flex items-center gap-2">
-                            <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                            </svg>
-                            <h3 class="text-lg font-semibold text-white">Chunking Preview</h3>
-                        </div>
-                        <button type="button" id="knowledge-repo-preview-btn" 
-                                class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-sm text-white font-medium transition-colors shadow-lg">
-                            Generate Preview
-                        </button>
-                    </div>
+                <!-- Separator -->
+                <div class="border-t border-gray-600"></div>
 
-                    <!-- Preview Content Area -->
-                    <div id="knowledge-repo-preview-empty" class="flex-1 flex items-center justify-center text-center">
-                        <div class="max-w-md">
-                            <svg class="w-20 h-20 mx-auto text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                            <h4 class="text-lg font-medium text-gray-400 mb-2">No Preview Yet</h4>
-                            <p class="text-sm text-gray-500">Upload a document and click "Generate Preview" to see how it will be chunked</p>
-                        </div>
-                    </div>
-
-                    <div id="knowledge-repo-preview-results" class="hidden flex-1 flex flex-col min-h-0">
-                        <!-- Stats Bar -->
-                        <div class="flex items-center justify-between p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg mb-4 flex-shrink-0">
-                            <span class="text-sm font-medium text-purple-300">Statistics</span>
-                            <span id="knowledge-repo-preview-stats" class="text-xs text-purple-400">—</span>
-                        </div>
-
-                        <!-- Scrollable Chunks -->
-                        <div class="flex-1 overflow-y-auto space-y-3 pr-2 min-h-0">
-                            <div id="knowledge-repo-preview-chunks" class="space-y-3">
-                                <!-- Chunk previews will be inserted here -->
-                            </div>
+                <!-- Info Box -->
+                <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                    <div class="flex gap-2">
+                        <svg class="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div class="text-xs text-blue-300">
+                            <p class="font-medium mb-1">About Knowledge Repositories:</p>
+                            <p>Knowledge repositories store reference documents that can be queried by the planner. Documents are chunked, embedded, and made searchable through semantic similarity.</p>
                         </div>
                     </div>
                 </div>
-            </form>
-
-            <!-- Modal Footer -->
-            <div class="flex items-center justify-between p-6 pt-4 border-t border-gray-700 flex-shrink-0">
-                <div class="flex items-center gap-2 text-xs text-gray-400">
-                    <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <span>Documents are chunked, embedded, and made searchable through semantic similarity</span>
-                </div>
-                <div class="flex gap-3">
-                    <button type="button" id="add-knowledge-repository-cancel" class="px-5 py-2.5 rounded-lg bg-gray-600 hover:bg-gray-500 transition-colors font-semibold text-white">
+                
+                <!-- Modal Footer -->
+                <div class="flex justify-end gap-3 pt-4 border-t border-gray-600">
+                    <button type="button" id="add-knowledge-repository-cancel" class="px-4 py-2 rounded-md bg-gray-600 hover:bg-gray-500 transition-colors font-semibold text-white">
                         Cancel
                     </button>
-                    <button type="submit" id="add-knowledge-repository-submit" class="px-5 py-2.5 rounded-lg bg-teradata-orange hover:bg-teradata-orange-dark transition-colors font-semibold text-white shadow-lg">
+                    <button type="submit" id="add-knowledge-repository-submit" class="px-4 py-2 rounded-md bg-teradata-orange hover:bg-teradata-orange-dark transition-colors font-semibold text-white">
                         Create Repository
                     </button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
+    
     <!-- Template Editor Modal -->
     <div id="template-editor-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
         <div id="template-editor-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-3xl p-6 transform scale-95 opacity-0 max-h-[90vh] overflow-y-auto">

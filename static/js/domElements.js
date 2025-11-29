@@ -21,6 +21,12 @@ export const ragMarketplaceView = document.getElementById('rag-marketplace-view'
 // NEW: Intelligence collections container
 export const ragMaintenanceCollectionsContainer = document.getElementById('rag-maintenance-collections-container');
 export const ragMaintenanceEmptyHint = document.getElementById('rag-maintenance-empty-hint');
+// Repository tabs and containers
+export const plannerRepoTab = document.getElementById('planner-repo-tab');
+export const knowledgeRepoTab = document.getElementById('knowledge-repo-tab');
+export const plannerRepoContent = document.getElementById('planner-repo-content');
+export const knowledgeRepoContent = document.getElementById('knowledge-repo-content');
+export const knowledgeRepositoriesContainer = document.getElementById('knowledge-repositories-container');
 // NEW: RAG Collection Inspection view elements
 export const ragCollectionInspectView = document.getElementById('rag-collection-inspect-view');
 export const ragCollectionInspectBack = document.getElementById('rag-collection-inspect-back');

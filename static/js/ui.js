@@ -2031,28 +2031,149 @@ export async function loadRagCollections() {
         const data = await res.json();
         let collections = (data && data.collections) ? data.collections : [];
         
-        // Sort collections: Default Collection first, then by ID
-        collections.sort((a, b) => {
-            // Default Collection (name contains "Default") always first
-            const aIsDefault = a.name.includes('Default Collection');
-            const bIsDefault = b.name.includes('Default Collection');
-            if (aIsDefault && !bIsDefault) return -1;
-            if (!aIsDefault && bIsDefault) return 1;
-            // Otherwise sort by ID
-            return a.id - b.id;
-        });
+        // Separate collections by repository type
+        const plannerCollections = collections.filter(c => c.repository_type === 'planner');
+        const knowledgeCollections = collections.filter(c => c.repository_type === 'knowledge');
         
+        // Sort collections: Default Collection first, then by ID
+        const sortCollections = (arr) => {
+            return arr.sort((a, b) => {
+                const aIsDefault = a.name.includes('Default Collection');
+                const bIsDefault = b.name.includes('Default Collection');
+                if (aIsDefault && !bIsDefault) return -1;
+                if (!aIsDefault && bIsDefault) return 1;
+                return a.id - b.id;
+            });
+        };
+        
+        sortCollections(plannerCollections);
+        sortCollections(knowledgeCollections);
+        
+        // Render Planner repositories
         DOM.ragMaintenanceCollectionsContainer.innerHTML = '';
-        if (!collections.length) {
+        if (!plannerCollections.length) {
             const emptyMsg = document.createElement('div');
             emptyMsg.className = 'col-span-full text-gray-400 text-sm';
-            emptyMsg.textContent = 'No collections found.';
+            emptyMsg.textContent = 'No planner repositories found.';
             DOM.ragMaintenanceCollectionsContainer.appendChild(emptyMsg);
-            return;
+        } else {
+            plannerCollections.forEach(col => {
+                const card = createCollectionCard(col);
+                DOM.ragMaintenanceCollectionsContainer.appendChild(card);
+            });
         }
-        collections.forEach(col => {
-            const card = document.createElement('div');
-            card.className = 'glass-panel rounded-xl p-4 flex flex-col gap-3 border border-white/10 hover:border-teradata-orange transition-colors';
+        
+        // Render Knowledge repositories
+        if (DOM.knowledgeRepositoriesContainer) {
+            DOM.knowledgeRepositoriesContainer.innerHTML = '';
+            if (!knowledgeCollections.length) {
+                const emptyMsg = document.createElement('div');
+                emptyMsg.className = 'col-span-full text-gray-400 text-sm';
+                emptyMsg.textContent = 'No knowledge repositories found.';
+                DOM.knowledgeRepositoriesContainer.appendChild(emptyMsg);
+            } else {
+                knowledgeCollections.forEach(col => {
+                    const card = createKnowledgeRepositoryCard(col);
+                    DOM.knowledgeRepositoriesContainer.appendChild(card);
+                });
+            }
+        }
+    } catch (err) {
+        console.error('Failed to load RAG collections:', err);
+        DOM.ragMaintenanceCollectionsContainer.innerHTML = '';
+        const errMsg = document.createElement('div');
+        errMsg.className = 'col-span-full text-red-400 text-sm';
+        errMsg.textContent = `Error loading collections: ${err.message}`;
+        DOM.ragMaintenanceCollectionsContainer.appendChild(errMsg);
+    }
+}
+
+function createKnowledgeRepositoryCard(col) {
+    const card = document.createElement('div');
+    card.className = 'glass-panel rounded-xl p-4 flex flex-col gap-3 border border-white/10 hover:border-teradata-orange transition-colors';
+    
+    // Header with icon and title
+    const header = document.createElement('div');
+    header.className = 'flex items-start gap-3';
+    
+    // Document icon
+    const icon = document.createElement('div');
+    icon.className = 'w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center text-green-400 text-2xl';
+    icon.textContent = '📄';
+    
+    const titleSection = document.createElement('div');
+    titleSection.className = 'flex-1';
+    
+    const title = document.createElement('h2');
+    title.className = 'text-lg font-semibold text-white';
+    title.textContent = col.name || col.collection_name;
+    
+    const subtitle = document.createElement('p');
+    subtitle.className = 'text-sm text-gray-400';
+    subtitle.textContent = col.description || 'Knowledge repository';
+    
+    titleSection.appendChild(title);
+    titleSection.appendChild(subtitle);
+    
+    header.appendChild(icon);
+    header.appendChild(titleSection);
+    
+    // Metadata row
+    const metaRow = document.createElement('div');
+    metaRow.className = 'flex items-center gap-4 text-xs text-gray-400';
+    
+    // Document count (placeholder - will be loaded dynamically)
+    const docCount = document.createElement('div');
+    docCount.className = 'flex items-center gap-1';
+    docCount.innerHTML = `<span>📊</span> <span id="doc-count-${col.id}">0 documents</span>`;
+    
+    // Chunking strategy
+    const chunking = document.createElement('div');
+    chunking.className = 'flex items-center gap-1';
+    const chunkIcon = col.chunking_strategy === 'semantic' ? '🧠' : '📏';
+    chunking.innerHTML = `<span>${chunkIcon}</span> <span>${col.chunking_strategy || 'semantic'} chunking</span>`;
+    
+    metaRow.appendChild(docCount);
+    metaRow.appendChild(chunking);
+    
+    // Actions
+    const actions = document.createElement('div');
+    actions.className = 'flex gap-2 mt-2';
+    
+    // View button
+    const viewBtn = document.createElement('button');
+    viewBtn.type = 'button';
+    viewBtn.className = 'flex-1 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-sm text-white font-medium transition-colors';
+    viewBtn.textContent = 'View';
+    viewBtn.addEventListener('click', () => {
+        openKnowledgeRepositoryView(col);
+    });
+    
+    // Delete button
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-sm text-white font-medium transition-colors';
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.addEventListener('click', () => {
+        deleteKnowledgeRepository(col.id, col.name);
+    });
+    
+    actions.appendChild(viewBtn);
+    actions.appendChild(deleteBtn);
+    
+    card.appendChild(header);
+    card.appendChild(metaRow);
+    card.appendChild(actions);
+    
+    // Load document count asynchronously
+    loadKnowledgeRepositoryDocCount(col.id);
+    
+    return card;
+}
+
+function createCollectionCard(col) {
+    const card = document.createElement('div');
+    card.className = 'glass-panel rounded-xl p-4 flex flex-col gap-3 border border-white/10 hover:border-teradata-orange transition-colors';
             
             // Header with title and status badge
             const header = document.createElement('div');
@@ -2216,20 +2337,12 @@ export async function loadRagCollections() {
             actions.appendChild(editBtn);
             actions.appendChild(deleteBtn);
             
-            card.appendChild(header);
-            card.appendChild(mcpInfo);
-            card.appendChild(meta);
-            card.appendChild(actions);
-            DOM.ragMaintenanceCollectionsContainer.appendChild(card);
-        });
-    } catch (e) {
-        console.error('Failed to load RAG collections', e);
-        DOM.ragMaintenanceCollectionsContainer.innerHTML = '';
-        const errMsg = document.createElement('div');
-        errMsg.className = 'col-span-full text-red-400 text-sm';
-        errMsg.textContent = 'Error loading collections.';
-        DOM.ragMaintenanceCollectionsContainer.appendChild(errMsg);
-    }
+    card.appendChild(header);
+    card.appendChild(mcpInfo);
+    card.appendChild(meta);
+    card.appendChild(actions);
+    
+    return card;
 }
 
 // --- RAG Collection Inspection Logic ---
@@ -2875,4 +2988,86 @@ export function copySessionIdToClipboard(sessionId) {
     }).catch(err => {
         console.error('Failed to copy session ID:', err);
     });
+}
+
+/**
+ * Load document count for a Knowledge repository
+ */
+async function loadKnowledgeRepositoryDocCount(collectionId) {
+    try {
+        const token = localStorage.getItem('tda_auth_token');
+        const response = await fetch(`/api/v1/knowledge/repositories/${collectionId}/documents`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            const count = data.documents ? data.documents.length : 0;
+            const countEl = document.getElementById(`doc-count-${collectionId}`);
+            if (countEl) {
+                countEl.textContent = `${count} document${count !== 1 ? 's' : ''}`;
+            }
+        }
+    } catch (error) {
+        console.error(`Failed to load document count for collection ${collectionId}:`, error);
+    }
+}
+
+/**
+ * Open Knowledge repository view to show documents and details
+ */
+function openKnowledgeRepositoryView(collection) {
+    console.log('[Knowledge] Opening repository view:', collection);
+    
+    // Store current repository in state
+    state.currentKnowledgeRepository = collection;
+    
+    // For now, show an alert with details - we'll create a proper view modal later
+    const msg = `Knowledge Repository: ${collection.name}\n\n` +
+                `Description: ${collection.description || 'N/A'}\n` +
+                `Chunking: ${collection.chunking_strategy || 'semantic'}\n` +
+                `Collection ID: ${collection.id}\n` +
+                `ChromaDB: ${collection.collection_name}\n\n` +
+                `View modal coming soon...`;
+    
+    alert(msg);
+    
+    // TODO: Create a proper modal to show:
+    // - Repository details
+    // - Document list with upload dates
+    // - Document preview/chunking preview
+    // - Add more documents button
+}
+
+/**
+ * Delete a Knowledge repository
+ */
+async function deleteKnowledgeRepository(collectionId, collectionName) {
+    if (!confirm(`Are you sure you want to delete "${collectionName}"?\n\nThis will remove all documents and cannot be undone.`)) {
+        return;
+    }
+    
+    try {
+        const token = localStorage.getItem('tda_auth_token');
+        const response = await fetch(`/api/v1/rag/collections/${collectionId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            alert(`Repository "${collectionName}" deleted successfully`);
+            // Reload the collections list
+            loadRagCollections();
+        } else {
+            const error = await response.json();
+            alert(`Failed to delete repository: ${error.message || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error('[Knowledge] Error deleting repository:', error);
+        alert(`Error deleting repository: ${error.message}`);
+    }
 }

@@ -134,10 +134,17 @@ class DocumentProcessor:
         return chunks
     
     def _chunk_by_paragraph(self, content: str, metadata: Dict[str, Any]) -> List[DocumentChunk]:
-        """Chunk document by paragraphs."""
+        """Chunk document by paragraphs. Preserves natural document structure."""
+        # Split on double newlines to respect paragraph boundaries
         paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
-        chunks = []
         
+        # If we only got 1 huge paragraph, it might be a formatting issue - fall back to fixed-size
+        if len(paragraphs) == 1 and len(paragraphs[0]) > self.chunk_size * 3:
+            metadata_copy = metadata.copy()
+            metadata_copy['fallback_reason'] = 'single_large_paragraph'
+            return self._chunk_fixed_size(content, metadata_copy)
+        
+        chunks = []
         for idx, para in enumerate(paragraphs):
             chunk_metadata = metadata.copy()
             chunk_metadata['chunk_method'] = 'paragraph'

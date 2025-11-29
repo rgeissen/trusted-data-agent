@@ -1742,3 +1742,33 @@ export function initializeEventListeners() {
         }
     });
 }
+// --- Repository Tab Switching ---
+export function wireRepositoryTabs() {
+    if (DOM.plannerRepoTab) {
+        DOM.plannerRepoTab.addEventListener('click', () => {
+            // Update tab styles
+            DOM.plannerRepoTab.classList.add('border-[#F15F22]', 'text-[#F15F22]');
+            DOM.plannerRepoTab.classList.remove('border-transparent', 'text-gray-400');
+            DOM.knowledgeRepoTab.classList.remove('border-[#F15F22]', 'text-[#F15F22]');
+            DOM.knowledgeRepoTab.classList.add('border-transparent', 'text-gray-400');
+            
+            // Show/hide content
+            DOM.plannerRepoContent.classList.remove('hidden');
+            DOM.knowledgeRepoContent.classList.add('hidden');
+        });
+    }
+    
+    if (DOM.knowledgeRepoTab) {
+        DOM.knowledgeRepoTab.addEventListener('click', () => {
+            // Update tab styles
+            DOM.knowledgeRepoTab.classList.add('border-[#F15F22]', 'text-[#F15F22]');
+            DOM.knowledgeRepoTab.classList.remove('border-transparent', 'text-gray-400');
+            DOM.plannerRepoTab.classList.remove('border-[#F15F22]', 'text-[#F15F22]');
+            DOM.plannerRepoTab.classList.add('border-transparent', 'text-gray-400');
+            
+            // Show/hide content
+            DOM.knowledgeRepoContent.classList.remove('hidden');
+            DOM.plannerRepoContent.classList.add('hidden');
+        });
+    }
+}

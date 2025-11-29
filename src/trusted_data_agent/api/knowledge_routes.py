@@ -34,6 +34,141 @@ knowledge_api_bp = Blueprint('knowledge_api', __name__)
 app_logger = logging.getLogger('tda')
 
 
+@knowledge_api_bp.route("/v1/knowledge/preview-chunking", methods=["POST"])
+@require_auth
+async def preview_document_chunking(current_user: dict):
+    """
+    Preview how a document will be chunked without storing it.
+    
+    This endpoint allows users to experiment with different chunking strategies
+    before committing to creating a Knowledge repository.
+    
+    Multipart Form Data:
+        - file: Document file (PDF, TXT, DOCX, MD)
+        - chunking_strategy: Chunking strategy (fixed_size, paragraph, sentence, semantic)
+        - chunk_size: Size of chunks in characters (default: 1000)
+        - chunk_overlap: Overlap between chunks (default: 200)
+    
+    Returns:
+        JSON with chunks array containing text segments
+    """
+    try:
+        # Get uploaded file
+        files = await request.files
+        if 'file' not in files:
+            return jsonify({"status": "error", "message": "No file provided"}), 400
+        
+        file = files['file']
+        if not file or not file.filename:
+            return jsonify({"status": "error", "message": "Invalid file"}), 400
+        
+        # Get form parameters
+        form = await request.form
+        chunking_strategy_str = form.get('chunking_strategy', 'semantic')
+        chunk_size = int(form.get('chunk_size', 1000))
+        chunk_overlap = int(form.get('chunk_overlap', 200))
+        
+        # Validate chunking strategy
+        try:
+            chunking_strategy = ChunkingStrategy[chunking_strategy_str.upper()]
+        except KeyError:
+            return jsonify({
+                "status": "error",
+                "message": f"Invalid chunking_strategy: {chunking_strategy_str}. Valid options: fixed_size, paragraph, sentence, semantic"
+            }), 400
+        
+        # Save file temporarily
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1])
+        file_content = file.read()
+        temp_file.write(file_content)
+        temp_file.flush()
+        temp_file.close()
+        
+        try:
+            # Extract text from document - optimized for preview
+            file_extension = os.path.splitext(temp_file.name)[1].lower()
+            
+            # Fast extraction for preview - limit PDF to first 20 pages
+            if file_extension == '.pdf':
+                try:
+                    from PyPDF2 import PdfReader
+                    with open(temp_file.name, 'rb') as f:
+                        pdf_reader = PdfReader(f)
+                        # Only extract first 20 pages for instant preview
+                        max_pages = min(20, len(pdf_reader.pages))
+                        pages_text = [pdf_reader.pages[i].extract_text() for i in range(max_pages)]
+                        # Join with double newline to preserve paragraph boundaries
+                        document_text = "\n\n".join(pages_text)
+                        is_preview_truncated = len(pdf_reader.pages) > max_pages
+                except Exception as e:
+                    return jsonify({"status": "error", "message": f"PDF extraction failed: {str(e)}"}), 400
+            else:
+                # For non-PDF, use standard extraction
+                doc_handler = DocumentUploadHandler()
+                extracted = doc_handler._extract_text_from_document(temp_file.name)
+                document_text = extracted.get('content', '')
+                is_preview_truncated = False
+            
+            if not document_text:
+                return jsonify({
+                    "status": "error",
+                    "message": "No text content extracted from document"
+                }), 400
+            
+            # Limit to reasonable size for preview (50K chars)
+            preview_text = document_text[:50000] if len(document_text) > 50000 else document_text
+            if len(document_text) > 50000:
+                is_preview_truncated = True
+            
+            # Create document processor to chunk the document
+            from trusted_data_agent.agent.repository_constructor import DocumentProcessor
+            doc_processor = DocumentProcessor(
+                chunking_strategy=chunking_strategy,
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap
+            )
+            
+            # Chunk the preview text
+            metadata = {"filename": file.filename, "source": "preview"}
+            chunk_objects = doc_processor.process_document(preview_text, metadata)
+            
+            # Format chunks for preview
+            preview_chunks = [
+                {
+                    "text": chunk.content,
+                    "length": len(chunk.content),
+                    "index": chunk.chunk_index
+                }
+                for chunk in chunk_objects
+            ]
+            
+            return jsonify({
+                "status": "success",
+                "chunks": preview_chunks,
+                "total_chunks": len(preview_chunks),
+                "total_characters": len(preview_text),
+                "full_document_characters": len(document_text),
+                "is_preview_truncated": is_preview_truncated,
+                "average_chunk_size": len(preview_text) // len(preview_chunks) if preview_chunks else 0,
+                "chunking_strategy": chunking_strategy_str,
+                "chunk_size": chunk_size,
+                "chunk_overlap": chunk_overlap,
+                "preview_note": "Showing first 20 pages" if is_preview_truncated and file_extension == '.pdf' else None
+            }), 200
+            
+        finally:
+            # Clean up temp file
+            if os.path.exists(temp_file.name):
+                os.unlink(temp_file.name)
+                
+    except Exception as e:
+        app_logger.error(f"[Knowledge Preview] Error: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
 @knowledge_api_bp.route("/v1/knowledge/repositories/<int:collection_id>/documents", methods=["POST"])
 @require_auth
 async def upload_knowledge_document(current_user: dict, collection_id: int):

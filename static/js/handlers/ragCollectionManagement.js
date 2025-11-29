@@ -884,6 +884,8 @@ if (addRagCollectionBtn) {
     addRagCollectionBtn.addEventListener('click', openAddRagCollectionModal);
 }
 
+// Knowledge Repository handlers are initialized in knowledgeRepositoryHandler.js
+
 // SQL Template Card Event Listeners
 const sqlTemplateCard = document.getElementById('sqlTemplateCard');
 if (sqlTemplateCard) {

@@ -752,6 +752,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     initializeEventListeners();
     initializeVoiceRecognition();
     
+    // Import and wire repository tabs
+    const { wireRepositoryTabs } = await import('./eventHandlers.js');
+    wireRepositoryTabs();
+    
     // Initialize Execution Dashboard
     if (window.ExecutionDashboard) {
         window.executionDashboard = new window.ExecutionDashboard();
