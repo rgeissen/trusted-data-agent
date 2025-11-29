@@ -2509,25 +2509,70 @@ async function showProfileModal(profileId = null) {
     }
 
 
-    // Populate RAG collections
-    const ragContainer = modal.querySelector('#profile-modal-rag-collections');
-    const autocompleteContainer = modal.querySelector('#profile-modal-autocomplete-collections');
+    // Populate Intelligence Collections (Planner and Knowledge Repositories)
+    const plannerContainer = modal.querySelector('#profile-modal-planner-collections');
+    const knowledgeContainer = modal.querySelector('#profile-modal-knowledge-collections');
     
     const { collections: ragCollections } = await API.getRagCollections();
     
-    ragContainer.innerHTML = ragCollections.map(coll => `
-        <label class="flex items-center gap-2 text-sm text-gray-300">
-            <input type="checkbox" value="${coll.id}" ${profile?.ragCollections?.includes(coll.id) || profile?.ragCollections?.includes('*') || !profile ? 'checked' : ''}>
-            ${escapeHtml(coll.name)}
-        </label>
-    `).join('') || '<span class="text-gray-400">No RAG collections found.</span>';
-
-    autocompleteContainer.innerHTML = ragCollections.map(coll => `
-        <label class="flex items-center gap-2 text-sm text-gray-300">
-            <input type="checkbox" value="${coll.id}" ${profile?.autocompleteCollections?.includes(coll.id) || profile?.autocompleteCollections?.includes('*') || !profile ? 'checked' : ''}>
-            ${escapeHtml(coll.name)}
-        </label>
-    `).join('') || '<span class="text-gray-400">No RAG collections found.</span>';
+    // Separate collections by repository type
+    const plannerCollections = ragCollections.filter(coll => coll.repository_type === 'planner');
+    const knowledgeCollections = ragCollections.filter(coll => coll.repository_type === 'knowledge');
+    
+    // Helper function to create collection entry with toggles
+    const createCollectionEntry = (coll, isPlanner) => {
+        const isQueryEnabled = profile?.ragCollections?.includes(coll.id) || profile?.ragCollections?.includes('*') || !profile;
+        const isAutocompleteEnabled = profile?.autocompleteCollections?.includes(coll.id) || profile?.autocompleteCollections?.includes('*') || !profile;
+        // Knowledge repositories: default autocomplete to OFF
+        const defaultAutocomplete = isPlanner ? isAutocompleteEnabled : false;
+        
+        // Use explicit Tailwind classes instead of string interpolation
+        const hoverBg = isPlanner ? 'hover:bg-cyan-900/20' : 'hover:bg-emerald-900/20';
+        const hoverBorder = isPlanner ? 'hover:border-cyan-700/30' : 'hover:border-emerald-700/30';
+        const hoverText = isPlanner ? 'group-hover:text-cyan-100' : 'group-hover:text-emerald-100';
+        const checkboxColor = isPlanner ? 'text-cyan-500 focus:ring-cyan-500' : 'text-emerald-500 focus:ring-emerald-500';
+        const toggleFocus = isPlanner ? 'peer-focus:ring-cyan-500/50' : 'peer-focus:ring-emerald-500/50';
+        const toggleBg = isPlanner ? 'peer-checked:bg-cyan-600' : 'peer-checked:bg-emerald-600';
+        
+        return `
+            <div class="flex items-center justify-between px-3 py-2 bg-gray-800/30 ${hoverBg} rounded-lg border border-transparent ${hoverBorder} transition-all group">
+                <span class="text-sm text-gray-200 ${hoverText} transition-colors truncate flex-1 min-w-0">${escapeHtml(coll.name)}</span>
+                <div class="flex items-center flex-shrink-0" style="gap: 2rem;">
+                    <input type="checkbox" 
+                           data-collection-id="${coll.id}" 
+                           data-collection-type="query"
+                           ${isQueryEnabled ? 'checked' : ''} 
+                           class="${checkboxColor} rounded cursor-pointer" 
+                           style="width: 16px; height: 16px;">
+                    <label class="relative inline-block cursor-pointer" title="Enable autocomplete suggestions" style="width: 36px; height: 20px;">
+                        <input type="checkbox" 
+                               data-collection-id="${coll.id}" 
+                               data-collection-type="autocomplete"
+                               ${defaultAutocomplete ? 'checked' : ''} 
+                               class="sr-only peer">
+                        <span class="absolute inset-0 bg-gray-700 rounded-full transition-colors peer-focus:ring-2 ${toggleFocus} peer-checked:${toggleBg}"></span>
+                        <span class="absolute left-0.5 top-0.5 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-4"></span>
+                    </label>
+                </div>
+            </div>
+        `;
+    };
+    
+    // Render Planner Collections
+    const plannerHTML = plannerCollections.length > 0 
+        ? plannerCollections.map(coll => createCollectionEntry(coll, true)).join('')
+        : '<span class="text-gray-400 text-sm px-3 py-2 block">No planner repositories found.</span>';
+    console.log('[Profile Modal] Planner HTML length:', plannerHTML.length);
+    console.log('[Profile Modal] Planner collections count:', plannerCollections.length);
+    plannerContainer.innerHTML = plannerHTML;
+    
+    // Render Knowledge Collections
+    const knowledgeHTML = knowledgeCollections.length > 0
+        ? knowledgeCollections.map(coll => createCollectionEntry(coll, false)).join('')
+        : '<span class="text-gray-400 text-sm px-3 py-2 block">No knowledge repositories found.</span>';
+    console.log('[Profile Modal] Knowledge HTML length:', knowledgeHTML.length);
+    console.log('[Profile Modal] Knowledge collections count:', knowledgeCollections.length);
+    knowledgeContainer.innerHTML = knowledgeHTML;
 
     // Set profile name, tag and description
     const profileNameInput = modal.querySelector('#profile-modal-name');
@@ -2636,8 +2681,22 @@ async function showProfileModal(profileId = null) {
         
         const selectedTools = Array.from(toolsContainer.querySelectorAll('input:checked')).map(cb => cb.value);
         const selectedPrompts = Array.from(promptsContainer.querySelectorAll('input:checked')).map(cb => cb.value);
-        const selectedRag = Array.from(ragContainer.querySelectorAll('input:checked')).map(cb => parseInt(cb.value));
-        const selectedAutocomplete = Array.from(autocompleteContainer.querySelectorAll('input:checked')).map(cb => parseInt(cb.value));
+        
+        // Collect query-enabled collections from both Planner and Knowledge repositories
+        const plannerQueryCheckboxes = plannerContainer.querySelectorAll('input[data-collection-type="query"]:checked');
+        const knowledgeQueryCheckboxes = knowledgeContainer.querySelectorAll('input[data-collection-type="query"]:checked');
+        const selectedRag = [
+            ...Array.from(plannerQueryCheckboxes).map(cb => parseInt(cb.dataset.collectionId)),
+            ...Array.from(knowledgeQueryCheckboxes).map(cb => parseInt(cb.dataset.collectionId))
+        ];
+        
+        // Collect autocomplete-enabled collections from both Planner and Knowledge repositories
+        const plannerAutocompleteCheckboxes = plannerContainer.querySelectorAll('input[data-collection-type="autocomplete"]:checked');
+        const knowledgeAutocompleteCheckboxes = knowledgeContainer.querySelectorAll('input[data-collection-type="autocomplete"]:checked');
+        const selectedAutocomplete = [
+            ...Array.from(plannerAutocompleteCheckboxes).map(cb => parseInt(cb.dataset.collectionId)),
+            ...Array.from(knowledgeAutocompleteCheckboxes).map(cb => parseInt(cb.dataset.collectionId))
+        ];
         
         // Get selected classification mode
         const classificationModeRadio = modal.querySelector('input[name="classification-mode"]:checked');
