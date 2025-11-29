@@ -1,10 +1,10 @@
-# Knowledge Repository Marketplace - Implementation Guide
+# Planner Repository Marketplace - Implementation Guide
 
 ## Phase 1: Data Model & Ownership (COMPLETED)
 
 ### Overview
 
-This document tracks the implementation of the Knowledge Repository Marketplace feature, which enables users to share and discover RAG collections through a reference-based subscription model.
+This document tracks the implementation of the Planner Repository Marketplace feature, which enables users to share and discover RAG collections through a reference-based subscription model.
 
 ---
 

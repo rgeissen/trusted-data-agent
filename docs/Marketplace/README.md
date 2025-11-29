@@ -1,4 +1,4 @@
-# Phase 1 Summary: Knowledge Repository Marketplace
+# Phase 1 Summary: Planner Repository Marketplace
 
 ## ✅ Completed
 

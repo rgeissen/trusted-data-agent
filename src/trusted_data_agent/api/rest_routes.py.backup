@@ -1552,7 +1552,7 @@ async def populate_collection_from_template(collection_id: int):
 
 @rest_api_bp.route("/v1/rag/templates", methods=["GET"])
 async def get_rag_templates():
-    """Get information about available Knowledge templates."""
+    """Get information about available Planner Repository Constructors.""
     try:
         retriever = APP_STATE.get("rag_retriever_instance")
         if not retriever:
@@ -1572,7 +1572,7 @@ async def get_rag_templates():
         }), 200
         
     except Exception as e:
-        app_logger.error(f"Error getting Knowledge templates: {e}", exc_info=True)
+        app_logger.error(f"Error getting Planner Repository Constructors: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
 
 

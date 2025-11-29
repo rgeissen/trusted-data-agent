@@ -231,14 +231,14 @@ The `manifest.json` file describes metadata, dependencies, and configuration for
 }
 ```
 
-## Example: SQL Query Template - Business Context Manifest
+## Example: SQL Query Constructor - Database Context Manifest
 
 ```json
 {
   "name": "sql-query-basic",
   "version": "1.0.0",
   "template_id": "sql_query_v1",
-  "display_name": "SQL Query Template - Business Context",
+  "display_name": "SQL Query Constructor - Database Context",
   "description": "Two-phase strategy: Execute SQL statement and generate final report",
   "author": "TDA Core Team",
   "license": "AGPL-3.0",

@@ -12,7 +12,7 @@
 **As admin user:**
 
 1. **Login** as `admin`
-2. Navigate to **Intelligence** panel (Knowledge Repositories)
+2. Navigate to **Intelligence** panel (Planner Repositories)
 3. Create a new collection:
    - Click "Create New Collection"
    - Name: "SQL Performance Tips"

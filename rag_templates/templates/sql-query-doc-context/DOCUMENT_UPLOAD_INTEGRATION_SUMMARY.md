@@ -2,7 +2,7 @@
 
 ## What Was Done
 
-Successfully integrated the **DocumentUploadHandler abstraction layer** into the **SQL Query Template - Document Context** RAG template.
+Successfully integrated the **DocumentUploadHandler abstraction layer** into the **SQL Query Constructor - Document Context** RAG template.
 
 ## Key Changes
 
@@ -248,7 +248,7 @@ Admin → Application Configuration
 
 ## Summary
 
-✅ **Successfully integrated DocumentUploadHandler abstraction into SQL Query Template - Document Context**
+✅ **Successfully integrated DocumentUploadHandler abstraction into SQL Query Constructor - Document Context**
 
 - **Zero hardcoding**: All configuration template-based or database-driven
 - **Provider-aware**: Automatic native upload vs text extraction

@@ -15,7 +15,7 @@ The RAG Template System enables automatic generation of RAG case studies through
 
 ## Available Templates
 
-### SQL Query Template - Business Context (`sql-query-basic`)
+### SQL Query Constructor - Database Context (`sql-query-basic`)
 
 Generate question/SQL pairs from database schema and business requirements using MCP context.
 
@@ -34,7 +34,7 @@ Generate question/SQL pairs from database schema and business requirements using
 - Create diverse SQL query examples for specific databases
 - Build knowledge bases for business analytics scenarios
 
-### SQL Query Template - Document Context (`sql-query-doc-context`)
+### SQL Query Constructor - Document Context (`sql-query-doc-context`)
 
 Generate question/SQL pairs from technical documentation (PDF, TXT, DOC, DOCX) using document upload.
 
@@ -75,7 +75,7 @@ In the TDA web interface:
 
 #### Option A: From Database Schema (Business Context Template)
 
-With **SQL Query Template - Business Context** selected:
+With **SQL Query Constructor - Database Context** selected:
 
 1. **Generate Context** - Execute a sample query to extract database schema
 2. **Enter Configuration**:

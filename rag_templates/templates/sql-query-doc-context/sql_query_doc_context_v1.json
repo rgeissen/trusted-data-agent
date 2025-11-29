@@ -1,6 +1,6 @@
 {
   "template_id": "sql_query_doc_context_v1",
-  "template_name": "SQL Query Template - Document Context",
+  "template_name": "SQL Query Constructor - Document Context",
   "template_version": "1.1.0",
   "template_type": "sql_query",
   "description": "Two-phase strategy: Execute SQL statement and generate final report. Uses technical documentation as context for generating operational database queries. Integrates DocumentUploadHandler abstraction for provider-aware document handling with admin-configurable behavior.",

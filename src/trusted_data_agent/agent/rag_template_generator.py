@@ -638,7 +638,7 @@ class RAGTemplateGenerator:
         """
         templates = {
             "sql_query": {
-                "name": "SQL Query Template - Business Context",
+                "name": "SQL Query Constructor - Database Context",
                 "description": "Two-phase plan for executing SQL queries and generating reports",
                 "phases": [
                     {

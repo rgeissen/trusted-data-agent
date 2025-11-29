@@ -16,7 +16,7 @@ logger = logging.getLogger("rag_template_manager")
 
 class RAGTemplateManager:
     """
-    Manages Knowledge templates loaded from JSON files.
+    Manages Planner Repository Constructors loaded from JSON files.
     
     Loads template definitions from the rag_templates directory and provides
     access to template metadata and configurations.

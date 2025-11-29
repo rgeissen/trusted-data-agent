@@ -1,4 +1,4 @@
-# SQL Query Template - Document Context
+# SQL Query Constructor - Document Context
 
 ## Overview
 Generate SQL query examples from technical database documentation (DBA guides, performance tuning manuals, operational procedures). This template creates question/SQL pairs based on document content and a specified operational context topic.

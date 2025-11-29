@@ -2,7 +2,7 @@
   "name": "sql-query-doc-context",
   "version": "1.0.0",
   "template_id": "sql_query_doc_context_v1",
-  "display_name": "SQL Query Template - Document Context",
+  "display_name": "SQL Query Constructor - Document Context",
   "description": "Two-phase strategy: Execute SQL statement and generate final report. Generates question/SQL pairs from technical documentation (DBA guides, performance docs) with configurable context topics.",
   "author": "TDA Core Team",
   "license": "MIT",

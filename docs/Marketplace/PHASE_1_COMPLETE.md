@@ -2,7 +2,7 @@
 
 ## Summary
 
-Phase 1 of the Knowledge Repository Marketplace implementation is now complete. The foundation is in place for users to share and subscribe to RAG collections.
+Phase 1 of the Planner Repository Marketplace implementation is now complete. The foundation is in place for users to share and subscribe to RAG collections.
 
 ---
 

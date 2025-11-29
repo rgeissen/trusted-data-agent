@@ -926,7 +926,7 @@ The RAG Template System enables automatic generation of RAG case studies through
 
 #### 3.8.1. List Available Templates
 
-Get all registered Knowledge templates.
+Get all registered Planner Repository Constructors.
 
 * **Endpoint**: `GET /v1/rag/templates`
 * **Method**: `GET`
@@ -2593,7 +2593,7 @@ The user UUID is now automatically extracted from your token. Remove the `X-TDA-
 
 ## 10. Additional Resources
 
-- **Knowledge Templates:** `docs/RAG_Templates/README.md`
+- **Planner Repository Constructors:** `docs/RAG_Templates/README.md`
 - **Authentication Migration:** `docs/AUTH_ONLY_MIGRATION.md`
 - **Sample Configurations:** `docs/RestAPI/scripts/sample_configs/`
 - **Example Scripts:** `docs/RestAPI/scripts/`

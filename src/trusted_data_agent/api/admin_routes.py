@@ -1240,7 +1240,7 @@ def initialize_default_panes(session):
         {
             'pane_id': 'marketplace',
             'pane_name': 'Marketplace',
-            'description': 'Browse and install Knowledge templates',
+            'description': 'Browse and install Planner Repository Constructors',
             'display_order': 4,
             'visible_to_user': True,
             'visible_to_developer': True,

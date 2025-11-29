@@ -1,4 +1,4 @@
-# SQL Query Template - Business Context Plugin
+# SQL Query Constructor - Database Context Plugin
 
 ## Overview
 
@@ -61,7 +61,7 @@ Content-Type: application/json
 
 1. Open "Manage RAG Collections"
 2. Select "Auto-generate with LLM"
-3. Choose "SQL Query Template - Business Context"
+3. Choose "SQL Query Constructor - Database Context"
 4. Configure:
    - Subject/Topic
    - Database Name

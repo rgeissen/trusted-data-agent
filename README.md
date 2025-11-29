@@ -104,7 +104,7 @@ The Trusted Data Agent transcends typical data chat applications by delivering a
 
 * **Flexible Voice Modes**: Control the conversational flow with configurable modes for handling "Key Observations"—play them automatically, ask for confirmation before playing, or disable them entirely.
 
-### Self-Improving AI with Modular Knowledge Templates
+### Self-Improving AI with Modular Planner Repository Constructors
 
 * **Intelligent Few-Shot Learning**: The RAG system automatically captures successful interactions and retrieves "champion" strategies to guide future planning, continuously improving efficiency and quality.
 
@@ -177,7 +177,7 @@ The core value of this RAG implementation is its ability to automatically identi
 
 This process guides the Planner to generate higher-quality, more efficient plans based on proven, successful strategies, reducing token consumption and improving response quality without manual intervention. The entire process runs asynchronously in the background to ensure no impact on user-facing performance.
 
-### Knowledge Templates: Modular Plugin System (New - Nov 2025)
+### Planner Repository Constructors: Modular Plugin System (New - Nov 2025)
 
 The RAG system now features a **modular template architecture** that enables domain-specific customization and extensibility:
 
@@ -616,8 +616,8 @@ The application provides a multi-panel interface accessible through the left sid
 
 1. **Conversations** - Main conversational interface with the agent
 2. **Executions** - Real-time dashboard for monitoring all agent tasks
-3. **Intelligence** - Manage knowledge base collections and Knowledge templates
-4. **Marketplace** - Browse and install Knowledge templates from the community
+3. **Intelligence** - Manage knowledge base collections and Planner Repository Constructors
+4. **Marketplace** - Browse and install Planner Repository Constructors from the community
 5. **Credentials** - Configure LLM providers, MCP Servers, and profiles
 6. **Administration** - User management and system settings (admin only)
 
@@ -668,7 +668,7 @@ The **Intelligence** panel is your control center for managing the Retrieval-Aug
   - Bulk import/export collection data
   
 * **Template Management:**
-  - Browse installed Knowledge templates
+  - Browse installed Planner Repository Constructors
   - Configure template parameters
   - View template usage statistics
   - Enable/disable specific templates
@@ -683,7 +683,7 @@ For detailed RAG workflows and maintenance procedures, see the [RAG Maintenance 
 
 #### The Marketplace Panel
 
-The **Marketplace** panel provides access to community-contributed Knowledge templates:
+The **Marketplace** panel provides access to community-contributed Planner Repository Constructors:
 
 * **Template Discovery:** Browse available templates by category, popularity, or use case
 * **Template Preview:** View template details, capabilities, and example use cases before installation
@@ -754,7 +754,7 @@ The **Administration** panel provides system-level management capabilities (visi
 
 **Example Workflow:**
 1. **Credentials** → Configure LLM providers and MCP servers → Create profiles
-2. **Marketplace** → Browse and install Knowledge templates for your domain
+2. **Marketplace** → Browse and install Planner Repository Constructors for your domain
 3. **Intelligence** → Populate knowledge collections with your knowledge base
 4. **Conversations** → Start chatting with the agent using your enriched context
 5. **Executions** → Monitor task progress and review execution logs
@@ -1210,7 +1210,7 @@ This list reflects the recent enhancements and updates to the Trusted Data Agent
 *   **27-Nov-2025:** Document Upload Template - LLM-powered RAG generation from PDF/TXT/DOC/DOCX
 *   **25-Nov-2025:** Multi-User Authentication - JWT tokens, access tokens, user tiers
 *   **22-Nov-2025:** Profile System - Modular Configuration & Temporary Overrides
-*   **21-Nov-2025:** Knowledge Templates - Modular Plugin System
+*   **21-Nov-2025:** Planner Repository Constructors - Modular Plugin System
 *   **19-Nov-2025:** Modern UI Design
 *   **15-Nov-2025:** Flowise Integration
 *   **14-Nov-2025:** Airflow Integration

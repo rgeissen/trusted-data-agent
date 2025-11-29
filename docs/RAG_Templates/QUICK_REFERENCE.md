@@ -37,7 +37,7 @@ Response:
   "templates": [
     {
       "template_id": "sql_query_v1",
-      "display_name": "SQL Query Template - Business Context",
+      "display_name": "SQL Query Constructor - Database Context",
       "version": "1.0.0"
     }
   ]
