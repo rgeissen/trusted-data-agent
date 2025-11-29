@@ -25,7 +25,26 @@ except ImportError:
 
 class RAGTemplateManager:
     """
-    Manages Planner Repository Constructors loaded from JSON files.
+    Manages RAG Collection Templates loaded from JSON files.
+    
+    Templates define how RAG collections are created and populated. Two types:
+    
+    1. Planner Templates (Execution Strategies):
+       - template_type: sql_query, api_request, custom_workflow, etc.
+       - Define multi-phase execution strategies
+       - Generate case studies with successful execution traces
+       - Schema: planner-schema.json
+    
+    2. Knowledge Templates (Document Storage):
+       - template_type: knowledge_repository
+       - Define document chunking and embedding strategies
+       - Store documents with semantic search capability
+       - Schema: knowledge-template-schema.json
+    
+    Type Taxonomy:
+    - template_type: How the template executes/processes (strategy identifier)
+    - repository_type: How collection data is stored in DB (planner|knowledge)
+    - category: UI grouping for template display (Database, Knowledge Management)
     
     Loads template definitions from the rag_templates directory and provides
     access to template metadata and configurations.
@@ -199,12 +218,26 @@ class RAGTemplateManager:
         Performs two levels of validation:
         1. JSON schema validation (if jsonschema available and schema loaded)
         2. Fallback basic field validation
+        
+        Template Type Taxonomy:
+        - template_type: Strategy/execution type (sql_query, api_request, knowledge_repository)
+                        Determines how the template executes or processes data
+        - repository_type: Storage model in collections table (planner, knowledge)
+                          Determines database schema for collection storage
+        - category: UI grouping for display (Database, Knowledge Management, etc.)
+                   Used for organizing templates in user interface
+        
+        Schema Selection Logic:
+        - knowledge_repository → knowledge schema (document storage)
+        - all other types → planner schema (execution strategies)
         """
         template_type = template_data.get("template_type", "")
         
-        # Determine which schema to use
+        # Determine which schema to use based on template_type
+        # template_type="knowledge_repository" uses knowledge schema
+        # All other template_types (sql_query, api_request, etc.) use planner schema
         schema_type = None
-        if template_type == "knowledge_repository" or "knowledge" in template_type:
+        if template_type == "knowledge_repository":
             schema_type = "knowledge"
         else:
             schema_type = "planner"
@@ -235,7 +268,13 @@ class RAGTemplateManager:
         return self._validate_template_basic(template_data, template_type)
     
     def _validate_template_basic(self, template_data: Dict[str, Any], template_type: str) -> bool:
-        """Basic field validation fallback when JSON schema validation unavailable."""
+        """
+        Basic field validation fallback when JSON schema validation unavailable.
+        
+        Validates based on template_type:
+        - knowledge_repository: Requires repository_configuration
+        - All others (planner types): Require input_variables, output_configuration, strategy_template
+        """
         # Common required fields for all templates
         common_required = [
             "template_id",
@@ -249,14 +288,15 @@ class RAGTemplateManager:
                 return False
         
         # Knowledge repository templates have different required fields
-        if template_type == "knowledge_repository" or "knowledge" in template_type:
+        if template_type == "knowledge_repository":
             knowledge_required = ["repository_configuration"]
             for field in knowledge_required:
                 if field not in template_data:
                     logger.error(f"Knowledge template missing required field: {field}")
                     return False
         else:
-            # Planner templates (sql_query, api_request, etc.)
+            # Planner templates (sql_query, api_request, custom_workflow, etc.)
+            # These define execution strategies with phases
             planner_required = [
                 "input_variables",
                 "output_configuration",
@@ -296,12 +336,19 @@ class RAGTemplateManager:
         Prefers display_name from manifest over template_name from template data.
         
         Returns:
-            List of template metadata dictionaries
+            List of template metadata dictionaries including type taxonomy info
         """
         templates_list = []
         for template_id, template_data in self.templates.items():
             # Get manifest data if available
             manifest = self.plugin_manifests.get(template_id, {})
+            
+            # Get category from registry
+            category = None
+            for template_entry in self.registry.get("templates", []):
+                if template_entry.get("template_id") == template_id:
+                    category = template_entry.get("category")
+                    break
             
             templates_list.append({
                 "template_id": template_id,
@@ -310,7 +357,8 @@ class RAGTemplateManager:
                 "template_type": template_data.get("template_type"),
                 "description": manifest.get("description", template_data.get("description")),
                 "status": template_data.get("status", "active"),
-                "version": manifest.get("version", template_data.get("template_version"))
+                "version": manifest.get("version", template_data.get("template_version")),
+                "category": category
             })
         
         return templates_list

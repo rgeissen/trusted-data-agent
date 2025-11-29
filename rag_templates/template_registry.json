@@ -1,7 +1,8 @@
 {
   "registry_version": "2.0.0",
-  "last_updated": "2025-11-21T00:00:00Z",
-  "description": "Registry of available template plugins. Templates are now organized in plugin directories.",
+  "last_updated": "2025-11-29T00:00:00Z",
+  "description": "Registry of available template plugins. Templates are now organized in plugin directories with clear type taxonomy.",
+  "type_taxonomy_documentation": "See TYPE_TAXONOMY.md for details on template_type, repository_type, and category",
   "templates": [
     {
       "template_id": "sql_query_v1",
@@ -11,7 +12,8 @@
       "status": "active",
       "display_order": 1,
       "category": "Database",
-      "is_builtin": true
+      "is_builtin": true,
+      "notes": "Planner template: template_type=sql_query → repository_type=planner"
     },
     {
       "template_id": "sql_query_doc_context_v1",
@@ -21,7 +23,8 @@
       "status": "active",
       "display_order": 2,
       "category": "Database",
-      "is_builtin": true
+      "is_builtin": true,
+      "notes": "Planner template with document upload: template_type=sql_query → repository_type=planner"
     },
     {
       "template_id": "knowledge_repo_v1",
@@ -31,7 +34,8 @@
       "status": "active",
       "display_order": 3,
       "category": "Knowledge Management",
-      "is_builtin": true
+      "is_builtin": true,
+      "notes": "Knowledge template: template_type=knowledge_repository → repository_type=knowledge"
     }
   ],
   "template_status_definitions": {
@@ -40,5 +44,22 @@
     "deprecated": "Template is being phased out",
     "draft": "Template is not yet available",
     "coming_soon": "Template is under development and will be available soon"
+  },
+  "type_concepts": {
+    "template_type": {
+      "description": "Strategy/execution type - defines HOW the template processes data",
+      "examples": ["sql_query", "api_request", "knowledge_repository"],
+      "determines": ["Schema validation", "Required fields", "Execution logic"]
+    },
+    "repository_type": {
+      "description": "Storage model - defines HOW collection data is stored in database",
+      "values": ["planner", "knowledge"],
+      "determines": ["Database schema", "Query patterns", "ChromaDB storage"]
+    },
+    "category": {
+      "description": "UI grouping - organizes templates in user interface",
+      "examples": ["Database", "Knowledge Management", "API Integration"],
+      "determines": ["UI organization", "Template filtering", "Help text"]
+    }
   }
 }

@@ -2239,6 +2239,9 @@ async def create_rag_collection():
             return jsonify({"status": "error", "message": "Collection name is required"}), 400
         
         name = data["name"]
+        # repository_type: Storage model (planner|knowledge) - determines DB schema
+        # - planner: Stores execution strategies/traces (requires MCP server)
+        # - knowledge: Stores document chunks with embeddings
         repository_type = data.get("repository_type", "planner")
         
         # ENFORCEMENT: mcp_server_id is required for planner repositories only
@@ -2647,6 +2650,9 @@ async def populate_collection_from_template(collection_id: int):
         data = await request.get_json()
         
         # Validate required fields
+        # template_type: Strategy/execution type (sql_query, api_request, etc.)
+        # - Determines which template definition to use
+        # - Maps to template JSON files (sql_query_v1.json, etc.)
         template_type = data.get("template_type")
         template_id = data.get("template_id")  # New: support specific template ID
         examples_data = data.get("examples", [])
