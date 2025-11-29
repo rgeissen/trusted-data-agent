@@ -12,16 +12,12 @@ export function initializeKnowledgeRepositoryHandlers() {
     console.log('[Knowledge] Initializing Knowledge repository handlers...');
     
     // Modal open/close handlers
-    const addRepoBtn = document.getElementById('add-knowledge-repo-btn');
+    // Note: add-knowledge-repo-btn removed - templates now have Edit/Deploy buttons
     const addConstructorBtn = document.getElementById('add-knowledge-constructor-btn');
     const modalOverlay = document.getElementById('add-knowledge-repository-modal-overlay');
     const modalClose = document.getElementById('add-knowledge-repository-modal-close');
     const modalCancel = document.getElementById('add-knowledge-repository-cancel');
     const modalForm = document.getElementById('add-knowledge-repository-form');
-    
-    if (addRepoBtn) {
-        addRepoBtn.addEventListener('click', () => openKnowledgeRepositoryModal());
-    }
     
     if (addConstructorBtn) {
         addConstructorBtn.addEventListener('click', () => openKnowledgeRepositoryModal());
@@ -127,6 +123,58 @@ function openKnowledgeRepositoryModal() {
         modalContent.classList.remove('scale-95', 'opacity-0');
     });
 }
+
+/**
+ * Open the Knowledge repository modal with template defaults pre-filled
+ * @param {object} template - Template metadata
+ * @param {object} defaults - Saved default parameters
+ */
+function openKnowledgeRepositoryModalWithTemplate(template, defaults = {}) {
+    // First open the modal normally
+    openKnowledgeRepositoryModal();
+    
+    // Pre-fill form fields with defaults
+    if (defaults.chunking_strategy) {
+        const chunkingSelect = document.getElementById('knowledge-repo-chunking-strategy');
+        if (chunkingSelect) {
+            chunkingSelect.value = defaults.chunking_strategy;
+            // Trigger change event to show/hide conditional fields
+            chunkingSelect.dispatchEvent(new Event('change'));
+        }
+    }
+    
+    if (defaults.embedding_model) {
+        const embeddingSelect = document.getElementById('knowledge-repo-embedding-model');
+        if (embeddingSelect) embeddingSelect.value = defaults.embedding_model;
+    }
+    
+    if (defaults.chunk_size) {
+        const chunkSizeInput = document.getElementById('knowledge-repo-chunk-size');
+        if (chunkSizeInput) chunkSizeInput.value = defaults.chunk_size;
+    }
+    
+    if (defaults.chunk_overlap) {
+        const chunkOverlapInput = document.getElementById('knowledge-repo-chunk-overlap');
+        if (chunkOverlapInput) chunkOverlapInput.value = defaults.chunk_overlap;
+    }
+    
+    // Add template indicator
+    const modalTitle = document.querySelector('#add-knowledge-repository-modal-content h2');
+    if (modalTitle && template) {
+        modalTitle.innerHTML = `
+            <div class="flex items-center gap-2">
+                <i class="fas fa-file-alt"></i>
+                <span>Create Knowledge Repository</span>
+                <span class="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded">
+                    From Template: ${template.display_name || template.template_id}
+                </span>
+            </div>
+        `;
+    }
+}
+
+// Expose globally for template system
+window.openKnowledgeRepositoryModalWithTemplate = openKnowledgeRepositoryModalWithTemplate;
 
 /**
  * Close the Knowledge repository modal

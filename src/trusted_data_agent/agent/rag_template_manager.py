@@ -148,20 +148,39 @@ class RAGTemplateManager:
                 logger.error(f"Failed to load template {template_id}: {e}", exc_info=True)
     
     def _validate_template(self, template_data: Dict[str, Any]) -> bool:
-        """Validate that a template has required fields."""
-        required_fields = [
+        """Validate that a template has required fields based on its type."""
+        # Common required fields for all templates
+        common_required = [
             "template_id",
             "template_name",
-            "template_type",
-            "input_variables",
-            "output_configuration",
-            "strategy_template"
+            "template_type"
         ]
         
-        for field in required_fields:
+        for field in common_required:
             if field not in template_data:
                 logger.error(f"Template missing required field: {field}")
                 return False
+        
+        template_type = template_data.get("template_type", "")
+        
+        # Knowledge repository templates have different required fields
+        if template_type == "knowledge_repository" or "knowledge" in template_type:
+            knowledge_required = ["repository_configuration"]
+            for field in knowledge_required:
+                if field not in template_data:
+                    logger.error(f"Knowledge template missing required field: {field}")
+                    return False
+        else:
+            # Planner templates (sql_query, api_request, etc.)
+            planner_required = [
+                "input_variables",
+                "output_configuration",
+                "strategy_template"
+            ]
+            for field in planner_required:
+                if field not in template_data:
+                    logger.error(f"Planner template missing required field: {field}")
+                    return False
         
         return True
     

@@ -50,7 +50,7 @@ async function updateRagIndicator() {
 const showNotification = RagUtils.showNotification;
 
 // Modal Elements
-const addRagCollectionBtn = document.getElementById('add-rag-collection-btn');
+// Note: add-rag-collection-btn removed - templates now have Edit/Deploy buttons
 const addRagCollectionModalOverlay = document.getElementById('add-rag-collection-modal-overlay');
 const addRagCollectionModalContent = document.getElementById('add-rag-collection-modal-content');
 const addRagCollectionModalClose = document.getElementById('add-rag-collection-modal-close');
@@ -880,9 +880,7 @@ async function refreshRagCollection(collectionId, collectionName) {
 }
 
 // Event Listeners
-if (addRagCollectionBtn) {
-    addRagCollectionBtn.addEventListener('click', openAddRagCollectionModal);
-}
+// Note: addRagCollectionBtn removed - templates now have Edit/Deploy buttons instead
 
 // Knowledge Repository handlers are initialized in knowledgeRepositoryHandler.js
 
@@ -1271,6 +1269,15 @@ let exampleCounter = 0;
  * Open SQL Template Populator Modal
  */
 window.openSqlTemplatePopulator = async function() {
+    await openSqlTemplatePopulatorWithDefaults(null, {});
+};
+
+/**
+ * Open SQL Template Populator Modal with template defaults pre-filled
+ * @param {object} template - Template metadata (optional)
+ * @param {object} defaults - Saved default parameters
+ */
+window.openSqlTemplatePopulatorWithDefaults = async function(template, defaults = {}) {
     // Reset form
     sqlTemplateForm.reset();
     exampleCounter = 0;
@@ -1281,11 +1288,46 @@ window.openSqlTemplatePopulator = async function() {
     addSqlExample();
     
     // Load template config to set placeholder
-    const selectedTemplateId = ragCollectionTemplateType?.value || 'sql_query_v1';
+    const selectedTemplateId = template?.template_id || ragCollectionTemplateType?.value || 'sql_query_v1';
     const templateConfig = await window.templateManager.getTemplateConfig(selectedTemplateId);
+    
+    // Pre-fill form fields with defaults
     const mcpToolInput = document.getElementById('sql-template-mcp-tool');
-    if (mcpToolInput && templateConfig?.default_mcp_tool) {
-        mcpToolInput.placeholder = templateConfig.default_mcp_tool;
+    if (mcpToolInput) {
+        if (defaults.mcp_tool_name) {
+            mcpToolInput.value = defaults.mcp_tool_name;
+        } else if (templateConfig?.default_mcp_tool) {
+            mcpToolInput.placeholder = templateConfig.default_mcp_tool;
+        }
+    }
+    
+    const targetDbInput = document.getElementById('sql-template-target-database');
+    if (targetDbInput && defaults.target_database) {
+        targetDbInput.value = defaults.target_database;
+    }
+    
+    const mcpContextInput = document.getElementById('sql-template-mcp-context-prompt');
+    if (mcpContextInput && defaults.mcp_context_prompt) {
+        mcpContextInput.value = defaults.mcp_context_prompt;
+    }
+    
+    const contextTopicInput = document.getElementById('sql-template-context-topic');
+    if (contextTopicInput && defaults.context_topic) {
+        contextTopicInput.value = defaults.context_topic;
+    }
+    
+    // Add template indicator if template provided
+    const modalTitle = document.querySelector('#sql-template-modal-content h3');
+    if (modalTitle && template) {
+        const originalText = modalTitle.textContent;
+        modalTitle.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span>${originalText}</span>
+                <span class="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded">
+                    From Template: ${template.display_name || template.template_id}
+                </span>
+            </div>
+        `;
     }
     
     // Show modal with animation

@@ -1175,8 +1175,8 @@
                 </div>
             </div>
 
-            <div id="rag-maintenance-view" class="app-view w-full h-full p-8 overflow-y-auto">
-                <div class="max-w-7xl mx-auto">
+            <div id="rag-maintenance-view" class="app-view w-full h-full overflow-y-auto">
+                <div class="max-w-7xl mx-auto p-8">
                     <div class="mb-6">
                         <h1 class="text-3xl font-bold text-white header-title">Knowledge Performance</h1>
                     </div>
@@ -1334,17 +1334,9 @@
 
                             <!-- Planner Repository Constructors Section -->
                             <div class="mb-6">
-                                <div class="flex items-center justify-between mb-4">
-                                    <div>
-                                        <h2 class="text-2xl font-bold text-white">Planner Repository Constructors</h2>
-                                        <p class="text-sm text-gray-400 mt-1">Populate Planner Repositories using predefined templates</p>
-                                    </div>
-                                    <button id="add-rag-collection-btn" type="button" class="px-4 py-2 rounded-md bg-[#F15F22] hover:bg-[#D9501A] text-white font-medium text-sm flex items-center gap-2">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                                        </svg>
-                                        Add Collection
-                                    </button>
+                                <div class="mb-4">
+                                    <h2 class="text-2xl font-bold text-white">Planner Repository Constructors</h2>
+                                    <p class="text-sm text-gray-400 mt-1">Populate Planner Repositories using predefined templates</p>
                                 </div>
                                 
                                 <!-- Template Cards (dynamically loaded) -->
@@ -1370,17 +1362,9 @@
 
                             <!-- Knowledge Repository Constructors Section -->
                             <div class="mb-6">
-                                <div class="flex items-center justify-between mb-4">
-                                    <div>
-                                        <h2 class="text-2xl font-bold text-white">Knowledge Repository Constructors</h2>
-                                        <p class="text-sm text-gray-400 mt-1">Build Knowledge Repositories from documents and reference materials</p>
-                                    </div>
-                                    <button id="add-knowledge-repo-btn" type="button" class="px-4 py-2 rounded-md bg-[#F15F22] hover:bg-[#D9501A] text-white font-medium text-sm flex items-center gap-2">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                                        </svg>
-                                        Add Repository
-                                    </button>
+                                <div class="mb-4">
+                                    <h2 class="text-2xl font-bold text-white">Knowledge Repository Constructors</h2>
+                                    <p class="text-sm text-gray-400 mt-1">Build Knowledge Repositories from documents and reference materials</p>
                                 </div>
                                 
                                 <!-- Constructor Cards -->
@@ -3235,45 +3219,17 @@
                 <!-- Separator -->
                 <div class="border-t border-gray-600 pt-4"></div>
 
-                <!-- Population Options -->
+                <!-- Template Options (always visible now) -->
                 <div>
                     <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-sm font-medium text-gray-300">Collection Population</h3>
-                        <span class="text-xs text-gray-500">Optional</span>
-                    </div>
-                    <p class="text-xs text-gray-400 mb-3">Choose how to populate the collection with initial examples</p>
-                    
-                    <!-- Level 1: Population Decision -->
-                    <div class="space-y-2 mb-4">
-                        <label class="flex items-center gap-3 p-3 bg-gray-700/30 rounded-lg border border-gray-600 cursor-pointer hover:border-teradata-orange/50 transition-colors">
-                            <input type="radio" name="population-decision" value="none" id="rag-population-none" checked
-                                   class="w-4 h-4 text-teradata-orange focus:ring-2 focus:ring-teradata-orange">
-                            <div>
-                                <div class="text-sm font-medium text-gray-300">No Population</div>
-                                <div class="text-xs text-gray-400">Create empty collection</div>
-                            </div>
-                        </label>
-                        
-                        <label class="flex items-center gap-3 p-3 bg-gray-700/30 rounded-lg border border-gray-600 cursor-pointer hover:border-teradata-orange/50 transition-colors">
-                            <input type="radio" name="population-decision" value="template" id="rag-population-with-template"
-                                   class="w-4 h-4 text-teradata-orange focus:ring-2 focus:ring-teradata-orange">
-                            <div>
-                                <div class="text-sm font-medium text-gray-300">Populate with Template</div>
-                                <div class="text-xs text-gray-400">Use a template to add initial examples</div>
-                            </div>
-                        </label>
+                        <h3 class="text-sm font-medium text-gray-300">Template Configuration</h3>
                     </div>
                     
-                    <!-- Level 2: Template Options (shown when "Populate with Template" is selected) -->
-                    <div id="rag-collection-template-options" class="hidden space-y-4 bg-gray-700/30 rounded-lg p-4 border border-gray-600">
-                        <!-- Template Type Selection -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Template Type</label>
-                            <select id="rag-collection-template-type" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-teradata-orange focus:border-teradata-orange outline-none text-white text-sm">
-                                <option value="">Loading templates...</option>
-                            </select>
-                        </div>
-
+                    <!-- Hidden inputs to maintain compatibility with existing code -->
+                    <input type="hidden" name="population-decision" value="template" id="rag-population-with-template">
+                    <input type="hidden" id="rag-collection-template-type">
+                    
+                    <div id="rag-collection-template-options" class="space-y-4">
                         <!-- Population Method: Manual vs Auto-generate -->
                         <div>
                             <label class="block text-sm font-medium text-gray-300 mb-2">Population Method</label>

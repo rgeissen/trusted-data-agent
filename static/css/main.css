@@ -1381,7 +1381,7 @@ div.app-view {
     display: none;
     width: 100%;
     height: 100%;
-    overflow: hidden; /* Views should manage their own internal scrolling */
+    /* Note: overflow managed by individual views - some need overflow-y-auto, others overflow: hidden */
 }
 
 /* Show the active view */

@@ -69,6 +69,9 @@ def init_database():
         # Create collections table (for marketplace)
         _create_collections_table()
         
+        # Create template defaults table (for template configuration)
+        _create_template_defaults_table()
+        
         # Create default admin account if no users exist
         _create_default_admin_if_needed()
         
@@ -146,6 +149,51 @@ def _create_collections_table():
         
     except Exception as e:
         logger.error(f"Error creating collections table: {e}", exc_info=True)
+
+
+def _create_template_defaults_table():
+    """
+    Create the template_defaults table for storing user/system template parameter overrides.
+    Safe to call multiple times (won't recreate if exists).
+    """
+    import sqlite3
+    
+    try:
+        conn = sqlite3.connect(DATABASE_URL.replace('sqlite:///', ''))
+        cursor = conn.cursor()
+        
+        # Create template_defaults table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS template_defaults (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                template_id VARCHAR(100) NOT NULL,
+                user_id VARCHAR(36),
+                parameter_name VARCHAR(100) NOT NULL,
+                parameter_value TEXT NOT NULL,
+                parameter_type VARCHAR(20) NOT NULL,
+                is_system_default BOOLEAN NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                updated_by VARCHAR(36),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
+                UNIQUE(template_id, user_id, parameter_name)
+            )
+        """)
+        
+        # Create indexes for efficient queries
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_template_defaults_template ON template_defaults(template_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_template_defaults_user ON template_defaults(user_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_template_defaults_system ON template_defaults(is_system_default)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_template_defaults_lookup ON template_defaults(template_id, user_id)")
+        
+        conn.commit()
+        conn.close()
+        
+        logger.info("Template defaults table initialized successfully")
+        
+    except Exception as e:
+        logger.error(f"Error creating template defaults table: {e}", exc_info=True)
 
 
 def _create_default_admin_if_needed():

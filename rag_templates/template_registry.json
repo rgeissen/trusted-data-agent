@@ -22,6 +22,16 @@
       "display_order": 2,
       "category": "Database",
       "is_builtin": true
+    },
+    {
+      "template_id": "knowledge_repo_v1",
+      "plugin_directory": "knowledge-repository-basic",
+      "template_file": "knowledge-repository-basic/knowledge_repo_v1.json",
+      "manifest_file": "knowledge-repository-basic/manifest.json",
+      "status": "active",
+      "display_order": 3,
+      "category": "Knowledge Management",
+      "is_builtin": true
     }
   ],
   "template_status_definitions": {

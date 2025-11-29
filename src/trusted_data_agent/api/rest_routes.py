@@ -2828,6 +2828,35 @@ async def discover_template_plugins():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@rest_api_bp.route("/v1/rag/templates/<template_id>/full", methods=["GET"])
+async def get_full_template(template_id: str):
+    """
+    Get the complete template data including all configuration.
+    
+    Returns the full template JSON with all fields.
+    """
+    try:
+        from trusted_data_agent.agent.rag_template_manager import get_template_manager
+        
+        template_manager = get_template_manager()
+        template = template_manager.get_template(template_id)
+        
+        if not template:
+            return jsonify({
+                "status": "error",
+                "message": f"Template {template_id} not found"
+            }), 404
+        
+        return jsonify({
+            "status": "success",
+            "template": template
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error getting full template: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @rest_api_bp.route("/v1/rag/templates/<template_id>/plugin-info", methods=["GET"])
 async def get_template_plugin_info(template_id: str):
     """
@@ -2929,6 +2958,235 @@ async def validate_template_plugin():
     except Exception as e:
         app_logger.error(f"Error validating plugin: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/rag/templates/<template_id>/defaults", methods=["GET"])
+async def get_template_defaults(template_id: str):
+    """
+    Get template parameter defaults for the current user.
+    Falls back to system defaults if user hasn't customized.
+    
+    Returns:
+    {
+        "status": "success",
+        "template_id": "knowledge_repo_v1",
+        "defaults": {
+            "chunking_strategy": "semantic",
+            "embedding_model": "all-MiniLM-L6-v2",
+            ...
+        },
+        "is_customized": true  // Whether user has customized defaults
+    }
+    """
+    try:
+        user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({"status": "error", "message": "Authentication required"}), 401
+        
+        import sqlite3
+        from datetime import datetime
+        
+        conn = sqlite3.connect('tda_auth.db')
+        cursor = conn.cursor()
+        
+        # Get user-specific defaults
+        cursor.execute("""
+            SELECT parameter_name, parameter_value, parameter_type
+            FROM template_defaults
+            WHERE template_id = ? AND user_id = ?
+        """, (template_id, user_uuid))
+        
+        user_defaults = {row[0]: _parse_parameter_value(row[1], row[2]) for row in cursor.fetchall()}
+        
+        # Get system defaults (fallback)
+        cursor.execute("""
+            SELECT parameter_name, parameter_value, parameter_type
+            FROM template_defaults
+            WHERE template_id = ? AND is_system_default = 1
+        """, (template_id,))
+        
+        system_defaults = {row[0]: _parse_parameter_value(row[1], row[2]) for row in cursor.fetchall()}
+        
+        conn.close()
+        
+        # Merge: user defaults override system defaults
+        defaults = {**system_defaults, **user_defaults}
+        is_customized = len(user_defaults) > 0
+        
+        return jsonify({
+            "status": "success",
+            "template_id": template_id,
+            "defaults": defaults,
+            "is_customized": is_customized
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error getting template defaults: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/rag/templates/<template_id>/defaults", methods=["POST"])
+async def save_template_defaults(template_id: str):
+    """
+    Save template parameter defaults for the current user.
+    
+    Request body:
+    {
+        "defaults": {
+            "chunking_strategy": "paragraph",
+            "embedding_model": "all-mpnet-base-v2",
+            "chunk_size": 1500
+        }
+    }
+    
+    Returns:
+    {
+        "status": "success",
+        "message": "Defaults saved successfully",
+        "updated_count": 3
+    }
+    """
+    try:
+        user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({"status": "error", "message": "Authentication required"}), 401
+        
+        data = await request.get_json()
+        defaults = data.get("defaults", {})
+        
+        if not defaults:
+            return jsonify({"status": "error", "message": "No defaults provided"}), 400
+        
+        import sqlite3
+        from datetime import datetime
+        
+        conn = sqlite3.connect('tda_auth.db')
+        cursor = conn.cursor()
+        
+        updated_count = 0
+        now = datetime.utcnow().isoformat()
+        
+        for param_name, param_value in defaults.items():
+            # Determine parameter type
+            param_type = _get_parameter_type(param_value)
+            param_value_str = _serialize_parameter_value(param_value, param_type)
+            
+            # Upsert: Insert or update
+            cursor.execute("""
+                INSERT INTO template_defaults 
+                (template_id, user_id, parameter_name, parameter_value, parameter_type, 
+                 is_system_default, created_at, updated_at, updated_by)
+                VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)
+                ON CONFLICT(template_id, user_id, parameter_name) 
+                DO UPDATE SET 
+                    parameter_value = excluded.parameter_value,
+                    parameter_type = excluded.parameter_type,
+                    updated_at = excluded.updated_at,
+                    updated_by = excluded.updated_by
+            """, (template_id, user_uuid, param_name, param_value_str, param_type, 
+                  now, now, user_uuid))
+            
+            updated_count += 1
+        
+        conn.commit()
+        conn.close()
+        
+        app_logger.info(f"User {user_uuid} saved {updated_count} defaults for template {template_id}")
+        
+        return jsonify({
+            "status": "success",
+            "message": "Defaults saved successfully",
+            "updated_count": updated_count
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error saving template defaults: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route("/v1/rag/templates/<template_id>/defaults", methods=["DELETE"])
+async def reset_template_defaults(template_id: str):
+    """
+    Reset template defaults to system defaults (delete user customizations).
+    
+    Returns:
+    {
+        "status": "success",
+        "message": "Defaults reset to system defaults"
+    }
+    """
+    try:
+        user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({"status": "error", "message": "Authentication required"}), 401
+        
+        import sqlite3
+        
+        conn = sqlite3.connect('tda_auth.db')
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            DELETE FROM template_defaults
+            WHERE template_id = ? AND user_id = ?
+        """, (template_id, user_uuid))
+        
+        deleted_count = cursor.rowcount
+        conn.commit()
+        conn.close()
+        
+        app_logger.info(f"User {user_uuid} reset {deleted_count} defaults for template {template_id}")
+        
+        return jsonify({
+            "status": "success",
+            "message": "Defaults reset to system defaults",
+            "deleted_count": deleted_count
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error resetting template defaults: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+def _get_parameter_type(value):
+    """Determine parameter type from Python value."""
+    if isinstance(value, bool):
+        return 'boolean'
+    elif isinstance(value, int):
+        return 'integer'
+    elif isinstance(value, float):
+        return 'number'
+    elif isinstance(value, list):
+        return 'array'
+    elif isinstance(value, dict):
+        return 'object'
+    else:
+        return 'string'
+
+
+def _serialize_parameter_value(value, param_type):
+    """Serialize parameter value to string for storage."""
+    if param_type in ['array', 'object']:
+        import json
+        return json.dumps(value)
+    elif param_type == 'boolean':
+        return '1' if value else '0'
+    else:
+        return str(value)
+
+
+def _parse_parameter_value(value_str, param_type):
+    """Parse parameter value from storage string."""
+    if param_type == 'boolean':
+        return value_str in ['1', 'true', 'True']
+    elif param_type == 'integer':
+        return int(value_str)
+    elif param_type == 'number':
+        return float(value_str)
+    elif param_type in ['array', 'object']:
+        import json
+        return json.loads(value_str)
+    else:
+        return value_str
 
 
 # ============================================================================
