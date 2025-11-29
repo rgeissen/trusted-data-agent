@@ -42,28 +42,6 @@ function getCurrentCoreConfig() {
 }
 
 /**
- * Handles request to close the config modal, checking for changes.
- */
-// export function handleCloseConfigModalRequest() {
-//     const coreChanged = JSON.stringify(getCurrentCoreConfig()) !== JSON.stringify(state.pristineConfig);
-//     if (coreChanged) {
-//         UI.showConfirmation('Discard Changes?', 'You have unsaved changes in your configuration. Are you sure you want to close?', UI.closeConfigModal);
-//     } else {
-//         UI.closeConfigModal();
-//     }
-// }
-
-/**
- * Handles click on the main config modal action button (Connect/Close).
- * @param {Event} e - The click event.
- */
-// export function handleConfigActionButtonClick(e) {
-//     if (e.currentTarget.type === 'button') {
-//         handleCloseConfigModalRequest();
-//     }
-// }
-
-/**
  * Finalizes the application configuration after a successful connection.
  * Loads resources, sessions, and sets UI state.
  * @param {object} config - The configuration object from the form.

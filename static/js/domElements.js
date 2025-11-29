@@ -118,22 +118,6 @@ export const infoModalOverlay = document.getElementById('info-modal-overlay');
 export const infoModalClose = document.getElementById('info-modal-close');
 export const infoModalContent = document.getElementById('info-modal-content');
 
-// Configuration Modal elements
-// --- MODIFICATION START: Remove Config Modal elements ---
-// The config form is now a top-level view, not a modal.
-// These old config form elements no longer exist after the configuration system refactor
-// export const configMenuButton = document.getElementById('config-menu-button');
-// export const configModalOverlay = document.getElementById('config-modal-overlay');
-// export const configModalContent = document.getElementById('config-modal-content');
-// export const configModalClose = document.getElementById('config-modal-close');
-// export const configForm = document.getElementById('config-form');
-// export const configStatus = document.getElementById('config-status');
-// export const configLoadingSpinner = document.getElementById('config-loading-spinner');
-// export const configActionButton = document.getElementById('config-action-button');
-// export const configActionButtonText = document.getElementById('config-action-button-text');
-// export const mcpServerNameInput = document.getElementById('mcp-server-name');
-// --- MODIFICATION END ---
-
 // LLM Configuration elements
 export const refreshModelsButton = document.getElementById('refresh-models-button');
 export const refreshIcon = document.getElementById('refresh-icon');
@@ -190,14 +174,6 @@ export const confirmModalTitle = document.getElementById('confirm-modal-title');
 export const confirmModalBody = document.getElementById('confirm-modal-body');
 export const confirmModalConfirm = document.getElementById('confirm-modal-confirm');
 export const confirmModalCancel = document.getElementById('confirm-modal-cancel');
-
-// System Prompt Popup elements
-export const systemPromptPopupOverlay = document.getElementById('system-prompt-popup-overlay');
-export const systemPromptPopupContent = document.getElementById('system-prompt-popup-content');
-export const systemPromptPopupTitle = document.getElementById('system-prompt-popup-title');
-export const systemPromptPopupBody = document.getElementById('system-prompt-popup-body');
-export const systemPromptPopupClose = document.getElementById('system-prompt-popup-close');
-export const systemPromptPopupViewFull = document.getElementById('system-prompt-popup-view-full');
 
 // Simple Chat Modal elements
 export const chatModalButton = document.getElementById('chat-modal-button');

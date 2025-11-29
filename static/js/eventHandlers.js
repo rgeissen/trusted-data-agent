@@ -1086,78 +1086,6 @@ function buildDisabledCapabilitiesListHTML() {
     return html;
 }
 
-function startPopupCountdown() {
-    if (state.systemPromptPopupTimer) {
-        clearInterval(state.systemPromptPopupTimer);
-    }
-
-    const countdownTimerEl = document.getElementById('countdown-timer');
-    const countdownContainerEl = document.getElementById('countdown-container');
-
-    if (countdownTimerEl && countdownContainerEl) {
-        countdownTimerEl.textContent = state.countdownValue;
-        countdownContainerEl.style.visibility = 'visible';
-
-        state.systemPromptPopupTimer = setInterval(() => {
-            state.countdownValue--;
-            countdownTimerEl.textContent = state.countdownValue;
-            if (state.countdownValue <= 0) {
-                closeSystemPromptPopup();
-            }
-        }, 1000);
-    }
-}
-
-function stopPopupCountdown() {
-    if (state.systemPromptPopupTimer) {
-        clearInterval(state.systemPromptPopupTimer);
-        state.systemPromptPopupTimer = null;
-    }
-    const countdownContainerEl = document.getElementById('countdown-container');
-    if(countdownContainerEl) {
-        countdownContainerEl.style.visibility = 'hidden';
-    }
-}
-
-export function openSystemPromptPopup() {
-    DOM.systemPromptPopupBody.innerHTML = getSystemPromptSummaryHTML();
-    const disabledListContainer = document.getElementById('disabled-capabilities-container-splash');
-    if (disabledListContainer) {
-        disabledListContainer.innerHTML = buildDisabledCapabilitiesListHTML();
-    }
-
-    if (Utils.isPrivilegedUser()) {
-        DOM.systemPromptPopupViewFull.style.display = 'inline-block';
-    } else {
-        DOM.systemPromptPopupViewFull.style.display = 'none';
-    }
-
-    DOM.systemPromptPopupOverlay.classList.remove('hidden', 'opacity-0');
-    DOM.systemPromptPopupContent.classList.remove('scale-95', 'opacity-0');
-
-    state.countdownValue = 5;
-    startPopupCountdown();
-
-    state.mouseMoveHandler = () => {
-        stopPopupCountdown();
-        document.removeEventListener('mousemove', state.mouseMoveHandler);
-    };
-    document.addEventListener('mousemove', state.mouseMoveHandler);
-}
-
-function closeSystemPromptPopup() {
-    stopPopupCountdown();
-    if (state.mouseMoveHandler) {
-         document.removeEventListener('mousemove', state.mouseMoveHandler);
-         state.mouseMoveHandler = null;
-    }
-    DOM.systemPromptPopupOverlay.classList.add('opacity-0');
-    DOM.systemPromptPopupContent.classList.add('scale-95', 'opacity-0');
-    setTimeout(() => {
-        DOM.systemPromptPopupOverlay.classList.add('hidden');
-    }, 300);
-}
-
 async function handleTogglePrompt(promptName, isDisabled, buttonEl) {
     try {
         await API.togglePromptApi(promptName, isDisabled);
@@ -1526,21 +1454,6 @@ export function initializeEventListeners() {
     DOM.statusWindowContent.addEventListener('mouseleave', () => { state.isMouseOverStatus = false; });
     DOM.chartingIntensitySelect.addEventListener('change', handleIntensityChange);
     
-    // Old system prompt popup - deprecated but kept for backward compatibility
-    if (DOM.systemPromptPopupClose) {
-        DOM.systemPromptPopupClose.addEventListener('click', closeSystemPromptPopup);
-    }
-    if (DOM.systemPromptPopupViewFull) {
-        DOM.systemPromptPopupViewFull.addEventListener('click', () => {
-            closeSystemPromptPopup();
-            openPromptEditor();
-        });
-    }
-    if (DOM.systemPromptPopupOverlay) {
-        DOM.systemPromptPopupOverlay.addEventListener('click', (e) => {
-            if (e.target === DOM.systemPromptPopupOverlay) closeSystemPromptPopup();
-        });
-    }
     DOM.windowMenuButton.addEventListener('click', (e) => {
         e.stopPropagation();
         DOM.windowDropdownMenu.classList.toggle('open');

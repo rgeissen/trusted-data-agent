@@ -16,7 +16,6 @@ export const state = {
     resourceData: { tools: {}, prompts: {}, resources: {}, charts: {} },
     currentlySelectedResource: null,
     eventSource: null,
-    systemPromptPopupTimer: null,
     countdownValue: 5,
     mouseMoveHandler: null,
     pristineConfig: {},
