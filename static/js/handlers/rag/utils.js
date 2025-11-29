@@ -46,7 +46,7 @@ export function showNotification(type, message) {
  * Populate MCP server dropdown with available servers
  * @param {HTMLSelectElement} selectElement - The select element to populate
  */
-export function populateMcpServerDropdown(selectElement) {
+export function populateMcpServerDropdown(selectElement, autoSelectFirst = true) {
     if (!selectElement) return;
     
     // Clear existing options except the placeholder
@@ -60,6 +60,11 @@ export function populateMcpServerDropdown(selectElement) {
             option.textContent = server.name;
             selectElement.appendChild(option);
         });
+        
+        // Auto-select first server if requested and available
+        if (autoSelectFirst && window.configState.mcpServers.length > 0) {
+            selectElement.value = window.configState.mcpServers[0].id;
+        }
     }
     
     // If no servers available, show message

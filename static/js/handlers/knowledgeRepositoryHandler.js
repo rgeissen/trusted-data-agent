@@ -4,6 +4,7 @@
  */
 
 import { state } from '../state.js';
+import { populateMcpServerDropdown } from './rag/utils.js';
 
 /**
  * Initialize Knowledge repository handlers
@@ -41,7 +42,11 @@ export function initializeKnowledgeRepositoryHandlers() {
     
     // Form submission
     if (modalForm) {
+        console.log('[Knowledge] Attaching submit handler to form during init');
         modalForm.addEventListener('submit', handleKnowledgeRepositorySubmit);
+        modalForm._hasSubmitHandler = true;
+    } else {
+        console.warn('[Knowledge] Form element not found during init (will attach later): add-knowledge-repository-form');
     }
     
     // Chunking strategy change handler with auto-preview
@@ -90,6 +95,13 @@ function openKnowledgeRepositoryModal() {
     const form = document.getElementById('add-knowledge-repository-form');
     if (form) form.reset();
     
+    // Populate MCP server dropdown
+    const mcpServerSelect = document.getElementById('knowledge-repo-mcp-server');
+    if (mcpServerSelect) {
+        populateMcpServerDropdown(mcpServerSelect);
+        console.log('[Knowledge] MCP server dropdown populated');
+    }
+    
     // Reset file list
     const fileList = document.getElementById('knowledge-repo-file-list');
     const filesContainer = document.getElementById('knowledge-repo-files-container');
@@ -133,30 +145,59 @@ function openKnowledgeRepositoryModalWithTemplate(template, defaults = {}) {
     // First open the modal normally
     openKnowledgeRepositoryModal();
     
-    // Pre-fill form fields with defaults
-    if (defaults.chunking_strategy) {
-        const chunkingSelect = document.getElementById('knowledge-repo-chunking-strategy');
-        if (chunkingSelect) {
-            chunkingSelect.value = defaults.chunking_strategy;
-            // Trigger change event to show/hide conditional fields
-            chunkingSelect.dispatchEvent(new Event('change'));
+    // Ensure form submit handler is attached (in case form wasn't ready during init)
+    const modalForm = document.getElementById('add-knowledge-repository-form');
+    if (modalForm) {
+        // Check if handler is already attached by checking _hasSubmitHandler flag
+        if (!modalForm._hasSubmitHandler) {
+            console.log('[Knowledge] Attaching submit handler (was missing)');
+            modalForm.addEventListener('submit', handleKnowledgeRepositorySubmit);
+            modalForm._hasSubmitHandler = true;
+        } else {
+            console.log('[Knowledge] Submit handler already attached');
         }
+    } else {
+        console.error('[Knowledge] Form not found in openKnowledgeRepositoryModalWithTemplate');
     }
     
-    if (defaults.embedding_model) {
-        const embeddingSelect = document.getElementById('knowledge-repo-embedding-model');
-        if (embeddingSelect) embeddingSelect.value = defaults.embedding_model;
-    }
-    
-    if (defaults.chunk_size) {
-        const chunkSizeInput = document.getElementById('knowledge-repo-chunk-size');
-        if (chunkSizeInput) chunkSizeInput.value = defaults.chunk_size;
-    }
-    
-    if (defaults.chunk_overlap) {
-        const chunkOverlapInput = document.getElementById('knowledge-repo-chunk-overlap');
-        if (chunkOverlapInput) chunkOverlapInput.value = defaults.chunk_overlap;
-    }
+    // DON'T clone the form - it removes all event listeners including file upload!
+    // Just pre-fill the form fields with defaults
+    setTimeout(() => {
+        console.log('[Knowledge] Pre-filling form fields with template defaults');
+        
+        if (defaults.chunking_strategy) {
+            const chunkingSelect = document.getElementById('knowledge-repo-chunking');
+            if (chunkingSelect) {
+                chunkingSelect.value = defaults.chunking_strategy;
+                chunkingSelect.dispatchEvent(new Event('change'));
+                console.log('[Knowledge] Pre-filled chunking strategy:', defaults.chunking_strategy);
+            }
+        }
+        
+        if (defaults.embedding_model) {
+            const embeddingSelect = document.getElementById('knowledge-repo-embedding');
+            if (embeddingSelect) {
+                embeddingSelect.value = defaults.embedding_model;
+                console.log('[Knowledge] Pre-filled embedding model:', defaults.embedding_model);
+            }
+        }
+        
+        if (defaults.chunk_size) {
+            const chunkSizeInput = document.getElementById('knowledge-repo-chunk-size');
+            if (chunkSizeInput) {
+                chunkSizeInput.value = defaults.chunk_size;
+                console.log('[Knowledge] Pre-filled chunk size:', defaults.chunk_size);
+            }
+        }
+        
+        if (defaults.chunk_overlap) {
+            const chunkOverlapInput = document.getElementById('knowledge-repo-chunk-overlap');
+            if (chunkOverlapInput) {
+                chunkOverlapInput.value = defaults.chunk_overlap;
+                console.log('[Knowledge] Pre-filled chunk overlap:', defaults.chunk_overlap);
+            }
+        }
+    }, 100);
     
     // Add template indicator
     const modalTitle = document.querySelector('#add-knowledge-repository-modal-content h2');
@@ -333,6 +374,10 @@ function displayFileList() {
             selectedFiles.splice(index, 1);
             displayFileList();
             
+            // Reset file input so same file can be re-selected
+            const fileInput = document.getElementById('knowledge-repo-file-input');
+            if (fileInput) fileInput.value = '';
+            
             if (selectedFiles.length === 0) {
                 fileList.classList.add('hidden');
                 const metadata = document.getElementById('knowledge-repo-metadata');
@@ -355,6 +400,7 @@ function formatFileSize(bytes) {
  * Handle form submission
  */
 async function handleKnowledgeRepositorySubmit(e) {
+    console.log('[Knowledge] ========== FORM SUBMIT HANDLER CALLED ==========');
     e.preventDefault();
     
     const submitBtn = document.getElementById('add-knowledge-repository-submit');
@@ -538,6 +584,11 @@ export async function loadKnowledgeRepositories() {
         const data = await response.json();
         const knowledgeRepos = data.collections?.filter(c => c.repository_type === 'knowledge') || [];
         
+        console.log('[Knowledge] Loaded repositories:', knowledgeRepos);
+        if (knowledgeRepos.length > 0) {
+            console.log('[Knowledge] First repo structure:', knowledgeRepos[0]);
+        }
+        
         if (knowledgeRepos.length === 0) {
             container.innerHTML = `
                 <div class="col-span-full text-center py-12">
@@ -552,6 +603,10 @@ export async function loadKnowledgeRepositories() {
         
         container.innerHTML = knowledgeRepos.map(repo => createKnowledgeRepositoryCard(repo)).join('');
         
+        // Attach event listeners to View and Delete buttons
+        // Pass the full repository data so we don't need to fetch it again
+        attachKnowledgeRepositoryCardHandlers(container, knowledgeRepos);
+        
     } catch (error) {
         console.error('[Knowledge] Error loading repositories:', error);
         container.innerHTML = `
@@ -563,11 +618,235 @@ export async function loadKnowledgeRepositories() {
 }
 
 /**
+ * Attach event listeners to Knowledge repository card buttons
+ */
+function attachKnowledgeRepositoryCardHandlers(container, repositories) {
+    console.log('[Knowledge] Attaching handlers to repository cards');
+    
+    // Create a map for quick lookup by ID
+    const repoMap = new Map();
+    repositories.forEach(repo => {
+        const repoId = repo.id || repo.collection_id;
+        repoMap.set(String(repoId), repo);
+    });
+    
+    // Inspect button handlers
+    const inspectButtons = container.querySelectorAll('.view-knowledge-repo-btn');
+    console.log('[Knowledge] Found', inspectButtons.length, 'inspect buttons');
+    
+    inspectButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const repoId = btn.dataset.repoId;
+            console.log('[Knowledge] Inspect button clicked for repo:', repoId);
+            
+            // Get repository data from the map (no API call needed)
+            const repo = repoMap.get(repoId);
+            if (!repo) {
+                console.error('[Knowledge] Repository not found in map:', repoId);
+                alert('Repository data not found');
+                return;
+            }
+            
+            console.log('[Knowledge] Opening inspection modal for:', repo.collection_name);
+            openKnowledgeInspectionModal(repo);
+        });
+    });
+    
+    // Delete button handlers
+    const deleteButtons = container.querySelectorAll('.delete-knowledge-repo-btn');
+    console.log('[Knowledge] Found', deleteButtons.length, 'delete buttons');
+    
+    deleteButtons.forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const repoId = btn.dataset.repoId;
+            console.log('[Knowledge] Delete button clicked for repo:', repoId);
+            
+            // Get repository name for confirmation
+            const card = btn.closest('[data-repo-id]');
+            const repoName = card.querySelector('h3')?.textContent || 'this repository';
+            
+            console.log('[Knowledge] Showing confirmation dialog for:', repoName);
+            
+            const confirmed = confirm(`Are you sure you want to delete "${repoName}"? This action cannot be undone.`);
+            console.log('[Knowledge] User confirmed deletion:', confirmed);
+            
+            if (!confirmed) {
+                console.log('[Knowledge] Deletion cancelled by user');
+                return;
+            }
+            
+            try {
+                console.log('[Knowledge] Deleting repository:', repoId);
+                const token = localStorage.getItem('tda_auth_token');
+                const response = await fetch(`/api/v1/rag/collections/${repoId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                console.log('[Knowledge] Delete response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to delete repository');
+                }
+                
+                console.log('[Knowledge] Repository deleted successfully');
+                
+                // Reload repositories
+                await loadKnowledgeRepositories();
+                
+                alert('Repository deleted successfully');
+                
+            } catch (error) {
+                console.error('[Knowledge] Error deleting repository:', error);
+                alert('Failed to delete repository: ' + error.message);
+            }
+        });
+    });
+}
+
+/**
+ * Open Knowledge repository inspection modal
+ */
+function openKnowledgeInspectionModal(repo) {
+    // Create or get modal
+    let modal = document.getElementById('knowledge-inspection-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'knowledge-inspection-modal';
+        modal.className = 'fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0';
+        modal.innerHTML = `
+            <div class="glass-panel rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto transform scale-95 opacity-0" id="knowledge-inspection-modal-content">
+                <div class="sticky top-0 bg-gray-800 p-6 border-b border-gray-700 flex justify-between items-start z-10">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white" id="knowledge-inspection-title"></h2>
+                        <p class="text-gray-400 text-sm mt-1" id="knowledge-inspection-description"></p>
+                    </div>
+                    <button type="button" id="knowledge-inspection-close" class="p-2 hover:bg-gray-700 rounded-lg transition-colors">
+                        <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-6" id="knowledge-inspection-body"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // Close button handler
+        document.getElementById('knowledge-inspection-close').addEventListener('click', () => {
+            modal.classList.add('opacity-0');
+            const content = document.getElementById('knowledge-inspection-modal-content');
+            content.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        });
+        
+        // Click outside to close
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                document.getElementById('knowledge-inspection-close').click();
+            }
+        });
+    }
+    
+    // Populate modal
+    document.getElementById('knowledge-inspection-title').textContent = repo.collection_name;
+    document.getElementById('knowledge-inspection-description').textContent = repo.description || 'Knowledge repository';
+    
+    const body = document.getElementById('knowledge-inspection-body');
+    body.innerHTML = `
+        <div class="space-y-6">
+            <!-- Configuration Section -->
+            <div>
+                <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    Configuration
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-gray-800/50 p-4 rounded-lg">
+                        <div class="text-sm text-gray-400 mb-1">Chunking Strategy</div>
+                        <div class="text-white font-medium">${repo.chunking_strategy || 'semantic'}</div>
+                    </div>
+                    <div class="bg-gray-800/50 p-4 rounded-lg">
+                        <div class="text-sm text-gray-400 mb-1">Embedding Model</div>
+                        <div class="text-white font-medium">${repo.embedding_model || 'default'}</div>
+                    </div>
+                    <div class="bg-gray-800/50 p-4 rounded-lg">
+                        <div class="text-sm text-gray-400 mb-1">Chunk Size</div>
+                        <div class="text-white font-medium">${repo.chunk_size || 'N/A'}</div>
+                    </div>
+                    <div class="bg-gray-800/50 p-4 rounded-lg">
+                        <div class="text-sm text-gray-400 mb-1">Chunk Overlap</div>
+                        <div class="text-white font-medium">${repo.chunk_overlap || 'N/A'}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Statistics Section -->
+            <div>
+                <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    Statistics
+                </h3>
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-gray-800/50 p-4 rounded-lg text-center">
+                        <div class="text-3xl font-bold text-green-400">${repo.count || repo.example_count || 0}</div>
+                        <div class="text-sm text-gray-400 mt-1">Documents</div>
+                    </div>
+                    <div class="bg-gray-800/50 p-4 rounded-lg text-center">
+                        <div class="text-3xl font-bold text-blue-400">${repo.created_at ? new Date(repo.created_at).toLocaleDateString() : 'N/A'}</div>
+                        <div class="text-sm text-gray-400 mt-1">Created</div>
+                    </div>
+                    <div class="bg-gray-800/50 p-4 rounded-lg text-center">
+                        <div class="text-3xl font-bold text-purple-400">${repo.id || repo.collection_id}</div>
+                        <div class="text-sm text-gray-400 mt-1">ID</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Repository Type -->
+            <div class="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                <div class="flex items-center gap-3">
+                    <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <div>
+                        <div class="text-sm text-gray-400">Repository Type</div>
+                        <div class="text-white font-medium">Knowledge Repository - Document Storage</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        modal.classList.remove('opacity-0');
+        const content = document.getElementById('knowledge-inspection-modal-content');
+        content.classList.remove('scale-95', 'opacity-0');
+    });
+}
+
+/**
  * Create a Knowledge repository card HTML
  */
 function createKnowledgeRepositoryCard(repo) {
+    // Handle both 'id' and 'collection_id' field names
+    const repoId = repo.id || repo.collection_id;
+    console.log('[Knowledge] Creating card for repo:', repo.collection_name, 'with ID:', repoId);
+    
     return `
-        <div class="glass-panel p-6 rounded-lg hover:bg-white/5 transition-all cursor-pointer" data-repo-id="${repo.collection_id}">
+        <div class="glass-panel p-6 rounded-lg hover:bg-white/5 transition-all cursor-pointer" data-repo-id="${repoId}">
             <div class="flex items-start justify-between mb-4">
                 <div class="flex items-center gap-3">
                     <div class="p-2 bg-green-500/20 rounded-lg">
@@ -587,7 +866,7 @@ function createKnowledgeRepositoryCard(repo) {
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                     </svg>
-                    <span>${repo.example_count || 0} documents</span>
+                    <span>${repo.count || repo.example_count || 0} documents</span>
                 </div>
                 <div class="flex items-center gap-2 text-sm text-gray-400">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -598,10 +877,17 @@ function createKnowledgeRepositoryCard(repo) {
             </div>
             
             <div class="mt-4 pt-4 border-t border-gray-700 flex gap-2">
-                <button class="view-knowledge-repo-btn flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm text-white transition-colors" data-repo-id="${repo.collection_id}">
-                    View
+                <button class="view-knowledge-repo-btn flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm text-white transition-colors flex items-center justify-center gap-2" data-repo-id="${repoId}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                    Inspect
                 </button>
-                <button class="delete-knowledge-repo-btn px-3 py-2 bg-red-600 hover:bg-red-700 rounded text-sm text-white transition-colors" data-repo-id="${repo.collection_id}">
+                <button class="delete-knowledge-repo-btn px-3 py-2 bg-red-600 hover:bg-red-700 rounded text-sm text-white transition-colors flex items-center justify-center gap-2" data-repo-id="${repoId}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
                     Delete
                 </button>
             </div>

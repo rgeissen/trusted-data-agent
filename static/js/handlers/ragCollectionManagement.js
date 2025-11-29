@@ -435,23 +435,35 @@ const populateMcpServerDropdown = () => {
  */
 async function handleAddRagCollection(event) {
     event.preventDefault();
-    
+    console.log('[Create Collection] Form submitted, handler called');
     
     // Get form values
     const name = ragCollectionNameInput.value.trim();
     const mcpServerId = ragCollectionMcpServerSelect.value;
     const description = ragCollectionDescriptionInput.value.trim();
+    console.log('[Create Collection] Name:', name, 'MCP Server ID:', mcpServerId, 'Description:', description);
     
     
     // Determine population method
     let populationMethod = 'none';
     let templateMethod = 'manual';
     
+    // Re-query the radio buttons in case they were recreated
+    const llmMethodRadio = document.getElementById('rag-template-method-llm');
+    const manualMethodRadio = document.getElementById('rag-template-method-manual');
+    
+    console.log('[Create Collection] llmMethodRadio element:', llmMethodRadio);
+    console.log('[Create Collection] llmMethodRadio.checked:', llmMethodRadio?.checked);
+    console.log('[Create Collection] manualMethodRadio.checked:', manualMethodRadio?.checked);
+    
     if (ragPopulationWithTemplate && ragPopulationWithTemplate.checked) {
         populationMethod = 'template';
-        // Determine if manual or auto-generate
-        if (ragTemplateMethodLlm && ragTemplateMethodLlm.checked) {
+        // Determine if manual or auto-generate - check fresh element
+        if (llmMethodRadio && llmMethodRadio.checked) {
             templateMethod = 'llm';
+            console.log('[Create Collection] LLM method detected');
+        } else {
+            console.log('[Create Collection] Manual method (llmMethodRadio not checked)');
         }
     }
     
@@ -471,14 +483,20 @@ async function handleAddRagCollection(event) {
     // Validate template examples if template population is selected
     let templateExamples = [];
     if (populationMethod === 'template') {
+        console.log('[Create Collection] Population method: template');
+        console.log('[Create Collection] Template method:', templateMethod);
+        console.log('[Create Collection] lastGeneratedQuestions:', lastGeneratedQuestions);
+        console.log('[Create Collection] lastGeneratedQuestions length:', lastGeneratedQuestions?.length);
         
         // If using LLM method with generated questions, use those
         if (templateMethod === 'llm' && lastGeneratedQuestions && lastGeneratedQuestions.length > 0) {
+            console.log('[Create Collection] Using generated questions');
             templateExamples = lastGeneratedQuestions.map(q => ({
                 user_query: q.question,
                 sql_statement: q.sql
             }));
         } else {
+            console.log('[Create Collection] Looking for manual examples');
             // Otherwise, get examples from manual entry form
             const exampleDivs = ragCollectionTemplateExamples.querySelectorAll('[data-add-example-id]');
             exampleDivs.forEach(div => {
@@ -916,7 +934,10 @@ if (addRagCollectionModalOverlay) {
 }
 
 if (addRagCollectionForm) {
+    console.log('[Init] Attaching submit handler to add-rag-collection-form');
     addRagCollectionForm.addEventListener('submit', handleAddRagCollection);
+} else {
+    console.error('[Init] add-rag-collection-form element not found!');
 }
 
 // Edit Modal Event Listeners
@@ -1755,6 +1776,13 @@ async function handleGenerateContext() {
         
         if (databaseName) {
             requestBody.arguments.database_name = databaseName;
+        }
+        
+        // Get selected MCP server from the modal and include it in request
+        const mcpServerSelect = document.getElementById('rag-collection-mcp-server');
+        if (mcpServerSelect && mcpServerSelect.value) {
+            requestBody.mcp_server_id = mcpServerSelect.value;
+            console.log('[Generate Context] Using MCP server ID:', mcpServerSelect.value);
         }
         
         // Call the execute-raw endpoint
@@ -3159,11 +3187,8 @@ if (ragTemplateMethodLlm) {
 if (ragCollectionTemplateType) {
     ragCollectionTemplateType.addEventListener('change', async () => {
         await switchTemplateFields();
-        // Reset to manual method when template changes
-        if (ragTemplateMethodManual) {
-            ragTemplateMethodManual.checked = true;
-            await handleTemplateMethodChange();
-        }
+        // Don't reset radio buttons - let them keep their current state
+        // (Deploy button sets LLM method, manual entry can set manual method)
     });
 }
 
@@ -3670,5 +3695,6 @@ window.ragCollectionManagement = {
     deleteRagCollection,
     refreshRagCollection,
     openEditCollectionModal,
-    calculateRagImpactKPIs
+    calculateRagImpactKPIs,
+    openAddRagCollectionModal
 };

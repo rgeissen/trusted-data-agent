@@ -208,11 +208,42 @@ export function createTemplateCard(template, index, filterType = 'planner') {
         // Deploy button - Execute template with defaults
         deployBtn.addEventListener('click', async (e) => {
             e.stopPropagation(); // Prevent card click
+            console.log('[Deploy] ========== DEPLOY BUTTON CLICKED ==========');
             console.log('[Deploy] Button clicked for template:', template.template_id);
             console.log('[Deploy] Template type:', template.template_type);
             console.log('[Deploy] isKnowledge:', isKnowledge);
+            console.log('[Deploy] Full template object:', template);
             
             try {
+                // Ensure profile is initialized (MCP + LLM) by creating a session if needed
+                console.log('[Deploy] Ensuring profile is initialized...');
+                try {
+                    const sessionResponse = await fetch('/session', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('tda_auth_token')}`
+                        },
+                        body: JSON.stringify({})
+                    });
+                    
+                    if (!sessionResponse.ok) {
+                        const error = await sessionResponse.json();
+                        console.error('[Deploy] Profile initialization failed:', error);
+                        if (window.showToast) {
+                            window.showToast('error', `Profile not configured: ${error.error || 'Please configure MCP and LLM in Settings'}`);
+                        }
+                        return;
+                    }
+                    console.log('[Deploy] Profile initialized successfully');
+                } catch (initError) {
+                    console.error('[Deploy] Profile initialization error:', initError);
+                    if (window.showToast) {
+                        window.showToast('error', 'Failed to initialize profile. Please check your configuration.');
+                    }
+                    return;
+                }
+                
                 // Load saved defaults with authentication
                 console.log('[Deploy] Fetching defaults...');
                 const response = await fetch(`/api/v1/rag/templates/${template.template_id}/defaults`, {
@@ -224,58 +255,62 @@ export function createTemplateCard(template, index, filterType = 'planner') {
                 const defaultsData = response.ok ? await response.json() : { defaults: {} };
                 console.log('[Deploy] Defaults data:', defaultsData);
                 
-                if (isKnowledge) {
-                    // Open Knowledge Repository modal with template and defaults pre-filled
-                    if (window.openKnowledgeRepositoryModalWithTemplate) {
-                        window.openKnowledgeRepositoryModalWithTemplate(template, defaultsData.defaults);
-                    } else {
-                        // Fallback: just open the modal
-                        const modal = document.getElementById('add-knowledge-repository-modal-overlay');
-                        if (modal) modal.classList.remove('hidden');
-                    }
-                } else {
-                    // For Planner templates, open the Add Planner Repository modal with defaults
-                    console.log('[Deploy] Processing Planner template...');
+                // Store defaults for the template system to use
+                if (Object.keys(defaultsData.defaults || {}).length > 0) {
+                    console.log('[Deploy] Storing template defaults:', defaultsData.defaults);
+                    window.templateDefaults = defaultsData.defaults;
+                }
+                
+                // Open modal and let existing template system handle everything
+                console.log('[Deploy] Opening modal...');
+                if (window.ragCollectionManagement && window.ragCollectionManagement.openAddRagCollectionModal) {
+                    await window.ragCollectionManagement.openAddRagCollectionModal();
                     
-                    // Store defaults if available
-                    if (Object.keys(defaultsData.defaults || {}).length > 0) {
-                        console.log('[Deploy] Storing defaults:', defaultsData.defaults);
-                        window.templateDefaults = defaultsData.defaults;
-                    }
-                    
-                    // Open the Add Planner Repository modal
-                    const modal = document.getElementById('add-rag-collection-modal-overlay');
-                    console.log('[Deploy] Found modal:', modal);
-                    if (modal) {
-                        // Show the modal
-                        modal.classList.remove('hidden');
-                        // Trigger animations
-                        requestAnimationFrame(() => {
-                            modal.classList.remove('opacity-0');
-                            const modalContent = document.getElementById('add-rag-collection-modal-content');
-                            if (modalContent) {
-                                modalContent.classList.remove('opacity-0', 'scale-95');
-                            }
-                        });
-                        console.log('[Deploy] Modal opened');
+                    // Enable template population, then select the template
+                    setTimeout(() => {
+                        // First enable template population
+                        const templateRadio = document.getElementById('rag-population-with-template');
+                        if (templateRadio) {
+                            templateRadio.checked = true;
+                            templateRadio.dispatchEvent(new Event('change', { bubbles: true }));
+                            console.log('[Deploy] Enabled template population');
+                        }
                         
-                        // Wait for modal to render, then set template
+                        // Enable LLM method (for auto-generation workflow)
+                        const llmMethodRadio = document.getElementById('rag-template-method-llm');
+                        if (llmMethodRadio) {
+                            llmMethodRadio.checked = true;
+                            console.log('[Deploy] Enabled LLM method');
+                        }
+                        
+                        // Then select the template (slight delay to let radio change take effect)
                         setTimeout(() => {
-                            const templateTypeField = document.getElementById('rag-collection-template-type');
-                            console.log('[Deploy] Found template field:', templateTypeField);
-                            if (templateTypeField) {
-                                console.log('[Deploy] Setting template type to:', template.template_id);
-                                templateTypeField.value = template.template_id;
-                                console.log('[Deploy] Dispatching change event...');
-                                // Trigger change event to load template fields (which will use window.templateDefaults)
-                                templateTypeField.dispatchEvent(new Event('change', { bubbles: true }));
-                            } else {
-                                console.error('[Deploy] Template field not found: rag-collection-template-type');
+                            const templateDropdown = document.getElementById('rag-collection-template-type');
+                            if (templateDropdown) {
+                                templateDropdown.value = template.template_id;
+                                templateDropdown.dispatchEvent(new Event('change', { bubbles: true }));
+                                console.log('[Deploy] Template selected:', template.template_id);
+                                
+                                // After template loads, show LLM workflow and hide manual fields
+                                setTimeout(() => {
+                                    const manualFields = document.getElementById('rag-collection-manual-fields');
+                                    const llmWorkflow = document.getElementById('rag-collection-llm-workflow');
+                                    
+                                    if (manualFields) {
+                                        manualFields.classList.add('hidden');
+                                        console.log('[Deploy] Hidden manual fields');
+                                    }
+                                    
+                                    if (llmWorkflow) {
+                                        llmWorkflow.classList.remove('hidden');
+                                        console.log('[Deploy] Showing LLM workflow');
+                                    }
+                                }, 100);
                             }
-                        }, 100);
-                    } else {
-                        console.error('[Deploy] Modal not found: add-rag-collection-modal-overlay');
-                    }
+                        }, 50);
+                    }, 100);
+                } else {
+                    console.error('[Deploy] openAddRagCollectionModal not found');
                 }
                 
             } catch (error) {
@@ -315,6 +350,18 @@ export function createTemplateCard(template, index, filterType = 'planner') {
                                 console.log('[Card Click] Set template type to:', template.template_id);
                                 // Trigger change event to load template fields
                                 templateTypeField.dispatchEvent(new Event('change', { bubbles: true }));
+                                
+                                // Show manual entry fields by default for card clicks
+                                setTimeout(() => {
+                                    const manualFields = document.getElementById('rag-collection-manual-fields');
+                                    if (manualFields) {
+                                        manualFields.classList.remove('hidden');
+                                    }
+                                    const llmWorkflow = document.getElementById('rag-collection-llm-workflow');
+                                    if (llmWorkflow) {
+                                        llmWorkflow.classList.add('hidden');
+                                    }
+                                }, 150);
                             }
                         }, 100);
                     } else {

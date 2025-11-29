@@ -359,10 +359,73 @@ async def execute_prompt_raw(prompt_name: str):
     }
     """
     try:
+        # Get request data early to check for MCP server override
+        data = await request.get_json() or {}
+        requested_mcp_server_id = data.get('mcp_server_id')
+        
         # Try to get global MCP client (works if system is configured globally)
         mcp_client = APP_STATE.get("mcp_client")
         server_name = APP_CONFIG.CURRENT_MCP_SERVER_NAME
         llm_instance = APP_STATE.get('llm')
+        
+        # If MCP server specified in request, override with that
+        if requested_mcp_server_id:
+            from trusted_data_agent.core.config_manager import get_config_manager
+            config_manager = get_config_manager()
+            mcp_servers = config_manager.get_mcp_servers()
+            mcp_server = next((s for s in mcp_servers if s.get("id") == requested_mcp_server_id), None)
+            if mcp_server:
+                server_name = mcp_server.get("name")
+                current_app.logger.info(f"Using MCP server from request: {server_name}")
+                # Also need to get the MCP client for this user
+                user_uuid = _get_user_uuid_from_request()
+                current_app.logger.info(f"User UUID: {user_uuid}")
+                if user_uuid:
+                    from trusted_data_agent.core.config import get_user_mcp_client, get_user_llm_instance, set_user_mcp_client, set_user_llm_instance
+                    
+                    if not mcp_client:
+                        mcp_client = get_user_mcp_client(user_uuid)
+                    if not llm_instance:
+                        llm_instance = get_user_llm_instance(user_uuid)
+                    
+                    current_app.logger.info(f"User instances from cache - MCP: {mcp_client is not None}, LLM: {llm_instance is not None}")
+                    
+                    # If not available, try to create from user's default profile
+                    if not mcp_client or not llm_instance:
+                        try:
+                            default_profile_id = config_manager.get_default_profile_id(user_uuid)
+                            if default_profile_id:
+                                profile = config_manager.get_profile(default_profile_id, user_uuid)
+                                current_app.logger.info(f"Loading from default profile: {profile.get('profileName') if profile else 'Not found'}")
+                                
+                                if profile:
+                                    # Create LLM instance from profile
+                                    if not llm_instance:
+                                        llm_config_id = profile.get("llmConfigurationId")
+                                        if llm_config_id:
+                                            llm_configs = config_manager.get_llm_configurations(user_uuid)
+                                            llm_config = next((cfg for cfg in llm_configs if cfg.get("id") == llm_config_id), None)
+                                            if llm_config:
+                                                from trusted_data_agent.llm.client_factory import create_llm_client
+                                                provider = llm_config.get("provider")
+                                                model = llm_config.get("model")
+                                                credentials = llm_config.get("credentials", {})
+                                                llm_instance = await create_llm_client(provider, model, credentials)
+                                                set_user_llm_instance(llm_instance, user_uuid)
+                                                current_app.logger.info("Created LLM instance from profile")
+                                    
+                                    # Create MCP client from profile
+                                    if not mcp_client:
+                                        from trusted_data_agent.mcp import MCPClientManager
+                                        mcp_manager = MCPClientManager.get_instance()
+                                        mcp_client = await mcp_manager.get_client(user_uuid)
+                                        if mcp_client:
+                                            set_user_mcp_client(mcp_client, user_uuid)
+                                            current_app.logger.info("Created MCP client from profile")
+                        except Exception as e:
+                            current_app.logger.error(f"Error loading from profile: {e}", exc_info=True)
+            else:
+                current_app.logger.warning(f"MCP server with ID {requested_mcp_server_id} not found")
         
         # If no global config, try to get from authenticated user's profile
         if not mcp_client or not server_name or not llm_instance:
@@ -396,19 +459,19 @@ async def execute_prompt_raw(prompt_name: str):
             
             # Get user's LLM if not available globally
             if not llm_instance:
-                from trusted_data_agent.core.config import get_user_llm
-                llm_instance = get_user_llm(user_uuid)
+                from trusted_data_agent.core.config import get_user_llm_instance
+                llm_instance = get_user_llm_instance(user_uuid)
         
         # Final validation
+        current_app.logger.info(f"Final validation - mcp_client: {mcp_client is not None}, server_name: {server_name}, llm_instance: {llm_instance is not None}")
         if not mcp_client:
-            return jsonify({"status": "error", "message": "MCP client not configured"}), 400
+            return jsonify({"status": "error", "message": "MCP client not configured. Please activate a profile in the Configuration panel."}), 400
         if not server_name:
-            return jsonify({"status": "error", "message": "MCP server not configured"}), 400
+            return jsonify({"status": "error", "message": "MCP server not configured. Please activate a profile in the Configuration panel."}), 400
         if not llm_instance:
-            return jsonify({"status": "error", "message": "LLM not configured"}), 400
+            return jsonify({"status": "error", "message": "LLM not configured. Please activate a profile in the Configuration panel."}), 400
 
-        # Get arguments from request body
-        data = await request.get_json() or {}
+        # Get arguments from request body (data already loaded above)
         user_arguments = data.get('arguments', {})
         
         # Get prompt definition to know all expected arguments
