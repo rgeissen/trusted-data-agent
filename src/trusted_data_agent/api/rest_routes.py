@@ -2250,6 +2250,7 @@ async def create_rag_collection():
         chunking_strategy = data.get("chunking_strategy", "none")
         chunk_size = data.get("chunk_size", 1000)
         chunk_overlap = data.get("chunk_overlap", 200)
+        embedding_model = data.get("embedding_model", "all-MiniLM-L6-v2")
         
         # Add collection via RAG retriever
         retriever = APP_STATE.get("rag_retriever_instance")
@@ -2260,7 +2261,7 @@ async def create_rag_collection():
         collection_id = retriever.add_collection(
             name, description, mcp_server_id, owner_user_id=user_uuid,
             repository_type=repository_type, chunking_strategy=chunking_strategy,
-            chunk_size=chunk_size, chunk_overlap=chunk_overlap
+            chunk_size=chunk_size, chunk_overlap=chunk_overlap, embedding_model=embedding_model
         )
         # --- MARKETPLACE PHASE 2 END ---
         

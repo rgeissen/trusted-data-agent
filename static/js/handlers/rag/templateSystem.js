@@ -7,6 +7,42 @@
 import { showNotification } from './utils.js';
 
 /**
+ * Get default template ID based on type
+ * @param {string} type - 'planner' or 'knowledge'
+ * @returns {string|null} Default template ID or null if none available
+ */
+export function getDefaultTemplateId(type = 'planner') {
+    if (!window.templateManager) {
+        console.warn('[Template System] templateManager not available');
+        return null;
+    }
+    
+    const allTemplates = window.templateManager.getAllTemplates();
+    if (!allTemplates || allTemplates.length === 0) {
+        console.warn('[Template System] No templates available');
+        return null;
+    }
+    
+    // Filter templates by type
+    const templates = allTemplates.filter(template => {
+        const templateType = template.template_type || '';
+        if (type === 'knowledge') {
+            return templateType === 'knowledge_repository' || templateType.includes('knowledge');
+        } else {
+            return templateType !== 'knowledge_repository' && !templateType.includes('knowledge');
+        }
+    });
+    
+    if (templates.length === 0) {
+        console.warn(`[Template System] No ${type} templates available`);
+        return null;
+    }
+    
+    // Return first available template of the requested type
+    return templates[0].template_id;
+}
+
+/**
  * Initialize template system on page load
  * @param {HTMLSelectElement} templateDropdown - Template type dropdown element
  * @param {Function} switchFieldsCallback - Callback to switch template fields
@@ -23,10 +59,11 @@ export async function initializeTemplateSystem(templateDropdown, switchFieldsCal
         
         // Populate template dropdown
         if (templateDropdown) {
+            const defaultTemplateId = getDefaultTemplateId('planner');
             window.templateManager.populateTemplateDropdown(templateDropdown, {
                 includeDeprecated: false,
                 includeComingSoon: true,
-                selectedTemplateId: 'sql_query_v1' // Default selection
+                selectedTemplateId: defaultTemplateId
             });
             
             // Trigger initial field rendering
@@ -411,7 +448,7 @@ export function getTemplateIcon(templateType) {
  */
 export async function reloadTemplateConfiguration(templateId) {
     try {
-        const id = templateId || 'sql_query_v1';
+        const id = templateId || getDefaultTemplateId('planner');
         // Add cache-busting parameter to force fresh load
         const response = await fetch(`/api/v1/rag/templates/${id}/config?_=${Date.now()}`);
         if (response.ok) {

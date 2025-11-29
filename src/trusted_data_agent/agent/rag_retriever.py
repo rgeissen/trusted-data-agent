@@ -529,7 +529,8 @@ class RAGRetriever:
             return None
     
     def add_collection(self, name: str, description: str = "", mcp_server_id: Optional[str] = None, owner_user_id: Optional[str] = None, 
-                      repository_type: str = "planner", chunking_strategy: str = "none", chunk_size: int = 1000, chunk_overlap: int = 200) -> Optional[int]:
+                      repository_type: str = "planner", chunking_strategy: str = "none", chunk_size: int = 1000, chunk_overlap: int = 200,
+                      embedding_model: str = "all-MiniLM-L6-v2") -> Optional[int]:
         """
         Adds a new RAG collection and enables it.
         
@@ -542,6 +543,7 @@ class RAGRetriever:
             chunking_strategy: Chunking strategy for knowledge repositories (default: "none")
             chunk_size: Size of chunks in characters (default: 1000)
             chunk_overlap: Overlap between chunks (default: 200)
+            embedding_model: Embedding model to use (default: "all-MiniLM-L6-v2")
             
         Returns:
             The numeric collection ID if successful, None otherwise
@@ -576,7 +578,8 @@ class RAGRetriever:
             "repository_type": repository_type,
             "chunking_strategy": chunking_strategy,
             "chunk_size": chunk_size,
-            "chunk_overlap": chunk_overlap
+            "chunk_overlap": chunk_overlap,
+            "embedding_model": embedding_model
         }
         
         # Save to database

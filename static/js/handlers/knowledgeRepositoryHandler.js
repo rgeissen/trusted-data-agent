@@ -423,11 +423,12 @@ async function handleKnowledgeRepositorySubmit(e) {
         
         const name = nameInput.value.trim();
         const description = descInput?.value.trim() || '';
-        const chunkingStrategy = chunkingInput?.value || 'semantic';
-        const embeddingModel = embeddingInput?.value || 'default';
+        // Get from form fields (pre-filled by template) or use minimal defaults
+        const chunkingStrategy = chunkingInput?.value || 'semantic';  // Default from knowledge_repo_v1 template
+        const embeddingModel = embeddingInput?.value || 'all-MiniLM-L6-v2';  // Default from template
         
-        let chunkSize = 1000;
-        let chunkOverlap = 200;
+        let chunkSize = 1000;  // Default from template
+        let chunkOverlap = 200;  // Default from template
         
         if (chunkingStrategy === 'fixed_size') {
             chunkSize = parseInt(document.getElementById('knowledge-repo-chunk-size').value);
@@ -471,7 +472,8 @@ async function handleKnowledgeRepositorySubmit(e) {
                 repository_type: 'knowledge',
                 chunking_strategy: chunkingStrategy,
                 chunk_size: chunkSize,
-                chunk_overlap: chunkOverlap
+                chunk_overlap: chunkOverlap,
+                embedding_model: embeddingModel
             })
         });
         
@@ -705,47 +707,23 @@ function attachKnowledgeRepositoryCardHandlers(container, repositories) {
             e.preventDefault();
             e.stopPropagation();
             const repoId = btn.dataset.repoId;
-            console.log('[Knowledge] Delete button clicked for repo:', repoId);
+            const repo = repoMap.get(repoId);
             
-            // Get repository name for confirmation
-            const card = btn.closest('[data-repo-id]');
-            const repoName = card.querySelector('h3')?.textContent || 'this repository';
-            
-            console.log('[Knowledge] Showing confirmation dialog for:', repoName);
-            
-            const confirmed = confirm(`Are you sure you want to delete "${repoName}"? This action cannot be undone.`);
-            console.log('[Knowledge] User confirmed deletion:', confirmed);
-            
-            if (!confirmed) {
-                console.log('[Knowledge] Deletion cancelled by user');
+            if (!repo) {
+                console.error('[Knowledge] Repository not found:', repoId);
                 return;
             }
             
-            try {
-                console.log('[Knowledge] Deleting repository:', repoId);
-                const token = localStorage.getItem('tda_auth_token');
-                const response = await fetch(`/api/v1/rag/collections/${repoId}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                console.log('[Knowledge] Delete response status:', response.status);
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Failed to delete repository');
-                }
-                
-                console.log('[Knowledge] Repository deleted successfully');
-                
-                // Reload repositories
+            console.log('[Knowledge] Delete button clicked for:', repo.collection_name);
+            
+            // Use the centralized delete function
+            if (window.knowledgeRepositoryHandler && window.knowledgeRepositoryHandler.deleteKnowledgeRepository) {
+                await window.knowledgeRepositoryHandler.deleteKnowledgeRepository(parseInt(repoId), repo.collection_name);
+                // Reload after deletion
                 await loadKnowledgeRepositories();
-                
-                alert('Repository deleted successfully');
-                
-            } catch (error) {
-                console.error('[Knowledge] Error deleting repository:', error);
-                alert('Failed to delete repository: ' + error.message);
+            } else {
+                console.error('[Knowledge] Delete handler not available');
+                alert('Delete function not available. Please refresh the page.');
             }
         });
     });
@@ -841,7 +819,12 @@ function openKnowledgeInspectionModal(repo) {
                 </h3>
                 <div class="grid grid-cols-3 gap-4">
                     <div class="bg-gray-800/50 p-4 rounded-lg text-center">
-                        <div class="text-3xl font-bold text-green-400">${repo.count || repo.example_count || 0}</div>
+                        <div class="text-3xl font-bold text-green-400" id="inspect-doc-count-${repo.id || repo.collection_id}">
+                            <svg class="animate-spin h-8 w-8 text-green-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </div>
                         <div class="text-sm text-gray-400 mt-1">Documents</div>
                     </div>
                     <div class="bg-gray-800/50 p-4 rounded-lg text-center">
@@ -877,6 +860,43 @@ function openKnowledgeInspectionModal(repo) {
         const content = document.getElementById('knowledge-inspection-modal-content');
         content.classList.remove('scale-95', 'opacity-0');
     });
+    
+    // Fetch actual document count from API
+    const repoId = repo.id || repo.collection_id;
+    fetchKnowledgeDocumentCount(repoId);
+}
+
+/**
+ * Fetch actual document count from API
+ */
+async function fetchKnowledgeDocumentCount(collectionId) {
+    try {
+        const token = localStorage.getItem('tda_auth_token');
+        const response = await fetch(`/api/v1/knowledge/repositories/${collectionId}/documents`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        const countEl = document.getElementById(`inspect-doc-count-${collectionId}`);
+        if (!countEl) return;
+        
+        if (response.ok) {
+            const data = await response.json();
+            const count = data.documents ? data.documents.length : 0;
+            countEl.textContent = count;
+        } else {
+            countEl.textContent = 'Error';
+            countEl.classList.add('text-red-400');
+        }
+    } catch (error) {
+        console.error('[Knowledge] Failed to fetch document count:', error);
+        const countEl = document.getElementById(`inspect-doc-count-${collectionId}`);
+        if (countEl) {
+            countEl.textContent = 'Error';
+            countEl.classList.add('text-red-400');
+        }
+    }
 }
 
 /**

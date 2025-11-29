@@ -185,7 +185,8 @@ const getTemplateIcon = TemplateSystem.getTemplateIcon;
  */
 async function reloadTemplateConfiguration() {
     try {
-        const templateId = ragCollectionTemplateType?.value || 'sql_query_v1';
+        const { getDefaultTemplateId } = await import('./rag/templateSystem.js');
+        const templateId = ragCollectionTemplateType?.value || getDefaultTemplateId('planner');
         // Add cache-busting parameter to force fresh load
         const token = localStorage.getItem('tda_auth_token');
         const response = await fetch(`/api/v1/rag/templates/${templateId}/config?_=${Date.now()}`, {
@@ -613,7 +614,8 @@ async function handleAddRagCollection(event) {
             addRagCollectionSubmit.textContent = 'Populating with template...';
             
             // Get selected template ID from dropdown
-            const selectedTemplateId = ragCollectionTemplateType?.value || 'sql_query_v1';
+            const { getDefaultTemplateId } = await import('./rag/templateSystem.js');
+            const selectedTemplateId = ragCollectionTemplateType?.value || getDefaultTemplateId('planner');
             
             const templatePayload = {
                 template_type: 'sql_query',  // Keep for backward compatibility
@@ -1315,7 +1317,8 @@ window.openSqlTemplatePopulatorWithDefaults = async function(template, defaults 
     addSqlExample();
     
     // Load template config to set placeholder
-    const selectedTemplateId = template?.template_id || ragCollectionTemplateType?.value || 'sql_query_v1';
+    const { getDefaultTemplateId } = await import('./rag/templateSystem.js');
+    const selectedTemplateId = template?.template_id || ragCollectionTemplateType?.value || getDefaultTemplateId('planner');
     const templateConfig = await window.templateManager.getTemplateConfig(selectedTemplateId);
     
     // Pre-fill form fields with defaults
@@ -1482,9 +1485,12 @@ async function handleSqlTemplateSubmit(e) {
     // Get MCP tool name from form or load default from template config
     let mcpToolName = formData.get('mcp_tool_name');
     if (!mcpToolName) {
-        const selectedTemplateId = ragCollectionTemplateType?.value || 'sql_query_v1';
-        const templateConfig = await window.templateManager.getTemplateConfig(selectedTemplateId);
-        mcpToolName = templateConfig?.default_mcp_tool || 'base_readQuery';
+        const { getDefaultTemplateId } = await import('./rag/templateSystem.js');
+        const selectedTemplateId = ragCollectionTemplateType?.value || getDefaultTemplateId('planner');
+        if (selectedTemplateId) {
+            const templateConfig = await window.templateManager.getTemplateConfig(selectedTemplateId);
+            mcpToolName = templateConfig?.default_mcp_tool || '';
+        }
     }
     
     // Collect examples
@@ -1509,8 +1515,9 @@ async function handleSqlTemplateSubmit(e) {
         return;
     }
     
-    // Get selected template ID (default to sql_query_v1 for SQL template modal)
-    const selectedTemplateId = ragCollectionTemplateType?.value || 'sql_query_v1';
+    // Get selected template ID
+    const { getDefaultTemplateId } = await import('./rag/templateSystem.js');
+    const selectedTemplateId = ragCollectionTemplateType?.value || getDefaultTemplateId('planner');
     
     // Build request payload
     const payload = {
@@ -1737,7 +1744,8 @@ async function handleGenerateContext() {
         if (!contextPromptName) {
             try {
                 // Get selected template ID
-                const selectedTemplateId = ragCollectionTemplateType?.value || 'sql_query_v1';
+                const { getDefaultTemplateId } = await import('./rag/templateSystem.js');
+                const selectedTemplateId = ragCollectionTemplateType?.value || getDefaultTemplateId('planner');
                 
                 // Add cache-busting parameter to ensure fresh data
                 const configResponse = await fetch(`/api/v1/rag/templates/${selectedTemplateId}/config?_=${Date.now()}`);
@@ -2028,7 +2036,8 @@ function closeContextResultModal() {
 async function handleGenerateQuestions() {
     try {
         // Determine which template is selected
-        const selectedTemplateId = ragCollectionTemplateType?.value || 'sql_query_v1';
+        const { getDefaultTemplateId } = await import('./rag/templateSystem.js');
+        const selectedTemplateId = ragCollectionTemplateType?.value || getDefaultTemplateId('planner');
         
         // Fetch template configuration
         const response = await fetch(`/api/v1/rag/templates/${selectedTemplateId}/plugin-info`);
@@ -2381,26 +2390,29 @@ async function loadLlmTemplateInfo() {
     
     try {
         // Get selected template ID
-        const selectedTemplateId = ragCollectionTemplateType?.value || 'sql_query_v1';
+        const { getDefaultTemplateId } = await import('./rag/templateSystem.js');
+        const selectedTemplateId = ragCollectionTemplateType?.value || getDefaultTemplateId('planner');
+        
+        if (!selectedTemplateId) {
+            console.warn('[LLM Setup] No template selected or available');
+            return;
+        }
         
         const response = await fetch(`/api/v1/rag/templates/${selectedTemplateId}/config`);
         if (response.ok) {
             const result = await response.json();
             if (result.status === 'success' && result.config) {
-                contextToolInput.value = result.config.mcp_prompt_context_generator || 'base_databaseBusinessDesc';
-                mcpToolInput.value = result.config.default_mcp_tool || 'base_readQuery';
+                // Use template configuration - no hardcoded fallbacks
+                contextToolInput.value = result.config.mcp_prompt_context_generator || '';
+                mcpToolInput.value = result.config.default_mcp_tool || '';
             } else {
-                contextToolInput.value = 'base_databaseBusinessDesc';
-                mcpToolInput.value = 'base_readQuery';
+                console.warn('[LLM Setup] Template config missing auto_generate fields');
             }
         } else {
-            contextToolInput.value = 'base_databaseBusinessDesc';
-            mcpToolInput.value = 'base_readQuery';
+            console.error('[LLM Setup] Failed to load template config');
         }
     } catch (error) {
-        console.error('Error loading template info for LLM:', error);
-        contextToolInput.value = 'base_databaseBusinessDesc';
-        mcpToolInput.value = 'base_readQuery';
+        console.error('[LLM Setup] Error loading template info:', error);
     }
 }
 
@@ -2435,7 +2447,21 @@ async function createDatabaseContext() {
     // Get the database name and context generator prompt name
     const databaseName = ragCollectionLlmDb?.value?.trim();
     const contextToolInput = document.getElementById('rag-collection-llm-context-tool');
-    const promptName = contextToolInput?.value?.trim() || 'base_databaseBusinessDesc';
+    const promptName = contextToolInput?.value?.trim();
+    
+    if (!databaseName) {
+        contextTitle.textContent = 'Database Context Error';
+        contextContent.textContent = 'Error: Please enter a database name first.';
+        contextResult.classList.remove('hidden');
+        return;
+    }
+    
+    if (!promptName) {
+        contextTitle.textContent = 'Database Context Error';
+        contextContent.textContent = 'Error: Context generator prompt not configured in template.';
+        contextResult.classList.remove('hidden');
+        return;
+    }
     
     if (!databaseName) {
         contextTitle.textContent = 'Database Context Error';
@@ -3313,7 +3339,8 @@ async function editTemplate(templateId = null) {
     
     try {
         // Get template ID from parameter or current selection
-        const selectedTemplateId = templateId || ragCollectionTemplateType?.value || 'sql_query_v1';
+        const { getDefaultTemplateId } = await import('./rag/templateSystem.js');
+        const selectedTemplateId = templateId || ragCollectionTemplateType?.value || getDefaultTemplateId('planner');
         
         // Store current template ID for form submission
         modal.setAttribute('data-template-id', selectedTemplateId);
@@ -3464,7 +3491,8 @@ function createConfigField(id, label, value, type = 'text', description = '') {
 
 // Backward compatibility alias
 async function editSqlTemplate() {
-    await editTemplate('sql_query_v1');
+    const { getDefaultTemplateId } = await import('./rag/templateSystem.js');
+    await editTemplate(getDefaultTemplateId('planner'));
 }
 
 /**
@@ -3496,7 +3524,13 @@ async function handleTemplateEditorSubmit(event) {
     try {
         // Get template ID from modal
         const modal = document.getElementById('template-editor-modal-overlay');
-        const templateId = modal.getAttribute('data-template-id') || 'sql_query_v1';
+        const { getDefaultTemplateId } = await import('./rag/templateSystem.js');
+        const templateId = modal.getAttribute('data-template-id') || getDefaultTemplateId('planner');
+        
+        if (!templateId) {
+            showNotification('No template selected', 'error');
+            return;
+        }
         
         // Load current configuration to know which fields exist
         const currentConfig = await window.templateManager.getTemplateConfig(templateId);
@@ -3593,11 +3627,14 @@ if (templateEditorForm) {
 // Event Listener for Edit Template Button (modular)
 const editSqlTemplateBtn = document.getElementById('edit-sql-template-btn');
 if (editSqlTemplateBtn) {
-    editSqlTemplateBtn.addEventListener('click', (event) => {
+    editSqlTemplateBtn.addEventListener('click', async (event) => {
         event.stopPropagation(); // Prevent card click from triggering
-        // Get current template selection or default to sql_query_v1
-        const currentTemplateId = ragCollectionTemplateType?.value || 'sql_query_v1';
-        editTemplate(currentTemplateId);
+        // Get current template selection
+        const { getDefaultTemplateId } = await import('./rag/templateSystem.js');
+        const currentTemplateId = ragCollectionTemplateType?.value || getDefaultTemplateId('planner');
+        if (currentTemplateId) {
+            editTemplate(currentTemplateId);
+        }
     });
 }
 

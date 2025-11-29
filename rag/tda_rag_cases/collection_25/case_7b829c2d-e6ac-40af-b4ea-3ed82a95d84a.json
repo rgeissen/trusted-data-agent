@@ -1,0 +1,59 @@
+{
+  "case_id": "7b829c2d-e6ac-40af-b4ea-3ed82a95d84a",
+  "metadata": {
+    "session_id": "00000000-0000-0000-0000-000000000000",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "template-task-7b829c2d",
+    "collection_id": 25,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-29T20:10:39.340484+00:00",
+    "user_uuid": "00000000-0000-0000-0000-000000000000",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Template",
+      "model": "sql_doc_context_v1",
+      "profile_tag": null,
+      "input_tokens": 200,
+      "output_tokens": 220
+    },
+    "is_most_efficient": true,
+    "template_generated": true,
+    "template_type": "sql_query",
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "database_name": "dbc"
+  },
+  "intent": {
+    "user_query": "How can I determine the average queue wait time and service time for different workload definitions using the `resusa gespsV` view?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Execute SQL query for  on dbc: SELECT WDid, AVG(QWaitTime) AS AvgQWaitTime, AVG(ServiceTime) AS AvgServiceTime FROM td_metric_svc.resusagespsV GROUP BY WDid;",
+        "relevant_tools": [
+          "base_readQuery"
+        ],
+        "arguments": {
+          "sql": "SELECT WDid, AVG(QWaitTime) AS AvgQWaitTime, AVG(ServiceTime) AS AvgServiceTime FROM td_metric_svc.resusagespsV GROUP BY WDid;"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the query results.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}
