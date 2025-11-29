@@ -8,6 +8,18 @@ import re
 import uuid # Import uuid
 import copy # --- MODIFICATION START: Import copy ---
 from functools import wraps
+import sys
+
+# Import template exceptions
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
+from rag_templates.exceptions import (
+    TemplateError,
+    TemplateNotFoundError,
+    TemplateValidationError,
+    SchemaValidationError,
+    TemplateRegistryError,
+    TemplateLoadError
+)
 
 # --- MODIFICATION START: Import generate_task_id ---
 from quart import Blueprint, current_app, jsonify, request, abort
@@ -2782,13 +2794,8 @@ async def get_rag_template_config(template_id: str):
         
         template_manager = get_template_manager()
         
-        # Get template
+        # Get template - will raise TemplateNotFoundError if not found
         template = template_manager.get_template(template_id)
-        if not template:
-            return jsonify({
-                "status": "error",
-                "message": f"Template {template_id} not found"
-            }), 404
         
         # Get editable configuration
         config = template_manager.get_template_config(template_id)
@@ -2807,9 +2814,23 @@ async def get_rag_template_config(template_id: str):
             "template": metadata,
             "config": config
         }), 200
-        
+    
+    except TemplateNotFoundError as e:
+        return jsonify({
+            "status": "error",
+            "error_type": "template_not_found",
+            "message": str(e),
+            "template_id": template_id
+        }), 404
+    except TemplateError as e:
+        app_logger.error(f"Template error getting config: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "error_type": "template_error",
+            "message": str(e)
+        }), 500
     except Exception as e:
-        app_logger.error(f"Error getting template config: {e}", exc_info=True)
+        app_logger.error(f"Unexpected error getting template config: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
@@ -2832,15 +2853,7 @@ async def update_rag_template_config(template_id: str):
         
         template_manager = get_template_manager()
         
-        # Verify template exists
-        template = template_manager.get_template(template_id)
-        if not template:
-            return jsonify({
-                "status": "error",
-                "message": f"Template {template_id} not found"
-            }), 404
-        
-        # Update configuration
+        # Update configuration - will raise TemplateNotFoundError if template doesn't exist
         template_manager.update_template_config(template_id, data)
         
         # Get updated config
@@ -2851,9 +2864,23 @@ async def update_rag_template_config(template_id: str):
             "message": f"Template {template_id} configuration updated",
             "config": updated_config
         }), 200
-        
+    
+    except TemplateNotFoundError as e:
+        return jsonify({
+            "status": "error",
+            "error_type": "template_not_found",
+            "message": str(e),
+            "template_id": template_id
+        }), 404
+    except TemplateError as e:
+        app_logger.error(f"Template error updating config: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "error_type": "template_error",
+            "message": str(e)
+        }), 500
     except Exception as e:
-        app_logger.error(f"Error updating template config: {e}", exc_info=True)
+        app_logger.error(f"Unexpected error updating template config: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
@@ -2872,9 +2899,23 @@ async def list_rag_templates():
             "status": "success",
             "templates": templates
         }), 200
-        
+    
+    except TemplateRegistryError as e:
+        app_logger.error(f"Registry error listing templates: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "error_type": "registry_error",
+            "message": str(e)
+        }), 500
+    except TemplateError as e:
+        app_logger.error(f"Template error listing templates: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "error_type": "template_error",
+            "message": str(e)
+        }), 500
     except Exception as e:
-        app_logger.error(f"Error listing templates: {e}", exc_info=True)
+        app_logger.error(f"Unexpected error listing templates: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
@@ -2913,21 +2954,29 @@ async def get_full_template(template_id: str):
         from trusted_data_agent.agent.rag_template_manager import get_template_manager
         
         template_manager = get_template_manager()
-        template = template_manager.get_template(template_id)
-        
-        if not template:
-            return jsonify({
-                "status": "error",
-                "message": f"Template {template_id} not found"
-            }), 404
+        template = template_manager.get_template(template_id)  # Will raise TemplateNotFoundError if not found
         
         return jsonify({
             "status": "success",
             "template": template
         }), 200
-        
+    
+    except TemplateNotFoundError as e:
+        return jsonify({
+            "status": "error",
+            "error_type": "template_not_found",
+            "message": str(e),
+            "template_id": template_id
+        }), 404
+    except TemplateError as e:
+        app_logger.error(f"Template error getting full template: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "error_type": "template_error",
+            "message": str(e)
+        }), 500
     except Exception as e:
-        app_logger.error(f"Error getting full template: {e}", exc_info=True)
+        app_logger.error(f"Unexpected error getting full template: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
 
 

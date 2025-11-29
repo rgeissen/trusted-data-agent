@@ -431,12 +431,16 @@
           "type": "array",
           "description": "Static list of MCP tools for this phase",
           "items": {
-            "type": "string"
-          }
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+            "description": "Tool name must start with letter or underscore, followed by alphanumeric or underscore"
+          },
+          "minItems": 1
         },
         "relevant_tools_source": {
           "type": "string",
-          "description": "Input variable containing tool name(s)"
+          "pattern": "^[a-z_][a-z0-9_]*$",
+          "description": "Input variable name containing tool name(s). Must reference a valid input variable."
         },
         "arguments": {
           "type": "object",

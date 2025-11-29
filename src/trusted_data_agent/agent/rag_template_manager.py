@@ -10,6 +10,18 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timezone
+import sys
+
+# Import custom exceptions
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
+from rag_templates.exceptions import (
+    TemplateError,
+    TemplateNotFoundError,
+    TemplateValidationError,
+    SchemaValidationError,
+    TemplateRegistryError,
+    TemplateLoadError
+)
 
 logger = logging.getLogger("rag_template_manager")
 
@@ -142,9 +154,16 @@ class RAGTemplateManager:
             with open(self.registry_file, 'r', encoding='utf-8') as f:
                 self.registry = json.load(f)
             logger.info(f"Loaded template registry with {len(self.registry.get('templates', []))} template(s)")
+        except json.JSONDecodeError as e:
+            raise TemplateRegistryError(
+                f"Registry file contains invalid JSON",
+                original_error=e
+            )
         except Exception as e:
-            logger.error(f"Failed to load template registry: {e}", exc_info=True)
-            self.registry = {"registry_version": "1.0.0", "templates": []}
+            raise TemplateRegistryError(
+                f"Failed to load template registry from {self.registry_file}",
+                original_error=e
+            )
     
     def _load_templates(self):
         """Load all active templates from registry."""
@@ -176,6 +195,14 @@ class RAGTemplateManager:
             try:
                 with open(template_path, 'r', encoding='utf-8') as f:
                     template_data = json.load(f)
+            except json.JSONDecodeError as e:
+                logger.error(f"Template {template_id} contains invalid JSON: {e}")
+                continue
+            except Exception as e:
+                logger.error(f"Failed to load template {template_id}: {e}", exc_info=True)
+                continue
+            
+            try:
                 
                 # Try to load manifest if it exists
                 if manifest_path and manifest_path.exists():
@@ -198,26 +225,29 @@ class RAGTemplateManager:
                         except Exception as me:
                             logger.warning(f"Failed to load fallback manifest for {template_id}: {me}")
                 
-                # Validate required fields
-                if not self._validate_template(template_data):
-                    logger.error(f"Template {template_id} failed validation")
-                    continue
+                # Validate required fields - will raise TemplateValidationError if invalid
+                self._validate_template(template_data)
                 
                 # Preserve status from registry entry
                 template_data['status'] = status
                 self.templates[template_id] = template_data
                 logger.info(f"Loaded template: {template_id} ({template_data.get('template_name')}) with status: {status}")
                 
+            except TemplateValidationError:
+                # Already logged by _validate_template
+                continue
             except Exception as e:
-                logger.error(f"Failed to load template {template_id}: {e}", exc_info=True)
+                logger.error(f"Unexpected error loading template {template_id}: {e}", exc_info=True)
+                continue
     
-    def _validate_template(self, template_data: Dict[str, Any]) -> bool:
+    def _validate_template(self, template_data: Dict[str, Any], strict: bool = False, validate_tools: bool = True) -> None:
         """
         Validate that a template has required fields and matches JSON schema.
         
-        Performs two levels of validation:
+        Performs multiple levels of validation:
         1. JSON schema validation (if jsonschema available and schema loaded)
         2. Fallback basic field validation
+        3. MCP tool name validation (if validate_tools=True)
         
         Template Type Taxonomy:
         - template_type: Strategy/execution type (sql_query, api_request, knowledge_repository)
@@ -230,7 +260,18 @@ class RAGTemplateManager:
         Schema Selection Logic:
         - knowledge_repository → knowledge schema (document storage)
         - all other types → planner schema (execution strategies)
+        
+        Args:
+            template_data: Template dictionary to validate
+            strict: If True, fail on unknown tools. If False, only warn.
+            validate_tools: If True, validate MCP tool names. Set False to skip tool validation.
+        
+        Raises:
+            SchemaValidationError: If JSON schema validation fails
+            TemplateValidationError: If basic field validation fails
+            ToolValidationError: If tool validation fails and strict=True
         """
+        template_id = template_data.get("template_id", "unknown")
         template_type = template_data.get("template_type", "")
         
         # Determine which schema to use based on template_type
@@ -250,31 +291,154 @@ class RAGTemplateManager:
                 errors = list(validator.iter_errors(template_data))
                 
                 if errors:
-                    logger.error(f"Template schema validation failed for {template_data.get('template_id', 'unknown')}:")
+                    logger.error(f"Template schema validation failed for {template_id}:")
                     for error in errors[:5]:  # Show first 5 errors
                         path = ".".join(str(p) for p in error.path) if error.path else "root"
                         logger.error(f"  - {path}: {error.message}")
                     if len(errors) > 5:
                         logger.error(f"  ... and {len(errors) - 5} more errors")
-                    return False
+                    raise SchemaValidationError(template_id, errors)
                 
                 logger.debug(f"Template passed JSON schema validation ({schema_type} schema)")
-                return True
                 
+            except SchemaValidationError:
+                raise  # Re-raise our custom exception
             except Exception as e:
                 logger.warning(f"Schema validation failed with exception: {e}. Falling back to basic validation.")
+                # Fallback to basic validation
+                self._validate_template_basic(template_data, template_type)
+        else:
+            # Fallback to basic validation
+            self._validate_template_basic(template_data, template_type)
         
-        # Fallback to basic validation
-        return self._validate_template_basic(template_data, template_type)
+        # Validate tool names (after schema/basic validation passes)
+        if validate_tools:
+            self._validate_tool_names(template_data, strict=strict)
     
-    def _validate_template_basic(self, template_data: Dict[str, Any], template_type: str) -> bool:
+    def _validate_tool_names(self, template_data: Dict[str, Any], strict: bool = False) -> List[str]:
+        """
+        Validate MCP tool names referenced in template phases.
+        
+        Checks:
+        1. TDA core tools (always valid): TDA_FinalReport, TDA_Charting, TDA_*
+        2. Tools available in APP_STATE (from live MCP server)
+        3. Tool name format and patterns
+        
+        Args:
+            template_data: Template dictionary to validate
+            strict: If True, raise exception for invalid tools. If False, log warning only.
+            
+        Returns:
+            List of invalid tool names found
+            
+        Raises:
+            ToolValidationError: If strict=True and invalid tools found
+        """
+        from trusted_data_agent.core.config import APP_STATE
+        from rag_templates.exceptions import ToolValidationError
+        
+        template_id = template_data.get("template_id", "unknown")
+        template_type = template_data.get("template_type")
+        
+        # Knowledge repository templates don't use tools
+        if template_type == "knowledge_repository":
+            return []
+        
+        # TDA core tools that are always valid (client-side tools)
+        TDA_CORE_TOOLS = {
+            "TDA_FinalReport",
+            "TDA_Charting",
+            "TDA_WorkflowControl",
+            "TDA_SessionMemory"
+        }
+        
+        # Extract all tool names from phases
+        tool_names_found = set()
+        strategy_template = template_data.get("strategy_template", {})
+        phases = strategy_template.get("phases", [])
+        
+        for phase in phases:
+            # Static tool list
+            relevant_tools = phase.get("relevant_tools", [])
+            if isinstance(relevant_tools, list):
+                tool_names_found.update(relevant_tools)
+            
+            # Dynamic tool from input variable
+            relevant_tools_source = phase.get("relevant_tools_source")
+            if relevant_tools_source:
+                # This will be resolved at runtime, so we can't validate the actual name
+                # But we can validate that the source variable exists
+                input_vars = template_data.get("input_variables", {})
+                if relevant_tools_source not in input_vars:
+                    logger.warning(
+                        f"Template {template_id} phase {phase.get('phase')} references "
+                        f"tool source '{relevant_tools_source}' but it's not in input_variables"
+                    )
+        
+        if not tool_names_found:
+            logger.debug(f"Template {template_id} has no explicit tool references")
+            return []
+        
+        # Get available tools from APP_STATE (loaded from MCP server)
+        available_mcp_tools = set()
+        if APP_STATE.get('mcp_tools'):
+            available_mcp_tools = set(APP_STATE['mcp_tools'].keys())
+            logger.debug(f"Validating against {len(available_mcp_tools)} MCP tools from APP_STATE")
+        else:
+            logger.warning(
+                f"APP_STATE['mcp_tools'] not available - cannot validate against MCP server. "
+                f"This is normal during initial template loading before MCP server connection."
+            )
+        
+        # Validate each tool
+        invalid_tools = []
+        for tool_name in tool_names_found:
+            # Check if it's a TDA core tool
+            if tool_name.startswith("TDA_") and tool_name in TDA_CORE_TOOLS:
+                continue
+            
+            # Check if it's in available MCP tools
+            if available_mcp_tools and tool_name in available_mcp_tools:
+                continue
+            
+            # Check for wildcard TDA_ tools (future compatibility)
+            if tool_name.startswith("TDA_"):
+                logger.info(f"Template {template_id} uses TDA tool '{tool_name}' (assuming valid)")
+                continue
+            
+            # Tool not found
+            if available_mcp_tools:  # Only mark as invalid if we have MCP tools to check against
+                invalid_tools.append(tool_name)
+                logger.warning(f"Template {template_id} references unknown tool: {tool_name}")
+            else:
+                # MCP server not available, can't validate - assume valid
+                logger.debug(f"Cannot validate tool '{tool_name}' - MCP server not loaded")
+        
+        # Handle invalid tools based on strict mode
+        if invalid_tools:
+            if strict:
+                raise ToolValidationError(template_id, invalid_tools)
+            else:
+                logger.warning(
+                    f"Template {template_id} references {len(invalid_tools)} unknown tool(s): "
+                    f"{', '.join(invalid_tools)}. This may cause runtime errors."
+                )
+        
+        return invalid_tools
+    
+    def _validate_template_basic(self, template_data: Dict[str, Any], template_type: str) -> None:
         """
         Basic field validation fallback when JSON schema validation unavailable.
         
         Validates based on template_type:
         - knowledge_repository: Requires repository_configuration
         - All others (planner types): Require input_variables, output_configuration, strategy_template
+        
+        Raises:
+            TemplateValidationError: If required fields are missing
         """
+        template_id = template_data.get("template_id", "unknown")
+        
         # Common required fields for all templates
         common_required = [
             "template_id",
@@ -282,18 +446,20 @@ class RAGTemplateManager:
             "template_type"
         ]
         
-        for field in common_required:
-            if field not in template_data:
-                logger.error(f"Template missing required field: {field}")
-                return False
+        missing_fields = [field for field in common_required if field not in template_data]
+        if missing_fields:
+            message = f"Template missing required fields: {', '.join(missing_fields)}"
+            logger.error(message)
+            raise TemplateValidationError(template_id, message, {"missing_fields": missing_fields})
         
         # Knowledge repository templates have different required fields
         if template_type == "knowledge_repository":
             knowledge_required = ["repository_configuration"]
-            for field in knowledge_required:
-                if field not in template_data:
-                    logger.error(f"Knowledge template missing required field: {field}")
-                    return False
+            missing_fields = [field for field in knowledge_required if field not in template_data]
+            if missing_fields:
+                message = f"Knowledge template missing required fields: {', '.join(missing_fields)}"
+                logger.error(message)
+                raise TemplateValidationError(template_id, message, {"missing_fields": missing_fields})
         else:
             # Planner templates (sql_query, api_request, custom_workflow, etc.)
             # These define execution strategies with phases
@@ -302,14 +468,13 @@ class RAGTemplateManager:
                 "output_configuration",
                 "strategy_template"
             ]
-            for field in planner_required:
-                if field not in template_data:
-                    logger.error(f"Planner template missing required field: {field}")
-                    return False
-        
-        return True
+            missing_fields = [field for field in planner_required if field not in template_data]
+            if missing_fields:
+                message = f"Planner template missing required fields: {', '.join(missing_fields)}"
+                logger.error(message)
+                raise TemplateValidationError(template_id, message, {"missing_fields": missing_fields})
     
-    def get_template(self, template_id: str) -> Optional[Dict[str, Any]]:
+    def get_template(self, template_id: str) -> Dict[str, Any]:
         """
         Get a template by ID.
         
@@ -317,9 +482,15 @@ class RAGTemplateManager:
             template_id: The unique template identifier
             
         Returns:
-            Template data dictionary or None if not found
+            Template data dictionary
+            
+        Raises:
+            TemplateNotFoundError: If template_id is not found
         """
-        return self.templates.get(template_id)
+        template = self.templates.get(template_id)
+        if template is None:
+            raise TemplateNotFoundError(template_id)
+        return template
     
     def get_all_templates(self) -> Dict[str, Dict[str, Any]]:
         """
@@ -363,7 +534,7 @@ class RAGTemplateManager:
         
         return templates_list
     
-    def get_template_config(self, template_id: str) -> Optional[Dict[str, Any]]:
+    def get_template_config(self, template_id: str) -> Dict[str, Any]:
         """
         Get the editable configuration for a template.
         
@@ -372,10 +543,11 @@ class RAGTemplateManager:
             
         Returns:
             Dictionary of editable configuration values
+            
+        Raises:
+            TemplateNotFoundError: If template_id is not found
         """
-        template = self.get_template(template_id)
-        if not template:
-            return None
+        template = self.get_template(template_id)  # Will raise TemplateNotFoundError if not found
         
         output_config = template.get("output_configuration", {})
         editable_config = {}
@@ -405,11 +577,11 @@ class RAGTemplateManager:
         Args:
             template_id: The template identifier
             config: Dictionary of configuration values to update
+            
+        Raises:
+            TemplateNotFoundError: If template_id is not found
         """
-        template = self.get_template(template_id)
-        if not template:
-            logger.error(f"Template {template_id} not found")
-            return
+        template = self.get_template(template_id)  # Will raise TemplateNotFoundError if not found
         
         output_config = template.get("output_configuration", {})
         
