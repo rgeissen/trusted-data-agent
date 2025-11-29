@@ -13,16 +13,18 @@
   "chat_object": [
     {
       "role": "user",
-      "content": "You are a helpful assistant."
+      "content": "You are a helpful assistant.",
+      "turn_number": 0
     },
     {
       "role": "model",
-      "content": "Understood."
+      "content": "Understood.",
+      "turn_number": 0
     }
   ],
   "name": "New Chat",
   "created_at": "2025-11-29T20:01:18.837574",
-  "last_updated": "2025-11-29T20:01:18.837583",
+  "last_updated": "2025-11-29T20:38:19.751503",
   "input_tokens": 0,
   "output_tokens": 0,
   "last_turn_data": {
@@ -36,5 +38,7 @@
     "version": "1.5-tiered",
     "tier": "App Developer",
     "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
-  }
+  },
+  "archived": true,
+  "archived_at": "2025-11-29T19:38:31.180602+00:00"
 }

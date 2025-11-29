@@ -2092,14 +2092,9 @@ function createKnowledgeRepositoryCard(col) {
     const card = document.createElement('div');
     card.className = 'glass-panel rounded-xl p-4 flex flex-col gap-3 border border-white/10 hover:border-teradata-orange transition-colors';
     
-    // Header with icon and title
+    // Header with title and status badge
     const header = document.createElement('div');
-    header.className = 'flex items-start gap-3';
-    
-    // Document icon
-    const icon = document.createElement('div');
-    icon.className = 'w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center text-green-400 text-2xl';
-    icon.textContent = '📄';
+    header.className = 'flex items-start justify-between gap-2';
     
     const titleSection = document.createElement('div');
     titleSection.className = 'flex-1';
@@ -2108,61 +2103,162 @@ function createKnowledgeRepositoryCard(col) {
     title.className = 'text-lg font-semibold text-white';
     title.textContent = col.name || col.collection_name;
     
-    const subtitle = document.createElement('p');
-    subtitle.className = 'text-sm text-gray-400';
-    subtitle.textContent = col.description || 'Knowledge repository';
+    const collectionId = document.createElement('p');
+    collectionId.className = 'text-xs text-gray-500';
+    collectionId.textContent = `Collection ID: ${col.id}`;
     
     titleSection.appendChild(title);
-    titleSection.appendChild(subtitle);
+    titleSection.appendChild(collectionId);
     
-    header.appendChild(icon);
+    // Status and indicator badges container
+    const badgesContainer = document.createElement('div');
+    badgesContainer.className = 'flex flex-col gap-1 items-end';
+    
+    // Active/Disabled badge
+    const statusBadge = document.createElement('span');
+    statusBadge.className = col.enabled 
+        ? 'px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400' 
+        : 'px-2 py-1 text-xs rounded-full bg-gray-500/20 text-gray-400';
+    statusBadge.textContent = col.enabled ? 'Active' : 'Disabled';
+    badgesContainer.appendChild(statusBadge);
+    
+    // Ownership/Subscription indicators
+    const indicatorsRow = document.createElement('div');
+    indicatorsRow.className = 'flex gap-1';
+    
+    // Owner indicator (if user owns this collection)
+    if (col.is_owned) {
+        const ownerBadge = document.createElement('span');
+        ownerBadge.className = 'px-2 py-1 text-xs rounded-full bg-blue-500/20 text-blue-400';
+        ownerBadge.textContent = '👤 Owner';
+        ownerBadge.title = 'You own this collection';
+        indicatorsRow.appendChild(ownerBadge);
+    }
+    
+    // Subscribed indicator (if user is subscribed but doesn't own it)
+    if (col.is_subscribed && !col.is_owned) {
+        const subscribedBadge = document.createElement('span');
+        subscribedBadge.className = 'px-2 py-1 text-xs rounded-full bg-purple-500/20 text-purple-400';
+        subscribedBadge.textContent = '📌 Subscribed';
+        subscribedBadge.title = 'You are subscribed to this collection';
+        indicatorsRow.appendChild(subscribedBadge);
+    }
+    
+    // Published to marketplace indicator
+    if (col.is_marketplace_listed) {
+        const publishedBadge = document.createElement('span');
+        publishedBadge.className = 'px-2 py-1 text-xs rounded-full bg-orange-500/20 text-orange-400';
+        const visibilityIcon = col.visibility === 'public' ? '🌐' : '🔗';
+        publishedBadge.textContent = `${visibilityIcon} ${col.visibility === 'public' ? 'Public' : 'Unlisted'}`;
+        publishedBadge.title = `Published to marketplace (${col.visibility})`;
+        indicatorsRow.appendChild(publishedBadge);
+    }
+    
+    if (indicatorsRow.children.length > 0) {
+        badgesContainer.appendChild(indicatorsRow);
+    }
+    
     header.appendChild(titleSection);
+    header.appendChild(badgesContainer);
     
-    // Metadata row
-    const metaRow = document.createElement('div');
-    metaRow.className = 'flex items-center gap-4 text-xs text-gray-400';
+    // MCP Server info
+    const mcpInfo = document.createElement('p');
+    mcpInfo.className = 'text-sm text-gray-300';
+    let mcpServerDisplay = 'None';
+    if (col.mcp_server_id && window.configState && window.configState.mcpServers) {
+        const mcpServer = window.configState.mcpServers.find(s => s.id === col.mcp_server_id);
+        mcpServerDisplay = mcpServer ? mcpServer.name : 'Unknown';
+    }
+    mcpInfo.innerHTML = `<span class="text-gray-500">MCP Server:</span> ${mcpServerDisplay}`;
     
-    // Document count (placeholder - will be loaded dynamically)
-    const docCount = document.createElement('div');
-    docCount.className = 'flex items-center gap-1';
-    docCount.innerHTML = `<span>📊</span> <span id="doc-count-${col.id}">0 documents</span>`;
+    // Description (if exists)
+    if (col.description) {
+        const desc = document.createElement('p');
+        desc.className = 'text-xs text-gray-400';
+        desc.textContent = col.description;
+        card.appendChild(header);
+        card.appendChild(desc);
+    } else {
+        card.appendChild(header);
+    }
     
-    // Chunking strategy
-    const chunking = document.createElement('div');
-    chunking.className = 'flex items-center gap-1';
-    const chunkIcon = col.chunking_strategy === 'semantic' ? '🧠' : '📏';
-    chunking.innerHTML = `<span>${chunkIcon}</span> <span>${col.chunking_strategy || 'semantic'} chunking</span>`;
+    // Metadata (ChromaDB name and chunking info)
+    const meta = document.createElement('p');
+    meta.className = 'text-xs text-gray-500';
+    const chunkInfo = col.chunking_strategy ? ` | ${col.chunking_strategy} chunking` : '';
+    meta.textContent = `ChromaDB: ${col.collection_name}${chunkInfo}`;
     
-    metaRow.appendChild(docCount);
-    metaRow.appendChild(chunking);
+    card.appendChild(mcpInfo);
+    card.appendChild(meta);
     
     // Actions
     const actions = document.createElement('div');
-    actions.className = 'flex gap-2 mt-2';
+    actions.className = 'mt-2 flex gap-2 flex-wrap';
     
-    // View button
-    const viewBtn = document.createElement('button');
-    viewBtn.type = 'button';
-    viewBtn.className = 'flex-1 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-sm text-white font-medium transition-colors';
-    viewBtn.textContent = 'View';
-    viewBtn.addEventListener('click', () => {
-        openKnowledgeRepositoryView(col);
+    // Toggle enable/disable button
+    const toggleBtn = document.createElement('button');
+    toggleBtn.type = 'button';
+    toggleBtn.className = col.enabled
+        ? 'px-3 py-1 rounded-md bg-yellow-600 hover:bg-yellow-500 text-sm text-white'
+        : 'px-3 py-1 rounded-md bg-green-600 hover:bg-green-500 text-sm text-white';
+    toggleBtn.textContent = col.enabled ? 'Disable' : 'Enable';
+    toggleBtn.addEventListener('click', () => {
+        if (window.ragCollectionManagement) {
+            window.ragCollectionManagement.toggleRagCollection(col.id, col.enabled);
+        }
+    });
+    
+    // Refresh button
+    const refreshBtn = document.createElement('button');
+    refreshBtn.type = 'button';
+    refreshBtn.className = 'px-3 py-1 rounded-md bg-gray-700 hover:bg-gray-600 text-sm text-gray-200';
+    refreshBtn.textContent = 'Refresh';
+    refreshBtn.addEventListener('click', () => {
+        if (window.ragCollectionManagement) {
+            window.ragCollectionManagement.refreshRagCollection(col.id, col.name);
+        }
+    });
+    
+    // Inspect button
+    const inspectBtn = document.createElement('button');
+    inspectBtn.type = 'button';
+    inspectBtn.className = 'px-3 py-1 rounded-md bg-[#F15F22] hover:bg-[#D9501A] text-sm text-white';
+    inspectBtn.textContent = 'Inspect';
+    inspectBtn.addEventListener('click', () => {
+        if (window.knowledgeRepositoryHandler) {
+            // Pass the full collection object, not just id and name
+            window.knowledgeRepositoryHandler.openKnowledgeInspectionModal(col);
+        }
+    });
+    
+    // Edit button
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-500 text-sm text-white';
+    editBtn.textContent = 'Edit';
+    editBtn.addEventListener('click', () => {
+        if (window.ragCollectionManagement) {
+            window.ragCollectionManagement.openEditCollectionModal(col);
+        }
     });
     
     // Delete button
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
-    deleteBtn.className = 'px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-sm text-white font-medium transition-colors';
+    deleteBtn.className = 'px-3 py-1 rounded-md bg-red-600 hover:bg-red-500 text-sm text-white';
     deleteBtn.textContent = 'Delete';
     deleteBtn.addEventListener('click', () => {
-        deleteKnowledgeRepository(col.id, col.name);
+        if (window.knowledgeRepositoryHandler) {
+            window.knowledgeRepositoryHandler.deleteKnowledgeRepository(col.id, col.name);
+        }
     });
     
-    actions.appendChild(viewBtn);
+    actions.appendChild(toggleBtn);
+    actions.appendChild(refreshBtn);
+    actions.appendChild(inspectBtn);
+    actions.appendChild(editBtn);
     actions.appendChild(deleteBtn);
     
-    card.appendChild(header);
-    card.appendChild(metaRow);
     card.appendChild(actions);
     
     // Load document count asynchronously

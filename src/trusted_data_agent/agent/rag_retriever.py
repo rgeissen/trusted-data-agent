@@ -663,10 +663,12 @@ class RAGRetriever:
             logger.warning(f"Collection '{collection_id}' not found")
             return False
         
-        # Validate: Cannot enable a collection without an MCP server assignment
+        # Validate: Cannot enable a PLANNER collection without an MCP server assignment
+        # Knowledge repositories don't require MCP servers
         coll_mcp_server = coll_meta.get("mcp_server_id")
-        if enabled and not coll_mcp_server:
-            logger.warning(f"Cannot enable collection '{collection_id}': no MCP server assigned")
+        repo_type = coll_meta.get("repository_type", "planner")
+        if enabled and repo_type == "planner" and not coll_mcp_server:
+            logger.warning(f"Cannot enable planner collection '{collection_id}': no MCP server assigned")
             return False
         
         # Update in database

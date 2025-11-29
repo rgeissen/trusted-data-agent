@@ -261,9 +261,22 @@ export function createTemplateCard(template, index, filterType = 'planner') {
                     window.templateDefaults = defaultsData.defaults;
                 }
                 
-                // Open modal and let existing template system handle everything
+                // Open modal - different modal for knowledge vs planner templates
                 console.log('[Deploy] Opening modal...');
-                if (window.ragCollectionManagement && window.ragCollectionManagement.openAddRagCollectionModal) {
+                if (isKnowledge) {
+                    // Open knowledge repository modal with template defaults
+                    console.log('[Deploy] Opening knowledge repository modal');
+                    if (window.openKnowledgeRepositoryModalWithTemplate) {
+                        window.openKnowledgeRepositoryModalWithTemplate(template, defaultsData.defaults || {});
+                    } else {
+                        console.error('[Deploy] openKnowledgeRepositoryModalWithTemplate not found');
+                        if (window.showToast) {
+                            window.showToast('error', 'Knowledge repository modal not available');
+                        }
+                    }
+                } else if (window.ragCollectionManagement && window.ragCollectionManagement.openAddRagCollectionModal) {
+                    // Open planner collection modal
+                    console.log('[Deploy] Opening planner collection modal');
                     await window.ragCollectionManagement.openAddRagCollectionModal();
                     
                     // Enable template population, then select the template

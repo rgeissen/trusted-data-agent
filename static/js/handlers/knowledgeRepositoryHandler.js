@@ -630,6 +630,34 @@ function attachKnowledgeRepositoryCardHandlers(container, repositories) {
         repoMap.set(String(repoId), repo);
     });
     
+    // Toggle (Enable/Disable) button handlers
+    const toggleButtons = container.querySelectorAll('.toggle-knowledge-btn');
+    toggleButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const repoId = btn.dataset.repoId;
+            const enabled = btn.dataset.enabled === 'true';
+            if (window.ragCollectionManagement) {
+                window.ragCollectionManagement.toggleRagCollection(parseInt(repoId), enabled);
+            }
+        });
+    });
+    
+    // Refresh button handlers
+    const refreshButtons = container.querySelectorAll('.refresh-knowledge-btn');
+    refreshButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const repoId = btn.dataset.repoId;
+            const repo = repoMap.get(repoId);
+            if (window.ragCollectionManagement && repo) {
+                window.ragCollectionManagement.refreshRagCollection(parseInt(repoId), repo.collection_name);
+            }
+        });
+    });
+    
     // Inspect button handlers
     const inspectButtons = container.querySelectorAll('.view-knowledge-repo-btn');
     console.log('[Knowledge] Found', inspectButtons.length, 'inspect buttons');
@@ -651,6 +679,20 @@ function attachKnowledgeRepositoryCardHandlers(container, repositories) {
             
             console.log('[Knowledge] Opening inspection modal for:', repo.collection_name);
             openKnowledgeInspectionModal(repo);
+        });
+    });
+    
+    // Edit button handlers
+    const editButtons = container.querySelectorAll('.edit-knowledge-btn');
+    editButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const repoId = btn.dataset.repoId;
+            const repo = repoMap.get(repoId);
+            if (window.ragCollectionManagement && repo) {
+                window.ragCollectionManagement.openEditCollectionModal(repo);
+            }
         });
     });
     
@@ -845,49 +887,44 @@ function createKnowledgeRepositoryCard(repo) {
     const repoId = repo.id || repo.collection_id;
     console.log('[Knowledge] Creating card for repo:', repo.collection_name, 'with ID:', repoId);
     
+    const statusClass = repo.enabled ? 'bg-green-500' : 'bg-gray-500';
+    const docCount = repo.count || repo.example_count || 0;
+    
     return `
-        <div class="glass-panel p-6 rounded-lg hover:bg-white/5 transition-all cursor-pointer" data-repo-id="${repoId}">
-            <div class="flex items-start justify-between mb-4">
-                <div class="flex items-center gap-3">
-                    <div class="p-2 bg-green-500/20 rounded-lg">
-                        <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                    </div>
-                    <div>
-                        <h3 class="text-lg font-semibold text-white">${repo.collection_name}</h3>
-                        <p class="text-xs text-gray-400">${repo.description || 'Knowledge repository'}</p>
-                    </div>
+        <div class="glass-panel p-4 rounded-lg hover:bg-white/5 transition-all" data-repo-id="${repoId}">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="p-2 bg-green-500/20 rounded-lg relative">
+                    <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <div class="${statusClass} w-2 h-2 rounded-full absolute top-1 right-1"></div>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h3 class="text-base font-semibold text-white truncate">${repo.collection_name}</h3>
+                    <p class="text-xs text-gray-500">Collection ID: ${repoId} | <span id="knowledge-doc-count-${repoId}">${docCount}</span> documents</p>
                 </div>
             </div>
             
-            <div class="space-y-2">
-                <div class="flex items-center gap-2 text-sm text-gray-400">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                    </svg>
-                    <span>${repo.count || repo.example_count || 0} documents</span>
-                </div>
-                <div class="flex items-center gap-2 text-sm text-gray-400">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
-                    </svg>
-                    <span>${repo.chunking_strategy || 'semantic'} chunking</span>
-                </div>
-            </div>
+            <p class="text-xs text-gray-500 mb-2">
+                <span class="text-gray-500">ChromaDB:</span> ${repo.collection_name}${repo.chunking_strategy ? ` | ${repo.chunking_strategy} chunking` : ''}
+            </p>
             
-            <div class="mt-4 pt-4 border-t border-gray-700 flex gap-2">
-                <button class="view-knowledge-repo-btn flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm text-white transition-colors flex items-center justify-center gap-2" data-repo-id="${repoId}">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                    </svg>
+            ${repo.description ? `<p class="text-xs text-gray-400 mb-3">${repo.description}</p>` : ''}
+            
+            <div class="flex gap-2 flex-wrap">
+                <button class="toggle-knowledge-btn px-3 py-1 rounded-md ${repo.enabled ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-green-600 hover:bg-green-500'} text-sm text-white" data-repo-id="${repoId}" data-enabled="${repo.enabled}">
+                    ${repo.enabled ? 'Disable' : 'Enable'}
+                </button>
+                <button class="refresh-knowledge-btn px-3 py-1 rounded-md bg-gray-700 hover:bg-gray-600 text-sm text-gray-200" data-repo-id="${repoId}">
+                    Refresh
+                </button>
+                <button class="view-knowledge-repo-btn px-3 py-1 rounded-md bg-[#F15F22] hover:bg-[#D9501A] text-sm text-white" data-repo-id="${repoId}">
                     Inspect
                 </button>
-                <button class="delete-knowledge-repo-btn px-3 py-2 bg-red-600 hover:bg-red-700 rounded text-sm text-white transition-colors flex items-center justify-center gap-2" data-repo-id="${repoId}">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                    </svg>
+                <button class="edit-knowledge-btn px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-500 text-sm text-white" data-repo-id="${repoId}">
+                    Edit
+                </button>
+                <button class="delete-knowledge-repo-btn px-3 py-1 rounded-md bg-red-600 hover:bg-red-500 text-sm text-white" data-repo-id="${repoId}">
                     Delete
                 </button>
             </div>
@@ -1119,3 +1156,6 @@ async function handlePreviewChunking(isAutoPreview = false) {
         previewBtn.textContent = 'Preview Segmentation';
     }
 }
+
+// Export openKnowledgeInspectionModal for use by other modules
+export { openKnowledgeInspectionModal };

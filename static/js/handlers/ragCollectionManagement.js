@@ -674,11 +674,17 @@ async function toggleRagCollection(collectionId, currentState) {
         // Toggle the state: if currently enabled, disable it; if disabled, enable it
         const newState = !currentState;
         
+        const token = localStorage.getItem('tda_auth_token');
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        
         const response = await fetch(`/api/v1/rag/collections/${collectionId}/toggle`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: headers,
             body: JSON.stringify({
                 enabled: newState
             })
@@ -3682,14 +3688,17 @@ function initializeRepositoryTabs() {
  */
 async function initializeKnowledgeRepositoryHandlers() {
     try {
-        const { initializeKnowledgeRepositoryHandlers, loadKnowledgeRepositories } = await import('./knowledgeRepositoryHandler.js');
+        const { initializeKnowledgeRepositoryHandlers, loadKnowledgeRepositories, openKnowledgeInspectionModal } = await import('./knowledgeRepositoryHandler.js');
+        const { deleteKnowledgeRepository } = await import('../ui.js');
         
         // Initialize handlers
         initializeKnowledgeRepositoryHandlers();
         
-        // Store functions globally for tab switching
+        // Store functions globally for tab switching and card actions
         window.knowledgeRepositoryHandler = {
-            loadKnowledgeRepositories
+            loadKnowledgeRepositories,
+            openKnowledgeInspectionModal,
+            deleteKnowledgeRepository
         };
         
         console.log('[Knowledge] Knowledge repository handlers loaded');

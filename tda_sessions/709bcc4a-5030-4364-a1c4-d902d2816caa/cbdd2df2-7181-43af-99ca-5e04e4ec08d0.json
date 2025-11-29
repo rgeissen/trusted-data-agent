@@ -1,5 +1,5 @@
 {
-  "id": "0d75dca4-cfd3-41d8-b73f-2c1c0d3e7f22",
+  "id": "cbdd2df2-7181-43af-99ca-5e04e4ec08d0",
   "user_uuid": "709bcc4a-5030-4364-a1c4-d902d2816caa",
   "system_prompt_template": null,
   "charting_intensity": "medium",
@@ -13,18 +13,16 @@
   "chat_object": [
     {
       "role": "user",
-      "content": "You are a helpful assistant.",
-      "turn_number": 0
+      "content": "You are a helpful assistant."
     },
     {
       "role": "model",
-      "content": "Understood.",
-      "turn_number": 0
+      "content": "Understood."
     }
   ],
   "name": "New Chat",
-  "created_at": "2025-11-29T20:04:16.848030",
-  "last_updated": "2025-11-29T20:38:19.184679",
+  "created_at": "2025-11-29T20:56:26.141407",
+  "last_updated": "2025-11-29T20:56:26.141422",
   "input_tokens": 0,
   "output_tokens": 0,
   "last_turn_data": {
@@ -38,7 +36,5 @@
     "version": "1.5-tiered",
     "tier": "App Developer",
     "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
-  },
-  "archived": true,
-  "archived_at": "2025-11-29T19:38:33.553222+00:00"
+  }
 }

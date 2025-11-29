@@ -2382,16 +2382,20 @@ async def toggle_rag_collection(collection_id: int):
         if enabled is None:
             return jsonify({"status": "error", "message": "Field 'enabled' is required"}), 400
         
-        # Check if attempting to enable a collection without MCP server assignment FIRST
+        # Check if attempting to enable a PLANNER collection without MCP server assignment FIRST
+        # Knowledge repositories don't require MCP servers
         # This validation should happen even if RAG retriever is not initialized
         if enabled:
             collections_list = APP_STATE.get("rag_collections", [])
             coll_meta = next((c for c in collections_list if c["id"] == collection_id), None)
-            if coll_meta and not coll_meta.get("mcp_server_id"):
-                return jsonify({
-                    "status": "error", 
-                    "message": "Cannot enable collection: MCP server must be assigned first"
-                }), 400
+            if coll_meta:
+                repo_type = coll_meta.get("repository_type", "planner")
+                # Only planner repositories require MCP server assignment
+                if repo_type == "planner" and not coll_meta.get("mcp_server_id"):
+                    return jsonify({
+                        "status": "error", 
+                        "message": "Cannot enable collection: MCP server must be assigned first"
+                    }), 400
         
         # Now check if RAG retriever is initialized
         retriever = APP_STATE.get("rag_retriever_instance")
