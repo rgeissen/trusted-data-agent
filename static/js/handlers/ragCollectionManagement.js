@@ -3725,7 +3725,7 @@ function initializeRepositoryTabs() {
  */
 async function initializeKnowledgeRepositoryHandlers() {
     try {
-        const { initializeKnowledgeRepositoryHandlers, loadKnowledgeRepositories, openKnowledgeInspectionModal } = await import('./knowledgeRepositoryHandler.js');
+        const { initializeKnowledgeRepositoryHandlers, loadKnowledgeRepositories } = await import('./knowledgeRepositoryHandler.js');
         const { deleteKnowledgeRepository } = await import('../ui.js');
         
         // Initialize handlers
@@ -3734,7 +3734,6 @@ async function initializeKnowledgeRepositoryHandlers() {
         // Store functions globally for tab switching and card actions
         window.knowledgeRepositoryHandler = {
             loadKnowledgeRepositories,
-            openKnowledgeInspectionModal,
             deleteKnowledgeRepository
         };
         

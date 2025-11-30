@@ -2353,10 +2353,8 @@ function createKnowledgeRepositoryCard(col) {
     inspectBtn.className = 'px-3 py-1 rounded-md bg-[#F15F22] hover:bg-[#D9501A] text-sm text-white';
     inspectBtn.textContent = 'Inspect';
     inspectBtn.addEventListener('click', () => {
-        if (window.knowledgeRepositoryHandler) {
-            // Pass the full collection object, not just id and name
-            window.knowledgeRepositoryHandler.openKnowledgeInspectionModal(col);
-        }
+        // Use the shared collection inspection view
+        openCollectionInspection(col.id, col.name, 'knowledge', col);
     });
     
     // Edit button
@@ -2525,7 +2523,7 @@ function createCollectionCard(col) {
             inspectBtn.className = 'px-3 py-1 rounded-md bg-[#F15F22] hover:bg-[#D9501A] text-sm text-white';
             inspectBtn.textContent = 'Inspect';
             inspectBtn.addEventListener('click', () => {
-                openCollectionInspection(col.id, col.name);
+                openCollectionInspection(col.id, col.name, col.repository_type);
             });
             
             // Edit button
@@ -2570,13 +2568,25 @@ function createCollectionCard(col) {
 }
 
 // --- RAG Collection Inspection Logic ---
-async function openCollectionInspection(collectionId, collectionName) {
+export async function openCollectionInspection(collectionId, collectionName, repositoryType = 'planner', repositoryMeta = null) {
     if (collectionId === undefined) return;
     state.currentInspectedCollectionId = collectionId;
     state.currentInspectedCollectionName = collectionName;
+    state.currentInspectedRepositoryType = repositoryType;
+    state.currentInspectedRepositoryMeta = repositoryMeta;
+    
     if (DOM.ragCollectionInspectTitle) {
         DOM.ragCollectionInspectTitle.textContent = `Inspect: ${collectionName}`;
     }
+    
+    // Show repository metadata for knowledge repositories
+    if (repositoryType === 'knowledge' && repositoryMeta) {
+        displayKnowledgeRepositoryMetadata(repositoryMeta);
+    } else {
+        // Hide metadata section for planner repositories
+        hideKnowledgeRepositoryMetadata();
+    }
+    
     handleViewSwitch('rag-collection-inspect-view');
     await fetchAndRenderCollectionRows({ collectionId: collectionId, refresh: true });
     wireCollectionInspectionEvents();
@@ -2701,7 +2711,17 @@ async function fetchAndRenderCollectionRows({ collectionId, query = '', refresh 
         }
         // Get authentication token
         const token = localStorage.getItem('tda_auth_token');
-        const res = await fetch(`/api/v1/rag/collections/${collectionId}/rows?${params.toString()}`, {
+        
+        // Determine API endpoint based on repository type
+        const repositoryType = state.currentInspectedRepositoryType || 'planner';
+        let apiUrl;
+        if (repositoryType === 'knowledge') {
+            apiUrl = `/api/v1/knowledge/collections/${collectionId}/chunks?${params.toString()}`;
+        } else {
+            apiUrl = `/api/v1/rag/collections/${collectionId}/rows?${params.toString()}`;
+        }
+        
+        const res = await fetch(apiUrl, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -2714,7 +2734,8 @@ async function fetchAndRenderCollectionRows({ collectionId, query = '', refresh 
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         
-        const newRows = data.rows || [];
+        // Handle different response structures: rows (planner) vs chunks (knowledge)
+        const newRows = repositoryType === 'knowledge' ? (data.chunks || []) : (data.rows || []);
         const totalAvailable = data.total || 0;
         
         // On first load/refresh, replace rows. On pagination, append rows.
@@ -2731,13 +2752,21 @@ async function fetchAndRenderCollectionRows({ collectionId, query = '', refresh 
         state.ragCollectionOffset += newRows.length;
         state.ragCollectionHasMore = state.ragCollectionOffset < totalAvailable;
         
-        // Re-render the table
+        // Re-render the table based on repository type
         if (state.ragCollectionOffset === newRows.length) {
             // First load - full render
-            renderCollectionRows(state.currentCollectionRows, state.currentCollectionTotal, query, state.currentCollectionName);
+            if (repositoryType === 'knowledge') {
+                renderKnowledgeChunks(state.currentCollectionRows, state.currentCollectionTotal, query, state.currentCollectionName);
+            } else {
+                renderCollectionRows(state.currentCollectionRows, state.currentCollectionTotal, query, state.currentCollectionName);
+            }
         } else {
             // Append new rows - append to table
-            appendCollectionRows(newRows);
+            if (repositoryType === 'knowledge') {
+                appendKnowledgeChunks(newRows);
+            } else {
+                appendCollectionRows(newRows);
+            }
         }
         
         updateSortIndicators();
@@ -2800,6 +2829,10 @@ function appendCollectionRows(newRows) {
 
 function renderCollectionRows(rows, total, query, collectionName) {
     if (!DOM.ragCollectionTableBody) return;
+    
+    // Restore planner table header
+    updateTableHeaderForPlanner();
+    
     DOM.ragCollectionTableBody.innerHTML = '';
     
     // Apply sorting to rows
@@ -2873,6 +2906,274 @@ function renderCollectionRows(rows, total, query, collectionName) {
 export function escapeHtml(str) {
     return str.replace(/[&<>"]+/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
+
+// ==================== KNOWLEDGE REPOSITORY RENDERING ====================
+
+/**
+ * Display knowledge repository metadata in the inspection view
+ */
+function displayKnowledgeRepositoryMetadata(repo) {
+    const metadataSection = document.getElementById('knowledge-repo-metadata');
+    if (!metadataSection) return;
+    
+    // Populate metadata fields
+    const descriptionEl = document.getElementById('knowledge-meta-description');
+    const docCountEl = document.getElementById('knowledge-meta-doc-count');
+    const chunkingEl = document.getElementById('knowledge-meta-chunking');
+    const embeddingEl = document.getElementById('knowledge-meta-embedding');
+    const chunkSizeEl = document.getElementById('knowledge-meta-chunk-size');
+    const overlapEl = document.getElementById('knowledge-meta-overlap');
+    const createdEl = document.getElementById('knowledge-meta-created');
+    const idEl = document.getElementById('knowledge-meta-id');
+    
+    if (descriptionEl) {
+        descriptionEl.textContent = repo.description || 'Knowledge repository for document storage and retrieval';
+    }
+    if (chunkingEl) chunkingEl.textContent = repo.chunking_strategy || 'semantic';
+    if (embeddingEl) embeddingEl.textContent = repo.embedding_model || 'default';
+    if (chunkSizeEl) chunkSizeEl.textContent = repo.chunk_size || 'N/A';
+    if (overlapEl) overlapEl.textContent = repo.chunk_overlap || 'N/A';
+    if (createdEl) {
+        const createdDate = repo.created_at ? new Date(repo.created_at).toLocaleDateString() : 'N/A';
+        createdEl.textContent = createdDate;
+    }
+    if (idEl) {
+        idEl.textContent = repo.id || repo.collection_id || 'N/A';
+    }
+    
+    // Fetch document count asynchronously
+    if (docCountEl) {
+        fetchKnowledgeDocumentCount(repo.id || repo.collection_id, docCountEl);
+    }
+    
+    // Show the metadata section
+    metadataSection.classList.remove('hidden');
+}
+
+/**
+ * Fetch and display document count for knowledge repository
+ */
+async function fetchKnowledgeDocumentCount(collectionId, targetElement) {
+    try {
+        const token = localStorage.getItem('tda_auth_token');
+        const response = await fetch(`/api/v1/knowledge/repositories/${collectionId}/documents`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            const count = data.documents ? data.documents.length : 0;
+            targetElement.textContent = count;
+        } else {
+            targetElement.textContent = 'N/A';
+        }
+    } catch (error) {
+        console.error('[Knowledge] Failed to fetch document count:', error);
+        targetElement.textContent = 'N/A';
+    }
+}
+
+/**
+ * Hide knowledge repository metadata section
+ */
+function hideKnowledgeRepositoryMetadata() {
+    const metadataSection = document.getElementById('knowledge-repo-metadata');
+    if (metadataSection) {
+        metadataSection.classList.add('hidden');
+    }
+}
+
+/**
+ * Update table header for knowledge repository view
+ */
+function updateTableHeaderForKnowledge() {
+    const thead = document.querySelector('#rag-collection-inspect-view thead tr');
+    if (!thead) return;
+    
+    thead.innerHTML = `
+        <th class="px-2 py-2 text-left text-gray-300 font-semibold cursor-pointer hover:text-white hover:bg-gray-700/50 transition-colors" data-sort-key="id">Chunk ID <span class="text-xs text-gray-500">↕</span></th>
+        <th class="px-2 py-2 text-left text-gray-300 font-semibold cursor-pointer hover:text-white hover:bg-gray-700/50 transition-colors" data-sort-key="content">Content Preview <span class="text-xs text-gray-500">↕</span></th>
+        <th class="px-2 py-2 text-left text-gray-300 font-semibold cursor-pointer hover:text-white hover:bg-gray-700/50 transition-colors" data-sort-key="document_id">Source Document <span class="text-xs text-gray-500">↕</span></th>
+        <th class="px-2 py-2 text-left text-gray-300 font-semibold cursor-pointer hover:text-white hover:bg-gray-700/50 transition-colors" data-sort-key="chunk_index">Chunk Index <span class="text-xs text-gray-500">↕</span></th>
+        <th class="px-2 py-2 text-left text-gray-300 font-semibold cursor-pointer hover:text-white hover:bg-gray-700/50 transition-colors" data-sort-key="token_count">Tokens <span class="text-xs text-gray-500">↕</span></th>
+    `;
+}
+
+/**
+ * Restore table header for planner repository view
+ */
+function updateTableHeaderForPlanner() {
+    const thead = document.querySelector('#rag-collection-inspect-view thead tr');
+    if (!thead) return;
+    
+    thead.innerHTML = `
+        <th class="px-2 py-2 text-left text-gray-300 font-semibold cursor-pointer hover:text-white hover:bg-gray-700/50 transition-colors" data-sort-key="id">ID <span class="text-xs text-gray-500">↕</span></th>
+        <th class="px-2 py-2 text-left text-gray-300 font-semibold cursor-pointer hover:text-white hover:bg-gray-700/50 transition-colors" data-sort-key="user_query">User Query <span class="text-xs text-gray-500">↕</span></th>
+        <th class="px-2 py-2 text-left text-gray-300 font-semibold cursor-pointer hover:text-white hover:bg-gray-700/50 transition-colors" data-sort-key="strategy_type">Strategy <span class="text-xs text-gray-500">↕</span></th>
+        <th class="px-2 py-2 text-left text-gray-300 font-semibold cursor-pointer hover:text-white hover:bg-gray-700/50 transition-colors" data-sort-key="is_most_efficient">Efficient <span class="text-xs text-gray-500">↕</span></th>
+        <th class="px-2 py-2 text-left text-gray-300 font-semibold cursor-pointer hover:text-white hover:bg-gray-700/50 transition-colors" data-sort-key="user_feedback_score">Feedback <span class="text-xs text-gray-500">↕</span></th>
+        <th class="px-2 py-2 text-left text-gray-300 font-semibold cursor-pointer hover:text-white hover:bg-gray-700/50 transition-colors" data-sort-key="output_tokens">Output Tokens <span class="text-xs text-gray-500">↕</span></th>
+        <th class="px-2 py-2 text-left text-gray-300 font-semibold cursor-pointer hover:text-white hover:bg-gray-700/50 transition-colors" data-sort-key="timestamp">Timestamp <span class="text-xs text-gray-500">↕</span></th>
+    `;
+}
+
+/**
+ * Append new knowledge chunks to the table (for infinite scroll pagination)
+ */
+function appendKnowledgeChunks(newChunks) {
+    if (!DOM.ragCollectionTableBody || !newChunks || newChunks.length === 0) return;
+    
+    newChunks.forEach(chunk => {
+        const tr = document.createElement('tr');
+        const isSelected = state.currentSelectedCaseId === chunk.id;
+        const selectedClass = isSelected ? 'bg-orange-500/30 ring-1 ring-orange-400/50' : 'border-b border-gray-700';
+        tr.className = `${selectedClass} hover:bg-gray-800/40 cursor-pointer transition-colors`;
+        
+        // Truncate content for preview
+        const contentPreview = chunk.content.length > 100 
+            ? chunk.content.substring(0, 100) + '...' 
+            : chunk.content;
+        
+        // Get source filename from metadata
+        const sourceDoc = chunk.metadata?.source_filename || chunk.document_id || 'Unknown';
+        
+        tr.innerHTML = `
+            <td class="px-2 py-2 font-mono text-xs text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis" style="max-width: 150px;">${escapeHtml(chunk.id)}</td>
+            <td class="px-2 py-2 text-gray-200 overflow-hidden text-ellipsis" style="max-width: 400px;">${escapeHtml(contentPreview)}</td>
+            <td class="px-2 py-2 text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis" style="max-width: 200px;">${escapeHtml(sourceDoc)}</td>
+            <td class="px-2 py-2 text-gray-300 whitespace-nowrap text-center">${chunk.chunk_index ?? '-'}</td>
+            <td class="px-2 py-2 text-gray-300 whitespace-nowrap text-right">${chunk.token_count ?? '-'}</td>
+        `;
+        tr.dataset.chunkId = chunk.id;
+        tr.addEventListener('click', () => selectKnowledgeChunk(chunk.id));
+        DOM.ragCollectionTableBody.appendChild(tr);
+    });
+}
+
+/**
+ * Render knowledge chunks in table (full render, not append)
+ */
+function renderKnowledgeChunks(chunks, total, query, collectionName) {
+    if (!DOM.ragCollectionTableBody) return;
+    
+    // Update table header for knowledge view
+    updateTableHeaderForKnowledge();
+    
+    DOM.ragCollectionTableBody.innerHTML = '';
+    
+    if (!chunks.length) {
+        const message = query && query.length >= 3 ? 'No matches found.' : 'No chunks available.';
+        DOM.ragCollectionTableBody.innerHTML = `<tr><td colspan="5" class="px-2 py-2 text-gray-400">${message}</td></tr>`;
+    } else {
+        chunks.forEach(chunk => {
+            const tr = document.createElement('tr');
+            const isSelected = state.currentSelectedCaseId === chunk.id;
+            const selectedClass = isSelected ? 'bg-orange-500/30 ring-1 ring-orange-400/50' : 'border-b border-gray-700';
+            tr.className = `${selectedClass} hover:bg-gray-800/40 cursor-pointer transition-colors`;
+            
+            // Truncate content for preview
+            const contentPreview = chunk.content.length > 100 
+                ? chunk.content.substring(0, 100) + '...' 
+                : chunk.content;
+            
+            // Get source filename from metadata
+            const sourceDoc = chunk.metadata?.source_filename || chunk.document_id || 'Unknown';
+            
+            tr.innerHTML = `
+                <td class="px-2 py-2 font-mono text-xs text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis" style="max-width: 150px;">${escapeHtml(chunk.id)}</td>
+                <td class="px-2 py-2 text-gray-200 overflow-hidden text-ellipsis" style="max-width: 400px;">${escapeHtml(contentPreview)}</td>
+                <td class="px-2 py-2 text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis" style="max-width: 200px;">${escapeHtml(sourceDoc)}</td>
+                <td class="px-2 py-2 text-gray-300 whitespace-nowrap text-center">${chunk.chunk_index ?? '-'}</td>
+                <td class="px-2 py-2 text-gray-300 whitespace-nowrap text-right">${chunk.token_count ?? '-'}</td>
+            `;
+            tr.dataset.chunkId = chunk.id;
+            tr.addEventListener('click', () => selectKnowledgeChunk(chunk.id));
+            DOM.ragCollectionTableBody.appendChild(tr);
+        });
+    }
+    
+    if (DOM.ragCollectionFooter) {
+        const mode = query && query.length >= 3 ? 'search results' : 'chunks';
+        DOM.ragCollectionFooter.textContent = `Showing ${chunks.length} ${mode} (collection has ${total} total chunks).`;
+    }
+}
+
+/**
+ * Handle selection of a knowledge chunk row
+ */
+async function selectKnowledgeChunk(chunkId) {
+    if (!chunkId) return;
+    
+    // Update selected chunk ID (reuse case ID state)
+    state.currentSelectedCaseId = chunkId;
+    
+    // Highlight the selected row
+    const allRows = document.querySelectorAll('#rag-collection-table-body tr[data-chunk-id]');
+    allRows.forEach(row => {
+        if (row.dataset.chunkId === chunkId) {
+            row.classList.remove('border-b', 'border-gray-700');
+            row.classList.add('bg-orange-500/30', 'ring-1', 'ring-orange-400/50');
+        } else {
+            row.classList.remove('bg-orange-500/30', 'ring-1', 'ring-orange-400/50');
+            row.classList.add('border-b', 'border-gray-700');
+        }
+    });
+    
+    // Show the details panel
+    if (DOM.ragSelectedCaseDetails) {
+        DOM.ragSelectedCaseDetails.classList.remove('hidden');
+        if (DOM.ragSelectedCaseSeparator) {
+            DOM.ragSelectedCaseSeparator.classList.remove('hidden');
+        }
+    }
+    
+    // Find the chunk in current collection rows
+    const chunk = state.currentCollectionRows?.find(c => c.id === chunkId);
+    if (!chunk) {
+        if (DOM.ragSelectedCaseMetadata) {
+            DOM.ragSelectedCaseMetadata.innerHTML = '<span class="text-red-400">Chunk not found</span>';
+        }
+        return;
+    }
+    
+    // Display chunk details
+    if (DOM.ragSelectedCaseMetadata) {
+        const metadata = chunk.metadata || {};
+        const metadataEntries = Object.entries(metadata)
+            .filter(([key, value]) => value != null && value !== '')
+            .map(([key, value]) => `<strong>${escapeHtml(key)}:</strong> ${escapeHtml(String(value))}`)
+            .join(' | ');
+        
+        DOM.ragSelectedCaseMetadata.innerHTML = `
+            <div class="space-y-2">
+                <div><strong>Chunk ID:</strong> <span class="font-mono text-xs">${escapeHtml(chunkId)}</span></div>
+                <div><strong>Document ID:</strong> <span class="font-mono text-xs">${escapeHtml(chunk.document_id || 'N/A')}</span></div>
+                <div><strong>Chunk Index:</strong> ${chunk.chunk_index ?? 'N/A'}</div>
+                <div><strong>Token Count:</strong> ${chunk.token_count ?? 'N/A'}</div>
+                ${metadataEntries ? `<div class="text-xs text-gray-500">${metadataEntries}</div>` : ''}
+            </div>
+        `;
+    }
+    
+    // Display full chunk content
+    if (DOM.ragSelectedCasePlan) {
+        DOM.ragSelectedCasePlan.innerHTML = `
+            <div class="bg-gray-900/50 rounded-lg p-4 border border-white/10">
+                <h3 class="text-sm font-semibold text-gray-300 mb-2">Full Content</h3>
+                <div class="text-sm text-gray-200 whitespace-pre-wrap">${escapeHtml(chunk.content)}</div>
+            </div>
+        `;
+    }
+    
+    // Clear trace section (not applicable for knowledge chunks)
+    if (DOM.ragSelectedCaseTrace) {
+        DOM.ragSelectedCaseTrace.innerHTML = '';
+    }
+}
+
+// ==================== END KNOWLEDGE REPOSITORY RENDERING ====================
 
 async function selectCaseRow(caseId) {
     if (!caseId) return;

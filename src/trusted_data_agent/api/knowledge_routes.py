@@ -605,3 +605,170 @@ async def search_knowledge_repository(current_user: dict, collection_id: int):
     except Exception as e:
         app_logger.error(f"Error searching Knowledge repository: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@knowledge_api_bp.route("/v1/knowledge/collections/<int:collection_id>/chunks", methods=["GET"])
+@require_auth
+async def get_knowledge_chunks(current_user: dict, collection_id: int):
+    """
+    Get all chunks from a Knowledge repository with pagination and search.
+    
+    Query Parameters:
+        - limit: Number of results per page (default: 50)
+        - offset: Starting offset for pagination (default: 0)
+        - q: Search query text (optional, min 3 characters)
+        - light: If 'true', exclude full document text (default: true)
+        - sort_by: Field to sort by (default: None)
+        - sort_order: 'asc' or 'desc' (default: 'asc')
+    
+    Returns:
+        {
+            "chunks": [
+                {
+                    "id": "chunk_uuid",
+                    "document_id": "doc_uuid",
+                    "chunk_index": 0,
+                    "content": "chunk text content",
+                    "token_count": 150,
+                    "metadata": {
+                        "source_filename": "document.pdf",
+                        "page": 1,
+                        ...
+                    }
+                }
+            ],
+            "total": 1234,
+            "collection_id": 5,
+            "collection_name": "My Knowledge Base"
+        }
+    """
+    try:
+        retriever = APP_STATE.get("rag_retriever_instance")
+        if not retriever:
+            return jsonify({"error": "RAG retriever not initialized"}), 500
+        
+        # Verify collection exists and user has access
+        from trusted_data_agent.core.collection_db import CollectionDatabase
+        db = CollectionDatabase()
+        conn = db._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT name, repository_type, owner_user_id FROM collections
+            WHERE id = ?
+        """, (collection_id,))
+        result = cursor.fetchone()
+        conn.close()
+        
+        if not result:
+            return jsonify({"error": f"Collection {collection_id} not found"}), 404
+        
+        collection_name = result['name']
+        repository_type = result['repository_type']
+        owner_user_id = result['owner_user_id']
+        
+        if repository_type != 'knowledge':
+            return jsonify({"error": "Not a Knowledge repository"}), 400
+        
+        user_id = current_user.id
+        if owner_user_id != user_id:
+            return jsonify({"error": "Access denied"}), 403
+        
+        # Get pagination parameters
+        limit = request.args.get('limit', default=50, type=int)
+        offset = request.args.get('offset', default=0, type=int)
+        query_text = request.args.get('q', default='', type=str)
+        light = request.args.get('light', default='true', type=str).lower() == 'true'
+        sort_by = request.args.get('sort_by', default=None, type=str)
+        sort_order = request.args.get('sort_order', default='asc', type=str)
+        
+        # Get ChromaDB collection
+        collection = retriever.collections.get(collection_id)
+        if not collection:
+            return jsonify({"error": "Collection not loaded"}), 404
+        
+        chunks = []
+        total = 0
+        
+        # If search query provided (min 3 chars), do semantic search
+        if query_text and len(query_text) >= 3:
+            try:
+                results = collection.query(
+                    query_texts=[query_text],
+                    n_results=min(limit, 100),  # Cap at 100 for performance
+                    include=["documents", "metadatas", "distances"]
+                )
+                
+                ids = results.get("ids", [[]])[0]
+                documents = results.get("documents", [[]])[0]
+                metadatas = results.get("metadatas", [[]])[0]
+                distances = results.get("distances", [[]])[0]
+                
+                total = len(ids)
+                
+                for i in range(len(ids)):
+                    metadata = metadatas[i] or {}
+                    chunks.append({
+                        "id": ids[i],
+                        "document_id": metadata.get("document_id", ""),
+                        "chunk_index": metadata.get("chunk_index", 0),
+                        "content": documents[i] if not light else documents[i][:200] + "..." if len(documents[i]) > 200 else documents[i],
+                        "token_count": metadata.get("token_count", 0),
+                        "metadata": metadata,
+                        "similarity_score": 1.0 - distances[i] if i < len(distances) else None
+                    })
+                    
+            except Exception as qe:
+                app_logger.warning(f"Query failed for knowledge collection '{collection_name}': {qe}")
+        else:
+            # Get all chunks with pagination
+            try:
+                all_results = collection.get(
+                    include=["documents", "metadatas"],
+                    limit=None  # Get all, we'll paginate manually
+                )
+                
+                ids = all_results.get("ids", [])
+                documents = all_results.get("documents", [])
+                metadatas = all_results.get("metadatas", [])
+                
+                total = len(ids)
+                
+                # Build full list first (for sorting)
+                all_chunks = []
+                for i in range(len(ids)):
+                    metadata = metadatas[i] or {}
+                    all_chunks.append({
+                        "id": ids[i],
+                        "document_id": metadata.get("document_id", ""),
+                        "chunk_index": metadata.get("chunk_index", 0),
+                        "content": documents[i] if not light else documents[i][:200] + "..." if len(documents[i]) > 200 else documents[i],
+                        "token_count": metadata.get("token_count", 0),
+                        "metadata": metadata
+                    })
+                
+                # Apply sorting if requested
+                if sort_by and sort_by in ['id', 'document_id', 'chunk_index', 'token_count']:
+                    reverse = sort_order.lower() == 'desc'
+                    try:
+                        all_chunks.sort(key=lambda x: (x.get(sort_by) is None, x.get(sort_by)), reverse=reverse)
+                        app_logger.debug(f"Applied server-side sorting: {sort_by} {sort_order}")
+                    except Exception as e:
+                        app_logger.debug(f"Sorting failed: {e}")
+                
+                # Apply pagination
+                chunks = all_chunks[offset:offset + limit]
+                
+            except Exception as ge:
+                app_logger.error(f"Failed to get chunks for collection '{collection_name}': {ge}", exc_info=True)
+        
+        return jsonify({
+            "chunks": chunks,
+            "total": total,
+            "query": query_text,
+            "collection_id": collection_id,
+            "collection_name": collection_name
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error getting knowledge chunks for collection ID {collection_id}: {e}", exc_info=True)
+        return jsonify({"error": "Failed to get knowledge chunks"}), 500

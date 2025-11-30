@@ -5,6 +5,7 @@
 
 import { state } from '../state.js';
 import { populateMcpServerDropdown } from './rag/utils.js';
+import { openCollectionInspection } from '../ui.js';
 
 /**
  * Initialize Knowledge repository handlers
@@ -679,8 +680,9 @@ function attachKnowledgeRepositoryCardHandlers(container, repositories) {
                 return;
             }
             
-            console.log('[Knowledge] Opening inspection modal for:', repo.collection_name);
-            openKnowledgeInspectionModal(repo);
+            console.log('[Knowledge] Opening inspection view for:', repo.collection_name);
+            // Use the shared collection inspection view
+            openCollectionInspection(repo.id || repo.collection_id, repo.collection_name, 'knowledge', repo);
         });
     });
     
@@ -1177,5 +1179,4 @@ async function handlePreviewChunking(isAutoPreview = false) {
     }
 }
 
-// Export openKnowledgeInspectionModal for use by other modules
-export { openKnowledgeInspectionModal };
+// Note: openKnowledgeInspectionModal function is now deprecated in favor of openCollectionInspection from ui.js
