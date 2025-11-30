@@ -166,6 +166,10 @@ class PlanExecutor:
         # --- MODIFICATION START: Track which collection RAG examples came from ---
         self.rag_source_collection_id = None  # Will be set when RAG examples are retrieved
         # --- MODIFICATION END ---
+        
+        # --- PHASE 2: Track knowledge repository access ---
+        self.knowledge_accessed = []  # List of {collection_id, collection_name, document_count} during planning
+        # --- PHASE 2 END ---
 
 
     def _log_system_event(self, event_data: dict, event_name: str = None):
@@ -917,12 +921,29 @@ class PlanExecutor:
                 # --- Planning Phase ---
                 if self.state == self.AgentState.PLANNING:
                     # --- MODIFICATION START: Pass RAG retriever instance to Planner ---
-                    # Create a wrapped event handler that captures RAG collection info
+                    # Create a wrapped event handler that captures RAG collection info and knowledge retrieval
                     async def rag_aware_event_handler(data, event_name):
                         if event_name == "rag_retrieval" and data and 'collection_id' in data.get('full_case_data', {}).get('metadata', {}):
                             # Store the collection ID from the retrieved RAG case
                             self.rag_source_collection_id = data['full_case_data']['metadata']['collection_id']
                             app_logger.info(f"RAG example retrieved from collection {self.rag_source_collection_id}")
+                        
+                        # --- PHASE 2: Track knowledge repository access ---
+                        elif event_name == "knowledge_retrieval":
+                            collections = data.get("collections", [])
+                            document_count = data.get("document_count", 0)
+                            
+                            # Store knowledge access info for turn summary
+                            for collection_name in collections:
+                                self.knowledge_accessed.append({
+                                    "collection_name": collection_name,
+                                    "document_count": document_count,
+                                    "timestamp": datetime.now(timezone.utc).isoformat()
+                                })
+                            
+                            app_logger.info(f"Tracked knowledge retrieval: {len(collections)} collection(s), {document_count} document(s)")
+                        # --- PHASE 2 END ---
+                        
                         # Pass through to the original event handler
                         if self.event_handler:
                             await self.event_handler(data, event_name)
@@ -1171,8 +1192,11 @@ class PlanExecutor:
                     "session_id": self.session_id,
                     # --- MODIFICATION END ---
                     # --- MODIFICATION START: Add RAG source collection ID ---
-                    "rag_source_collection_id": self.rag_source_collection_id
+                    "rag_source_collection_id": self.rag_source_collection_id,
                     # --- MODIFICATION END ---
+                    # --- PHASE 2: Add knowledge repository tracking ---
+                    "knowledge_accessed": self.knowledge_accessed  # List of knowledge collections used
+                    # --- PHASE 2 END ---
                 }
                 # --- MODIFICATION END ---
                 session_manager.update_last_turn_data(self.user_uuid, self.session_id, turn_summary)
