@@ -719,7 +719,8 @@ class Planner:
         
         result = []
         for coll_config in configured_collections:
-            coll_id = coll_config.get("collectionId")
+            # Support both 'id' and 'collectionId' for backwards compatibility
+            coll_id = coll_config.get("id") or coll_config.get("collectionId")
             if coll_id is None:
                 continue
             
@@ -822,20 +823,29 @@ class Planner:
             
             header = f"### Knowledge Document {i} (from '{collection_name}', relevance: {similarity:.2f})\n"
             
-            # Get document content from full_case_data
-            full_case = doc.get("full_case_data", {})
-            content = full_case.get("intent", {}).get("user_query", "")
+            # Get document content - different structure for knowledge vs planner documents
+            content = doc.get("content", "")
             
-            # Get strategy/answer if available
-            if "successful_strategy" in full_case:
-                strategy = full_case.get("successful_strategy", {})
-                phases = strategy.get("phases", [])
-                if phases:
-                    content += "\n\n**Strategy:**\n"
-                    for phase in phases:
-                        goal = phase.get("goal", "")
-                        tools = phase.get("relevant_tools", [])
-                        content += f"- {goal} (using: {', '.join(tools)})\n"
+            # If no direct content field, try to get from full_case_data (planner documents)
+            if not content:
+                full_case = doc.get("full_case_data", {})
+                if isinstance(full_case, dict):
+                    # Try knowledge structure first
+                    content = full_case.get("content", "")
+                    # Fall back to planner structure
+                    if not content:
+                        content = full_case.get("intent", {}).get("user_query", "")
+                    
+                    # Get strategy/answer if available (planner documents)
+                    if "successful_strategy" in full_case:
+                        strategy = full_case.get("successful_strategy", {})
+                        phases = strategy.get("phases", [])
+                        if phases:
+                            content += "\n\n**Strategy:**\n"
+                            for phase in phases:
+                                goal = phase.get("goal", "")
+                                tools = phase.get("relevant_tools", [])
+                                content += f"- {goal} (using: {', '.join(tools)})\n"
             
             section = header + content + "\n\n"
             section_len = len(section)
@@ -942,15 +952,19 @@ Ranking:"""
         Returns:
             Formatted knowledge context string for inclusion in planning prompt
         """
+        app_logger.info(f"[KNOWLEDGE DEBUG] _retrieve_knowledge_for_planning called with query: {query[:100]}")
+        app_logger.info(f"[KNOWLEDGE DEBUG] profile_config: {profile_config is not None}")
+        
         # 1. Check if enabled
         if not self._is_knowledge_enabled(profile_config):
-            app_logger.debug("Knowledge retrieval disabled (global or profile setting)")
+            app_logger.info(f"[KNOWLEDGE DEBUG] Knowledge retrieval disabled (global or profile setting)")
             return ""
         
         # 2. Get configured collections
         knowledge_collections = self._get_knowledge_collections(profile_config)
+        app_logger.info(f"[KNOWLEDGE DEBUG] knowledge_collections: {knowledge_collections}")
         if not knowledge_collections:
-            app_logger.debug("No knowledge collections configured in profile")
+            app_logger.info("[KNOWLEDGE DEBUG] No knowledge collections configured in profile")
             return ""
         
         app_logger.info(f"Retrieving knowledge from {len(knowledge_collections)} configured collections")
@@ -1028,11 +1042,17 @@ Ranking:"""
         
         # Track which collections were accessed for event logging
         accessed_collections = list(set(doc.get("collection_name") for doc in balanced_results if doc.get("collection_name")))
-        if accessed_collections and self.event_handler:
-            await self.event_handler({
-                "collections": accessed_collections,
-                "document_count": len(balanced_results)
-            }, "knowledge_retrieval")
+        if accessed_collections:
+            self.tracked_knowledge_collections = accessed_collections
+            self.tracked_knowledge_doc_count = len(balanced_results)
+            self.tracked_knowledge_results = balanced_results  # Store full results for event details
+            app_logger.info(f"Tracked {len(accessed_collections)} knowledge collections: {accessed_collections}")
+            
+            if self.event_handler:
+                await self.event_handler({
+                    "collections": accessed_collections,
+                    "document_count": len(balanced_results)
+                }, "knowledge_retrieval")
         
         return formatted_knowledge
 
@@ -1249,22 +1269,30 @@ Ranking:"""
         
         # --- KNOWLEDGE REPOSITORIES: Domain knowledge context ---
         knowledge_context_str = ""
+        app_logger.info(f"[KNOWLEDGE DEBUG] Starting knowledge retrieval: rag_retriever={self.rag_retriever is not None}, KNOWLEDGE_RAG_ENABLED={APP_CONFIG.KNOWLEDGE_RAG_ENABLED}")
+        
         if self.rag_retriever and APP_CONFIG.KNOWLEDGE_RAG_ENABLED:
             # Get profile configuration for knowledge settings
             profile_config = None
             if self.executor.profile_override_id or self.executor.user_uuid:
+                app_logger.info(f"[KNOWLEDGE DEBUG] profile_override_id={self.executor.profile_override_id}, user_uuid={self.executor.user_uuid}")
                 try:
                     from trusted_data_agent.core.config_manager import get_config_manager
                     config_manager = get_config_manager()
-                    profiles = config_manager.get_profiles()
+                    profiles = config_manager.get_profiles(self.executor.user_uuid)
                     
                     # Use override profile if active, otherwise use default
                     profile_id = self.executor.profile_override_id
                     if not profile_id:
-                        profile_id = config_manager.get_default_profile_id()
+                        profile_id = config_manager.get_default_profile_id(self.executor.user_uuid)
+                    
+                    app_logger.info(f"[KNOWLEDGE DEBUG] Selected profile_id={profile_id}")
                     
                     if profile_id:
                         profile_config = next((p for p in profiles if p.get("id") == profile_id), None)
+                        app_logger.info(f"[KNOWLEDGE DEBUG] Found profile_config={profile_config is not None}")
+                        if profile_config:
+                            app_logger.info(f"[KNOWLEDGE DEBUG] Profile has knowledgeConfig={profile_config.get('knowledgeConfig')}")
                 except Exception as e:
                     app_logger.warning(f"Failed to get profile for knowledge retrieval: {e}")
             
@@ -1277,6 +1305,31 @@ Ranking:"""
             if knowledge_docs:
                 knowledge_context_str = f"\n\n--- KNOWLEDGE CONTEXT ---\nThe following domain knowledge may be relevant to your planning:\n\n{knowledge_docs}\n"
                 app_logger.info("Retrieved knowledge context for planning")
+                
+                # Yield status event for knowledge retrieval (visible in Live Status Window)
+                if hasattr(self, 'tracked_knowledge_collections') and self.tracked_knowledge_collections:
+                    # Get the actual document details for the event
+                    knowledge_chunks = []
+                    if hasattr(self, 'tracked_knowledge_results'):
+                        for doc in self.tracked_knowledge_results:
+                            knowledge_chunks.append({
+                                "collection_name": doc.get("collection_name"),
+                                "content": doc.get("content", ""),
+                                "similarity_score": doc.get("similarity_score", 0),
+                                "document_id": doc.get("document_id"),
+                                "chunk_index": doc.get("chunk_index", 0)
+                            })
+                    
+                    yield self.executor._format_sse({
+                        "step": "Knowledge Retrieved",
+                        "type": "knowledge_retrieval",
+                        "details": {
+                            "summary": f"Retrieved {self.tracked_knowledge_doc_count} relevant documents from {len(self.tracked_knowledge_collections)} knowledge collection(s)",
+                            "collections": self.tracked_knowledge_collections,
+                            "document_count": self.tracked_knowledge_doc_count,
+                            "chunks": knowledge_chunks
+                        }
+                    })
             else:
                 app_logger.debug("No knowledge context retrieved for planning")
 

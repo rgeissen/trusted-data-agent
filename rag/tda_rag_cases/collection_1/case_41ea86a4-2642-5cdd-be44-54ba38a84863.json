@@ -1,0 +1,58 @@
+{
+  "case_id": "41ea86a4-2642-5cdd-be44-54ba38a84863",
+  "metadata": {
+    "session_id": "eb47c732-ba6e-48ed-a824-280f122aa39f",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "task-f539c8f9-ecb5-4a8f-90a1-4ef14a5fe456",
+    "collection_id": 1,
+    "has_orchestration": false,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-11-30T15:24:46.664065+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "profile_tag": "GOGET",
+      "input_tokens": 8601,
+      "output_tokens": 200
+    },
+    "is_most_efficient": false,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "user_uuid": "c525ac37-a802-45c5-82d1-eb7990eb5cc6"
+  },
+  "intent": {
+    "user_query": "What parallel degree should I use for TerraData Schema Transfer Utility?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Provide guidance on the appropriate parallel degree to use for the TerraData Schema Transfer Utility, considering performance and resource usage.",
+        "relevant_tools": [
+          "TDA_LLMTask"
+        ],
+        "arguments": {
+          "task_description": "Provide guidance on what parallel degree should be used for TerraData Schema Transfer Utility, considering performance and resource usage. Also consider that databases larger than 5TB needs parallel degree of 12 and 500GB temp space.",
+          "source_data": []
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the information gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

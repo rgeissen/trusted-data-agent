@@ -300,7 +300,8 @@ class CollectionDatabase:
             'visibility': 'private',
             'is_marketplace_listed': False,
             'subscriber_count': 0,
-            'marketplace_metadata': {}
+            'marketplace_metadata': {},
+            'repository_type': 'planner'
         }
         
         return self.create_collection(collection_data)

@@ -594,17 +594,24 @@ class RAGRetriever:
         # Reload collections into APP_STATE
         APP_STATE["rag_collections"] = config_manager.get_rag_collections()
         
-        # Create ChromaDB collection only if it matches the current MCP server ID
+        # Create ChromaDB collection and load into retriever
+        # - For planner repositories: only if it matches the current MCP server ID
+        # - For knowledge repositories: always load (no MCP server requirement)
         current_mcp_server_id = APP_CONFIG.CURRENT_MCP_SERVER_ID
-        if mcp_server_id == current_mcp_server_id:
+        should_load = (
+            repository_type == "knowledge" or  # Always load knowledge repos
+            mcp_server_id == current_mcp_server_id  # Load planner repos if MCP server matches
+        )
+        
+        if should_load:
             try:
                 collection = self.client.get_or_create_collection(
                     name=collection_name,
                     embedding_function=self.embedding_function,
-                    metadata={"hnsw:space": "cosine"}
+                    metadata={"hnsw:space": "cosine", "repository_type": repository_type}
                 )
                 self.collections[collection_id] = collection
-                logger.info(f"Added and loaded new collection '{collection_id}' (ChromaDB: '{collection_name}', MCP Server ID: '{mcp_server_id}'")
+                logger.info(f"Added and loaded new {repository_type} collection '{collection_id}' (ChromaDB: '{collection_name}', MCP Server ID: '{mcp_server_id or 'N/A'}')")
             except Exception as e:
                 logger.error(f"Failed to create collection '{collection_id}': {e}", exc_info=True)
                 # Remove from APP_STATE if creation failed
@@ -612,7 +619,7 @@ class RAGRetriever:
                 config_manager.save_rag_collections(APP_STATE["rag_collections"])
                 return None
         else:
-            logger.info(f"Added collection '{collection_id}' for MCP server ID '{mcp_server_id}' (not loaded - current server ID is '{current_mcp_server_id}')")
+            logger.info(f"Added planner collection '{collection_id}' for MCP server ID '{mcp_server_id}' (not loaded - current server ID is '{current_mcp_server_id}')")
         
         return collection_id
     
@@ -941,6 +948,9 @@ class RAGRetriever:
         Note:
             Subscribed collections cannot be maintained by subscribers - only owners can
             modify the source collection. This preserves the reference-based model.
+            
+            Knowledge repositories are NOT maintained by this method - they use direct
+            document upload to ChromaDB without JSON case files.
         """
         # Ensure collection_id is an integer
         if isinstance(collection_id, str):
@@ -949,6 +959,13 @@ class RAGRetriever:
         if collection_id not in self.collections:
             logger.warning(f"Cannot maintain vector store: collection '{collection_id}' not loaded")
             return
+        
+        # --- KNOWLEDGE REPOSITORIES: Skip maintenance (no JSON files, direct ChromaDB storage) ---
+        coll_meta = self.get_collection_metadata(collection_id)
+        if coll_meta and coll_meta.get("repository_type") == "knowledge":
+            logger.info(f"Skipping maintenance for collection '{collection_id}': Knowledge repository (no file-based cases)")
+            return
+        # --- KNOWLEDGE REPOSITORIES END ---
         
         # --- MARKETPLACE PHASE 2: Skip maintenance for subscribed collections ---
         if user_id and self.is_subscribed_collection(collection_id, user_id):
@@ -1082,10 +1099,13 @@ class RAGRetriever:
         # --- MODIFICATION START: Query all active collections with optional filtering ---
         all_candidate_cases = []
         
+        logger.info(f"RAG retriever has {len(self.collections)} loaded collections: {list(self.collections.keys())}")
+        logger.info(f"Effective allowed collections: {effective_allowed}")
+        
         for collection_id, collection in self.collections.items():
             # Skip collections not in the allowed set (if filtering is active)
             if effective_allowed is not None and collection_id not in effective_allowed:
-                logger.debug(f"Skipping collection '{collection_id}' - not accessible to user or not in profile filter")
+                logger.info(f"Skipping collection '{collection_id}' - not accessible to user or not in profile filter")
                 continue
             
             # --- MODIFICATION START: Filter by repository_type ---
@@ -1099,7 +1119,12 @@ class RAGRetriever:
             
             try:
                 # --- MODIFICATION: Use context-aware query builder ---
-                if rag_context:
+                # Knowledge repositories have different metadata schema than planner repositories
+                if repository_type == "knowledge":
+                    # Knowledge documents don't have strategy_type, is_most_efficient, etc.
+                    # They should have document_id, collection_id, chunk metadata
+                    where_filter = None  # No filtering needed for knowledge documents
+                elif rag_context:
                     where_filter = rag_context.build_query_filter(
                         collection_id=collection_id,
                         strategy_type={"$eq": "successful"},
@@ -1113,13 +1138,25 @@ class RAGRetriever:
                         {"user_feedback_score": {"$gte": 0}}
                     ]}
                 
+                # Log collection state before query
+                try:
+                    coll_count = collection.count()
+                    logger.info(f"Collection '{collection_id}' has {coll_count} documents before query")
+                except Exception as e:
+                    logger.warning(f"Could not get count for collection '{collection_id}': {e}")
+                
+                logger.info(f"Querying collection '{collection_id}' with where_filter={where_filter}, n_results={k * 10}")
+                
                 query_results = collection.query(
                     query_texts=[query],
                     n_results=k * 10,  # Retrieve more candidates to filter
                     where=where_filter,
-                    include=["metadatas", "distances"]
+                    include=["metadatas", "distances", "documents"]
                 )
                 # --- MODIFICATION END ---
+                
+                logger.info(f"Collection '{collection_id}' returned {len(query_results['ids'][0])} raw results")
+                
                 for i in range(len(query_results["ids"][0])):
                     case_id = query_results["ids"][0][i]
                     metadata = query_results["metadatas"][0][i]
@@ -1128,24 +1165,52 @@ class RAGRetriever:
                     similarity_score = 1 - distance 
 
                     if similarity_score < min_score:
-                        logger.debug(f"Skipping case {case_id} from collection '{collection_id}' due to low similarity score: {similarity_score:.2f}")
+                        logger.info(f"Skipping case {case_id} from collection '{collection_id}' due to low similarity score: {similarity_score:.3f} < {min_score}")
                         continue
                     
-                    full_case_data = json.loads(metadata["full_case_data"])
+                    # Handle different metadata structures for knowledge vs planner repositories
+                    if repository_type == "knowledge":
+                        # Knowledge documents have chunk text directly, not full_case_data
+                        chunk_text = query_results["documents"][0][i] if "documents" in query_results else ""
+                        full_case_data = {
+                            "content": chunk_text,
+                            "metadata": metadata
+                        }
+                    else:
+                        # Planner repositories have full_case_data as JSON
+                        full_case_data = json.loads(metadata["full_case_data"])
                     
                     # --- MODIFICATION START: Add enhanced metadata for knowledge repositories ---
-                    candidate = {
-                        "case_id": case_id,
-                        "collection_id": collection_id,  # Track which collection this came from
-                        "user_query": metadata["user_query"],
-                        "strategy_type": metadata.get("strategy_type", "unknown"),
-                        "full_case_data": full_case_data,
-                        "similarity_score": similarity_score,
-                        "is_most_efficient": metadata.get("is_most_efficient"),
-                        "had_plan_improvements": full_case_data.get("metadata", {}).get("had_plan_improvements", False),
-                        "had_tactical_improvements": full_case_data.get("metadata", {}).get("had_tactical_improvements", False),
-                        "document_id": case_id  # For knowledge repositories, document_id is the case_id
-                    }
+                    if repository_type == "knowledge":
+                        # Knowledge documents have different structure
+                        candidate = {
+                            "case_id": case_id,
+                            "collection_id": collection_id,
+                            "user_query": query,  # The search query
+                            "content": full_case_data.get("content", ""),
+                            "full_case_data": full_case_data,
+                            "similarity_score": similarity_score,
+                            "document_id": metadata.get("document_id", case_id),
+                            "chunk_index": metadata.get("chunk_index", 0),
+                            "strategy_type": "knowledge",  # Mark as knowledge document
+                            "is_most_efficient": True,  # Not applicable for knowledge
+                            "had_plan_improvements": False,
+                            "had_tactical_improvements": False
+                        }
+                    else:
+                        # Planner repositories have standard structure
+                        candidate = {
+                            "case_id": case_id,
+                            "collection_id": collection_id,
+                            "user_query": metadata["user_query"],
+                            "strategy_type": metadata.get("strategy_type", "unknown"),
+                            "full_case_data": full_case_data,
+                            "similarity_score": similarity_score,
+                            "is_most_efficient": metadata.get("is_most_efficient"),
+                            "had_plan_improvements": full_case_data.get("metadata", {}).get("had_plan_improvements", False),
+                            "had_tactical_improvements": full_case_data.get("metadata", {}).get("had_tactical_improvements", False),
+                            "document_id": case_id
+                        }
                     
                     # Add collection metadata for knowledge repositories
                     if coll_meta:

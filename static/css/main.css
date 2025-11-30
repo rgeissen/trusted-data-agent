@@ -1238,6 +1238,21 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     opacity: 0.5;
   }
 }
+
+.blinking-purple {
+    animation: blink-purple 0.5s 3;
+}
+
+@keyframes blink-purple {
+  50% {
+    background-color: #a855f7; /* purple-500 */
+    box-shadow: 0 0 12px #a855f7;
+    opacity: 1;
+  }
+  75% {
+    opacity: 0.5;
+  }
+}
 /* --- MODIFICATION END --- */
 
 /* --- MODIFICATION START: Add cursor pointer to clickable badge --- */

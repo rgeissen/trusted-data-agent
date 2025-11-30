@@ -210,6 +210,7 @@ export function subscribeToNotifications() {
                     const collections = event.data?.collections || [];
                     const documentCount = event.data?.document_count || 0;
                     console.log('[knowledge_retrieval] Received:', { collections, documentCount });
+                    UI.blinkKnowledgeDot();
                     UI.updateKnowledgeIndicator(collections, documentCount);
                 }
                 // --- END PHASE 3 ---

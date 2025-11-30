@@ -464,6 +464,69 @@ export function updateSSEStatus(status) {
 }
 
 
+function _renderKnowledgeRetrievalDetails(details) {
+    if (!details.collections || !details.chunks) return null;
+
+    const collections = details.collections || [];
+    const chunks = details.chunks || [];
+    const documentCount = details.document_count || chunks.length;
+
+    let html = `
+        <div class="status-kv-grid">
+            <div class="status-kv-key">Collections</div>
+            <div class="status-kv-value">${collections.join(', ')}</div>
+            <div class="status-kv-key">Documents</div>
+            <div class="status-kv-value">${documentCount} chunks retrieved</div>
+        </div>
+    `;
+
+    if (chunks.length > 0) {
+        html += `
+            <details class="text-xs mt-2">
+                <summary class="cursor-pointer text-gray-400 hover:text-white">View Retrieved Chunks (${chunks.length})</summary>
+                <div class="space-y-2 mt-2">
+        `;
+
+        chunks.forEach((chunk, idx) => {
+            const similarity = (chunk.similarity_score * 100).toFixed(1);
+            const content = chunk.content || '';
+            const previewLength = 150;
+            const preview = content.length > previewLength ? content.substring(0, previewLength) + '...' : content;
+            
+            html += `
+                <div class="p-2 bg-gray-900/50 rounded border border-purple-500/30">
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="text-purple-400 font-semibold text-xs">Chunk ${idx + 1}</span>
+                        <span class="text-gray-500 text-xs">Relevance: ${similarity}%</span>
+                    </div>
+                    <div class="text-gray-400 text-xs mb-1">
+                        <span class="text-gray-500">Collection:</span> ${chunk.collection_name || 'Unknown'}
+                    </div>
+            `;
+
+            if (content.length > previewLength) {
+                html += `
+                    <details class="text-xs">
+                        <summary class="cursor-pointer text-gray-400 hover:text-white">${preview}</summary>
+                        <div class="mt-2 p-2 status-text-block whitespace-pre-wrap text-gray-300">${content}</div>
+                    </details>
+                `;
+            } else {
+                html += `<div class="text-gray-300 text-xs whitespace-pre-wrap">${content}</div>`;
+            }
+
+            html += `</div>`;
+        });
+
+        html += `
+                </div>
+            </details>
+        `;
+    }
+
+    return html;
+}
+
 function _renderPlanningDetails(details) {
     if (!details.summary || !details.full_text) return null;
 
@@ -649,6 +712,13 @@ function _renderStandardStep(eventData, parentContainer, isFinal = false) {
                 customRenderedHtml = _renderMetaPlanDetails(details);
             } else if (type === "tool_intent") {
                 customRenderedHtml = _renderToolIntentDetails(details);
+            } else if (type === "knowledge_retrieval") {
+                customRenderedHtml = _renderKnowledgeRetrievalDetails(details);
+                // Trigger the indicator blink when rendering knowledge retrieval event
+                if (details.collections && details.collections.length > 0) {
+                    blinkKnowledgeDot();
+                    updateKnowledgeIndicator(details.collections, details.document_count || 0);
+                }
             } else {
                 try {
                     const cache = new Set();
@@ -1877,6 +1947,27 @@ export function blinkRagDot() {
 }
 
 /**
+ * Provides brief visual feedback on the Knowledge status dot by making it blink purple.
+ */
+export function blinkKnowledgeDot() {
+    const knowledgeDot = document.getElementById('knowledge-status-dot');
+    if (!knowledgeDot) return;
+
+    // Ensure it's in the 'knowledge-active' state before blinking
+    if (!knowledgeDot.classList.contains('knowledge-active')) {
+        knowledgeDot.classList.remove('knowledge-idle');
+        knowledgeDot.classList.add('knowledge-active');
+    }
+
+    knowledgeDot.classList.add('blinking-purple');
+
+    // The animation runs for 1.5s (0.5s * 3 iterations)
+    setTimeout(() => {
+        knowledgeDot.classList.remove('blinking-purple');
+    }, 1500);
+}
+
+/**
  * Updates knowledge indicator and banner when knowledge repositories are accessed.
  * @param {Array<string>} collections - List of collection names accessed
  * @param {number} documentCount - Number of documents retrieved
@@ -1893,26 +1984,15 @@ export function updateKnowledgeIndicator(collections, documentCount) {
 
     console.log('[Knowledge] Updating indicator with:', { collections, documentCount });
 
-    // Activate the indicator
-    knowledgeDot.classList.remove('knowledge-idle');
-    knowledgeDot.classList.add('knowledge-active', 'pulsing');
-
     // Show banner with collection names
     if (collections && collections.length > 0) {
         collectionsList.textContent = collections.join(', ') + ` (${documentCount} docs)`;
         knowledgeBanner.classList.remove('hidden');
     }
 
-    // Fade out after 8 seconds
+    // Hide banner after 8 seconds
     setTimeout(() => {
-        knowledgeDot.classList.remove('pulsing');
         knowledgeBanner.classList.add('hidden');
-        
-        // Return to idle after fade
-        setTimeout(() => {
-            knowledgeDot.classList.remove('knowledge-active');
-            knowledgeDot.classList.add('knowledge-idle');
-        }, 300);
     }, 8000);
 }
 

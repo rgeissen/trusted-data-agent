@@ -1,0 +1,272 @@
+{
+  "id": "94021a21-b64a-47c2-9566-0b5aad2a3cc5",
+  "user_uuid": "c525ac37-a802-45c5-82d1-eb7990eb5cc6",
+  "system_prompt_template": null,
+  "charting_intensity": "medium",
+  "provider": "Google",
+  "model": "gemini-2.0-flash",
+  "profile_tag": "GOGET",
+  "profile_id": null,
+  "profile_tags_used": [
+    "GOGET"
+  ],
+  "models_used": [
+    "Google/gemini-2.0-flash"
+  ],
+  "session_history": [
+    {
+      "role": "user",
+      "content": "What parallel degree should I use for TerraData Schema Transfer Utility?",
+      "isValid": true,
+      "turn_number": 1,
+      "source": "text"
+    },
+    {
+      "role": "assistant",
+      "content": "<div class=\"response-card summary-card mb-4\"><p class=\"text-gray-300 mb-4\">The recommended parallel degree for TerraData Schema Transfer Utility is 8 for optimal performance. For databases larger than 5TB, a parallel degree of 12 is mandatory.</p></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'><div class='response-card'><p class=\"text-gray-300 mb-4\">The recommended parallel degree for TerraData Schema Transfer Utility is 8 for optimal performance. For databases larger than 5TB, a parallel degree of 12 is mandatory.</p></div></div></details>",
+      "isValid": true,
+      "turn_number": 1
+    }
+  ],
+  "chat_object": [
+    {
+      "role": "user",
+      "content": "You are a helpful assistant.",
+      "turn_number": 0
+    },
+    {
+      "role": "model",
+      "content": "Understood.",
+      "turn_number": 0
+    },
+    {
+      "role": "user",
+      "content": "What parallel degree should I use for TerraData Schema Transfer Utility?",
+      "isValid": true,
+      "turn_number": 1
+    },
+    {
+      "role": "model",
+      "content": "The recommended parallel degree for TerraData Schema Transfer Utility is 8 for optimal performance. For databases larger than 5TB, a parallel degree of 12 is mandatory.",
+      "isValid": true,
+      "turn_number": 1
+    }
+  ],
+  "name": "Teradata Schema Transfer Parallel Degree",
+  "created_at": "2025-11-30T16:51:11.747275",
+  "last_updated": "2025-11-30T16:51:16.773861",
+  "input_tokens": 8351,
+  "output_tokens": 122,
+  "last_turn_data": {
+    "workflow_history": [
+      {
+        "turn": 1,
+        "user_query": "What parallel degree should I use for TerraData Schema Transfer Utility?",
+        "original_plan": [
+          {
+            "phase": 1,
+            "goal": "The recommended parallel degree for TerraData Schema Transfer Utility is 8, as per the documentation.",
+            "relevant_tools": [
+              "TDA_ContextReport"
+            ],
+            "arguments": {
+              "answer_from_context": "The recommended parallel degree for TerraData Schema Transfer Utility is 8 for optimal performance. For databases larger than 5TB, a parallel degree of 12 is mandatory."
+            }
+          }
+        ],
+        "execution_trace": [
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Calling LLM for Planning",
+                "details": {
+                  "summary": "Generating a strategic meta-plan for the goal",
+                  "full_text": "What parallel degree should I use for TerraData Schema Transfer Utility?",
+                  "call_id": "131785fa-31f2-4be2-b0bf-db7ba2fa413e",
+                  "execution_depth": 0,
+                  "input_tokens": 8278,
+                  "output_tokens": 115
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "system_message",
+                "timestamp": "2025-11-30T15:51:16.163551+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Strategic Meta-Plan Generated",
+                "details": [
+                  {
+                    "phase": 1,
+                    "goal": "The recommended parallel degree for TerraData Schema Transfer Utility is 8, as per the documentation.",
+                    "relevant_tools": [
+                      "TDA_ContextReport"
+                    ],
+                    "arguments": {
+                      "answer_from_context": "The recommended parallel degree for TerraData Schema Transfer Utility is 8 for optimal performance. For databases larger than 5TB, a parallel degree of 12 is mandatory."
+                    }
+                  }
+                ]
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_generated",
+                "timestamp": "2025-11-30T15:51:16.163976+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Starting Plan Phase 1/1",
+                "details": {
+                  "phase_num": 1,
+                  "total_phases": 1,
+                  "goal": "The recommended parallel degree for TerraData Schema Transfer Utility is 8, as per the documentation.",
+                  "phase_details": {
+                    "phase": 1,
+                    "goal": "The recommended parallel degree for TerraData Schema Transfer Utility is 8, as per the documentation.",
+                    "relevant_tools": [
+                      "TDA_ContextReport"
+                    ],
+                    "arguments": {
+                      "answer_from_context": "The recommended parallel degree for TerraData Schema Transfer Utility is 8 for optimal performance. For databases larger than 5TB, a parallel degree of 12 is mandatory."
+                    }
+                  },
+                  "execution_depth": 0
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_start",
+                "timestamp": "2025-11-30T15:51:16.164572+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Plan Optimization",
+                "details": "FASTPATH initiated for 'TDA_ContextReport'."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_optimization",
+                "timestamp": "2025-11-30T15:51:16.164683+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_ContextReport",
+              "arguments": {
+                "answer_from_context": "The recommended parallel degree for TerraData Schema Transfer Utility is 8 for optimal performance. For databases larger than 5TB, a parallel degree of 12 is mandatory."
+              },
+              "metadata": {
+                "phase_number": 1,
+                "execution_depth": 0,
+                "timestamp": "2025-11-30T15:51:16.164775+00:00"
+              }
+            },
+            "result": {
+              "status": "success",
+              "metadata": {
+                "tool_name": "TDA_ContextReport"
+              },
+              "results": [
+                {
+                  "response": "The recommended parallel degree for TerraData Schema Transfer Utility is 8 for optimal performance. For databases larger than 5TB, a parallel degree of 12 is mandatory."
+                }
+              ]
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Ending Plan Phase 1/1",
+                "details": {
+                  "phase_num": 1,
+                  "total_phases": 1,
+                  "status": "completed"
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_end",
+                "timestamp": "2025-11-30T15:51:16.164959+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "LLM has generated the final answer",
+                "details": "The recommended parallel degree for TerraData Schema Transfer Utility is 8 for optimal performance. For databases larger than 5TB, a parallel degree of 12 is mandatory."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": null,
+                "timestamp": "2025-11-30T15:51:16.166768+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          }
+        ],
+        "final_summary": "The recommended parallel degree for TerraData Schema Transfer Utility is 8 for optimal performance. For databases larger than 5TB, a parallel degree of 12 is mandatory.",
+        "timestamp": "2025-11-30T15:51:16.167038+00:00",
+        "provider": "Google",
+        "model": "gemini-2.0-flash",
+        "profile_tag": "GOGET",
+        "task_id": "task-3b099d4f-24b5-42f5-a5ce-666ee3ef1d5c",
+        "turn_input_tokens": 8278,
+        "turn_output_tokens": 115,
+        "session_id": "94021a21-b64a-47c2-9566-0b5aad2a3cc5",
+        "rag_source_collection_id": null,
+        "knowledge_accessed": [
+          {
+            "collection_name": "TestDBTandTeradata",
+            "document_count": 5,
+            "timestamp": "2025-11-30T15:51:14.731441+00:00"
+          }
+        ],
+        "isValid": true
+      }
+    ]
+  },
+  "full_context_sent": false,
+  "license_info": {
+    "holder": "GNU Affero General Public License v3.0",
+    "issued_at": "2025-11-10T19:25:00.506556+00:00",
+    "expires_at": "2026-11-10T19:25:00.506556+00:00",
+    "version": "1.5-tiered",
+    "tier": "App Developer",
+    "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
+  }
+}

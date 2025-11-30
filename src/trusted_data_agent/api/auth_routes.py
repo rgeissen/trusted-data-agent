@@ -54,8 +54,11 @@ def _ensure_user_default_collection(user_id: str, mcp_servers: list):
     """
     Ensure a user has a Default Collection created in the database.
     This is called during first login bootstrap.
+    If created, reloads collections into APP_STATE and RAG retriever so it's immediately available.
     """
     from trusted_data_agent.core.collection_db import get_collection_db
+    from trusted_data_agent.core.config_manager import get_config_manager
+    from trusted_data_agent.core.config import APP_STATE
     from datetime import datetime, timezone
     
     logger.info(f"_ensure_user_default_collection called for user {user_id}")
@@ -85,12 +88,38 @@ def _ensure_user_default_collection(user_id: str, mcp_servers: list):
             'visibility': 'private',
             'is_marketplace_listed': False,
             'subscriber_count': 0,
-            'marketplace_metadata': {}
+            'marketplace_metadata': {},
+            'repository_type': 'planner'
         }
         
         collection_id = collection_db.create_collection(collection_data)
         if collection_id:
             logger.info(f"Created Default Collection (ID: {collection_id}) for user {user_id}")
+            
+            # Reload collections into APP_STATE so it's immediately available
+            config_manager = get_config_manager()
+            collections_list = config_manager.get_rag_collections()
+            APP_STATE["rag_collections"] = collections_list
+            logger.info(f"Reloaded {len(collections_list)} collections into APP_STATE after creating default collection")
+            
+            # Reload the new collection into the RAG retriever's memory
+            retriever = APP_STATE.get("rag_retriever_instance")
+            if retriever:
+                try:
+                    # Get the newly created collection metadata
+                    new_collection = collection_db.get_collection_by_id(collection_id)
+                    if new_collection and new_collection.get('enabled', False):
+                        collection_name = new_collection['collection_name']
+                        # Load it into ChromaDB
+                        chroma_collection = retriever.client.get_or_create_collection(
+                            name=collection_name,
+                            embedding_function=retriever.embedding_function,
+                            metadata={"hnsw:space": "cosine"}
+                        )
+                        retriever.collections[collection_id] = chroma_collection
+                        logger.info(f"Loaded new default collection (ID: {collection_id}) into RAG retriever")
+                except Exception as load_err:
+                    logger.error(f"Failed to load new default collection into RAG retriever: {load_err}", exc_info=True)
         else:
             logger.error(f"Failed to create Default Collection for user {user_id}")
             
@@ -153,9 +182,11 @@ def ensure_user_default_collection(user_id: str):
     """
     Ensure a user has a default collection.
     Creates one if it doesn't exist.
+    If created, reloads collections into APP_STATE and RAG retriever so it's immediately available.
     """
     from trusted_data_agent.core.collection_db import get_collection_db
     from trusted_data_agent.core.config_manager import get_config_manager
+    from trusted_data_agent.core.config import APP_STATE
     
     collection_db = get_collection_db()
     
@@ -172,12 +203,37 @@ def ensure_user_default_collection(user_id: str):
             config_manager = get_config_manager()
             mcp_server_id = config_manager.get_active_mcp_server_id() or ""
             
-            collection_db.create_default_collection(user_id, mcp_server_id)
+            collection_id = collection_db.create_default_collection(user_id, mcp_server_id)
             
             if mcp_server_id:
-                logger.info(f"Created default collection for user {user_id} with MCP server {mcp_server_id}")
+                logger.info(f"Created default collection (ID: {collection_id}) for user {user_id} with MCP server {mcp_server_id}")
             else:
-                logger.info(f"Created default collection for user {user_id} (no MCP server configured yet)")
+                logger.info(f"Created default collection (ID: {collection_id}) for user {user_id} (no MCP server configured yet)")
+            
+            # Reload collections into APP_STATE so it's immediately available
+            collections_list = config_manager.get_rag_collections()
+            APP_STATE["rag_collections"] = collections_list
+            logger.info(f"Reloaded {len(collections_list)} collections into APP_STATE after creating default collection")
+            
+            # Reload the new collection into the RAG retriever's memory
+            retriever = APP_STATE.get("rag_retriever_instance")
+            if retriever and collection_id:
+                try:
+                    # Get the newly created collection metadata
+                    new_collection = collection_db.get_collection_by_id(collection_id)
+                    if new_collection and new_collection.get('enabled', False):
+                        collection_name = new_collection['collection_name']
+                        # Load it into ChromaDB
+                        chroma_collection = retriever.client.get_or_create_collection(
+                            name=collection_name,
+                            embedding_function=retriever.embedding_function,
+                            metadata={"hnsw:space": "cosine"}
+                        )
+                        retriever.collections[collection_id] = chroma_collection
+                        logger.info(f"Loaded new default collection (ID: {collection_id}) into RAG retriever")
+                except Exception as load_err:
+                    logger.error(f"Failed to load new default collection into RAG retriever: {load_err}", exc_info=True)
+            
         except Exception as e:
             logger.error(f"Failed to create default collection for user {user_id}: {e}", exc_info=True)
 

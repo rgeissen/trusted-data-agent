@@ -1,0 +1,58 @@
+{
+  "case_id": "1590176c-7797-5945-8dac-47df3b8540cf",
+  "metadata": {
+    "session_id": "3eed91bb-73b0-4a5c-9964-e2e396acf6ac",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "task-45b44ebf-06c7-4c7e-a77c-4f89406e3355",
+    "collection_id": 1,
+    "has_orchestration": false,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": true,
+    "timestamp": "2025-11-30T15:07:54.438220+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "profile_tag": "GOGET",
+      "input_tokens": 8072,
+      "output_tokens": 116
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "user_uuid": "c525ac37-a802-45c5-82d1-eb7990eb5cc6"
+  },
+  "intent": {
+    "user_query": "What parallel degree should I use for TerraData Schema Transfer Utility?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Since the question is related to TerraData Schema Transfer Utility and requires domain knowledge, use TDA_LLMTask to provide guidance.",
+        "relevant_tools": [
+          "TDA_LLMTask"
+        ],
+        "arguments": {
+          "task_description": "Provide guidance on what parallel degree should be used for TerraData Schema Transfer Utility, considering performance and resource usage.",
+          "source_data": []
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

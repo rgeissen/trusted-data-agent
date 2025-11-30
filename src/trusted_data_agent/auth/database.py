@@ -115,6 +115,10 @@ def _create_collections_table():
                 marketplace_category VARCHAR(50),
                 marketplace_tags TEXT,
                 marketplace_long_description TEXT,
+                repository_type TEXT DEFAULT 'planner',
+                chunking_strategy TEXT DEFAULT 'none',
+                chunk_size INTEGER DEFAULT 1000,
+                chunk_overlap INTEGER DEFAULT 200,
                 FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)
@@ -123,6 +127,51 @@ def _create_collections_table():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_collections_owner ON collections(owner_user_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_collections_marketplace ON collections(is_marketplace_listed, visibility)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_collections_name ON collections(collection_name)")
+        
+        # Create document_chunks table for Knowledge repositories
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS document_chunks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                collection_id INTEGER NOT NULL,
+                document_id TEXT NOT NULL,
+                chunk_id TEXT UNIQUE NOT NULL,
+                chunk_index INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                metadata TEXT,
+                embedding_model TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (collection_id) REFERENCES collections (id) ON DELETE CASCADE
+            )
+        """)
+        
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_document_chunks_collection ON document_chunks(collection_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_document_chunks_document ON document_chunks(document_id)")
+        
+        # Create knowledge_documents table for tracking original documents
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS knowledge_documents (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                collection_id INTEGER NOT NULL,
+                document_id TEXT UNIQUE NOT NULL,
+                filename TEXT NOT NULL,
+                document_type TEXT,
+                title TEXT,
+                author TEXT,
+                source TEXT,
+                category TEXT,
+                tags TEXT,
+                file_size INTEGER,
+                page_count INTEGER,
+                content_hash TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT,
+                metadata TEXT,
+                FOREIGN KEY (collection_id) REFERENCES collections (id) ON DELETE CASCADE
+            )
+        """)
+        
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_knowledge_docs_collection ON knowledge_documents(collection_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_knowledge_docs_category ON knowledge_documents(category)")
         
         # Create collection_subscriptions table
         cursor.execute("""

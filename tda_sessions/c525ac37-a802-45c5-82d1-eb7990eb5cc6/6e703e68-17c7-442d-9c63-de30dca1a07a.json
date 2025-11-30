@@ -1,0 +1,393 @@
+{
+  "id": "6e703e68-17c7-442d-9c63-de30dca1a07a",
+  "user_uuid": "c525ac37-a802-45c5-82d1-eb7990eb5cc6",
+  "system_prompt_template": null,
+  "charting_intensity": "medium",
+  "provider": "Google",
+  "model": "gemini-2.0-flash",
+  "profile_tag": "GOGET",
+  "profile_id": null,
+  "profile_tags_used": [
+    "GOGET"
+  ],
+  "models_used": [
+    "Google/gemini-2.0-flash"
+  ],
+  "session_history": [
+    {
+      "role": "user",
+      "content": "What parallel degree should I use for TerraData Schema Transfer Utility?",
+      "isValid": true,
+      "turn_number": 1,
+      "source": "text"
+    },
+    {
+      "role": "assistant",
+      "content": "<div class=\"response-card summary-card mb-4\"><p class=\"text-gray-300 mb-4\">I am unable to determine the optimal parallel degree for the Teradata Schema Transfer Utility without more information, such as your system specifications and the size of the schema you intend to transfer.</p></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>TDA_FinalReport</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"direct_answer\": \"I am unable to determine the optimal parallel degree for the Teradata Schema Transfer Utility without more information, such as your system specifications and the size of the schema you intend to transfer.\", \"key_metric\": null, \"key_observations\": [], \"synthesis\": []}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>direct_answer</th><th>key_metric</th><th>key_observations</th><th>synthesis</th></tr></thead>\n                    <tbody>\n        <tr><td>I am unable to determine the optimal parallel degree for the Teradata Schema Transfer Utility without more information, such as your system specifications and the size of the schema you intend to transfer.</td><td>None</td><td>[]</td><td>[]</td></tr></tbody></table></div></div>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>TDA_FinalReport</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"direct_answer\": \"I am unable to determine the optimal parallel degree for the Teradata Schema Transfer Utility without more information, such as your system specifications and the size of the schema you intend to transfer.\", \"key_metric\": null, \"key_observations\": [], \"synthesis\": []}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>direct_answer</th><th>key_metric</th><th>key_observations</th><th>synthesis</th></tr></thead>\n                    <tbody>\n        <tr><td>I am unable to determine the optimal parallel degree for the Teradata Schema Transfer Utility without more information, such as your system specifications and the size of the schema you intend to transfer.</td><td>None</td><td>[]</td><td>[]</td></tr></tbody></table></div></div></div></details>",
+      "isValid": true,
+      "turn_number": 1
+    }
+  ],
+  "chat_object": [
+    {
+      "role": "user",
+      "content": "You are a helpful assistant.",
+      "turn_number": 0
+    },
+    {
+      "role": "model",
+      "content": "Understood.",
+      "turn_number": 0
+    },
+    {
+      "role": "user",
+      "content": "What parallel degree should I use for TerraData Schema Transfer Utility?",
+      "isValid": true,
+      "turn_number": 1
+    },
+    {
+      "role": "model",
+      "content": "I am unable to determine the optimal parallel degree for the Teradata Schema Transfer Utility without more information, such as your system specifications and the size of the schema you intend to transfer.",
+      "isValid": true,
+      "turn_number": 1
+    }
+  ],
+  "name": "Teradata Parallel Degree Advice",
+  "created_at": "2025-11-30T15:33:06.091688",
+  "last_updated": "2025-11-30T15:33:16.691925",
+  "input_tokens": 11487,
+  "output_tokens": 314,
+  "last_turn_data": {
+    "workflow_history": [
+      {
+        "turn": 1,
+        "user_query": "What parallel degree should I use for TerraData Schema Transfer Utility?",
+        "original_plan": [
+          {
+            "phase": 1,
+            "goal": "The question about parallel degree for TerraData Schema Transfer Utility is beyond the tool's capabilities.",
+            "relevant_tools": [],
+            "arguments": {},
+            "plan_type": "conversational",
+            "response": "I am sorry, I cannot provide information on what parallel degree should be used for TerraData Schema Transfer Utility as this is beyond my current capabilities."
+          },
+          {
+            "phase": 2,
+            "goal": "Generate the final report based on the data gathered.",
+            "relevant_tools": [
+              "TDA_FinalReport"
+            ],
+            "arguments": {}
+          }
+        ],
+        "execution_trace": [
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Calling LLM for Planning",
+                "details": {
+                  "summary": "Generating a strategic meta-plan for the goal",
+                  "full_text": "What parallel degree should I use for TerraData Schema Transfer Utility?",
+                  "call_id": "a009e49e-6d88-47d8-aa76-b8a665665851",
+                  "execution_depth": 0,
+                  "input_tokens": 7983,
+                  "output_tokens": 107
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "system_message",
+                "timestamp": "2025-11-30T14:33:13.023303+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "System Correction",
+                "details": {
+                  "summary": "The agent's plan was missing a final reporting step. The system has automatically added it to ensure a complete response.",
+                  "correction": {
+                    "added_phase": {
+                      "phase": 2,
+                      "goal": "Generate the final report based on the data gathered.",
+                      "relevant_tools": [
+                        "TDA_FinalReport"
+                      ],
+                      "arguments": {}
+                    }
+                  }
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "workaround",
+                "timestamp": "2025-11-30T14:33:13.023985+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": "system_correction",
+            "result": {
+              "step": "System Correction",
+              "type": "workaround",
+              "details": {
+                "summary": "The agent's plan was missing a final reporting step. The system has automatically added it to ensure a complete response.",
+                "correction": {
+                  "added_phase": {
+                    "phase": 2,
+                    "goal": "Generate the final report based on the data gathered.",
+                    "relevant_tools": [
+                      "TDA_FinalReport"
+                    ],
+                    "arguments": {}
+                  }
+                }
+              }
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Strategic Meta-Plan Generated",
+                "details": [
+                  {
+                    "phase": 1,
+                    "goal": "The question about parallel degree for TerraData Schema Transfer Utility is beyond the tool's capabilities.",
+                    "relevant_tools": [],
+                    "arguments": {},
+                    "plan_type": "conversational",
+                    "response": "I am sorry, I cannot provide information on what parallel degree should be used for TerraData Schema Transfer Utility as this is beyond my current capabilities."
+                  },
+                  {
+                    "phase": 2,
+                    "goal": "Generate the final report based on the data gathered.",
+                    "relevant_tools": [
+                      "TDA_FinalReport"
+                    ],
+                    "arguments": {}
+                  }
+                ]
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_generated",
+                "timestamp": "2025-11-30T14:33:13.024061+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Starting Plan Phase 1/2",
+                "details": {
+                  "phase_num": 1,
+                  "total_phases": 2,
+                  "goal": "The question about parallel degree for TerraData Schema Transfer Utility is beyond the tool's capabilities.",
+                  "phase_details": {
+                    "phase": 1,
+                    "goal": "The question about parallel degree for TerraData Schema Transfer Utility is beyond the tool's capabilities.",
+                    "relevant_tools": [],
+                    "arguments": {},
+                    "plan_type": "conversational",
+                    "response": "I am sorry, I cannot provide information on what parallel degree should be used for TerraData Schema Transfer Utility as this is beyond my current capabilities."
+                  },
+                  "execution_depth": 0
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_start",
+                "timestamp": "2025-11-30T14:33:13.024362+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_FinalReport",
+              "prompt_name": null,
+              "arguments": {},
+              "metadata": {
+                "phase_number": 1,
+                "execution_depth": 0,
+                "timestamp": "2025-11-30T14:33:14.199802+00:00"
+              }
+            },
+            "result": {
+              "status": "success",
+              "metadata": {
+                "call_id": "a2ae9b8a-4a5c-4aae-9585-132aafd1ab28",
+                "tool_name": "TDA_FinalReport",
+                "input_tokens": 296,
+                "output_tokens": 60
+              },
+              "results": [
+                {
+                  "direct_answer": "I am unable to determine the optimal parallel degree for the Teradata Schema Transfer Utility without more information, such as your system specifications and the size of the schema you intend to transfer.",
+                  "key_metric": null,
+                  "key_observations": [],
+                  "synthesis": []
+                }
+              ],
+              "corrections": []
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Starting Plan Phase 2/2",
+                "details": {
+                  "phase_num": 2,
+                  "total_phases": 2,
+                  "goal": "Generate the final report based on the data gathered.",
+                  "phase_details": {
+                    "phase": 2,
+                    "goal": "Generate the final report based on the data gathered.",
+                    "relevant_tools": [
+                      "TDA_FinalReport"
+                    ],
+                    "arguments": {}
+                  },
+                  "execution_depth": 0
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_start",
+                "timestamp": "2025-11-30T14:33:14.943321+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Plan Optimization",
+                "details": "FASTPATH initiated for 'TDA_FinalReport'."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_optimization",
+                "timestamp": "2025-11-30T14:33:14.943400+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_FinalReport",
+              "arguments": {},
+              "metadata": {
+                "phase_number": 2,
+                "execution_depth": 0,
+                "timestamp": "2025-11-30T14:33:14.943489+00:00"
+              }
+            },
+            "result": {
+              "status": "success",
+              "metadata": {
+                "call_id": "7223b9b1-4d85-4f35-a2af-92d4b857bea2",
+                "tool_name": "TDA_FinalReport",
+                "input_tokens": 499,
+                "output_tokens": 69
+              },
+              "results": [
+                {
+                  "direct_answer": "I am unable to determine the optimal parallel degree for the Teradata Schema Transfer Utility without more information, such as your system specifications and the size of the schema you intend to transfer.",
+                  "key_metric": null,
+                  "key_observations": [],
+                  "synthesis": []
+                }
+              ],
+              "corrections": []
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Ending Plan Phase 2/2",
+                "details": {
+                  "phase_num": 2,
+                  "total_phases": 2,
+                  "status": "completed"
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_end",
+                "timestamp": "2025-11-30T14:33:16.104101+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "LLM has generated the final answer",
+                "details": "I am unable to determine the optimal parallel degree for the Teradata Schema Transfer Utility without more information, such as your system specifications and the size of the schema you intend to transfer."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": null,
+                "timestamp": "2025-11-30T14:33:16.105734+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          }
+        ],
+        "final_summary": "I am unable to determine the optimal parallel degree for the Teradata Schema Transfer Utility without more information, such as your system specifications and the size of the schema you intend to transfer.",
+        "timestamp": "2025-11-30T14:33:16.106241+00:00",
+        "provider": "Google",
+        "model": "gemini-2.0-flash",
+        "profile_tag": "GOGET",
+        "task_id": "task-f3b15d5c-f9a2-4980-a3d9-a4e8986f7e55",
+        "turn_input_tokens": 10619,
+        "turn_output_tokens": 179,
+        "session_id": "6e703e68-17c7-442d-9c63-de30dca1a07a",
+        "rag_source_collection_id": null,
+        "knowledge_accessed": [],
+        "isValid": true,
+        "case_id": "ccb5c97c-f29c-5c59-ba37-0af90a4f3feb"
+      }
+    ]
+  },
+  "full_context_sent": false,
+  "license_info": {
+    "holder": "GNU Affero General Public License v3.0",
+    "issued_at": "2025-11-10T19:25:00.506556+00:00",
+    "expires_at": "2026-11-10T19:25:00.506556+00:00",
+    "version": "1.5-tiered",
+    "tier": "App Developer",
+    "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
+  },
+  "archived": true,
+  "archived_at": "2025-11-30T14:38:29.273285+00:00"
+}
