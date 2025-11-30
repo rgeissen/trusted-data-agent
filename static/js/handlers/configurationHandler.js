@@ -2574,6 +2574,79 @@ async function showProfileModal(profileId = null) {
     console.log('[Profile Modal] Knowledge collections count:', knowledgeCollections.length);
     knowledgeContainer.innerHTML = knowledgeHTML;
 
+    // Initialize Knowledge Configuration section
+    const knowledgeEnabledToggle = modal.querySelector('#profile-modal-knowledge-enabled');
+    const knowledgeConfigSettings = modal.querySelector('#knowledge-config-settings');
+    const minRelevanceInput = modal.querySelector('#profile-modal-knowledge-min-relevance');
+    const maxDocsInput = modal.querySelector('#profile-modal-knowledge-max-docs');
+    const maxTokensInput = modal.querySelector('#profile-modal-knowledge-max-tokens');
+    const rerankingListContainer = modal.querySelector('#profile-modal-knowledge-reranking-list');
+    
+    // Load existing knowledge config if editing
+    if (profile?.knowledgeConfig) {
+        knowledgeEnabledToggle.checked = profile.knowledgeConfig.enabled !== false;
+        minRelevanceInput.value = profile.knowledgeConfig.minRelevanceScore || 0.70;
+        maxDocsInput.value = profile.knowledgeConfig.maxDocs || 3;
+        maxTokensInput.value = profile.knowledgeConfig.maxTokens || 2000;
+    } else {
+        // Set defaults for new profiles
+        knowledgeEnabledToggle.checked = true;
+        minRelevanceInput.value = 0.70;
+        maxDocsInput.value = 3;
+        maxTokensInput.value = 2000;
+    }
+    
+    // Toggle knowledge config visibility
+    const updateKnowledgeConfigVisibility = () => {
+        if (knowledgeEnabledToggle.checked) {
+            knowledgeConfigSettings.classList.remove('hidden');
+        } else {
+            knowledgeConfigSettings.classList.add('hidden');
+        }
+    };
+    knowledgeEnabledToggle.addEventListener('change', updateKnowledgeConfigVisibility);
+    updateKnowledgeConfigVisibility();
+    
+    // Update reranking list when knowledge collections change
+    const updateRerankingList = () => {
+        const selectedKnowledgeCheckboxes = knowledgeContainer.querySelectorAll('input[data-collection-type="query"]:checked');
+        const selectedKnowledgeIds = Array.from(selectedKnowledgeCheckboxes).map(cb => parseInt(cb.dataset.collectionId));
+        
+        if (selectedKnowledgeIds.length === 0) {
+            rerankingListContainer.innerHTML = '<span class="text-gray-400 text-sm">Select knowledge collections above to configure reranking</span>';
+            return;
+        }
+        
+        const existingReranking = profile?.knowledgeConfig?.collections || [];
+        
+        rerankingListContainer.innerHTML = selectedKnowledgeIds.map(collId => {
+            const collection = knowledgeCollections.find(c => c.id === collId);
+            const collectionConfig = existingReranking.find(c => c.id === collId);
+            const isRerankingEnabled = collectionConfig?.reranking === true;
+            
+            return `
+                <div class="flex items-center justify-between px-3 py-2 bg-gray-800/30 hover:bg-purple-900/20 rounded-lg border border-transparent hover:border-purple-700/30 transition-all">
+                    <span class="text-sm text-gray-200">${escapeHtml(collection?.name || `Collection ${collId}`)}</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" data-collection-id="${collId}" data-reranking="true" ${isRerankingEnabled ? 'checked' : ''} class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        <span class="ml-2 text-xs font-medium text-gray-400">Rerank</span>
+                    </label>
+                </div>
+            `;
+        }).join('');
+    };
+    
+    // Update reranking list when knowledge collection checkboxes change
+    knowledgeContainer.addEventListener('change', (e) => {
+        if (e.target.dataset.collectionType === 'query') {
+            updateRerankingList();
+        }
+    });
+    
+    // Initial population
+    updateRerankingList();
+
     // Set profile name, tag and description
     const profileNameInput = modal.querySelector('#profile-modal-name');
     const profileTagInput = modal.querySelector('#profile-modal-tag');
@@ -2702,6 +2775,28 @@ async function showProfileModal(profileId = null) {
         const classificationModeRadio = modal.querySelector('input[name="classification-mode"]:checked');
         const classificationMode = classificationModeRadio ? classificationModeRadio.value : 'full';
 
+        // Build knowledgeConfig object
+        const knowledgeEnabled = modal.querySelector('#profile-modal-knowledge-enabled').checked;
+        const minRelevance = parseFloat(modal.querySelector('#profile-modal-knowledge-min-relevance').value) || 0.70;
+        const maxDocs = parseInt(modal.querySelector('#profile-modal-knowledge-max-docs').value) || 3;
+        const maxTokens = parseInt(modal.querySelector('#profile-modal-knowledge-max-tokens').value) || 2000;
+        
+        // Get selected knowledge collections with reranking settings
+        const selectedKnowledgeIds = Array.from(knowledgeQueryCheckboxes).map(cb => parseInt(cb.dataset.collectionId));
+        const rerankingCheckboxes = modal.querySelector('#profile-modal-knowledge-reranking-list').querySelectorAll('input[data-reranking="true"]');
+        const collectionsWithReranking = Array.from(rerankingCheckboxes).map(cb => ({
+            id: parseInt(cb.dataset.collectionId),
+            reranking: cb.checked
+        }));
+        
+        const knowledgeConfig = {
+            enabled: knowledgeEnabled,
+            collections: collectionsWithReranking,
+            minRelevanceScore: minRelevance,
+            maxDocs: maxDocs,
+            maxTokens: maxTokens
+        };
+
         const profileData = {
             id: profile ? profile.id : `profile-${generateId()}`,
             name,
@@ -2714,6 +2809,7 @@ async function showProfileModal(profileId = null) {
             prompts: selectedPrompts.length === allPrompts.length ? ['*'] : selectedPrompts,
             ragCollections: selectedRag.length === ragCollections.length ? ['*'] : selectedRag,
             autocompleteCollections: selectedAutocomplete.length === ragCollections.length ? ['*'] : selectedAutocomplete,
+            knowledgeConfig: knowledgeConfig
         };
         
         // For new profiles: if a default profile exists, enable inherit_classification by default
