@@ -205,6 +205,15 @@ export function subscribeToNotifications() {
                 }
                 // --- MODIFICATION END ---
 
+                // --- PHASE 3: Add knowledge_retrieval event handling ---
+                if (event.type === 'knowledge_retrieval') {
+                    const collections = event.data?.collections || [];
+                    const documentCount = event.data?.document_count || 0;
+                    console.log('[knowledge_retrieval] Received:', { collections, documentCount });
+                    UI.updateKnowledgeIndicator(collections, documentCount);
+                }
+                // --- END PHASE 3 ---
+
                 const isFinal = (event.type === 'final_answer' || event.type === 'error' || event.type === 'cancelled');
                 
                 // The backend now sends a canonical event object, so we can pass it directly.

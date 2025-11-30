@@ -870,6 +870,17 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     animation: pulse 1.2s infinite ease-in-out;
 }
 
+/* Knowledge indicator states */
+.connection-dot.knowledge-idle {
+    background-color: #6b7280; /* gray-500 */
+    opacity: 0.5;
+}
+.connection-dot.knowledge-active {
+    background-color: #a855f7; /* purple-500 */
+    box-shadow: 0 0 8px #a855f7;
+    color: #a855f7;
+}
+
 
 #send-icon {
     transition: transform 0.2s ease-in-out;

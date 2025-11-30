@@ -1876,6 +1876,46 @@ export function blinkRagDot() {
     }, 1500);
 }
 
+/**
+ * Updates knowledge indicator and banner when knowledge repositories are accessed.
+ * @param {Array<string>} collections - List of collection names accessed
+ * @param {number} documentCount - Number of documents retrieved
+ */
+export function updateKnowledgeIndicator(collections, documentCount) {
+    const knowledgeDot = document.getElementById('knowledge-status-dot');
+    const knowledgeBanner = document.getElementById('knowledge-banner');
+    const collectionsList = document.getElementById('knowledge-collections-list');
+
+    if (!knowledgeDot || !knowledgeBanner || !collectionsList) {
+        console.warn('[Knowledge] UI elements not found');
+        return;
+    }
+
+    console.log('[Knowledge] Updating indicator with:', { collections, documentCount });
+
+    // Activate the indicator
+    knowledgeDot.classList.remove('knowledge-idle');
+    knowledgeDot.classList.add('knowledge-active', 'pulsing');
+
+    // Show banner with collection names
+    if (collections && collections.length > 0) {
+        collectionsList.textContent = collections.join(', ') + ` (${documentCount} docs)`;
+        knowledgeBanner.classList.remove('hidden');
+    }
+
+    // Fade out after 8 seconds
+    setTimeout(() => {
+        knowledgeDot.classList.remove('pulsing');
+        knowledgeBanner.classList.add('hidden');
+        
+        // Return to idle after fade
+        setTimeout(() => {
+            knowledgeDot.classList.remove('knowledge-active');
+            knowledgeDot.classList.add('knowledge-idle');
+        }, 300);
+    }, 8000);
+}
+
 export function closeChatModal() {
     DOM.chatModalOverlay.classList.add('opacity-0');
     DOM.chatModalContent.classList.add('scale-95', 'opacity-0');
