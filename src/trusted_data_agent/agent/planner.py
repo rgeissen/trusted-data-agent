@@ -668,6 +668,374 @@ class Planner:
 
             i += 1
 
+    # ===========================================================================
+    # KNOWLEDGE REPOSITORY RETRIEVAL METHODS
+    # ===========================================================================
+    
+    def _is_knowledge_enabled(self, profile_config: Optional[dict] = None) -> bool:
+        """
+        Check if knowledge retrieval is enabled globally and in the profile.
+        
+        Args:
+            profile_config: Optional profile configuration dictionary
+            
+        Returns:
+            True if knowledge retrieval should be performed
+        """
+        # Global kill switch
+        if not APP_CONFIG.KNOWLEDGE_RAG_ENABLED:
+            return False
+        
+        # Check profile configuration if provided
+        if profile_config:
+            knowledge_config = profile_config.get("knowledgeConfig", {})
+            if not knowledge_config.get("enabled", True):  # Default to enabled if not specified
+                return False
+        
+        return True
+    
+    def _get_knowledge_collections(self, profile_config: Optional[dict] = None) -> list:
+        """
+        Get the list of knowledge collections to query based on profile configuration.
+        
+        Args:
+            profile_config: Optional profile configuration dictionary
+            
+        Returns:
+            List of collection metadata dicts with reranking settings
+        """
+        if not profile_config:
+            return []
+        
+        knowledge_config = profile_config.get("knowledgeConfig", {})
+        configured_collections = knowledge_config.get("collections", [])
+        
+        if not configured_collections:
+            return []
+        
+        # Enrich with collection metadata from APP_STATE
+        from trusted_data_agent.core.config import APP_STATE
+        all_collections = APP_STATE.get("rag_collections", [])
+        
+        result = []
+        for coll_config in configured_collections:
+            coll_id = coll_config.get("collectionId")
+            if coll_id is None:
+                continue
+            
+            # Find collection metadata
+            coll_meta = next((c for c in all_collections if c["id"] == coll_id), None)
+            if not coll_meta:
+                app_logger.warning(f"Collection {coll_id} configured in profile but not found in APP_STATE")
+                continue
+            
+            # Only include knowledge repositories
+            if coll_meta.get("repository_type") != "knowledge":
+                app_logger.debug(f"Skipping collection {coll_id} - not a knowledge repository")
+                continue
+            
+            # Check if collection is enabled
+            if not coll_meta.get("enabled", False):
+                app_logger.debug(f"Skipping collection {coll_id} - not enabled")
+                continue
+            
+            result.append({
+                "id": coll_id,
+                "name": coll_meta.get("name"),
+                "reranking_enabled": coll_config.get("reranking", False),
+                "metadata": coll_meta
+            })
+        
+        return result
+    
+    def _balance_collection_diversity(self, results: list, max_docs: int) -> list:
+        """
+        Balance document selection to ensure diversity across multiple collections.
+        Uses round-robin selection to avoid over-representing any single collection.
+        
+        Args:
+            results: List of retrieved documents with collection_id
+            max_docs: Maximum number of documents to return
+            
+        Returns:
+            Balanced list of documents with diverse collection representation
+        """
+        if not results or max_docs <= 0:
+            return []
+        
+        if len(results) <= max_docs:
+            return results
+        
+        # Group by collection
+        by_collection = {}
+        for doc in results:
+            coll_id = doc.get("collection_id")
+            if coll_id not in by_collection:
+                by_collection[coll_id] = []
+            by_collection[coll_id].append(doc)
+        
+        # Round-robin selection
+        selected = []
+        collection_ids = list(by_collection.keys())
+        idx = 0
+        
+        while len(selected) < max_docs:
+            # Get next collection in round-robin
+            coll_id = collection_ids[idx % len(collection_ids)]
+            
+            # Take one document from this collection if available
+            if by_collection[coll_id]:
+                selected.append(by_collection[coll_id].pop(0))
+            
+            idx += 1
+            
+            # Break if all collections are exhausted
+            if all(len(docs) == 0 for docs in by_collection.values()):
+                break
+        
+        return selected
+    
+    def _format_with_token_limit(self, documents: list, max_tokens: int) -> str:
+        """
+        Format knowledge documents into a string while respecting token limits.
+        Uses approximate token counting (4 chars ≈ 1 token).
+        
+        Args:
+            documents: List of document dictionaries
+            max_tokens: Maximum tokens for all documents combined
+            
+        Returns:
+            Formatted knowledge context string
+        """
+        if not documents:
+            return ""
+        
+        max_chars = max_tokens * 4  # Rough approximation: 4 chars per token
+        
+        formatted_sections = []
+        current_chars = 0
+        
+        for i, doc in enumerate(documents, 1):
+            # Format document header
+            collection_name = doc.get("collection_name", "Unknown")
+            similarity = doc.get("similarity_score", 0)
+            
+            header = f"### Knowledge Document {i} (from '{collection_name}', relevance: {similarity:.2f})\n"
+            
+            # Get document content from full_case_data
+            full_case = doc.get("full_case_data", {})
+            content = full_case.get("intent", {}).get("user_query", "")
+            
+            # Get strategy/answer if available
+            if "successful_strategy" in full_case:
+                strategy = full_case.get("successful_strategy", {})
+                phases = strategy.get("phases", [])
+                if phases:
+                    content += "\n\n**Strategy:**\n"
+                    for phase in phases:
+                        goal = phase.get("goal", "")
+                        tools = phase.get("relevant_tools", [])
+                        content += f"- {goal} (using: {', '.join(tools)})\n"
+            
+            section = header + content + "\n\n"
+            section_len = len(section)
+            
+            # Check if adding this document would exceed limit
+            if current_chars + section_len > max_chars:
+                # Try to add truncated version
+                remaining = max_chars - current_chars
+                if remaining > len(header) + 100:  # Only add if we can include meaningful content
+                    truncated = header + content[:remaining - len(header) - 20] + "...\n\n"
+                    formatted_sections.append(truncated)
+                    current_chars += len(truncated)
+                break
+            
+            formatted_sections.append(section)
+            current_chars += section_len
+        
+        if not formatted_sections:
+            return ""
+        
+        return "".join(formatted_sections)
+    
+    async def _rerank_knowledge_with_llm(self, query: str, documents: list, max_docs: int) -> list:
+        """
+        Rerank knowledge documents using LLM to assess relevance to the planning query.
+        
+        Args:
+            query: The user's query/goal
+            documents: List of candidate documents
+            max_docs: Number of top documents to return after reranking
+            
+        Returns:
+            Reranked and filtered list of documents
+        """
+        if not documents or max_docs <= 0:
+            return []
+        
+        if len(documents) <= max_docs:
+            return documents
+        
+        try:
+            # Prepare reranking prompt
+            docs_for_ranking = []
+            for i, doc in enumerate(documents):
+                full_case = doc.get("full_case_data", {})
+                content = full_case.get("intent", {}).get("user_query", "")[:500]  # Limit content length
+                docs_for_ranking.append(f"Document {i+1}: {content}")
+            
+            reranking_prompt = f"""You are helping to select the most relevant knowledge documents for a planning task.
+
+User's Goal: {query}
+
+Available Documents:
+{chr(10).join(docs_for_ranking)}
+
+Task: Rank these documents by relevance to the user's goal. Return ONLY a JSON array of document numbers in order of relevance (most relevant first).
+Example: [3, 1, 5, 2, 4]
+
+Ranking:"""
+
+            # Call LLM for reranking
+            response_text, _, _ = await self.executor._call_llm_and_update_tokens(
+                prompt=reranking_prompt,
+                reason="Reranking knowledge documents for relevance"
+            )
+            
+            # Parse ranking
+            ranking_match = re.search(r'\[[\d,\s]+\]', response_text)
+            if not ranking_match:
+                app_logger.warning("Failed to parse LLM reranking response, using original order")
+                return documents[:max_docs]
+            
+            ranking = json.loads(ranking_match.group())
+            
+            # Reorder documents based on ranking
+            reranked = []
+            for rank in ranking[:max_docs]:
+                if 1 <= rank <= len(documents):
+                    reranked.append(documents[rank - 1])
+            
+            app_logger.info(f"LLM reranking selected top {len(reranked)} documents from {len(documents)} candidates")
+            return reranked
+            
+        except Exception as e:
+            app_logger.error(f"Error during LLM reranking: {e}. Falling back to similarity order.")
+            return documents[:max_docs]
+    
+    async def _retrieve_knowledge_for_planning(self, query: str, profile_config: Optional[dict] = None) -> str:
+        """
+        Main knowledge retrieval pipeline for strategic planning.
+        
+        This method:
+        1. Checks if knowledge retrieval is enabled
+        2. Gets configured knowledge collections from profile
+        3. Retrieves relevant documents from those collections
+        4. Applies optional LLM reranking per collection configuration
+        5. Balances diversity across collections
+        6. Formats results with token limits
+        
+        Args:
+            query: The user's query/goal for planning
+            profile_config: Optional profile configuration dictionary
+            
+        Returns:
+            Formatted knowledge context string for inclusion in planning prompt
+        """
+        # 1. Check if enabled
+        if not self._is_knowledge_enabled(profile_config):
+            app_logger.debug("Knowledge retrieval disabled (global or profile setting)")
+            return ""
+        
+        # 2. Get configured collections
+        knowledge_collections = self._get_knowledge_collections(profile_config)
+        if not knowledge_collections:
+            app_logger.debug("No knowledge collections configured in profile")
+            return ""
+        
+        app_logger.info(f"Retrieving knowledge from {len(knowledge_collections)} configured collections")
+        
+        # 3. Retrieve documents from all collections
+        if not self.rag_retriever:
+            app_logger.warning("RAG retriever not available for knowledge retrieval")
+            return ""
+        
+        # Get retrieval parameters from profile or use defaults
+        knowledge_config = profile_config.get("knowledgeConfig", {}) if profile_config else {}
+        max_docs = knowledge_config.get("maxDocs", APP_CONFIG.KNOWLEDGE_RAG_NUM_DOCS)
+        min_relevance = knowledge_config.get("minRelevanceScore", APP_CONFIG.KNOWLEDGE_MIN_RELEVANCE_SCORE)
+        max_tokens = knowledge_config.get("maxTokens", APP_CONFIG.KNOWLEDGE_MAX_TOKENS)
+        
+        # Create RAG context for user-aware retrieval
+        rag_context = RAGAccessContext(
+            user_id=self.executor.user_uuid,
+            retriever=self.rag_retriever
+        )
+        
+        # Query with repository_type filter
+        collection_ids = {coll["id"] for coll in knowledge_collections}
+        all_results = self.rag_retriever.retrieve_examples(
+            query=query,
+            k=max_docs * len(knowledge_collections),  # Retrieve more candidates for diversity balancing
+            min_score=min_relevance,
+            allowed_collection_ids=collection_ids,
+            rag_context=rag_context,
+            repository_type="knowledge"  # Filter for knowledge repositories only
+        )
+        
+        if not all_results:
+            app_logger.info("No relevant knowledge documents found")
+            return ""
+        
+        app_logger.info(f"Retrieved {len(all_results)} candidate knowledge documents")
+        
+        # 4. Apply per-collection reranking if configured
+        collections_with_reranking = [c for c in knowledge_collections if c.get("reranking_enabled")]
+        
+        if collections_with_reranking:
+            # Group results by collection for per-collection reranking
+            by_collection = {}
+            for doc in all_results:
+                coll_id = doc.get("collection_id")
+                if coll_id not in by_collection:
+                    by_collection[coll_id] = []
+                by_collection[coll_id].append(doc)
+            
+            # Rerank collections that have reranking enabled
+            reranked_results = []
+            for coll in knowledge_collections:
+                coll_id = coll["id"]
+                coll_docs = by_collection.get(coll_id, [])
+                
+                if not coll_docs:
+                    continue
+                
+                if coll.get("reranking_enabled"):
+                    app_logger.info(f"Applying LLM reranking to {len(coll_docs)} documents from collection '{coll['name']}'")
+                    coll_docs = await self._rerank_knowledge_with_llm(query, coll_docs, max_docs)
+                
+                reranked_results.extend(coll_docs)
+            
+            all_results = reranked_results
+        
+        # 5. Balance diversity across collections
+        balanced_results = self._balance_collection_diversity(all_results, max_docs)
+        
+        app_logger.info(f"Selected {len(balanced_results)} knowledge documents for planning (balanced across collections)")
+        
+        # 6. Format with token limits
+        formatted_knowledge = self._format_with_token_limit(balanced_results, max_tokens)
+        
+        # Track which collections were accessed for event logging
+        accessed_collections = list(set(doc.get("collection_name") for doc in balanced_results if doc.get("collection_name")))
+        if accessed_collections and self.event_handler:
+            await self.event_handler({
+                "collections": accessed_collections,
+                "document_count": len(balanced_results)
+            }, "knowledge_retrieval")
+        
+        return formatted_knowledge
+
     async def generate_and_refine_plan(self, force_disable_history: bool = False, replan_context: str = None):
         """
         The main public method to generate a plan and then run all validation and
@@ -826,6 +1194,7 @@ class Planner:
         else:
             reporting_tool_name_injection = "TDA_FinalReport"
 
+        # --- PLANNER REPOSITORIES: Few-shot examples for execution patterns ---
         rag_few_shot_examples_str = ""
         if self.rag_retriever:
             # Determine which collections to query based on profile
@@ -861,7 +1230,8 @@ class Planner:
                 query=self.executor.original_user_input,
                 k=APP_CONFIG.RAG_NUM_EXAMPLES,
                 allowed_collection_ids=allowed_collection_ids,
-                rag_context=rag_context  # --- MODIFICATION: Pass context ---
+                rag_context=rag_context,  # --- MODIFICATION: Pass context ---
+                repository_type="planner"  # Explicitly retrieve from planner repositories
             )
             # --- MODIFICATION END ---
             if retrieved_cases:
@@ -876,6 +1246,39 @@ class Planner:
                 app_logger.info(f"Retrieved RAG cases for few-shot examples: {[case['case_id'] for case in retrieved_cases]}")
             else:
                 app_logger.info("No relevant RAG cases found for few-shot examples.")
+        
+        # --- KNOWLEDGE REPOSITORIES: Domain knowledge context ---
+        knowledge_context_str = ""
+        if self.rag_retriever and APP_CONFIG.KNOWLEDGE_RAG_ENABLED:
+            # Get profile configuration for knowledge settings
+            profile_config = None
+            if self.executor.profile_override_id or self.executor.user_uuid:
+                try:
+                    from trusted_data_agent.core.config_manager import get_config_manager
+                    config_manager = get_config_manager()
+                    profiles = config_manager.get_profiles()
+                    
+                    # Use override profile if active, otherwise use default
+                    profile_id = self.executor.profile_override_id
+                    if not profile_id:
+                        profile_id = config_manager.get_default_profile_id()
+                    
+                    if profile_id:
+                        profile_config = next((p for p in profiles if p.get("id") == profile_id), None)
+                except Exception as e:
+                    app_logger.warning(f"Failed to get profile for knowledge retrieval: {e}")
+            
+            # Retrieve knowledge documents
+            knowledge_docs = await self._retrieve_knowledge_for_planning(
+                query=self.executor.original_user_input,
+                profile_config=profile_config
+            )
+            
+            if knowledge_docs:
+                knowledge_context_str = f"\n\n--- KNOWLEDGE CONTEXT ---\nThe following domain knowledge may be relevant to your planning:\n\n{knowledge_docs}\n"
+                app_logger.info("Retrieved knowledge context for planning")
+            else:
+                app_logger.debug("No knowledge context retrieved for planning")
 
 
         planning_prompt = WORKFLOW_META_PLANNING_PROMPT.format(
@@ -891,7 +1294,8 @@ class Planner:
             constraints_section=constraints_section,
             sql_consolidation_rule=sql_consolidation_rule_str,
             reporting_tool_name=reporting_tool_name_injection,
-            rag_few_shot_examples=rag_few_shot_examples_str # Pass the populated examples
+            rag_few_shot_examples=rag_few_shot_examples_str,  # Pass the populated examples
+            knowledge_context=knowledge_context_str  # Pass the knowledge context
         )
 
         yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")

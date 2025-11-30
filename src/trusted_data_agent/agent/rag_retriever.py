@@ -1045,7 +1045,7 @@ class RAGRetriever:
         return "Strategy details unavailable."
 
     def retrieve_examples(self, query: str, k: int = 1, min_score: float = 0.7, allowed_collection_ids: set = None, 
-                         rag_context: Optional['RAGAccessContext'] = None) -> List[Dict[str, Any]]:
+                         rag_context: Optional['RAGAccessContext'] = None, repository_type: str = "planner") -> List[Dict[str, Any]]:
         """
         Retrieves the top-k most relevant and efficient RAG cases based on the query.
         Queries all active collections and aggregates results by similarity score.
@@ -1056,9 +1056,10 @@ class RAGRetriever:
             min_score: Minimum similarity score threshold
             allowed_collection_ids: Optional set of collection IDs to filter by (for profile-based filtering)
             rag_context: Optional RAGAccessContext for user-aware filtering. If provided, only retrieves from accessible collections.
-                        --- MODIFICATION: Added rag_context parameter for multi-user support ---
+            repository_type: Type of repository to retrieve from - "planner" or "knowledge" (default: "planner")
+                           --- MODIFICATION: Added repository_type parameter for knowledge repository support ---
         """
-        logger.info(f"Retrieving top {k} RAG examples for query: '{query}' (min_score: {min_score}, allowed_collections: {allowed_collection_ids})")
+        logger.info(f"Retrieving top {k} RAG examples for query: '{query}' (repository_type: {repository_type}, min_score: {min_score}, allowed_collections: {allowed_collection_ids})")
         
         if not self.collections:
             logger.warning("No active collections to retrieve examples from")
@@ -1086,6 +1087,16 @@ class RAGRetriever:
             if effective_allowed is not None and collection_id not in effective_allowed:
                 logger.debug(f"Skipping collection '{collection_id}' - not accessible to user or not in profile filter")
                 continue
+            
+            # --- MODIFICATION START: Filter by repository_type ---
+            coll_meta = self.get_collection_metadata(collection_id)
+            if coll_meta:
+                coll_repo_type = coll_meta.get("repository_type", "planner")  # Default to planner for backward compatibility
+                if coll_repo_type != repository_type:
+                    logger.debug(f"Skipping collection '{collection_id}' - repository_type '{coll_repo_type}' does not match requested '{repository_type}'")
+                    continue
+            # --- MODIFICATION END ---
+            
             try:
                 # --- MODIFICATION: Use context-aware query builder ---
                 if rag_context:
@@ -1122,7 +1133,8 @@ class RAGRetriever:
                     
                     full_case_data = json.loads(metadata["full_case_data"])
                     
-                    all_candidate_cases.append({
+                    # --- MODIFICATION START: Add enhanced metadata for knowledge repositories ---
+                    candidate = {
                         "case_id": case_id,
                         "collection_id": collection_id,  # Track which collection this came from
                         "user_query": metadata["user_query"],
@@ -1131,8 +1143,17 @@ class RAGRetriever:
                         "similarity_score": similarity_score,
                         "is_most_efficient": metadata.get("is_most_efficient"),
                         "had_plan_improvements": full_case_data.get("metadata", {}).get("had_plan_improvements", False),
-                        "had_tactical_improvements": full_case_data.get("metadata", {}).get("had_tactical_improvements", False)
-                    })
+                        "had_tactical_improvements": full_case_data.get("metadata", {}).get("had_tactical_improvements", False),
+                        "document_id": case_id  # For knowledge repositories, document_id is the case_id
+                    }
+                    
+                    # Add collection metadata for knowledge repositories
+                    if coll_meta:
+                        candidate["collection_name"] = coll_meta.get("name")
+                        candidate["repository_type"] = coll_meta.get("repository_type", "planner")
+                    
+                    all_candidate_cases.append(candidate)
+                    # --- MODIFICATION END ---
             except Exception as e:
                 logger.error(f"Error querying collection '{collection_id}': {e}", exc_info=True)
         
