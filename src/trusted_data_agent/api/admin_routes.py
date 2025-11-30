@@ -1880,3 +1880,78 @@ async def save_app_config():
             'status': 'error',
             'message': str(e)
         }), 500
+
+
+@admin_api_bp.route('/v1/admin/knowledge-config', methods=['GET'])
+@require_admin
+async def get_knowledge_config():
+    """Get current knowledge repository configuration settings"""
+    from trusted_data_agent.core.config import APP_CONFIG
+    
+    try:
+        return jsonify({
+            'status': 'success',
+            'config': {
+                'enabled': APP_CONFIG.KNOWLEDGE_RAG_ENABLED,
+                'num_docs': APP_CONFIG.KNOWLEDGE_RAG_NUM_DOCS,
+                'min_relevance_score': APP_CONFIG.KNOWLEDGE_MIN_RELEVANCE_SCORE,
+                'max_tokens': APP_CONFIG.KNOWLEDGE_MAX_TOKENS,
+                'reranking_enabled': APP_CONFIG.KNOWLEDGE_RERANKING_ENABLED
+            }
+        }), 200
+    except Exception as e:
+        logger.error(f"Error getting knowledge config: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@admin_api_bp.route('/v1/admin/knowledge-config', methods=['POST'])
+@require_admin
+async def save_knowledge_config():
+    """Save knowledge repository configuration settings"""
+    from trusted_data_agent.core.config import APP_CONFIG
+    
+    try:
+        data = await request.get_json()
+        
+        # Update APP_CONFIG with new knowledge repository settings
+        if 'enabled' in data:
+            APP_CONFIG.KNOWLEDGE_RAG_ENABLED = bool(data['enabled'])
+            logger.info(f"Knowledge RAG enabled: {APP_CONFIG.KNOWLEDGE_RAG_ENABLED}")
+        
+        if 'num_docs' in data:
+            APP_CONFIG.KNOWLEDGE_RAG_NUM_DOCS = int(data['num_docs'])
+            logger.info(f"Knowledge num docs: {APP_CONFIG.KNOWLEDGE_RAG_NUM_DOCS}")
+        
+        if 'min_relevance_score' in data:
+            APP_CONFIG.KNOWLEDGE_MIN_RELEVANCE_SCORE = float(data['min_relevance_score'])
+            logger.info(f"Knowledge min relevance score: {APP_CONFIG.KNOWLEDGE_MIN_RELEVANCE_SCORE}")
+        
+        if 'max_tokens' in data:
+            APP_CONFIG.KNOWLEDGE_MAX_TOKENS = int(data['max_tokens'])
+            logger.info(f"Knowledge max tokens: {APP_CONFIG.KNOWLEDGE_MAX_TOKENS}")
+        
+        if 'reranking_enabled' in data:
+            APP_CONFIG.KNOWLEDGE_RERANKING_ENABLED = bool(data['reranking_enabled'])
+            logger.info(f"Knowledge reranking enabled: {APP_CONFIG.KNOWLEDGE_RERANKING_ENABLED}")
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Knowledge repository configuration updated successfully',
+            'config': {
+                'enabled': APP_CONFIG.KNOWLEDGE_RAG_ENABLED,
+                'num_docs': APP_CONFIG.KNOWLEDGE_RAG_NUM_DOCS,
+                'min_relevance_score': APP_CONFIG.KNOWLEDGE_MIN_RELEVANCE_SCORE,
+                'max_tokens': APP_CONFIG.KNOWLEDGE_MAX_TOKENS,
+                'reranking_enabled': APP_CONFIG.KNOWLEDGE_RERANKING_ENABLED
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error saving knowledge config: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500

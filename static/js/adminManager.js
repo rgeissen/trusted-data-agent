@@ -174,6 +174,12 @@ const AdminManager = {
         if (saveRateLimitBtn) {
             saveRateLimitBtn.addEventListener('click', () => this.saveRateLimitSettings());
         }
+
+        // Knowledge Repository Configuration
+        const saveKnowledgeConfigBtn = document.getElementById('save-knowledge-config-btn');
+        if (saveKnowledgeConfigBtn) {
+            saveKnowledgeConfigBtn.addEventListener('click', () => this.saveKnowledgeConfig());
+        }
     },
 
     /**
@@ -1401,6 +1407,26 @@ const AdminManager = {
                     this.setFieldValue('rag-num-examples', data.config.rag_config.num_examples);
                     this.setFieldValue('rag-embedding-model', data.config.rag_config.embedding_model);
                 }
+                
+                // Load Knowledge Repository configuration from dedicated endpoint
+                try {
+                    const knowledgeResp = await fetch('/api/v1/admin/knowledge-config', {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+                    });
+                    if (knowledgeResp.ok) {
+                        const knowledgeData = await knowledgeResp.json();
+                        if (knowledgeData.config) {
+                            const kc = knowledgeData.config;
+                            this.setCheckboxValue('knowledge-rag-enabled', kc.enabled);
+                            this.setFieldValue('knowledge-num-docs', kc.num_docs);
+                            this.setFieldValue('knowledge-min-relevance', kc.min_relevance_score);
+                            this.setFieldValue('knowledge-max-tokens', kc.max_tokens);
+                            this.setCheckboxValue('knowledge-reranking-enabled', kc.reranking_enabled);
+                        }
+                    }
+                } catch (knowledgeError) {
+                    console.error('[AdminManager] Error loading knowledge config:', knowledgeError);
+                }
             }
 
             // Load window defaults
@@ -1587,6 +1613,53 @@ const AdminManager = {
             }
         } catch (error) {
             console.error('[AdminManager] Error saving app config:', error);
+            if (window.showNotification) {
+                window.showNotification('error', error.message);
+            }
+        }
+    },
+
+    /**
+     * Save knowledge repository configuration
+     */
+    async saveKnowledgeConfig() {
+        try {
+            const token = localStorage.getItem('tda_auth_token');
+            if (!token) return;
+
+            const knowledgeEnabledCheckbox = document.getElementById('knowledge-rag-enabled');
+            const knowledgeRerankingCheckbox = document.getElementById('knowledge-reranking-enabled');
+
+            const config = {
+                enabled: knowledgeEnabledCheckbox ? knowledgeEnabledCheckbox.checked : true,
+                num_docs: parseInt(this.getFieldValue('knowledge-num-docs')) || 3,
+                min_relevance_score: parseFloat(this.getFieldValue('knowledge-min-relevance')) || 0.70,
+                max_tokens: parseInt(this.getFieldValue('knowledge-max-tokens')) || 2000,
+                reranking_enabled: knowledgeRerankingCheckbox ? knowledgeRerankingCheckbox.checked : false
+            };
+
+            const response = await fetch('/api/v1/admin/knowledge-config', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(config)
+            });
+
+            const data = await response.json();
+            
+            if (response.ok && data.status === 'success') {
+                if (window.showNotification) {
+                    window.showNotification('success', 'Knowledge repository settings saved successfully');
+                }
+            } else {
+                if (window.showNotification) {
+                    window.showNotification('error', data.message || 'Failed to save settings');
+                }
+            }
+        } catch (error) {
+            console.error('[AdminManager] Error saving knowledge config:', error);
             if (window.showNotification) {
                 window.showNotification('error', error.message);
             }

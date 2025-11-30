@@ -2059,6 +2059,14 @@ export function handleViewSwitch(viewId) {
         });
     } else {
     }
+    
+    // 4b. Ensure Planner Repository navigation state is maintained
+    if (typeof window.updatePlannerRepositoryNavigation === 'function') {
+        console.log('[handleViewSwitch] Calling updatePlannerRepositoryNavigation after view switch to:', viewId);
+        window.updatePlannerRepositoryNavigation();
+    } else {
+        console.warn('[handleViewSwitch] updatePlannerRepositoryNavigation function not available');
+    }
 
     // 5. Final check
     setTimeout(() => {

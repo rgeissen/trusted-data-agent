@@ -348,6 +348,11 @@ class ConfigurationState {
                 }
             }
             
+            // Update Planner Repository navigation state based on profile
+            if (typeof window.updatePlannerRepositoryNavigation === 'function') {
+                window.updatePlannerRepositoryNavigation();
+            }
+            
             return this.profiles;
         } catch (error) {
             console.error('Failed to load profiles:', error);
@@ -409,6 +414,11 @@ class ConfigurationState {
     async setDefaultProfile(profileId) {
         await API.setDefaultProfile(profileId);
         this.defaultProfileId = profileId;
+        
+        // Update Planner Repository navigation state when default profile changes
+        if (typeof window.updatePlannerRepositoryNavigation === 'function') {
+            window.updatePlannerRepositoryNavigation();
+        }
     }
 
     async setActiveForConsumptionProfiles(profileIds) {
@@ -2521,7 +2531,17 @@ async function showProfileModal(profileId = null) {
     
     // Helper function to create collection entry with toggles
     const createCollectionEntry = (coll, isPlanner) => {
-        const isQueryEnabled = profile?.ragCollections?.includes(coll.id) || profile?.ragCollections?.includes('*') || !profile;
+        // For planner collections: check ragCollections array
+        // For knowledge collections: check knowledgeConfig.collections array
+        let isQueryEnabled;
+        if (isPlanner) {
+            isQueryEnabled = profile?.ragCollections?.includes(coll.id) || profile?.ragCollections?.includes('*') || !profile;
+        } else {
+            // Knowledge repository: check if it's in knowledgeConfig.collections
+            const knowledgeCollectionIds = profile?.knowledgeConfig?.collections?.map(c => c.id) || [];
+            isQueryEnabled = knowledgeCollectionIds.includes(coll.id) || !profile;
+        }
+        
         const isAutocompleteEnabled = profile?.autocompleteCollections?.includes(coll.id) || profile?.autocompleteCollections?.includes('*') || !profile;
         // Knowledge repositories: default autocomplete to OFF
         const defaultAutocomplete = isPlanner ? isAutocompleteEnabled : false;

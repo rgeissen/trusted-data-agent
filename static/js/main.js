@@ -695,6 +695,51 @@ async function fetchGitHubStarCount() {
 // The new configuration system (configState) automatically loads from localStorage
 // and doesn't need manual form population
 
+/**
+ * Update Intelligence and Marketplace navigation state based on current active profile
+ * Disables these views if no profile is set as default (unconfigured system)
+ */
+function updatePlannerRepositoryNavigation() {
+    const intelligenceNavLink = document.getElementById('view-switch-rag-maintenance');
+    const marketplaceNavLink = document.getElementById('view-switch-rag-marketplace');
+    
+    if (!intelligenceNavLink || !marketplaceNavLink) {
+        console.warn('[PlannerRepository] Navigation links not found in DOM');
+        return;
+    }
+    
+    // Get the currently active (default) profile
+    const defaultProfileId = window.configState?.defaultProfileId;
+    
+    console.log('[PlannerRepository] Checking navigation state. defaultProfileId:', defaultProfileId);
+    
+    // Disable navigation if no default profile is set
+    if (!defaultProfileId) {
+        intelligenceNavLink.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+        marketplaceNavLink.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+        intelligenceNavLink.setAttribute('title', 'Set a default profile to access Planner Repository');
+        marketplaceNavLink.setAttribute('title', 'Set a default profile to access Planner Repository Marketplace');
+        console.log('[PlannerRepository] Navigation DISABLED - no default profile set');
+        return;
+    }
+    
+    // If we reach here, a default profile is set - enable navigation
+    {
+        // Enable Intelligence and Marketplace views
+        intelligenceNavLink.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+        marketplaceNavLink.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+        
+        // Restore original titles
+        intelligenceNavLink.setAttribute('title', '');
+        marketplaceNavLink.setAttribute('title', '');
+        
+        console.log('[PlannerRepository] Navigation ENABLED - default profile is set:', defaultProfileId);
+    }
+}
+
+// Export for use in other modules
+window.updatePlannerRepositoryNavigation = updatePlannerRepositoryNavigation;
+
 // Define welcome screen functions BEFORE DOMContentLoaded to ensure they're available
 function hideWelcomeScreen() {
     const welcomeScreen = document.getElementById('welcome-screen');
@@ -916,6 +961,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     UI.updateHintAndIndicatorState();
     UI.updateVoiceModeUI();
     UI.updateKeyObservationsModeUI();
+    
+    // Update Planner Repository navigation based on profile state
+    // Need to wait a bit for configState to be initialized
+    setTimeout(() => {
+        if (typeof updatePlannerRepositoryNavigation === 'function') {
+            updatePlannerRepositoryNavigation();
+        }
+    }, 500);
 
     // Save user preferences before page unloads
     window.addEventListener('beforeunload', () => {

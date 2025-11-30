@@ -1,6 +1,6 @@
 {
-  "id": "5763bbbd-b4c8-4c41-bda8-c2049e939c1a",
-  "user_uuid": "c525ac37-a802-45c5-82d1-eb7990eb5cc6",
+  "id": "233d4f88-767e-408d-8191-04eeedb9f367",
+  "user_uuid": "ad169837-688f-4ace-9ed2-627483a1d27b",
   "system_prompt_template": null,
   "charting_intensity": "medium",
   "provider": "Google",
@@ -13,18 +13,16 @@
   "chat_object": [
     {
       "role": "user",
-      "content": "You are a helpful assistant.",
-      "turn_number": 0
+      "content": "You are a helpful assistant."
     },
     {
       "role": "model",
-      "content": "Understood.",
-      "turn_number": 0
+      "content": "Understood."
     }
   ],
   "name": "New Chat",
-  "created_at": "2025-11-30T16:03:30.910266",
-  "last_updated": "2025-11-30T16:03:30.934776",
+  "created_at": "2025-11-30T17:35:48.000304",
+  "last_updated": "2025-11-30T17:35:48.000318",
   "input_tokens": 0,
   "output_tokens": 0,
   "last_turn_data": {
