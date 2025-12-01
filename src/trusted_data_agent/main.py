@@ -149,38 +149,7 @@ async def rag_processing_worker():
 # --- MODIFICATION END ---
 
 
-# --- MODIFICATION START: Add User Context Cleanup Worker ---
-async def user_context_cleanup_worker():
-    """
-    Background worker that periodically cleans up inactive user runtime contexts
-    to prevent memory leaks in multi-user deployments.
-    
-    Only runs when TDA_CONFIGURATION_PERSISTENCE=false (multi-user mode).
-    """
-    from trusted_data_agent.core.config import cleanup_inactive_user_contexts
-    
-    # Get cleanup settings from environment variables
-    cleanup_interval = int(os.environ.get('TDA_USER_CONTEXT_CLEANUP_INTERVAL', '300'))  # Default: 5 minutes
-    max_age_hours = int(os.environ.get('TDA_USER_CONTEXT_MAX_AGE_HOURS', '24'))  # Default: 24 hours
-    
-    # Only run in multi-user mode (when persistence is disabled)
-    if APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        app_logger.info("User context cleanup worker disabled (multi-user authentication enabled)")
-        return
-    
-    app_logger.info(f"User context cleanup worker started (interval: {cleanup_interval}s, max_age: {max_age_hours}h)")
-    
-    while True:
-        try:
-            await asyncio.sleep(cleanup_interval)
-            
-            # Run cleanup
-            cleanup_inactive_user_contexts(max_age_hours=max_age_hours)
-            
-        except Exception as e:
-            # Log errors but don't crash the worker
-            app_logger.error(f"Error in user context cleanup worker: {e}", exc_info=True)
-# --- MODIFICATION END ---
+# User context cleanup worker removed - no longer needed with database persistence
 
 
 def create_app():
@@ -320,9 +289,6 @@ def create_app():
         
         # Start the single RAG worker as a background task
         asyncio.create_task(rag_processing_worker())
-        
-        # Start the user context cleanup worker as a background task
-        asyncio.create_task(user_context_cleanup_worker())
     # --- MODIFICATION END ---
 
     return app

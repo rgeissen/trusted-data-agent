@@ -436,7 +436,13 @@ class ConfigurationState {
 
     async loadMCPServers() {
         try {
-            const response = await fetch('/api/v1/mcp/servers');
+            const headers = {};
+            const authToken = localStorage.getItem('tda_auth_token');
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+            
+            const response = await fetch('/api/v1/mcp/servers', { headers });
             const result = await response.json();
             
             if (result.status === 'success') {
@@ -458,7 +464,13 @@ class ConfigurationState {
 
     async loadLLMConfigurations() {
         try {
-            const response = await fetch('/api/v1/llm/configurations');
+            const headers = {};
+            const authToken = localStorage.getItem('tda_auth_token');
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+            
+            const response = await fetch('/api/v1/llm/configurations', { headers });
             const result = await response.json();
             
             if (result.status === 'success') {
@@ -521,9 +533,15 @@ class ConfigurationState {
         server.id = server.id || generateId();
         
         try {
+            const headers = { 'Content-Type': 'application/json' };
+            const authToken = localStorage.getItem('tda_auth_token');
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+            
             const response = await fetch('/api/v1/mcp/servers', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: headers,
                 body: JSON.stringify(server)
             });
             
@@ -580,9 +598,15 @@ class ConfigurationState {
 
     async updateMCPServer(serverId, updates) {
         try {
+            const headers = { 'Content-Type': 'application/json' };
+            const authToken = localStorage.getItem('tda_auth_token');
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+            
             const response = await fetch(`/api/v1/mcp/servers/${serverId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: headers,
                 body: JSON.stringify(updates)
             });
             
@@ -594,11 +618,16 @@ class ConfigurationState {
                     detail: { source: 'mcp-server-update' } 
                 }));
                 return true;
+            } else {
+                // Extract error message from response
+                const errorData = await response.json().catch(() => ({}));
+                const errorMessage = errorData.message || `Server returned status ${response.status}`;
+                throw new Error(errorMessage);
             }
         } catch (error) {
             console.error('Failed to update MCP server:', error);
+            throw error; // Re-throw to be handled by caller
         }
-        return false;
     }
 
     async addLLMConfiguration(configuration) {
@@ -1424,6 +1453,8 @@ export function showMCPServerModal(serverId = null) {
                 renderMCPServers();
                 modal.remove();
                 showNotification('success', `MCP server ${isEdit ? 'updated' : 'added'} successfully`);
+            } else {
+                showNotification('error', `Failed to ${isEdit ? 'update' : 'add'} MCP server`);
             }
         } catch (error) {
             showNotification('error', `Failed to ${isEdit ? 'update' : 'add'} MCP server: ${error.message}`);

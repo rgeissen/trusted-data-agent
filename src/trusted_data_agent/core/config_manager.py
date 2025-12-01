@@ -43,9 +43,7 @@ class ConfigManager:
             config_path = project_root / self.DEFAULT_CONFIG_FILENAME
         
         self.config_path = Path(config_path)
-        self._memory_config = None  # In-memory cache when persistence is disabled (single-user mode)
-        self._user_configs = {}  # Per-user configs when persistence is disabled (multi-user mode)
-        self._last_access = {}  # Track last access time per user for cleanup
+        self._user_configs = {}  # Memory cache for loaded user configs from database
         app_logger.info(f"ConfigManager initialized with path: {self.config_path}")
     
     def _get_default_config(self) -> Dict[str, Any]:
@@ -74,7 +72,7 @@ class ConfigManager:
     
     def _strip_credentials(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Remove all credentials from configuration for security when persistence is disabled.
+        Remove all credentials from configuration for security before database storage.
         
         Args:
             config: Configuration dictionary
@@ -90,44 +88,8 @@ class ConfigManager:
                 if "credentials" in llm_config:
                     llm_config["credentials"] = {}
         
-        app_logger.info("Stripped credentials from configuration (persistence disabled)")
+        app_logger.debug("Stripped credentials from configuration before database storage")
         return config
-    
-    def _cleanup_inactive_users(self, max_age_hours: int = None):
-        """
-        Remove configuration for users who haven't accessed it in max_age_hours.
-        
-        Args:
-            max_age_hours: Maximum age in hours before removing user config.
-                          If None, uses APP_CONFIG.USER_CONFIG_CLEANUP_HOURS
-        """
-        from trusted_data_agent.core.config import APP_CONFIG
-        
-        # Only cleanup in non-persistent mode and if enabled
-        if APP_CONFIG.CONFIGURATION_PERSISTENCE or not APP_CONFIG.USER_CONFIG_CLEANUP_ENABLED:
-            return
-        
-        # Use configured hours if not specified
-        if max_age_hours is None:
-            max_age_hours = APP_CONFIG.USER_CONFIG_CLEANUP_HOURS
-        
-        now = datetime.now(timezone.utc)
-        inactive_users = []
-        
-        for user_uuid, last_access in self._last_access.items():
-            age_hours = (now - last_access).total_seconds() / 3600
-            if age_hours > max_age_hours:
-                inactive_users.append(user_uuid)
-        
-        for user_uuid in inactive_users:
-            if user_uuid in self._user_configs:
-                del self._user_configs[user_uuid]
-            if user_uuid in self._last_access:
-                del self._last_access[user_uuid]
-            app_logger.info(f"Cleaned up inactive user config: {user_uuid}")
-        
-        if inactive_users:
-            app_logger.info(f"Cleaned up {len(inactive_users)} inactive user configs")
     
     def load_config(self, user_uuid: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -144,13 +106,6 @@ class ConfigManager:
         # If no user_uuid, return read-only bootstrap template from tda_config.json
         if not user_uuid:
             return self._load_bootstrap_template()
-        
-        # Update last access time for memory cache
-        self._last_access[user_uuid] = datetime.now(timezone.utc)
-        
-        # Periodically clean up inactive users (every 100 accesses)
-        if len(self._last_access) > 0 and len(self._last_access) % 100 == 0:
-            self._cleanup_inactive_users()
         
         # Check memory cache first
         if user_uuid in self._user_configs:
@@ -236,7 +191,6 @@ class ConfigManager:
             
             # Store in per-user memory cache
             self._user_configs[user_uuid] = config
-            self._last_access[user_uuid] = datetime.now(timezone.utc)
             
             # Persist to database (user_preferences.preferences_json)
             from trusted_data_agent.auth.database import get_db_session
@@ -401,6 +355,9 @@ class ConfigManager:
             True if successful, False otherwise
         """
         servers = self.get_mcp_servers(user_uuid)
+        app_logger.info(f"Looking for MCP server {server_id} in {len(servers)} servers for user {user_uuid}")
+        app_logger.debug(f"Available server IDs: {[s.get('id') for s in servers]}")
+        
         server = next((s for s in servers if s.get("id") == server_id), None)
         
         if not server:

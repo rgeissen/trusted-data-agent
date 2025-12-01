@@ -88,15 +88,7 @@ async def get_application_status(current_user):
     if not user_uuid:
         return jsonify({
             "isConfigured": False,
-            "authenticationRequired": True,
-            "configurationPersistence": APP_CONFIG.CONFIGURATION_PERSISTENCE
-        })
-    
-    if not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        app_logger.info("Configuration persistence is disabled by environment setting. Forcing re-configuration.")
-        return jsonify({
-            "isConfigured": False,
-            "configurationPersistence": False
+            "authenticationRequired": True
         })
 
     # Check if default profile exists (simplified check - activation enforces LLM+MCP configured)
@@ -134,16 +126,14 @@ async def get_application_status(current_user):
             "model": APP_CONFIG.ACTIVE_MODEL,
             "mcp_server": { "name": APP_CONFIG.ACTIVE_MCP_SERVER_NAME },
             "rag_active": rag_active,
-            "rag_enabled": APP_CONFIG.RAG_ENABLED,
-            "configurationPersistence": APP_CONFIG.CONFIGURATION_PERSISTENCE
+            "rag_enabled": APP_CONFIG.RAG_ENABLED
         }
         return jsonify(status_payload)
     else:
         status_payload = {
             "isConfigured": False,
             "rag_active": rag_active,
-            "rag_enabled": APP_CONFIG.RAG_ENABLED,
-            "configurationPersistence": APP_CONFIG.CONFIGURATION_PERSISTENCE
+            "rag_enabled": APP_CONFIG.RAG_ENABLED
         }
         return jsonify(status_payload)
 

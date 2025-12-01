@@ -11,9 +11,6 @@ class AppConfig:
     These values are typically set at startup and rarely change during runtime.
     """
     # --- Feature Flags & Behavior ---
-    CONFIGURATION_PERSISTENCE = os.environ.get('TDA_CONFIGURATION_PERSISTENCE', 'true').lower() == 'true'
-    USER_CONFIG_CLEANUP_ENABLED = os.environ.get('TDA_USER_CONFIG_CLEANUP_ENABLED', 'true').lower() == 'true' # If True, automatically removes inactive user configs from memory
-    USER_CONFIG_CLEANUP_HOURS = int(os.environ.get('TDA_USER_CONFIG_CLEANUP_HOURS', '24')) # Hours of inactivity before cleaning up user config
     ALL_MODELS_UNLOCKED = False # If True, bypasses model certification checks, allowing all models from a provider to be used.
     CHARTING_ENABLED = True # Master switch to enable or disable the agent's ability to generate charts.
     DEFAULT_CHARTING_INTENSITY = "medium" # Controls how proactively the agent suggests charts. Options: "none", "medium", "heavy".
@@ -168,95 +165,43 @@ CERTIFIED_FRIENDLI_MODELS = ["google/gemma-3-27b-it"]
 
 
 # ==============================================================================
-# PER-USER RUNTIME CONTEXT HELPERS
+# USER CONFIGURATION HELPERS
 # ==============================================================================
-
-def get_user_runtime_context(user_uuid: str) -> dict:
-    """
-    Get or create runtime context for a specific user.
-    
-    When TDA_CONFIGURATION_PERSISTENCE=false, each user gets their own isolated
-    runtime configuration (provider, model, LLM instance, etc.).
-    
-    Args:
-        user_uuid: User UUID
-        
-    Returns:
-        User's runtime context dictionary
-    """
-    from datetime import datetime, timezone
-    
-    contexts = APP_STATE.setdefault("user_runtime_contexts", {})
-    
-    if user_uuid not in contexts:
-        # Create default context for new user
-        contexts[user_uuid] = {
-            "provider": None,
-            "model": None,
-            "mcp_server_name": None,
-            "mcp_server_id": None,
-            "aws_region": None,
-            "azure_deployment_details": None,
-            "friendli_details": None,
-            "model_provider_in_profile": None,
-            "llm_instance": None,
-            "mcp_client": None,
-            "server_configs": {},
-            "last_access": datetime.now(timezone.utc).isoformat()
-        }
-    
-    # Update last access time
-    contexts[user_uuid]["last_access"] = datetime.now(timezone.utc).isoformat()
-    
-    return contexts[user_uuid]
+# Per-user runtime context removed - all configuration now stored in database
 
 
 def get_user_provider(user_uuid: str = None) -> str:
     """
     Get current provider for user.
     
-    In multi-user mode (persistence=false), returns user-specific provider.
-    In single-user mode (persistence=true), returns global provider.
-    
     Args:
-        user_uuid: Optional user UUID for per-user isolation
+        user_uuid: Optional user UUID (for compatibility, always uses global config)
         
     Returns:
         Provider name (e.g., "Google", "Anthropic")
     """
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        return get_user_runtime_context(user_uuid).get("provider")
     return APP_CONFIG.CURRENT_PROVIDER
-
-
 def set_user_provider(provider: str, user_uuid: str = None):
     """
     Set current provider for user.
     
     Args:
         provider: Provider name
-        user_uuid: Optional user UUID for per-user isolation
+        user_uuid: Optional user UUID (for compatibility, always uses global config)
     """
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        get_user_runtime_context(user_uuid)["provider"] = provider
-    APP_CONFIG.CURRENT_PROVIDER = provider  # Also set global for backward compatibility
+    APP_CONFIG.CURRENT_PROVIDER = provider
 
 
 def get_user_model(user_uuid: str = None) -> str:
     """
     Get current model for user.
     
-    In multi-user mode (persistence=false), returns user-specific model.
-    In single-user mode (persistence=true), returns global model.
-    
     Args:
-        user_uuid: Optional user UUID for per-user isolation
+        user_uuid: Optional user UUID (for compatibility, always uses global config)
         
     Returns:
         Model name (e.g., "gemini-2.0-flash", "claude-3-5-haiku")
     """
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        return get_user_runtime_context(user_uuid).get("model")
     return APP_CONFIG.CURRENT_MODEL
 
 
@@ -266,94 +211,68 @@ def set_user_model(model: str, user_uuid: str = None):
     
     Args:
         model: Model name
-        user_uuid: Optional user UUID for per-user isolation
+        user_uuid: Optional user UUID (for compatibility, always uses global config)
     """
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        get_user_runtime_context(user_uuid)["model"] = model
-    APP_CONFIG.CURRENT_MODEL = model  # Also set global for backward compatibility
+    APP_CONFIG.CURRENT_MODEL = model
 
 
 def get_user_mcp_server_name(user_uuid: str = None) -> str:
     """Get current MCP server name for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        return get_user_runtime_context(user_uuid).get("mcp_server_name")
     return APP_CONFIG.CURRENT_MCP_SERVER_NAME
 
 
 def set_user_mcp_server_name(server_name: str, user_uuid: str = None):
     """Set current MCP server name for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        get_user_runtime_context(user_uuid)["mcp_server_name"] = server_name
     APP_CONFIG.CURRENT_MCP_SERVER_NAME = server_name
 
 
 def get_user_mcp_server_id(user_uuid: str = None) -> str:
     """Get current MCP server ID for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        return get_user_runtime_context(user_uuid).get("mcp_server_id")
     return APP_CONFIG.CURRENT_MCP_SERVER_ID
 
 
 def set_user_mcp_server_id(server_id: str, user_uuid: str = None):
     """Set current MCP server ID for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        get_user_runtime_context(user_uuid)["mcp_server_id"] = server_id
     APP_CONFIG.CURRENT_MCP_SERVER_ID = server_id
 
 
 def get_user_aws_region(user_uuid: str = None) -> str:
     """Get AWS region for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        return get_user_runtime_context(user_uuid).get("aws_region")
     return APP_CONFIG.CURRENT_AWS_REGION
 
 
 def set_user_aws_region(region: str, user_uuid: str = None):
     """Set AWS region for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        get_user_runtime_context(user_uuid)["aws_region"] = region
     APP_CONFIG.CURRENT_AWS_REGION = region
 
 
 def get_user_azure_deployment_details(user_uuid: str = None) -> dict:
     """Get Azure deployment details for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        return get_user_runtime_context(user_uuid).get("azure_deployment_details")
     return APP_CONFIG.CURRENT_AZURE_DEPLOYMENT_DETAILS
 
 
 def set_user_azure_deployment_details(details: dict, user_uuid: str = None):
     """Set Azure deployment details for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        get_user_runtime_context(user_uuid)["azure_deployment_details"] = details
     APP_CONFIG.CURRENT_AZURE_DEPLOYMENT_DETAILS = details
 
 
 def get_user_friendli_details(user_uuid: str = None) -> dict:
     """Get Friendli.ai details for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        return get_user_runtime_context(user_uuid).get("friendli_details")
     return APP_CONFIG.CURRENT_FRIENDLI_DETAILS
 
 
 def set_user_friendli_details(details: dict, user_uuid: str = None):
     """Set Friendli.ai details for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        get_user_runtime_context(user_uuid)["friendli_details"] = details
     APP_CONFIG.CURRENT_FRIENDLI_DETAILS = details
 
 
 def get_user_model_provider_in_profile(user_uuid: str = None) -> str:
     """Get model provider in profile (for AWS Bedrock) for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        return get_user_runtime_context(user_uuid).get("model_provider_in_profile")
     return APP_CONFIG.CURRENT_MODEL_PROVIDER_IN_PROFILE
 
 
 def set_user_model_provider_in_profile(provider: str, user_uuid: str = None):
     """Set model provider in profile (for AWS Bedrock) for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        get_user_runtime_context(user_uuid)["model_provider_in_profile"] = provider
     APP_CONFIG.CURRENT_MODEL_PROVIDER_IN_PROFILE = provider
 
 
@@ -362,13 +281,11 @@ def get_user_llm_instance(user_uuid: str = None):
     Get LLM instance for user.
     
     Args:
-        user_uuid: Optional user UUID for per-user isolation
+        user_uuid: Optional user UUID (for compatibility, always uses global state)
         
     Returns:
         LLM client instance
     """
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        return get_user_runtime_context(user_uuid).get("llm_instance")
     return APP_STATE.get("llm")
 
 
@@ -378,11 +295,9 @@ def set_user_llm_instance(llm_instance, user_uuid: str = None):
     
     Args:
         llm_instance: LLM client instance
-        user_uuid: Optional user UUID for per-user isolation
+        user_uuid: Optional user UUID (for compatibility, always uses global state)
     """
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        get_user_runtime_context(user_uuid)["llm_instance"] = llm_instance
-    APP_STATE["llm"] = llm_instance  # Also set global for backward compatibility
+    APP_STATE["llm"] = llm_instance
 
 
 def get_user_mcp_client(user_uuid: str = None):
@@ -390,13 +305,11 @@ def get_user_mcp_client(user_uuid: str = None):
     Get MCP client for user.
     
     Args:
-        user_uuid: Optional user UUID for per-user isolation
+        user_uuid: Optional user UUID (for compatibility, always uses global state)
         
     Returns:
         MCP client instance
     """
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        return get_user_runtime_context(user_uuid).get("mcp_client")
     return APP_STATE.get("mcp_client")
 
 
@@ -406,63 +319,19 @@ def set_user_mcp_client(mcp_client, user_uuid: str = None):
     
     Args:
         mcp_client: MCP client instance
-        user_uuid: Optional user UUID for per-user isolation
+        user_uuid: Optional user UUID (for compatibility, always uses global state)
     """
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        get_user_runtime_context(user_uuid)["mcp_client"] = mcp_client
-    APP_STATE["mcp_client"] = mcp_client  # Also set global for backward compatibility
+    APP_STATE["mcp_client"] = mcp_client
 
 
 def get_user_server_configs(user_uuid: str = None) -> dict:
     """Get MCP server configs for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        return get_user_runtime_context(user_uuid).get("server_configs", {})
     return APP_STATE.get("server_configs", {})
 
 
 def set_user_server_configs(server_configs: dict, user_uuid: str = None):
     """Set MCP server configs for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        get_user_runtime_context(user_uuid)["server_configs"] = server_configs
     APP_STATE["server_configs"] = server_configs
 
 
-def cleanup_inactive_user_contexts(max_age_hours: int = 24):
-    """
-    Remove runtime contexts for users who haven't accessed in max_age_hours.
-    Called periodically to prevent memory leaks in multi-user deployments.
-    
-    Args:
-        max_age_hours: Maximum age in hours before removing user context
-    """
-    import logging
-    from datetime import datetime, timezone, timedelta
-    
-    if APP_CONFIG.CONFIGURATION_PERSISTENCE:
-        return  # Only cleanup in multi-user mode
-    
-    app_logger = logging.getLogger("quart.app")
-    contexts = APP_STATE.get("user_runtime_contexts", {})
-    now = datetime.now(timezone.utc)
-    inactive_users = []
-    
-    for user_uuid, context in contexts.items():
-        try:
-            last_access_str = context.get("last_access")
-            if not last_access_str:
-                continue
-            
-            last_access = datetime.fromisoformat(last_access_str)
-            age_hours = (now - last_access).total_seconds() / 3600
-            
-            if age_hours > max_age_hours:
-                inactive_users.append(user_uuid)
-        except Exception as e:
-            app_logger.warning(f"Error checking context age for user {user_uuid}: {e}")
-    
-    for user_uuid in inactive_users:
-        del contexts[user_uuid]
-        app_logger.info(f"Cleaned up inactive runtime context for user: {user_uuid} (inactive for {max_age_hours}+ hours)")
-    
-    if inactive_users:
-        app_logger.info(f"Cleaned up {len(inactive_users)} inactive user runtime contexts")
+# cleanup_inactive_user_contexts removed - no longer needed with database persistence
