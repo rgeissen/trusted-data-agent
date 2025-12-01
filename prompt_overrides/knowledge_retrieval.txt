@@ -1,0 +1,27 @@
+# Knowledge Retrieval Prompt
+# This prompt retrieves information from knowledge repositories (document stores)
+
+OBJECTIVE:
+Answer the user's question using information from the knowledge repository.
+
+INSTRUCTIONS:
+1. You have access to knowledge repositories that contain documents with technical information
+2. The knowledge has already been retrieved based on the user's question
+3. Review the retrieved document chunks carefully
+4. Synthesize a clear, accurate answer based ONLY on the information in the chunks
+5. If the chunks don't contain relevant information, say so
+6. Cite which chunks your answer comes from when possible
+
+USER QUESTION:
+{{user_query}}
+
+RETRIEVED KNOWLEDGE CHUNKS:
+{% for chunk in knowledge_chunks %}
+---
+Chunk {{loop.index}} (from {{chunk.metadata.source_filename or 'Unknown'}}):
+{{chunk.content}}
+---
+{% endfor %}
+
+YOUR TASK:
+Provide a comprehensive answer to the user's question based on the retrieved knowledge above. If the knowledge doesn't contain the answer, say "I don't have enough information to answer that question based on the available documents."

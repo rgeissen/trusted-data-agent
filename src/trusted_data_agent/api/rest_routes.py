@@ -2436,6 +2436,54 @@ async def toggle_rag_collection(collection_id: int):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@rest_api_bp.route("/v1/rag/reload-collections", methods=["POST"])
+async def reload_all_collections():
+    """
+    Reload all enabled collections into the RAG retriever.
+    This ensures both planner and knowledge collections are loaded into memory.
+    Called during conversation initialization to ensure repositories are ready for querying.
+    """
+    try:
+        user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({"status": "error", "message": "Authentication required"}), 401
+        
+        retriever = APP_STATE.get("rag_retriever_instance")
+        if not retriever:
+            return jsonify({"status": "error", "message": "RAG retriever not initialized"}), 500
+        
+        # Reload collections from MCP server (loads both planner and knowledge collections)
+        app_logger.info(f"[reload_all_collections] Reloading collections for user {user_uuid}")
+        retriever.reload_collections_for_mcp_server()
+        
+        # Get counts
+        loaded_count = len(retriever.collections)
+        loaded_ids = list(retriever.collections.keys())
+        
+        # Get collection details from database
+        from trusted_data_agent.core.collection_db import get_collection_db
+        collection_db = get_collection_db()
+        accessible_collections = collection_db.get_all_collections(user_id=user_uuid)
+        
+        planner_count = sum(1 for c in accessible_collections if c['repository_type'] == 'planner' and c['id'] in loaded_ids)
+        knowledge_count = sum(1 for c in accessible_collections if c['repository_type'] == 'knowledge' and c['id'] in loaded_ids)
+        
+        app_logger.info(f"[reload_all_collections] ✅ Loaded {loaded_count} collections: {planner_count} planner, {knowledge_count} knowledge")
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Loaded {loaded_count} collection(s): {planner_count} planner, {knowledge_count} knowledge",
+            "loaded_collections": loaded_ids,
+            "planner_count": planner_count,
+            "knowledge_count": knowledge_count,
+            "total_count": loaded_count
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error reloading collections: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @rest_api_bp.route("/v1/rag/collections/<int:collection_id>/refresh", methods=["POST"])
 async def refresh_rag_collection(collection_id: int):
     """Refresh the vector store for a specific RAG collection."""
@@ -3439,6 +3487,9 @@ async def activate_mcp_server(server_id: str):
     """Set an MCP server as the active server."""
     try:
         user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({"status": "error", "message": "Authentication required"}), 401
+        
         from trusted_data_agent.core.config_manager import get_config_manager
         config_manager = get_config_manager()
         
@@ -3733,6 +3784,9 @@ async def activate_llm_configuration(config_id: str):
     """Set an LLM configuration as the active configuration."""
     try:
         user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({"status": "error", "message": "Authentication required"}), 401
+        
         from trusted_data_agent.core.config_manager import get_config_manager
         config_manager = get_config_manager()
         

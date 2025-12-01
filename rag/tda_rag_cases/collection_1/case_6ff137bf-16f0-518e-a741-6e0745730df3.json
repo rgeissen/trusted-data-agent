@@ -1,22 +1,22 @@
 {
-  "case_id": "88ac1640-7078-5e25-87a8-cef9bdbd4875",
+  "case_id": "6ff137bf-16f0-518e-a741-6e0745730df3",
   "metadata": {
-    "session_id": "e5eb6342-e852-464a-8072-659e7967f2fd",
+    "session_id": "aa9eb3a9-d369-4024-8f66-825ec349105c",
     "turn_id": 1,
     "is_success": true,
-    "task_id": "task-b1b9e746-d3fb-4329-9642-60e9332b3366",
+    "task_id": "task-4e388c89-515c-405b-98b1-413a2e4e632d",
     "collection_id": 1,
     "has_orchestration": false,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-12-01T10:16:24.048954+00:00",
+    "timestamp": "2025-12-01T12:38:40.154611+00:00",
     "user_feedback_score": 0,
     "llm_config": {
       "provider": "Google",
       "model": "gemini-2.0-flash",
       "profile_tag": "GOGET",
-      "input_tokens": 8021,
-      "output_tokens": 105
+      "input_tokens": 12087,
+      "output_tokens": 117
     },
     "is_most_efficient": true,
     "strategy_metrics": {
@@ -27,7 +27,7 @@
       },
       "total_steps": 2
     },
-    "user_uuid": "3740a575-ea65-4ae3-ab16-bf6e06a1d1a3"
+    "user_uuid": "4dd9a343-327b-4601-a5e5-c974b1dfdff6"
   },
   "intent": {
     "user_query": "what is the system version?"

@@ -2036,7 +2036,34 @@ export function toggleSideNav() {
  */
 export function handleViewSwitch(viewId) {
     console.log('[handleViewSwitch] Switching to view:', viewId);
+    
+    // CRITICAL: Check if user is navigating away from configuration with unsaved changes
+    const currentView = document.querySelector('.app-view.active');
+    const isLeavingConfiguration = currentView?.id === 'credentials-view' && viewId !== 'credentials-view';
+    
+    if (isLeavingConfiguration) {
+        // Import dirty state tracker dynamically to avoid circular dependencies
+        import('./configDirtyState.js').then(({ canNavigateAway }) => {
+            if (!canNavigateAway(viewId)) {
+                console.log('[handleViewSwitch] ❌ Navigation blocked - unsaved configuration changes');
+                return; // Block navigation
+            }
+            
+            // Navigation allowed, proceed
+            performViewSwitch(viewId);
+        });
+        return; // Exit early, will be called again if navigation is allowed
+    }
+    
+    // Not leaving configuration or no unsaved changes - proceed normally
+    performViewSwitch(viewId);
+}
 
+/**
+ * Internal function to perform the actual view switch
+ * Separated to allow dirty state checking to interrupt the flow
+ */
+function performViewSwitch(viewId) {
     // 1. Log all app views found
     const appViews = document.querySelectorAll('.app-view');
 
@@ -2051,6 +2078,21 @@ export function handleViewSwitch(viewId) {
         viewToShow.classList.add('active');
     } else {
         console.error(`[UI DEBUG] View with ID '${viewId}' not found!`);
+    }
+    
+    // 4. Initialize dirty tracking when entering configuration view
+    if (viewId === 'credentials-view') {
+        import('./configDirtyState.js').then(({ initializeConfigDirtyTracking }) => {
+            initializeConfigDirtyTracking();
+        });
+    }
+    
+    // 5. Reset dirty tracking when leaving configuration view (after successful save)
+    const previousView = document.querySelector('.app-view.active');
+    if (previousView?.id === 'credentials-view' && viewId !== 'credentials-view') {
+        import('./configDirtyState.js').then(({ resetConfigDirtyTracking }) => {
+            resetConfigDirtyTracking();
+        });
     }
 
     // 4. Update the active state of the menu buttons

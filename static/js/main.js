@@ -1170,7 +1170,7 @@ async function showWelcomeScreen() {
     if (welcomeBtn && !welcomeBtn.dataset._wired) {
         welcomeBtn.addEventListener('click', async () => {
             if (hasSavedConfig && isDefaultProfileValid) {
-                // User has valid default profile - start conversation automatically
+                // User has valid default profile - start conversation
                 
                 // Show spinning cogwheel and update button text
                 if (welcomeCogwheel) {
@@ -1182,20 +1182,13 @@ async function showWelcomeScreen() {
                 welcomeBtn.disabled = true;
                 
                 try {
-                    // Import reconnectAndLoad function which handles the full connection process
-                    const { reconnectAndLoad } = await import('./handlers/configurationHandler.js');
-                    
-                    // Call reconnectAndLoad which will:
-                    // 1. Validate MCP and LLM configurations
-                    // 2. Send /configure request to backend
-                    // 3. Load resources (tools, prompts, resources)
-                    // 4. Load or create session
-                    // 5. Switch to conversation view
-                    await reconnectAndLoad();
+                    // Use centralized initialization - ensures all services are ready
+                    const { initializeConversationMode } = await import('./conversationInitializer.js');
+                    await initializeConversationMode();
                     
                 } catch (error) {
-                    console.error('Error during auto-configuration:', error);
-                    // reconnectAndLoad handles its own error notifications
+                    console.error('[WelcomeScreen] Error during conversation initialization:', error);
+                    // Error notifications handled by initializeConversationMode
                 } finally {
                     // Stop spinning and restore button
                     if (welcomeCogwheel) {

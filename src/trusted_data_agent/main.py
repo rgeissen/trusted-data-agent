@@ -211,6 +211,11 @@ def create_app():
     app.register_blueprint(system_prompts_bp)  # System prompts management
     app.register_blueprint(knowledge_api_bp, url_prefix="/api")  # Knowledge repository endpoints
 
+    @app.route('/favicon.ico')
+    async def favicon():
+        """Serve favicon.ico from root path for browser compatibility"""
+        return await app.send_static_file('favicon.ico')
+
     @app.after_request
     async def add_security_headers(response):
         # Allow connections to unpkg for G2Plot if needed, adjust connect-src

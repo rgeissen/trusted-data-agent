@@ -9,6 +9,8 @@ import * as UI from '../ui.js';
 import * as DOM from '../domElements.js';
 import { state } from '../state.js';
 import { safeSetItem, safeGetItem } from '../storageUtils.js';
+import { showAppBanner } from '../bannerSystem.js';
+import { markSaving } from '../configDirtyState.js';
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -16,43 +18,16 @@ import { safeSetItem, safeGetItem } from '../storageUtils.js';
 
 /**
  * Shows a toast notification in the header status area
+ * @deprecated Use showAppBanner from bannerSystem.js instead
  * @param {string} type - 'success', 'error', 'warning', 'info'
  * @param {string} message - The message to display
  */
 function showNotification(type, message) {
-    const colors = {
-        success: 'bg-green-600/90',
-        error: 'bg-red-600/90',
-        warning: 'bg-yellow-600/90',
-        info: 'bg-blue-600/90'
-    };
-
-    const statusElement = document.getElementById('header-status-message');
-    if (!statusElement) {
-        return;
-    }
-    
-    // Clear any existing timeout
-    if (statusElement.hideTimeout) {
-        clearTimeout(statusElement.hideTimeout);
-    }
-    
-    // Set the message and style
-    statusElement.textContent = message;
-    statusElement.className = `text-sm px-3 py-1 rounded-md transition-all duration-300 ${colors[type] || colors.info} text-white`;
-    statusElement.style.opacity = '1';
-    
-    // Auto-hide after 5 seconds
-    statusElement.hideTimeout = setTimeout(() => {
-        statusElement.style.opacity = '0';
-        setTimeout(() => {
-            statusElement.textContent = '';
-            statusElement.className = 'text-sm px-3 py-1 rounded-md transition-all duration-300 opacity-0';
-        }, 300);
-    }, 5000);
+    // Redirect to the centralized banner system
+    showAppBanner(message, type);
 }
 
-// Make showNotification globally available for use throughout the application
+// Make showNotification globally available for backward compatibility
 window.showNotification = showNotification;
 
 function showDeleteConfirmation(message, onConfirm) {
@@ -373,6 +348,19 @@ class ConfigurationState {
         if (index !== -1) {
             this.profiles[index] = { ...this.profiles[index], ...updates };
         }
+        
+        // Dispatch event to mark configuration as dirty
+        document.dispatchEvent(new CustomEvent('profile-modified', { 
+            detail: { profileId, updates } 
+        }));
+        
+        // Reset initialization state when profile is updated
+        // This ensures the conversation will re-initialize with new settings
+        import('../conversationInitializer.js').then(({ resetInitialization }) => {
+            resetInitialization();
+            console.log('[ConfigState] Profile updated - conversation will re-initialize on next start');
+        });
+        
         return updatedProfile;
     }
 
@@ -412,15 +400,33 @@ class ConfigurationState {
         await API.setDefaultProfile(profileId);
         this.defaultProfileId = profileId;
         
+        // Dispatch event to mark configuration as dirty
+        document.dispatchEvent(new CustomEvent('default-profile-changed', { 
+            detail: { profileId } 
+        }));
+        
         // Update Planner Repository navigation state when default profile changes
         if (typeof window.updatePlannerRepositoryNavigation === 'function') {
             window.updatePlannerRepositoryNavigation();
         }
+        
+        // Reset initialization state when default profile changes
+        import('../conversationInitializer.js').then(({ resetInitialization }) => {
+            resetInitialization();
+            console.log('[ConfigState] Default profile changed - conversation will re-initialize');
+        });
     }
 
     async setActiveForConsumptionProfiles(profileIds) {
+        console.log('[ConfigState] 🔄 setActiveForConsumptionProfiles called with:', profileIds);
         await API.setActiveForConsumptionProfiles(profileIds);
         this.activeForConsumptionProfileIds = profileIds;
+        
+        // Dispatch event to mark configuration as dirty
+        console.log('[ConfigState] 📤 Dispatching profile-modified event');
+        document.dispatchEvent(new CustomEvent('profile-modified', { 
+            detail: { source: 'active-for-consumption-changed', profileIds } 
+        }));
         
         // Update knowledge indicator when active profiles change
         if (typeof window.updateKnowledgeIndicatorStatus === 'function') {
@@ -469,8 +475,15 @@ class ConfigurationState {
 
     async setActiveMCP(serverId) {
         try {
+            const headers = {};
+            const authToken = localStorage.getItem('tda_auth_token');
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+            
             const response = await fetch(`/api/v1/mcp/servers/${serverId}/activate`, {
-                method: 'POST'
+                method: 'POST',
+                headers: headers
             });
             
             if (response.ok) {
@@ -484,8 +497,15 @@ class ConfigurationState {
 
     async setActiveLLM(configId) {
         try {
+            const headers = {};
+            const authToken = localStorage.getItem('tda_auth_token');
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+            
             const response = await fetch(`/api/v1/llm/configurations/${configId}/activate`, {
-                method: 'POST'
+                method: 'POST',
+                headers: headers
             });
             
             if (response.ok) {
@@ -510,6 +530,10 @@ class ConfigurationState {
             if (response.ok) {
                 // Reload servers from backend to get the updated list
                 await this.loadMCPServers();
+                // Dispatch event to mark config as dirty
+                document.dispatchEvent(new CustomEvent('profile-modified', { 
+                    detail: { source: 'mcp-server-add' } 
+                }));
                 return server.id;
             } else {
                 const errorData = await response.json();
@@ -533,6 +557,10 @@ class ConfigurationState {
                 if (this.activeMCP === serverId) {
                     this.activeMCP = null;
                 }
+                // Dispatch event to mark config as dirty
+                document.dispatchEvent(new CustomEvent('profile-modified', { 
+                    detail: { source: 'mcp-server-remove' } 
+                }));
                 return { success: true };
             } else {
                 const errorData = await response.json();
@@ -561,6 +589,10 @@ class ConfigurationState {
             if (response.ok) {
                 // Reload servers from backend to get the updated list
                 await this.loadMCPServers();
+                // Dispatch event to mark config as dirty
+                document.dispatchEvent(new CustomEvent('profile-modified', { 
+                    detail: { source: 'mcp-server-update' } 
+                }));
                 return true;
             }
         } catch (error) {
@@ -588,6 +620,10 @@ class ConfigurationState {
             if (response.ok) {
                 const result = await response.json();
                 await this.loadLLMConfigurations();
+                // Dispatch event to mark config as dirty
+                document.dispatchEvent(new CustomEvent('profile-modified', { 
+                    detail: { source: 'llm-config-add' } 
+                }));
                 return result.configuration; // Return the full configuration object with ID
             } else {
                 const errorData = await response.json();
@@ -611,6 +647,10 @@ class ConfigurationState {
                 if (this.activeLLM === configId) {
                     this.activeLLM = null;
                 }
+                // Dispatch event to mark config as dirty
+                document.dispatchEvent(new CustomEvent('profile-modified', { 
+                    detail: { source: 'llm-config-remove' } 
+                }));
                 return { success: true };
             } else {
                 const errorData = await response.json();
@@ -644,6 +684,10 @@ class ConfigurationState {
             
             if (response.ok) {
                 await this.loadLLMConfigurations();
+                // Dispatch event to mark config as dirty
+                document.dispatchEvent(new CustomEvent('profile-modified', { 
+                    detail: { source: 'llm-config-update' } 
+                }));
                 return true;
             }
         } catch (error) {
@@ -1659,10 +1703,25 @@ export async function reconnectAndLoad() {
                     }
                     
                     handleViewSwitch('conversation-view');
+                    
+                    // Mark initialization as complete for the conversation initializer
+                    console.log('[reconnectAndLoad] Conversation fully initialized');
+                    
+                    // Mark configuration as clean after successful save & connect
+                    import('../configDirtyState.js').then(({ markConfigClean }) => {
+                        markConfigClean();
+                        console.log('[reconnectAndLoad] Configuration marked as clean after successful save');
+                    });
+                    
                 } catch (sessionError) {
                     console.error('Failed to load/create session:', sessionError);
                     showNotification('warning', 'Configuration successful, but failed to initialize session. Please create one manually.');
                     handleViewSwitch('conversation-view');
+                    
+                    // Still mark as clean since configuration was saved successfully
+                    import('../configDirtyState.js').then(({ markConfigClean }) => {
+                        markConfigClean();
+                    });
                     // Show welcome screen since no session was created
                     if (window.showWelcomeScreen) {
                         await window.showWelcomeScreen();
@@ -2732,12 +2791,26 @@ async function showProfileModal(profileId = null) {
     const intelligenceContent = modal.querySelector('#profile-content-intelligence');
 
     const switchToTab = (tabButton, contentDiv, otherTabButton, otherContentDiv) => {
-        // Update tab button styles
-        tabButton.classList.remove('border-transparent', 'text-gray-400');
-        tabButton.classList.add('border-[#F15F22]', 'text-white', 'bg-gray-800/50');
+        // Update active tab styles with enhanced industrial design
+        tabButton.classList.remove('border-transparent', 'text-gray-400', 'hover:bg-gray-800/40', 'hover:border-gray-600/50');
+        tabButton.classList.add('border-[#F15F22]', 'text-white', 'bg-gradient-to-b', 'from-gray-800/70', 'to-gray-900/50', 'shadow-lg', 'relative');
         
-        otherTabButton.classList.remove('border-[#F15F22]', 'text-white', 'bg-gray-800/50');
-        otherTabButton.classList.add('border-transparent', 'text-gray-400');
+        // Add the gradient underline if it doesn't exist
+        if (!tabButton.querySelector('.absolute.inset-x-0.bottom-0')) {
+            const underline = document.createElement('div');
+            underline.className = 'absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-[#F15F22] to-[#D9501A] shadow-lg shadow-orange-500/50';
+            tabButton.appendChild(underline);
+        }
+        
+        // Update inactive tab styles
+        otherTabButton.classList.remove('border-[#F15F22]', 'text-white', 'bg-gradient-to-b', 'from-gray-800/70', 'to-gray-900/50', 'shadow-lg', 'relative');
+        otherTabButton.classList.add('border-transparent', 'text-gray-400', 'hover:bg-gray-800/40', 'hover:border-gray-600/50');
+        
+        // Remove gradient underline from inactive tab
+        const underline = otherTabButton.querySelector('.absolute.inset-x-0.bottom-0');
+        if (underline) {
+            underline.remove();
+        }
         
         // Show/hide content
         contentDiv.classList.remove('hidden');
@@ -2981,10 +3054,26 @@ export async function initializeConfigurationUI() {
         });
     }
 
-    // Reconnect button
+    // Reconnect button - use centralized initialization
     const reconnectBtn = document.getElementById('reconnect-and-load-btn');
     if (reconnectBtn) {
-        reconnectBtn.addEventListener('click', reconnectAndLoad);
+        reconnectBtn.addEventListener('click', async () => {
+            console.log('[SaveConnect] Button clicked - marking as saving');
+            
+            // Mark as saving FIRST, before any initialization
+            // This must happen synchronously to prevent navigation blocking
+            if (typeof markSaving === 'function') {
+                markSaving();
+                console.log('[SaveConnect] ✅ markSaving() called successfully');
+            } else {
+                console.error('[SaveConnect] ⚠️ markSaving is not a function:', typeof markSaving);
+            }
+            
+            // Now proceed with initialization
+            // Add cache buster to force reload
+            const { initializeConversationMode } = await import(`../conversationInitializer.js?v=${Date.now()}`);
+            await initializeConversationMode();
+        });
     }
     
     // MCP Classification toggle
