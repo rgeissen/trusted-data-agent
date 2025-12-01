@@ -3589,7 +3589,7 @@ function openKnowledgeRepositoryView(collection) {
 /**
  * Delete a Knowledge repository
  */
-async function deleteKnowledgeRepository(collectionId, collectionName) {
+export async function deleteKnowledgeRepository(collectionId, collectionName) {
     if (!confirm(`Are you sure you want to delete "${collectionName}"?\n\nThis will remove all documents and cannot be undone.`)) {
         return;
     }

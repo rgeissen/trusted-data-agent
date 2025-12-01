@@ -1411,17 +1411,20 @@ const AdminManager = {
                 // Load Knowledge Repository configuration from dedicated endpoint
                 try {
                     const knowledgeResp = await fetch('/api/v1/admin/knowledge-config', {
-                        headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('tda_auth_token')}` }
                     });
                     if (knowledgeResp.ok) {
                         const knowledgeData = await knowledgeResp.json();
                         if (knowledgeData.config) {
                             const kc = knowledgeData.config;
-                            this.setCheckboxValue('knowledge-rag-enabled', kc.enabled);
+                            const knowledgeEnabledCheckbox = document.getElementById('knowledge-rag-enabled');
+                            const knowledgeRerankingCheckbox = document.getElementById('knowledge-reranking-enabled');
+                            
+                            if (knowledgeEnabledCheckbox) knowledgeEnabledCheckbox.checked = kc.enabled || false;
                             this.setFieldValue('knowledge-num-docs', kc.num_docs);
                             this.setFieldValue('knowledge-min-relevance', kc.min_relevance_score);
                             this.setFieldValue('knowledge-max-tokens', kc.max_tokens);
-                            this.setCheckboxValue('knowledge-reranking-enabled', kc.reranking_enabled);
+                            if (knowledgeRerankingCheckbox) knowledgeRerankingCheckbox.checked = kc.reranking_enabled || false;
                         }
                     }
                 } catch (knowledgeError) {

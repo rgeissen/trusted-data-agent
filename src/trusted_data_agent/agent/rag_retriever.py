@@ -489,34 +489,92 @@ class RAGRetriever:
                     )
                     logger.info(f"Copied {len(results['ids'])} documents from collection {source_collection_id} to {new_collection_id}")
             
-            # Copy JSON case files
+            # Copy JSON files (cases for planner, documents for knowledge)
             source_dir = self._get_collection_dir(source_collection_id)
             target_dir = self._ensure_collection_dir(new_collection_id)
             
-            case_files = list(source_dir.glob("case_*.json"))
+            # Determine file pattern based on repository type
+            repo_type = source_meta.get("repository_type", "planner")
+            if repo_type == "knowledge":
+                file_pattern = "doc_*.json"
+            else:
+                file_pattern = "case_*.json"
+            
+            data_files = list(source_dir.glob(file_pattern))
             copied_files = 0
             
-            for case_file in case_files:
+            for data_file in data_files:
                 try:
-                    # Read source case
-                    with open(case_file, 'r', encoding='utf-8') as f:
-                        case_data = json.load(f)
+                    # Read source file
+                    with open(data_file, 'r', encoding='utf-8') as f:
+                        file_data = json.load(f)
                     
-                    # Update metadata with new collection_id
-                    case_data.setdefault("metadata", {})["collection_id"] = new_collection_id
-                    case_data.setdefault("metadata", {})["forked_from"] = source_collection_id
-                    case_data.setdefault("metadata", {})["forked_at"] = datetime.now(timezone.utc).isoformat()
+                    # Update metadata with new collection_id and fork info
+                    if "metadata" in file_data:
+                        file_data["metadata"]["collection_id"] = new_collection_id
+                        file_data["metadata"]["forked_from"] = source_collection_id
+                        file_data["metadata"]["forked_at"] = datetime.now(timezone.utc).isoformat()
+                    else:
+                        file_data.setdefault("metadata", {})["collection_id"] = new_collection_id
+                        file_data.setdefault("metadata", {})["forked_from"] = source_collection_id
+                        file_data.setdefault("metadata", {})["forked_at"] = datetime.now(timezone.utc).isoformat()
                     
                     # Write to target directory
-                    target_file = target_dir / case_file.name
+                    target_file = target_dir / data_file.name
                     with open(target_file, 'w', encoding='utf-8') as f:
-                        json.dump(case_data, f, indent=2)
+                        json.dump(file_data, f, indent=2)
                     
                     copied_files += 1
                 except Exception as e:
-                    logger.error(f"Failed to copy case file {case_file.name}: {e}")
+                    logger.error(f"Failed to copy file {data_file.name}: {e}")
             
-            logger.info(f"Successfully forked collection {source_collection_id} to {new_collection_id}. Copied {copied_files} case files.")
+            # Copy knowledge_documents database entries if this is a knowledge repository
+            if repo_type == "knowledge":
+                try:
+                    from trusted_data_agent.core.collection_db import CollectionDatabase
+                    db = CollectionDatabase()
+                    conn = db._get_connection()
+                    cursor = conn.cursor()
+                    
+                    # Get all documents from source collection
+                    cursor.execute("""
+                        SELECT document_id, filename, document_type, title, author, source, 
+                               category, tags, file_size, content_hash, created_at
+                        FROM knowledge_documents 
+                        WHERE collection_id = ?
+                    """, (source_collection_id,))
+                    
+                    docs = cursor.fetchall()
+                    
+                    # Insert into target collection
+                    for doc in docs:
+                        cursor.execute("""
+                            INSERT INTO knowledge_documents
+                            (collection_id, document_id, filename, document_type, title, author, 
+                             source, category, tags, file_size, content_hash, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (
+                            new_collection_id,
+                            doc['document_id'],
+                            doc['filename'],
+                            doc['document_type'],
+                            doc['title'],
+                            doc['author'],
+                            'forked',  # Mark as forked
+                            doc['category'],
+                            doc['tags'],
+                            doc['file_size'],
+                            doc['content_hash'],
+                            doc['created_at']
+                        ))
+                    
+                    conn.commit()
+                    conn.close()
+                    logger.info(f"Copied {len(docs)} document metadata entries for Knowledge repository fork")
+                except Exception as e:
+                    logger.error(f"Failed to copy knowledge_documents entries: {e}")
+            
+            logger.info(f"Successfully forked {repo_type} collection {source_collection_id} to {new_collection_id}. Copied {copied_files} files.")
             return new_collection_id
             
         except Exception as e:

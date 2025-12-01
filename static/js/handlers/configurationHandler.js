@@ -383,23 +383,20 @@ class ConfigurationState {
         // Create a copy with a new ID and modified name
         const newProfile = {
             ...profile,
-            id: generateId(),
+            id: `profile-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             name: `${profile.name} (Copy)`,
             tag: '' // Clear tag so user can generate/enter a new one
         };
         
-        // Add the copied profile
-        const response = await fetch('/api/v1/profiles', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newProfile)
-        });
-        
-        if (response.ok) {
+        // Add the copied profile using the proper API function
+        try {
+            await API.addProfile(newProfile);
             await this.loadProfiles();
             return newProfile;
+        } catch (error) {
+            console.error('[copyProfile] Error:', error);
+            return null;
         }
-        return null;
     }
 
     async removeProfile(profileId) {
@@ -1876,6 +1873,9 @@ export function renderProfiles() {
 function attachProfileEventListeners() {
     // Set Default Profile button
     document.querySelectorAll('[data-action="set-default-profile"]').forEach(btn => {
+        btn.replaceWith(btn.cloneNode(true)); // Remove old listeners
+    });
+    document.querySelectorAll('[data-action="set-default-profile"]').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const profileId = e.currentTarget.dataset.profileId;
             await configState.setDefaultProfile(profileId);
@@ -2046,16 +2046,22 @@ function attachProfileEventListeners() {
 
     // Edit Profile button
     document.querySelectorAll('[data-action="edit-profile"]').forEach(btn => {
+        btn.replaceWith(btn.cloneNode(true)); // Remove old listeners
+    });
+    document.querySelectorAll('[data-action="edit-profile"]').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const profileId = e.target.dataset.profileId;
+            const profileId = e.currentTarget.dataset.profileId;
             showProfileModal(profileId);
         });
     });
 
     // Copy Profile button
     document.querySelectorAll('[data-action="copy-profile"]').forEach(btn => {
+        btn.replaceWith(btn.cloneNode(true)); // Remove old listeners
+    });
+    document.querySelectorAll('[data-action="copy-profile"]').forEach(btn => {
         btn.addEventListener('click', async (e) => {
-            const profileId = e.target.dataset.profileId;
+            const profileId = e.currentTarget.dataset.profileId;
             const profile = configState.profiles.find(p => p.id === profileId);
             const profileName = profile ? profile.name : 'this profile';
             
@@ -2073,8 +2079,11 @@ function attachProfileEventListeners() {
 
     // Delete Profile button
     document.querySelectorAll('[data-action="delete-profile"]').forEach(btn => {
+        btn.replaceWith(btn.cloneNode(true)); // Remove old listeners
+    });
+    document.querySelectorAll('[data-action="delete-profile"]').forEach(btn => {
         btn.addEventListener('click', async (e) => {
-            const profileId = e.target.dataset.profileId;
+            const profileId = e.currentTarget.dataset.profileId;
             const profile = configState.profiles.find(p => p.id === profileId);
             const profileName = profile ? profile.name : 'this profile';
             
@@ -2557,22 +2566,26 @@ async function showProfileModal(profileId = null) {
         return `
             <div class="flex items-center justify-between px-3 py-2 bg-gray-800/30 ${hoverBg} rounded-lg border border-transparent ${hoverBorder} transition-all group">
                 <span class="text-sm text-gray-200 ${hoverText} transition-colors truncate flex-1 min-w-0">${escapeHtml(coll.name)}</span>
-                <div class="flex items-center flex-shrink-0" style="gap: 2rem;">
-                    <input type="checkbox" 
-                           data-collection-id="${coll.id}" 
-                           data-collection-type="query"
-                           ${isQueryEnabled ? 'checked' : ''} 
-                           class="${checkboxColor} rounded cursor-pointer" 
-                           style="width: 16px; height: 16px;">
-                    <label class="relative inline-block cursor-pointer" title="Enable autocomplete suggestions" style="width: 36px; height: 20px;">
+                <div class="flex items-center gap-6 flex-shrink-0">
+                    <div class="flex items-center justify-center" style="width: 40px;">
                         <input type="checkbox" 
                                data-collection-id="${coll.id}" 
-                               data-collection-type="autocomplete"
-                               ${defaultAutocomplete ? 'checked' : ''} 
-                               class="sr-only peer">
-                        <span class="absolute inset-0 bg-gray-700 rounded-full transition-colors peer-focus:ring-2 ${toggleFocus} peer-checked:${toggleBg}"></span>
-                        <span class="absolute left-0.5 top-0.5 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-4"></span>
-                    </label>
+                               data-collection-type="query"
+                               ${isQueryEnabled ? 'checked' : ''} 
+                               class="${checkboxColor} rounded cursor-pointer" 
+                               style="width: 16px; height: 16px;">
+                    </div>
+                    <div class="flex items-center justify-center" style="width: 95px;">
+                        <label class="relative inline-block cursor-pointer" title="Enable autocomplete suggestions" style="width: 44px; height: 24px;">
+                            <input type="checkbox" 
+                                   data-collection-id="${coll.id}" 
+                                   data-collection-type="autocomplete"
+                                   ${defaultAutocomplete ? 'checked' : ''} 
+                                   class="sr-only peer">
+                            <span class="absolute inset-0 bg-gray-700 rounded-full transition-colors peer-focus:ring-2 ${toggleFocus} peer-checked:${toggleBg}"></span>
+                            <span class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full transition-transform peer-checked:translate-x-5"></span>
+                        </label>
+                    </div>
                 </div>
             </div>
         `;
@@ -2594,38 +2607,9 @@ async function showProfileModal(profileId = null) {
     console.log('[Profile Modal] Knowledge collections count:', knowledgeCollections.length);
     knowledgeContainer.innerHTML = knowledgeHTML;
 
-    // Initialize Knowledge Configuration section
-    const knowledgeEnabledToggle = modal.querySelector('#profile-modal-knowledge-enabled');
-    const knowledgeConfigSettings = modal.querySelector('#knowledge-config-settings');
-    const minRelevanceInput = modal.querySelector('#profile-modal-knowledge-min-relevance');
-    const maxDocsInput = modal.querySelector('#profile-modal-knowledge-max-docs');
-    const maxTokensInput = modal.querySelector('#profile-modal-knowledge-max-tokens');
+    // Note: Global Knowledge Repository Configuration has been moved to Administration panel
+    // Per-collection reranking toggles remain in the profile modal
     const rerankingListContainer = modal.querySelector('#profile-modal-knowledge-reranking-list');
-    
-    // Load existing knowledge config if editing
-    if (profile?.knowledgeConfig) {
-        knowledgeEnabledToggle.checked = profile.knowledgeConfig.enabled !== false;
-        minRelevanceInput.value = profile.knowledgeConfig.minRelevanceScore || 0.70;
-        maxDocsInput.value = profile.knowledgeConfig.maxDocs || 3;
-        maxTokensInput.value = profile.knowledgeConfig.maxTokens || 2000;
-    } else {
-        // Set defaults for new profiles
-        knowledgeEnabledToggle.checked = true;
-        minRelevanceInput.value = 0.70;
-        maxDocsInput.value = 3;
-        maxTokensInput.value = 2000;
-    }
-    
-    // Toggle knowledge config visibility
-    const updateKnowledgeConfigVisibility = () => {
-        if (knowledgeEnabledToggle.checked) {
-            knowledgeConfigSettings.classList.remove('hidden');
-        } else {
-            knowledgeConfigSettings.classList.add('hidden');
-        }
-    };
-    knowledgeEnabledToggle.addEventListener('change', updateKnowledgeConfigVisibility);
-    updateKnowledgeConfigVisibility();
     
     // Update reranking list when knowledge collections change
     const updateRerankingList = () => {
@@ -2647,11 +2631,14 @@ async function showProfileModal(profileId = null) {
             return `
                 <div class="flex items-center justify-between px-3 py-2 bg-gray-800/30 hover:bg-purple-900/20 rounded-lg border border-transparent hover:border-purple-700/30 transition-all">
                     <span class="text-sm text-gray-200">${escapeHtml(collection?.name || `Collection ${collId}`)}</span>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" data-collection-id="${collId}" data-reranking="true" ${isRerankingEnabled ? 'checked' : ''} class="sr-only peer">
-                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                        <span class="ml-2 text-xs font-medium text-gray-400">Rerank</span>
-                    </label>
+                    <div class="flex items-center gap-3">
+                        <label class="relative inline-flex items-center cursor-pointer" style="width: 44px; height: 24px;">
+                            <input type="checkbox" data-collection-id="${collId}" data-reranking="true" ${isRerankingEnabled ? 'checked' : ''} class="sr-only peer">
+                            <span class="absolute inset-0 bg-gray-700 rounded-full transition-colors peer-focus:ring-2 peer-focus:ring-purple-500/50 peer-checked:bg-purple-600"></span>
+                            <span class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full transition-transform peer-checked:translate-x-5"></span>
+                        </label>
+                        <span class="text-xs font-medium text-gray-400 whitespace-nowrap">Rerank</span>
+                    </div>
                 </div>
             `;
         }).join('');
@@ -2733,6 +2720,30 @@ async function showProfileModal(profileId = null) {
     // Show the modal
     modal.classList.remove('hidden');
 
+    // Tab switching logic for MCP Resources vs Intelligence Collections
+    const mcpResourcesTab = modal.querySelector('#profile-tab-mcp-resources');
+    const intelligenceTab = modal.querySelector('#profile-tab-intelligence');
+    const mcpResourcesContent = modal.querySelector('#profile-content-mcp-resources');
+    const intelligenceContent = modal.querySelector('#profile-content-intelligence');
+
+    const switchToTab = (tabButton, contentDiv, otherTabButton, otherContentDiv) => {
+        // Update tab button styles
+        tabButton.classList.remove('border-transparent', 'text-gray-400');
+        tabButton.classList.add('border-[#F15F22]', 'text-white', 'bg-gray-800/50');
+        
+        otherTabButton.classList.remove('border-[#F15F22]', 'text-white', 'bg-gray-800/50');
+        otherTabButton.classList.add('border-transparent', 'text-gray-400');
+        
+        // Show/hide content
+        contentDiv.classList.remove('hidden');
+        otherContentDiv.classList.add('hidden');
+    };
+
+    if (mcpResourcesTab && intelligenceTab && mcpResourcesContent && intelligenceContent) {
+        mcpResourcesTab.onclick = () => switchToTab(mcpResourcesTab, mcpResourcesContent, intelligenceTab, intelligenceContent);
+        intelligenceTab.onclick = () => switchToTab(intelligenceTab, intelligenceContent, mcpResourcesTab, mcpResourcesContent);
+    }
+
     // Attach event listeners for uncheck all buttons
     const toolsUncheckBtn = modal.querySelector('#profile-modal-tools-uncheck-all');
     const promptsUncheckBtn = modal.querySelector('#profile-modal-prompts-uncheck-all');
@@ -2795,26 +2806,26 @@ async function showProfileModal(profileId = null) {
         const classificationModeRadio = modal.querySelector('input[name="classification-mode"]:checked');
         const classificationMode = classificationModeRadio ? classificationModeRadio.value : 'full';
 
-        // Build knowledgeConfig object
-        const knowledgeEnabled = modal.querySelector('#profile-modal-knowledge-enabled').checked;
-        const minRelevance = parseFloat(modal.querySelector('#profile-modal-knowledge-min-relevance').value) || 0.70;
-        const maxDocs = parseInt(modal.querySelector('#profile-modal-knowledge-max-docs').value) || 3;
-        const maxTokens = parseInt(modal.querySelector('#profile-modal-knowledge-max-tokens').value) || 2000;
-        
-        // Get selected knowledge collections with reranking settings
+        // Build knowledgeConfig object with per-collection reranking settings
+        // Note: Global knowledge settings (minRelevance, maxDocs, maxTokens) are now in Administration panel
+        // We still include them in the profile for backward compatibility; backend will use these or fall back to admin defaults
         const selectedKnowledgeIds = Array.from(knowledgeQueryCheckboxes).map(cb => parseInt(cb.dataset.collectionId));
-        const rerankingCheckboxes = modal.querySelector('#profile-modal-knowledge-reranking-list').querySelectorAll('input[data-reranking="true"]');
+        const rerankingListContainer = modal.querySelector('#profile-modal-knowledge-reranking-list');
+        const rerankingCheckboxes = rerankingListContainer ? rerankingListContainer.querySelectorAll('input[data-reranking="true"]') : [];
         const collectionsWithReranking = Array.from(rerankingCheckboxes).map(cb => ({
             id: parseInt(cb.dataset.collectionId),
             reranking: cb.checked
         }));
         
+        // Preserve existing knowledge config values or use undefined so backend uses admin defaults
+        const existingKnowledgeConfig = profile?.knowledgeConfig || {};
         const knowledgeConfig = {
-            enabled: knowledgeEnabled,
+            enabled: existingKnowledgeConfig.enabled !== false, // Default to enabled
             collections: collectionsWithReranking,
-            minRelevanceScore: minRelevance,
-            maxDocs: maxDocs,
-            maxTokens: maxTokens
+            // Preserve or omit these fields - backend will use admin panel defaults if not present
+            ...(existingKnowledgeConfig.minRelevanceScore !== undefined && { minRelevanceScore: existingKnowledgeConfig.minRelevanceScore }),
+            ...(existingKnowledgeConfig.maxDocs !== undefined && { maxDocs: existingKnowledgeConfig.maxDocs }),
+            ...(existingKnowledgeConfig.maxTokens !== undefined && { maxTokens: existingKnowledgeConfig.maxTokens })
         };
 
         const profileData = {

@@ -233,7 +233,15 @@ class StorageAdapter:
         # Prepare data for ChromaDB
         ids = [chunk.chunk_id for chunk in chunks]
         documents = [chunk.content for chunk in chunks]
-        metadatas = [chunk.metadata for chunk in chunks]
+        
+        # Add chunk_index and token count to metadata
+        metadatas = []
+        for chunk in chunks:
+            metadata = chunk.metadata.copy()
+            metadata['chunk_index'] = chunk.chunk_index
+            # Calculate approximate token count (rough estimate: ~4 chars per token)
+            metadata['tokens'] = len(chunk.content) // 4
+            metadatas.append(metadata)
         
         # Store in ChromaDB
         collection.upsert(
