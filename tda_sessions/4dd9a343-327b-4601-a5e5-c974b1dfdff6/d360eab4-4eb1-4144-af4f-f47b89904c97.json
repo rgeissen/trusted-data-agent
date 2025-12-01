@@ -1,0 +1,60 @@
+{
+  "id": "d360eab4-4eb1-4144-af4f-f47b89904c97",
+  "user_uuid": "4dd9a343-327b-4601-a5e5-c974b1dfdff6",
+  "system_prompt_template": null,
+  "charting_intensity": "medium",
+  "provider": "Google",
+  "model": "gemini-2.0-flash",
+  "profile_tag": "GOGET",
+  "profile_id": null,
+  "profile_tags_used": [
+    "GOGET"
+  ],
+  "models_used": [
+    "Google/gemini-2.0-flash"
+  ],
+  "session_history": [
+    {
+      "role": "user",
+      "content": "What is a primary index?",
+      "isValid": true,
+      "turn_number": 1,
+      "source": "text"
+    }
+  ],
+  "chat_object": [
+    {
+      "role": "user",
+      "content": "You are a helpful assistant.",
+      "turn_number": 0
+    },
+    {
+      "role": "model",
+      "content": "Understood.",
+      "turn_number": 0
+    },
+    {
+      "role": "user",
+      "content": "What is a primary index?",
+      "isValid": true,
+      "turn_number": 1
+    }
+  ],
+  "name": "New Chat",
+  "created_at": "2025-12-01T17:02:32.006491",
+  "last_updated": "2025-12-01T17:03:37.272106",
+  "input_tokens": 224704,
+  "output_tokens": 3847,
+  "last_turn_data": {
+    "workflow_history": []
+  },
+  "full_context_sent": false,
+  "license_info": {
+    "holder": "GNU Affero General Public License v3.0",
+    "issued_at": "2025-11-10T19:25:00.506556+00:00",
+    "expires_at": "2026-11-10T19:25:00.506556+00:00",
+    "version": "1.5-tiered",
+    "tier": "App Developer",
+    "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
+  }
+}

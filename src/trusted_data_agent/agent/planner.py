@@ -1177,17 +1177,6 @@ Ranking:"""
         if self.executor.active_prompt_name:
             active_prompt_context_section = f"\n- Active Prompt: You are currently executing the '{self.executor.active_prompt_name}' prompt. Do not call it again."
 
-        decision_making_process_str = ""
-        if APP_CONFIG.ALLOW_SYNTHESIS_FROM_HISTORY:
-            decision_making_process_str = (
-                "2.  **Check History First**: If the `Workflow History` contains enough information to fully answer the user's `GOAL`, your response **MUST be a single JSON object** for a one-phase plan. This plan **MUST** call the `TDA_ContextReport` tool. You **MUST** write the complete, final answer text inside the `answer_from_context` argument within that tool call. **You are acting as a planner; DO NOT use the `FINAL_ANSWER:` format.**\n\n"
-                "3.  **Default to Data Gathering**: If the history is insufficient, you **MUST** create a new plan to gather the necessary data using the available tools. Your primary objective is to answer the user's `GOAL` using data from these tools."
-            )
-        else:
-            decision_making_process_str = (
-                "2.  **Data Gathering**: Your primary objective is to answer the user's `GOAL` by creating a plan to gather the necessary data using the available tools."
-            )
-
         constraints_section = self.executor.dependencies['STATE'].get("constraints_context", "")
 
         sql_consolidation_rule_str = ""
@@ -1341,7 +1330,6 @@ Ranking:"""
             turn_action_history=previous_turn_summary_str,
             execution_depth=self.executor.execution_depth,
             active_prompt_context_section=active_prompt_context_section,
-            decision_making_process=decision_making_process_str,
             mcp_system_name=APP_CONFIG.MCP_SYSTEM_NAME,
             replan_instructions=replan_context or "",
             constraints_section=constraints_section,
