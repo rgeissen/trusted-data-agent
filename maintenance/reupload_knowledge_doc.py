@@ -1,4 +1,29 @@
-#!/usr/bin/env python3
+# Check the app logs for connection errors
+tail -100 /app/logs/*.log | grep -i "mcp\|connection\|error" | tail -30
+
+# Or if logs aren't available, check if the MCP client can actually connect
+python -c "
+import asyncio
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+async def test_mcp():
+    try:
+        # Test the actual MCP connection the way your app does it
+        server_params = StdioServerParameters(
+            command='python',
+            args=['-m', 'mcp_server'],
+            env=None
+        )
+        async with stdio_client(server_params) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                print('MCP connection successful!')
+    except Exception as e:
+        print(f'MCP connection failed: {e}')
+
+asyncio.run(test_mcp())
+"#!/usr/bin/env python3
 """
 Re-upload knowledge document to collection 2 with proper chunking.
 """
