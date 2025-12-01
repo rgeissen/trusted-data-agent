@@ -820,70 +820,164 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
 }
 
 
-/* Connection status dot styling */
+/* ============================================================================
+   INDUSTRIAL STATUS BAR DESIGN
+   ============================================================================ */
+
+/* Premium Status Bar Container */
+.status-bar-section {
+    background: linear-gradient(90deg, 
+                                rgba(255, 255, 255, 0.03) 0%, 
+                                rgba(255, 255, 255, 0.06) 50%,
+                                rgba(255, 255, 255, 0.03) 100%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2),
+                0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.status-bar-section:hover {
+    background: linear-gradient(90deg, 
+                                rgba(255, 255, 255, 0.04) 0%, 
+                                rgba(255, 255, 255, 0.08) 50%,
+                                rgba(255, 255, 255, 0.04) 100%);
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25),
+                0 1px 0 rgba(255, 255, 255, 0.08) inset;
+}
+
+/* Status Item Interactive Container */
+.status-item {
+    position: relative;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.status-item:hover .status-label {
+    color: white;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    letter-spacing: 0.1em;
+}
+
+/* Premium Status Label */
+.status-label {
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Enhanced Connection Status Dots */
 @keyframes blink {
     50% { background-color: #facc15; box-shadow: 0 0 8px #facc15; } /* yellow-400 */
 }
 
 .connection-dot {
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
-    transition: background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1),
+                0 0 12px currentColor;
 }
+
+/* Outer ring indicator */
+.connection-dot::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    opacity: 0.2;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.connection-dot:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.15),
+                0 0 20px currentColor;
+}
+
+.connection-dot:hover::before {
+    opacity: 0.4;
+    inset: -5px;
+}
+
+/* Status States - Enhanced with gradients and depth */
 .connection-dot.disconnected {
-    background-color: #ef4444; /* red-500 */
+    background: radial-gradient(circle, #ef4444 0%, #dc2626 100%);
     color: #ef4444;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15),
+                0 0 12px rgba(239, 68, 68, 0.5);
 }
+
 .connection-dot.connected {
-    background-color: #10b981; /* green-500 */
-    box-shadow: 0 0 8px #10b981;
+    background: radial-gradient(circle, #10b981 0%, #059669 100%);
     color: #10b981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2),
+                0 0 16px rgba(16, 185, 129, 0.6);
 }
+
 .connection-dot.reconnecting {
-    background-color: #facc15; /* yellow-400 */
-    box-shadow: 0 0 8px #facc15;
+    background: radial-gradient(circle, #facc15 0%, #f59e0b 100%);
     color: #facc15;
+    box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.2),
+                0 0 12px rgba(250, 204, 21, 0.6);
 }
+
 .connection-dot.idle {
-    background-color: #10b981; /* green-500 */
-    box-shadow: 0 0 8px #10b981;
+    background: radial-gradient(circle, #10b981 0%, #059669 100%);
     color: #10b981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2),
+                0 0 16px rgba(16, 185, 129, 0.6);
 }
+
 .connection-dot.busy {
-    background-color: #facc15; /* yellow-400 */
-    box-shadow: 0 0 8px #facc15;
+    background: radial-gradient(circle, #facc15 0%, #f59e0b 100%);
     color: #facc15;
+    box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.2),
+                0 0 12px rgba(250, 204, 21, 0.6);
 }
+
 .connection-dot.context-last-turn-temp {
-    background-color: #facc15; /* yellow-400 */
-    box-shadow: 0 0 8px #facc15;
+    background: radial-gradient(circle, #facc15 0%, #f59e0b 100%);
     color: #facc15;
+    box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.2),
+                0 0 12px rgba(250, 204, 21, 0.6);
 }
+
 .connection-dot.context-last-turn-locked {
-    background-color: var(--teradata-orange);
-    box-shadow: 0 0 8px var(--teradata-orange);
+    background: radial-gradient(circle, var(--teradata-orange) 0%, var(--teradata-orange-dark) 100%);
     color: var(--teradata-orange);
+    box-shadow: 0 0 0 2px rgba(241, 95, 34, 0.25),
+                0 0 16px rgba(241, 95, 34, 0.7);
 }
 
 .connection-dot.pulsing {
     animation: pulse 1.2s infinite ease-in-out;
 }
 
-/* Knowledge indicator states */
+/* Knowledge indicator states - enhanced */
 .connection-dot.knowledge-idle {
-    background-color: #6b7280; /* gray-500 */
-    opacity: 0.5;
+    background: radial-gradient(circle, #6b7280 0%, #4b5563 100%);
+    color: #6b7280;
+    opacity: 0.6;
+    box-shadow: 0 0 0 2px rgba(107, 114, 128, 0.1),
+                0 0 8px rgba(107, 114, 128, 0.3);
 }
+
 .connection-dot.knowledge-configured {
-    background-color: #10b981; /* emerald-500 - green for available */
-    box-shadow: 0 0 8px #10b981;
+    background: radial-gradient(circle, #10b981 0%, #059669 100%);
     color: #10b981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2),
+                0 0 16px rgba(16, 185, 129, 0.6);
 }
+
 .connection-dot.knowledge-active {
-    background-color: #a855f7; /* purple-500 - purple for in use */
-    box-shadow: 0 0 8px #a855f7;
+    background: radial-gradient(circle, #a855f7 0%, #9333ea 100%);
     color: #a855f7;
+    box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.25),
+                0 0 16px rgba(168, 85, 247, 0.7);
 }
 
 
