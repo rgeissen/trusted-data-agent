@@ -70,7 +70,7 @@ class AppConfig:
     # Knowledge Repository Configuration (Knowledge Repositories = Domain Knowledge RAG)
     KNOWLEDGE_RAG_ENABLED = True # Master switch for knowledge repository retrieval during planning
     KNOWLEDGE_RAG_NUM_DOCS = 3 # Number of knowledge documents to retrieve per planning call
-    KNOWLEDGE_MIN_RELEVANCE_SCORE = 0.70 # Minimum similarity score for knowledge document retrieval (0.0-1.0)
+    KNOWLEDGE_MIN_RELEVANCE_SCORE = 0.30  # Lowered for testing - may need better embeddings # Minimum similarity score for knowledge document retrieval (0.0-1.0)
     KNOWLEDGE_MAX_TOKENS = 2000 # Maximum tokens for all knowledge context combined
     KNOWLEDGE_RERANKING_ENABLED = False # Global default for LLM reranking (can be overridden per collection in profiles)
     

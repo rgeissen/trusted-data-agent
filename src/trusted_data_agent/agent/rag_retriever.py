@@ -317,12 +317,26 @@ class RAGRetriever:
     def _load_active_collections(self):
         """
         Loads and initializes enabled collections.
-        If an MCP server is configured, only loads collections for that server.
-        If no MCP server is configured (startup), loads all enabled collections for viewing.
+        Loads both planner repositories (from APP_STATE) and knowledge repositories (from database).
         """
-        collections_list = APP_STATE.get("rag_collections", [])
+        # Load planner repositories from APP_STATE
+        planner_collections = APP_STATE.get("rag_collections", [])
+        
+        # Load knowledge repositories from database
+        from trusted_data_agent.core.collection_db import get_collection_db
+        collection_db = get_collection_db()
+        all_collections_from_db = collection_db.get_all_collections()
+        knowledge_collections = [c for c in all_collections_from_db if c.get('repository_type') == 'knowledge' and c.get('enabled')]
+        
+        # Combine both lists
+        collections_list = planner_collections + knowledge_collections
+        
         current_mcp_server_id = APP_CONFIG.CURRENT_MCP_SERVER_ID
         
+        logger.info(f"Loading collections: {len(planner_collections)} planner, {len(knowledge_collections)} knowledge")
+        
+        # Planner collections are filtered by MCP server
+        # Knowledge collections are always loaded (not tied to MCP servers)
         # If no MCP server configured, load all enabled collections for viewing
         if not current_mcp_server_id:
             logger.info("No MCP server configured - loading all enabled collections for viewing")
@@ -338,9 +352,14 @@ class RAGRetriever:
             coll_id = coll_meta["id"]
             coll_name = coll_meta["collection_name"]
             coll_mcp_server_id = coll_meta.get("mcp_server_id")
+            repo_type = coll_meta.get("repository_type", "planner")
             
-            # Only filter by MCP server if one is configured
-            if filter_by_mcp and coll_mcp_server_id != current_mcp_server_id:
+            # Knowledge repositories are always loaded (not tied to MCP servers)
+            # Planner repositories are filtered by MCP server
+            if repo_type == "knowledge":
+                # Always load knowledge repositories
+                pass
+            elif filter_by_mcp and coll_mcp_server_id != current_mcp_server_id:
                 logger.debug(f"Skipping collection '{coll_id}': associated with server ID '{coll_mcp_server_id}', current server ID is '{current_mcp_server_id}'")
                 continue
             
@@ -351,7 +370,7 @@ class RAGRetriever:
                     metadata={"hnsw:space": "cosine"}
                 )
                 self.collections[coll_id] = collection
-                logger.info(f"Loaded collection '{coll_id}' (ChromaDB: '{coll_name}', MCP Server ID: '{coll_mcp_server_id}')")
+                logger.info(f"Loaded {repo_type} collection '{coll_id}' (ChromaDB: '{coll_name}')")
             except KeyError as e:
                 if "'_type'" in str(e):
                     logger.error(f"Collection '{coll_id}' has corrupted metadata (missing _type field). Attempting to delete and recreate...")

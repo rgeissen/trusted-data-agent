@@ -169,6 +169,7 @@ class PlanExecutor:
         
         # --- PHASE 2: Track knowledge repository access ---
         self.knowledge_accessed = []  # List of {collection_id, collection_name, document_count} during planning
+        self.knowledge_retrieval_event = None  # Store the knowledge retrieval event for replay
         # --- PHASE 2 END ---
 
 
@@ -941,7 +942,10 @@ class PlanExecutor:
                                     "timestamp": datetime.now(timezone.utc).isoformat()
                                 })
                             
+                            # Store the full event for replay when plan is reloaded
+                            self.knowledge_retrieval_event = data
                             app_logger.info(f"Tracked knowledge retrieval: {len(collections)} collection(s), {document_count} document(s)")
+                            app_logger.debug(f"Stored knowledge_retrieval_event with {len(data.get('chunks', []))} chunks")
                         # --- PHASE 2 END ---
                         
                         # Pass through to the original event handler
@@ -1195,7 +1199,8 @@ class PlanExecutor:
                     "rag_source_collection_id": self.rag_source_collection_id,
                     # --- MODIFICATION END ---
                     # --- PHASE 2: Add knowledge repository tracking ---
-                    "knowledge_accessed": self.knowledge_accessed  # List of knowledge collections used
+                    "knowledge_accessed": self.knowledge_accessed,  # List of knowledge collections used
+                    "knowledge_retrieval_event": self.knowledge_retrieval_event  # Full event for replay on reload
                     # --- PHASE 2 END ---
                 }
                 # --- MODIFICATION END ---

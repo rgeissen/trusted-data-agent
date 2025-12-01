@@ -447,7 +447,14 @@ async function handleReloadPlanClick(element) {
         }
 
         // Render the historical trace using the new UI function
-        UI.renderHistoricalTrace(turnData.original_plan || [], turnData.execution_trace || [], turnId, turnData.user_query);
+        // Pass knowledge_retrieval_event so it renders FIRST (before execution trace)
+        UI.renderHistoricalTrace(
+            turnData.original_plan || [], 
+            turnData.execution_trace || [], 
+            turnId, 
+            turnData.user_query,
+            turnData.knowledge_retrieval_event || null  // Pass knowledge event for proper ordering
+        );
 
         // --- MODIFICATION START: Update task ID display for reloaded turn ---
         // Prioritize task_id if available in turnData, otherwise use turnId as fallback

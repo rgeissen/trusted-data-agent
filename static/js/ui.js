@@ -22,7 +22,7 @@ import { handleReplayQueryClick } from './eventHandlers.js';
  * @param {string|number} turnId - The ID of the turn being displayed.
  * @param {string} userQuery - The original user query for this turn.
  */
-export function renderHistoricalTrace(originalPlan = [], executionTrace = [], turnId, userQuery = 'N/A') {
+export function renderHistoricalTrace(originalPlan = [], executionTrace = [], turnId, userQuery = 'N/A', knowledgeRetrievalEvent = null) {
     DOM.statusWindowContent.innerHTML = ''; // Clear previous content
     state.currentStatusId = 0; // Reset status ID counter for this rendering
     state.isInFastPath = false; // Reset fast path flag
@@ -34,6 +34,16 @@ export function renderHistoricalTrace(originalPlan = [], executionTrace = [], tu
     titleEl.className = 'text-lg font-bold text-white mb-4 p-3 bg-gray-900/50 rounded-md';
     titleEl.textContent = `Reloaded Details for Turn ${turnId}`;
     DOM.statusWindowContent.appendChild(titleEl);
+
+    // --- PHASE 2: Render knowledge retrieval event FIRST if present ---
+    if (knowledgeRetrievalEvent) {
+        updateStatusWindow({
+            step: 'Knowledge Retrieved',
+            details: knowledgeRetrievalEvent,
+            type: 'knowledge_retrieval'
+        }, false, 'knowledge_retrieval');
+    }
+    // --- PHASE 2 END ---
 
     // 2. Iterate through the new, rich execution trace
     executionTrace.forEach(traceEntry => {
@@ -1991,6 +2001,10 @@ export function updateKnowledgeIndicator(collections, documentCount) {
         collectionsList.textContent = collections.join(', ') + ` (${documentCount} docs)`;
         knowledgeBanner.classList.remove('hidden');
     }
+
+    // Reset indicator to configured state (green) after successful retrieval
+    knowledgeDot.classList.remove('knowledge-idle', 'knowledge-active');
+    knowledgeDot.classList.add('knowledge-configured');
 
     // Hide banner after 8 seconds
     setTimeout(() => {

@@ -1036,9 +1036,13 @@ Ranking:"""
         balanced_results = self._balance_collection_diversity(all_results, max_docs)
         
         app_logger.info(f"Selected {len(balanced_results)} knowledge documents for planning (balanced across collections)")
+        app_logger.info(f"[KNOWLEDGE DEBUG] Balanced results: {[{k: v for k, v in doc.items() if k in ['collection_name', 'similarity_score']} for doc in balanced_results]}")
         
         # 6. Format with token limits
         formatted_knowledge = self._format_with_token_limit(balanced_results, max_tokens)
+        
+        app_logger.info(f"[KNOWLEDGE DEBUG] Formatted knowledge length: {len(formatted_knowledge)} chars")
+        app_logger.info(f"[KNOWLEDGE DEBUG] Formatted knowledge preview: {formatted_knowledge[:500] if formatted_knowledge else '(EMPTY)'}")
         
         # Track which collections were accessed for event logging
         accessed_collections = list(set(doc.get("collection_name") for doc in balanced_results if doc.get("collection_name")))
@@ -1203,60 +1207,7 @@ Ranking:"""
         else:
             reporting_tool_name_injection = "TDA_FinalReport"
 
-        # --- PLANNER REPOSITORIES: Few-shot examples for execution patterns ---
-        rag_few_shot_examples_str = ""
-        if self.rag_retriever:
-            # Determine which collections to query based on profile
-            allowed_collection_ids = None
-            if self.executor.profile_override_id or self.executor.user_uuid:
-                try:
-                    from trusted_data_agent.core.config_manager import get_config_manager
-                    config_manager = get_config_manager()
-                    profiles = config_manager.get_profiles()
-                    
-                    # Use override profile if active, otherwise use default
-                    profile_id = self.executor.profile_override_id
-                    if not profile_id:
-                        profile_id = config_manager.get_default_profile_id()
-                    
-                    if profile_id:
-                        profile = next((p for p in profiles if p.get("id") == profile_id), None)
-                        if profile:
-                            autocomplete_collections = profile.get("autocompleteCollections", ["*"])
-                            if autocomplete_collections != ["*"]:
-                                allowed_collection_ids = set(autocomplete_collections)
-                                app_logger.info(f"RAG retrieval filtered to collections: {allowed_collection_ids} (profile: {profile.get('name')})")
-                except Exception as e:
-                    app_logger.warning(f"Failed to get profile collections for RAG filtering: {e}")
-            
-            # --- MODIFICATION START: Create RAGAccessContext for user-aware retrieval ---
-            rag_context = RAGAccessContext(
-                user_id=self.executor.user_uuid,
-                retriever=self.rag_retriever
-            )
-            
-            retrieved_cases = self.rag_retriever.retrieve_examples(
-                query=self.executor.original_user_input,
-                k=APP_CONFIG.RAG_NUM_EXAMPLES,
-                allowed_collection_ids=allowed_collection_ids,
-                rag_context=rag_context,  # --- MODIFICATION: Pass context ---
-                repository_type="planner"  # Explicitly retrieve from planner repositories
-            )
-            # --- MODIFICATION END ---
-            if retrieved_cases:
-                if self.event_handler:
-                    # Send the full case data of the first (most relevant) case
-                    await self.event_handler({
-                        "case_id": retrieved_cases[0]['case_id'],
-                        "full_case_data": retrieved_cases[0]['full_case_data']
-                    }, "rag_retrieval")
-                formatted_examples = [self.rag_retriever._format_few_shot_example(case) for case in retrieved_cases]
-                rag_few_shot_examples_str = "\n\n" + "\n".join(formatted_examples) + "\n\n"
-                app_logger.info(f"Retrieved RAG cases for few-shot examples: {[case['case_id'] for case in retrieved_cases]}")
-            else:
-                app_logger.info("No relevant RAG cases found for few-shot examples.")
-        
-        # --- KNOWLEDGE REPOSITORIES: Domain knowledge context ---
+        # --- KNOWLEDGE REPOSITORIES: Domain knowledge context (retrieved FIRST to inform RAG decision) ---
         knowledge_context_str = ""
         app_logger.info(f"[KNOWLEDGE DEBUG] Starting knowledge retrieval: rag_retriever={self.rag_retriever is not None}, KNOWLEDGE_RAG_ENABLED={APP_CONFIG.KNOWLEDGE_RAG_ENABLED}")
         
@@ -1309,19 +1260,80 @@ Ranking:"""
                                 "chunk_index": doc.get("chunk_index", 0)
                             })
                     
+                    event_details = {
+                        "summary": f"Retrieved {self.tracked_knowledge_doc_count} relevant documents from {len(self.tracked_knowledge_collections)} knowledge collection(s)",
+                        "collections": self.tracked_knowledge_collections,
+                        "document_count": self.tracked_knowledge_doc_count,
+                        "chunks": knowledge_chunks
+                    }
+                    
+                    # Yield SSE event for live UI display
                     yield self.executor._format_sse({
                         "step": "Knowledge Retrieved",
                         "type": "knowledge_retrieval",
-                        "details": {
-                            "summary": f"Retrieved {self.tracked_knowledge_doc_count} relevant documents from {len(self.tracked_knowledge_collections)} knowledge collection(s)",
-                            "collections": self.tracked_knowledge_collections,
-                            "document_count": self.tracked_knowledge_doc_count,
-                            "chunks": knowledge_chunks
-                        }
+                        "details": event_details
                     })
+                    
+                    # Call event handler to capture event for turn summary storage
+                    if self.event_handler:
+                        await self.event_handler(event_details, "knowledge_retrieval")
             else:
                 app_logger.debug("No knowledge context retrieved for planning")
 
+        # --- PLANNER REPOSITORIES: Few-shot examples for execution patterns ---
+        # Include RAG examples alongside knowledge context - Directive 3 will decide the best approach
+        rag_few_shot_examples_str = ""
+        
+        if self.rag_retriever:
+            # Determine which collections to query based on profile
+            allowed_collection_ids = None
+            if self.executor.profile_override_id or self.executor.user_uuid:
+                try:
+                    from trusted_data_agent.core.config_manager import get_config_manager
+                    config_manager = get_config_manager()
+                    profiles = config_manager.get_profiles()
+                    
+                    # Use override profile if active, otherwise use default
+                    profile_id = self.executor.profile_override_id
+                    if not profile_id:
+                        profile_id = config_manager.get_default_profile_id()
+                    
+                    if profile_id:
+                        profile = next((p for p in profiles if p.get("id") == profile_id), None)
+                        if profile:
+                            autocomplete_collections = profile.get("autocompleteCollections", ["*"])
+                            if autocomplete_collections != ["*"]:
+                                allowed_collection_ids = set(autocomplete_collections)
+                                app_logger.info(f"RAG retrieval filtered to collections: {allowed_collection_ids} (profile: {profile.get('name')})")
+                except Exception as e:
+                    app_logger.warning(f"Failed to get profile collections for RAG filtering: {e}")
+            
+            # --- MODIFICATION START: Create RAGAccessContext for user-aware retrieval ---
+            rag_context = RAGAccessContext(
+                user_id=self.executor.user_uuid,
+                retriever=self.rag_retriever
+            )
+            
+            retrieved_cases = self.rag_retriever.retrieve_examples(
+                query=self.executor.original_user_input,
+                k=APP_CONFIG.RAG_NUM_EXAMPLES,
+                allowed_collection_ids=allowed_collection_ids,
+                rag_context=rag_context,  # --- MODIFICATION: Pass context ---
+                repository_type="planner"  # Explicitly retrieve from planner repositories
+            )
+            # --- MODIFICATION END ---
+            if retrieved_cases:
+                if self.event_handler:
+                    # Send the full case data of the first (most relevant) case
+                    await self.event_handler({
+                        "case_id": retrieved_cases[0]['case_id'],
+                        "full_case_data": retrieved_cases[0]['full_case_data']
+                    }, "rag_retrieval")
+                formatted_examples = [self.rag_retriever._format_few_shot_example(case) for case in retrieved_cases]
+                rag_few_shot_examples_str = "\n\n" + "\n".join(formatted_examples) + "\n\n"
+                app_logger.info(f"Retrieved RAG cases for few-shot examples: {[case['case_id'] for case in retrieved_cases]}")
+            else:
+                app_logger.info("No relevant RAG cases found for few-shot examples.")
 
         planning_prompt = WORKFLOW_META_PLANNING_PROMPT.format(
             workflow_goal=self.executor.workflow_goal_prompt,

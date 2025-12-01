@@ -2727,6 +2727,21 @@ async function showProfileModal(profileId = null) {
     profileTagInput.value = profile ? (profile.tag || '').replace('@', '') : '';
     profileDescInput.value = profile ? profile.description : '';
 
+    // Set advanced knowledge configuration fields
+    const minRelevanceInput = modal.querySelector('#profile-modal-min-relevance');
+    const maxDocsInput = modal.querySelector('#profile-modal-max-docs');
+    const maxTokensInput = modal.querySelector('#profile-modal-max-tokens');
+    
+    if (profile?.knowledgeConfig) {
+        minRelevanceInput.value = profile.knowledgeConfig.minRelevanceScore !== undefined ? profile.knowledgeConfig.minRelevanceScore : '';
+        maxDocsInput.value = profile.knowledgeConfig.maxDocs !== undefined ? profile.knowledgeConfig.maxDocs : '';
+        maxTokensInput.value = profile.knowledgeConfig.maxTokens !== undefined ? profile.knowledgeConfig.maxTokens : '';
+    } else {
+        minRelevanceInput.value = '';
+        maxDocsInput.value = '';
+        maxTokensInput.value = '';
+    }
+
     // Tag generation function
     function generateTag() {
         const llmConfig = configState.llmConfigurations.find(c => c.id === llmSelect.value);
@@ -2895,16 +2910,38 @@ async function showProfileModal(profileId = null) {
             reranking: cb.checked
         }));
         
-        // Preserve existing knowledge config values or use undefined so backend uses admin defaults
-        const existingKnowledgeConfig = profile?.knowledgeConfig || {};
+        // Read advanced knowledge configuration fields
+        const minRelevanceInput = modal.querySelector('#profile-modal-min-relevance');
+        const maxDocsInput = modal.querySelector('#profile-modal-max-docs');
+        const maxTokensInput = modal.querySelector('#profile-modal-max-tokens');
+        
+        // Build knowledge config - only include fields that have values
         const knowledgeConfig = {
-            enabled: existingKnowledgeConfig.enabled !== false, // Default to enabled
-            collections: collectionsWithReranking,
-            // Preserve or omit these fields - backend will use admin panel defaults if not present
-            ...(existingKnowledgeConfig.minRelevanceScore !== undefined && { minRelevanceScore: existingKnowledgeConfig.minRelevanceScore }),
-            ...(existingKnowledgeConfig.maxDocs !== undefined && { maxDocs: existingKnowledgeConfig.maxDocs }),
-            ...(existingKnowledgeConfig.maxTokens !== undefined && { maxTokens: existingKnowledgeConfig.maxTokens })
+            enabled: true, // Always enabled when collections are selected
+            collections: collectionsWithReranking
         };
+        
+        // Add optional fields only if user specified them (non-empty)
+        if (minRelevanceInput.value !== '') {
+            const minRel = parseFloat(minRelevanceInput.value);
+            if (!isNaN(minRel) && minRel >= 0 && minRel <= 1) {
+                knowledgeConfig.minRelevanceScore = minRel;
+            }
+        }
+        
+        if (maxDocsInput.value !== '') {
+            const maxDocs = parseInt(maxDocsInput.value);
+            if (!isNaN(maxDocs) && maxDocs >= 1) {
+                knowledgeConfig.maxDocs = maxDocs;
+            }
+        }
+        
+        if (maxTokensInput.value !== '') {
+            const maxTokens = parseInt(maxTokensInput.value);
+            if (!isNaN(maxTokens) && maxTokens >= 500) {
+                knowledgeConfig.maxTokens = maxTokens;
+            }
+        }
 
         const profileData = {
             id: profile ? profile.id : `profile-${generateId()}`,
