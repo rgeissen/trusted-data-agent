@@ -32,6 +32,10 @@ function updateSessionHeaderProfile(defaultProfile, overrideProfile) {
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     };
     
+    // Update knowledge indicator based on active profile
+    const profile = overrideProfile || defaultProfile;
+    updateKnowledgeIndicatorStatus(profile);
+    
     // Update default profile
     if (defaultProfile && defaultProfile.tag) {
         headerDefaultProfileTag.textContent = `@${defaultProfile.tag}`;
@@ -63,8 +67,36 @@ function updateSessionHeaderProfile(defaultProfile, overrideProfile) {
     }
 }
 
+// Update knowledge indicator based on all active profiles' knowledge collections
+function updateKnowledgeIndicatorStatus(profile) {
+    const knowledgeDot = document.getElementById('knowledge-status-dot');
+    if (!knowledgeDot) return;
+    
+    // Check if ANY active-for-consumption profile has knowledge collections
+    let hasActiveKnowledgeCollections = false;
+    
+    if (window.configState && window.configState.profiles) {
+        const activeProfiles = window.configState.profiles.filter(p => 
+            window.configState.activeForConsumptionProfileIds.includes(p.id)
+        );
+        
+        hasActiveKnowledgeCollections = activeProfiles.some(p => 
+            p.knowledgeConfig?.collections?.length > 0
+        );
+    }
+    
+    if (hasActiveKnowledgeCollections) {
+        knowledgeDot.classList.remove('knowledge-idle', 'knowledge-active');
+        knowledgeDot.classList.add('knowledge-configured');
+    } else {
+        knowledgeDot.classList.remove('knowledge-configured', 'knowledge-active');
+        knowledgeDot.classList.add('knowledge-idle');
+    }
+}
+
 // Make it globally accessible
 window.updateSessionHeaderProfile = updateSessionHeaderProfile;
+window.updateKnowledgeIndicatorStatus = updateKnowledgeIndicatorStatus;
 
 async function initializeRAGAutoCompletion() {
     const suggestionsContainer = document.getElementById('rag-suggestions-container');

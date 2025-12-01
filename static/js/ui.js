@@ -1953,9 +1953,9 @@ export function blinkKnowledgeDot() {
     const knowledgeDot = document.getElementById('knowledge-status-dot');
     if (!knowledgeDot) return;
 
-    // Ensure it's in the 'knowledge-active' state before blinking
+    // Switch to 'knowledge-active' (purple) state during active use
     if (!knowledgeDot.classList.contains('knowledge-active')) {
-        knowledgeDot.classList.remove('knowledge-idle');
+        knowledgeDot.classList.remove('knowledge-idle', 'knowledge-configured');
         knowledgeDot.classList.add('knowledge-active');
     }
 
@@ -1964,6 +1964,8 @@ export function blinkKnowledgeDot() {
     // The animation runs for 1.5s (0.5s * 3 iterations)
     setTimeout(() => {
         knowledgeDot.classList.remove('blinking-purple');
+        // After blinking, return to configured state if appropriate
+        // (The profile update will handle setting it back to configured/idle)
     }, 1500);
 }
 

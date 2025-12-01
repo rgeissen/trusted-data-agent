@@ -421,6 +421,11 @@ class ConfigurationState {
     async setActiveForConsumptionProfiles(profileIds) {
         await API.setActiveForConsumptionProfiles(profileIds);
         this.activeForConsumptionProfileIds = profileIds;
+        
+        // Update knowledge indicator when active profiles change
+        if (typeof window.updateKnowledgeIndicatorStatus === 'function') {
+            window.updateKnowledgeIndicatorStatus();
+        }
     }
 
     async loadMCPServers() {

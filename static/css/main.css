@@ -875,8 +875,13 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     background-color: #6b7280; /* gray-500 */
     opacity: 0.5;
 }
+.connection-dot.knowledge-configured {
+    background-color: #10b981; /* emerald-500 - green for available */
+    box-shadow: 0 0 8px #10b981;
+    color: #10b981;
+}
 .connection-dot.knowledge-active {
-    background-color: #a855f7; /* purple-500 */
+    background-color: #a855f7; /* purple-500 - purple for in use */
     box-shadow: 0 0 8px #a855f7;
     color: #a855f7;
 }
