@@ -4,6 +4,12 @@
 
 The Intelligence Marketplace is a comprehensive feature enabling users to share, discover, and leverage community-curated RAG (Retrieval-Augmented Generation) collections. This marketplace transforms isolated knowledge bases into a collaborative ecosystem where users benefit from proven execution patterns and domain expertise.
 
+The marketplace supports **two distinct repository types:**
+- **Planner Repositories:** Execution patterns and strategies for proven task completion
+- **Knowledge Repositories:** Reference documents and domain knowledge for planning context
+
+Both types can be published, subscribed to, forked, and rated through a unified marketplace interface with visual separation for clarity.
+
 **Implementation Date:** 2024  
 **Total Implementation:** 4 Phases  
 **Lines of Code:** ~3,500 lines (backend + frontend)  
@@ -33,15 +39,18 @@ AI agents powered by LLMs face several challenges:
 - **Token Inefficiency**: Repeated trial-and-error consumes tokens
 - **Knowledge Isolation**: Users solve identical problems independently
 - **Quality Variance**: No mechanism to validate execution strategies
+- **Context Fragmentation**: Domain knowledge scattered across documents
 - **Onboarding Friction**: New users start from scratch
 
 ### The Solution
 
 A marketplace where users:
-- **Share** curated RAG collections of proven planner executions
-- **Discover** community knowledge bases tailored to specific MCP servers
-- **Reuse** battle-tested strategies, reducing token costs
+- **Share** curated RAG collections of proven planner executions (Planner Repositories)
+- **Share** domain knowledge and reference documentation (Knowledge Repositories)
+- **Discover** community knowledge bases tailored to specific MCP servers and domains
+- **Reuse** battle-tested strategies and contextual documentation, reducing token costs
 - **Collaborate** through ratings, reviews, and forks
+- **Browse** with clear visual separation between execution patterns and knowledge documents
 
 ### Value Proposition
 
@@ -393,20 +402,27 @@ Content-Type: application/json
 
 1. **Navigate to Marketplace**
    - Click "Marketplace" in sidebar navigation
-   - View displays public collections
+   - View displays public collections with Planner Repositories tab selected by default
 
-2. **Search for Collections**
-   - Enter keywords (e.g., "Teradata", "SQL", "Python")
+2. **Select Repository Type**
+   - **Planner Repositories Tab (📋):** Execution patterns and strategies for proven task completion
+   - **Knowledge Repositories Tab (📄):** Reference documents and domain knowledge for planning context
+   - Active tab highlighted in orange (#F15F22)
+   - Description text updates based on selection
+
+3. **Search for Collections**
+   - Enter keywords (e.g., "Teradata", "SQL", "Python", "API Documentation")
    - Press Enter or click "Search"
-   - Results filter in real-time
+   - Results filter by selected repository type in real-time
 
-3. **Filter by Visibility**
+4. **Filter by Visibility**
    - Select "Public" to see all public collections
    - Select "Unlisted" to browse hidden gems (if you have direct links)
 
-4. **Browse Results**
+5. **Browse Results**
    - Scroll through collection cards
-   - Review metadata: owner, subscribers, rating, case count
+   - Review metadata: owner, subscribers, rating, case/document count
+   - Blue badge (📋 Planner) or Purple badge (📄 Knowledge) indicates type
    - Click pagination controls for more results
 
 #### Subscribing to Collections

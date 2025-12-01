@@ -125,18 +125,34 @@ The application supports two distinct types of repositories, each serving a diff
 - Capture successful agent interactions as few-shot learning examples
 - Contain SQL query patterns, API workflows, and proven execution traces
 - Retrieved by the RAG system to guide future planning decisions
-- Automatically populated from agent execution history or via Planner Repository Constructors
+- Built via **Planner Repository Constructors** - modular templates for domain-specific pattern generation
+- Automatically populated from agent execution history or manually via REST API
 - Enable the agent to learn from past successes and improve over time
+- **Available in Intelligence Marketplace** for community sharing and discovery
 
 #### Knowledge Repositories
 **Purpose:** Provide reference documentation and domain knowledge
 - Store general documents, technical manuals, and business context
-- Accessible to the planner via RAG during execution
+- Support for PDF, TXT, DOCX, MD, and other document formats
+- Configurable chunking strategies (fixed-size, paragraph, sentence, semantic)
+- Integrated with the planner via `_retrieve_knowledge_for_planning()` method
+- Retrieved during planning to inject domain context into strategic decision-making
 - Enable the agent to query relevant background information when making decisions
-- Support for PDF, TXT, DOCX, and other document formats
-- *Note: Planner integration coming soon*
+- **Available in Intelligence Marketplace** for community sharing and discovery
+- **Feature Status:** ✅ Fully integrated (Phase 1 complete - Nov 2025)
 
-This separation ensures that execution patterns (how to accomplish tasks) remain distinct from domain knowledge (what the agent needs to know), while both can be leveraged through the unified RAG system.
+#### Intelligence Marketplace
+
+The **Intelligence Marketplace** enables users to share, discover, and leverage both repository types:
+
+- **Browse Collections:** Search and filter by repository type (Planner or Knowledge)
+- **Subscribe:** Reference-based subscriptions (no data duplication)
+- **Fork:** Create independent copies for customization
+- **Rate & Review:** Community-driven quality assurance (1-5 stars)
+- **Publish:** Share collections as public (discoverable) or unlisted (link-only)
+- **Visual Separation:** Dedicated tabs and badges distinguish Planner (📋 blue) from Knowledge (📄 purple)
+
+This separation ensures that execution patterns (how to accomplish tasks) remain distinct from domain knowledge (what the agent needs to know), while both can be leveraged through the unified RAG system and shared via the marketplace.
 
 ## The Heart of the Application - The Engine & its Fusion Optimizer
 
@@ -688,37 +704,60 @@ The **Intelligence** panel is your control center for managing both types of rep
   - View, create, update, or delete collections
   - Inspect individual execution traces and their embeddings
   - Bulk import/export collection data
+  - Automatically populated from agent executions or via Planner Repository Constructors
   
 * **Knowledge Repositories:**
-  - General documents and reference materials (coming soon)
-  - Upload PDF, TXT, DOCX files for RAG-based retrieval
-  - Planner integration in development
+  - General documents and reference materials for planning context
+  - Upload PDF, TXT, DOCX, MD files with configurable chunking strategies
+  - View document metadata, chunk counts, and storage details
+  - Delete documents or entire collections
+  - Search within Knowledge repositories using semantic similarity
+  - **Fully integrated** with planner for domain context retrieval
   
 * **Planner Repository Constructors:**
   - Browse installed constructors (templates for building Planner Repositories)
-  - Configure constructor parameters
-  - View usage statistics
+  - Configure constructor parameters and populate collections
+  - LLM-assisted auto-generation from database schemas or documentation
+  - View usage statistics and manage constructor lifecycle
   - Enable/disable specific constructors
 
 * **Content Operations:**
   - Generate contextual questions for documents
-  - Populate collections with new content
+  - Populate collections with new content via manual or automated workflows
   - Provide feedback on RAG retrieval quality
+  - Preview document chunking before committing
   - Clean orphaned or invalid entries
 
 For detailed RAG workflows and maintenance procedures, see the [RAG Maintenance Guide](maintenance/RAG_MAINTENANCE_GUIDE.md).
 
 #### The Marketplace Panel
 
-The **Marketplace** panel provides access to community-contributed Planner Repository Constructors:
+The **Intelligence Marketplace** enables discovery and sharing of both Planner and Knowledge repositories:
 
-* **Template Discovery:** Browse available templates by category, popularity, or use case
-* **Template Preview:** View template details, capabilities, and example use cases before installation
-* **One-Click Installation:** Install templates directly into your RAG system
-* **Version Management:** Update existing templates to latest versions
-* **Community Ratings:** See ratings and reviews from other users
+* **Repository Type Separation:**
+  - **Planner Repositories Tab (📋):** Execution patterns and strategies for proven task completion
+  - **Knowledge Repositories Tab (📄):** Reference documents and domain knowledge for planning context
+  - Visual badges and dedicated tabs for clear distinction
+  
+* **Collection Discovery:**
+  - Browse public collections or search by keywords
+  - Filter by repository type, visibility (public/unlisted), and rating
+  - Pagination support for large catalogs
+  - View owner, subscriber count, ratings, and collection metadata
 
-Templates extend the agent's capabilities with specialized knowledge domains, industry-specific workflows, and pre-configured analysis patterns.
+* **Collection Operations:**
+  - **Subscribe:** Reference collections without data duplication
+  - **Fork:** Create independent copies for customization (includes embeddings and files)
+  - **Rate & Review:** Community quality assurance (1-5 stars with optional reviews)
+  - **Publish:** Share your collections as public (discoverable) or unlisted (link-only)
+
+* **My Collections View:**
+  - Manage your owned collections
+  - Track subscriptions and usage
+  - Update visibility and metadata
+  - Monitor subscriber counts and ratings
+
+The marketplace transforms isolated knowledge bases into a collaborative ecosystem where users benefit from proven execution patterns and domain expertise, reducing token costs and improving response quality.
 
 #### The Setup Panel
 

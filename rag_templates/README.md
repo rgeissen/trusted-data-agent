@@ -3,8 +3,17 @@
 This directory contains the constructor library for building **Planner Repositories** - specialized RAG collections that store execution strategies and planning patterns. These constructors enable automatic generation of proven execution traces that guide the agent's decision-making process.
 
 **Repository Types:**
-- **Planner Repositories** (built by these constructors): Execution patterns and strategies
+- **Planner Repositories** (built by these constructors): Execution patterns and strategies for proven task completion
+  - Few-shot learning examples for RAG-based planning
+  - Automatically captured from successful agent executions
+  - Manually populated via constructor templates
+  - Retrieved during `_generate_meta_plan()` for strategic guidance
+  
 - **Knowledge Repositories** (separate system): General documents and reference materials
+  - Domain knowledge, technical documentation, and business context
+  - Uploaded as PDF, TXT, DOCX, MD files with configurable chunking
+  - Retrieved during `_retrieve_knowledge_for_planning()` for contextual enrichment
+  - Fully integrated with planner (Phase 1 complete - Nov 2025)
 
 ## Structure
 
