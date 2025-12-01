@@ -354,12 +354,11 @@ const DocumentUploadConfigManager = {
      * Show toast notification
      */
     showToast(message, type = 'info') {
-        // Use existing toast system if available, otherwise console
-        if (window.NotificationManager && NotificationManager.showToast) {
-            NotificationManager.showToast(message, type);
+        // Use existing banner system if available
+        if (window.showAppBanner) {
+            window.showAppBanner(message, type);
         } else {
             console.log(`[Toast] ${type.toUpperCase()}: ${message}`);
-            alert(message);
         }
     }
 };

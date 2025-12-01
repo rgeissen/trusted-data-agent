@@ -772,3 +772,91 @@ async def get_knowledge_chunks(current_user: dict, collection_id: int):
     except Exception as e:
         app_logger.error(f"Error getting knowledge chunks for collection ID {collection_id}: {e}", exc_info=True)
         return jsonify({"error": "Failed to get knowledge chunks"}), 500
+
+
+@knowledge_api_bp.route("/v1/knowledge/collections/<int:collection_id>/chunks/<chunk_id>", methods=["GET"])
+@require_auth
+async def get_single_chunk(current_user: dict, collection_id: int, chunk_id: str):
+    """
+    Get a single chunk by ID with full content.
+    
+    Returns:
+        {
+            "chunk": {
+                "id": "chunk_uuid",
+                "document_id": "doc_uuid",
+                "chunk_index": 0,
+                "content": "full chunk text content",
+                "token_count": 150,
+                "metadata": {...}
+            }
+        }
+    """
+    try:
+        retriever = APP_STATE.get("rag_retriever_instance")
+        if not retriever:
+            return jsonify({"error": "RAG retriever not initialized"}), 500
+        
+        # Verify collection exists and user has access
+        from trusted_data_agent.core.collection_db import CollectionDatabase
+        db = CollectionDatabase()
+        conn = db._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT name, repository_type, owner_user_id FROM collections
+            WHERE id = ?
+        """, (collection_id,))
+        result = cursor.fetchone()
+        conn.close()
+        
+        if not result:
+            return jsonify({"error": f"Collection {collection_id} not found"}), 404
+        
+        repository_type = result['repository_type']
+        owner_user_id = result['owner_user_id']
+        
+        if repository_type != 'knowledge':
+            return jsonify({"error": "Not a Knowledge repository"}), 400
+        
+        user_id = current_user.id
+        if owner_user_id != user_id:
+            return jsonify({"error": "Access denied"}), 403
+        
+        # Get ChromaDB collection
+        collection = retriever.collections.get(collection_id)
+        if not collection:
+            return jsonify({"error": "Collection not loaded"}), 404
+        
+        # Get specific chunk by ID
+        try:
+            result = collection.get(
+                ids=[chunk_id],
+                include=["documents", "metadatas"]
+            )
+            
+            ids = result.get("ids", [])
+            documents = result.get("documents", [])
+            metadatas = result.get("metadatas", [])
+            
+            if not ids or len(ids) == 0:
+                return jsonify({"error": "Chunk not found"}), 404
+            
+            metadata = metadatas[0] or {}
+            chunk = {
+                "id": ids[0],
+                "document_id": metadata.get("document_id", ""),
+                "chunk_index": metadata.get("chunk_index", 0),
+                "content": documents[0],  # Full content, no truncation
+                "token_count": metadata.get("token_count", 0),
+                "metadata": metadata
+            }
+            
+            return jsonify({"chunk": chunk}), 200
+            
+        except Exception as e:
+            app_logger.error(f"Failed to get chunk {chunk_id}: {e}", exc_info=True)
+            return jsonify({"error": "Failed to get chunk"}), 500
+        
+    except Exception as e:
+        app_logger.error(f"Error getting chunk {chunk_id} from collection {collection_id}: {e}", exc_info=True)
+        return jsonify({"error": "Failed to get chunk"}), 500

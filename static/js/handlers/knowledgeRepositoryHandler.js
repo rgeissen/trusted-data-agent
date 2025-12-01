@@ -74,12 +74,6 @@ export function initializeKnowledgeRepositoryHandlers() {
     // File upload handlers
     initializeFileUpload();
     
-    // Preview button handler
-    const previewBtn = document.getElementById('knowledge-repo-preview-btn');
-    if (previewBtn) {
-        previewBtn.addEventListener('click', handlePreviewChunking);
-    }
-    
     console.log('[Knowledge] Knowledge repository handlers initialized');
 }
 
@@ -331,13 +325,13 @@ function handleFiles(files) {
         
         if (!validExts.includes(ext)) {
             console.error(`[Knowledge] File ${file.name} has invalid format. Supported: PDF, TXT, DOCX, MD`);
-            alert(`File ${file.name} has invalid format. Supported: PDF, TXT, DOCX, MD`);
+            showAppBanner(`File ${file.name} has invalid format. Supported: PDF, TXT, DOCX, MD`, 'error');
             return false;
         }
         
         if (file.size > maxSize) {
             console.error(`[Knowledge] File ${file.name} exceeds 50MB limit`);
-            alert(`File ${file.name} exceeds 50MB limit`);
+            showAppBanner(`File ${file.name} exceeds 50MB limit`, 'error');
             return false;
         }
         
@@ -451,7 +445,7 @@ async function handleKnowledgeRepositorySubmit(e) {
             
             // Validate we have files
             if (selectedFiles.length === 0) {
-                alert('Please select at least one document to upload');
+                showAppBanner('Please select at least one document to upload', 'warning');
                 return;
             }
             
@@ -474,7 +468,7 @@ async function handleKnowledgeRepositorySubmit(e) {
             
             if (!nameInput) {
                 console.error('[Knowledge] Name input field not found');
-                alert('Form error: Name field not found');
+                showAppBanner('Form error: Name field not found', 'error');
                 return;
             }
             
@@ -495,7 +489,7 @@ async function handleKnowledgeRepositorySubmit(e) {
             // Validate
             if (!name) {
                 console.error('[Knowledge] Repository name is required');
-                alert('Repository name is required');
+                showAppBanner('Repository name is required', 'warning');
                 return;
             }
             
@@ -602,7 +596,7 @@ async function handleKnowledgeRepositorySubmit(e) {
             : `Knowledge repository created successfully!`;
         if (progressText) progressText.textContent = successMessage;
         console.log(`[Knowledge] ${successMessage}`);
-        alert(successMessage);
+        showAppBanner(successMessage, 'success');
         
         // Wait a moment then close modal
         setTimeout(() => {
@@ -622,7 +616,7 @@ async function handleKnowledgeRepositorySubmit(e) {
         
     } catch (error) {
         console.error('[Knowledge] Error:', error);
-        alert(error.message || 'Failed to process request');
+        showAppBanner(error.message || 'Failed to process request', 'error');
         
         if (submitBtn) {
             submitBtn.disabled = false;
@@ -746,7 +740,7 @@ function attachKnowledgeRepositoryCardHandlers(container, repositories) {
             const repo = repoMap.get(repoId);
             if (!repo) {
                 console.error('[Knowledge] Repository not found in map:', repoId);
-                alert('Repository data not found');
+                showAppBanner('Repository data not found', 'error');
                 return;
             }
             
@@ -817,7 +811,7 @@ function attachKnowledgeRepositoryCardHandlers(container, repositories) {
                 await loadKnowledgeRepositories();
             } else {
                 console.error('[Knowledge] Delete handler not available');
-                alert('Delete function not available. Please refresh the page.');
+                showAppBanner('Delete function not available. Please refresh the page.', 'error');
             }
         });
     });
@@ -1233,17 +1227,16 @@ function triggerAutoPreview() {
 async function handlePreviewChunking(isAutoPreview = false) {
     if (selectedFiles.length === 0) {
         if (!isAutoPreview) {
-            alert('Please select at least one document to preview chunking');
+            showAppBanner('Please select at least one document to preview chunking', 'warning');
         }
         return;
     }
     
-    const previewBtn = document.getElementById('knowledge-repo-preview-btn');
     const previewResults = document.getElementById('knowledge-repo-preview-results');
     const previewStats = document.getElementById('knowledge-repo-preview-stats');
     const previewChunks = document.getElementById('knowledge-repo-preview-chunks');
     
-    if (!previewBtn || !previewResults || !previewStats || !previewChunks) return;
+    if (!previewResults || !previewStats || !previewChunks) return;
     
     // Get chunking configuration
     const chunkingStrategy = document.getElementById('knowledge-repo-chunking')?.value || 'semantic';
@@ -1255,9 +1248,7 @@ async function handlePreviewChunking(isAutoPreview = false) {
         chunkOverlap = parseInt(document.getElementById('knowledge-repo-chunk-overlap')?.value || '200');
     }
     
-    // Disable button and show loading
-    previewBtn.disabled = true;
-    previewBtn.textContent = 'Generating Preview...';
+    // Show loading state
     previewResults.classList.remove('hidden');
     previewChunks.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">Processing...</p>';
     
@@ -1323,9 +1314,6 @@ async function handlePreviewChunking(isAutoPreview = false) {
     } catch (error) {
         console.error('[Knowledge] Preview error:', error);
         previewChunks.innerHTML = `<p class="text-sm text-red-400 text-center py-4">Failed to generate preview: ${error.message}</p>`;
-    } finally {
-        previewBtn.disabled = false;
-        previewBtn.textContent = 'Preview Segmentation';
     }
 }
 

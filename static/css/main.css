@@ -1499,12 +1499,23 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
     word-break: break-all;
 }
 
-/* Selected Case Details - Scrollable Area */
+/* Selected Case Details - Independent container */
 #rag-selected-case-details {
-    height: 35vh;
-    overflow-y: auto;
     overflow-x: hidden;
-    padding-right: 0.5rem;
+}
+
+/* Ensure proper text wrapping in all content */
+#rag-selected-case-plan .whitespace-pre-wrap,
+#rag-selected-case-trace .whitespace-pre-wrap {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+/* Trace section scrollable if needed */
+#rag-selected-case-trace {
+    max-height: 30vh;
+    overflow-y: auto;
 }
 
 /* Custom scrollbar for selected case details */

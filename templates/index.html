@@ -1496,9 +1496,9 @@
                             </div>
                         </div>
                     </div>
-                    <div id="rag-collection-table-wrapper" class="flex-1 min-h-0 flex flex-col glass-panel rounded-xl p-4 overflow-hidden">
+                    <div id="rag-collection-table-wrapper" class="min-h-0 flex flex-col glass-panel rounded-xl p-4">
                         <div id="rag-collection-loading" class="text-gray-400 text-sm mb-2">Loading rows...</div>
-                        <div class="overflow-auto flex-1">
+                        <div class="overflow-auto" style="max-height: 40vh;">
                             <table class="min-w-full text-sm">
                                 <thead class="sticky top-0 bg-gray-800">
                                     <tr class="whitespace-nowrap">
@@ -1515,14 +1515,14 @@
                             </table>
                         </div>
                         <div id="rag-collection-footer" class="mt-2 text-xs text-gray-500"></div>
-                        <!-- Visible separator shown once a case is selected -->
-                        <div id="rag-selected-case-separator" class="hidden my-6 border-t border-white/10"></div>
-                        <div id="rag-selected-case-details" class="mt-4 hidden">
-                            <h2 class="text-lg font-bold text-white mb-2">Selected Case Details</h2>
-                            <div id="rag-selected-case-metadata" class="text-xs text-gray-400 mb-3"></div>
-                            <div id="rag-selected-case-plan" class="mb-4"></div>
-                            <div id="rag-selected-case-trace" class="space-y-2"></div>
-                        </div>
+                    </div>
+                    <!-- Visible separator shown once a case is selected -->
+                    <div id="rag-selected-case-separator" class="hidden my-6 border-t border-white/10"></div>
+                    <div id="rag-selected-case-details" class="mt-4 hidden glass-panel rounded-xl p-4">
+                        <h2 class="text-lg font-bold text-white mb-2">Selected Case Details</h2>
+                        <div id="rag-selected-case-metadata" class="text-xs text-gray-400 mb-3"></div>
+                        <div id="rag-selected-case-plan" class="mb-4"></div>
+                        <div id="rag-selected-case-trace" class="space-y-2"></div>
                     </div>
                 </div>
             </div>
@@ -3781,11 +3781,8 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                             </svg>
                             <h3 class="text-lg font-semibold text-white">Chunking Preview</h3>
+                            <span class="text-xs text-purple-400 ml-2">(Auto-generated)</span>
                         </div>
-                        <button type="button" id="knowledge-repo-preview-btn" 
-                                class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-sm text-white font-medium transition-colors shadow-lg">
-                            Generate Preview
-                        </button>
                     </div>
 
                     <!-- Preview Content Area -->
@@ -3795,7 +3792,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
                             <h4 class="text-lg font-medium text-gray-400 mb-2">No Preview Yet</h4>
-                            <p class="text-sm text-gray-500">Upload a document and click "Generate Preview" to see how it will be chunked</p>
+                            <p class="text-sm text-gray-500">Upload a document to automatically preview how it will be chunked</p>
                         </div>
                     </div>
 

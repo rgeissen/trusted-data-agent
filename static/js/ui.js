@@ -2923,6 +2923,11 @@ function renderCollectionRows(rows, total, query, collectionName) {
         const mode = query && query.length >= 3 ? 'search results' : 'sample';
         DOM.ragCollectionFooter.textContent = `Showing ${rows.length} ${mode} (collection has ${total} total entries).`;
     }
+    
+    // Auto-select first row if available
+    if (sortedRows.length > 0) {
+        selectCaseRow(sortedRows[0].id);
+    }
 }
 
 export function escapeHtml(str) {
@@ -3120,6 +3125,11 @@ function renderKnowledgeChunks(chunks, total, query, collectionName) {
         const mode = query && query.length >= 3 ? 'search results' : 'chunks';
         DOM.ragCollectionFooter.textContent = `Showing ${chunks.length} ${mode} (collection has ${total} total chunks).`;
     }
+    
+    // Auto-select first chunk if available
+    if (chunks.length > 0) {
+        selectKnowledgeChunk(chunks[0].id);
+    }
 }
 
 /**
@@ -3151,47 +3161,85 @@ async function selectKnowledgeChunk(chunkId) {
         }
     }
     
-    // Find the chunk in current collection rows
-    const chunk = state.currentCollectionRows?.find(c => c.id === chunkId);
-    if (!chunk) {
-        if (DOM.ragSelectedCaseMetadata) {
-            DOM.ragSelectedCaseMetadata.innerHTML = '<span class="text-red-400">Chunk not found</span>';
-        }
-        return;
-    }
-    
-    // Display chunk details
+    // Show loading state
     if (DOM.ragSelectedCaseMetadata) {
-        const metadata = chunk.metadata || {};
-        const metadataEntries = Object.entries(metadata)
-            .filter(([key, value]) => value != null && value !== '')
-            .map(([key, value]) => `<strong>${escapeHtml(key)}:</strong> ${escapeHtml(String(value))}`)
-            .join(' | ');
-        
-        DOM.ragSelectedCaseMetadata.innerHTML = `
-            <div class="space-y-2">
-                <div><strong>Chunk ID:</strong> <span class="font-mono text-xs">${escapeHtml(chunkId)}</span></div>
-                <div><strong>Document ID:</strong> <span class="font-mono text-xs">${escapeHtml(chunk.document_id || 'N/A')}</span></div>
-                <div><strong>Chunk Index:</strong> ${chunk.chunk_index ?? 'N/A'}</div>
-                <div><strong>Token Count:</strong> ${chunk.token_count ?? 'N/A'}</div>
-                ${metadataEntries ? `<div class="text-xs text-gray-500">${metadataEntries}</div>` : ''}
-            </div>
-        `;
+        DOM.ragSelectedCaseMetadata.innerHTML = '<span class="text-gray-400">Loading chunk details...</span>';
     }
-    
-    // Display full chunk content
     if (DOM.ragSelectedCasePlan) {
-        DOM.ragSelectedCasePlan.innerHTML = `
-            <div class="bg-gray-900/50 rounded-lg p-4 border border-white/10">
-                <h3 class="text-sm font-semibold text-gray-300 mb-2">Full Content</h3>
-                <div class="text-sm text-gray-200 whitespace-pre-wrap">${escapeHtml(chunk.content)}</div>
-            </div>
-        `;
+        DOM.ragSelectedCasePlan.innerHTML = '<div class="text-gray-400">Loading full content...</div>';
     }
     
-    // Clear trace section (not applicable for knowledge chunks)
-    if (DOM.ragSelectedCaseTrace) {
-        DOM.ragSelectedCaseTrace.innerHTML = '';
+    try {
+        // Fetch FULL chunk data from dedicated endpoint
+        const token = localStorage.getItem('tda_auth_token');
+        const collectionId = state.currentInspectedCollectionId;
+        const apiUrl = `/api/v1/knowledge/collections/${collectionId}/chunks/${encodeURIComponent(chunkId)}`;
+        
+        console.log('Fetching full chunk from:', apiUrl);
+        
+        const res = await fetch(apiUrl, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        
+        const chunk = data.chunk;
+        console.log('Received chunk with content length:', chunk?.content?.length);
+        
+        if (!chunk) {
+            if (DOM.ragSelectedCaseMetadata) {
+                DOM.ragSelectedCaseMetadata.innerHTML = '<span class="text-red-400">Chunk not found</span>';
+            }
+            return;
+        }
+        
+        // Display chunk details
+        if (DOM.ragSelectedCaseMetadata) {
+            const metadata = chunk.metadata || {};
+            const metadataEntries = Object.entries(metadata)
+                .filter(([key, value]) => value != null && value !== '')
+                .map(([key, value]) => `<strong>${escapeHtml(key)}:</strong> ${escapeHtml(String(value))}`)
+                .join(' | ');
+            
+            DOM.ragSelectedCaseMetadata.innerHTML = `
+                <div class="space-y-2">
+                    <div><strong>Chunk ID:</strong> <span class="font-mono text-xs">${escapeHtml(chunkId)}</span></div>
+                    <div><strong>Document ID:</strong> <span class="font-mono text-xs">${escapeHtml(chunk.document_id || 'N/A')}</span></div>
+                    <div><strong>Chunk Index:</strong> ${chunk.chunk_index ?? 'N/A'}</div>
+                    <div><strong>Token Count:</strong> ${chunk.token_count ?? 'N/A'}</div>
+                    ${metadataEntries ? `<div class="text-xs text-gray-500">${metadataEntries}</div>` : ''}
+                </div>
+            `;
+        }
+        
+        // Display full chunk content
+        if (DOM.ragSelectedCasePlan) {
+            const contentLength = chunk.content ? chunk.content.length : 0;
+            DOM.ragSelectedCasePlan.innerHTML = `
+                <h3 class="text-sm font-semibold text-gray-300 mb-2">Full Content (${contentLength} characters)</h3>
+                <div class="bg-gray-900/50 rounded-lg p-4 border border-white/10" style="height: 300px; overflow-y: scroll; overflow-x: hidden;">
+                    <pre class="text-sm text-gray-200" style="white-space: pre-wrap; word-wrap: break-word; margin: 0; font-family: inherit;">${escapeHtml(chunk.content)}</pre>
+                </div>
+            `;
+        }
+        
+        // Clear trace section (not applicable for knowledge chunks)
+        if (DOM.ragSelectedCaseTrace) {
+            DOM.ragSelectedCaseTrace.innerHTML = '';
+        }
+        
+    } catch (error) {
+        console.error('Error fetching full chunk:', error);
+        if (DOM.ragSelectedCaseMetadata) {
+            DOM.ragSelectedCaseMetadata.innerHTML = `<span class="text-red-400">Error loading chunk: ${escapeHtml(error.message)}</span>`;
+        }
     }
 }
 
@@ -3579,7 +3627,9 @@ function openKnowledgeRepositoryView(collection) {
                 `ChromaDB: ${collection.collection_name}\n\n` +
                 `View modal coming soon...`;
     
-    alert(msg);
+    // Using info banner as temporary solution until proper modal is implemented
+    showAppBanner('Repository details view coming soon', 'info');
+    console.log(msg);
     
     // TODO: Create a proper modal to show:
     // - Repository details
@@ -3606,15 +3656,15 @@ export async function deleteKnowledgeRepository(collectionId, collectionName) {
         });
         
         if (response.ok) {
-            alert(`Repository "${collectionName}" deleted successfully`);
+            showAppBanner(`Repository "${collectionName}" deleted successfully`, 'success');
             // Reload the collections list
             loadRagCollections();
         } else {
             const error = await response.json();
-            alert(`Failed to delete repository: ${error.message || 'Unknown error'}`);
+            showAppBanner(`Failed to delete repository: ${error.message || 'Unknown error'}`, 'error');
         }
     } catch (error) {
         console.error('[Knowledge] Error deleting repository:', error);
-        alert(`Error deleting repository: ${error.message}`);
+        showAppBanner(`Error deleting repository: ${error.message}`, 'error');
     }
 }

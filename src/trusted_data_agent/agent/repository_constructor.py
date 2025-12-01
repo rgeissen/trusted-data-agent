@@ -134,23 +134,141 @@ class DocumentProcessor:
         return chunks
     
     def _chunk_by_paragraph(self, content: str, metadata: Dict[str, Any]) -> List[DocumentChunk]:
-        """Chunk document by paragraphs. Preserves natural document structure."""
+        """
+        Chunk document by paragraphs with intelligent size management.
+        
+        Strategy:
+        1. Split on paragraph boundaries (double newlines)
+        2. Combine small paragraphs up to chunk_size
+        3. Split large paragraphs that exceed chunk_size * 1.5
+        4. Respect natural document structure while maintaining reasonable chunk sizes
+        """
         # Split on double newlines to respect paragraph boundaries
         paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
         
-        # If we only got 1 huge paragraph, it might be a formatting issue - fall back to fixed-size
-        if len(paragraphs) == 1 and len(paragraphs[0]) > self.chunk_size * 3:
+        # If we got very few paragraphs and they're huge, fall back to fixed-size
+        if len(paragraphs) <= 3 and sum(len(p) for p in paragraphs) > self.chunk_size * 10:
             metadata_copy = metadata.copy()
-            metadata_copy['fallback_reason'] = 'single_large_paragraph'
+            metadata_copy['fallback_reason'] = 'few_large_paragraphs'
+            logger.warning(f"Document has only {len(paragraphs)} paragraph(s) with total length "
+                         f"{sum(len(p) for p in paragraphs)} chars. Falling back to fixed-size chunking.")
             return self._chunk_fixed_size(content, metadata_copy)
         
         chunks = []
-        for idx, para in enumerate(paragraphs):
+        current_chunk = []
+        current_size = 0
+        chunk_index = 0
+        max_chunk_size = int(self.chunk_size * 1.5)  # Allow 50% flexibility
+        
+        for para in paragraphs:
+            para_size = len(para)
+            
+            # If this paragraph alone exceeds max size, split it
+            if para_size > max_chunk_size:
+                # First, flush any accumulated paragraphs
+                if current_chunk:
+                    chunk_text = '\n\n'.join(current_chunk)
+                    chunk_metadata = metadata.copy()
+                    chunk_metadata['chunk_method'] = 'paragraph'
+                    chunk_metadata['paragraph_count'] = len(current_chunk)
+                    chunks.append(DocumentChunk(chunk_text, chunk_metadata, chunk_index))
+                    current_chunk = []
+                    current_size = 0
+                    chunk_index += 1
+                
+                # Split large paragraph using fixed-size chunking
+                para_chunks = self._split_large_paragraph(para, metadata, chunk_index)
+                chunks.extend(para_chunks)
+                chunk_index += len(para_chunks)
+                continue
+            
+            # If adding this paragraph exceeds chunk_size, create new chunk
+            if current_size + para_size > self.chunk_size and current_chunk:
+                chunk_text = '\n\n'.join(current_chunk)
+                chunk_metadata = metadata.copy()
+                chunk_metadata['chunk_method'] = 'paragraph'
+                chunk_metadata['paragraph_count'] = len(current_chunk)
+                chunks.append(DocumentChunk(chunk_text, chunk_metadata, chunk_index))
+                current_chunk = []
+                current_size = 0
+                chunk_index += 1
+            
+            # Add paragraph to current chunk
+            current_chunk.append(para)
+            current_size += para_size
+        
+        # Add remaining paragraphs as final chunk
+        if current_chunk:
+            chunk_text = '\n\n'.join(current_chunk)
             chunk_metadata = metadata.copy()
             chunk_metadata['chunk_method'] = 'paragraph'
-            chunk_metadata['paragraph_number'] = idx + 1
+            chunk_metadata['paragraph_count'] = len(current_chunk)
+            chunks.append(DocumentChunk(chunk_text, chunk_metadata, chunk_index))
+        
+        return chunks
+    
+    def _split_large_paragraph(self, paragraph: str, metadata: Dict[str, Any], 
+                              start_index: int) -> List[DocumentChunk]:
+        """
+        Split a large paragraph that exceeds chunk_size using sentence boundaries.
+        Falls back to fixed-size if no sentence boundaries found.
+        """
+        import re
+        
+        # Try to split on sentences first
+        sentences = re.split(r'(?<=[.!?])\s+', paragraph)
+        
+        if len(sentences) <= 1:
+            # No sentence boundaries, use fixed-size splitting
+            chunks = []
+            start = 0
+            local_index = 0
             
-            chunks.append(DocumentChunk(para, chunk_metadata, idx))
+            while start < len(paragraph):
+                end = start + self.chunk_size
+                chunk_text = paragraph[start:end]
+                
+                chunk_metadata = metadata.copy()
+                chunk_metadata['chunk_method'] = 'paragraph_split_fixed'
+                chunk_metadata['split_reason'] = 'no_sentence_boundaries'
+                
+                chunks.append(DocumentChunk(chunk_text, chunk_metadata, start_index + local_index))
+                start += self.chunk_size - self.chunk_overlap
+                local_index += 1
+            
+            return chunks
+        
+        # Split by sentences respecting chunk_size
+        chunks = []
+        current_chunk = []
+        current_size = 0
+        local_index = 0
+        
+        for sentence in sentences:
+            sentence_size = len(sentence)
+            
+            if current_size + sentence_size > self.chunk_size and current_chunk:
+                chunk_text = ' '.join(current_chunk)
+                chunk_metadata = metadata.copy()
+                chunk_metadata['chunk_method'] = 'paragraph_split_sentence'
+                chunk_metadata['sentence_count'] = len(current_chunk)
+                
+                chunks.append(DocumentChunk(chunk_text, chunk_metadata, start_index + local_index))
+                current_chunk = []
+                current_size = 0
+                local_index += 1
+            
+            current_chunk.append(sentence)
+            current_size += sentence_size
+        
+        # Add remaining sentences
+        if current_chunk:
+            chunk_text = ' '.join(current_chunk)
+            chunk_metadata = metadata.copy()
+            chunk_metadata['chunk_method'] = 'paragraph_split_sentence'
+            chunk_metadata['sentence_count'] = len(current_chunk)
+            
+            chunks.append(DocumentChunk(chunk_text, chunk_metadata, start_index + local_index))
         
         return chunks
     
