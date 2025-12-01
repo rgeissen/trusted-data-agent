@@ -175,6 +175,66 @@ body {
     border-color: rgba(59, 130, 246, 0.6);
 }
 
+/* ============================================================================
+   USER AVATAR - INDUSTRIAL DESIGN
+   ============================================================================ */
+
+/* Premium User Avatar Container */
+.user-avatar-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Enhanced User Avatar in Header */
+#user-menu-button .w-10 {
+    position: relative;
+    overflow: visible;
+    cursor: pointer;
+}
+
+#user-menu-button .w-10::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, 
+                                rgba(241, 95, 34, 0.3) 0%, 
+                                transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#user-menu-button:hover .w-10::before {
+    opacity: 1;
+}
+
+/* Avatar letter styling */
+#user-avatar-initial {
+    font-family: var(--font-display, 'Space Grotesk', sans-serif);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4),
+                 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* User Display Name Typography */
+.user-display-name {
+    font-family: var(--font-primary, 'Inter', sans-serif);
+    color: #e2e8f0;
+    letter-spacing: -0.015em;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#user-menu-button:hover .user-display-name {
+    color: #ffffff;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.3),
+                 0 1px 2px rgba(0, 0, 0, 0.4);
+    letter-spacing: -0.01em;
+}
+
 /* User avatar - refined orange theme */
 .message-bubble.user .avatar,
 .message-bubble .bg-gray-700 {
