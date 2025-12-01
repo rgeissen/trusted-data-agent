@@ -2300,15 +2300,12 @@ function createKnowledgeRepositoryCard(col) {
     mcpInfo.innerHTML = `<span class="text-gray-500">MCP Server:</span> ${mcpServerDisplay}`;
     
     // Description (if exists)
-    if (col.description) {
-        const desc = document.createElement('p');
-        desc.className = 'text-xs text-gray-400';
-        desc.textContent = col.description;
-        card.appendChild(header);
-        card.appendChild(desc);
-    } else {
-        card.appendChild(header);
-    }
+    const desc = col.description ? (() => {
+        const d = document.createElement('p');
+        d.className = 'text-xs text-gray-400';
+        d.textContent = col.description;
+        return d;
+    })() : null;
     
     // Metadata (ChromaDB name and chunking info)
     const meta = document.createElement('p');
@@ -2316,8 +2313,18 @@ function createKnowledgeRepositoryCard(col) {
     const chunkInfo = col.chunking_strategy ? ` | ${col.chunking_strategy} chunking` : '';
     meta.textContent = `ChromaDB: ${col.collection_name}${chunkInfo}`;
     
+    // Document and chunk counts for Knowledge repositories
+    const countsInfo = document.createElement('p');
+    countsInfo.className = 'text-xs text-gray-400';
+    const docCount = col.document_count || '?';
+    const chunkCount = col.count || col.example_count || 0;
+    countsInfo.textContent = `${docCount} documents • ${chunkCount} chunks`;
+    
+    card.appendChild(header);
+    if (desc) card.appendChild(desc);
     card.appendChild(mcpInfo);
     card.appendChild(meta);
+    card.appendChild(countsInfo);
     
     // Actions
     const actions = document.createElement('div');
@@ -2368,6 +2375,17 @@ function createKnowledgeRepositoryCard(col) {
         }
     });
     
+    // Upload button (Knowledge repositories only)
+    const uploadBtn = document.createElement('button');
+    uploadBtn.type = 'button';
+    uploadBtn.className = 'px-3 py-1 rounded-md bg-purple-600 hover:bg-purple-500 text-sm text-white';
+    uploadBtn.innerHTML = '<span style="font-size: 14px;">+</span> Upload';
+    uploadBtn.addEventListener('click', () => {
+        if (window.knowledgeRepositoryHandler && window.knowledgeRepositoryHandler.openUploadDocumentsModal) {
+            window.knowledgeRepositoryHandler.openUploadDocumentsModal(col.id, col.name, col);
+        }
+    });
+    
     // Delete button
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
@@ -2383,6 +2401,7 @@ function createKnowledgeRepositoryCard(col) {
     actions.appendChild(refreshBtn);
     actions.appendChild(inspectBtn);
     actions.appendChild(editBtn);
+    actions.appendChild(uploadBtn);
     actions.appendChild(deleteBtn);
     
     card.appendChild(actions);
@@ -2477,12 +2496,12 @@ function createCollectionCard(col) {
             mcpInfo.innerHTML = `<span class="text-gray-500">MCP Server:</span> ${mcpServerDisplay}`;
             
             // Description (if exists)
-            if (col.description) {
-                const desc = document.createElement('p');
-                desc.className = 'text-xs text-gray-400';
-                desc.textContent = col.description;
-                card.appendChild(desc);
-            }
+            const desc = col.description ? (() => {
+                const d = document.createElement('p');
+                d.className = 'text-xs text-gray-400';
+                d.textContent = col.description;
+                return d;
+            })() : null;
             
             // Metadata (collection_name from ChromaDB)
             const meta = document.createElement('p');
@@ -2560,6 +2579,7 @@ function createCollectionCard(col) {
             actions.appendChild(deleteBtn);
             
     card.appendChild(header);
+    if (desc) card.appendChild(desc);
     card.appendChild(mcpInfo);
     card.appendChild(meta);
     card.appendChild(actions);

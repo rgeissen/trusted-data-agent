@@ -129,6 +129,32 @@ function openKnowledgeRepositoryModal() {
     if (previewResults) previewResults.classList.add('hidden');
     if (preview) preview.classList.add('hidden');
     
+    // Reset modal to CREATE mode (not upload mode)
+    const modalTitle = modalOverlay.querySelector('h2');
+    if (modalTitle) {
+        modalTitle.innerHTML = `
+            <svg class="w-6 h-6 text-green-400 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <span>Create Knowledge Repository</span>
+        `;
+    }
+    
+    // Show name/description fields
+    const nameField = document.getElementById('knowledge-repo-name')?.closest('.mb-6');
+    const descField = document.getElementById('knowledge-repo-description')?.closest('.mb-6');
+    if (nameField) nameField.style.display = '';
+    if (descField) descField.style.display = '';
+    
+    // Reset submit button
+    const submitBtn = document.getElementById('add-knowledge-repository-submit');
+    if (submitBtn) {
+        submitBtn.textContent = 'Create Repository';
+        delete submitBtn.dataset.uploadMode;
+        delete submitBtn.dataset.collectionId;
+        delete submitBtn.dataset.collectionName;
+    }
+    
     // Show modal with animation
     modalOverlay.classList.remove('hidden');
     requestAnimationFrame(() => {
@@ -409,82 +435,118 @@ async function handleKnowledgeRepositorySubmit(e) {
     const progressText = document.getElementById('knowledge-repo-progress-text');
     const progressBar = document.getElementById('knowledge-repo-progress-bar');
     
+    // Check if we're in upload mode
+    const uploadMode = submitBtn?.dataset.uploadMode === 'true';
+    const existingCollectionId = submitBtn?.dataset.collectionId;
+    const existingCollectionName = submitBtn?.dataset.collectionName;
+    
     try {
-        // Get form values
-        const nameInput = document.getElementById('knowledge-repo-name');
-        const descInput = document.getElementById('knowledge-repo-description');
-        const chunkingInput = document.getElementById('knowledge-repo-chunking');
-        const embeddingInput = document.getElementById('knowledge-repo-embedding');
+        const token = localStorage.getItem('tda_auth_token');
+        let collectionId;
         
-        if (!nameInput) {
-            console.error('[Knowledge] Name input field not found');
-            alert('Form error: Name field not found');
-            return;
+        if (uploadMode && existingCollectionId) {
+            // Upload mode: Use existing collection
+            console.log('[Knowledge] Upload mode: Adding documents to existing collection:', existingCollectionName);
+            collectionId = existingCollectionId;
+            
+            // Validate we have files
+            if (selectedFiles.length === 0) {
+                alert('Please select at least one document to upload');
+                return;
+            }
+            
+            // Disable submit button
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Uploading...';
+            
+            // Show progress
+            if (progressSection) {
+                progressSection.classList.remove('hidden');
+                if (progressText) progressText.textContent = 'Preparing upload...';
+                if (progressBar) progressBar.style.width = '10%';
+            }
+        } else {
+            // Create mode: Create new repository
+            const nameInput = document.getElementById('knowledge-repo-name');
+            const descInput = document.getElementById('knowledge-repo-description');
+            const chunkingInput = document.getElementById('knowledge-repo-chunking');
+            const embeddingInput = document.getElementById('knowledge-repo-embedding');
+            
+            if (!nameInput) {
+                console.error('[Knowledge] Name input field not found');
+                alert('Form error: Name field not found');
+                return;
+            }
+            
+            const name = nameInput.value.trim();
+            const description = descInput?.value.trim() || '';
+            // Get from form fields (pre-filled by template) or use minimal defaults
+            const chunkingStrategy = chunkingInput?.value || 'semantic';  // Default from knowledge_repo_v1 template
+            const embeddingModel = embeddingInput?.value || 'all-MiniLM-L6-v2';  // Default from template
+            
+            let chunkSize = 1000;  // Default from template
+            let chunkOverlap = 200;  // Default from template
+            
+            if (chunkingStrategy === 'fixed_size') {
+                chunkSize = parseInt(document.getElementById('knowledge-repo-chunk-size').value);
+                chunkOverlap = parseInt(document.getElementById('knowledge-repo-chunk-overlap').value);
+            }
+            
+            // Validate
+            if (!name) {
+                console.error('[Knowledge] Repository name is required');
+                alert('Repository name is required');
+                return;
+            }
+            
+            // Disable submit button
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating...';
+            
+            // Show progress
+            if (progressSection) {
+                progressSection.classList.remove('hidden');
+                if (progressText) progressText.textContent = 'Creating repository...';
+                if (progressBar) progressBar.style.width = '10%';
+            }
+            
+            // Step 1: Create collection
+            const createResponse = await fetch('/api/v1/rag/collections', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    name: name,
+                    description: description || 'Knowledge repository',
+                    repository_type: 'knowledge',
+                    chunking_strategy: chunkingStrategy,
+                    chunk_size: chunkSize,
+                    chunk_overlap: chunkOverlap,
+                    embedding_model: embeddingModel
+                })
+            });
+            
+            if (!createResponse.ok) {
+                const error = await createResponse.json();
+                throw new Error(error.message || 'Failed to create repository');
+            }
+            
+            const createData = await createResponse.json();
+            collectionId = createData.collection_id;
         }
         
-        const name = nameInput.value.trim();
-        const description = descInput?.value.trim() || '';
-        // Get from form fields (pre-filled by template) or use minimal defaults
-        const chunkingStrategy = chunkingInput?.value || 'semantic';  // Default from knowledge_repo_v1 template
-        const embeddingModel = embeddingInput?.value || 'all-MiniLM-L6-v2';  // Default from template
-        
-        let chunkSize = 1000;  // Default from template
-        let chunkOverlap = 200;  // Default from template
-        
-        if (chunkingStrategy === 'fixed_size') {
-            chunkSize = parseInt(document.getElementById('knowledge-repo-chunk-size').value);
-            chunkOverlap = parseInt(document.getElementById('knowledge-repo-chunk-overlap').value);
-        }
-        
-        // Get metadata
+        // Get metadata (for both create and upload modes)
         const category = document.getElementById('knowledge-repo-category')?.value.trim() || '';
         const author = document.getElementById('knowledge-repo-author')?.value.trim() || '';
         const tags = document.getElementById('knowledge-repo-tags')?.value.trim() || '';
         
-        // Validate
-        if (!name) {
-            console.error('[Knowledge] Repository name is required');
-            alert('Repository name is required');
-            return;
-        }
-        
-        // Disable submit button
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Creating...';
-        
-        // Show progress
-        if (progressSection) {
-            progressSection.classList.remove('hidden');
-            if (progressText) progressText.textContent = 'Creating repository...';
-            if (progressBar) progressBar.style.width = '10%';
-        }
-        
-        // Step 1: Create collection
-        const token = localStorage.getItem('tda_auth_token');
-        const createResponse = await fetch('/api/v1/rag/collections', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                name: name,
-                description: description || 'Knowledge repository',
-                repository_type: 'knowledge',
-                chunking_strategy: chunkingStrategy,
-                chunk_size: chunkSize,
-                chunk_overlap: chunkOverlap,
-                embedding_model: embeddingModel
-            })
-        });
-        
-        if (!createResponse.ok) {
-            const error = await createResponse.json();
-            throw new Error(error.message || 'Failed to create repository');
-        }
-        
-        const createData = await createResponse.json();
-        const collectionId = createData.collection_id;
+        // Get chunking parameters
+        const chunkingStrategy = document.getElementById('knowledge-chunking-strategy')?.value || 'semantic';
+        const chunkSize = parseInt(document.getElementById('knowledge-chunk-size')?.value || '1000');
+        const chunkOverlap = parseInt(document.getElementById('knowledge-chunk-overlap')?.value || '200');
+        const embeddingModel = document.getElementById('knowledge-repo-embedding')?.value || 'all-MiniLM-L6-v2';
         
         if (progressBar) progressBar.style.width = '30%';
         
@@ -535,9 +597,12 @@ async function handleKnowledgeRepositorySubmit(e) {
         }
         
         // Success
-        if (progressText) progressText.textContent = 'Repository created successfully!';
-        console.log(`[Knowledge] Repository "${name}" created successfully!`);
-        alert(`Knowledge repository "${name}" created successfully!`);
+        const successMessage = uploadMode 
+            ? `Documents uploaded to "${existingCollectionName}" successfully!`
+            : `Knowledge repository created successfully!`;
+        if (progressText) progressText.textContent = successMessage;
+        console.log(`[Knowledge] ${successMessage}`);
+        alert(successMessage);
         
         // Wait a moment then close modal
         setTimeout(() => {
@@ -546,17 +611,22 @@ async function handleKnowledgeRepositorySubmit(e) {
             // Refresh Knowledge repositories list
             loadKnowledgeRepositories();
             
-            // Reset form
+            // Reset form and upload mode flags
             selectedFiles = [];
+            if (submitBtn) {
+                delete submitBtn.dataset.uploadMode;
+                delete submitBtn.dataset.collectionId;
+                delete submitBtn.dataset.collectionName;
+            }
         }, 1500);
         
     } catch (error) {
-        console.error('[Knowledge] Error creating repository:', error);
-        alert(error.message || 'Failed to create Knowledge repository');
+        console.error('[Knowledge] Error:', error);
+        alert(error.message || 'Failed to process request');
         
         if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.textContent = 'Create Repository';
+            submitBtn.textContent = uploadMode ? 'Upload Documents' : 'Create Repository';
         }
         
         if (progressSection) {
@@ -697,6 +767,28 @@ function attachKnowledgeRepositoryCardHandlers(container, repositories) {
             if (window.ragCollectionManagement && repo) {
                 window.ragCollectionManagement.openEditCollectionModal(repo);
             }
+        });
+    });
+    
+    // Upload documents button handlers
+    const uploadButtons = container.querySelectorAll('.upload-knowledge-docs-btn');
+    console.log('[Knowledge] Found', uploadButtons.length, 'upload buttons');
+    
+    uploadButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const repoId = btn.dataset.repoId;
+            const repoName = btn.dataset.repoName;
+            const repo = repoMap.get(repoId);
+            
+            if (!repo) {
+                console.error('[Knowledge] Repository not found:', repoId);
+                return;
+            }
+            
+            console.log('[Knowledge] Upload button clicked for:', repoName);
+            openUploadDocumentsModal(parseInt(repoId), repoName, repo);
         });
     });
     
@@ -869,7 +961,7 @@ function openKnowledgeInspectionModal(repo) {
 }
 
 /**
- * Fetch actual document count from API
+ * Fetch actual document count from API (for inspection modal)
  */
 async function fetchKnowledgeDocumentCount(collectionId) {
     try {
@@ -902,19 +994,54 @@ async function fetchKnowledgeDocumentCount(collectionId) {
 }
 
 /**
+ * Fetch actual document count from API (for collection card)
+ */
+async function fetchKnowledgeDocumentCountForCard(collectionId) {
+    try {
+        const token = localStorage.getItem('tda_auth_token');
+        const response = await fetch(`/api/v1/knowledge/repositories/${collectionId}/documents`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        const countEl = document.getElementById(`knowledge-doc-count-${collectionId}`);
+        if (!countEl) return;
+        
+        if (response.ok) {
+            const data = await response.json();
+            const count = data.documents ? data.documents.length : 0;
+            countEl.textContent = count;
+        } else {
+            countEl.textContent = '?';
+        }
+    } catch (error) {
+        console.error('[Knowledge] Failed to fetch document count for card:', error);
+        const countEl = document.getElementById(`knowledge-doc-count-${collectionId}`);
+        if (countEl) {
+            countEl.textContent = '?';
+        }
+    }
+}
+
+/**
  * Create a Knowledge repository card HTML
  */
 function createKnowledgeRepositoryCard(repo) {
     // Handle both 'id' and 'collection_id' field names
     const repoId = repo.id || repo.collection_id;
-    console.log('[Knowledge] Creating card for repo:', repo.collection_name, 'with ID:', repoId);
+    const displayName = repo.name || repo.collection_name;
+    console.log('[Knowledge] Creating card for repo:', displayName, 'with ID:', repoId);
     
     const statusClass = repo.enabled ? 'bg-green-500' : 'bg-gray-500';
-    const docCount = repo.count || repo.example_count || 0;
+    const chunkCount = repo.count || repo.example_count || 0;
+    
+    // Fetch actual document count (will be updated asynchronously)
+    setTimeout(() => fetchKnowledgeDocumentCountForCard(repoId), 100);
     
     return `
         <div class="glass-panel p-4 rounded-lg hover:bg-white/5 transition-all" data-repo-id="${repoId}">
-            <div class="flex items-center gap-3 mb-3">
+            <div class="flex items-start gap-3 mb-3">
                 <div class="p-2 bg-green-500/20 rounded-lg relative">
                     <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -922,16 +1049,33 @@ function createKnowledgeRepositoryCard(repo) {
                     <div class="${statusClass} w-2 h-2 rounded-full absolute top-1 right-1"></div>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <h3 class="text-base font-semibold text-white truncate">${repo.collection_name}</h3>
-                    <p class="text-xs text-gray-500">Collection ID: ${repoId} | <span id="knowledge-doc-count-${repoId}">${docCount}</span> documents</p>
+                    <div class="flex items-center gap-2 mb-1">
+                        <h3 class="text-base font-semibold text-white truncate">${displayName}</h3>
+                        <span class="px-2 py-0.5 text-xs rounded-full ${repo.enabled ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'} flex-shrink-0">
+                            ${repo.enabled ? 'Active' : 'Inactive'}
+                        </span>
+                        <span class="px-2 py-0.5 text-xs rounded-full bg-blue-500/20 text-blue-400 flex items-center gap-1 flex-shrink-0">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                            Owner
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-500">Collection ID: ${repoId}</p>
                 </div>
             </div>
             
             <p class="text-xs text-gray-500 mb-2">
-                <span class="text-gray-500">ChromaDB:</span> ${repo.collection_name}${repo.chunking_strategy ? ` | ${repo.chunking_strategy} chunking` : ''}
+                <span class="text-gray-400">ChromaDB:</span> ${repo.collection_name}${repo.chunking_strategy ? ` | ${repo.chunking_strategy} chunking` : ''}
             </p>
             
             ${repo.description ? `<p class="text-xs text-gray-400 mb-3">${repo.description}</p>` : ''}
+            
+            <div class="text-xs text-gray-500 mb-3 flex items-center gap-3">
+                <span><span id="knowledge-doc-count-${repoId}" class="text-white font-medium">...</span> documents</span>
+                <span>•</span>
+                <span><span class="text-white font-medium">${chunkCount}</span> chunks</span>
+            </div>
             
             <div class="flex gap-2 flex-wrap">
                 <button class="toggle-knowledge-btn px-3 py-1 rounded-md ${repo.enabled ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-green-600 hover:bg-green-500'} text-sm text-white" data-repo-id="${repoId}" data-enabled="${repo.enabled}">
@@ -945,6 +1089,12 @@ function createKnowledgeRepositoryCard(repo) {
                 </button>
                 <button class="edit-knowledge-btn px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-500 text-sm text-white" data-repo-id="${repoId}">
                     Edit
+                </button>
+                <button class="upload-knowledge-docs-btn px-3 py-1 rounded-md bg-purple-600 hover:bg-purple-500 text-sm text-white flex items-center gap-1" data-repo-id="${repoId}" data-repo-name="${displayName}">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Upload
                 </button>
                 <button class="delete-knowledge-repo-btn px-3 py-1 rounded-md bg-red-600 hover:bg-red-500 text-sm text-white" data-repo-id="${repoId}">
                     Delete
@@ -1177,6 +1327,81 @@ async function handlePreviewChunking(isAutoPreview = false) {
         previewBtn.disabled = false;
         previewBtn.textContent = 'Preview Segmentation';
     }
+}
+
+/**
+ * Open modal to upload additional documents to existing Knowledge Repository
+ */
+export function openUploadDocumentsModal(collectionId, collectionName, repoData) {
+    console.log('[Knowledge] Opening upload documents modal for:', collectionName, 'ID:', collectionId);
+    
+    // Get chunking parameters from repo if available
+    const chunkingStrategy = repoData?.chunking_strategy || 'semantic';
+    const chunkSize = repoData?.chunk_size || 1000;
+    const chunkOverlap = repoData?.chunk_overlap || 200;
+    
+    // Open the standard knowledge repository modal
+    const modalOverlay = document.getElementById('add-knowledge-repository-modal-overlay');
+    const modalContent = document.getElementById('add-knowledge-repository-modal-content');
+    
+    if (!modalOverlay || !modalContent) {
+        console.error('[Knowledge] Modal elements not found');
+        return;
+    }
+    
+    // Reset the form
+    const form = document.getElementById('add-knowledge-repository-form');
+    if (form) form.reset();
+    
+    // Clear file selection
+    selectedFiles = [];
+    const fileList = document.getElementById('knowledge-repo-file-list');
+    const filesContainer = document.getElementById('knowledge-repo-files-container');
+    if (fileList) fileList.classList.add('hidden');
+    if (filesContainer) filesContainer.innerHTML = '';
+    
+    // Set modal to "upload mode"
+    const modalTitle = modalOverlay.querySelector('h2');
+    if (modalTitle) {
+        modalTitle.innerHTML = `
+            <svg class="w-6 h-6 text-purple-400 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+            </svg>
+            <span>Upload Documents to ${collectionName}</span>
+        `;
+    }
+    
+    // Hide name/description fields (we're adding to existing repo)
+    const nameField = document.getElementById('knowledge-repo-name')?.closest('.mb-6');
+    const descField = document.getElementById('knowledge-repo-description')?.closest('.mb-6');
+    if (nameField) nameField.style.display = 'none';
+    if (descField) descField.style.display = 'none';
+    
+    // Pre-fill chunking parameters from existing repo
+    const strategySelect = document.getElementById('knowledge-chunking-strategy');
+    const sizeInput = document.getElementById('knowledge-chunk-size');
+    const overlapInput = document.getElementById('knowledge-chunk-overlap');
+    
+    if (strategySelect) strategySelect.value = chunkingStrategy;
+    if (sizeInput) sizeInput.value = chunkSize;
+    if (overlapInput) overlapInput.value = chunkOverlap;
+    
+    // Update submit button
+    const submitBtn = document.getElementById('add-knowledge-repository-submit');
+    if (submitBtn) {
+        submitBtn.textContent = 'Upload Documents';
+        // Store collection ID in dataset for form submission
+        submitBtn.dataset.uploadMode = 'true';
+        submitBtn.dataset.collectionId = collectionId;
+        submitBtn.dataset.collectionName = collectionName;
+    }
+    
+    // Show modal with animation
+    modalOverlay.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        modalOverlay.classList.remove('opacity-0');
+        modalContent.classList.remove('scale-95', 'opacity-0');
+    });
 }
 
 // Note: openKnowledgeInspectionModal function is now deprecated in favor of openCollectionInspection from ui.js

@@ -3731,10 +3731,14 @@ async function initializeKnowledgeRepositoryHandlers() {
         // Initialize handlers
         initializeKnowledgeRepositoryHandlers();
         
+        // Import openUploadDocumentsModal from the handler module
+        const { openUploadDocumentsModal } = await import('./knowledgeRepositoryHandler.js');
+        
         // Store functions globally for tab switching and card actions
         window.knowledgeRepositoryHandler = {
             loadKnowledgeRepositories,
-            deleteKnowledgeRepository
+            deleteKnowledgeRepository,
+            openUploadDocumentsModal
         };
         
         console.log('[Knowledge] Knowledge repository handlers loaded');

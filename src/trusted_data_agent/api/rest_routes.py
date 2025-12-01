@@ -5098,6 +5098,7 @@ async def browse_marketplace_collections():
     Query parameters:
     - visibility: Filter by visibility (public, unlisted). Default: public
     - search: Search in name and description
+    - repository_type: Filter by repository type (planner, knowledge). Default: all
     - limit: Max results (default: 50)
     - offset: Pagination offset (default: 0)
     
@@ -5117,6 +5118,7 @@ async def browse_marketplace_collections():
         # Parse query parameters
         visibility_filter = request.args.get("visibility", "public")
         search_query = request.args.get("search", "").lower()
+        repository_type_filter = request.args.get("repository_type", None)  # Filter by repository type
         limit = int(request.args.get("limit", 50))
         offset = int(request.args.get("offset", 0))
         
@@ -5148,6 +5150,12 @@ async def browse_marketplace_collections():
             coll_visibility = coll.get("visibility", "private")
             if visibility_filter == "public" and coll_visibility != "public":
                 continue
+            
+            # Repository type filter (if provided)
+            if repository_type_filter:
+                coll_repo_type = coll.get("repository_type", "planner")
+                if coll_repo_type != repository_type_filter:
+                    continue
             
             # Search filter (if provided)
             if search_query:

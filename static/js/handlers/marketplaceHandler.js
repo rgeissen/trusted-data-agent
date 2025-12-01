@@ -13,6 +13,7 @@ let currentVisibility = 'public';
 let currentSearch = '';
 let totalPages = 1;
 let currentTab = 'browse'; // 'browse' or 'my-collections'
+let currentRepositoryType = 'planner'; // 'planner' or 'knowledge'
 
 /**
  * Initialize marketplace functionality
@@ -20,7 +21,7 @@ let currentTab = 'browse'; // 'browse' or 'my-collections'
 export function initializeMarketplace() {
     console.log('Initializing marketplace...');
     
-    // Tab handlers
+    // Main tab handlers (Browse / My Collections)
     const browseTab = document.getElementById('marketplace-tab-browse');
     const myCollectionsTab = document.getElementById('marketplace-tab-my-collections');
     
@@ -33,6 +34,22 @@ export function initializeMarketplace() {
     if (myCollectionsTab) {
         myCollectionsTab.addEventListener('click', () => {
             switchTab('my-collections');
+        });
+    }
+    
+    // Repository type tab handlers (Planner / Knowledge)
+    const plannerTypeTab = document.getElementById('marketplace-repo-type-planner');
+    const knowledgeTypeTab = document.getElementById('marketplace-repo-type-knowledge');
+    
+    if (plannerTypeTab) {
+        plannerTypeTab.addEventListener('click', () => {
+            switchRepositoryType('planner');
+        });
+    }
+    
+    if (knowledgeTypeTab) {
+        knowledgeTypeTab.addEventListener('click', () => {
+            switchRepositoryType('knowledge');
         });
     }
     
@@ -131,6 +148,46 @@ function switchTab(tab) {
 }
 
 /**
+ * Switch between repository types (planner / knowledge)
+ */
+function switchRepositoryType(type) {
+    currentRepositoryType = type;
+    currentPage = 1;
+    
+    // Update tab styling
+    const plannerTab = document.getElementById('marketplace-repo-type-planner');
+    const knowledgeTab = document.getElementById('marketplace-repo-type-knowledge');
+    const plannerDesc = document.getElementById('planner-description');
+    const knowledgeDesc = document.getElementById('knowledge-description');
+    
+    if (type === 'planner') {
+        if (plannerTab) {
+            plannerTab.classList.add('bg-[#F15F22]', 'text-white');
+            plannerTab.classList.remove('text-gray-400', 'hover:bg-white/10');
+        }
+        if (knowledgeTab) {
+            knowledgeTab.classList.remove('bg-[#F15F22]', 'text-white');
+            knowledgeTab.classList.add('text-gray-400', 'hover:bg-white/10');
+        }
+        if (plannerDesc) plannerDesc.classList.remove('hidden');
+        if (knowledgeDesc) knowledgeDesc.classList.add('hidden');
+    } else {
+        if (knowledgeTab) {
+            knowledgeTab.classList.add('bg-[#F15F22]', 'text-white');
+            knowledgeTab.classList.remove('text-gray-400', 'hover:bg-white/10');
+        }
+        if (plannerTab) {
+            plannerTab.classList.remove('bg-[#F15F22]', 'text-white');
+            plannerTab.classList.add('text-gray-400', 'hover:bg-white/10');
+        }
+        if (knowledgeDesc) knowledgeDesc.classList.remove('hidden');
+        if (plannerDesc) plannerDesc.classList.add('hidden');
+    }
+    
+    loadMarketplaceCollections();
+}
+
+/**
  * Load marketplace collections from API
  */
 async function loadMarketplaceCollections() {
@@ -165,7 +222,8 @@ async function loadMarketplaceCollections() {
             const params = new URLSearchParams({
                 page: currentPage,
                 per_page: 10,
-                visibility: currentVisibility
+                visibility: currentVisibility,
+                repository_type: currentRepositoryType
             });
             
             if (currentSearch) {
@@ -189,9 +247,9 @@ async function loadMarketplaceCollections() {
         if (currentTab === 'my-collections') {
             // /api/v1/rag/collections returns array directly
             collections = Array.isArray(data) ? data : (data.collections || []);
-            // Filter out Default Collection (ID 0) and mark all as owned
+            // Filter out Default Collection (ID 0), filter by repository type, and mark all as owned
             collections = collections
-                .filter(c => c.id !== 0)
+                .filter(c => c.id !== 0 && c.repository_type === currentRepositoryType)
                 .map(c => ({ ...c, is_owner: true }));
         } else {
             // /api/v1/marketplace/collections returns {collections: [], total_pages: n}
@@ -246,6 +304,12 @@ function createCollectionCard(collection) {
     const isSubscribed = collection.is_subscribed || false;
     const rating = collection.average_rating || 0;
     const subscriberCount = collection.subscriber_count || 0;
+    const repositoryType = collection.repository_type || 'planner';
+    
+    // Repository type badge configuration
+    const repoTypeBadge = repositoryType === 'knowledge' 
+        ? '<span class="px-2 py-1 text-xs rounded-full bg-purple-500/20 text-purple-400 flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>Knowledge</span>'
+        : '<span class="px-2 py-1 text-xs rounded-full bg-blue-500/20 text-blue-400 flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>Planner</span>';
     
     card.innerHTML = `
         <!-- Header with title and status badge -->
@@ -255,6 +319,7 @@ function createCollectionCard(collection) {
                 <p class="text-xs text-gray-500">Collection ID: ${collection.id}</p>
             </div>
             <div class="flex flex-col items-end gap-1">
+                ${repoTypeBadge}
                 ${isOwner && collection.is_marketplace_listed ? `
                     <span class="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400">Published</span>
                 ` : ''}
