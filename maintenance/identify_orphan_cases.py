@@ -5,8 +5,13 @@ An orphan case is one where the session_id in the case's metadata doesn't exist 
 """
 
 import json
+import sys
 from pathlib import Path
 from collections import defaultdict
+
+# Add parent directory to path to import from src
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from src.trusted_data_agent.agent.rag_template_generator import RAGTemplateGenerator
 
 def find_all_sessions(sessions_dir):
     """Find all session IDs (including archived ones)."""
@@ -92,7 +97,7 @@ def identify_orphans(sessions_dir, rag_cases_dir):
     
     # Special session IDs that indicate intentional orphans (should be preserved)
     PRESERVED_SESSION_IDS = {
-        '00000000-0000-0000-0000-000000000000',  # Batch-populated examples
+        RAGTemplateGenerator.TEMPLATE_SESSION_ID,  # Template-generated cases
     }
     
     for case in all_cases:
@@ -166,8 +171,8 @@ def identify_orphans(sessions_dir, rag_cases_dir):
         print("  4. Case was created but session creation failed")
         print()
         print("PRESERVED cases will NOT be deleted:")
-        print("  - Cases with session_id='00000000-0000-0000-0000-000000000000'")
-        print("  - These are batch-populated examples and should remain")
+        print(f"  - Cases with session_id='{RAGTemplateGenerator.TEMPLATE_SESSION_ID}'")
+        print("  - These are template-generated examples and should remain")
         print()
         print("You can:")
         print("  - Delete only the deletable orphans to clean up")

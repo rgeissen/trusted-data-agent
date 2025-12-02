@@ -8,6 +8,10 @@ import json
 from pathlib import Path
 import sys
 
+# Add parent directory to path to import from src
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from src.trusted_data_agent.agent.rag_template_generator import RAGTemplateGenerator
+
 def delete_orphan_cases(orphan_file):
     """Delete orphan case files."""
     
@@ -22,7 +26,7 @@ def delete_orphan_cases(orphan_file):
     
     # Safety check: Filter out preserved session IDs
     PRESERVED_SESSION_IDS = {
-        '00000000-0000-0000-0000-000000000000',  # Template-generated cases
+        RAGTemplateGenerator.TEMPLATE_SESSION_ID,  # Template-generated cases
     }
     
     filtered_cases = []

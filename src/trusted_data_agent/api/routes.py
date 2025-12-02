@@ -21,6 +21,7 @@ from trusted_data_agent.core.config import APP_CONFIG, APP_STATE
 from trusted_data_agent.core import session_manager
 from trusted_data_agent.agent.prompts import PROVIDER_SYSTEM_PROMPTS
 from trusted_data_agent.agent.executor import PlanExecutor
+from trusted_data_agent.agent.rag_template_generator import RAGTemplateGenerator
 from trusted_data_agent.llm import handler as llm_handler
 from trusted_data_agent.agent import execution_service
 from trusted_data_agent.core import configuration_service
@@ -194,8 +195,7 @@ async def get_rag_questions(current_user):
                 
             try:
                 # Build where clause with user filtering if context available
-                # Note: Template-generated cases (user_uuid = "00000000-0000-0000-0000-000000000000") 
-                # should be accessible to all users, so we use OR logic
+                # Note: Template-generated cases should be accessible to all users, so we use OR logic
                 where_clause = {"$and": [
                     {"strategy_type": {"$eq": "successful"}},
                     {"is_most_efficient": {"$eq": True}},
@@ -206,7 +206,7 @@ async def get_rag_questions(current_user):
                     where_clause["$and"].append({
                         "$or": [
                             {"user_uuid": {"$eq": user_uuid}},
-                            {"user_uuid": {"$eq": "00000000-0000-0000-0000-000000000000"}}
+                            {"user_uuid": {"$eq": RAGTemplateGenerator.TEMPLATE_SESSION_ID}}
                         ]
                     })
                 
@@ -234,8 +234,7 @@ async def get_rag_questions(current_user):
             
         try:
             # Build where clause with user filtering if context available
-            # Note: Template-generated cases (user_uuid = "00000000-0000-0000-0000-000000000000") 
-            # should be accessible to all users, so we use OR logic
+            # Note: Template-generated cases should be accessible to all users, so we use OR logic
             where_clause = {"$and": [
                 {"strategy_type": {"$eq": "successful"}},
                 {"is_most_efficient": {"$eq": True}},
@@ -246,7 +245,7 @@ async def get_rag_questions(current_user):
                 where_clause["$and"].append({
                     "$or": [
                         {"user_uuid": {"$eq": user_uuid}},
-                        {"user_uuid": {"$eq": "00000000-0000-0000-0000-000000000000"}}
+                        {"user_uuid": {"$eq": RAGTemplateGenerator.TEMPLATE_SESSION_ID}}
                     ]
                 })
             
