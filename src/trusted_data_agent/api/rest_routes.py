@@ -4837,8 +4837,33 @@ async def get_sessions_analytics():
         total_tokens_val = total_input_tokens + total_output_tokens
         success_rate = (successful_turns / total_turns * 100) if total_turns > 0 else 0
         
-        # Rough cost estimate ($0.01 per 1K tokens as average)
-        estimated_cost = total_tokens_val / 1000 * 0.01
+        # Calculate actual cost using cost manager
+        from trusted_data_agent.core.cost_manager import get_cost_manager
+        cost_manager = get_cost_manager()
+        estimated_cost = 0.0
+        
+        # Recalculate costs with actual pricing
+        for session_dir in scan_dirs:
+            for session_file in session_dir.glob('*.json'):
+                try:
+                    with open(session_file, 'r', encoding='utf-8') as f:
+                        session_data = json.load(f)
+                    
+                    workflow_history = session_data.get('last_turn_data', {}).get('workflow_history', [])
+                    for turn in workflow_history:
+                        if not turn.get('isValid', True):
+                            continue
+                        
+                        provider = turn.get('provider', 'Unknown')
+                        model = turn.get('model', 'unknown')
+                        input_tokens = turn.get('turn_input_tokens', 0)
+                        output_tokens = turn.get('turn_output_tokens', 0)
+                        
+                        turn_cost = cost_manager.calculate_cost(provider, model, input_tokens, output_tokens)
+                        estimated_cost += turn_cost
+                        
+                except Exception:
+                    pass
         
         # Model distribution percentages
         total_model_count = sum(model_usage.values())
@@ -5649,4 +5674,392 @@ async def rate_marketplace_collection(collection_id: int):
         
     except Exception as e:
         app_logger.error(f"Error rating collection: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ============================================================================
+# COST MANAGEMENT API ENDPOINTS
+# ============================================================================
+
+@rest_api_bp.route('/v1/costs/sync', methods=['POST'])
+@require_admin
+async def sync_costs_from_litellm():
+    """
+    Sync model pricing data from LiteLLM.
+    Admin only endpoint.
+    
+    Returns:
+        Sync results with counts of new/updated models
+    """
+    try:
+        from trusted_data_agent.core.cost_manager import get_cost_manager
+        
+        cost_manager = get_cost_manager()
+        results = cost_manager.sync_from_litellm()
+        
+        app_logger.info(f"LiteLLM cost sync completed: {results['synced']} models, {len(results['errors'])} errors")
+        
+        return jsonify({
+            "status": "success",
+            "synced_count": results['synced'],
+            "new_models": results['new_models'],
+            "updated_models": results['updated_models'],
+            "errors": results['errors']
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Failed to sync costs: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route('/v1/costs/models', methods=['GET'])
+@require_admin
+async def get_all_model_costs():
+    """
+    Get all model pricing entries.
+    Admin only endpoint.
+    
+    Query params:
+        include_fallback: Include fallback entry (default: true)
+    
+    Returns:
+        List of model cost entries
+    """
+    try:
+        from trusted_data_agent.core.cost_manager import get_cost_manager
+        
+        include_fallback = request.args.get('include_fallback', 'true').lower() == 'true'
+        
+        cost_manager = get_cost_manager()
+        costs = cost_manager.get_all_costs(include_fallback=include_fallback)
+        
+        return jsonify({
+            "status": "success",
+            "costs": costs,
+            "count": len(costs)
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Failed to get model costs: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route('/v1/costs/models/<cost_id>', methods=['PUT'])
+@require_admin
+async def update_model_cost(cost_id: str):
+    """
+    Update a model cost entry (manual override).
+    Admin only endpoint.
+    
+    Request body:
+    {
+        "input_cost": 0.075,
+        "output_cost": 0.30,
+        "notes": "Updated from official docs"
+    }
+    
+    Returns:
+        Success status
+    """
+    try:
+        from trusted_data_agent.core.cost_manager import get_cost_manager
+        
+        data = await request.get_json()
+        input_cost = data.get('input_cost')
+        output_cost = data.get('output_cost')
+        notes = data.get('notes')
+        
+        if input_cost is None or output_cost is None:
+            return jsonify({"status": "error", "message": "input_cost and output_cost are required"}), 400
+        
+        cost_manager = get_cost_manager()
+        success = cost_manager.update_model_cost(cost_id, input_cost, output_cost, notes)
+        
+        if success:
+            return jsonify({"status": "success", "message": "Model cost updated"}), 200
+        else:
+            return jsonify({"status": "error", "message": "Model cost entry not found"}), 404
+            
+    except Exception as e:
+        app_logger.error(f"Failed to update model cost: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route('/v1/costs/models', methods=['POST'])
+@require_admin
+async def add_manual_model_cost():
+    """
+    Add a manual cost entry for a model.
+    Admin only endpoint.
+    
+    Request body:
+    {
+        "provider": "Google",
+        "model": "gemini-2.0-flash",
+        "input_cost": 0.075,
+        "output_cost": 0.30,
+        "notes": "From official pricing page"
+    }
+    
+    Returns:
+        New cost entry ID
+    """
+    try:
+        from trusted_data_agent.core.cost_manager import get_cost_manager
+        
+        data = await request.get_json()
+        provider = data.get('provider')
+        model = data.get('model')
+        input_cost = data.get('input_cost')
+        output_cost = data.get('output_cost')
+        notes = data.get('notes')
+        
+        if not all([provider, model, input_cost is not None, output_cost is not None]):
+            return jsonify({
+                "status": "error",
+                "message": "provider, model, input_cost, and output_cost are required"
+            }), 400
+        
+        cost_manager = get_cost_manager()
+        cost_id = cost_manager.add_manual_cost(provider, model, input_cost, output_cost, notes)
+        
+        if cost_id:
+            return jsonify({
+                "status": "success",
+                "cost_id": cost_id,
+                "message": "Model cost added"
+            }), 201
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "Model cost entry already exists"
+            }), 409
+            
+    except Exception as e:
+        app_logger.error(f"Failed to add model cost: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route('/v1/costs/models/<cost_id>', methods=['DELETE'])
+@require_admin
+async def delete_model_cost(cost_id: str):
+    """
+    Delete a model cost entry.
+    Admin only endpoint.
+    Cannot delete fallback entries.
+    
+    Returns:
+        Success status
+    """
+    try:
+        from trusted_data_agent.core.cost_manager import get_cost_manager
+        
+        cost_manager = get_cost_manager()
+        success = cost_manager.delete_model_cost(cost_id)
+        
+        if success:
+            return jsonify({"status": "success", "message": "Model cost deleted"}), 200
+        else:
+            return jsonify({"status": "error", "message": "Model cost entry not found or cannot be deleted"}), 404
+            
+    except Exception as e:
+        app_logger.error(f"Failed to delete model cost: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route('/v1/costs/fallback', methods=['PUT'])
+@require_admin
+async def update_fallback_cost():
+    """
+    Update the fallback cost for unknown models.
+    Admin only endpoint.
+    
+    Request body:
+    {
+        "input_cost": 10.0,
+        "output_cost": 30.0
+    }
+    
+    Returns:
+        Success status
+    """
+    try:
+        from trusted_data_agent.core.cost_manager import get_cost_manager
+        
+        data = await request.get_json()
+        input_cost = data.get('input_cost')
+        output_cost = data.get('output_cost')
+        
+        if input_cost is None or output_cost is None:
+            return jsonify({"status": "error", "message": "input_cost and output_cost are required"}), 400
+        
+        cost_manager = get_cost_manager()
+        success = cost_manager.update_fallback_cost(input_cost, output_cost)
+        
+        if success:
+            return jsonify({"status": "success", "message": "Fallback cost updated"}), 200
+        else:
+            return jsonify({"status": "error", "message": "Failed to update fallback cost"}), 500
+            
+    except Exception as e:
+        app_logger.error(f"Failed to update fallback cost: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@rest_api_bp.route('/v1/costs/analytics', methods=['GET'])
+@require_admin
+async def get_cost_analytics():
+    """
+    Get comprehensive cost analytics across all sessions.
+    Admin only endpoint.
+    
+    Returns:
+        Detailed cost analytics including:
+        - Total costs by provider/model
+        - Cost trends over time
+        - Most expensive sessions/queries
+        - Average costs per turn/session
+    """
+    try:
+        from trusted_data_agent.core.cost_manager import get_cost_manager
+        from pathlib import Path
+        
+        user_uuid = _get_user_uuid_from_request()
+        cost_manager = get_cost_manager()
+        
+        project_root = Path(__file__).resolve().parents[3]
+        sessions_base = project_root / 'tda_sessions'
+        
+        # Determine which sessions to scan
+        if APP_CONFIG.SESSIONS_FILTER_BY_USER:
+            sessions_root = sessions_base / user_uuid
+            if not sessions_root.exists():
+                return jsonify({
+                    "total_cost": 0.0,
+                    "cost_by_provider": {},
+                    "cost_by_model": {},
+                    "avg_cost_per_session": 0.0,
+                    "avg_cost_per_turn": 0.0,
+                    "most_expensive_sessions": [],
+                    "most_expensive_queries": [],
+                    "cost_trend": []
+                }), 200
+            scan_dirs = [sessions_root]
+        else:
+            if not sessions_base.exists():
+                return jsonify({
+                    "total_cost": 0.0,
+                    "cost_by_provider": {},
+                    "cost_by_model": {},
+                    "avg_cost_per_session": 0.0,
+                    "avg_cost_per_turn": 0.0,
+                    "most_expensive_sessions": [],
+                    "most_expensive_queries": [],
+                    "cost_trend": []
+                }), 200
+            scan_dirs = [d for d in sessions_base.iterdir() if d.is_dir()]
+        
+        # Initialize analytics
+        total_cost = 0.0
+        cost_by_provider = {}
+        cost_by_model = {}
+        session_costs = []
+        query_costs = []
+        total_turns = 0
+        total_sessions = 0
+        cost_by_date = {}
+        
+        # Scan all session files
+        for session_dir in scan_dirs:
+            for session_file in session_dir.glob('*.json'):
+                try:
+                    with open(session_file, 'r', encoding='utf-8') as f:
+                        session_data = json.load(f)
+                    
+                    total_sessions += 1
+                    session_cost = 0.0
+                    session_id = session_data.get('id', session_file.stem)
+                    session_date = session_data.get('created_at', '')[:10] if session_data.get('created_at') else 'unknown'
+                    
+                    # Analyze workflow history for token costs
+                    workflow_history = session_data.get('last_turn_data', {}).get('workflow_history', [])
+                    for turn in workflow_history:
+                        if not turn.get('isValid', True):
+                            continue
+                        
+                        total_turns += 1
+                        provider = turn.get('provider', 'Unknown')
+                        model = turn.get('model', 'unknown')
+                        input_tokens = turn.get('turn_input_tokens', 0)
+                        output_tokens = turn.get('turn_output_tokens', 0)
+                        
+                        # Calculate cost for this turn
+                        turn_cost = cost_manager.calculate_cost(provider, model, input_tokens, output_tokens)
+                        session_cost += turn_cost
+                        
+                        # Track by provider
+                        cost_by_provider[provider] = cost_by_provider.get(provider, 0.0) + turn_cost
+                        
+                        # Track by model
+                        model_key = f"{provider}/{model}"
+                        cost_by_model[model_key] = cost_by_model.get(model_key, 0.0) + turn_cost
+                        
+                        # Track expensive queries
+                        query_costs.append({
+                            'query': turn.get('user_query', '')[:100],
+                            'cost': turn_cost,
+                            'provider': provider,
+                            'model': model,
+                            'tokens': input_tokens + output_tokens,
+                            'session_id': session_id,
+                            'timestamp': turn.get('timestamp', '')
+                        })
+                    
+                    # Track session cost
+                    if session_cost > 0:
+                        session_costs.append({
+                            'session_id': session_id,
+                            'cost': session_cost,
+                            'turns': len(workflow_history),
+                            'created_at': session_data.get('created_at', '')
+                        })
+                        
+                        # Track cost by date
+                        cost_by_date[session_date] = cost_by_date.get(session_date, 0.0) + session_cost
+                    
+                    total_cost += session_cost
+                    
+                except Exception as e:
+                    app_logger.warning(f"Error processing session file {session_file.name}: {e}")
+                    continue
+        
+        # Calculate averages
+        avg_cost_per_session = total_cost / total_sessions if total_sessions > 0 else 0.0
+        avg_cost_per_turn = total_cost / total_turns if total_turns > 0 else 0.0
+        
+        # Sort and get top expensive items
+        session_costs.sort(key=lambda x: x['cost'], reverse=True)
+        query_costs.sort(key=lambda x: x['cost'], reverse=True)
+        
+        # Sort cost by model (descending)
+        cost_by_model_sorted = dict(sorted(cost_by_model.items(), key=lambda x: x[1], reverse=True))
+        
+        # Cost trend (daily)
+        cost_trend = [{"date": date, "cost": cost} for date, cost in sorted(cost_by_date.items())]
+        
+        return jsonify({
+            "total_cost": round(total_cost, 2),
+            "cost_by_provider": {k: round(v, 2) for k, v in cost_by_provider.items()},
+            "cost_by_model": {k: round(v, 4) for k, v in list(cost_by_model_sorted.items())[:20]},  # Top 20 models
+            "avg_cost_per_session": round(avg_cost_per_session, 4),
+            "avg_cost_per_turn": round(avg_cost_per_turn, 4),
+            "most_expensive_sessions": session_costs[:10],
+            "most_expensive_queries": query_costs[:20],
+            "cost_trend": cost_trend[-30:],  # Last 30 days
+            "total_sessions": total_sessions,
+            "total_turns": total_turns
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Failed to get cost analytics: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500

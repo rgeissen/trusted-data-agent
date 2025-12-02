@@ -487,3 +487,47 @@ class DocumentUploadConfig(Base):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+
+
+class LLMModelCost(Base):
+    """LLM model pricing information for cost tracking and analytics."""
+    
+    __tablename__ = 'llm_model_costs'
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    provider = Column(String(50), nullable=False, index=True)  # Google, Anthropic, OpenAI, Amazon, Azure, Friendli, Ollama
+    model = Column(String(100), nullable=False, index=True)  # Model name (e.g., gemini-2.0-flash, claude-3-5-haiku)
+    
+    # Pricing in USD per 1 million tokens
+    input_cost_per_million = Column(Integer, nullable=False)  # Input token cost per 1M
+    output_cost_per_million = Column(Integer, nullable=False)  # Output token cost per 1M
+    
+    # Metadata
+    is_manual_entry = Column(Boolean, nullable=False, default=False)  # True if manually entered by admin
+    is_fallback = Column(Boolean, nullable=False, default=False, index=True)  # True for fallback/default pricing
+    source = Column(String(50), nullable=False)  # 'litellm', 'manual', 'system_default'
+    last_updated = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    notes = Column(Text, nullable=True)  # Admin notes
+    
+    # Unique constraint: one price per provider/model combination
+    __table_args__ = (
+        Index('idx_llm_cost_provider_model', 'provider', 'model', unique=True),
+    )
+    
+    def __repr__(self):
+        return f"<LLMModelCost(provider='{self.provider}', model='{self.model}', in=${self.input_cost_per_million}/1M, out=${self.output_cost_per_million}/1M)>"
+    
+    def to_dict(self):
+        """Convert model cost to dictionary for API responses."""
+        return {
+            'id': self.id,
+            'provider': self.provider,
+            'model': self.model,
+            'input_cost_per_million': self.input_cost_per_million,
+            'output_cost_per_million': self.output_cost_per_million,
+            'is_manual_entry': self.is_manual_entry,
+            'is_fallback': self.is_fallback,
+            'source': self.source,
+            'last_updated': self.last_updated.isoformat() if self.last_updated else None,
+            'notes': self.notes
+        }

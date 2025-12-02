@@ -124,5 +124,133 @@
     "allow_user_override": true,
     "always_show_welcome_screen": true,
     "default_theme": "modern"
-  }
+  },
+  "default_model_costs": [
+    {
+      "provider": "Friendli",
+      "model": "google/gemma-3-27b-it",
+      "input_cost_per_million": 0.03,
+      "output_cost_per_million": 0.03,
+      "notes": "Friendli serverless @ $0.002/sec, ~70 tokens/sec avg"
+    },
+    {
+      "provider": "Friendli",
+      "model": "meta-llama/Llama-3.3-70B-Instruct",
+      "input_cost_per_million": 0.6,
+      "output_cost_per_million": 0.6,
+      "notes": "Friendli serverless @ $0.6/1M tokens"
+    },
+    {
+      "provider": "Friendli",
+      "model": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+      "input_cost_per_million": 0.2,
+      "output_cost_per_million": 0.8,
+      "notes": "Friendli serverless @ $0.2 input, $0.8 output per 1M tokens"
+    },
+    {
+      "provider": "Friendli",
+      "model": "Qwen/Qwen3-235B-A22B-Thinking-2507",
+      "input_cost_per_million": 0.004,
+      "output_cost_per_million": 0.004,
+      "notes": "Friendli serverless @ $0.004/sec, ~50 tokens/sec avg"
+    },
+    {
+      "provider": "Friendli",
+      "model": "mistralai/Magistral-Small-2506",
+      "input_cost_per_million": 0.002,
+      "output_cost_per_million": 0.002,
+      "notes": "Friendli serverless @ $0.002/sec, ~100 tokens/sec avg"
+    },
+    {
+      "provider": "Friendli",
+      "model": "mistralai/Devstral-Small-2505",
+      "input_cost_per_million": 0.002,
+      "output_cost_per_million": 0.002,
+      "notes": "Friendli serverless @ $0.002/sec, ~100 tokens/sec avg"
+    },
+    {
+      "provider": "Friendli",
+      "model": "Qwen/Qwen3-32B",
+      "input_cost_per_million": 0.002,
+      "output_cost_per_million": 0.002,
+      "notes": "Friendli serverless @ $0.002/sec, ~100 tokens/sec avg"
+    },
+    {
+      "provider": "Friendli",
+      "model": "skt/A.X-31",
+      "input_cost_per_million": 0.002,
+      "output_cost_per_million": 0.002,
+      "notes": "Friendli serverless @ $0.002/sec, ~100 tokens/sec avg"
+    },
+    {
+      "provider": "Friendli",
+      "model": "zal-org/GLM-4-6",
+      "input_cost_per_million": 0.004,
+      "output_cost_per_million": 0.004,
+      "notes": "Friendli serverless @ $0.004/sec, ~100 tokens/sec avg"
+    },
+    {
+      "provider": "Friendli",
+      "model": "meta-llama/Llama-4-Scout-17B-16E-Instruct",
+      "input_cost_per_million": 0.002,
+      "output_cost_per_million": 0.002,
+      "notes": "Friendli serverless @ $0.002/sec, ~100 tokens/sec avg"
+    },
+    {
+      "provider": "Friendli",
+      "model": "Qwen/Qwen3-30B-A3B",
+      "input_cost_per_million": 0.002,
+      "output_cost_per_million": 0.002,
+      "notes": "Friendli serverless @ $0.002/sec, ~100 tokens/sec avg"
+    },
+    {
+      "provider": "Friendli",
+      "model": "meta-llama/Llama-4-Maverick-17B-128E-Instruct",
+      "input_cost_per_million": 0.004,
+      "output_cost_per_million": 0.004,
+      "notes": "Friendli serverless @ $0.004/sec, ~100 tokens/sec avg"
+    },
+    {
+      "provider": "Friendli",
+      "model": "mistralai/Mistral-Small-3.1-24B-Instruct-2503",
+      "input_cost_per_million": 0.002,
+      "output_cost_per_million": 0.002,
+      "notes": "Friendli serverless @ $0.002/sec, ~100 tokens/sec avg"
+    },
+    {
+      "provider": "Friendli",
+      "model": "deepseek-ai/DeepSeek-V3.1",
+      "input_cost_per_million": 0.004,
+      "output_cost_per_million": 0.004,
+      "notes": "Friendli serverless @ $0.004/sec, ~100 tokens/sec avg"
+    },
+    {
+      "provider": "Friendli",
+      "model": "skt/A.X-4.0",
+      "input_cost_per_million": 0.002,
+      "output_cost_per_million": 0.002,
+      "notes": "Friendli serverless @ $0.002/sec, ~100 tokens/sec avg"
+    },
+    {
+      "provider": "Friendli",
+      "model": "naver-hyperclovax/HyperCLOVAX-SEED-Think-14B",
+      "input_cost_per_million": 0.002,
+      "output_cost_per_million": 0.002,
+      "notes": "Friendli serverless @ $0.002/sec, ~100 tokens/sec avg"
+    },
+    {
+      "provider": "Friendli",
+      "model": "LGAI-EXAONE/EXAONE-4.0.1-32B",
+      "input_cost_per_million": 0.6,
+      "output_cost_per_million": 1.0,
+      "notes": "Friendli serverless @ $0.6 input, $1 output per 1M tokens"
+    },
+    {
+      "provider": "Friendli",
+      "model": "deepseek-ai/DeepSeek-R1-0528",
+      "input_cost_per_million": 0.004,
+      "output_cost_per_million": 0.004,
+      "notes": "Friendli serverless @ $0.004/sec, ~100 tokens/sec avg"
+    }
+  ]
 }

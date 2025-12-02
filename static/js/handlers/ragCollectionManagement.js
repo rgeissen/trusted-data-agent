@@ -1175,8 +1175,27 @@ async function calculateRagImpactKPIs() {
             ? Math.floor(championCases * avgTokensPerCase * futureTaskMultiplier * wasteMultiplier) 
             : 0;
         
-        // Cost calculation: Using $15 per 1M output tokens (typical GPT-4 class pricing)
-        const estimatedCostSavings = (estimatedTokensSaved / 1000000 * 15).toFixed(2);
+        // Cost calculation: Fetch average cost per 1M tokens from actual session analytics
+        // This uses the real pricing from the cost manager instead of hardcoded estimates
+        let avgCostPer1MTokens = 15; // Fallback to $15/1M if API fails
+        try {
+            const analyticsResponse = await fetch('/api/v1/sessions/analytics', {
+                headers: { 'Authorization': `Bearer ${window.authClient.getToken()}` }
+            });
+            if (analyticsResponse.ok) {
+                const analyticsData = await analyticsResponse.json();
+                const totalTokens = analyticsData.total_tokens?.total || 0;
+                const estimatedCost = analyticsData.estimated_cost || 0;
+                if (totalTokens > 0 && estimatedCost > 0) {
+                    // Calculate actual average cost per 1M tokens from recent sessions
+                    avgCostPer1MTokens = (estimatedCost / totalTokens) * 1000000;
+                }
+            }
+        } catch (error) {
+            console.warn('Using fallback cost estimate:', error);
+        }
+        
+        const estimatedCostSavings = (estimatedTokensSaved / 1000000 * avgCostPer1MTokens).toFixed(2);
         
         // Speed improvement: Champion cases enable faster execution
         // Typical improvement: 60-70% faster when RAG provides champion strategy upfront
