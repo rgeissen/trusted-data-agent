@@ -2190,10 +2190,43 @@ function performViewSwitch(viewId) {
             }, 500);
         }
         
-        // If no active session, refresh the welcome screen to update button text
-        if (!state.currentSessionId && window.showWelcomeScreen) {
-            console.log('[handleViewSwitch] No active session, refreshing welcome screen');
-            window.showWelcomeScreen();
+        // If no session loaded in UI, check if we have a session ID to load or need to fetch sessions
+        if (!state.sessionLoaded) {
+            console.log('[handleViewSwitch] No session loaded in UI, checking for session to load');
+            
+            // Dynamically import sessionManagement to load session
+            import('./handlers/sessionManagement.js').then(async ({ handleLoadSession }) => {
+                try {
+                    // If we have a session ID in state (restored from localStorage), load it
+                    if (state.currentSessionId) {
+                        console.log('[handleViewSwitch] Session ID exists in state, loading session:', state.currentSessionId);
+                        await handleLoadSession(state.currentSessionId);
+                    } else {
+                        // No session ID in state - fetch sessions and load most recent
+                        console.log('[handleViewSwitch] No session ID in state, fetching sessions');
+                        const sessions = await API.loadAllSessions();
+                        const activeSessions = sessions ? sessions.filter(s => !s.archived) : [];
+                        
+                        if (activeSessions && activeSessions.length > 0) {
+                            // Sessions exist - load the most recent one (first in array)
+                            console.log('[handleViewSwitch] Found', activeSessions.length, 'existing sessions, loading most recent');
+                            await handleLoadSession(activeSessions[0].id);
+                        } else {
+                            // No sessions exist - show welcome screen
+                            console.log('[handleViewSwitch] No existing sessions, showing welcome screen');
+                            if (window.showWelcomeScreen) {
+                                window.showWelcomeScreen();
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('[handleViewSwitch] Error loading sessions:', error);
+                    // Fallback to welcome screen on error
+                    if (window.showWelcomeScreen) {
+                        window.showWelcomeScreen();
+                    }
+                }
+            });
         }
     }
 }

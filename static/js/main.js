@@ -823,6 +823,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     subscribeToNotifications();
     initializeRAGAutoCompletion();
     initializeMarketplace();
+    
+    // Restore current session ID from localStorage if available
+    const savedSessionId = localStorage.getItem('currentSessionId');
+    if (savedSessionId) {
+        state.currentSessionId = savedSessionId;
+        console.log('[Startup] Restored session ID from localStorage:', savedSessionId);
+    }
 
     // Fetch GitHub star count - DEACTIVATED to conserve API credits
     // fetchGitHubStarCount();

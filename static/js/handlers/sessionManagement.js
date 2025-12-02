@@ -51,6 +51,10 @@ export async function handleStartNewSession() {
     // --- MODIFICATION START: Clear task ID display on new session ---
     UI.updateTaskIdDisplay(null);
     // --- MODIFICATION END ---
+    
+    // Clear persisted session ID when starting new session
+    localStorage.removeItem('currentSessionId');
+    state.sessionLoaded = false;
 
     try {
         const data = await API.startNewSession();
@@ -70,7 +74,8 @@ export async function handleStartNewSession() {
  * @param {boolean} [isNewSession=false] - Flag to skip redundant checks if it's a new session.
  */
 export async function handleLoadSession(sessionId, isNewSession = false) {
-    if (state.currentSessionId === sessionId && !isNewSession) return;
+    // Skip loading only if session ID matches AND session is already loaded in UI
+    if (state.currentSessionId === sessionId && state.sessionLoaded && !isNewSession) return;
 
     // --- MODIFICATION START: Clear task ID display on session load ---
     UI.updateTaskIdDisplay(null);
@@ -90,6 +95,11 @@ export async function handleLoadSession(sessionId, isNewSession = false) {
     try {
         const data = await API.loadSession(sessionId);
         state.currentSessionId = sessionId;
+        state.sessionLoaded = true; // Mark session as loaded in UI
+        
+        // Persist session ID to localStorage for browser refresh persistence
+        localStorage.setItem('currentSessionId', sessionId);
+        
         state.currentProvider = data.provider || state.currentProvider;
         state.currentModel = data.model || state.currentModel;
         

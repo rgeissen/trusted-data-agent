@@ -66,6 +66,9 @@ export const state = {
     // --- MODIFICATION START: Feedback Voting ---
     feedbackByTurn: {}, // turnId -> 'up' | 'down' | null
     // --- MODIFICATION END ---
+    // --- MODIFICATION START: Session Load Tracking ---
+    sessionLoaded: false, // Tracks if session history is loaded in UI (vs just ID in state)
+    // --- MODIFICATION END ---
 };
 
 // Functions to modify state can be added here if needed, e.g.:

@@ -2863,23 +2863,54 @@ function validateNumberInput(inputElement) {
 
 /**
  * Validate and update the Generate Context button state
- * The button should only be enabled if both Database Name and MCP Context Prompt are populated
+ * Template-aware validation based on required fields for each template
  */
 function validateGenerateContextButton() {
     const generateContextBtn = document.getElementById('rag-collection-generate-context');
     if (!generateContextBtn) return;
     
-    // Get the database name field
-    const databaseNameEl = document.getElementById('rag-collection-llm-database-name');
-    const databaseName = databaseNameEl ? databaseNameEl.value.trim() : '';
+    // Get current template
+    const templateSelect = document.getElementById('rag-collection-template-select');
+    const selectedTemplate = templateSelect ? templateSelect.value : '';
     
-    // Get the MCP context prompt field
-    const mcpPromptEl = document.getElementById('rag-collection-llm-mcp-prompt');
-    const mcpPrompt = mcpPromptEl ? mcpPromptEl.value.trim() : '';
+    let isValid = false;
     
-    // Enable button only if both fields are populated
-    const isValid = databaseName !== '' && mcpPrompt !== '';
+    // Template-specific validation
+    if (selectedTemplate === 'sql_query_doc_context_v1') {
+        // SQL Query Constructor - Document Context
+        // Required: user_query, sql_statement, context_topic, AND (document_file OR document_content)
+        const userQueryEl = document.getElementById('rag-collection-llm-user-query');
+        const sqlStatementEl = document.getElementById('rag-collection-llm-sql-statement');
+        const contextTopicEl = document.getElementById('rag-collection-llm-context-topic');
+        const documentContentEl = document.getElementById('rag-collection-llm-document-content');
+        const documentList = document.getElementById('rag-collection-doc-list');
+        
+        const userQuery = userQueryEl ? userQueryEl.value.trim() : '';
+        const sqlStatement = sqlStatementEl ? sqlStatementEl.value.trim() : '';
+        const contextTopic = contextTopicEl ? contextTopicEl.value.trim() : '';
+        const documentContent = documentContentEl ? documentContentEl.value.trim() : '';
+        const hasUploadedFiles = documentList && !documentList.classList.contains('hidden') && documentList.children.length > 0;
+        
+        // Check minimum lengths per validation rules
+        const userQueryValid = userQuery.length >= 5;
+        const sqlStatementValid = sqlStatement.length >= 10;
+        const contextTopicValid = contextTopic.length >= 3;
+        const documentValid = documentContent.length >= 100 || hasUploadedFiles;
+        
+        isValid = userQueryValid && sqlStatementValid && contextTopicValid && documentValid;
+    } else {
+        // Default validation for other templates (Database Context, etc.)
+        // Required: database_name AND mcp_prompt
+        const databaseNameEl = document.getElementById('rag-collection-llm-database-name');
+        const mcpPromptEl = document.getElementById('rag-collection-llm-mcp-prompt');
+        
+        const databaseName = databaseNameEl ? databaseNameEl.value.trim() : '';
+        const mcpPrompt = mcpPromptEl ? mcpPromptEl.value.trim() : '';
+        
+        isValid = databaseName !== '' && mcpPrompt !== '';
+    }
     
+    // Update button state
     if (isValid) {
         generateContextBtn.disabled = false;
         generateContextBtn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -3058,8 +3089,12 @@ async function renderLlmFieldsForTemplate(templateId) {
             if (fieldElement) {
                 fieldElement.addEventListener('input', refreshQuestionGenerationPrompt);
                 
-                // Add validation listener for database_name field
-                if (varName === 'database_name') {
+                // Add validation listener for required fields
+                if (varName === 'database_name' || 
+                    varName === 'user_query' || 
+                    varName === 'sql_statement' || 
+                    varName === 'context_topic' ||
+                    varName === 'document_content') {
                     fieldElement.addEventListener('input', validateGenerateContextButton);
                 }
                 
@@ -3240,6 +3275,9 @@ function handleDocumentUpload(event) {
     event.target.value = '';
     console.log('[Document Upload] File input reset');
     
+    // Trigger validation to update Generate Context button
+    validateGenerateContextButton();
+    
     console.log('[Document Upload] ===== HANDLER COMPLETE =====');
 }
 
@@ -3286,6 +3324,9 @@ function removeUploadedDocument(index) {
     });
     
     showNotification('success', 'Document removed');
+    
+    // Trigger validation to update Generate Context button
+    validateGenerateContextButton();
     
     // Reset the file input so the same file can be selected again
     const fileInput = document.getElementById('rag-collection-doc-upload');
