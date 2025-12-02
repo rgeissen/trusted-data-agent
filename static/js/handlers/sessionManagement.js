@@ -255,9 +255,12 @@ export async function handleDeleteSessionClick(deleteButton) {
                 if (state.currentSessionId === sessionId) {
                     try {
                         const remainingSessions = await API.loadAllSessions();
-                        if (remainingSessions && remainingSessions.length > 0) {
+                        // Filter out archived sessions
+                        const activeSessions = remainingSessions ? remainingSessions.filter(s => !s.archived) : [];
+                        
+                        if (activeSessions && activeSessions.length > 0) {
                             // The API returns sessions sorted by most recent first.
-                            const nextSessionId = remainingSessions[0].id;
+                            const nextSessionId = activeSessions[0].id;
                             await handleLoadSession(nextSessionId);
                         } else {
                             await handleStartNewSession();

@@ -2190,44 +2190,65 @@ function performViewSwitch(viewId) {
             }, 500);
         }
         
-        // If no session loaded in UI, check if we have a session ID to load or need to fetch sessions
-        if (!state.sessionLoaded) {
-            console.log('[handleViewSwitch] No session loaded in UI, checking for session to load');
+        // Check if application is initialized before loading sessions
+        // SKIP this check if we're already in the middle of initialization (reconnectAndLoad handles it)
+        if (state.sessionLoaded) {
+            console.log('[handleViewSwitch] Session already loaded, skipping initialization check');
+            return;
+        }
+        
+        API.checkServerStatus().then(async (status) => {
+            if (!status.isConfigured) {
+                // Application not configured - show welcome screen
+                console.log('[handleViewSwitch] Application not configured, showing welcome screen');
+                if (window.showWelcomeScreen) {
+                    window.showWelcomeScreen();
+                }
+                return;
+            }
+            
+            // Application is configured - proceed with session loading if needed
+            console.log('[handleViewSwitch] Application configured, no session loaded, checking for session to load');
             
             // Dynamically import sessionManagement to load session
-            import('./handlers/sessionManagement.js').then(async ({ handleLoadSession }) => {
-                try {
-                    // If we have a session ID in state (restored from localStorage), load it
-                    if (state.currentSessionId) {
-                        console.log('[handleViewSwitch] Session ID exists in state, loading session:', state.currentSessionId);
-                        await handleLoadSession(state.currentSessionId);
+            const { handleLoadSession } = await import('./handlers/sessionManagement.js');
+            try {
+                // If we have a session ID in state (restored from localStorage), load it
+                if (state.currentSessionId) {
+                    console.log('[handleViewSwitch] Session ID exists in state, loading session:', state.currentSessionId);
+                    await handleLoadSession(state.currentSessionId);
+                } else {
+                    // No session ID in state - fetch sessions and load most recent
+                    console.log('[handleViewSwitch] No session ID in state, fetching sessions');
+                    const sessions = await API.loadAllSessions();
+                    const activeSessions = sessions ? sessions.filter(s => !s.archived) : [];
+                    
+                    if (activeSessions && activeSessions.length > 0) {
+                        // Sessions exist - load the most recent one (first in array)
+                        console.log('[handleViewSwitch] Found', activeSessions.length, 'existing sessions, loading most recent');
+                        await handleLoadSession(activeSessions[0].id);
                     } else {
-                        // No session ID in state - fetch sessions and load most recent
-                        console.log('[handleViewSwitch] No session ID in state, fetching sessions');
-                        const sessions = await API.loadAllSessions();
-                        const activeSessions = sessions ? sessions.filter(s => !s.archived) : [];
-                        
-                        if (activeSessions && activeSessions.length > 0) {
-                            // Sessions exist - load the most recent one (first in array)
-                            console.log('[handleViewSwitch] Found', activeSessions.length, 'existing sessions, loading most recent');
-                            await handleLoadSession(activeSessions[0].id);
-                        } else {
-                            // No sessions exist - show welcome screen
-                            console.log('[handleViewSwitch] No existing sessions, showing welcome screen');
-                            if (window.showWelcomeScreen) {
-                                window.showWelcomeScreen();
-                            }
+                        // No sessions exist - show welcome screen
+                        console.log('[handleViewSwitch] No existing sessions, showing welcome screen');
+                        if (window.showWelcomeScreen) {
+                            window.showWelcomeScreen();
                         }
                     }
-                } catch (error) {
-                    console.error('[handleViewSwitch] Error loading sessions:', error);
-                    // Fallback to welcome screen on error
-                    if (window.showWelcomeScreen) {
-                        window.showWelcomeScreen();
-                    }
                 }
-            });
-        }
+            } catch (error) {
+                console.error('[handleViewSwitch] Error loading sessions:', error);
+                // Fallback to welcome screen on error
+                if (window.showWelcomeScreen) {
+                    window.showWelcomeScreen();
+                }
+            }
+        }).catch(error => {
+            console.error('[handleViewSwitch] Error checking server status:', error);
+            // On error, show welcome screen as fallback
+            if (window.showWelcomeScreen) {
+                window.showWelcomeScreen();
+            }
+        });
     }
 }
 

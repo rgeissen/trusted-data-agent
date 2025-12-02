@@ -2777,17 +2777,19 @@ async function showProfileModal(profileId = null) {
     function generateTag() {
         const llmConfig = configState.llmConfigurations.find(c => c.id === llmSelect.value);
         const mcpServer = configState.mcpServers.find(s => s.id === mcpSelect.value);
+        const profileName = profileNameInput.value.trim();
         
-        if (!llmConfig || !mcpServer) {
+        if (!llmConfig || !mcpServer || !profileName) {
             return '';
         }
         
-        // Extract characters from provider, model, and server
-        const providerPart = (llmConfig.provider || '').substring(0, 2).toUpperCase();
-        const modelPart = (llmConfig.model || '').substring(0, 2).toUpperCase();
+        // Extract characters: 2 from profile name, 1 from provider, 1 from model, 1 from server
+        const namePart = profileName.substring(0, 2).toUpperCase();
+        const providerPart = (llmConfig.provider || '').substring(0, 1).toUpperCase();
+        const modelPart = (llmConfig.model || '').substring(0, 1).toUpperCase();
         const serverPart = (mcpServer.name || '').substring(0, 1).toUpperCase();
         
-        let tag = (providerPart + modelPart + serverPart).substring(0, 5);
+        let tag = (namePart + providerPart + modelPart + serverPart).substring(0, 5);
         
         // Ensure uniqueness
         let suffix = '';

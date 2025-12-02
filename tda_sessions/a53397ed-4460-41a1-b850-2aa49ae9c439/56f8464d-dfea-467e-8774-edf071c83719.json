@@ -24,7 +24,7 @@
     },
     {
       "role": "assistant",
-      "content": "<div class=\"response-card summary-card mb-4\"><p class=\"text-gray-300 mb-4\">To create a table in Teradata, you use the <code class=\"bg-gray-900/70 text-teradata-orange rounded-md px-1.5 py-0.5 font-mono text-sm\">CREATE TABLE</code> statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the <code class=\"bg-gray-900/70 text-teradata-orange rounded-md px-1.5 py-0.5 font-mono text-sm\">CREATE TABLE</code> statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*.</p></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'><div class='response-card'><p class=\"text-gray-300 mb-4\">To create a table in Teradata, you use the <code class=\"bg-gray-900/70 text-teradata-orange rounded-md px-1.5 py-0.5 font-mono text-sm\">CREATE TABLE</code> statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the <code class=\"bg-gray-900/70 text-teradata-orange rounded-md px-1.5 py-0.5 font-mono text-sm\">CREATE TABLE</code> statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*.</p></div></div></details>",
+      "content": "<div class=\"response-card summary-card mb-4\"><p class=\"text-gray-300 mb-4\">To create a table in Teradata, you use the <code class=\"bg-gray-900/70 text-teradata-orange rounded-md px-1.5 py-0.5 font-mono text-sm\">CREATE TABLE</code> statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the <code class=\"bg-gray-900/70 text-teradata-orange rounded-md px-1.5 py-0.5 font-mono text-sm\">CREATE TABLE</code> statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*.</p></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'><div class='response-card'><p class=\"text-gray-300 mb-4\">To create a table in Teradata, you use the <code class=\"bg-gray-900/70 text-teradata-orange rounded-md px-1.5 py-0.5 font-mono text-sm\">CREATE TABLE</code> statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the <code class=\"bg-gray-900/70 text-teradata-orange rounded-md px-1.5 py-0.5 font-mono text-sm\">CREATE TABLE</code> statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*.</p></div></div></details>",
       "isValid": true,
       "turn_number": 1
     },
@@ -38,7 +38,7 @@
     },
     {
       "role": "assistant",
-      "content": "<div class=\"response-card summary-card mb-4\"><p class=\"text-gray-300 mb-4\">The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the <code class=\"bg-gray-900/70 text-teradata-orange rounded-md px-1.5 py-0.5 font-mono text-sm\">CREATE TABLE</code> statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*.</p></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'><div class='response-card'><p class=\"text-gray-300 mb-4\">The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the <code class=\"bg-gray-900/70 text-teradata-orange rounded-md px-1.5 py-0.5 font-mono text-sm\">CREATE TABLE</code> statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*.</p></div></div></details>",
+      "content": "<div class=\"response-card summary-card mb-4\"><p class=\"text-gray-300 mb-4\">The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the <code class=\"bg-gray-900/70 text-teradata-orange rounded-md px-1.5 py-0.5 font-mono text-sm\">CREATE TABLE</code> statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*.</p></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'><div class='response-card'><p class=\"text-gray-300 mb-4\">The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the <code class=\"bg-gray-900/70 text-teradata-orange rounded-md px-1.5 py-0.5 font-mono text-sm\">CREATE TABLE</code> statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*.</p></div></div></details>",
       "isValid": true,
       "turn_number": 2
     },
@@ -52,7 +52,7 @@
     },
     {
       "role": "assistant",
-      "content": "<div class=\"response-card summary-card mb-4\"><p class=\"text-gray-300 mb-4\">The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you de\ufb01ne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes.</p></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'><div class='response-card'><p class=\"text-gray-300 mb-4\">The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you de\ufb01ne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes.</p></div></div></details>",
+      "content": "<div class=\"response-card summary-card mb-4\"><p class=\"text-gray-300 mb-4\">The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you deﬁne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes.</p></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'><div class='response-card'><p class=\"text-gray-300 mb-4\">The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you deﬁne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes.</p></div></div></details>",
       "isValid": true,
       "turn_number": 3
     }
@@ -76,7 +76,7 @@
     },
     {
       "role": "assistant",
-      "content": "To create a table in Teradata, you use the `CREATE TABLE` statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*.",
+      "content": "To create a table in Teradata, you use the `CREATE TABLE` statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*.",
       "isValid": true,
       "turn_number": 1
     },
@@ -88,7 +88,7 @@
     },
     {
       "role": "assistant",
-      "content": "The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*.",
+      "content": "The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*.",
       "isValid": true,
       "turn_number": 2
     },
@@ -100,7 +100,7 @@
     },
     {
       "role": "assistant",
-      "content": "The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you de\ufb01ne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes.",
+      "content": "The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you deﬁne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes.",
       "isValid": true,
       "turn_number": 3
     }
@@ -123,7 +123,7 @@
               "TDA_ContextReport"
             ],
             "arguments": {
-              "answer_from_context": "To create a table in Teradata, you use the `CREATE TABLE` statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*."
+              "answer_from_context": "To create a table in Teradata, you use the `CREATE TABLE` statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*."
             }
           }
         ],
@@ -165,7 +165,7 @@
                       "TDA_ContextReport"
                     ],
                     "arguments": {
-                      "answer_from_context": "To create a table in Teradata, you use the `CREATE TABLE` statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*."
+                      "answer_from_context": "To create a table in Teradata, you use the `CREATE TABLE` statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*."
                     }
                   }
                 ]
@@ -196,7 +196,7 @@
                       "TDA_ContextReport"
                     ],
                     "arguments": {
-                      "answer_from_context": "To create a table in Teradata, you use the `CREATE TABLE` statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*."
+                      "answer_from_context": "To create a table in Teradata, you use the `CREATE TABLE` statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*."
                     }
                   },
                   "execution_depth": 0
@@ -216,7 +216,7 @@
             "action": {
               "tool_name": "TDA_ContextReport",
               "arguments": {
-                "answer_from_context": "To create a table in Teradata, you use the `CREATE TABLE` statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*."
+                "answer_from_context": "To create a table in Teradata, you use the `CREATE TABLE` statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*."
               },
               "metadata": {
                 "phase_number": 1,
@@ -231,7 +231,7 @@
               },
               "results": [
                 {
-                  "response": "To create a table in Teradata, you use the `CREATE TABLE` statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*."
+                  "response": "To create a table in Teradata, you use the `CREATE TABLE` statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*."
                 }
               ]
             }
@@ -262,7 +262,7 @@
               "tool_name": "TDA_SystemLog",
               "arguments": {
                 "message": "LLM has generated the final answer",
-                "details": "To create a table in Teradata, you use the `CREATE TABLE` statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*."
+                "details": "To create a table in Teradata, you use the `CREATE TABLE` statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*."
               },
               "metadata": {
                 "execution_depth": 0,
@@ -275,7 +275,7 @@
             }
           }
         ],
-        "final_summary": "To create a table in Teradata, you use the `CREATE TABLE` statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*.",
+        "final_summary": "To create a table in Teradata, you use the `CREATE TABLE` statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*.",
         "timestamp": "2025-12-02T08:57:10.945535+00:00",
         "provider": "Friendli",
         "model": "google/gemma-3-27b-it",
@@ -306,21 +306,21 @@
           "chunks": [
             {
               "collection_name": "Teradata SQL Fundamentals",
-              "content": " assign a name to the table and to some of its columns, but all other aspects of the table are set by Teradata software. User\nmanipulation of ART tables, such as update, insert and delete, is not allowed.\nRelated Information\nIndexes, see Indexes. For details on NoPI tables, see No Primary Index (NoPI) Tables.\nRules for duplicate rows in a table, see CREATE TABLE in Teradata Vantage\u2122 - SQL Data De\ufb01nition Language Syntax and Examples, B035-1144.\nFor an explanation of the features not available for global temporary base tables, see CREATE TABLE in Teradata Vantage\u2122 - SQL Data De\ufb01nition Language Syntax and\nExamples, B035-1144.\nThe result of an INSERT operation that would create a duplicate row, see INSERT in Teradata Vantage\u2122 - SQL Data Manipulation Language, B035-1146.\nThe result of an INSERT using a SELECT subquery that would create a duplicate row, see INSERT in Teradata Vantage\u2122 - SQL Data Manipulation Language, B035-1146.\nCreating a NoPI table, see the NO PRIMARY INDEX clause for the ",
+              "content": " assign a name to the table and to some of its columns, but all other aspects of the table are set by Teradata software. User\nmanipulation of ART tables, such as update, insert and delete, is not allowed.\nRelated Information\nIndexes, see Indexes. For details on NoPI tables, see No Primary Index (NoPI) Tables.\nRules for duplicate rows in a table, see CREATE TABLE in Teradata Vantage™ - SQL Data Deﬁnition Language Syntax and Examples, B035-1144.\nFor an explanation of the features not available for global temporary base tables, see CREATE TABLE in Teradata Vantage™ - SQL Data Deﬁnition Language Syntax and\nExamples, B035-1144.\nThe result of an INSERT operation that would create a duplicate row, see INSERT in Teradata Vantage™ - SQL Data Manipulation Language, B035-1146.\nThe result of an INSERT using a SELECT subquery that would create a duplicate row, see INSERT in Teradata Vantage™ - SQL Data Manipulation Language, B035-1146.\nCreating a NoPI table, see the NO PRIMARY INDEX clause for the ",
               "similarity_score": 0.6121290922164917,
               "document_id": "2e58de83-47c7-493f-8f6a-0c4c7c352faf",
               "chunk_index": 31
             },
             {
               "collection_name": "Teradata SQL Fundamentals",
-              "content": "5-1144.\nCreating a queue table, see Teradata Vantage\u2122 - SQL Data De\ufb01nition Language Syntax and Examples, B035-1144.\nThe SELECT AND CONSUME statement, see Teradata Vantage\u2122 - SQL Data Manipulation Language, B035-1146.\nHow to create an error logging table, see Teradata Vantage\u2122 - SQL Data De\ufb01nition Language Syntax and Examples, B035-1144.\nSpecifying error handling for INSERT ...\u00a0SELECT and MERGE statements, see Teradata Vantage\u2122 - SQL Data Manipulation Language, B035-1146.\nTemporal tables, see Teradata Vantage\u2122 - Temporal Table Support, B035-1182 and Teradata Vantage\u2122 - ANSI Temporal Table Support, B035-1186.\nColumns\nA column is a structural component of a table and has a name and a declared type. Each row in a table has exactly one value for each column. Each value in a row is a value in the\ndeclared type of the column. The declared type includes nulls and values of the declared type.\nDefining Columns\nThe column de\ufb01nition clause of the CREATE TABLE statement de\ufb01nes the table column elem",
+              "content": "5-1144.\nCreating a queue table, see Teradata Vantage™ - SQL Data Deﬁnition Language Syntax and Examples, B035-1144.\nThe SELECT AND CONSUME statement, see Teradata Vantage™ - SQL Data Manipulation Language, B035-1146.\nHow to create an error logging table, see Teradata Vantage™ - SQL Data Deﬁnition Language Syntax and Examples, B035-1144.\nSpecifying error handling for INSERT ... SELECT and MERGE statements, see Teradata Vantage™ - SQL Data Manipulation Language, B035-1146.\nTemporal tables, see Teradata Vantage™ - Temporal Table Support, B035-1182 and Teradata Vantage™ - ANSI Temporal Table Support, B035-1186.\nColumns\nA column is a structural component of a table and has a name and a declared type. Each row in a table has exactly one value for each column. Each value in a row is a value in the\ndeclared type of the column. The declared type includes nulls and values of the declared type.\nDefining Columns\nThe column deﬁnition clause of the CREATE TABLE statement deﬁnes the table column elem",
               "similarity_score": 0.548295795917511,
               "document_id": "2e58de83-47c7-493f-8f6a-0c4c7c352faf",
               "chunk_index": 33
             },
             {
               "collection_name": "Teradata SQL Fundamentals",
-              "content": "ition statements, see Teradata Vantage\u2122 - SQL Data De\ufb01nition Language Syntax and\nExamples, B035-1144.\nAltering Table Structure and Definition\nYou may need to change the structure or de\ufb01nition of an existing table or temporary table. In many cases, you can use ALTER TABLE and RENAME to make the changes. Some\nchanges, however, may require you to use CREATE TABLE to recreate the table.\nYou cannot use ALTER TABLE on an error logging table.\nMaking Changes to a T able\nUse the RENAME TABLE statement to change the name of a table, temporary table, queue table, or error logging table.\nUse the ALTER TABLE statement to perform any of the following functions:\nAdd or drop columns on an existing table or temporary table\nAdd column default control, FORMAT, and TITLE attributes on an existing table or temporary table\nAdd or remove journaling options on an existing table or temporary table\nAdd or remove the FALLBACK option on an existing table or temporary table\nChange the DATABLOCKSIZE or percent FREE",
+              "content": "ition statements, see Teradata Vantage™ - SQL Data Deﬁnition Language Syntax and\nExamples, B035-1144.\nAltering Table Structure and Definition\nYou may need to change the structure or deﬁnition of an existing table or temporary table. In many cases, you can use ALTER TABLE and RENAME to make the changes. Some\nchanges, however, may require you to use CREATE TABLE to recreate the table.\nYou cannot use ALTER TABLE on an error logging table.\nMaking Changes to a T able\nUse the RENAME TABLE statement to change the name of a table, temporary table, queue table, or error logging table.\nUse the ALTER TABLE statement to perform any of the following functions:\nAdd or drop columns on an existing table or temporary table\nAdd column default control, FORMAT, and TITLE attributes on an existing table or temporary table\nAdd or remove journaling options on an existing table or temporary table\nAdd or remove the FALLBACK option on an existing table or temporary table\nChange the DATABLOCKSIZE or percent FREE",
               "similarity_score": 0.5352118611335754,
               "document_id": "2e58de83-47c7-493f-8f6a-0c4c7c352faf",
               "chunk_index": 233
@@ -340,7 +340,7 @@
               "TDA_ContextReport"
             ],
             "arguments": {
-              "answer_from_context": "The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*."
+              "answer_from_context": "The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*."
             }
           }
         ],
@@ -382,7 +382,7 @@
                       "TDA_ContextReport"
                     ],
                     "arguments": {
-                      "answer_from_context": "The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*."
+                      "answer_from_context": "The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*."
                     }
                   }
                 ]
@@ -413,7 +413,7 @@
                       "TDA_ContextReport"
                     ],
                     "arguments": {
-                      "answer_from_context": "The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*."
+                      "answer_from_context": "The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*."
                     }
                   },
                   "execution_depth": 0
@@ -433,7 +433,7 @@
             "action": {
               "tool_name": "TDA_ContextReport",
               "arguments": {
-                "answer_from_context": "The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*."
+                "answer_from_context": "The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*."
               },
               "metadata": {
                 "phase_number": 1,
@@ -448,7 +448,7 @@
               },
               "results": [
                 {
-                  "response": "The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*."
+                  "response": "The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*."
                 }
               ]
             }
@@ -479,7 +479,7 @@
               "tool_name": "TDA_SystemLog",
               "arguments": {
                 "message": "LLM has generated the final answer",
-                "details": "The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*."
+                "details": "The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*."
               },
               "metadata": {
                 "execution_depth": 0,
@@ -492,7 +492,7 @@
             }
           }
         ],
-        "final_summary": "The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*.",
+        "final_summary": "The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. For detailed syntax and examples of the `CREATE TABLE` statement, refer to *Teradata Vantage™ - SQL Data Definition Language Syntax and Examples, B035-1144*.",
         "timestamp": "2025-12-02T08:58:00.090316+00:00",
         "provider": "Friendli",
         "model": "google/gemma-3-27b-it",
@@ -523,21 +523,21 @@
           "chunks": [
             {
               "collection_name": "Teradata SQL Fundamentals",
-              "content": "NT_TYPE, see Teradata Vantage\u2122 - SQL Operators and User-De\ufb01ned Functions, B035-1210.\nWriting, testing, and debugging source code for a constructor method or instance method, see Teradata Vantage\u2122 - SQL External Routine Programming, B035-1147.\nWriting, testing, and debugging source code for a UDF that uses UDT types, see Teradata Vantage\u2122 - SQL External Routine Programming, B035-1147\nBasic SQL Syntax\nThis section explains basic SQL syntax and the lexicon for Teradata SQL, a single, uni\ufb01ed, nonprocedural language that provides the capabilities for querying the database.\nSQL Statement Structure\nSyntax\nThe following diagram indicates the basic structure of an SQL statement.\nstatement_keyword\n  { expressions  |\n    functions  |\n    keywords  |\n    clauses |\n    phrases\n  } [[,]...] [;]\nstatement_keyword\nThe name of the statement.\nexpressions\nLiterals, name references, or operations using names and literals.\nfunctions\nThe name of a function and its arguments, if any.\nkeywords\nSpecial values ",
+              "content": "NT_TYPE, see Teradata Vantage™ - SQL Operators and User-Deﬁned Functions, B035-1210.\nWriting, testing, and debugging source code for a constructor method or instance method, see Teradata Vantage™ - SQL External Routine Programming, B035-1147.\nWriting, testing, and debugging source code for a UDF that uses UDT types, see Teradata Vantage™ - SQL External Routine Programming, B035-1147\nBasic SQL Syntax\nThis section explains basic SQL syntax and the lexicon for Teradata SQL, a single, uniﬁed, nonprocedural language that provides the capabilities for querying the database.\nSQL Statement Structure\nSyntax\nThe following diagram indicates the basic structure of an SQL statement.\nstatement_keyword\n  { expressions  |\n    functions  |\n    keywords  |\n    clauses |\n    phrases\n  } [[,]...] [;]\nstatement_keyword\nThe name of the statement.\nexpressions\nLiterals, name references, or operations using names and literals.\nfunctions\nThe name of a function and its arguments, if any.\nkeywords\nSpecial values ",
               "similarity_score": 0.6675193309783936,
               "document_id": "2e58de83-47c7-493f-8f6a-0c4c7c352faf",
               "chunk_index": 156
             },
             {
               "collection_name": "Teradata SQL Fundamentals",
-              "content": "l Families and Binding Styles\nThe SQL language can be characterized in several different ways. This section is organized around functional groupings of the components of the language with minor emphasis on\nbinding styles.\nFunctional Family\nSQL provides facilities for de\ufb01ning database objects, for de\ufb01ning user access to those objects, and for manipulating the data stored within them.\nThe following list describes the principal functional families of the SQL language.\nSQL Data De\ufb01nition Language (DDL)\nSQL Data Control Language (DCL)\nSQL Data Manipulation Language (DML)\nQuery and Workload Analysis Statements\nHelp and Database Object De\ufb01nition Tools\nSome classi\ufb01cations of SQL group the data control language statements with the data de\ufb01nition language statements.\nBinding Style\nThe ANSI/ISO SQL standards do not de\ufb01ne the term binding style. The expression refers to a possible method by which an SQL statement can be invoked.\nThe database supports the following SQL binding styles:\nDirect, or in",
+              "content": "l Families and Binding Styles\nThe SQL language can be characterized in several different ways. This section is organized around functional groupings of the components of the language with minor emphasis on\nbinding styles.\nFunctional Family\nSQL provides facilities for deﬁning database objects, for deﬁning user access to those objects, and for manipulating the data stored within them.\nThe following list describes the principal functional families of the SQL language.\nSQL Data Deﬁnition Language (DDL)\nSQL Data Control Language (DCL)\nSQL Data Manipulation Language (DML)\nQuery and Workload Analysis Statements\nHelp and Database Object Deﬁnition Tools\nSome classiﬁcations of SQL group the data control language statements with the data deﬁnition language statements.\nBinding Style\nThe ANSI/ISO SQL standards do not deﬁne the term binding style. The expression refers to a possible method by which an SQL statement can be invoked.\nThe database supports the following SQL binding styles:\nDirect, or in",
               "similarity_score": 0.6510410308837891,
               "document_id": "2e58de83-47c7-493f-8f6a-0c4c7c352faf",
               "chunk_index": 229
             },
             {
               "collection_name": "Teradata SQL Fundamentals",
-              "content": "a De\ufb01nition Language Syntax and Examples, B035-1144.\nOther query and workload analysis statements, see Teradata Vantage\u2122 - SQL Data Manipulation Language, B035-1146.\nHelp and Database Object Definition Tools\nTeradata SQL provides several powerful tools to get help about database object de\ufb01nitions and summaries of database object de\ufb01nition statement text.\nHELP  Statements\nVarious HELP statements return reports about the current column de\ufb01nitions for named database objects. The reports these statements return can be useful to database designers\nwho need to \ufb01ne tune index de\ufb01nitions, column de\ufb01nitions (for example, changing data typing to eliminate the necessity of ad hoc conversions), and so on.\nSHOW Statements\nMost SHOW statements return a CREATE statement indicating the last data de\ufb01nition statement performed against the named database object. Some SHOW statements, such as\nSHOW QUERY LOGGING, return other information. These statements are particularly useful for application developers ",
+              "content": "a Deﬁnition Language Syntax and Examples, B035-1144.\nOther query and workload analysis statements, see Teradata Vantage™ - SQL Data Manipulation Language, B035-1146.\nHelp and Database Object Definition Tools\nTeradata SQL provides several powerful tools to get help about database object deﬁnitions and summaries of database object deﬁnition statement text.\nHELP  Statements\nVarious HELP statements return reports about the current column deﬁnitions for named database objects. The reports these statements return can be useful to database designers\nwho need to ﬁne tune index deﬁnitions, column deﬁnitions (for example, changing data typing to eliminate the necessity of ad hoc conversions), and so on.\nSHOW Statements\nMost SHOW statements return a CREATE statement indicating the last data deﬁnition statement performed against the named database object. Some SHOW statements, such as\nSHOW QUERY LOGGING, return other information. These statements are particularly useful for application developers ",
               "similarity_score": 0.6482017040252686,
               "document_id": "2e58de83-47c7-493f-8f6a-0c4c7c352faf",
               "chunk_index": 261
@@ -557,7 +557,7 @@
               "TDA_ContextReport"
             ],
             "arguments": {
-              "answer_from_context": "The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you de\ufb01ne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes."
+              "answer_from_context": "The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you deﬁne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes."
             }
           }
         ],
@@ -599,7 +599,7 @@
                       "TDA_ContextReport"
                     ],
                     "arguments": {
-                      "answer_from_context": "The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you de\ufb01ne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes."
+                      "answer_from_context": "The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you deﬁne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes."
                     }
                   }
                 ]
@@ -630,7 +630,7 @@
                       "TDA_ContextReport"
                     ],
                     "arguments": {
-                      "answer_from_context": "The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you de\ufb01ne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes."
+                      "answer_from_context": "The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you deﬁne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes."
                     }
                   },
                   "execution_depth": 0
@@ -650,7 +650,7 @@
             "action": {
               "tool_name": "TDA_ContextReport",
               "arguments": {
-                "answer_from_context": "The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you de\ufb01ne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes."
+                "answer_from_context": "The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you deﬁne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes."
               },
               "metadata": {
                 "phase_number": 1,
@@ -665,7 +665,7 @@
               },
               "results": [
                 {
-                  "response": "The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you de\ufb01ne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes."
+                  "response": "The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you deﬁne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes."
                 }
               ]
             }
@@ -696,7 +696,7 @@
               "tool_name": "TDA_SystemLog",
               "arguments": {
                 "message": "LLM has generated the final answer",
-                "details": "The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you de\ufb01ne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes."
+                "details": "The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you deﬁne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes."
               },
               "metadata": {
                 "execution_depth": 0,
@@ -709,7 +709,7 @@
             }
           }
         ],
-        "final_summary": "The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you de\ufb01ne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes.",
+        "final_summary": "The following documents contain information on creating indexes in Teradata: Knowledge Document 1 states that you deﬁne secondary indexes using the CREATE INDEX statement. Knowledge Document 2 details creating hash and join indexes using CREATE HASH INDEX and CREATE JOIN INDEX statements respectively. Knowledge Document 3 mentions using the CREATE TABLE statement to create indexes.",
         "timestamp": "2025-12-02T08:58:30.331993+00:00",
         "provider": "Friendli",
         "model": "google/gemma-3-27b-it",
@@ -740,21 +740,21 @@
           "chunks": [
             {
               "collection_name": "Teradata SQL Fundamentals",
-              "content": "so de\ufb01ne secondary indexes using the CREATE INDEX statement.) You\ncan de\ufb01ne the primary index (and any secondary index) as unique, depending on whether duplicate values are to be allowed in the indexed column set. A partitioned primary index\ncannot be de\ufb01ned as unique if one or more partitioning columns are not included in the primary index.\nTo create hash or join indexes, use the CREATE HASH INDEX and CREATE JOIN INDEX statements, respectively.\nDetermining the Usefulness of Indexes\nThe selection of indexes to support a query is not under user control. You cannot provide the Teradata query optimizer with pragmas or hints, nor can you specify resource options or\ncontrol index locking.\nThe only references made to indexes in the SQL language concern their de\ufb01nition and not their use. Teradata SQL data manipulation language statements do not provide for any\nspeci\ufb01cation of indexes.\nThere are several implications of this behavior.\nTo ensure that the optimizer has access to current informati",
+              "content": "so deﬁne secondary indexes using the CREATE INDEX statement.) You\ncan deﬁne the primary index (and any secondary index) as unique, depending on whether duplicate values are to be allowed in the indexed column set. A partitioned primary index\ncannot be deﬁned as unique if one or more partitioning columns are not included in the primary index.\nTo create hash or join indexes, use the CREATE HASH INDEX and CREATE JOIN INDEX statements, respectively.\nDetermining the Usefulness of Indexes\nThe selection of indexes to support a query is not under user control. You cannot provide the Teradata query optimizer with pragmas or hints, nor can you specify resource options or\ncontrol index locking.\nThe only references made to indexes in the SQL language concern their deﬁnition and not their use. Teradata SQL data manipulation language statements do not provide for any\nspeciﬁcation of indexes.\nThere are several implications of this behavior.\nTo ensure that the optimizer has access to current informati",
               "similarity_score": 0.6300658583641052,
               "document_id": "2e58de83-47c7-493f-8f6a-0c4c7c352faf",
               "chunk_index": 56
             },
             {
               "collection_name": "Teradata SQL Fundamentals",
-              "content": "d SHOW statements on a hash index.\nUnlike base tables, you cannot do the following things with hash indexes:\nQuery or update hash index rows explicitly.\nStore and maintain arbitrary query results such as expressions.\nCreate explicit unique indexes on its columns.\nPartition the primary index of the hash index.\nRelated Information\nSQL Fundamentals\nPage 20 of 99For more information about:\nHash indexes, see Effects of Hash Indexes.\nUsing CREATE HASH INDEX to create a hash index, see Teradata Vantage\u2122 - SQL Data De\ufb01nition Language Syntax and Examples, B035-1144.\nUsing DROP HASH INDEX to drop a hash index, see Teradata Vantage\u2122 - SQL Data De\ufb01nition Language Syntax and Examples, B035-1144.\nUsing HELP HASH INDEX to display the data types of the columns de\ufb01ned by a hash index, see Teradata Vantage\u2122 - SQL Data De\ufb01nition Language Syntax and Examples,\nB035-1144.\nDatabase design considerations for hash indexes, see Teradata Vantage\u2122 - Database Design, B035-1094.\nConsult the following documents for ",
+              "content": "d SHOW statements on a hash index.\nUnlike base tables, you cannot do the following things with hash indexes:\nQuery or update hash index rows explicitly.\nStore and maintain arbitrary query results such as expressions.\nCreate explicit unique indexes on its columns.\nPartition the primary index of the hash index.\nRelated Information\nSQL Fundamentals\nPage 20 of 99For more information about:\nHash indexes, see Effects of Hash Indexes.\nUsing CREATE HASH INDEX to create a hash index, see Teradata Vantage™ - SQL Data Deﬁnition Language Syntax and Examples, B035-1144.\nUsing DROP HASH INDEX to drop a hash index, see Teradata Vantage™ - SQL Data Deﬁnition Language Syntax and Examples, B035-1144.\nUsing HELP HASH INDEX to display the data types of the columns deﬁned by a hash index, see Teradata Vantage™ - SQL Data Deﬁnition Language Syntax and Examples,\nB035-1144.\nDatabase design considerations for hash indexes, see Teradata Vantage™ - Database Design, B035-1094.\nConsult the following documents for ",
               "similarity_score": 0.5935435891151428,
               "document_id": "2e58de83-47c7-493f-8f6a-0c4c7c352faf",
               "chunk_index": 93
             },
             {
               "collection_name": "Teradata SQL Fundamentals",
-              "content": "elated Information\nUsing primary indexes to enhance the performance of your databases, see Teradata Vantage\u2122 - Database Design, B035-1094.\nDistribution and retrieval of the data controlled using the database hashing algorithm, see Row Hash and RowID.\nPartitioning considerations, including information on column partitioning, called Teradata Columnar, see Teradata Vantage\u2122 - Database Design, B035-1094, Teradata Vantage\u2122\n- SQL Data De\ufb01nition Language Syntax and Examples, B035-1144, and Teradata Vantage\u2122 - SQL Data Manipulation Language, B035-1146.\nDetails on all the restrictions that apply to primary indexes and partitioned primary indexes, see CREATE TABLE in Teradata Vantage\u2122 - SQL Data De\ufb01nition Language Syntax\nand Examples, B035-1144.\nCriteria for selecting a primary index, see Teradata Vantage\u2122 - Database Design, B035-1094.\nSecondary Indexes\nSecondary indexes are never required for database tables, but they can often improve system performance.\nYou create secondary indexes explicitly",
+              "content": "elated Information\nUsing primary indexes to enhance the performance of your databases, see Teradata Vantage™ - Database Design, B035-1094.\nDistribution and retrieval of the data controlled using the database hashing algorithm, see Row Hash and RowID.\nPartitioning considerations, including information on column partitioning, called Teradata Columnar, see Teradata Vantage™ - Database Design, B035-1094, Teradata Vantage™\n- SQL Data Deﬁnition Language Syntax and Examples, B035-1144, and Teradata Vantage™ - SQL Data Manipulation Language, B035-1146.\nDetails on all the restrictions that apply to primary indexes and partitioned primary indexes, see CREATE TABLE in Teradata Vantage™ - SQL Data Deﬁnition Language Syntax\nand Examples, B035-1144.\nCriteria for selecting a primary index, see Teradata Vantage™ - Database Design, B035-1094.\nSecondary Indexes\nSecondary indexes are never required for database tables, but they can often improve system performance.\nYou create secondary indexes explicitly",
               "similarity_score": 0.5535635352134705,
               "document_id": "2e58de83-47c7-493f-8f6a-0c4c7c352faf",
               "chunk_index": 68
@@ -773,5 +773,7 @@
     "version": "1.5-tiered",
     "tier": "App Developer",
     "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
-  }
+  },
+  "archived": true,
+  "archived_at": "2025-12-02T14:06:47.142198+00:00"
 }
