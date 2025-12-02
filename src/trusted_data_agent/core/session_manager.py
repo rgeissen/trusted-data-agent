@@ -508,6 +508,44 @@ def update_last_turn_data(user_uuid: str, session_id: str, turn_data: dict):
             turn_data["isValid"] = True
         # --- MODIFICATION END ---
 
+        # --- EFFICIENCY TRACKING START ---
+        # Track sequential improvements: compare Turn N vs Turn N-1
+        # Credit RAG when PREVIOUS turn had RAG guidance (teaching effect)
+        workflow_history = session_data["last_turn_data"]["workflow_history"]
+        if len(workflow_history) > 0 and isinstance(turn_data, dict):
+            previous_turn = workflow_history[-1]
+            previous_output = previous_turn.get('turn_output_tokens', 0)
+            current_output = turn_data.get('turn_output_tokens', 0)
+            # Check if PREVIOUS turn had RAG (enables improvement in current turn)
+            previous_had_rag = previous_turn.get('rag_source_collection_id') is not None
+            
+            # Calculate cost per token for this model
+            provider = turn_data.get('provider', 'Unknown')
+            model = turn_data.get('model', 'unknown')
+            output_tokens = turn_data.get('turn_output_tokens', 0)
+            
+            cost_per_token = 0.0
+            if output_tokens > 0:
+                from trusted_data_agent.core.cost_manager import get_cost_manager
+                cost_manager = get_cost_manager()
+                turn_cost = cost_manager.calculate_cost(provider, model, 0, output_tokens)
+                cost_per_token = turn_cost / output_tokens if output_tokens > 0 else 0.0
+            
+            # Record improvement if PREVIOUS turn had RAG and current turn improved
+            if previous_output > 0:
+                from trusted_data_agent.core.efficiency_tracker import get_efficiency_tracker
+                tracker = get_efficiency_tracker()
+                tracker.record_improvement(
+                    session_id=session_id,
+                    turn_index=len(workflow_history),
+                    previous_output_tokens=previous_output,
+                    current_output_tokens=current_output,
+                    had_rag=previous_had_rag,
+                    cost_per_output_token=cost_per_token,
+                    user_uuid=user_uuid
+                )
+        # --- EFFICIENCY TRACKING END ---
+
         # Append the new turn data (contains original_plan and user_query now)
         session_data["last_turn_data"]["workflow_history"].append(turn_data)
 

@@ -4771,6 +4771,12 @@ async def get_sessions_analytics():
         expensive_queries = []
         expensive_questions = []
         
+        # RAG tracking
+        rag_guided_turns = 0  # Turns where RAG provided champion case
+        rag_guided_output_tokens = 0  # Output tokens in RAG-guided turns (measures plan quality)
+        non_rag_output_tokens = 0  # Output tokens in non-RAG turns
+        non_rag_turns = 0
+        
         # Scan all session files from determined directories
         for session_dir in scan_dirs:
             for session_file in session_dir.glob('*.json'):
@@ -4796,15 +4802,29 @@ async def get_sessions_analytics():
                             if turn.get('final_summary'):
                                 successful_turns += 1
                             
+                            # Track RAG usage - focus on OUTPUT tokens (plan quality metric)
+                            output_tokens = turn.get('turn_output_tokens', 0)
+                            
+                            # Check if this turn had RAG guidance (rag_source_collection_id is set when planner retrieves a champion case)
+                            had_rag_guidance = turn.get('rag_source_collection_id') is not None
+                            
+                            if had_rag_guidance:
+                                rag_guided_turns += 1
+                                rag_guided_output_tokens += output_tokens
+                            else:
+                                non_rag_turns += 1
+                                non_rag_output_tokens += output_tokens
+                            
                             # Track expensive individual questions
                             user_query = turn.get('user_query', '')
-                            turn_tokens = (turn.get('turn_input_tokens', 0) + 
-                                         turn.get('turn_output_tokens', 0))
+                            turn_input_tokens = turn.get('turn_input_tokens', 0)
+                            turn_output_tokens_val = turn.get('turn_output_tokens', 0)
+                            turn_total_tokens = turn_input_tokens + turn_output_tokens_val
                             
-                            if turn_tokens > 0 and user_query:
+                            if turn_total_tokens > 0 and user_query:
                                 expensive_questions.append({
                                     "query": user_query[:60] + "..." if len(user_query) > 60 else user_query,
-                                    "tokens": turn_tokens,
+                                    "tokens": turn_total_tokens,
                                     "session_id": session_data.get('id', 'unknown')[:8]
                                 })
                     
@@ -4885,6 +4905,49 @@ async def get_sessions_analytics():
             sorted_hours = sorted(sessions_by_hour.items())[-24:]  # Last 24 hours
             velocity_data = [{"hour": hour, "count": count} for hour, count in sorted_hours]
         
+        # Calculate RAG efficiency metrics - focus on OUTPUT efficiency (better plans)
+        rag_activation_rate = round((rag_guided_turns / total_turns * 100), 1) if total_turns > 0 else 0
+        
+        # Calculate average OUTPUT tokens per turn (measures plan quality)
+        avg_rag_output = round(rag_guided_output_tokens / rag_guided_turns, 1) if rag_guided_turns > 0 else 0
+        avg_non_rag_output = round(non_rag_output_tokens / non_rag_turns, 1) if non_rag_turns > 0 else 0
+        
+        # Calculate output efficiency gain (better plans = fewer output tokens)
+        efficiency_gain = 0
+        if avg_non_rag_output > 0 and avg_rag_output > 0:
+            efficiency_gain = round((avg_non_rag_output - avg_rag_output) / avg_non_rag_output * 100, 1)
+        
+        # Get real-time efficiency metrics from centralized tracker
+        from trusted_data_agent.core.efficiency_tracker import get_efficiency_tracker
+        tracker = get_efficiency_tracker()
+        
+        # Get user-specific metrics
+        user_efficiency_metrics = tracker.get_metrics(user_uuid=user_uuid)
+        user_output_tokens_saved = user_efficiency_metrics["total_output_tokens_saved"]
+        user_rag_savings_cost = user_efficiency_metrics["cumulative_cost_saved"]
+        
+        # Get global metrics (all users)
+        global_efficiency_metrics = tracker.get_metrics()
+        global_output_tokens_saved = global_efficiency_metrics["total_output_tokens_saved"]
+        global_rag_savings_cost = global_efficiency_metrics["cumulative_cost_saved"]
+        
+        # Check if user is admin
+        from trusted_data_agent.auth.database import get_db_session
+        from trusted_data_agent.auth.models import User
+        is_admin = False
+        try:
+            with get_db_session() as db:
+                user_record = db.query(User).filter(User.id == user_uuid).first()
+                if user_record:
+                    app_logger.info(f"User {user_uuid[:8]} has profile_tier: {user_record.profile_tier}, is_admin: {user_record.is_admin}")
+                    # Check both profile_tier and is_admin flag
+                    if user_record.profile_tier == 'admin' or user_record.is_admin:
+                        is_admin = True
+                else:
+                    app_logger.warning(f"User record not found for {user_uuid[:8]}")
+        except Exception as e:
+            app_logger.error(f"Error checking admin status: {e}", exc_info=True)
+        
         return jsonify({
             "total_sessions": total_sessions,
             "total_tokens": {
@@ -4897,7 +4960,24 @@ async def get_sessions_analytics():
             "model_distribution": model_distribution,
             "top_expensive_queries": top_expensive_queries,
             "top_expensive_questions": top_expensive_questions,
-            "velocity_data": velocity_data
+            "velocity_data": velocity_data,
+            "is_admin": is_admin,
+            "rag_metrics": {
+                "rag_guided_turns": rag_guided_turns,
+                "total_turns": total_turns,
+                "activation_rate": rag_activation_rate,
+                "avg_rag_output": avg_rag_output,
+                "avg_non_rag_output": avg_non_rag_output,
+                "efficiency_gain": efficiency_gain,
+                "tokens_saved": user_output_tokens_saved,
+                "cost_saved": user_rag_savings_cost
+            },
+            "rag_metrics_global": {
+                "tokens_saved": global_output_tokens_saved,
+                "cost_saved": global_rag_savings_cost,
+                "total_improvements": global_efficiency_metrics["total_rag_improvements"],
+                "total_sessions": global_efficiency_metrics["total_sessions_tracked"]
+            }
         }), 200
         
     except Exception as e:

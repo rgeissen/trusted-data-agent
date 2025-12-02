@@ -1127,17 +1127,6 @@ async function calculateRagImpactKPIs() {
             }
         }
         
-        // Calculate RAG activation rate from session data
-        try {
-            // Estimate RAG-enhanced turns based on champion cases
-            // Champion cases are retrieved and used, so we estimate usage based on their presence
-            // Rough estimate: Champion cases likely used 1-2x (being conservative)
-            ragEnhancedTurns = championCases > 0 ? Math.floor(championCases * 1.5) : 0;
-            totalTurns = totalCases > 0 ? totalCases : 1;
-        } catch (e) {
-        }
-        
-        
         // If no cases found, show helpful message
         if (totalCases === 0) {
             updateKPIDisplay({
@@ -1158,52 +1147,6 @@ async function calculateRagImpactKPIs() {
         // Calculate KPIs based on champion cases (most efficient strategies available for RAG retrieval)
         const selfHealingEvents = championCases; // Number of champion strategies available for self-healing
         
-        // Calculate potential token savings
-        // Champion cases represent optimized strategies that prevent trial-and-error on future tasks
-        // Key insight: Each champion can be reused many times, preventing wasted tokens on similar queries
-        
-        const avgTokensPerCase = totalCases > 0 ? Math.floor(totalOutputTokens / totalCases) : 0;
-        
-        // Realistic savings model:
-        // - Each champion strategy prevents ~3-5 failed attempts on similar future queries
-        // - Each failed attempt costs ~2x tokens (exploration + correction)
-        // - Conservative estimate: Each champion saves 5 future tasks × 2x tokens × avg tokens
-        const futureTaskMultiplier = 5; // Number of future tasks each champion will help
-        const wasteMultiplier = 2; // Trial-and-error uses 2x tokens vs champion-guided
-        
-        const estimatedTokensSaved = championCases > 0 
-            ? Math.floor(championCases * avgTokensPerCase * futureTaskMultiplier * wasteMultiplier) 
-            : 0;
-        
-        // Cost calculation: Fetch average cost per 1M tokens from actual session analytics
-        // This uses the real pricing from the cost manager instead of hardcoded estimates
-        let avgCostPer1MTokens = 15; // Fallback to $15/1M if API fails
-        try {
-            const analyticsResponse = await fetch('/api/v1/sessions/analytics', {
-                headers: { 'Authorization': `Bearer ${window.authClient.getToken()}` }
-            });
-            if (analyticsResponse.ok) {
-                const analyticsData = await analyticsResponse.json();
-                const totalTokens = analyticsData.total_tokens?.total || 0;
-                const estimatedCost = analyticsData.estimated_cost || 0;
-                if (totalTokens > 0 && estimatedCost > 0) {
-                    // Calculate actual average cost per 1M tokens from recent sessions
-                    avgCostPer1MTokens = (estimatedCost / totalTokens) * 1000000;
-                }
-            }
-        } catch (error) {
-            console.warn('Using fallback cost estimate:', error);
-        }
-        
-        const estimatedCostSavings = (estimatedTokensSaved / 1000000 * avgCostPer1MTokens).toFixed(2);
-        
-        // Speed improvement: Champion cases enable faster execution
-        // Typical improvement: 60-70% faster when RAG provides champion strategy upfront
-        // vs exploring/correcting failed attempts
-        const avgSpeedImprovement = championCases > 0 ? '65' : '--';
-        const avgTimeWithRag = championCases > 0 ? '1.4' : '--';    // seconds with RAG
-        const avgTimeWithoutRag = championCases > 0 ? '4.0' : '--'; // seconds without RAG
-        
         // Build trend message
         let trendMessage;
         if (recentCases > 0) {
@@ -1214,24 +1157,77 @@ async function calculateRagImpactKPIs() {
             trendMessage = `${totalCases} strategies available`;
         }
         
-        // Calculate activation rate percentage
-        const activationRatePercent = totalTurns > 0 ? Math.round((ragEnhancedTurns / totalTurns) * 100) : 0;
-        const activationRateDisplay = championCases > 0 ? `${activationRatePercent}` : '--';
+        // Fetch REAL RAG usage metrics from session analytics
+        let ragMetrics = {
+            rag_guided_turns: 0,
+            total_turns: 0,
+            activation_rate: 0,
+            avg_rag_tokens: 0,
+            avg_non_rag_tokens: 0,
+            efficiency_gain: 0,
+            tokens_saved: 0,
+            cost_saved: 0.0
+        };
+        
+        let isAdmin = false;
+        let globalMetrics = null;
+        
+        try {
+            const analyticsResponse = await fetch('/api/v1/sessions/analytics', {
+                headers: { 'Authorization': `Bearer ${window.authClient.getToken()}` }
+            });
+            if (analyticsResponse.ok) {
+                const analyticsData = await analyticsResponse.json();
+                ragMetrics = analyticsData.rag_metrics || ragMetrics;
+                isAdmin = analyticsData.is_admin || false;
+                
+                // Get global metrics for admins
+                if (isAdmin && analyticsData.rag_metrics_global) {
+                    globalMetrics = {
+                        tokensSaved: analyticsData.rag_metrics_global.tokens_saved || 0,
+                        costSaved: analyticsData.rag_metrics_global.cost_saved || 0,
+                        totalImprovements: analyticsData.rag_metrics_global.total_improvements || 0,
+                        totalSessions: analyticsData.rag_metrics_global.total_sessions || 0
+                    };
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to fetch RAG metrics:', error);
+        }
+        
+        const activationRateDisplay = ragMetrics.activation_rate > 0 ? `${ragMetrics.activation_rate}` : '--';
+        
+        // Speed improvement calculation based on efficiency gain
+        // If RAG shows 29% efficiency gain in tokens, estimate similar speed improvement
+        const avgSpeedImprovement = ragMetrics.efficiency_gain > 0 ? `${Math.round(ragMetrics.efficiency_gain)}` : '--';
+        
+        // Estimate time savings: if 29% fewer tokens, ~29% faster execution
+        let avgTimeWithRag = '--';
+        let avgTimeWithoutRag = '--';
+        if (ragMetrics.efficiency_gain > 0) {
+            const baselineTime = 4.0; // Assume 4 seconds baseline
+            const ragTime = baselineTime * (1 - ragMetrics.efficiency_gain / 100);
+            avgTimeWithRag = ragTime.toFixed(1);
+            avgTimeWithoutRag = baselineTime.toFixed(1);
+        }
         
         const kpiData = {
             selfHealingEvents,
             selfHealingTrend: trendMessage,
             activationRate: activationRateDisplay,
-            enhancedCount: ragEnhancedTurns,
-            totalTasks: totalTurns,
-            costSavings: estimatedCostSavings,
-            tokensSaved: estimatedTokensSaved.toLocaleString(),
+            enhancedCount: ragMetrics.rag_guided_turns,
+            totalTasks: ragMetrics.total_turns,
+            costSavings: ragMetrics.cost_saved >= 0.01 ? ragMetrics.cost_saved.toFixed(2) : ragMetrics.cost_saved.toFixed(4),
+            tokensSaved: ragMetrics.tokens_saved.toLocaleString(),
             speedImprovement: avgSpeedImprovement,
             speedWith: avgTimeWithRag,
             speedWithout: avgTimeWithoutRag,
             totalCases,
             championCases,
-            positivelyRatedCases
+            positivelyRatedCases,
+            efficiencyGain: ragMetrics.efficiency_gain,
+            isAdmin,
+            globalMetrics
         };
         
         
@@ -1257,6 +1253,32 @@ async function calculateRagImpactKPIs() {
  * Update KPI display elements
  */
 function updateKPIDisplay(kpis) {
+    // Update scope indicator
+    const scopeIndicator = document.getElementById('rag-kpi-scope-indicator');
+    if (scopeIndicator) {
+        scopeIndicator.textContent = kpis.isAdmin ? 'Viewing: Your Personal Metrics' : 'Your Learning Performance';
+    }
+    
+    // Show/hide global stats for admins
+    const globalStatsSection = document.getElementById('rag-global-stats');
+    if (globalStatsSection && kpis.isAdmin && kpis.globalMetrics) {
+        globalStatsSection.classList.remove('hidden');
+        
+        const globalTokensEl = document.getElementById('rag-global-tokens-saved');
+        const globalCostEl = document.getElementById('rag-global-cost-saved');
+        
+        if (globalTokensEl) {
+            globalTokensEl.textContent = kpis.globalMetrics.tokensSaved.toLocaleString();
+        }
+        if (globalCostEl) {
+            const costStr = kpis.globalMetrics.costSaved >= 0.01 
+                ? kpis.globalMetrics.costSaved.toFixed(2) 
+                : kpis.globalMetrics.costSaved.toFixed(4);
+            globalCostEl.textContent = `$${costStr}`;
+        }
+    } else if (globalStatsSection) {
+        globalStatsSection.classList.add('hidden');
+    }
     
     // Champion Strategies
     const healingCountEl = document.getElementById('rag-kpi-healing-count');
