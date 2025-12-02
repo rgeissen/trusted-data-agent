@@ -565,7 +565,9 @@ async function handleKnowledgeRepositorySubmit(e) {
                 formData.append('chunk_size', chunkSize.toString());
                 formData.append('chunk_overlap', chunkOverlap.toString());
                 formData.append('embedding_model', embeddingModel);
+                formData.append('stream', 'true'); // Enable SSE streaming
                 
+                // Use EventSource-like approach for SSE progress updates
                 const uploadResponse = await fetch(`/api/v1/knowledge/repositories/${collectionId}/documents`, {
                     method: 'POST',
                     headers: {
@@ -578,6 +580,53 @@ async function handleKnowledgeRepositorySubmit(e) {
                     const error = await uploadResponse.json();
                     console.warn(`Failed to upload ${file.name}:`, error.message);
                     console.warn(`[Knowledge] Warning: Failed to upload ${file.name}`);
+                } else if (uploadResponse.headers.get('content-type')?.includes('text/event-stream')) {
+                    // Handle SSE streaming response
+                    const reader = uploadResponse.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    
+                    try {
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n\n');
+                            buffer = lines.pop(); // Keep incomplete message in buffer
+                            
+                            for (const line of lines) {
+                                if (!line.trim()) continue;
+                                
+                                const eventMatch = line.match(/^event: (.+)$/m);
+                                const dataMatch = line.match(/^data: (.+)$/m);
+                                
+                                if (dataMatch) {
+                                    try {
+                                        const data = JSON.parse(dataMatch[1]);
+                                        
+                                        // Update progress based on event type
+                                        if (data.type === 'progress' && data.percentage) {
+                                            const fileProgress = 30 + (i / selectedFiles.length) * 70;
+                                            const overallProgress = fileProgress + (data.percentage / 100) * (70 / selectedFiles.length);
+                                            if (progressBar) progressBar.style.width = `${overallProgress}%`;
+                                            if (progressText && data.message) {
+                                                progressText.textContent = `${file.name}: ${data.message}`;
+                                            }
+                                        } else if (data.type === 'complete') {
+                                            console.log(`Successfully uploaded ${file.name}:`, data.chunks_stored, 'chunks');
+                                        } else if (data.type === 'error') {
+                                            console.warn(`Failed to upload ${file.name}:`, data.message);
+                                        }
+                                    } catch (e) {
+                                        console.error('[Knowledge] Error parsing SSE data:', e);
+                                    }
+                                }
+                            }
+                        }
+                    } catch (streamError) {
+                        console.error('[Knowledge] Error reading stream:', streamError);
+                    }
                 } else {
                     console.log(`Successfully uploaded ${file.name}`);
                 }

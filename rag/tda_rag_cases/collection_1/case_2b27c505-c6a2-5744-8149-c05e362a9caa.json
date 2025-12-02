@@ -1,0 +1,55 @@
+{
+  "case_id": "2b27c505-c6a2-5744-8149-c05e362a9caa",
+  "metadata": {
+    "session_id": "bd0cad94-1248-48ad-bcd7-d6d0d39281cd",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "task-360fd7dd-aadd-47e4-94fe-0cfb6b37e472",
+    "collection_id": 1,
+    "has_orchestration": false,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-12-01T23:33:06.590720+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "profile_tag": "GOGET",
+      "input_tokens": 8546,
+      "output_tokens": 106
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "user_uuid": "4b05766c-1fa0-4af5-ad33-db14f1168d78"
+  },
+  "intent": {
+    "user_query": "what is the system version?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Get the Teradata database system version information.",
+        "relevant_tools": [
+          "dba_databaseVersion"
+        ],
+        "arguments": {}
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

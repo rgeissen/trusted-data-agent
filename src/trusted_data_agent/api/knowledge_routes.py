@@ -16,8 +16,10 @@ import os
 import logging
 import tempfile
 from datetime import datetime, timezone
-from quart import Blueprint, request, jsonify
+from quart import Blueprint, request, jsonify, Response
 import hashlib
+import asyncio
+import json
 
 from trusted_data_agent.core.config import APP_STATE
 from trusted_data_agent.auth.middleware import require_auth
@@ -169,11 +171,232 @@ async def preview_document_chunking(current_user: dict):
         }), 500
 
 
+async def upload_knowledge_document_stream(current_user: dict, collection_id: int):
+    """
+    Upload a document to a Knowledge repository with SSE progress updates.
+    This version streams progress updates to prevent SSE timeout on slow servers.
+    """
+    # Extract ALL request data BEFORE starting the generator (must be in request context)
+    files = await request.files
+    if 'file' not in files:
+        return jsonify({"status": "error", "message": "No file provided"}), 400
+    
+    file = files['file']
+    if not file or not file.filename:
+        return jsonify({"status": "error", "message": "Invalid file"}), 400
+    
+    # Read file content now
+    file_content = file.read()
+    filename = file.filename
+    
+    # Get all form parameters now
+    form = await request.form
+    title = form.get('title', filename)
+    author = form.get('author', '')
+    category = form.get('category', '')
+    tags_str = form.get('tags', '')
+    tags = [t.strip() for t in tags_str.split(',') if t.strip()]
+    
+    chunking_strategy_str = form.get('chunking_strategy', 'semantic')
+    chunk_size = int(form.get('chunk_size', 1000))
+    chunk_overlap = int(form.get('chunk_overlap', 200))
+    embedding_model = form.get('embedding_model', 'all-MiniLM-L6-v2')
+    
+    def format_sse(data: dict, event: str = "message") -> str:
+        """Format data as Server-Sent Event."""
+        return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+    
+    async def generate_upload_stream():
+        """Generator function that yields SSE progress updates."""
+        progress_queue = asyncio.Queue()
+        
+        async def progress_callback(message: str, percentage: int):
+            """Callback to report progress during upload."""
+            await progress_queue.put(format_sse({
+                "type": "progress",
+                "message": message,
+                "percentage": percentage
+            }, "progress"))
+        
+        try:
+            # Send initial progress
+            yield format_sse({"type": "start", "message": "Starting upload..."}, "progress")
+            
+            # Query collection from database
+            from trusted_data_agent.core.collection_db import CollectionDatabase
+            db = CollectionDatabase()
+            conn = db._get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                SELECT collection_name, repository_type, owner_user_id, chunking_strategy, 
+                       chunk_size, chunk_overlap
+                FROM collections WHERE id = ?
+            """, (collection_id,))
+            
+            result = cursor.fetchone()
+            conn.close()
+            
+            if not result:
+                yield format_sse({"type": "error", "message": f"Collection {collection_id} not found"}, "error")
+                return
+            
+            collection_name = result['collection_name']
+            repository_type = result['repository_type']
+            owner_user_id = result['owner_user_id']
+            
+            if repository_type != 'knowledge':
+                yield format_sse({"type": "error", "message": f"Collection {collection_id} is not a Knowledge repository"}, "error")
+                return
+            
+            user_id = current_user.id
+            if owner_user_id != user_id:
+                yield format_sse({"type": "error", "message": "Access denied"}, "error")
+                return
+            
+            # Get retriever instance
+            retriever = APP_STATE.get("rag_retriever_instance")
+            if not retriever:
+                yield format_sse({"type": "error", "message": "RAG retriever not initialized"}, "error")
+                return
+            
+            # Validate chunking strategy
+            try:
+                chunking_strategy = ChunkingStrategy[chunking_strategy_str.upper()]
+            except KeyError:
+                yield format_sse({"type": "error", "message": f"Invalid chunking_strategy: {chunking_strategy_str}"}, "error")
+                return
+            
+            # Save file temporarily
+            yield format_sse({"type": "progress", "message": "Saving file...", "percentage": 2}, "progress")
+            
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1])
+            temp_file.write(file_content)
+            temp_file.flush()
+            temp_file.close()
+            
+            # Calculate file hash
+            content_hash = hashlib.sha256(file_content).hexdigest()
+            
+            # Process document
+            yield format_sse({"type": "progress", "message": "Extracting text from document...", "percentage": 3}, "progress")
+            
+            doc_handler = DocumentUploadHandler()
+            prepared_doc = doc_handler.prepare_document_for_llm(
+                file_path=temp_file.name,
+                provider_name="Ollama",
+                model_name="",
+                effective_config={"enabled": True, "use_native_upload": False}
+            )
+            
+            if 'content' not in prepared_doc or not prepared_doc['content']:
+                yield format_sse({"type": "error", "message": "Failed to extract text from document"}, "error")
+                os.unlink(temp_file.name)
+                return
+            
+            document_content = prepared_doc['content']
+            
+            # Create repository constructor
+            constructor = create_repository_constructor(
+                repository_type=RepositoryType.KNOWLEDGE,
+                chroma_client=retriever.client,
+                storage_dir=retriever.rag_cases_dir / f"collection_{collection_id}",
+                embedding_model=embedding_model,
+                chunking_strategy=chunking_strategy,
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap
+            )
+            
+            # Construct repository entry with progress updates
+            result = constructor.construct(
+                collection_id=collection_id,
+                content=document_content,
+                collection_name=collection_name,
+                filename=filename,
+                document_type=os.path.splitext(filename)[1].lstrip('.'),
+                title=title,
+                author=author,
+                category=category,
+                tags=tags,
+                source='upload',
+                file_size=len(file_content),
+                content_hash=content_hash,
+                save_original=True,
+                progress_callback=progress_callback
+            )
+            
+            # Drain any remaining progress messages
+            while not progress_queue.empty():
+                try:
+                    progress_msg = await progress_queue.get_nowait()
+                    yield progress_msg
+                except asyncio.QueueEmpty:
+                    break
+            
+            # Clean up temp file
+            os.unlink(temp_file.name)
+            
+            if result['status'] == 'success':
+                # Store metadata in database (same as original)
+                from trusted_data_agent.core.collection_db import CollectionDatabase
+                db = CollectionDatabase()
+                
+                doc_data = {
+                    'collection_id': collection_id,
+                    'document_id': result['metadata']['document_id'],
+                    'filename': filename,
+                    'document_type': result['metadata']['document_type'],
+                    'title': title,
+                    'author': author,
+                    'source': 'upload',
+                    'category': category,
+                    'tags': tags,
+                    'file_size': len(file_content),
+                    'content_hash': content_hash,
+                    'created_at': datetime.now(timezone.utc).isoformat()
+                }
+                
+                conn = db._get_connection()
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO knowledge_documents 
+                    (collection_id, document_id, filename, document_type, title, author, 
+                     source, category, tags, file_size, content_hash, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    doc_data['collection_id'], doc_data['document_id'], doc_data['filename'],
+                    doc_data['document_type'], doc_data['title'], doc_data['author'],
+                    doc_data['source'], doc_data['category'], ','.join(doc_data['tags']),
+                    doc_data['file_size'], doc_data['content_hash'], doc_data['created_at']
+                ))
+                conn.commit()
+                conn.close()
+                
+                yield format_sse({
+                    "type": "complete",
+                    "status": "success",
+                    "message": f"Successfully uploaded {filename}",
+                    "document_id": result['metadata']['document_id'],
+                    "chunks_stored": result.get('chunks_stored', 0)
+                }, "complete")
+            else:
+                yield format_sse({
+                    "type": "error",
+                    "message": result.get('message', 'Upload failed')
+                }, "error")
+                
+        except Exception as e:
+            app_logger.error(f"Error in streaming upload: {e}", exc_info=True)
+            yield format_sse({"type": "error", "message": str(e)}, "error")
+    
+    return Response(generate_upload_stream(), mimetype="text/event-stream")
+
+
 @knowledge_api_bp.route("/v1/knowledge/repositories/<int:collection_id>/documents", methods=["POST"])
 @require_auth
 async def upload_knowledge_document(current_user: dict, collection_id: int):
     """
-    Upload a document to a Knowledge repository.
+    Upload a document to a Knowledge repository with SSE progress updates.
     
     Multipart Form Data:
         - file: Document file (PDF, TXT, DOCX, etc.)
@@ -185,7 +408,16 @@ async def upload_knowledge_document(current_user: dict, collection_id: int):
         - chunk_size: Size of chunks in characters (default: 1000)
         - chunk_overlap: Overlap between chunks (default: 200)
         - embedding_model: Embedding model to use (default: all-MiniLM-L6-v2)
+        - stream: Set to 'true' for SSE progress updates (optional)
     """
+    # Check if client wants SSE streaming
+    form = await request.form
+    use_streaming = form.get('stream', '').lower() == 'true'
+    
+    if use_streaming:
+        return await upload_knowledge_document_stream(current_user, collection_id)
+    
+    # Otherwise use original JSON response
     try:
         # Query collection directly from database
         from trusted_data_agent.core.collection_db import CollectionDatabase

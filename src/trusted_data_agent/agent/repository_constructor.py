@@ -338,9 +338,12 @@ class StorageAdapter:
         self.storage_dir.mkdir(parents=True, exist_ok=True)
     
     def store_chunks(self, collection, chunks: List[DocumentChunk],
-                    embedding_function) -> Dict[str, Any]:
+                    embedding_function, progress_callback=None) -> Dict[str, Any]:
         """
         Store document chunks in ChromaDB and optionally on file system.
+        
+        Args:
+            progress_callback: Optional async function to report progress
         
         Returns:
             Dictionary with storage results
@@ -348,20 +351,38 @@ class StorageAdapter:
         if not chunks:
             return {"status": "error", "message": "No chunks to store"}
         
-        # Prepare data for ChromaDB
+        total_chunks = len(chunks)
+        
+        # Prepare data for ChromaDB in batches to allow progress updates
         ids = [chunk.chunk_id for chunk in chunks]
         documents = [chunk.content for chunk in chunks]
         
         # Add chunk_index and token count to metadata
         metadatas = []
-        for chunk in chunks:
+        for i, chunk in enumerate(chunks):
             metadata = chunk.metadata.copy()
             metadata['chunk_index'] = chunk.chunk_index
             # Calculate approximate token count (rough estimate: ~4 chars per token)
             metadata['tokens'] = len(chunk.content) // 4
             metadatas.append(metadata)
+            
+            # Report progress during metadata preparation
+            if progress_callback and i % 10 == 0:
+                import asyncio
+                asyncio.create_task(progress_callback(
+                    f"Preparing chunk {i+1}/{total_chunks} for embedding",
+                    int((i / total_chunks) * 30)  # 0-30% for prep
+                ))
         
-        # Store in ChromaDB
+        # Report embedding start
+        if progress_callback:
+            import asyncio
+            asyncio.create_task(progress_callback(
+                f"Generating embeddings for {total_chunks} chunks...",
+                30
+            ))
+        
+        # Store in ChromaDB (this triggers embedding generation)
         collection.upsert(
             ids=ids,
             documents=documents,
@@ -435,17 +456,27 @@ class RepositoryConstructor(ABC):
         Args:
             collection_id: Target collection ID
             content: Text content to process
-            **kwargs: Additional metadata and configuration
+            **kwargs: Additional metadata and configuration (including optional progress_callback)
             
         Returns:
             Dictionary with construction results
         """
+        progress_callback = kwargs.get('progress_callback')
+        
         # Step 1: Validate input
+        if progress_callback:
+            import asyncio
+            asyncio.create_task(progress_callback("Validating document...", 5))
+        
         is_valid, error_msg = self.validate_input(content=content, **kwargs)
         if not is_valid:
             return {"status": "error", "message": error_msg}
         
         # Step 2: Prepare metadata
+        if progress_callback:
+            import asyncio
+            asyncio.create_task(progress_callback("Preparing metadata...", 10))
+        
         metadata = self.prepare_metadata(
             collection_id=collection_id,
             repository_type=self.repository_type.value,
@@ -453,8 +484,16 @@ class RepositoryConstructor(ABC):
         )
         
         # Step 3: Process document into chunks
+        if progress_callback:
+            import asyncio
+            asyncio.create_task(progress_callback("Chunking document...", 15))
+        
         chunks = self.document_processor.process_document(content, metadata)
         logger.info(f"Processed document into {len(chunks)} chunk(s)")
+        
+        if progress_callback:
+            import asyncio
+            asyncio.create_task(progress_callback(f"Created {len(chunks)} chunks", 20))
         
         # Step 4: Get or create collection
         collection_name = kwargs.get('collection_name', f"collection_{collection_id}")
@@ -464,15 +503,24 @@ class RepositoryConstructor(ABC):
             metadata={"repository_type": self.repository_type.value}
         )
         
-        # Step 5: Store chunks
+        # Step 5: Store chunks (this is the slow part - embeddings)
         result = self.storage_adapter.store_chunks(
-            collection, chunks, self.embedding_strategy.embedding_function
+            collection, chunks, self.embedding_strategy.embedding_function,
+            progress_callback=progress_callback
         )
+        
+        if progress_callback:
+            import asyncio
+            asyncio.create_task(progress_callback("Embeddings complete, saving document...", 90))
         
         # Step 6: Save original document if requested
         if kwargs.get('save_original', True):
             document_id = metadata.get('document_id', str(uuid.uuid4()))
             self.storage_adapter.save_document_file(document_id, content, metadata)
+        
+        if progress_callback:
+            import asyncio
+            asyncio.create_task(progress_callback("Document upload complete!", 100))
         
         result.update({
             "repository_type": self.repository_type.value,

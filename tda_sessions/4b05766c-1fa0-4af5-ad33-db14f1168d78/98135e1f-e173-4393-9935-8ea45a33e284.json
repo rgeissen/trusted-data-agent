@@ -1,0 +1,307 @@
+{
+  "id": "98135e1f-e173-4393-9935-8ea45a33e284",
+  "user_uuid": "4b05766c-1fa0-4af5-ad33-db14f1168d78",
+  "system_prompt_template": null,
+  "charting_intensity": "medium",
+  "provider": "Google",
+  "model": "gemini-2.0-flash",
+  "profile_tag": "GOGET",
+  "profile_id": null,
+  "profile_tags_used": [
+    "GOGET"
+  ],
+  "models_used": [
+    "Google/gemini-2.0-flash"
+  ],
+  "session_history": [
+    {
+      "role": "user",
+      "content": "what is the syntax to get the date from teradata?",
+      "isValid": true,
+      "turn_number": 1,
+      "source": "text"
+    },
+    {
+      "role": "assistant",
+      "content": "<div class=\"response-card summary-card mb-4\"><p class=\"text-gray-300 mb-4\">To get the date in Teradata, you can use calendar functions. Additionally, you can change the format in which DATE data is imported or exported in your current session using the DATEFORM parameter. You can set it to ANSI date format (DATEFORM=ANSIDATE) or Teradata date format (DATEFORM=INTEGERDATE).</p></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'><div class='response-card'><p class=\"text-gray-300 mb-4\">To get the date in Teradata, you can use calendar functions. Additionally, you can change the format in which DATE data is imported or exported in your current session using the DATEFORM parameter. You can set it to ANSI date format (DATEFORM=ANSIDATE) or Teradata date format (DATEFORM=INTEGERDATE).</p></div></div></details>",
+      "isValid": true,
+      "turn_number": 1
+    }
+  ],
+  "chat_object": [
+    {
+      "role": "user",
+      "content": "You are a helpful assistant.",
+      "turn_number": 0
+    },
+    {
+      "role": "model",
+      "content": "Understood.",
+      "turn_number": 0
+    },
+    {
+      "role": "user",
+      "content": "what is the syntax to get the date from teradata?",
+      "isValid": true,
+      "turn_number": 1
+    },
+    {
+      "role": "model",
+      "content": "To get the date in Teradata, you can use calendar functions. Additionally, you can change the format in which DATE data is imported or exported in your current session using the DATEFORM parameter. You can set it to ANSI date format (DATEFORM=ANSIDATE) or Teradata date format (DATEFORM=INTEGERDATE).",
+      "isValid": true,
+      "turn_number": 1
+    }
+  ],
+  "name": "Teradata Date Syntax Help",
+  "created_at": "2025-12-02T00:40:56.343243",
+  "last_updated": "2025-12-02T00:41:11.486594",
+  "input_tokens": 9499,
+  "output_tokens": 155,
+  "last_turn_data": {
+    "workflow_history": [
+      {
+        "turn": 1,
+        "user_query": "what is the syntax to get the date from teradata?",
+        "original_plan": [
+          {
+            "phase": 1,
+            "goal": "Provide the syntax to get the date from Teradata based on the knowledge context.",
+            "relevant_tools": [
+              "TDA_ContextReport"
+            ],
+            "arguments": {
+              "answer_from_context": "To get the date in Teradata, you can use calendar functions. Additionally, you can change the format in which DATE data is imported or exported in your current session using the DATEFORM parameter. You can set it to ANSI date format (DATEFORM=ANSIDATE) or Teradata date format (DATEFORM=INTEGERDATE)."
+            }
+          }
+        ],
+        "execution_trace": [
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Calling LLM for Planning",
+                "details": {
+                  "summary": "Generating a strategic meta-plan for the goal",
+                  "full_text": "what is the syntax to get the date from teradata?",
+                  "call_id": "905c5341-d593-4b5f-8375-7cece0caaa18",
+                  "execution_depth": 0,
+                  "input_tokens": 9427,
+                  "output_tokens": 149
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "system_message",
+                "timestamp": "2025-12-01T23:41:10.899091+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Strategic Meta-Plan Generated",
+                "details": [
+                  {
+                    "phase": 1,
+                    "goal": "Provide the syntax to get the date from Teradata based on the knowledge context.",
+                    "relevant_tools": [
+                      "TDA_ContextReport"
+                    ],
+                    "arguments": {
+                      "answer_from_context": "To get the date in Teradata, you can use calendar functions. Additionally, you can change the format in which DATE data is imported or exported in your current session using the DATEFORM parameter. You can set it to ANSI date format (DATEFORM=ANSIDATE) or Teradata date format (DATEFORM=INTEGERDATE)."
+                    }
+                  }
+                ]
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_generated",
+                "timestamp": "2025-12-01T23:41:10.899785+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Starting Plan Phase 1/1",
+                "details": {
+                  "phase_num": 1,
+                  "total_phases": 1,
+                  "goal": "Provide the syntax to get the date from Teradata based on the knowledge context.",
+                  "phase_details": {
+                    "phase": 1,
+                    "goal": "Provide the syntax to get the date from Teradata based on the knowledge context.",
+                    "relevant_tools": [
+                      "TDA_ContextReport"
+                    ],
+                    "arguments": {
+                      "answer_from_context": "To get the date in Teradata, you can use calendar functions. Additionally, you can change the format in which DATE data is imported or exported in your current session using the DATEFORM parameter. You can set it to ANSI date format (DATEFORM=ANSIDATE) or Teradata date format (DATEFORM=INTEGERDATE)."
+                    }
+                  },
+                  "execution_depth": 0
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_start",
+                "timestamp": "2025-12-01T23:41:10.899910+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Plan Optimization",
+                "details": "FASTPATH initiated for 'TDA_ContextReport'."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_optimization",
+                "timestamp": "2025-12-01T23:41:10.899987+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_ContextReport",
+              "arguments": {
+                "answer_from_context": "To get the date in Teradata, you can use calendar functions. Additionally, you can change the format in which DATE data is imported or exported in your current session using the DATEFORM parameter. You can set it to ANSI date format (DATEFORM=ANSIDATE) or Teradata date format (DATEFORM=INTEGERDATE)."
+              },
+              "metadata": {
+                "phase_number": 1,
+                "execution_depth": 0,
+                "timestamp": "2025-12-01T23:41:10.900051+00:00"
+              }
+            },
+            "result": {
+              "status": "success",
+              "metadata": {
+                "tool_name": "TDA_ContextReport"
+              },
+              "results": [
+                {
+                  "response": "To get the date in Teradata, you can use calendar functions. Additionally, you can change the format in which DATE data is imported or exported in your current session using the DATEFORM parameter. You can set it to ANSI date format (DATEFORM=ANSIDATE) or Teradata date format (DATEFORM=INTEGERDATE)."
+                }
+              ]
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Ending Plan Phase 1/1",
+                "details": {
+                  "phase_num": 1,
+                  "total_phases": 1,
+                  "status": "completed"
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_end",
+                "timestamp": "2025-12-01T23:41:10.900271+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "LLM has generated the final answer",
+                "details": "To get the date in Teradata, you can use calendar functions. Additionally, you can change the format in which DATE data is imported or exported in your current session using the DATEFORM parameter. You can set it to ANSI date format (DATEFORM=ANSIDATE) or Teradata date format (DATEFORM=INTEGERDATE)."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": null,
+                "timestamp": "2025-12-01T23:41:10.901694+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          }
+        ],
+        "final_summary": "To get the date in Teradata, you can use calendar functions. Additionally, you can change the format in which DATE data is imported or exported in your current session using the DATEFORM parameter. You can set it to ANSI date format (DATEFORM=ANSIDATE) or Teradata date format (DATEFORM=INTEGERDATE).",
+        "timestamp": "2025-12-01T23:41:10.901987+00:00",
+        "provider": "Google",
+        "model": "gemini-2.0-flash",
+        "profile_tag": "GOGET",
+        "task_id": "task-156a0c05-adfd-4cb5-aa79-5a114b54ad79",
+        "turn_input_tokens": 9427,
+        "turn_output_tokens": 149,
+        "session_id": "98135e1f-e173-4393-9935-8ea45a33e284",
+        "rag_source_collection_id": null,
+        "knowledge_accessed": [
+          {
+            "collection_name": "Teradata SQL Fundamentals",
+            "document_count": 3,
+            "timestamp": "2025-12-01T23:41:09.442776+00:00"
+          },
+          {
+            "collection_name": "Teradata SQL Fundamentals",
+            "document_count": 3,
+            "timestamp": "2025-12-01T23:41:09.442953+00:00"
+          }
+        ],
+        "knowledge_retrieval_event": {
+          "summary": "Retrieved 3 relevant documents from 1 knowledge collection(s)",
+          "collections": [
+            "Teradata SQL Fundamentals"
+          ],
+          "document_count": 3,
+          "chunks": [
+            {
+              "collection_name": "Teradata SQL Fundamentals",
+              "content": "User Guide, B035-1197.\nDate Form\nYou can change the format in which DATE data is imported or exported in your current session.\nDATE data can be set to be treated either using the ANSI date format (DATEFORM=ANSIDATE) or using the Teradata date format (DATEFORM=INTEGERDATE).\nSetting the Client Character Set\nTo set the client character set, use one of the following:\nFrom BTEQ, use the BTEQ [.] SET SESSION CHARSET 'name' command.\nIn a CLIv2 application, call CHARSET name.\nIn the URL for selecting a Teradata JDBC driver connection to a database, use the CHARSET=name database connection parameter.\nwhere the \u2018name\u2019 or name value is ASCII, EBCDIC, UTF-8, UTF-16, or a name assigned to the translation codes that de\ufb01ne an available character set.\nIf not explicitly requested, the session default is the character set associated with the logon client. This is either the standard client default, or the character set assigned to the client by\nthe database administrator.\nSQL Fundamentals\nPage 73 of 99H",
+              "similarity_score": 0.5384095311164856,
+              "document_id": "fec9fafb-1fac-4b7a-931d-bc6135a84972",
+              "chunk_index": 312
+            },
+            {
+              "collection_name": "Teradata SQL Fundamentals",
+              "content": "ore information about:\nData type conversions, see Teradata Vantage\u2122 - Data Types and Literals, B035-1143.\nQuery expressions, see Teradata Vantage\u2122 - SQL Data Manipulation Language, B035-1146.\nNumeric, DateTime, interval, character, graphic, period, object name and hexadecimal literals, see Teradata Vantage\u2122 - Data Types and Literals, B035-1143.\nCalendar functions, see Teradata Vantage\u2122 - SQL Date and Time Functions and Expressions, B035-1211.\nDateTime functions and expressions, see Teradata Vantage\u2122 - Data Types and Literals, B035-1143.\nSet operators, see Teradata Vantage\u2122 - SQL Data Manipulation Language, B035-1146.\nSee Teradata Vantage\u2122 - SQL Functions, Expressions, and Predicates, B035-1145 for the following:\naggregate functions\narithmetic expressions\nbuilt-in functions\nbyte functions\nCASE expressions\ncomparison operators and functions\ninterval expressions\nlogical predicates\nordered analytical functions\nstring operators and functions\nuser-de\ufb01ned functions\nFunctions\nThe following sec",
+              "similarity_score": 0.5086514949798584,
+              "document_id": "fec9fafb-1fac-4b7a-931d-bc6135a84972",
+              "chunk_index": 205
+            },
+            {
+              "collection_name": "Teradata SQL Fundamentals",
+              "content": " sorted in binary order.\nCHARSET_COLL collation is a system administrator-de\ufb01ned collation.\nJIS_COLL Character data is collated based on the Japanese Industrial Standards (JIS).\nJIS characters collate in the following order:\n1. JIS X 0201-de\ufb01ned characters in standard order\n2. JIS X 0208-de\ufb01ned characters in standard order\n3. JIS X 0212-de\ufb01ned characters in standard order\n4. KanjiEBCDIC-de\ufb01ned characters not de\ufb01ned in JIS X 0201, JIS X 0208, or JIS X 0212 in standard order\n5. All remaining characters in Unicode standard order\nAccount and Priority\nYou can dynamically downgrade or upgrade the priority for your account.\nPriorities can be downgraded or upgraded at either the session or the request level. See Teradata\u00ae Viewpoint User Guide, B035-2206 and Teradata Vantage\u2122 - Workload\nManagement User Guide, B035-1197.\nDate Form\nYou can change the format in which DATE data is imported or exported in your current session.\nDATE data can be set to be treated either using the ANSI date format (DAT",
+              "similarity_score": 0.49842846393585205,
+              "document_id": "fec9fafb-1fac-4b7a-931d-bc6135a84972",
+              "chunk_index": 311
+            }
+          ]
+        },
+        "isValid": true
+      }
+    ]
+  },
+  "full_context_sent": false,
+  "license_info": {
+    "holder": "GNU Affero General Public License v3.0",
+    "issued_at": "2025-11-10T19:25:00.506556+00:00",
+    "expires_at": "2026-11-10T19:25:00.506556+00:00",
+    "version": "1.5-tiered",
+    "tier": "App Developer",
+    "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
+  }
+}
