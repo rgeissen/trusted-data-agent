@@ -1,0 +1,59 @@
+{
+  "case_id": "e687f226-31d9-4498-8532-1237388db965",
+  "metadata": {
+    "session_id": "00000000-0000-0000-0000-000000000000",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "template-task-e687f226",
+    "collection_id": 3,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-12-02T09:15:06.334452+00:00",
+    "user_uuid": "00000000-0000-0000-0000-000000000000",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Template",
+      "model": "sql_template_v1",
+      "profile_tag": null,
+      "input_tokens": 150,
+      "output_tokens": 180
+    },
+    "is_most_efficient": true,
+    "template_generated": true,
+    "template_type": "sql_query",
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "database_name": "fitness_db"
+  },
+  "intent": {
+    "user_query": "Find products that are frequently sold together (market basket analysis - simplified, find products sold in the same sale)."
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Execute SQL query on fitness_db: SELECT sd1.ProductID AS Product1, sd2.ProductID AS Product2, COUNT(*) AS Frequency FROM fitness_db.SaleDetails sd1 JOIN fitness_db.SaleDetails sd2 ON sd1.SaleID = sd2.SaleID AND sd1.ProductID < sd2.ProductID GROUP BY Product1, Product2 ORDER BY Frequency DESC QUALIFY ROW_NUMBER() OVER (ORDER BY Frequency DESC) <= 5;",
+        "relevant_tools": [
+          "base_readQuery"
+        ],
+        "arguments": {
+          "sql": "SELECT sd1.ProductID AS Product1, sd2.ProductID AS Product2, COUNT(*) AS Frequency FROM fitness_db.SaleDetails sd1 JOIN fitness_db.SaleDetails sd2 ON sd1.SaleID = sd2.SaleID AND sd1.ProductID < sd2.ProductID GROUP BY Product1, Product2 ORDER BY Frequency DESC QUALIFY ROW_NUMBER() OVER (ORDER BY Frequency DESC) <= 5;"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the query results.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

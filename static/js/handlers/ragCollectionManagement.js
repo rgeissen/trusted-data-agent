@@ -738,8 +738,12 @@ async function deleteRagCollection(collectionId, collectionName) {
         `Are you sure you want to delete the collection "${collectionName}"?\n\nThis will remove all RAG cases associated with this collection.`,
         async () => {
             try {
+                const token = localStorage.getItem('tda_auth_token');
                 const response = await fetch(`/api/v1/rag/collections/${collectionId}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
                 });
                 
                 const data = await response.json();
@@ -2858,6 +2862,36 @@ function validateNumberInput(inputElement) {
 }
 
 /**
+ * Validate and update the Generate Context button state
+ * The button should only be enabled if both Database Name and MCP Context Prompt are populated
+ */
+function validateGenerateContextButton() {
+    const generateContextBtn = document.getElementById('rag-collection-generate-context');
+    if (!generateContextBtn) return;
+    
+    // Get the database name field
+    const databaseNameEl = document.getElementById('rag-collection-llm-database-name');
+    const databaseName = databaseNameEl ? databaseNameEl.value.trim() : '';
+    
+    // Get the MCP context prompt field
+    const mcpPromptEl = document.getElementById('rag-collection-llm-mcp-prompt');
+    const mcpPrompt = mcpPromptEl ? mcpPromptEl.value.trim() : '';
+    
+    // Enable button only if both fields are populated
+    const isValid = databaseName !== '' && mcpPrompt !== '';
+    
+    if (isValid) {
+        generateContextBtn.disabled = false;
+        generateContextBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        generateContextBtn.classList.add('hover:bg-blue-500');
+    } else {
+        generateContextBtn.disabled = true;
+        generateContextBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        generateContextBtn.classList.remove('hover:bg-blue-500');
+    }
+}
+
+/**
  * Dynamically render LLM input fields from template manifest
  */
 async function renderLlmFieldsForTemplate(templateId) {
@@ -3005,6 +3039,16 @@ async function renderLlmFieldsForTemplate(templateId) {
                 </div>
             `;
             llmFieldsContainer.insertAdjacentHTML('beforeend', mcpPromptFieldHtml);
+            
+            // Add validation listener to MCP prompt field after it's created
+            setTimeout(() => {
+                const mcpPromptEl = document.getElementById('rag-collection-llm-mcp-prompt');
+                if (mcpPromptEl) {
+                    mcpPromptEl.addEventListener('input', validateGenerateContextButton);
+                    // Run validation immediately to set initial state
+                    validateGenerateContextButton();
+                }
+            }, 50);
         }
         
         // Attach event listeners to newly created fields for prompt preview auto-refresh
@@ -3013,6 +3057,11 @@ async function renderLlmFieldsForTemplate(templateId) {
             const fieldElement = document.getElementById(fieldId);
             if (fieldElement) {
                 fieldElement.addEventListener('input', refreshQuestionGenerationPrompt);
+                
+                // Add validation listener for database_name field
+                if (varName === 'database_name') {
+                    fieldElement.addEventListener('input', validateGenerateContextButton);
+                }
                 
                 // Add real-time validation for number inputs
                 if (fieldElement.type === 'number') {
@@ -3025,6 +3074,11 @@ async function renderLlmFieldsForTemplate(templateId) {
                 }
             }
         }
+        
+        // Run initial validation after all fields are created
+        setTimeout(() => {
+            validateGenerateContextButton();
+        }, 100);
         
     } catch (error) {
         console.error('[LLM Fields] Failed to render:', error);

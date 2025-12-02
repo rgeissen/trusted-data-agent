@@ -1,0 +1,59 @@
+{
+  "case_id": "75af3e09-ed11-4be9-a289-648f2ba46fa2",
+  "metadata": {
+    "session_id": "00000000-0000-0000-0000-000000000000",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "template-task-75af3e09",
+    "collection_id": 6,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-12-02T11:50:57.434311+00:00",
+    "user_uuid": "00000000-0000-0000-0000-000000000000",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Template",
+      "model": "sql_template_v1",
+      "profile_tag": null,
+      "input_tokens": 150,
+      "output_tokens": 180
+    },
+    "is_most_efficient": true,
+    "template_generated": true,
+    "template_type": "sql_query",
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "database_name": "fitness_db"
+  },
+  "intent": {
+    "user_query": "Which customers made purchases exceeding $5000 in total during 2023?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Execute SQL query on fitness_db: SELECT c.CustomerID, c.FirstName, c.LastName, SUM(s.TotalAmount) AS TotalSpent\nFROM fitness_db.Customers c\nJOIN fitness_db.Sales s ON c.CustomerID = s.CustomerID\nWHERE EXTRACT(YEAR FROM s.SaleDate) = 2023\nGROUP BY c.CustomerID, c.FirstName, c.LastName\nHAVING SUM(s.TotalAmount) > 5000\nORDER BY TotalSpent DESC;",
+        "relevant_tools": [
+          "base_readQuery"
+        ],
+        "arguments": {
+          "sql": "SELECT c.CustomerID, c.FirstName, c.LastName, SUM(s.TotalAmount) AS TotalSpent\nFROM fitness_db.Customers c\nJOIN fitness_db.Sales s ON c.CustomerID = s.CustomerID\nWHERE EXTRACT(YEAR FROM s.SaleDate) = 2023\nGROUP BY c.CustomerID, c.FirstName, c.LastName\nHAVING SUM(s.TotalAmount) > 5000\nORDER BY TotalSpent DESC;"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the query results.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

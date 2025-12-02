@@ -1,5 +1,5 @@
 {
-  "id": "a6378907-b6f5-4d21-9894-4cbdd79d0af9",
+  "id": "88d63713-6383-4fe4-beb9-16d932829477",
   "user_uuid": "a53397ed-4460-41a1-b850-2aa49ae9c439",
   "system_prompt_template": null,
   "charting_intensity": "medium",
@@ -21,8 +21,8 @@
     }
   ],
   "name": "New Chat",
-  "created_at": "2025-12-02T10:03:17.975708",
-  "last_updated": "2025-12-02T10:03:17.975729",
+  "created_at": "2025-12-02T10:08:38.489048",
+  "last_updated": "2025-12-02T10:08:38.489055",
   "input_tokens": 0,
   "output_tokens": 0,
   "last_turn_data": {
@@ -38,5 +38,5 @@
     "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
   },
   "archived": true,
-  "archived_at": "2025-12-02T09:17:53.463039+00:00"
+  "archived_at": "2025-12-02T09:18:00.741164+00:00"
 }

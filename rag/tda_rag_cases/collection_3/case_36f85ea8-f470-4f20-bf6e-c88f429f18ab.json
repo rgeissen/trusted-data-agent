@@ -1,0 +1,59 @@
+{
+  "case_id": "36f85ea8-f470-4f20-bf6e-c88f429f18ab",
+  "metadata": {
+    "session_id": "00000000-0000-0000-0000-000000000000",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "template-task-36f85ea8",
+    "collection_id": 3,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-12-02T09:15:06.556634+00:00",
+    "user_uuid": "00000000-0000-0000-0000-000000000000",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Template",
+      "model": "sql_template_v1",
+      "profile_tag": null,
+      "input_tokens": 150,
+      "output_tokens": 180
+    },
+    "is_most_efficient": true,
+    "template_generated": true,
+    "template_type": "sql_query",
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "database_name": "fitness_db"
+  },
+  "intent": {
+    "user_query": "What are the top 3 states with the most registered customers?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Execute SQL query on fitness_db: SELECT State, COUNT(*) AS NumberOfCustomers FROM fitness_db.Customers GROUP BY State ORDER BY NumberOfCustomers DESC QUALIFY ROW_NUMBER() OVER (ORDER BY NumberOfCustomers DESC) <= 3;",
+        "relevant_tools": [
+          "base_readQuery"
+        ],
+        "arguments": {
+          "sql": "SELECT State, COUNT(*) AS NumberOfCustomers FROM fitness_db.Customers GROUP BY State ORDER BY NumberOfCustomers DESC QUALIFY ROW_NUMBER() OVER (ORDER BY NumberOfCustomers DESC) <= 3;"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the query results.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

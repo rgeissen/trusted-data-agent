@@ -31,6 +31,10 @@ export async function handleStartNewSession() {
     if (profileWarningBanner) {
         profileWarningBanner.classList.add('hidden');
     }
+    // Clear the active profile override for autocomplete when starting a new session
+    if (window.activeProfileOverrideId) {
+        delete window.activeProfileOverrideId;
+    }
     // --- MODIFICATION END ---
 
     // --- MODIFICATION START: Hide header buttons and clear turnId on new session ---

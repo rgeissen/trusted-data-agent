@@ -381,6 +381,8 @@ export async function handleChatSubmit(e, source = 'text') {
             cleanedMessage = tagMatch[2]; // Strip @TAG from message
             console.log(`✅ Profile override found: ${overrideProfile.name} (${profileOverrideId})`);
             console.log(`📝 Cleaned message: "${cleanedMessage}"`);
+            // Store the active profile override for autocomplete to use
+            window.activeProfileOverrideId = profileOverrideId;
         } else {
             console.log(`❌ No profile found with tag: ${tag}`);
         }

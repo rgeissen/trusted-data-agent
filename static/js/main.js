@@ -452,18 +452,22 @@ async function initializeRAGAutoCompletion() {
         
         // Priority 1: Check if there's an active profile badge (user selected via @TAG)
         if (activeTagPrefix && window.configState?.profiles) {
-            const tag = activeTagPrefix.replace('@', '').trim();
-            const overrideProfile = window.configState.profiles.find(p => p.tag === tag);
+            const tag = activeTagPrefix.replace('@', '').trim().toUpperCase();
+            const overrideProfile = window.configState.profiles.find(p => p.tag.toUpperCase() === tag);
             if (overrideProfile) {
                 profileId = overrideProfile.id;
             }
         }
-        // Priority 2: Check if query text starts with @TAG (not yet selected)
+        // Priority 2: Check if there's an active profile override from previous message
+        else if (window.activeProfileOverrideId) {
+            profileId = window.activeProfileOverrideId;
+        }
+        // Priority 3: Check if query text starts with @TAG (not yet selected)
         else {
             const tagMatch = queryText.match(/^@(\w+)\s/);
             if (tagMatch && window.configState?.profiles) {
                 const tag = tagMatch[1].toUpperCase();
-                const overrideProfile = window.configState.profiles.find(p => p.tag === tag);
+                const overrideProfile = window.configState.profiles.find(p => p.tag.toUpperCase() === tag);
                 if (overrideProfile) {
                     profileId = overrideProfile.id;
                     // Remove @TAG from query for autocomplete search
@@ -503,7 +507,8 @@ async function initializeRAGAutoCompletion() {
 
             // Check if user typed @ at the start (profile tag selector)
             // But only if we don't have an active tag badge already
-            if (!activeTagPrefix && (inputValue === '@' || (inputValue.startsWith('@') && !inputValue.includes(' ')))) {
+            if (!activeTagPrefix && inputValue.startsWith('@') && !inputValue.includes(' ')) {
+                // User is typing @TAG but hasn't added space yet - show profile selector
                 hideProfileSelector();
                 showSuggestions([]);
                 

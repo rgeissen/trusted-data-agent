@@ -1,0 +1,59 @@
+{
+  "case_id": "186ac268-59af-463b-be80-b5bf58fd128e",
+  "metadata": {
+    "session_id": "00000000-0000-0000-0000-000000000000",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "template-task-186ac268",
+    "collection_id": 5,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-12-02T11:22:05.785814+00:00",
+    "user_uuid": "00000000-0000-0000-0000-000000000000",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Template",
+      "model": "sql_template_v1",
+      "profile_tag": null,
+      "input_tokens": 150,
+      "output_tokens": 180
+    },
+    "is_most_efficient": true,
+    "template_generated": true,
+    "template_type": "sql_query",
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "database_name": "fitness_db"
+  },
+  "intent": {
+    "user_query": "How many sales included more than 3 different products?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Execute SQL query on fitness_db: SELECT COUNT(*) FROM (SELECT SaleID, COUNT(DISTINCT ProductID) AS DistinctProducts FROM fitness_db.SaleDetails GROUP BY SaleID HAVING DistinctProducts > 3) AS Subquery;",
+        "relevant_tools": [
+          "base_readQuery"
+        ],
+        "arguments": {
+          "sql": "SELECT COUNT(*) FROM (SELECT SaleID, COUNT(DISTINCT ProductID) AS DistinctProducts FROM fitness_db.SaleDetails GROUP BY SaleID HAVING DistinctProducts > 3) AS Subquery;"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the query results.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

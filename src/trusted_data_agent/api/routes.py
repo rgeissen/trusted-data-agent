@@ -168,7 +168,7 @@ async def get_rag_questions(current_user):
     allowed_collection_ids = None
     if profile_id:
         config_manager = get_config_manager()
-        profiles = config_manager.get_profiles()
+        profiles = config_manager.get_profiles(user_uuid)
         profile = next((p for p in profiles if p.get("id") == profile_id), None)
         
         if profile:
@@ -194,13 +194,21 @@ async def get_rag_questions(current_user):
                 
             try:
                 # Build where clause with user filtering if context available
+                # Note: Template-generated cases (user_uuid = "00000000-0000-0000-0000-000000000000") 
+                # should be accessible to all users, so we use OR logic
                 where_clause = {"$and": [
                     {"strategy_type": {"$eq": "successful"}},
                     {"is_most_efficient": {"$eq": True}},
                     {"user_feedback_score": {"$gte": 0}}  # Exclude downvoted cases
                 ]}
                 if rag_context and user_uuid:
-                    where_clause["$and"].append({"user_uuid": {"$eq": user_uuid}})
+                    # Include both user's own cases AND template-generated cases
+                    where_clause["$and"].append({
+                        "$or": [
+                            {"user_uuid": {"$eq": user_uuid}},
+                            {"user_uuid": {"$eq": "00000000-0000-0000-0000-000000000000"}}
+                        ]
+                    })
                 
                 # Only get questions from successful and most efficient cases (not downvoted)
                 results = collection.get(
@@ -226,13 +234,21 @@ async def get_rag_questions(current_user):
             
         try:
             # Build where clause with user filtering if context available
+            # Note: Template-generated cases (user_uuid = "00000000-0000-0000-0000-000000000000") 
+            # should be accessible to all users, so we use OR logic
             where_clause = {"$and": [
                 {"strategy_type": {"$eq": "successful"}},
                 {"is_most_efficient": {"$eq": True}},
                 {"user_feedback_score": {"$gte": 0}}  # Exclude downvoted cases
             ]}
             if rag_context and user_uuid:
-                where_clause["$and"].append({"user_uuid": {"$eq": user_uuid}})
+                # Include both user's own cases AND template-generated cases
+                where_clause["$and"].append({
+                    "$or": [
+                        {"user_uuid": {"$eq": user_uuid}},
+                        {"user_uuid": {"$eq": "00000000-0000-0000-0000-000000000000"}}
+                    ]
+                })
             
             # Only query successful and most efficient cases (not downvoted)
             results = collection.query(
