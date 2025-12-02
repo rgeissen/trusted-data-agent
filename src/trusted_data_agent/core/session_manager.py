@@ -13,6 +13,7 @@ from trusted_data_agent.agent.prompts import PROVIDER_SYSTEM_PROMPTS
 # --- MODIFICATION START: Import APP_CONFIG ---
 from trusted_data_agent.core.config import APP_STATE, APP_CONFIG
 from trusted_data_agent.core.utils import generate_session_id # Import generate_session_id
+from trusted_data_agent.agent.rag_template_generator import RAGTemplateGenerator
 # --- MODIFICATION END ---
 
 
@@ -286,6 +287,12 @@ def get_all_sessions(user_uuid: str) -> list[dict]:
                 })
 
 
+    # Filter out template generation sessions
+    session_summaries = [
+        session for session in session_summaries 
+        if session.get("id") != RAGTemplateGenerator.TEMPLATE_SESSION_ID
+    ]
+    
     def sort_key(session):
         created_at = session.get("created_at", "")
         if created_at == "Unknown" or not created_at:
@@ -293,7 +300,7 @@ def get_all_sessions(user_uuid: str) -> list[dict]:
         return created_at
 
     session_summaries.sort(key=sort_key, reverse=True)
-    app_logger.debug(f"Returning {len(session_summaries)} session summaries for user '{user_uuid}'.")
+    app_logger.debug(f"Returning {len(session_summaries)} session summaries for user '{user_uuid}' (template sessions filtered out).")
     return session_summaries
 
 def delete_session(user_uuid: str, session_id: str) -> bool:

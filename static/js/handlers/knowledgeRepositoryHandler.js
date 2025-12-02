@@ -71,6 +71,20 @@ export function initializeKnowledgeRepositoryHandlers() {
         chunkOverlapInput.addEventListener('change', triggerAutoPreview);
     }
     
+    // Preview toggle button handler
+    const previewToggleBtn = document.getElementById('knowledge-preview-toggle');
+    if (previewToggleBtn) {
+        previewToggleBtn.addEventListener('click', () => {
+            previewEnabled = !previewEnabled;
+            updatePreviewToggleButton();
+            
+            if (previewEnabled) {
+                // Generate preview immediately when enabled
+                handlePreviewChunking(false);
+            }
+        });
+    }
+    
     // File upload handlers
     initializeFileUpload();
     
@@ -116,6 +130,8 @@ function openKnowledgeRepositoryModal() {
     if (chunkParams) chunkParams.classList.add('hidden');
     
     // Reset preview state
+    previewEnabled = false;
+    updatePreviewToggleButton();
     const previewEmpty = document.getElementById('knowledge-repo-preview-empty');
     const previewResults = document.getElementById('knowledge-repo-preview-results');
     const preview = document.getElementById('knowledge-repo-preview');
@@ -139,6 +155,29 @@ function openKnowledgeRepositoryModal() {
     const descField = document.getElementById('knowledge-repo-description')?.closest('.mb-6');
     if (nameField) nameField.style.display = '';
     if (descField) descField.style.display = '';
+    
+    // Re-enable chunking/embedding fields (for CREATE mode)
+    const strategySelect = document.getElementById('knowledge-repo-chunking');
+    const sizeInput = document.getElementById('knowledge-repo-chunk-size');
+    const overlapInput = document.getElementById('knowledge-repo-chunk-overlap');
+    const embeddingSelect = document.getElementById('knowledge-repo-embedding');
+    
+    if (strategySelect) {
+        strategySelect.disabled = false;
+        strategySelect.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+    if (sizeInput) {
+        sizeInput.disabled = false;
+        sizeInput.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+    if (overlapInput) {
+        overlapInput.disabled = false;
+        overlapInput.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+    if (embeddingSelect) {
+        embeddingSelect.disabled = false;
+        embeddingSelect.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
     
     // Reset submit button
     const submitBtn = document.getElementById('add-knowledge-repository-submit');
@@ -310,6 +349,8 @@ function initializeFileUpload() {
 
 // Store selected files globally
 let selectedFiles = [];
+// Track if preview should auto-generate
+let previewEnabled = false;
 
 /**
  * Handle file selection
@@ -1252,11 +1293,42 @@ function setupInfiniteScroll() {
 }
 
 /**
+ * Update preview toggle button UI based on preview state
+ */
+function updatePreviewToggleButton() {
+    const toggleBtn = document.getElementById('knowledge-preview-toggle');
+    if (!toggleBtn) return;
+    
+    const icon = toggleBtn.querySelector('svg');
+    const text = toggleBtn.querySelector('span');
+    
+    if (previewEnabled) {
+        // Active state
+        toggleBtn.classList.remove('bg-purple-500/20', 'hover:bg-purple-500/30', 'border-purple-500/40');
+        toggleBtn.classList.add('bg-purple-500', 'hover:bg-purple-600', 'border-purple-500');
+        if (icon) icon.classList.replace('text-purple-400', 'text-white');
+        if (text) {
+            text.textContent = 'Hide Preview';
+            text.classList.replace('text-purple-300', 'text-white');
+        }
+    } else {
+        // Inactive state
+        toggleBtn.classList.remove('bg-purple-500', 'hover:bg-purple-600', 'border-purple-500');
+        toggleBtn.classList.add('bg-purple-500/20', 'hover:bg-purple-500/30', 'border-purple-500/40');
+        if (icon) icon.classList.replace('text-white', 'text-purple-400');
+        if (text) {
+            text.textContent = 'Show Preview';
+            text.classList.replace('text-white', 'text-purple-300');
+        }
+    }
+}
+
+/**
  * Trigger auto-preview when files or settings change
  */
 function triggerAutoPreview() {
-    // Only auto-preview if files are selected
-    if (!selectedFiles || selectedFiles.length === 0) {
+    // Only auto-preview if preview is enabled and files are selected
+    if (!previewEnabled || !selectedFiles || selectedFiles.length === 0) {
         return;
     }
     
@@ -1408,20 +1480,51 @@ export function openUploadDocumentsModal(collectionId, collectionName, repoData)
         `;
     }
     
-    // Hide name/description fields (we're adding to existing repo)
-    const nameField = document.getElementById('knowledge-repo-name')?.closest('.mb-6');
-    const descField = document.getElementById('knowledge-repo-description')?.closest('.mb-6');
-    if (nameField) nameField.style.display = 'none';
-    if (descField) descField.style.display = 'none';
+    // Show and pre-populate name/description fields with existing values
+    const nameInput = document.getElementById('knowledge-repo-name');
+    const descInput = document.getElementById('knowledge-repo-description');
+    const nameField = nameInput?.closest('.mb-6');
+    const descField = descInput?.closest('.mb-6');
     
-    // Pre-fill chunking parameters from existing repo
-    const strategySelect = document.getElementById('knowledge-chunking-strategy');
-    const sizeInput = document.getElementById('knowledge-chunk-size');
-    const overlapInput = document.getElementById('knowledge-chunk-overlap');
+    if (nameField) nameField.style.display = '';
+    if (descField) descField.style.display = '';
     
-    if (strategySelect) strategySelect.value = chunkingStrategy;
-    if (sizeInput) sizeInput.value = chunkSize;
-    if (overlapInput) overlapInput.value = chunkOverlap;
+    if (nameInput) nameInput.value = collectionName || '';
+    if (descInput) descInput.value = repoData?.description || '';
+    
+    // Pre-fill and DISABLE chunking/embedding parameters (immutable for existing repo)
+    const strategySelect = document.getElementById('knowledge-repo-chunking');
+    const sizeInput = document.getElementById('knowledge-repo-chunk-size');
+    const overlapInput = document.getElementById('knowledge-repo-chunk-overlap');
+    const embeddingSelect = document.getElementById('knowledge-repo-embedding');
+    
+    if (strategySelect) {
+        strategySelect.value = chunkingStrategy;
+        strategySelect.disabled = true;
+        strategySelect.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+    if (sizeInput) {
+        sizeInput.value = chunkSize;
+        sizeInput.disabled = true;
+        sizeInput.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+    if (overlapInput) {
+        overlapInput.value = chunkOverlap;
+        overlapInput.disabled = true;
+        overlapInput.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+    if (embeddingSelect) {
+        // Set to current embedding model if available
+        if (repoData?.embedding_model) {
+            embeddingSelect.value = repoData.embedding_model;
+        }
+        embeddingSelect.disabled = true;
+        embeddingSelect.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+    
+    // Reset preview state
+    previewEnabled = false;
+    updatePreviewToggleButton();
     
     // Update submit button
     const submitBtn = document.getElementById('add-knowledge-repository-submit');
