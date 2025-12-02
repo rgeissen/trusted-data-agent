@@ -1,0 +1,662 @@
+{
+  "id": "f323492a-7c51-43de-85fc-84fad34efabf",
+  "user_uuid": "a53397ed-4460-41a1-b850-2aa49ae9c439",
+  "system_prompt_template": null,
+  "charting_intensity": "medium",
+  "provider": "Friendli",
+  "model": "google/gemma-3-27b-it",
+  "profile_tag": "FRGOT",
+  "profile_id": null,
+  "profile_tags_used": [
+    "FMANA",
+    "FRGOT"
+  ],
+  "models_used": [
+    "Google/gemini-2.0-flash",
+    "Friendli/google/gemma-3-27b-it"
+  ],
+  "session_history": [
+    {
+      "role": "user",
+      "content": "Which customers made purchases exceeding $5000 in total during 2023?",
+      "isValid": true,
+      "turn_number": 1,
+      "source": "text",
+      "profile_tag": "FMANA"
+    },
+    {
+      "role": "assistant",
+      "content": "<div class=\"response-card summary-card mb-4\"><p class=\"text-gray-300 mb-4\">Peregrine Took, Leo Taylor, and Mikhail Smirnov made purchases exceeding $5000 in total during 2023.</p><h3 class=\"text-lg font-bold text-white mb-3 border-b border-gray-700 pb-2\">Key Observations</h3><ul class=\"list-disc list-outside space-y-2 text-gray-300 mb-4 pl-5\"><li>The query identified customers whose total purchases in 2023 exceeded $5000.</li><li>The results include the CustomerID, FirstName, and LastName of the qualifying customers.</li></ul></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>base_readQuery</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"CustomerID\": \"27\", \"FirstName\": \"Peregrine\", \"LastName\": \"Took\"}, {\"CustomerID\": \"55\", \"FirstName\": \"Leo\", \"LastName\": \"Taylor\"}, {\"CustomerID\": \"82\", \"FirstName\": \"Mikhail\", \"LastName\": \"Smirnov\"}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>CustomerID</th><th>FirstName</th><th>LastName</th></tr></thead>\n                    <tbody>\n        <tr><td>27</td><td>Peregrine</td><td>Took</td></tr><tr><td>55</td><td>Leo</td><td>Taylor</td></tr><tr><td>82</td><td>Mikhail</td><td>Smirnov</td></tr></tbody></table></div></div>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>TDA_FinalReport</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"direct_answer\": \"Peregrine Took, Leo Taylor, and Mikhail Smirnov made purchases exceeding $5000 in total during 2023.\", \"key_metric\": null, \"key_observations\": [{\"text\": \"The query identified customers whose total purchases in 2023 exceeded $5000.\"}, {\"text\": \"The results include the CustomerID, FirstName, and LastName of the qualifying customers.\"}], \"synthesis\": []}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>direct_answer</th><th>key_metric</th><th>key_observations</th><th>synthesis</th></tr></thead>\n                    <tbody>\n        <tr><td>Peregrine Took, Leo Taylor, and Mikhail Smirnov made purchases exceeding $5000 in total during 2023.</td><td>None</td><td>[{'text': 'The query identified customers whose total purchases in 2023 exceeded $5000.'}, {'text': 'The results include the CustomerID, FirstName, and LastName of the qualifying customers.'}]</td><td>[]</td></tr></tbody></table></div></div></div></details>",
+      "isValid": true,
+      "turn_number": 1
+    },
+    {
+      "role": "user",
+      "content": "what are primary index on teradata?",
+      "isValid": true,
+      "turn_number": 2,
+      "source": "text",
+      "profile_tag": "FRGOT"
+    },
+    {
+      "role": "assistant",
+      "content": "<div class=\"response-card summary-card mb-4\"><p class=\"text-gray-300 mb-4\">Primary indexes control the distribution and retrieval of data across the AMPs in Teradata. They can be unique or nonunique, and partitioned or nonpartitioned. Secondary indexes can improve performance but are not required.</p></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'><div class='response-card'><p class=\"text-gray-300 mb-4\">Primary indexes control the distribution and retrieval of data across the AMPs in Teradata. They can be unique or nonunique, and partitioned or nonpartitioned. Secondary indexes can improve performance but are not required.</p></div></div></details>",
+      "isValid": true,
+      "turn_number": 2
+    }
+  ],
+  "chat_object": [
+    {
+      "role": "user",
+      "content": "You are a helpful assistant.",
+      "turn_number": 0
+    },
+    {
+      "role": "model",
+      "content": "Understood.",
+      "turn_number": 0
+    },
+    {
+      "role": "user",
+      "content": "Which customers made purchases exceeding $5000 in total during 2023?",
+      "isValid": true,
+      "turn_number": 1
+    },
+    {
+      "role": "model",
+      "content": "Peregrine Took, Leo Taylor, and Mikhail Smirnov made purchases exceeding $5000 in total during 2023.",
+      "isValid": true,
+      "turn_number": 1
+    },
+    {
+      "role": "user",
+      "content": "what are primary index on teradata?",
+      "isValid": true,
+      "turn_number": 2
+    },
+    {
+      "role": "assistant",
+      "content": "Primary indexes control the distribution and retrieval of data across the AMPs in Teradata. They can be unique or nonunique, and partitioned or nonpartitioned. Secondary indexes can improve performance but are not required.",
+      "isValid": true,
+      "turn_number": 2
+    }
+  ],
+  "name": "2023 High Value Customers",
+  "created_at": "2025-12-02T13:31:56.855560",
+  "last_updated": "2025-12-02T13:32:59.866766",
+  "input_tokens": 17463,
+  "output_tokens": 455,
+  "last_turn_data": {
+    "workflow_history": [
+      {
+        "turn": 1,
+        "user_query": "Which customers made purchases exceeding $5000 in total during 2023?",
+        "original_plan": [
+          {
+            "phase": 1,
+            "goal": "Identify customers who made purchases exceeding $5000 in total during 2023.",
+            "relevant_tools": [
+              "base_readQuery"
+            ],
+            "arguments": {
+              "sql": "SELECT c.CustomerID, c.FirstName, c.LastName FROM fitness_db.Customers c JOIN fitness_db.Sales s ON c.CustomerID = s.CustomerID WHERE EXTRACT(YEAR FROM s.SaleDate) = 2023 GROUP BY c.CustomerID, c.FirstName, c.LastName HAVING SUM(s.TotalAmount) > 5000;"
+            }
+          },
+          {
+            "phase": 2,
+            "goal": "Generate the final report based on the data gathered.",
+            "relevant_tools": [
+              "TDA_FinalReport"
+            ],
+            "arguments": {}
+          }
+        ],
+        "execution_trace": [
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Calling LLM for Planning",
+                "details": {
+                  "summary": "Generating a strategic meta-plan for the goal",
+                  "full_text": "Which customers made purchases exceeding $5000 in total during 2023?",
+                  "call_id": "0545ce34-76b0-48db-9ad5-685c805af9b1",
+                  "execution_depth": 0,
+                  "input_tokens": 9405,
+                  "output_tokens": 216
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "system_message",
+                "timestamp": "2025-12-02T12:32:17.437748+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Strategic Meta-Plan Generated",
+                "details": [
+                  {
+                    "phase": 1,
+                    "goal": "Identify customers who made purchases exceeding $5000 in total during 2023.",
+                    "relevant_tools": [
+                      "base_readQuery"
+                    ],
+                    "arguments": {
+                      "sql": "SELECT c.CustomerID, c.FirstName, c.LastName FROM fitness_db.Customers c JOIN fitness_db.Sales s ON c.CustomerID = s.CustomerID WHERE EXTRACT(YEAR FROM s.SaleDate) = 2023 GROUP BY c.CustomerID, c.FirstName, c.LastName HAVING SUM(s.TotalAmount) > 5000;"
+                    }
+                  },
+                  {
+                    "phase": 2,
+                    "goal": "Generate the final report based on the data gathered.",
+                    "relevant_tools": [
+                      "TDA_FinalReport"
+                    ],
+                    "arguments": {}
+                  }
+                ]
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_generated",
+                "timestamp": "2025-12-02T12:32:17.449664+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Starting Plan Phase 1/2",
+                "details": {
+                  "phase_num": 1,
+                  "total_phases": 2,
+                  "goal": "Identify customers who made purchases exceeding $5000 in total during 2023.",
+                  "phase_details": {
+                    "phase": 1,
+                    "goal": "Identify customers who made purchases exceeding $5000 in total during 2023.",
+                    "relevant_tools": [
+                      "base_readQuery"
+                    ],
+                    "arguments": {
+                      "sql": "SELECT c.CustomerID, c.FirstName, c.LastName FROM fitness_db.Customers c JOIN fitness_db.Sales s ON c.CustomerID = s.CustomerID WHERE EXTRACT(YEAR FROM s.SaleDate) = 2023 GROUP BY c.CustomerID, c.FirstName, c.LastName HAVING SUM(s.TotalAmount) > 5000;"
+                    }
+                  },
+                  "execution_depth": 0
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_start",
+                "timestamp": "2025-12-02T12:32:17.450602+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Plan Optimization",
+                "details": "FASTPATH initiated for 'base_readQuery'."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_optimization",
+                "timestamp": "2025-12-02T12:32:17.450806+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "base_readQuery",
+              "arguments": {
+                "sql": "SELECT c.CustomerID, c.FirstName, c.LastName FROM fitness_db.Customers c JOIN fitness_db.Sales s ON c.CustomerID = s.CustomerID WHERE EXTRACT(YEAR FROM s.SaleDate) = 2023 GROUP BY c.CustomerID, c.FirstName, c.LastName HAVING SUM(s.TotalAmount) > 5000;"
+              },
+              "metadata": {
+                "phase_number": 1,
+                "execution_depth": 0,
+                "timestamp": "2025-12-02T12:32:17.450928+00:00"
+              }
+            },
+            "result": {
+              "status": "success",
+              "results": [
+                {
+                  "CustomerID": "27",
+                  "FirstName": "Peregrine",
+                  "LastName": "Took"
+                },
+                {
+                  "CustomerID": "55",
+                  "FirstName": "Leo",
+                  "LastName": "Taylor"
+                },
+                {
+                  "CustomerID": "82",
+                  "FirstName": "Mikhail",
+                  "LastName": "Smirnov"
+                }
+              ],
+              "metadata": {
+                "tool_name": "base_readQuery",
+                "sql": "SELECT c.CustomerID, c.FirstName, c.LastName FROM fitness_db.Customers c JOIN fitness_db.Sales s ON c.CustomerID = s.CustomerID WHERE EXTRACT(YEAR FROM s.SaleDate) = 2023 GROUP BY c.CustomerID, c.FirstName, c.LastName HAVING SUM(s.TotalAmount) > 5000;",
+                "columns": [
+                  {
+                    "name": "CustomerID",
+                    "type": "int"
+                  },
+                  {
+                    "name": "FirstName",
+                    "type": "str"
+                  },
+                  {
+                    "name": "LastName",
+                    "type": "str"
+                  }
+                ],
+                "row_count": 3
+              }
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Ending Plan Phase 1/2",
+                "details": {
+                  "phase_num": 1,
+                  "total_phases": 2,
+                  "status": "completed"
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_end",
+                "timestamp": "2025-12-02T12:32:19.013515+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Starting Plan Phase 2/2",
+                "details": {
+                  "phase_num": 2,
+                  "total_phases": 2,
+                  "goal": "Generate the final report based on the data gathered.",
+                  "phase_details": {
+                    "phase": 2,
+                    "goal": "Generate the final report based on the data gathered.",
+                    "relevant_tools": [
+                      "TDA_FinalReport"
+                    ],
+                    "arguments": {}
+                  },
+                  "execution_depth": 0
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_start",
+                "timestamp": "2025-12-02T12:32:19.013606+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Plan Optimization",
+                "details": "FASTPATH initiated for 'TDA_FinalReport'."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_optimization",
+                "timestamp": "2025-12-02T12:32:19.013658+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_FinalReport",
+              "arguments": {},
+              "metadata": {
+                "phase_number": 2,
+                "execution_depth": 0,
+                "timestamp": "2025-12-02T12:32:19.013717+00:00"
+              }
+            },
+            "result": {
+              "status": "success",
+              "metadata": {
+                "call_id": "358960a0-1df7-4eeb-913d-ae3b9e36e4bd",
+                "tool_name": "TDA_FinalReport",
+                "input_tokens": 637,
+                "output_tokens": 115
+              },
+              "results": [
+                {
+                  "direct_answer": "Peregrine Took, Leo Taylor, and Mikhail Smirnov made purchases exceeding $5000 in total during 2023.",
+                  "key_metric": null,
+                  "key_observations": [
+                    {
+                      "text": "The query identified customers whose total purchases in 2023 exceeded $5000."
+                    },
+                    {
+                      "text": "The results include the CustomerID, FirstName, and LastName of the qualifying customers."
+                    }
+                  ],
+                  "synthesis": []
+                }
+              ],
+              "corrections": []
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Ending Plan Phase 2/2",
+                "details": {
+                  "phase_num": 2,
+                  "total_phases": 2,
+                  "status": "completed"
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_end",
+                "timestamp": "2025-12-02T12:32:20.193915+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "LLM has generated the final answer",
+                "details": "Peregrine Took, Leo Taylor, and Mikhail Smirnov made purchases exceeding $5000 in total during 2023."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": null,
+                "timestamp": "2025-12-02T12:32:20.196118+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          }
+        ],
+        "final_summary": "Peregrine Took, Leo Taylor, and Mikhail Smirnov made purchases exceeding $5000 in total during 2023.",
+        "timestamp": "2025-12-02T12:32:20.197322+00:00",
+        "provider": "Google",
+        "model": "gemini-2.0-flash",
+        "profile_tag": "FMANA",
+        "task_id": "task-0f6c34df-4dc7-49d9-b901-210e8ca9ef9b",
+        "turn_input_tokens": 9405,
+        "turn_output_tokens": 216,
+        "session_id": "f323492a-7c51-43de-85fc-84fad34efabf",
+        "rag_source_collection_id": 1,
+        "knowledge_accessed": [],
+        "knowledge_retrieval_event": null,
+        "isValid": true,
+        "case_id": "03755f1a-3a04-507b-982c-be879c402fd9"
+      },
+      {
+        "turn": 2,
+        "user_query": "what are primary index on teradata?",
+        "original_plan": [
+          {
+            "phase": 1,
+            "goal": "Provide answer from knowledge context",
+            "relevant_tools": [
+              "TDA_ContextReport"
+            ],
+            "arguments": {
+              "answer_from_context": "Primary indexes control the distribution and retrieval of data across the AMPs in Teradata. They can be unique or nonunique, and partitioned or nonpartitioned. Secondary indexes can improve performance but are not required."
+            }
+          }
+        ],
+        "execution_trace": [
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Calling LLM for Planning",
+                "details": {
+                  "summary": "Generating a strategic meta-plan for the goal",
+                  "full_text": "what are primary index on teradata?",
+                  "call_id": "db8cc559-115d-4898-aed8-b3b91a30b6e2",
+                  "execution_depth": 0,
+                  "input_tokens": 7342,
+                  "output_tokens": 116
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "system_message",
+                "timestamp": "2025-12-02T12:32:59.839484+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Strategic Meta-Plan Generated",
+                "details": [
+                  {
+                    "phase": 1,
+                    "goal": "Provide answer from knowledge context",
+                    "relevant_tools": [
+                      "TDA_ContextReport"
+                    ],
+                    "arguments": {
+                      "answer_from_context": "Primary indexes control the distribution and retrieval of data across the AMPs in Teradata. They can be unique or nonunique, and partitioned or nonpartitioned. Secondary indexes can improve performance but are not required."
+                    }
+                  }
+                ]
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_generated",
+                "timestamp": "2025-12-02T12:32:59.853823+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Starting Plan Phase 1/1",
+                "details": {
+                  "phase_num": 1,
+                  "total_phases": 1,
+                  "goal": "Provide answer from knowledge context",
+                  "phase_details": {
+                    "phase": 1,
+                    "goal": "Provide answer from knowledge context",
+                    "relevant_tools": [
+                      "TDA_ContextReport"
+                    ],
+                    "arguments": {
+                      "answer_from_context": "Primary indexes control the distribution and retrieval of data across the AMPs in Teradata. They can be unique or nonunique, and partitioned or nonpartitioned. Secondary indexes can improve performance but are not required."
+                    }
+                  },
+                  "execution_depth": 0
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_start",
+                "timestamp": "2025-12-02T12:32:59.853927+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_ContextReport",
+              "arguments": {
+                "answer_from_context": "Primary indexes control the distribution and retrieval of data across the AMPs in Teradata. They can be unique or nonunique, and partitioned or nonpartitioned. Secondary indexes can improve performance but are not required."
+              },
+              "metadata": {
+                "phase_number": 1,
+                "execution_depth": 0,
+                "timestamp": "2025-12-02T12:32:59.854078+00:00"
+              }
+            },
+            "result": {
+              "status": "success",
+              "metadata": {
+                "tool_name": "TDA_ContextReport"
+              },
+              "results": [
+                {
+                  "response": "Primary indexes control the distribution and retrieval of data across the AMPs in Teradata. They can be unique or nonunique, and partitioned or nonpartitioned. Secondary indexes can improve performance but are not required."
+                }
+              ]
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Ending Plan Phase 1/1",
+                "details": {
+                  "phase_num": 1,
+                  "total_phases": 1,
+                  "status": "completed"
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_end",
+                "timestamp": "2025-12-02T12:32:59.854119+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "LLM has generated the final answer",
+                "details": "Primary indexes control the distribution and retrieval of data across the AMPs in Teradata. They can be unique or nonunique, and partitioned or nonpartitioned. Secondary indexes can improve performance but are not required."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": null,
+                "timestamp": "2025-12-02T12:32:59.855912+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          }
+        ],
+        "final_summary": "Primary indexes control the distribution and retrieval of data across the AMPs in Teradata. They can be unique or nonunique, and partitioned or nonpartitioned. Secondary indexes can improve performance but are not required.",
+        "timestamp": "2025-12-02T12:32:59.857503+00:00",
+        "provider": "Friendli",
+        "model": "google/gemma-3-27b-it",
+        "profile_tag": "FRGOT",
+        "task_id": "task-0fdedf40-7dd3-49a5-97c8-52686408e0d4",
+        "turn_input_tokens": 7342,
+        "turn_output_tokens": 116,
+        "session_id": "f323492a-7c51-43de-85fc-84fad34efabf",
+        "rag_source_collection_id": null,
+        "knowledge_accessed": [
+          {
+            "collection_name": "Teradata SQL Fundamentals",
+            "document_count": 3,
+            "timestamp": "2025-12-02T12:32:56.656315+00:00"
+          },
+          {
+            "collection_name": "Teradata SQL Fundamentals",
+            "document_count": 3,
+            "timestamp": "2025-12-02T12:32:56.656516+00:00"
+          }
+        ],
+        "knowledge_retrieval_event": {
+          "summary": "Retrieved 3 relevant documents from 1 knowledge collection(s)",
+          "collections": [
+            "Teradata SQL Fundamentals"
+          ],
+          "document_count": 3,
+          "chunks": [
+            {
+              "collection_name": "Teradata SQL Fundamentals",
+              "content": "th.\nFor this reason, it is extremely important to use the EXPLAIN modi\ufb01er to determine optimum data manipulation statement syntax and index usage before putting statements and\nindexes to work in a production environment.\nTeradata Index Types\nPrimary index\nIn general, all database tables require a primary index because the system distributes tables on their primary indexes. Primary indexes can be:\nUnique or nonunique.\nPartitioned or nonpartitioned.\nSecondary index\nSecondary indexes can be unique or nonunique.\nJoin index (JI)\nHash index\nUnique Indexes\nA unique index, like a primary key, has a unique value for each row in a table.\nTeradata de\ufb01nes two different unique indexes:\nUnique primary index (UPI)\nUPIs provide optimal data distribution and are typically assigned to the primary key for a table. When a NUPI makes better sense for a table, then the primary key is frequently\nassigned to be a USI.\nUnique secondary index (USI)\nUSIs guarantee that each complete index value is unique, while ",
+              "similarity_score": 0.707473635673523,
+              "document_id": "2e58de83-47c7-493f-8f6a-0c4c7c352faf",
+              "chunk_index": 52
+            },
+            {
+              "collection_name": "Teradata SQL Fundamentals",
+              "content": "lective secondary indexes into a strongly selective unit using bit mapping, see NUSI Bit Mapping.\nPPIs, see Partitioned and Nonpartitioned Primary Indexes.\nJoin indexes, see Join Indexes.\nUsing the EXPLAIN request modi\ufb01er, see Teradata Vantage\u2122 - SQL Data Manipulation Language, B035-1146.\nAdditional performance-related information about how to use the access and join plan Teradata Vantage\u2122 - Database Design, B035-1094 reports produced by EXPLAIN to\noptimize the performance of your databases, see Teradata Vantage\u2122 - Database Design, B035-1094.\nCollecting and maintaining accurate database statistics, see Teradata Vantage\u2122 - SQL Data De\ufb01nition Language Syntax and Examples, B035-1144.\nPrimary Indexes\nThe primary index for a table controls the distribution and retrieval of the data for that table across the AMPs. Both distribution and retrieval of the data is controlled using the database\nhashing algorithm.\nIf the primary index is de\ufb01ned as a partitioned primary index (PPI), the data is par",
+              "similarity_score": 0.659993052482605,
+              "document_id": "2e58de83-47c7-493f-8f6a-0c4c7c352faf",
+              "chunk_index": 58
+            },
+            {
+              "collection_name": "Teradata SQL Fundamentals",
+              "content": "elated Information\nUsing primary indexes to enhance the performance of your databases, see Teradata Vantage\u2122 - Database Design, B035-1094.\nDistribution and retrieval of the data controlled using the database hashing algorithm, see Row Hash and RowID.\nPartitioning considerations, including information on column partitioning, called Teradata Columnar, see Teradata Vantage\u2122 - Database Design, B035-1094, Teradata Vantage\u2122\n- SQL Data De\ufb01nition Language Syntax and Examples, B035-1144, and Teradata Vantage\u2122 - SQL Data Manipulation Language, B035-1146.\nDetails on all the restrictions that apply to primary indexes and partitioned primary indexes, see CREATE TABLE in Teradata Vantage\u2122 - SQL Data De\ufb01nition Language Syntax\nand Examples, B035-1144.\nCriteria for selecting a primary index, see Teradata Vantage\u2122 - Database Design, B035-1094.\nSecondary Indexes\nSecondary indexes are never required for database tables, but they can often improve system performance.\nYou create secondary indexes explicitly",
+              "similarity_score": 0.6527299284934998,
+              "document_id": "2e58de83-47c7-493f-8f6a-0c4c7c352faf",
+              "chunk_index": 68
+            }
+          ]
+        },
+        "isValid": true
+      }
+    ]
+  },
+  "full_context_sent": false,
+  "license_info": {
+    "holder": "GNU Affero General Public License v3.0",
+    "issued_at": "2025-11-10T19:25:00.506556+00:00",
+    "expires_at": "2026-11-10T19:25:00.506556+00:00",
+    "version": "1.5-tiered",
+    "tier": "App Developer",
+    "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
+  }
+}

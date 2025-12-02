@@ -1,0 +1,57 @@
+{
+  "case_id": "0681459a-c7f4-56cc-8adb-6fb992aef565",
+  "metadata": {
+    "session_id": "d0a37538-20f0-4bb4-98da-ca2b71b3dbbb",
+    "turn_id": 2,
+    "is_success": true,
+    "task_id": "task-ea069b34-b007-4597-ae44-0dd4167cbb83",
+    "collection_id": 1,
+    "has_orchestration": false,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-12-02T12:17:19.627374+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "profile_tag": "FMANA",
+      "input_tokens": 13352,
+      "output_tokens": 216
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "user_uuid": "a53397ed-4460-41a1-b850-2aa49ae9c439"
+  },
+  "intent": {
+    "user_query": "Which customers made purchases exceeding $5000 in total during 2023?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Identify customers who made purchases exceeding $5000 in total during 2023.",
+        "relevant_tools": [
+          "base_readQuery"
+        ],
+        "arguments": {
+          "sql": "SELECT c.CustomerID, c.FirstName, c.LastName FROM fitness_db.Customers c JOIN fitness_db.Sales s ON c.CustomerID = s.CustomerID WHERE EXTRACT(YEAR FROM s.SaleDate) = 2023 GROUP BY c.CustomerID, c.FirstName, c.LastName HAVING SUM(s.TotalAmount) > 5000;"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

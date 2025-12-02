@@ -14,6 +14,7 @@ rules are applied uniformly throughout the RAG system.
 
 import logging
 from typing import Dict, List, Set, Optional, Any
+from trusted_data_agent.agent.rag_template_generator import RAGTemplateGenerator
 
 logger = logging.getLogger("rag_access_context")
 
@@ -161,10 +162,15 @@ class RAGAccessContext:
         access_type = self.get_access_type(collection_id)
         
         if access_type == "owned":
-            # For owned collections, only show this user's cases
-            # (user_uuid matches current user)
-            and_conditions.append({"user_uuid": {"$eq": self.user_id}})
-            logger.debug(f"Query filter for owned collection {collection_id}: filtering by user_uuid={self.user_id}")
+            # For owned collections, show this user's cases AND template-generated cases
+            # (user_uuid matches current user OR template UUID)
+            and_conditions.append({
+                "$or": [
+                    {"user_uuid": {"$eq": self.user_id}},
+                    {"user_uuid": {"$eq": RAGTemplateGenerator.TEMPLATE_SESSION_ID}}
+                ]
+            })
+            logger.debug(f"Query filter for owned collection {collection_id}: filtering by user_uuid={self.user_id} OR template UUID")
         
         elif access_type == "subscribed":
             # For subscribed collections, show all cases (different creators)
