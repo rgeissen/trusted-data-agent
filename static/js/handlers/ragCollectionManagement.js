@@ -31,7 +31,12 @@ async function updateRagIndicator() {
     }
     
     try {
-        const response = await fetch('/api/status');
+        const token = localStorage.getItem('tda_auth_token');
+        const response = await fetch('/api/status', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         const status = await response.json();
         
         if (status.rag_active) {
@@ -243,7 +248,12 @@ async function refreshQuestionGenerationPrompt() {
     
     try {
         // Fetch template plugin info to get prompt configuration
-        const response = await fetch(`/api/v1/rag/templates/${selectedTemplateId}/plugin-info`);
+        const token = localStorage.getItem('tda_auth_token');
+        const response = await fetch(`/api/v1/rag/templates/${selectedTemplateId}/plugin-info`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         const data = await response.json();
         const promptConfig = data.plugin_info?.prompt_templates?.question_generation;
         
@@ -1068,7 +1078,12 @@ async function calculateRagImpactKPIs() {
                 
                 // Fetch all rows for accurate metrics (not limited)
                 try {
-                    const detailResponse = await fetch(`/api/v1/rag/collections/${collection.id}/rows?limit=10000&light=true`);
+                    const token = localStorage.getItem('tda_auth_token');
+                    const detailResponse = await fetch(`/api/v1/rag/collections/${collection.id}/rows?limit=10000&light=true`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
                     if (detailResponse.ok) {
                         const data = await detailResponse.json();
                         const rows = data.rows || [];
@@ -1394,7 +1409,12 @@ async function populateCollectionDropdown() {
     
     try {
         // Fetch collections from API
-        const response = await fetch('/api/v1/rag/collections');
+        const token = localStorage.getItem('tda_auth_token');
+        const response = await fetch('/api/v1/rag/collections', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         const data = await response.json();
         const collections = (data && data.collections) ? data.collections : [];
         
@@ -1748,7 +1768,12 @@ async function handleGenerateContext() {
                 const selectedTemplateId = ragCollectionTemplateType?.value || getDefaultTemplateId('planner');
                 
                 // Add cache-busting parameter to ensure fresh data
-                const configResponse = await fetch(`/api/v1/rag/templates/${selectedTemplateId}/config?_=${Date.now()}`);
+                const token = localStorage.getItem('tda_auth_token');
+                const configResponse = await fetch(`/api/v1/rag/templates/${selectedTemplateId}/config?_=${Date.now()}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 
                 if (configResponse.ok) {
                     const responseData = await configResponse.json();
@@ -2040,7 +2065,12 @@ async function handleGenerateQuestions() {
         const selectedTemplateId = ragCollectionTemplateType?.value || getDefaultTemplateId('planner');
         
         // Fetch template configuration
-        const response = await fetch(`/api/v1/rag/templates/${selectedTemplateId}/plugin-info`);
+        const token = localStorage.getItem('tda_auth_token');
+        const response = await fetch(`/api/v1/rag/templates/${selectedTemplateId}/plugin-info`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         const data = await response.json();
         const autoGenConfig = data.plugin_info?.population_modes?.auto_generate || {};
         
@@ -2398,7 +2428,12 @@ async function loadLlmTemplateInfo() {
             return;
         }
         
-        const response = await fetch(`/api/v1/rag/templates/${selectedTemplateId}/config`);
+        const token = localStorage.getItem('tda_auth_token');
+        const response = await fetch(`/api/v1/rag/templates/${selectedTemplateId}/config`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (response.ok) {
             const result = await response.json();
             if (result.status === 'success' && result.config) {
@@ -2727,7 +2762,12 @@ async function switchTemplateFields() {
     
     try {
         // Fetch template plugin info to check population modes
-        const response = await fetch(`/api/v1/rag/templates/${selectedTemplateId}/plugin-info`);
+        const token = localStorage.getItem('tda_auth_token');
+        const response = await fetch(`/api/v1/rag/templates/${selectedTemplateId}/plugin-info`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         const data = await response.json();
         const populationModes = data.plugin_info?.population_modes || {};
         
@@ -2828,7 +2868,12 @@ async function renderLlmFieldsForTemplate(templateId) {
     
     try {
         // Fetch template plugin info (includes manifest)
-        const response = await fetch(`/api/v1/rag/templates/${templateId}/plugin-info`);
+        const token = localStorage.getItem('tda_auth_token');
+        const response = await fetch(`/api/v1/rag/templates/${templateId}/plugin-info`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (!response.ok) {
             throw new Error(`Failed to fetch template info: ${response.status}`);
         }

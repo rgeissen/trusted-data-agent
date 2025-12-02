@@ -551,6 +551,135 @@ class Planner:
         if made_change:
             app_logger.info(f"PLAN REWRITE (Date-Range): Final rewritten plan: {self.executor.meta_plan}")
 
+    async def _rewrite_plan_for_empty_context_report(self, knowledge_context_used: str = ""):
+        """
+        Detects when TDA_ContextReport is used with empty arguments (missing answer_from_context).
+        If knowledge context was retrieved, synthesizes an answer from that context and injects
+        it into the plan to prevent execution errors.
+        
+        Args:
+            knowledge_context_used: The knowledge context string that was retrieved during planning
+        """
+        if not self.executor.meta_plan:
+            return
+        
+        made_change = False
+        
+        for phase in self.executor.meta_plan:
+            # Check if this phase uses TDA_ContextReport
+            relevant_tools = phase.get("relevant_tools", [])
+            if "TDA_ContextReport" not in relevant_tools:
+                continue
+            
+            # Check if arguments are missing or answer_from_context is empty
+            arguments = phase.get("arguments", {})
+            answer_from_context = arguments.get("answer_from_context")
+            
+            if answer_from_context:
+                # Answer already provided, no need to rewrite
+                continue
+            
+            app_logger.warning(
+                f"PLAN REWRITE: Phase {phase.get('phase')} uses TDA_ContextReport but has empty arguments. "
+                "Attempting to synthesize answer from knowledge context."
+            )
+            
+            # If we have knowledge context, use it to synthesize an answer
+            if knowledge_context_used:
+                synthesis_prompt = f"""You are helping to answer a user's question using relevant knowledge from a documentation repository.
+
+User's Question: {self.executor.original_user_input}
+
+Retrieved Knowledge Context:
+{knowledge_context_used}
+
+Your task: Provide a clear, comprehensive answer to the user's question based ONLY on the knowledge context above. 
+- Directly address what the user is asking
+- Use specific examples from the context when helpful
+- If the context doesn't fully answer the question, explain what information is available
+- Keep the tone helpful and professional
+
+Respond with ONLY the answer text, no preamble or meta-commentary."""
+
+                reason = "Synthesizing answer from knowledge context for TDA_ContextReport"
+                call_id = str(uuid.uuid4())
+                
+                event_data = {
+                    "step": "Synthesizing Knowledge Answer",
+                    "type": "plan_optimization",
+                    "details": {
+                        "summary": "TDA_ContextReport was called without an answer. Synthesizing response from retrieved knowledge.",
+                        "call_id": call_id
+                    }
+                }
+                self.executor._log_system_event(event_data)
+                yield self.executor._format_sse(event_data)
+                yield self.executor._format_sse({"target": "llm", "state": "busy"}, "status_indicator_update")
+                
+                try:
+                    response_text, input_tokens, output_tokens = await self.executor._call_llm_and_update_tokens(
+                        prompt=synthesis_prompt,
+                        reason=reason,
+                        system_prompt_override="You are a helpful assistant that answers questions based on provided documentation.",
+                        raise_on_error=False,
+                        disabled_history=True,
+                        source=self.executor.source
+                    )
+                    
+                    yield self.executor._format_sse({"target": "llm", "state": "idle"}, "status_indicator_update")
+                    
+                    # Update session with token usage
+                    updated_session = session_manager.get_session(self.executor.user_uuid, self.executor.session_id)
+                    if updated_session:
+                        yield self.executor._format_sse({
+                            "statement_input": input_tokens,
+                            "statement_output": output_tokens,
+                            "total_input": updated_session.get("input_tokens", 0),
+                            "total_output": updated_session.get("output_tokens", 0),
+                            "call_id": call_id
+                        }, "token_update")
+                    
+                    # Inject the synthesized answer into the phase arguments
+                    original_phase = copy.deepcopy(phase)
+                    phase["arguments"]["answer_from_context"] = response_text.strip()
+                    
+                    event_data = {
+                        "step": "System Correction",
+                        "type": "workaround",
+                        "details": {
+                            "summary": "TDA_ContextReport was missing an answer. System synthesized one from knowledge context.",
+                            "correction": {
+                                "from": original_phase,
+                                "to": phase
+                            }
+                        }
+                    }
+                    self.executor._log_system_event(event_data)
+                    yield self.executor._format_sse(event_data)
+                    
+                    made_change = True
+                    app_logger.info(f"Successfully synthesized answer for TDA_ContextReport in phase {phase.get('phase')}")
+                    
+                except Exception as e:
+                    app_logger.error(f"Failed to synthesize answer from knowledge context: {e}. Using fallback message.")
+                    # Inject a fallback message
+                    phase["arguments"]["answer_from_context"] = (
+                        "I found relevant information in the knowledge base. "
+                        "Please review the retrieved documents for details about your question."
+                    )
+                    made_change = True
+            else:
+                # No knowledge context available, inject a generic fallback
+                app_logger.warning(f"No knowledge context available for TDA_ContextReport in phase {phase.get('phase')}. Using generic fallback.")
+                phase["arguments"]["answer_from_context"] = (
+                    "I don't have enough information to answer this question. "
+                    "Please try rephrasing or providing more context."
+                )
+                made_change = True
+        
+        if made_change:
+            app_logger.info(f"PLAN REWRITE (Empty Context Report): Final rewritten plan: {self.executor.meta_plan}")
+
     async def _rewrite_plan_for_sql_consolidation(self):
         """
         Detects and consolidates sequential, inefficient SQL query phases into a
@@ -1058,6 +1187,11 @@ Ranking:"""
                     "document_count": len(balanced_results)
                 }, "knowledge_retrieval")
         
+        # --- STORE KNOWLEDGE CONTEXT FOR PLAN OPTIMIZATION ---
+        # Save the formatted knowledge for potential use in plan rewriting
+        self._last_knowledge_context = formatted_knowledge
+        # --- END STORAGE ---
+        
         return formatted_knowledge
 
     async def generate_and_refine_plan(self, force_disable_history: bool = False, replan_context: str = None):
@@ -1065,10 +1199,16 @@ Ranking:"""
         The main public method to generate a plan and then run all validation and
         refinement steps.
         """
+        # Store knowledge context before calling _generate_meta_plan
+        knowledge_context_for_optimization = ""
+        
         async for event in self._generate_meta_plan(
             force_disable_history=force_disable_history,
             replan_context=replan_context
         ):
+            # Capture knowledge context if it was generated
+            if hasattr(self, '_last_knowledge_context'):
+                knowledge_context_for_optimization = self._last_knowledge_context
             yield event
 
         # --- MODIFICATION START: Make SQL consolidation rewrite conditional ---
@@ -1087,6 +1227,10 @@ Ranking:"""
             yield event
         for event in self._hydrate_plan_from_previous_turn():
             yield event
+        # --- NEW OPTIMIZATION: Rewrite empty TDA_ContextReport with synthesized answer ---
+        async for event in self._rewrite_plan_for_empty_context_report(knowledge_context_for_optimization):
+            yield event
+        # --- END NEW OPTIMIZATION ---
         for event in self._ensure_final_report_phase():
             yield event
 

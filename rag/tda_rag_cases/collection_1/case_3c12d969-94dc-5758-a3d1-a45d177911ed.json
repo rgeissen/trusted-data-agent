@@ -1,45 +1,44 @@
 {
-  "case_id": "92d5846b-3553-5dc5-a0fd-7a441d283bd3",
+  "case_id": "3c12d969-94dc-5758-a3d1-a45d177911ed",
   "metadata": {
-    "session_id": "1a63fe15-deb0-43fb-ae66-92725e3656cb",
-    "turn_id": 3,
+    "session_id": "f22f3b27-de2f-4739-8abc-3979659eac16",
+    "turn_id": 1,
     "is_success": true,
-    "task_id": "task-7c153eeb-9604-489b-966d-e80161cb453e",
+    "task_id": "task-fb35926a-262e-4724-92c6-e3c0b533358b",
     "collection_id": 1,
     "has_orchestration": false,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-12-01T23:40:28.362988+00:00",
+    "timestamp": "2025-12-02T08:31:51.395085+00:00",
     "user_feedback_score": 0,
     "llm_config": {
       "provider": "Google",
       "model": "gemini-2.0-flash",
       "profile_tag": "GOGET",
-      "input_tokens": 18016,
-      "output_tokens": 456
+      "input_tokens": 8537,
+      "output_tokens": 310
     },
     "is_most_efficient": true,
     "strategy_metrics": {
-      "phase_count": 5,
+      "phase_count": 4,
       "steps_per_phase": {
         "1": 1,
         "2": 1,
         "3": 5,
-        "4": 1,
-        "5": 1
+        "4": 1
       },
-      "total_steps": 9
+      "total_steps": 8
     },
-    "user_uuid": "4b05766c-1fa0-4af5-ad33-db14f1168d78"
+    "user_uuid": "a53397ed-4460-41a1-b850-2aa49ae9c439"
   },
   "intent": {
-    "user_query": "what is the system utilization for the past 5 days - show me a bar chart"
+    "user_query": "what is the system utilization for the past 5 days?"
   },
   "successful_strategy": {
     "phases": [
       {
         "phase": 1,
-        "goal": "Get the current date.",
+        "goal": "Get the current date to calculate the date range.",
         "relevant_tools": [
           "TDA_CurrentDate"
         ],
@@ -47,7 +46,7 @@
       },
       {
         "phase": 2,
-        "goal": "Calculate the date range for the past 5 days based on the current date.",
+        "goal": "Calculate the date range for the past 5 days using the current date.",
         "relevant_tools": [
           "TDA_DateRange"
         ],
@@ -58,7 +57,7 @@
       },
       {
         "phase": 3,
-        "goal": "Loop through the dates and retrieve the system usage summary for each day.",
+        "goal": "Loop through the calculated dates and retrieve the Teradata system usage summary metrics for each day.",
         "relevant_tools": [
           "dba_resusageSummary"
         ],
@@ -73,23 +72,7 @@
       },
       {
         "phase": 4,
-        "goal": "Generate a bar chart of the system utilization data for the past 5 days.",
-        "relevant_tools": [
-          "TDA_Charting"
-        ],
-        "arguments": {
-          "chart_type": "bar",
-          "title": "System Utilization for the Past 5 Days",
-          "data": "result_of_phase_3",
-          "mapping": {
-            "x_axis": "date",
-            "y_axis": "Request Count"
-          }
-        }
-      },
-      {
-        "phase": 5,
-        "goal": "Generate the final report based on the data gathered.",
+        "goal": "Generate the final report based on the Teradata system utilization data gathered.",
         "relevant_tools": [
           "TDA_FinalReport"
         ],

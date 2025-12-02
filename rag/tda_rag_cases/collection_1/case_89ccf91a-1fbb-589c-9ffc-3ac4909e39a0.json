@@ -1,22 +1,22 @@
 {
-  "case_id": "c5d07cb9-abf3-52f1-bca2-7befcb21dc7a",
+  "case_id": "89ccf91a-1fbb-589c-9ffc-3ac4909e39a0",
   "metadata": {
-    "session_id": "bd0cad94-1248-48ad-bcd7-d6d0d39281cd",
-    "turn_id": 2,
+    "session_id": "bb64b6be-e923-42f7-96c2-51922bc39ff6",
+    "turn_id": 1,
     "is_success": true,
-    "task_id": "task-937ea308-1dee-4aed-8c4a-ebade27b952e",
+    "task_id": "task-b222d70e-0d67-4739-a8cb-435338ee78f6",
     "collection_id": 1,
     "has_orchestration": false,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-12-01T23:33:15.221135+00:00",
+    "timestamp": "2025-12-02T08:30:31.536545+00:00",
     "user_feedback_score": 0,
     "llm_config": {
       "provider": "Google",
       "model": "gemini-2.0-flash",
       "profile_tag": "GOGET",
-      "input_tokens": 10206,
-      "output_tokens": 116
+      "input_tokens": 8525,
+      "output_tokens": 117
     },
     "is_most_efficient": true,
     "strategy_metrics": {
@@ -27,18 +27,18 @@
       },
       "total_steps": 2
     },
-    "user_uuid": "4b05766c-1fa0-4af5-ad33-db14f1168d78"
+    "user_uuid": "a53397ed-4460-41a1-b850-2aa49ae9c439"
   },
   "intent": {
-    "user_query": "what is the current date?"
+    "user_query": "what is the system version?"
   },
   "successful_strategy": {
     "phases": [
       {
         "phase": 1,
-        "goal": "Get the current system date.",
+        "goal": "Get the Teradata database version information.",
         "relevant_tools": [
-          "TDA_CurrentDate"
+          "dba_databaseVersion"
         ],
         "arguments": {}
       },

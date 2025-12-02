@@ -217,7 +217,12 @@ export function createTemplateCard(template, index, filterType = 'planner') {
             
             try {
                 // Load full template from API
-                const response = await fetch(`/api/v1/rag/templates/${template.template_id}/full`);
+                const token = localStorage.getItem('tda_auth_token');
+                const response = await fetch(`/api/v1/rag/templates/${template.template_id}/full`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 if (!response.ok) {
                     throw new Error(`Failed to load template: ${response.statusText}`);
                 }
@@ -450,7 +455,12 @@ export async function reloadTemplateConfiguration(templateId) {
     try {
         const id = templateId || getDefaultTemplateId('planner');
         // Add cache-busting parameter to force fresh load
-        const response = await fetch(`/api/v1/rag/templates/${id}/config?_=${Date.now()}`);
+        const token = localStorage.getItem('tda_auth_token');
+        const response = await fetch(`/api/v1/rag/templates/${id}/config?_=${Date.now()}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (response.ok) {
             const configData = await response.json();
             return configData;

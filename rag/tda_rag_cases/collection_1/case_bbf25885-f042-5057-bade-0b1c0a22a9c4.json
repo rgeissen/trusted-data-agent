@@ -1,33 +1,34 @@
 {
-  "case_id": "03320821-57a4-56af-8ff5-6f9abe51e108",
+  "case_id": "bbf25885-f042-5057-bade-0b1c0a22a9c4",
   "metadata": {
-    "session_id": "db765546-796b-48e7-baa0-badbfc411b41",
-    "turn_id": 4,
+    "session_id": "7f1177a2-38b3-4d82-acbf-453db2d109f4",
+    "turn_id": 3,
     "is_success": true,
-    "task_id": "task-8498bf2c-37fc-429c-955a-75bf9515c9c7",
+    "task_id": "task-8eb6968d-51a6-4323-a2fa-24e1cc33973f",
     "collection_id": 1,
     "has_orchestration": false,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-12-01T23:38:37.568253+00:00",
+    "timestamp": "2025-12-02T08:34:57.151921+00:00",
     "user_feedback_score": 0,
     "llm_config": {
       "provider": "Google",
       "model": "gemini-2.0-flash",
       "profile_tag": "GOGET",
-      "input_tokens": 20763,
-      "output_tokens": 188
+      "input_tokens": 15541,
+      "output_tokens": 319
     },
     "is_most_efficient": true,
     "strategy_metrics": {
-      "phase_count": 2,
+      "phase_count": 3,
       "steps_per_phase": {
         "1": 1,
-        "2": 1
+        "2": 1,
+        "3": 1
       },
-      "total_steps": 2
+      "total_steps": 3
     },
-    "user_uuid": "4b05766c-1fa0-4af5-ad33-db14f1168d78"
+    "user_uuid": "a53397ed-4460-41a1-b850-2aa49ae9c439"
   },
   "intent": {
     "user_query": "what are my top 5 products based on revenue generated?"
@@ -46,6 +47,22 @@
       },
       {
         "phase": 2,
+        "goal": "Generate a bar chart to visualize the top 5 products and their revenue.",
+        "relevant_tools": [
+          "TDA_Charting"
+        ],
+        "arguments": {
+          "chart_type": "bar",
+          "title": "Top 5 Products by Revenue",
+          "data": "result_of_phase_1",
+          "mapping": {
+            "x_axis": "ProductName",
+            "y_axis": "TotalRevenue"
+          }
+        }
+      },
+      {
+        "phase": 3,
         "goal": "Generate the final report based on the data gathered.",
         "relevant_tools": [
           "TDA_FinalReport"

@@ -776,6 +776,60 @@ class PhaseExecutor:
 
         tool_name = relevant_tools[0] if len(relevant_tools) == 1 else None
 
+        # --- SYSTEM TOOL BYPASS: TDA_ContextReport with answer_from_context ---
+        # Check if this is TDA_ContextReport with a pre-populated answer (from plan optimization)
+        if tool_name == "TDA_ContextReport" and strategic_args.get("answer_from_context"):
+            app_logger.info("Bypassing tactical LLM: TDA_ContextReport has pre-synthesized answer from plan optimization.")
+            
+            # Create the action directly without tactical LLM call
+            action_to_execute = {
+                "tool_name": "TDA_ContextReport",
+                "arguments": strategic_args
+            }
+            
+            # Execute the bypass logic directly (same as in _execute_action_with_orchestrators)
+            self.executor.is_synthesis_from_history = True
+            self.executor.last_tool_output = {
+                "status": "success",
+                "metadata": {"tool_name": "TDA_ContextReport"},
+                "results": [{"response": strategic_args.get("answer_from_context")}]
+            }
+            
+            # Log the action
+            phase_num = phase.get("phase", self.executor.current_phase_index + 1)
+            action_for_history = copy.deepcopy(action_to_execute)
+            action_for_history.setdefault("metadata", {})["phase_number"] = phase_num
+            action_for_history.setdefault("metadata", {})["execution_depth"] = self.executor.execution_depth
+            action_for_history.setdefault("metadata", {})["timestamp"] = datetime.now(timezone.utc).isoformat()
+            
+            yield self.executor._format_sse({
+                "step": "Tool Execution Result",
+                "details": self.executor.last_tool_output,
+                "tool_name": "TDA_ContextReport"
+            }, "tool_result")
+            
+            self.executor.turn_action_history.append({
+                "action": action_for_history,
+                "result": self.executor.last_tool_output
+            })
+            
+            # Store result in workflow state
+            phase_result_key = f"result_of_phase_{phase_num}"
+            self.executor.workflow_state.setdefault(phase_result_key, []).append(self.executor.last_tool_output)
+            self.executor._add_to_structured_data(self.executor.last_tool_output)
+            
+            # Phase complete
+            if not is_loop_iteration:
+                event_data = {
+                    "step": f"Ending Plan Phase {phase_num}/{len(self.executor.meta_plan)}",
+                    "type": "phase_end",
+                    "details": {"phase_num": phase_num, "total_phases": len(self.executor.meta_plan), "status": "completed"}
+                }
+                self.executor._log_system_event(event_data)
+                yield self.executor._format_sse(event_data)
+            return
+        # --- END SYSTEM TOOL BYPASS ---
+
         is_fast_path_candidate = False
         if tool_name:
             all_tools = self.executor.dependencies['STATE'].get('mcp_tools', {})
@@ -1295,10 +1349,22 @@ class PhaseExecutor:
 
             app_logger.info(log_message)
             self.executor.is_synthesis_from_history = True
+            
+            # --- DEFENSIVE FIX: Handle missing answer_from_context ---
+            answer_content = arguments.get(answer_key)
+            if not answer_content:
+                # LLM didn't provide the answer in arguments - generate a fallback message
+                app_logger.warning(f"{tool_name} called without '{answer_key}' argument. Using fallback message.")
+                answer_content = (
+                    "I found relevant information in the knowledge base that may help answer your question. "
+                    "However, the system needs to be configured to properly format the response. "
+                    "Please try rephrasing your question or contact support if this issue persists."
+                )
+            
             self.executor.last_tool_output = {
                 "status": "success",
                 "metadata": {"tool_name": tool_name},
-                "results": [{"response": arguments.get(answer_key)}]
+                "results": [{"response": answer_content}]
             }
             yield self.executor._format_sse({"step": "Tool Execution Result", "details": self.executor.last_tool_output, "tool_name": tool_name}, "tool_result")
             # --- MODIFICATION START: Use action_for_history ---

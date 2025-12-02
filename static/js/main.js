@@ -858,7 +858,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             state.appConfig = window.appConfigData;
         } else {
             // Fallback: fetch directly if window.appConfigData isn't available
-            const res = await fetch('/app-config');
+            const token = localStorage.getItem('tda_auth_token');
+            const res = await fetch('/app-config', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             state.appConfig = await res.json();
         }
 
@@ -1077,7 +1082,12 @@ async function showWelcomeScreen() {
     let hasSavedConfig = false;
     let configDetails = '';
     try {
-        const response = await fetch('/api/v1/mcp/servers');
+        const token = localStorage.getItem('tda_auth_token');
+        const response = await fetch('/api/v1/mcp/servers', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (response.ok) {
             const data = await response.json();
             // API returns {status, servers: [...], active_server_id}

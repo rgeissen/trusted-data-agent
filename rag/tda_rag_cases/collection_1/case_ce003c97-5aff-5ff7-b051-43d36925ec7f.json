@@ -1,0 +1,48 @@
+{
+  "case_id": "ce003c97-5aff-5ff7-b051-43d36925ec7f",
+  "metadata": {
+    "session_id": "23d7a7ff-368f-41ec-a7a0-325ad4de2077",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "task-a1c1a1a1-337b-4f5c-8d18-7ab0784f8fb8",
+    "collection_id": 1,
+    "has_orchestration": false,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": true,
+    "timestamp": "2025-12-02T08:54:20.582423+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Friendli",
+      "model": "google/gemma-3-27b-it",
+      "profile_tag": "FRGOT",
+      "input_tokens": 11669,
+      "output_tokens": 506
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 1,
+      "steps_per_phase": {
+        "1": 1
+      },
+      "total_steps": 1
+    },
+    "user_uuid": "a53397ed-4460-41a1-b850-2aa49ae9c439"
+  },
+  "intent": {
+    "user_query": "how do I create a table on teradata?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Provide instructions on how to create a table in Teradata.",
+        "relevant_tools": [
+          "TDA_LLMTask"
+        ],
+        "arguments": {
+          "answer_from_context": "To create a table in Teradata, you use the `CREATE TABLE` statement. The documentation indicates that when creating a table, you assign a name to the table and to its columns, but Teradata software sets all other aspects of the table. \n\nHere's what the documentation covers regarding table creation:\n\n*   **Column Definition:** The `CREATE TABLE` statement's column definition clause defines table columns, specifying a name and declared type for each. Each row will have one value for each column, and that value must be of the column\u2019s declared type (including nulls).\n*   **Table Types:** The documentation references different table types including:\n    *   ART tables (manipulation through update, insert, and delete is not allowed)\n    *   NoPI (No Primary Index) tables\n    *   Queue tables\n    *   Error logging tables\n    *   Temporal tables\n    *   Global temporary base tables (some features are not available)\n*   **Modifying Tables:** After creation, you can alter the structure of a table using `ALTER TABLE` (add/drop columns, add attributes, change journaling/fallback options) or `RENAME TABLE` (to change the name). However, you cannot use `ALTER TABLE` on an error logging table.\n\nFor detailed syntax and examples of the `CREATE TABLE` statement, as well as rules for duplicate rows, refer to *Teradata Vantage\u2122 - SQL Data Definition Language Syntax and Examples, B035-1144*. More information on inserting data into tables can be found in *Teradata Vantage\u2122 - SQL Data Manipulation Language, B035-1146*."
+        }
+      }
+    ]
+  }
+}

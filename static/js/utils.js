@@ -82,7 +82,12 @@ export async function getDefaultSystemPrompt(provider, model) {
     }
 
     try {
-        const res = await fetch(`/system_prompt/${provider}/${getNormalizedModelId(model)}`);
+        const token = localStorage.getItem('tda_auth_token');
+        const res = await fetch(`/system_prompt/${provider}/${getNormalizedModelId(model)}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (!res.ok) {
             throw new Error(`Failed to fetch default prompt: ${res.statusText}`);
         }

@@ -1,21 +1,21 @@
 {
-  "case_id": "69b4d3a3-fdf4-51f8-81d9-1fd4f0c30eec",
+  "case_id": "28b62d7a-c9c5-574c-8cce-d83ccaa599c4",
   "metadata": {
-    "session_id": "db765546-796b-48e7-baa0-badbfc411b41",
-    "turn_id": 2,
+    "session_id": "eba2e576-15d8-4626-9052-6712156539cd",
+    "turn_id": 1,
     "is_success": true,
-    "task_id": "task-bb5e6884-e6d0-42c5-ae6f-b745dd4cd115",
+    "task_id": "task-61fd7e8e-dcbc-4e24-99b6-5307d9835d9e",
     "collection_id": 1,
     "has_orchestration": false,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-12-01T23:36:16.864064+00:00",
-    "user_feedback_score": 0,
+    "timestamp": "2025-12-02T09:01:20.289087+00:00",
+    "user_feedback_score": -1,
     "llm_config": {
       "provider": "Google",
       "model": "gemini-2.0-flash",
       "profile_tag": "GOGET",
-      "input_tokens": 14669,
+      "input_tokens": 8950,
       "output_tokens": 267
     },
     "is_most_efficient": true,
@@ -28,10 +28,10 @@
       },
       "total_steps": 7
     },
-    "user_uuid": "4b05766c-1fa0-4af5-ad33-db14f1168d78"
+    "user_uuid": "a53397ed-4460-41a1-b850-2aa49ae9c439"
   },
   "intent": {
-    "user_query": "educate yourself on the table ddls in fitness_db database"
+    "user_query": "educate yourself on the table ddls in fit"
   },
   "successful_strategy": {
     "phases": [

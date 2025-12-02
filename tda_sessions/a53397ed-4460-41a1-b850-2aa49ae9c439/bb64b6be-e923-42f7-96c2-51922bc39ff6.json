@@ -1,6 +1,6 @@
 {
-  "id": "bd0cad94-1248-48ad-bcd7-d6d0d39281cd",
-  "user_uuid": "4b05766c-1fa0-4af5-ad33-db14f1168d78",
+  "id": "bb64b6be-e923-42f7-96c2-51922bc39ff6",
+  "user_uuid": "a53397ed-4460-41a1-b850-2aa49ae9c439",
   "system_prompt_template": null,
   "charting_intensity": "medium",
   "provider": "Google",
@@ -23,7 +23,7 @@
     },
     {
       "role": "assistant",
-      "content": "<div class=\"response-card summary-card mb-4\">\n<div class=\"key-metric-card bg-gray-900/50 p-4 rounded-lg mb-4 text-center\">\n    <div class=\"text-4xl font-bold text-white\">20.00.22.31</div>\n    <div class=\"text-base text-gray-400 mt-1\">System Version</div>\n</div>\n<h3 class=\"text-lg font-bold text-white mb-3 border-b border-gray-700 pb-2\">Key Observations</h3><ul class=\"list-disc list-outside space-y-2 text-gray-300 mb-4 pl-5\"><li>The system version is indicated by the 'VERSION' InfoKey in the DBC.DBCInfoV table.</li><li>The 'RELEASE' InfoKey also reflects the same version number.</li></ul></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>base_readQuery</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"InfoKey\": \"VERSION\", \"InfoData\": \"20.00.22.31\"}, {\"InfoKey\": \"LANGUAGE SUPPORT MODE\", \"InfoData\": \"Standard\"}, {\"InfoKey\": \"RELEASE\", \"InfoData\": \"20.00.22.31\"}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>InfoKey</th><th>InfoData</th></tr></thead>\n                    <tbody>\n        <tr><td>VERSION</td><td>20.00.22.31</td></tr><tr><td>LANGUAGE SUPPORT MODE</td><td>Standard</td></tr><tr><td>RELEASE</td><td>20.00.22.31</td></tr></tbody></table></div></div>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>TDA_FinalReport</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"direct_answer\": \"The system version is 20.00.22.31.\", \"key_metric\": {\"value\": \"20.00.22.31\", \"label\": \"System Version\"}, \"key_observations\": [{\"text\": \"The system version is indicated by the &apos;VERSION&apos; InfoKey in the DBC.DBCInfoV table.\"}, {\"text\": \"The &apos;RELEASE&apos; InfoKey also reflects the same version number.\"}], \"synthesis\": []}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>direct_answer</th><th>key_metric</th><th>key_observations</th><th>synthesis</th></tr></thead>\n                    <tbody>\n        <tr><td>The system version is 20.00.22.31.</td><td>{'value': '20.00.22.31', 'label': 'System Version'}</td><td>[{'text': \"The system version is indicated by the 'VERSION' InfoKey in the DBC.DBCInfoV table.\"}, {'text': \"The 'RELEASE' InfoKey also reflects the same version number.\"}]</td><td>[]</td></tr></tbody></table></div></div></div></details>",
+      "content": "<div class=\"response-card summary-card mb-4\">\n<div class=\"key-metric-card bg-gray-900/50 p-4 rounded-lg mb-4 text-center\">\n    <div class=\"text-4xl font-bold text-white\">20.00.22.31</div>\n    <div class=\"text-base text-gray-400 mt-1\">System Version</div>\n</div>\n<h3 class=\"text-lg font-bold text-white mb-3 border-b border-gray-700 pb-2\">Key Observations</h3><ul class=\"list-disc list-outside space-y-2 text-gray-300 mb-4 pl-5\"><li>The system version and release are both reported as 20.00.22.31.</li><li>The system's language support mode is Standard.</li></ul></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>base_readQuery</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"InfoKey\": \"VERSION\", \"InfoData\": \"20.00.22.31\"}, {\"InfoKey\": \"LANGUAGE SUPPORT MODE\", \"InfoData\": \"Standard\"}, {\"InfoKey\": \"RELEASE\", \"InfoData\": \"20.00.22.31\"}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>InfoKey</th><th>InfoData</th></tr></thead>\n                    <tbody>\n        <tr><td>VERSION</td><td>20.00.22.31</td></tr><tr><td>LANGUAGE SUPPORT MODE</td><td>Standard</td></tr><tr><td>RELEASE</td><td>20.00.22.31</td></tr></tbody></table></div></div>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>TDA_FinalReport</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"direct_answer\": \"The system version is 20.00.22.31.\", \"key_metric\": {\"value\": \"20.00.22.31\", \"label\": \"System Version\"}, \"key_observations\": [{\"text\": \"The system version and release are both reported as 20.00.22.31.\"}, {\"text\": \"The system&apos;s language support mode is Standard.\"}], \"synthesis\": []}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>direct_answer</th><th>key_metric</th><th>key_observations</th><th>synthesis</th></tr></thead>\n                    <tbody>\n        <tr><td>The system version is 20.00.22.31.</td><td>{'value': '20.00.22.31', 'label': 'System Version'}</td><td>[{'text': 'The system version and release are both reported as 20.00.22.31.'}, {'text': \"The system's language support mode is Standard.\"}]</td><td>[]</td></tr></tbody></table></div></div></div></details>",
       "isValid": true,
       "turn_number": 1
     },
@@ -78,10 +78,10 @@
     }
   ],
   "name": "System Version Inquiry",
-  "created_at": "2025-12-02T00:32:57.424633",
-  "last_updated": "2025-12-02T00:33:15.246710",
-  "input_tokens": 19694,
-  "output_tokens": 436,
+  "created_at": "2025-12-02T09:30:22.384208",
+  "last_updated": "2025-12-02T09:30:39.938795",
+  "input_tokens": 19139,
+  "output_tokens": 444,
   "last_turn_data": {
     "workflow_history": [
       {
@@ -90,7 +90,7 @@
         "original_plan": [
           {
             "phase": 1,
-            "goal": "Get the Teradata database system version information.",
+            "goal": "Get the Teradata database version information.",
             "relevant_tools": [
               "dba_databaseVersion"
             ],
@@ -114,16 +114,16 @@
                 "details": {
                   "summary": "Generating a strategic meta-plan for the goal",
                   "full_text": "what is the system version?",
-                  "call_id": "3b1546dc-1e3b-4e54-8a8a-c707612cdc04",
+                  "call_id": "d0a3e9e5-0667-4091-8f24-caf45604ad11",
                   "execution_depth": 0,
-                  "input_tokens": 8546,
-                  "output_tokens": 106
+                  "input_tokens": 8525,
+                  "output_tokens": 117
                 }
               },
               "metadata": {
                 "execution_depth": 0,
                 "type": "system_message",
-                "timestamp": "2025-12-01T23:33:04.339634+00:00"
+                "timestamp": "2025-12-02T08:30:29.055883+00:00"
               }
             },
             "result": {
@@ -138,7 +138,7 @@
                 "details": [
                   {
                     "phase": 1,
-                    "goal": "Get the Teradata database system version information.",
+                    "goal": "Get the Teradata database version information.",
                     "relevant_tools": [
                       "dba_databaseVersion"
                     ],
@@ -157,7 +157,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "plan_generated",
-                "timestamp": "2025-12-01T23:33:04.340500+00:00"
+                "timestamp": "2025-12-02T08:30:29.064776+00:00"
               }
             },
             "result": {
@@ -172,10 +172,10 @@
                 "details": {
                   "phase_num": 1,
                   "total_phases": 2,
-                  "goal": "Get the Teradata database system version information.",
+                  "goal": "Get the Teradata database version information.",
                   "phase_details": {
                     "phase": 1,
-                    "goal": "Get the Teradata database system version information.",
+                    "goal": "Get the Teradata database version information.",
                     "relevant_tools": [
                       "dba_databaseVersion"
                     ],
@@ -187,7 +187,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "phase_start",
-                "timestamp": "2025-12-01T23:33:04.340613+00:00"
+                "timestamp": "2025-12-02T08:30:29.065252+00:00"
               }
             },
             "result": {
@@ -204,7 +204,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "plan_optimization",
-                "timestamp": "2025-12-01T23:33:04.340678+00:00"
+                "timestamp": "2025-12-02T08:30:29.065365+00:00"
               }
             },
             "result": {
@@ -218,7 +218,7 @@
               "metadata": {
                 "phase_number": 1,
                 "execution_depth": 0,
-                "timestamp": "2025-12-01T23:33:04.340743+00:00"
+                "timestamp": "2025-12-02T08:30:29.065448+00:00"
               }
             },
             "result": {
@@ -268,7 +268,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "phase_end",
-                "timestamp": "2025-12-01T23:33:05.239032+00:00"
+                "timestamp": "2025-12-02T08:30:30.195990+00:00"
               }
             },
             "result": {
@@ -298,7 +298,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "phase_start",
-                "timestamp": "2025-12-01T23:33:05.239123+00:00"
+                "timestamp": "2025-12-02T08:30:30.196098+00:00"
               }
             },
             "result": {
@@ -315,7 +315,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "plan_optimization",
-                "timestamp": "2025-12-01T23:33:05.239195+00:00"
+                "timestamp": "2025-12-02T08:30:30.196177+00:00"
               }
             },
             "result": {
@@ -329,16 +329,16 @@
               "metadata": {
                 "phase_number": 2,
                 "execution_depth": 0,
-                "timestamp": "2025-12-01T23:33:05.239271+00:00"
+                "timestamp": "2025-12-02T08:30:30.196245+00:00"
               }
             },
             "result": {
               "status": "success",
               "metadata": {
-                "call_id": "6d2d42d1-0829-4464-bf95-37d1330ddf0c",
+                "call_id": "68448260-edab-4075-bfb6-eda18a9bfe21",
                 "tool_name": "TDA_FinalReport",
                 "input_tokens": 515,
-                "output_tokens": 141
+                "output_tokens": 138
               },
               "results": [
                 {
@@ -349,10 +349,10 @@
                   },
                   "key_observations": [
                     {
-                      "text": "The system version is indicated by the 'VERSION' InfoKey in the DBC.DBCInfoV table."
+                      "text": "The system version and release are both reported as 20.00.22.31."
                     },
                     {
-                      "text": "The 'RELEASE' InfoKey also reflects the same version number."
+                      "text": "The system's language support mode is Standard."
                     }
                   ],
                   "synthesis": []
@@ -375,7 +375,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "phase_end",
-                "timestamp": "2025-12-01T23:33:06.588719+00:00"
+                "timestamp": "2025-12-02T08:30:31.534556+00:00"
               }
             },
             "result": {
@@ -392,7 +392,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": null,
-                "timestamp": "2025-12-01T23:33:06.590302+00:00"
+                "timestamp": "2025-12-02T08:30:31.536195+00:00"
               }
             },
             "result": {
@@ -401,19 +401,19 @@
           }
         ],
         "final_summary": "The system version is 20.00.22.31.",
-        "timestamp": "2025-12-01T23:33:06.590720+00:00",
+        "timestamp": "2025-12-02T08:30:31.536545+00:00",
         "provider": "Google",
         "model": "gemini-2.0-flash",
         "profile_tag": "GOGET",
-        "task_id": "task-360fd7dd-aadd-47e4-94fe-0cfb6b37e472",
-        "turn_input_tokens": 8546,
-        "turn_output_tokens": 106,
-        "session_id": "bd0cad94-1248-48ad-bcd7-d6d0d39281cd",
+        "task_id": "task-b222d70e-0d67-4739-a8cb-435338ee78f6",
+        "turn_input_tokens": 8525,
+        "turn_output_tokens": 117,
+        "session_id": "bb64b6be-e923-42f7-96c2-51922bc39ff6",
         "rag_source_collection_id": null,
         "knowledge_accessed": [],
         "knowledge_retrieval_event": null,
         "isValid": true,
-        "case_id": "2b27c505-c6a2-5744-8149-c05e362a9caa"
+        "case_id": "89ccf91a-1fbb-589c-9ffc-3ac4909e39a0"
       },
       {
         "turn": 2,
@@ -429,7 +429,7 @@
           },
           {
             "phase": 2,
-            "goal": "Generate the final report based on the data gathered.",
+            "goal": "Generate the final report based on the current date.",
             "relevant_tools": [
               "TDA_FinalReport"
             ],
@@ -445,16 +445,16 @@
                 "details": {
                   "summary": "Generating a strategic meta-plan for the goal",
                   "full_text": "what is the current date?",
-                  "call_id": "ae0f34c4-5c4e-4efc-a342-e6d8aeed26b6",
+                  "call_id": "743503e5-6cc6-44c8-a301-93fe48839ae5",
                   "execution_depth": 0,
-                  "input_tokens": 10206,
+                  "input_tokens": 9672,
                   "output_tokens": 116
                 }
               },
               "metadata": {
                 "execution_depth": 0,
                 "type": "system_message",
-                "timestamp": "2025-12-01T23:33:14.585738+00:00"
+                "timestamp": "2025-12-02T08:30:39.133328+00:00"
               }
             },
             "result": {
@@ -477,7 +477,7 @@
                   },
                   {
                     "phase": 2,
-                    "goal": "Generate the final report based on the data gathered.",
+                    "goal": "Generate the final report based on the current date.",
                     "relevant_tools": [
                       "TDA_FinalReport"
                     ],
@@ -488,7 +488,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "plan_generated",
-                "timestamp": "2025-12-01T23:33:14.586196+00:00"
+                "timestamp": "2025-12-02T08:30:39.145622+00:00"
               }
             },
             "result": {
@@ -518,7 +518,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "phase_start",
-                "timestamp": "2025-12-01T23:33:14.586270+00:00"
+                "timestamp": "2025-12-02T08:30:39.145747+00:00"
               }
             },
             "result": {
@@ -535,7 +535,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "plan_optimization",
-                "timestamp": "2025-12-01T23:33:14.586313+00:00"
+                "timestamp": "2025-12-02T08:30:39.145813+00:00"
               }
             },
             "result": {
@@ -549,7 +549,7 @@
               "metadata": {
                 "phase_number": 1,
                 "execution_depth": 0,
-                "timestamp": "2025-12-01T23:33:14.586354+00:00"
+                "timestamp": "2025-12-02T08:30:39.145904+00:00"
               }
             },
             "result": {
@@ -578,7 +578,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "phase_end",
-                "timestamp": "2025-12-01T23:33:14.586601+00:00"
+                "timestamp": "2025-12-02T08:30:39.146453+00:00"
               }
             },
             "result": {
@@ -593,10 +593,10 @@
                 "details": {
                   "phase_num": 2,
                   "total_phases": 2,
-                  "goal": "Generate the final report based on the data gathered.",
+                  "goal": "Generate the final report based on the current date.",
                   "phase_details": {
                     "phase": 2,
-                    "goal": "Generate the final report based on the data gathered.",
+                    "goal": "Generate the final report based on the current date.",
                     "relevant_tools": [
                       "TDA_FinalReport"
                     ],
@@ -608,7 +608,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "phase_start",
-                "timestamp": "2025-12-01T23:33:14.586629+00:00"
+                "timestamp": "2025-12-02T08:30:39.146542+00:00"
               }
             },
             "result": {
@@ -625,7 +625,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "plan_optimization",
-                "timestamp": "2025-12-01T23:33:14.586660+00:00"
+                "timestamp": "2025-12-02T08:30:39.146628+00:00"
               }
             },
             "result": {
@@ -639,13 +639,13 @@
               "metadata": {
                 "phase_number": 2,
                 "execution_depth": 0,
-                "timestamp": "2025-12-01T23:33:14.586690+00:00"
+                "timestamp": "2025-12-02T08:30:39.146724+00:00"
               }
             },
             "result": {
               "status": "success",
               "metadata": {
-                "call_id": "61f1ef52-1461-4f54-8a83-d0fa61e5cfb3",
+                "call_id": "204ce2e8-69f4-4af3-97e7-5cfebb83e5b2",
                 "tool_name": "TDA_FinalReport",
                 "input_tokens": 361,
                 "output_tokens": 69
@@ -678,7 +678,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "phase_end",
-                "timestamp": "2025-12-01T23:33:15.219207+00:00"
+                "timestamp": "2025-12-02T08:30:39.894317+00:00"
               }
             },
             "result": {
@@ -695,7 +695,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": null,
-                "timestamp": "2025-12-01T23:33:15.220804+00:00"
+                "timestamp": "2025-12-02T08:30:39.896646+00:00"
               }
             },
             "result": {
@@ -704,52 +704,19 @@
           }
         ],
         "final_summary": "The current date is 2025-12-02.",
-        "timestamp": "2025-12-01T23:33:15.221135+00:00",
+        "timestamp": "2025-12-02T08:30:39.897124+00:00",
         "provider": "Google",
         "model": "gemini-2.0-flash",
         "profile_tag": "GOGET",
-        "task_id": "task-937ea308-1dee-4aed-8c4a-ebade27b952e",
-        "turn_input_tokens": 10206,
+        "task_id": "task-bb9a1a57-4494-48ac-8129-d5e351a2f6e3",
+        "turn_input_tokens": 9672,
         "turn_output_tokens": 116,
-        "session_id": "bd0cad94-1248-48ad-bcd7-d6d0d39281cd",
+        "session_id": "bb64b6be-e923-42f7-96c2-51922bc39ff6",
         "rag_source_collection_id": null,
-        "knowledge_accessed": [
-          {
-            "collection_name": "Teradata SQL Fundamentals",
-            "document_count": 2,
-            "timestamp": "2025-12-01T23:33:13.108812+00:00"
-          },
-          {
-            "collection_name": "Teradata SQL Fundamentals",
-            "document_count": 2,
-            "timestamp": "2025-12-01T23:33:13.108999+00:00"
-          }
-        ],
-        "knowledge_retrieval_event": {
-          "summary": "Retrieved 2 relevant documents from 1 knowledge collection(s)",
-          "collections": [
-            "Teradata SQL Fundamentals"
-          ],
-          "document_count": 2,
-          "chunks": [
-            {
-              "collection_name": "Teradata SQL Fundamentals",
-              "content": "oint Literal A \ufb02oating point literal declares literal strings of \ufb02oating point numbers.\nFloating point literals consist of the following components, reading from left-to-right: an optional sign, an optional sequence of digits (mandatory\nonly when no digits appear after the decimal point) representing the whole number portion of the mantissa, an optional decimal point, an\noptional sequence of digits (mandatory only when no digits appear before the decimal point) representing the fractional portion of the\nmantissa, the literal character E, an optional sign, a sequence of digits representing the exponent.\nDateT ime Literals\nDate and time literals declare date, time, or timestamp values in a SQL expression, view or macro de\ufb01nition text, or CONSTRAINT de\ufb01nition text.\nDate and time literals are introduced by keywords. For example:\nDATE '1969-12-23'\nThere are three types of DateTime literals: DATE, TIME, and TIMESTAMP.\nType Description\nDATE Literal A date literal declares a date value in ANSI",
-              "similarity_score": 0.3311847448348999,
-              "document_id": "fec9fafb-1fac-4b7a-931d-bc6135a84972",
-              "chunk_index": 201
-            },
-            {
-              "collection_name": "Teradata SQL Fundamentals",
-              "content": "introduced by keywords. For example:\nDATE '1969-12-23'\nThere are three types of DateTime literals: DATE, TIME, and TIMESTAMP.\nType Description\nDATE Literal A date literal declares a date value in ANSI DATE format. ANSI DATE literal is the preferred format for DATE constants. All DATE operations accept\nthis format.\nTIME Literal A time literal declares a time value and an optional time zone offset.\nTIMESTAMP Literal A timestamp literal declares a timestamp value and an optional time zone offset.\nInterval Literals\nInterval literals provide a means for declaring spans of time.\nInterval literals are introduced and followed by keywords. For example:\nINTERVAL '200' HOUR\nThere are two mutually exclusive categories of interval literals: Year-Month and Day-Time.\nCategory Type Description\nYear-Month\nYEAR\nYEAR TO MONTH\nMONTHRepresent a time span that can include a number of years and months.\nDay-Time\nDAY\nDAY TO HOUR\nDAY TO MINUTE\nDAY TO SECOND\nHOUR\nHOUR TO MINUTE\nHOUR TO SECOND\nMINUTE\nMINUTE TO SE",
-              "similarity_score": 0.3259076476097107,
-              "document_id": "fec9fafb-1fac-4b7a-931d-bc6135a84972",
-              "chunk_index": 202
-            }
-          ]
-        },
+        "knowledge_accessed": [],
+        "knowledge_retrieval_event": null,
         "isValid": true,
-        "case_id": "c5d07cb9-abf3-52f1-bca2-7befcb21dc7a"
+        "case_id": "c2d1c5d6-bce4-50f7-8b01-306ef5c1898a"
       }
     ]
   },

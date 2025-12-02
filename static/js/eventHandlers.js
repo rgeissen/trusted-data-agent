@@ -822,7 +822,12 @@ async function openViewPromptModal(promptName) {
     DOM.viewPromptModalText.textContent = 'Loading...';
 
     try {
-        const res = await fetch(`/prompt/${promptName}`);
+        const token = localStorage.getItem('tda_auth_token');
+        const res = await fetch(`/prompt/${promptName}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         const data = await res.json();
         if (res.ok) {
             DOM.viewPromptModalText.textContent = data.content;

@@ -4760,7 +4760,12 @@
         window.appConfigData = null;
         (async () => {
             try {
-                const res = await fetch('/app-config');
+                const token = window.authClient.getToken();
+                const res = await fetch('/app-config', {
+                    headers: token ? {
+                        'Authorization': `Bearer ${token}`
+                    } : {}
+                });
                 window.appConfigData = await res.json();
                 console.log('[Startup] App config loaded:', window.appConfigData);
             } catch (error) {

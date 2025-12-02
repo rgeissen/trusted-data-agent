@@ -96,7 +96,12 @@ async function verifyRepositoriesLoaded() {
     
     try {
         // Get the default profile to check which repositories should be loaded
-        const profileResponse = await fetch('/api/v1/profiles');
+        const token = localStorage.getItem('tda_auth_token');
+        const profileResponse = await fetch('/api/v1/profiles', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (!profileResponse.ok) {
             console.warn('[ConversationInit] Could not verify profiles');
             return; // Non-critical, continue

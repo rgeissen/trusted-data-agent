@@ -30,7 +30,12 @@ class TemplateManager {
      */
     async loadTemplates() {
         try {
-            const response = await fetch('/api/v1/rag/templates/list');
+            const token = localStorage.getItem('tda_auth_token');
+            const response = await fetch('/api/v1/rag/templates/list', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             const data = await response.json();
             
             if (data.status === 'success') {
@@ -56,7 +61,12 @@ class TemplateManager {
         }
 
         try {
-            const response = await fetch(`/api/v1/rag/templates/${templateId}/config`);
+            const token = localStorage.getItem('tda_auth_token');
+            const response = await fetch(`/api/v1/rag/templates/${templateId}/config`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             const data = await response.json();
             
             if (data.status === 'success') {
@@ -78,7 +88,12 @@ class TemplateManager {
      */
     async getPluginInfo(templateId) {
         try {
-            const response = await fetch(`/api/v1/rag/templates/${templateId}/plugin-info`);
+            const token = localStorage.getItem('tda_auth_token');
+            const response = await fetch(`/api/v1/rag/templates/${templateId}/plugin-info`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             const data = await response.json();
             
             if (data.status === 'success') {

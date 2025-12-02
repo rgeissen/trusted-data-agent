@@ -1,0 +1,63 @@
+{
+  "id": "15c9c9fc-94be-49ff-b678-f3598968a69f",
+  "user_uuid": "a53397ed-4460-41a1-b850-2aa49ae9c439",
+  "system_prompt_template": null,
+  "charting_intensity": "medium",
+  "provider": "Friendli",
+  "model": "google/gemma-3-27b-it",
+  "profile_tag": "FRGOT",
+  "profile_id": null,
+  "profile_tags_used": [
+    "FRGOT"
+  ],
+  "models_used": [
+    "Friendli/google/gemma-3-27b-it"
+  ],
+  "session_history": [
+    {
+      "role": "user",
+      "content": "how do I create a table on teradata?",
+      "isValid": true,
+      "turn_number": 1,
+      "source": "text",
+      "profile_tag": "FRGOT"
+    }
+  ],
+  "chat_object": [
+    {
+      "role": "user",
+      "content": "You are a helpful assistant.",
+      "turn_number": 0
+    },
+    {
+      "role": "model",
+      "content": "Understood.",
+      "turn_number": 0
+    },
+    {
+      "role": "user",
+      "content": "how do I create a table on teradata?",
+      "isValid": true,
+      "turn_number": 1
+    }
+  ],
+  "name": "New Chat",
+  "created_at": "2025-12-02T09:38:40.252436",
+  "last_updated": "2025-12-02T09:39:00.826316",
+  "input_tokens": 7672,
+  "output_tokens": 90,
+  "last_turn_data": {
+    "workflow_history": []
+  },
+  "full_context_sent": false,
+  "license_info": {
+    "holder": "GNU Affero General Public License v3.0",
+    "issued_at": "2025-11-10T19:25:00.506556+00:00",
+    "expires_at": "2026-11-10T19:25:00.506556+00:00",
+    "version": "1.5-tiered",
+    "tier": "App Developer",
+    "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
+  },
+  "archived": true,
+  "archived_at": "2025-12-02T08:59:11.105179+00:00"
+}
