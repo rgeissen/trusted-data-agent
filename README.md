@@ -1,11 +1,18 @@
 # Uderia Platform (Trusted Data Agent)
-### Query it. Automate it. Zero Friction.
+### Cloud-Level Reasoning. Zero-Trust Privacy.
 
-The **Uderia Platform** represents a paradigm shift in data interaction, taking you from question to insight to action in seconds. Experience the industry-leading AI conversational engine for your most complex enterprise data.
+The **Uderia Platform** empowers secure, local models to perform like giants—and tames powerful cloud models for verified compliance. Finally, an AI platform that doesn't force you to choose between intelligence and sovereignty.
 
-Go from conversational discovery to a production-ready, automated workflow with zero friction. It represents a fundamental change in how you work, moving **from days to seconds**, **from guesswork to clarity**, and **from high cost to high efficiency**, while always ensuring **data sovereignty**.
+Experience a fundamental transformation in how you work with enterprise data:
 
-This solution establishes a new standard for AI-driven data analytics, built on the six core principles detailed in the overview below.
+- **From Days to Seconds** - Discover insights via conversation. Operationalize them via API. Your conversational discovery is your production-ready automation.
+- **From Guesswork to Clarity** - Full transparency eliminates the AI black box. See every strategic plan, tool execution, and self-correction in real-time.
+- **From $$$ to ¢¢¢** - Revolutionary Fusion Optimizer with strategic planning, proactive optimization, and autonomous self-correction for cost-effective execution.
+- **From Data Exposure to Data Sovereignty** - Your data, your rules, your environment. Execute with cloud intelligence while maintaining local privacy.
+- **From Hidden Costs to Total Visibility** - Complete financial governance with real-time tracking, comprehensive analytics, and fine-grained cost control.
+- **From Isolated Expertise to Collective Intelligence** - Transform individual insights into organizational knowledge through the Intelligence Marketplace.
+
+Whether on-premises or in the cloud, you get **enterprise results** with **optimized speed** and **minimal token cost**, built on the six core principles detailed below.
 
 ![Demo](./images/AppOverview.gif)
 
