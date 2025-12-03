@@ -15,13 +15,13 @@ This solution establishes a new standard for AI-driven data analytics, built on 
 ### Table Of Contents
 
 1. [Core Principles: A Superior Approach](#core-principles-a-superior-approach)
-2. [Key Features](#key-features)
-3. [The Heart of the Application - The Engine & its Fusion Optimizer](#the-heart-of-the-application---the-engine--its-fusion-optimizer)
-4. [Retrieval-Augmented Generation (RAG) for Self-Improving AI](#retrieval-augmented-generation-rag-for-self-improving-ai)
-5. [How It Works: Architecture](#how-it-works-architecture)
-6. [Installation and Setup Guide](#installation-and-setup-guide)
+2. [Key Features](#-key-features)
+3. [The Heart of the Application - The Engine & its Fusion Optimizer](#-the-heart-of-the-application---the-engine--its-fusion-optimizer)
+4. [Retrieval-Augmented Generation (RAG) for Self-Improving AI](#-retrieval-augmented-generation-rag-for-self-improving-ai)
+5. [How It Works: Architecture](#%EF%B8%8F-how-it-works-architecture)
+6. [Installation and Setup Guide](#-installation-and-setup-guide)
 7. [Developer Mode: Unlocking Models](#developer-mode-unlocking-models)
-8. [User Guide](#user-guide)
+8. [User Guide](#-user-guide)
    - [Getting Started](#getting-started)
    - [Using the Interface](#using-the-interface)
    - [Advanced Context Management](#advanced-context-management)
@@ -38,25 +38,38 @@ This solution establishes a new standard for AI-driven data analytics, built on 
 ---
 
 ## Core Principles: A Superior Approach
-The Trusted Data Agent transcends typical data chat applications by delivering a seamless and powerful experience based on four core principles:
 
-*   **Actionable:** Go from conversational discovery to a production-ready, automated workflow in seconds. The agent's unique two-in-one approach means your interactive queries can be immediately operationalized via a REST API, eliminating the friction and redundancy of traditional data operations. What once took data experts weeks is now at your fingertips.
+The Trusted Data Agent transcends typical data chat applications by delivering a seamless and powerful experience based on six core principles:
 
-*   **Transparent:** Eliminate the "black box" of AI. The Trusted Data Agent is built on a foundation of absolute trust, with a Live Status Window that shows you every step of the agent's thought process. From the initial high-level plan to every tool execution and self-correction, you have a clear, real-time view, leaving no room for guesswork.
+### 🚀 Actionable
+Go from conversational discovery to a production-ready, automated workflow in seconds. The agent's unique two-in-one approach means your interactive queries can be immediately operationalized via a REST API, eliminating the friction and redundancy of traditional data operations. What once took data experts weeks is now at your fingertips.
 
-*   **Efficient:** Powered by the intelligent Fusion Optimizer, the agent features a revolutionary multi-layered architecture for resilient and cost-effective task execution. Through strategic and tactical planning, proactive optimization, and autonomous self-correction, the agent ensures enterprise-grade performance and reliability.
+### 🔍 Transparent
+Eliminate the "black box" of AI. The Trusted Data Agent is built on a foundation of absolute trust, with a Live Status Window that shows you every step of the agent's thought process. From the initial high-level plan to every tool execution and self-correction, you have a clear, real-time view, leaving no room for guesswork.
 
-*   **Sovereignty:** Your data, your rules, your environment. The agent gives you the ultimate freedom to choose your data exposure strategy. Leverage the power of hyperscaler LLMs, or run fully private models on your own infrastructure with Ollama, keeping your data governed entirely by your rules. The agent connects to the models you trust.
+### ⚡ Efficient
+Powered by the intelligent Fusion Optimizer, the agent features a revolutionary multi-layered architecture for resilient and cost-effective task execution. Through strategic and tactical planning, proactive optimization, and autonomous self-correction, the agent ensures enterprise-grade performance and reliability.
 
-*   **Financial Governance:** Complete cost transparency and control over your LLM spending. The agent provides real-time cost tracking, comprehensive analytics, and detailed visibility into every token consumed. With accurate per-model pricing, cost attribution by provider, and powerful administrative tools, you maintain full financial oversight of your AI operations.
+### 🛡️ Sovereignty
+Your data, your rules, your environment. The agent gives you the ultimate freedom to choose your data exposure strategy. Leverage the power of hyperscaler LLMs, or run fully private models on your own infrastructure with Ollama, keeping your data governed entirely by your rules. The agent connects to the models you trust.
 
-*   **Collaborative:** Transform isolated expertise into collective intelligence. The Intelligence Marketplace enables you to share proven execution patterns and domain knowledge with the community, subscribe to curated collections from experts, and fork specialized repositories for your unique needs. By leveraging community-validated RAG collections, you reduce token costs, accelerate onboarding, and benefit from battle-tested strategies—turning individual insights into a powerful, shared ecosystem.
+### 💰 Financial Governance
+Complete cost transparency and control over your LLM spending. The agent provides real-time cost tracking, comprehensive analytics, and detailed visibility into every token consumed. With accurate per-model pricing, cost attribution by provider, and powerful administrative tools, you maintain full financial oversight of your AI operations.
 
-## Key Features
+### 🤝 Collaborative
+Transform isolated expertise into collective intelligence. The Intelligence Marketplace enables you to share proven execution patterns and domain knowledge with the community, subscribe to curated collections from experts, and fork specialized repositories for your unique needs. By leveraging community-validated RAG collections, you reduce token costs, accelerate onboarding, and benefit from battle-tested strategies—turning individual insights into a powerful, shared ecosystem.
+
+[⬆️ Back to Table of Contents](#table-of-contents)
+
+---
+
+## 🌟 Key Features
 
 The Trusted Data Agent's features are organized around the six core principles that define its value proposition. Each principle is realized through a comprehensive set of capabilities designed to deliver enterprise-grade AI orchestration.
 
-### Actionable: From Discovery to Production in Seconds
+---
+
+### 🚀 Actionable: From Discovery to Production in Seconds
 
 Eliminate the friction between conversational exploration and production automation. The agent's unique architecture enables seamless operationalization of interactive queries.
 
@@ -97,7 +110,19 @@ Eliminate the friction between conversational exploration and production automat
   - Volume mounts for sessions, logs, and keys
   - Load balancer ready for horizontal scaling
 
-### Transparent: Eliminate the AI Black Box
+* **Flowise Integration**: Low-code workflow automation and chatbot development:
+  - Pre-built agent flow for TDA Conversation handling
+  - Asynchronous submit & poll pattern implementation
+  - Session management with multi-turn conversation support
+  - Bearer token authentication for secure API access
+  - Profile override capability for specialized workflows
+  - TTS payload extraction for voice-enabled chatbots
+  - Visual workflow designer for complex orchestration
+  - Import-ready JSON template included ([see docs/Flowise](docs/Flowise/Flowise.md))
+
+---
+
+### 🔍 Transparent: Eliminate the AI Black Box
 
 Build trust through complete visibility into every decision, action, and data point the agent processes.
 
@@ -157,7 +182,9 @@ Build trust through complete visibility into every decision, action, and data po
   - Dynamic Capability Management (enable/disable tools/prompts)
   - Phased rollouts without server restart
 
-### Efficient: Intelligent Optimization Engine
+---
+
+### ⚡ Efficient: Intelligent Optimization Engine
 
 The Fusion Optimizer and self-improving RAG system deliver enterprise-grade performance, cost efficiency, and reliability. See the dedicated section below (**[The Heart of the Application - The Engine & its Fusion Optimizer](#the-heart-of-the-application---the-engine--its-fusion-optimizer)**) for comprehensive details on:
 
@@ -190,7 +217,9 @@ The Fusion Optimizer and self-improving RAG system deliver enterprise-grade perf
   - Semantic search for relevant background information
   - Marketplace integration for community knowledge sharing
 
-### Sovereignty: Your Data, Your Rules, Your Environment
+---
+
+### 🛡️ Sovereignty: Your Data, Your Rules, Your Environment
 
 Maintain complete control over your data exposure strategy with flexible deployment and provider options.
 
@@ -237,7 +266,9 @@ Maintain complete control over your data exposure strategy with flexible deploym
   - Hands-free operation with configurable voice modes
   - Key observations handling (autoplay-off, autoplay-on, off)
 
-### Financial Governance: Track Every Penny, Control Every Cost
+---
+
+### 💰 Financial Governance: Track Every Penny, Control Every Cost
 
 Transparent, real-time cost tracking with fine-grained control over spending at every level of abstraction.
 
@@ -283,7 +314,9 @@ Transparent, real-time cost tracking with fine-grained control over spending at 
   - RAG case population priorities for maximum savings
   - Profile configuration suggestions for workload patterns
 
-### Collaborative: Build and Share Intelligence
+---
+
+### 🤝 Collaborative: Build and Share Intelligence
 
 The Intelligence Marketplace transforms individual agent expertise into collective organizational knowledge.
 
@@ -364,6 +397,10 @@ The Intelligence Marketplace transforms individual agent expertise into collecti
 
 The cost management system stores all pricing data locally in SQLite (`llm_model_costs` table) with encrypted credential storage, ensuring data sovereignty while providing enterprise-grade financial visibility. All cost-related REST API endpoints require admin authentication, ensuring secure access to financial data.
 
+[⬆️ Back to Table of Contents](#table-of-contents)
+
+---
+
 ### Collaborative Intelligence Marketplace
 
 * **Dual Repository Sharing**: Share and discover both repository types through a unified marketplace:
@@ -432,6 +469,10 @@ The cost management system stores all pricing data locally in SQLite (`llm_model
 
 The marketplace transforms the Trusted Data Agent from a single-user tool into a **collaborative intelligence platform**. By enabling pattern sharing, community validation, and knowledge reuse, it reduces costs, improves quality, and accelerates time-to-value for all users. Whether you're publishing your expertise or subscribing to community wisdom, the marketplace creates a powerful ecosystem where collective intelligence amplifies individual capabilities.
 
+[⬆️ Back to Table of Contents](#table-of-contents)
+
+---
+
 ### Two-Tier Repository Architecture
 
 The application supports two distinct types of repositories, each serving a different purpose in the AI agent ecosystem:
@@ -470,11 +511,15 @@ The **Intelligence Marketplace** enables users to share, discover, and leverage 
 
 This separation ensures that execution patterns (how to accomplish tasks) remain distinct from domain knowledge (what the agent needs to know), while both can be leveraged through the unified RAG system and shared via the marketplace.
 
-## The Heart of the Application - The Engine & its Fusion Optimizer
+[⬆️ Back to Table of Contents](#table-of-contents)
+
+---
+
+## 🎯 The Heart of the Application - The Engine & its Fusion Optimizer
 
 The Trusted Data Agent is engineered to be far more than a simple LLM wrapper. Its revolutionary core is the **Fusion Optimizer**, a multi-layered engine designed for resilient, intelligent, and efficient task execution in complex enterprise environments. It transforms the agent from a mere tool into a reliable analytical partner.
 
-### The Multi-Layered Planning Process
+### 🧠 The Multi-Layered Planning Process
 
 The Optimizer deconstructs every user request into a sophisticated, hierarchical plan.
 
@@ -484,7 +529,7 @@ The Optimizer deconstructs every user request into a sophisticated, hierarchical
 
 3. **Recursive Delegation**: The Planner is fully recursive. A single phase in a high-level plan can delegate its execution to a new, subordinate instance of the Planner. This allows the agent to solve complex problems by breaking them down into smaller, self-contained sub-tasks, executing them, and then returning the results to the parent process.
 
-### Proactive Optimization Engine
+### 🔧 Proactive Optimization Engine
 
 Before and during execution, the Optimizer actively seeks to enhance performance and efficiency.
 
@@ -496,7 +541,7 @@ Before and during execution, the Optimizer actively seeks to enhance performance
 
 * **Context Distillation**: To prevent context window overflow with large datasets, the agent automatically distills large tool outputs into concise metadata summaries before passing them to the LLM for planning, ensuring robust performance even with enterprise-scale data.
 
-### RAG-Powered Continuous Improvement
+### 📚 RAG-Powered Continuous Improvement
 
 The agent learns from every successful interaction, building an ever-growing repository of "champion" strategies that guide future planning. This closed-loop learning system transforms individual successes into organizational knowledge.
 
@@ -534,7 +579,7 @@ The agent learns from every successful interaction, building an ever-growing rep
   - No blocking operations on critical path
   - Graceful degradation if RAG system unavailable
 
-### Performance Metrics and Resource Limits
+### 📊 Performance Metrics and Resource Limits
 
 The engine provides comprehensive observability and built-in safeguards against runaway execution.
 
@@ -568,7 +613,7 @@ The engine provides comprehensive observability and built-in safeguards against 
 * **Timeout Enforcement**: Configurable query timeout with graceful degradation
 * **Error Accumulation Threshold**: Abort after N consecutive tool failures to prevent thrashing
 
-### Autonomous Self-Correction & Healing
+### 🔄 Autonomous Self-Correction & Healing
 
 When errors occur, the Optimizer initiates a sophisticated, multi-tiered recovery process.
 
@@ -580,7 +625,7 @@ When errors occur, the Optimizer initiates a sophisticated, multi-tiered recover
 
 4. **Strategic Correction with RAG**: The integrated **Retrieval-Augmented Generation (RAG)** system provides the highest level of self-healing. By retrieving "champion" strategies from past successes, the agent can discard a flawed or inefficient plan entirely and adopt a proven, optimal approach, learning from its own history to correct its course.
 
-### Robust Safeguards
+### 🛡️ Robust Safeguards
 
 The Optimizer is built with enterprise-grade reliability in mind.
 
@@ -590,7 +635,11 @@ The Optimizer is built with enterprise-grade reliability in mind.
 
 * **Definitive Error Handling**: The agent recognizes unrecoverable errors (e.g., database permission denied) and halts execution immediately, providing a clear explanation to the user instead of wasting resources on futile retry attempts.
 
-## Retrieval-Augmented Generation (RAG) for Self-Improving AI
+[⬆️ Back to Table of Contents](#table-of-contents)
+
+---
+
+## 🧬 Retrieval-Augmented Generation (RAG) for Self-Improving AI
 
 The Trusted Data Agent integrates a powerful **Retrieval-Augmented Generation (RAG)** system designed to create a self-improving agent. This closed-loop feedback mechanism allows the agent's Planner to learn from its own past successes, continuously enhancing its decision-making capabilities over time.
 
@@ -620,7 +669,11 @@ For a comprehensive overview of the RAG architecture, template development, and 
 [**RAG System Documentation (docs/RAG/RAG.md)**](docs/RAG/RAG.md)  
 [**RAG Template Plugin Development (rag_templates/README.md)**](rag_templates/README.md)
 
-## How It Works: Architecture
+[⬆️ Back to Table of Contents](#table-of-contents)
+
+---
+
+## 🏗️ How It Works: Architecture
 
 ### System Overview
 
@@ -718,7 +771,11 @@ Option 2: Shared Container → TDA_CONFIGURATION_PERSISTENCE=false (sequential a
 - **Transport:** HTTPS recommended for production (configure via reverse proxy)
 - **Configuration:** `TDA_CONFIGURATION_PERSISTENCE=false` for multi-user shared deployments
 
-## Installation and Setup Guide
+[⬆️ Back to Table of Contents](#table-of-contents)
+
+---
+
+## 📦 Installation and Setup Guide
 
 ### Prerequisites
 
@@ -789,9 +846,9 @@ It is highly recommended to use a Python virtual environment.
    
    ```
 
-### Step 3: Regenerate JWT Secret Key (Security)
+### Step 3: 🔐 Regenerate JWT Secret Key (Security)
 
-**⚠️ IMPORTANT SECURITY STEP**
+> **⚠️ CRITICAL SECURITY STEP**
 
 The application ships with a default JWT secret key for user authentication. You **must** regenerate this key for your installation to ensure security.
 
@@ -932,6 +989,10 @@ python -m trusted_data_agent.main
 
 ```
 
+[⬆️ Back to Table of Contents](#table-of-contents)
+
+---
+
 ## Developer Mode: Unlocking Models
 
 To enable all discovered models for testing and development purposes, start the server with the `--all-models` flag.
@@ -943,7 +1004,11 @@ python -m trusted_data_agent.main --all-models
 
 **Note:** **No Ollama models are currently certified.** For testing purposes, Ollama models can be evaluated by starting the server with the `--all-models` developer flag.
 
-## User Guide
+[⬆️ Back to Table of Contents](#table-of-contents)
+
+---
+
+## 📖 User Guide
 
 This comprehensive guide covers everything you need to know to use the Trusted Data Agent effectively, from basic operations to advanced features and automation.
 
