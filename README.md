@@ -5,7 +5,7 @@ The **Trusted Data Agent** represents a paradigm shift in data interaction, taki
 
 Go from conversational discovery to a production-ready, automated workflow with zero friction. It represents a fundamental change in how you work, moving **from days to seconds**, **from guesswork to clarity**, and **from high cost to high efficiency**, while always ensuring **data sovereignty**.
 
-This solution establishes a new standard for AI-driven data analytics, built on the four core principles detailed in the overview below.
+This solution establishes a new standard for AI-driven data analytics, built on the six core principles detailed in the overview below.
 
 ![Demo](./images/AppOverview.gif)
 
@@ -48,73 +48,389 @@ The Trusted Data Agent transcends typical data chat applications by delivering a
 
 *   **Sovereignty:** Your data, your rules, your environment. The agent gives you the ultimate freedom to choose your data exposure strategy. Leverage the power of hyperscaler LLMs, or run fully private models on your own infrastructure with Ollama, keeping your data governed entirely by your rules. The agent connects to the models you trust.
 
+*   **Financial Governance:** Complete cost transparency and control over your LLM spending. The agent provides real-time cost tracking, comprehensive analytics, and detailed visibility into every token consumed. With accurate per-model pricing, cost attribution by provider, and powerful administrative tools, you maintain full financial oversight of your AI operations.
+
+*   **Collaborative:** Transform isolated expertise into collective intelligence. The Intelligence Marketplace enables you to share proven execution patterns and domain knowledge with the community, subscribe to curated collections from experts, and fork specialized repositories for your unique needs. By leveraging community-validated RAG collections, you reduce token costs, accelerate onboarding, and benefit from battle-tested strategies—turning individual insights into a powerful, shared ecosystem.
+
 ## Key Features
 
-### Deep Insights
+The Trusted Data Agent's features are organized around the six core principles that define its value proposition. Each principle is realized through a comprehensive set of capabilities designed to deliver enterprise-grade AI orchestration.
 
-* **Complete Transparency**: The **Live Status** panel is a real-time window into the AI's mind, revealing its strategic plan, tactical decisions, tool selection, and the raw data it receives. This makes it an indispensable tool for debugging, learning, and building trust in AI systems.
+### Actionable: From Discovery to Production in Seconds
 
-* **Dynamic Capability Loading**: Automatically discovers and displays all available **Tools**, **Prompts**, and **Resources** from the connected MCP Server, giving you an instant overview of the agent's potential.
+Eliminate the friction between conversational exploration and production automation. The agent's unique architecture enables seamless operationalization of interactive queries.
 
-* **Rich Data Rendering**: Intelligently formats and displays various data types, including query results in interactive tables, SQL DDL in highlighted code blocks, and key metrics in summary cards.
+* **Comprehensive REST API**: Full programmatic control with asynchronous task-based architecture for reliable, scalable automation:
+  - Session management (create, delete, list with conversation history)
+  - Query execution with async submit + poll pattern
+  - Task management (status polling, cancellation, result retrieval)
+  - Configuration management (profiles, LLM providers, MCP servers)
+  - RAG collection CRUD operations
+  - Analytics endpoints (session costs, token usage, efficiency metrics)
 
-* **Integrated Charting Engine**: Data visualization capabilities are enabled by default, allowing the agent to render insightful charts based on query results directly in the chat interface.
+* **Apache Airflow Integration**: Production-ready DAG examples for batch query automation:
+  - Session reuse via `tda_session_id` variable
+  - Profile override via `tda_profile_id` for specialized workloads
+  - Bearer token authentication for secure API access
+  - Async polling pattern for reliable long-running executions
+  - Complete example DAG (`tda_00_execute_questions.py`) included
 
-* **Token Usage Tracking**: The application tracks and displays the number of input and output tokens for each LLM call, providing clear insight into the cost and efficiency of each interaction.
+* **Profile System for Modular Configuration**: Separate infrastructure from usage patterns:
+  - Combine LLM Providers + MCP Servers into named profiles
+  - Profile tags (e.g., "PROD", "COST") for quick identification
+  - Default profile for standard operations
+  - Temporary overrides via `@TAG` syntax for single queries
+  - Active for consumption toggle for available alternatives
+  - Classification modes: Light (tool/prompt filtering) vs. Full (LLM-assisted categorization)
 
-### Unprecedented Flexibility
+* **Long-Lived Access Tokens**: Secure automation without session management:
+  - Configurable expiration (90 days default, or never)
+  - SHA256 hashed storage with audit trail
+  - Usage tracking (last used timestamp, use count, IP address)
+  - Soft-delete preservation for compliance
+  - One-time display at creation for enhanced security
 
-* **Intuitive Conversational UI**: Ask questions in plain English to query and analyze your database. The agent is designed to understand natural language and execute complex requests.
+* **Docker Deployment Support**: Production-ready containerization:
+  - Multi-user support in single shared container
+  - Configuration persistence flag for shared deployments
+  - Environment variable overrides
+  - Volume mounts for sessions, logs, and keys
+  - Load balancer ready for horizontal scaling
 
-* **Dynamic Capability Management**: Enable or disable any MCP Tool or Prompt directly from the UI. Disabled capabilities are immediately hidden from the agent's context, allowing for safe testing and phased rollouts of new features without a server restart.
+### Transparent: Eliminate the AI Black Box
 
-* **System Prompt Editor**: Take full control of the agent's behavior. An integrated editor allows privileged users to modify, save, and reset the core system prompt that dictates the agent's persona and rules for each model.
+Build trust through complete visibility into every decision, action, and data point the agent processes.
 
-* **Programmatic REST API**: Automate and integrate agent workflows with a comprehensive, asynchronous REST API for configuration and querying.
+* **Live Status Panel**: Real-time window into the agent's reasoning process:
+  - Strategic plan visualization with phase-by-phase breakdown
+  - Tactical decision display showing tool selection rationale
+  - Raw data inspection for every tool response
+  - Self-correction events with recovery strategy visibility
+  - Streaming updates via Server-Sent Events (SSE)
 
-* **Direct Model Chat**: A dedicated chat interface allows for direct, tool-less conversations with the configured LLM, invaluable for testing a model's baseline reasoning without the complexity of the agent's tool-use logic.
+* **Dynamic Capability Discovery**: Instant overview of agent potential:
+  - Automatic loading of all MCP Tools from connected servers
+  - Prompt library display with categorization
+  - Resource enumeration for data source visibility
+  - Real-time capability updates on configuration changes
+  - Visual organization in tabbed Capabilities Panel
 
-* **Variable Context Modes**: Switch between `Full Context Mode` (default) for comprehensive conversations and `Last Turn Mode` (via hotkey) to force the agent to re-evaluate a query using only the most recent exchange, perfect for iterative refinement.
+* **Rich Data Rendering**: Intelligently formats and displays various data types:
+  - Query results in interactive tables with sorting/filtering
+  - SQL DDL in syntax-highlighted code blocks
+  - Key metrics in summary cards
+  - Integrated charting engine for data visualization
+  - Real-time rendering as data streams in
 
-### Comparative LLM Analysis
+* **Comprehensive Token Tracking**: Per-turn visibility into LLM consumption:
+  - Input token counts for every request
+  - Output token counts for every response
+  - Token-to-cost mapping with provider-specific pricing
+  - Historical token trends across sessions
+  - Optimization insights for cost-conscious users
 
-* **Multi-Provider LLM Configuration**: Dynamically switch between LLM providers like **Google**, **Anthropic**, **Microsoft Azure**, **AWS Bedrock**, **Friendli.AI**, and **Ollama**. Configure API keys, hosts, and select from available models directly in the UI.
+* **Execution Monitoring Dashboard**: Cross-source workload tracking:
+  - Real-time task list (running, completed, failed)
+  - Detailed execution logs with reasoning steps
+  - Tool invocation history with arguments and responses
+  - Error messages and stack traces for debugging
+  - Task control (cancel, retry) for operational flexibility
 
-* **Support for Microsoft Azure**:
+* **Audit Logging**: Complete activity trail for compliance:
+  - User authentication and authorization events
+  - Configuration changes with before/after snapshots
+  - API usage patterns and access history
+  - Admin actions on user accounts and system settings
+  - Exportable logs for regulatory compliance
 
-  * **Azure OpenAI Service**: Connect directly to your deployed models (e.g., GPT-4, GPT-3.5-Turbo) on the Azure OpenAI Service, leveraging the enterprise-grade security and scalability of the Azure cloud.
+* **Advanced Context Controls**: Surgical precision over agent memory:
+  - Turn-level activation/deactivation with visual feedback
+  - Context purge for complete memory reset
+  - Query replay for exploring alternative approaches
+  - Full Context vs. Turn Summaries modes
+  - Context indicator with real-time status
 
-* **Support for AWS Bedrock**:
+* **System Customization**: Take control of agent behavior:
+  - System Prompt Editor for per-model instruction customization
+  - Save and reset capabilities for experimentation
+  - Direct Model Chat for baseline testing without tools
+  - Dynamic Capability Management (enable/disable tools/prompts)
+  - Phased rollouts without server restart
 
-  * **Foundation Models**: Directly access and utilize foundational models available on Bedrock.
+### Efficient: Intelligent Optimization Engine
 
-  * **Inference Profiles**: Connect to custom, provisioned, or third-party models via Bedrock Inference Profiles.
+The Fusion Optimizer and self-improving RAG system deliver enterprise-grade performance, cost efficiency, and reliability. See the dedicated section below (**[The Heart of the Application - The Engine & its Fusion Optimizer](#the-heart-of-the-application---the-engine--its-fusion-optimizer)**) for comprehensive details on:
 
-* **Ollama (Local LLM) Integration**: Run the agent with open-source models on your local machine for privacy, offline use, and development.
+* Multi-layered strategic and tactical planning
+* Proactive optimization (Plan Hydration, Tactical Fast Path, Specialized Orchestrators)
+* Autonomous self-correction and healing
+* RAG-powered continuous improvement
+* Deterministic plan validation and hallucination prevention
 
-* **Live Model Refresh**: Fetch an up-to-date list of supported models from your provider with the click of a button.
+**Key efficiency highlights:**
 
-* **Comparative MCP Testing**: The multi-provider support is crucial for testing and validating how different LLMs interpret and utilize the same set of MCP tools and prompts, providing essential insights into model behavior and capability robustness.
+* **Self-Improving RAG System**: Closed-loop learning from past successes:
+  - Automatic capture and archiving of all successful interactions
+  - Token-based efficiency analysis to identify "champion" strategies
+  - Few-shot learning through injection of best-in-class examples
+  - Asynchronous processing to eliminate user-facing latency
+  - Per-user cost savings attribution and tracking
 
-### Voice-to-Text Interaction
+* **Planner Repository Constructors**: Modular plugin system for domain-specific optimization:
+  - Self-contained templates with validation schemas
+  - SQL query templates with extensibility for document Q&A, API workflows
+  - LLM-assisted auto-generation from database schemas
+  - Dynamic runtime registration from `rag_templates/` directory
+  - Programmatic population via REST API for CI/CD integration
 
-* **High-Quality Speech API**: Utilizes Google's robust Text-to-Speech API for clear, natural-sounding audio output.
+* **Knowledge Repositories**: Domain context injection for better planning:
+  - PDF, TXT, DOCX, MD document support
+  - Configurable chunking strategies (fixed-size, paragraph, sentence, semantic)
+  - Planning-time retrieval via `_retrieve_knowledge_for_planning()`
+  - Semantic search for relevant background information
+  - Marketplace integration for community knowledge sharing
 
-* **Interactive Voice Recognition**: Employs the browser's Speech Recognition API for seamless voice input, enabling hands-free conversation with the agent.
+### Sovereignty: Your Data, Your Rules, Your Environment
 
-* **Flexible Voice Modes**: Control the conversational flow with configurable modes for handling "Key Observations"—play them automatically, ask for confirmation before playing, or disable them entirely.
+Maintain complete control over your data exposure strategy with flexible deployment and provider options.
 
-### Self-Improving AI with Modular Planner Repository Constructors
+* **Multi-Provider LLM Support**: Freedom to choose your AI infrastructure:
+  - **Cloud Hyperscalers**: Google (Gemini), Anthropic (Claude), OpenAI (GPT-4o), Azure OpenAI
+  - **AWS Bedrock**: Foundation models and inference profiles for custom/provisioned models
+  - **Friendli.AI**: High-performance serverless and dedicated endpoint support
+  - **Ollama**: Fully local, offline LLM execution on your own infrastructure
+  - Dynamic provider switching without configuration restart
+  - Live model refresh to fetch latest available models
 
-* **Intelligent Few-Shot Learning**: The RAG system automatically captures successful interactions and retrieves "champion" strategies to guide future planning, continuously improving efficiency and quality.
+* **Comparative LLM Testing**: Validate model behavior across providers:
+  - Identical MCP tools and prompts across different LLMs
+  - Side-by-side performance comparison
+  - Model capability robustness validation
+  - Direct model chat for baseline reasoning assessment
+  - Profile-based A/B testing with `@TAG` overrides
 
-* **Modular Template Architecture**: Extend the RAG system with custom templates for different domains (SQL queries, document Q&A, API workflows) without modifying core code.
+* **Encrypted Credential Storage**: Enterprise-grade security:
+  - Fernet symmetric encryption for all API keys
+  - Per-user credential isolation in SQLite database
+  - Credentials never logged or exposed in UI/API responses
+  - Secure passthrough to LLM/MCP providers
+  - Admin oversight without credential access
 
-* **LLM-Assisted Auto-Generation**: Built-in workflows to automatically generate domain-specific RAG cases from database schemas, API documentation, or existing knowledge bases.
+* **Multi-User Isolation**: Complete session and data segregation:
+  - JWT-based authentication with 24-hour expiry
+  - User-specific sessions in separate directories
+  - Database-level user UUID isolation
+  - Role-based access control (User, Developer, Admin)
+  - Simultaneous multi-user support with no cross-contamination
 
-* **Dynamic Template Registration**: Templates are discovered and loaded at runtime as plugins, with validation schemas and population strategies defined in standardized manifests.
+* **Flexible Deployment Options**: Adapt to your infrastructure:
+  - Single-user development (local Python process)
+  - Multi-user production (load-balanced containers or shared instance)
+  - HTTPS support via reverse proxy configuration
+  - `TDA_CONFIGURATION_PERSISTENCE` flag for shared deployments
+  - Docker volume mounts for persistent data
 
-* **REST API Population**: Programmatically populate RAG collections with examples via the comprehensive REST API for CI/CD integration and automated knowledge base updates.
+* **Voice Conversation Privacy**: Optional Google Cloud TTS with user-provided credentials:
+  - User-controlled API key management
+  - No server-side credential storage for voice features
+  - Browser-based Speech Recognition (local processing)
+  - Hands-free operation with configurable voice modes
+  - Key observations handling (autoplay-off, autoplay-on, off)
+
+### Financial Governance: Track Every Penny, Control Every Cost
+
+Transparent, real-time cost tracking with fine-grained control over spending at every level of abstraction.
+
+* **Real-Time Cost Tracking**: Per-interaction visibility:
+  - Automatic cost calculation using up-to-date provider pricing
+  - Per-turn breakdown (input tokens, output tokens, total cost)
+  - Session-level cumulative cost tracking
+  - User-level cost aggregation across all sessions
+  - Historical cost trends and analytics
+
+* **Provider-Specific Pricing Models**: Accurate cost attribution:
+  - Google Gemini (1.5 Pro, 1.5 Flash, etc.) with context length tiers
+  - Anthropic Claude (Opus, Sonnet, Haiku) with standard/batch pricing
+  - OpenAI GPT-4o and GPT-4o-mini with tiered pricing
+  - Azure OpenAI (GPT-4, GPT-3.5-Turbo) with regional pricing
+  - AWS Bedrock (foundation models, inference profiles)
+  - Friendli.AI serverless and dedicated endpoints
+  - Ollama (local models, zero external cost)
+
+* **Database-Backed Cost Persistence**: Complete financial audit trail:
+  - `llm_model_costs` table with versioned pricing
+  - `efficiency_metrics` table tracking token usage and RAG savings
+  - `user_sessions` table with per-session cost summaries
+  - `long_lived_access_tokens` with usage tracking
+  - Exportable cost reports for budgeting and forecasting
+
+* **Profile-Based Spending Controls**: Optimize costs by workload:
+  - Tag profiles by cost characteristics (e.g., "COST" for Gemini Flash)
+  - Quick switching between expensive (Claude Opus) and economical (Gemini Flash) models
+  - Profile override via `@TAG` syntax for cost-conscious queries
+  - REST API profile selection for automated cost optimization
+
+* **Efficiency Attribution**: Quantify RAG system savings:
+  - Before/after token comparison for RAG-guided planning
+  - Estimated cost savings from few-shot learning
+  - Per-user attribution of efficiency gains
+  - Efficiency leaderboard for gamification
+  - Continuous improvement ROI visibility
+
+* **Cost Optimization Recommendations**: Actionable insights:
+  - Model selection guidance based on task complexity
+  - Context pruning opportunities for token reduction
+  - RAG case population priorities for maximum savings
+  - Profile configuration suggestions for workload patterns
+
+### Collaborative: Build and Share Intelligence
+
+The Intelligence Marketplace transforms individual agent expertise into collective organizational knowledge.
+
+* **Template Marketplace for RAG Cases**: Crowdsourced knowledge repository:
+  - Create templates from your best RAG cases with "Create Template" button
+  - Browse and discover templates created by other users
+  - One-click deployment: "Deploy to My Repository" for instant activation
+  - Star rating system for quality curation
+  - Usage statistics and popularity tracking
+
+* **Template Metadata and Discovery**: Rich categorization:
+  - Structured metadata: name, description, creator, timestamps
+  - Tag-based categorization for easy browsing
+  - Target repository specification ("Planner Repository" vs. custom)
+  - Version tracking for template evolution
+  - Search and filtering by tags, creator, or rating
+
+* **Template Deployment Workflow**: Seamless integration:
+  - User selects target repository during deployment
+  - System validates compatibility with repository schema
+  - Deployed cases immediately available for RAG retrieval
+  - Duplicate detection to prevent redundant cases
+  - Deployment confirmation with success feedback
+
+* **Admin Marketplace Controls**: Governance for enterprise use:
+  - Admin review queue for template approval
+  - Quality gates before marketplace publication
+  - Template flagging for inappropriate content
+  - Usage analytics for template ROI measurement
+  - Bulk operations (approve, reject, delete)
+
+* **Community Knowledge Sharing**: Accelerate organizational learning:
+  - Share SQL query patterns across data teams
+  - Distribute API workflow best practices
+  - Propagate domain expertise from power users to beginners
+  - Build institutional memory that survives employee turnover
+  - Create center-of-excellence pattern libraries
+
+* **Marketplace Analytics**: Track collaborative value:
+  - Most deployed templates
+  - Top contributors by template count and ratings
+  - Deployment velocity and adoption rates
+  - Cost savings from marketplace-sourced knowledge
+  - Community engagement metrics
+
+### Financial Governance and Cost Management
+
+* **Real-Time Cost Tracking**: Every LLM interaction is tracked with precise cost calculation based on actual token usage (input/output tokens) and model-specific pricing. View cumulative costs across all sessions with transparent, token-level granularity.
+
+* **Comprehensive Cost Analytics Dashboard**: Admin-accessible analytics provide deep insights into spending patterns:
+  - Total cost across all sessions
+  - Average cost per session and per turn
+  - Cost distribution by LLM provider (Google, Anthropic, OpenAI, AWS, Azure, Friendli, Ollama)
+  - Top 5 most expensive models with usage breakdowns
+  - 30-day cost trend visualization
+  - Most expensive sessions and queries with drill-down capabilities
+
+* **Intelligent Pricing Management**: Dynamic model cost database with multiple data sources:
+  - **Automatic Sync**: Integration with LiteLLM for up-to-date pricing from all major providers
+  - **Manual Overrides**: Administrators can add or edit pricing for custom models or enterprise agreements
+  - **Fallback Mechanism**: Configurable default costs for unknown or newly released models
+  - **Source Tracking**: Distinguish between LiteLLM-synced, manually entered, and system default pricing
+  - **Audit Trail**: Full timestamp tracking for all pricing changes with last updated dates
+
+* **Cost Configuration Tools**: Powerful administrative interface for cost management:
+  - Inline editing of model pricing with immediate effect
+  - Bulk pricing sync from LiteLLM with one-click updates
+  - Protected manual entries (preserved during automatic syncs)
+  - Configurable fallback pricing for cost predictability
+  - Search and filter capabilities for large model catalogs
+  - Visual badges distinguishing manual vs. automatic pricing
+
+* **Token Usage Visibility**: Transparent token consumption tracking displayed for every LLM interaction, enabling users to understand the cost implications of their queries and optimize their usage patterns.
+
+* **RAG Efficiency Tracking**: Cost savings metrics from RAG system reuse, showing cumulative cost saved through champion case retrieval and per-user cost savings attribution.
+
+* **Multi-Provider Cost Comparison**: Compare actual spending across different LLM providers with identical workloads, enabling data-driven decisions for cost optimization and provider selection strategies.
+
+The cost management system stores all pricing data locally in SQLite (`llm_model_costs` table) with encrypted credential storage, ensuring data sovereignty while providing enterprise-grade financial visibility. All cost-related REST API endpoints require admin authentication, ensuring secure access to financial data.
+
+### Collaborative Intelligence Marketplace
+
+* **Dual Repository Sharing**: Share and discover both repository types through a unified marketplace:
+  - **Planner Repositories (📋):** Proven execution patterns and strategies for task completion
+  - **Knowledge Repositories (📄):** Reference documents and domain knowledge for planning context
+  - Visual separation with dedicated tabs and distinct badges (blue for Planner, purple for Knowledge)
+
+* **Smart Discovery & Search**: Find exactly what you need through powerful search and filtering:
+  - Keyword search across collection names and descriptions
+  - Filter by repository type (Planner vs. Knowledge)
+  - Filter by visibility (Public, Unlisted)
+  - Pagination for browsing large catalogs
+  - View metadata: owner, subscriber count, ratings, case/document counts
+
+* **Reference-Based Subscriptions**: Access shared collections without data duplication:
+  - Subscribe to expert-curated collections with one click
+  - Automatic integration into your RAG system
+  - Planner retrieves cases from subscribed collections seamlessly
+  - No storage overhead—references original collection
+  - Unsubscribe anytime to manage your collection portfolio
+
+* **Fork for Customization**: Create independent copies for your specific needs:
+  - Full copy including embeddings, files, and metadata
+  - Customize forked collections without affecting originals
+  - Perfect for adapting community patterns to your domain
+  - Iterative refinement through fork-and-improve workflow
+  - Build on proven strategies while maintaining independence
+
+* **Community Quality Assurance**: Trust community validation through ratings and reviews:
+  - 1-5 star rating system with optional text reviews
+  - Average ratings displayed on collection cards
+  - Cannot rate own collections (ensures objectivity)
+  - Browse top-rated collections for proven quality
+  - Community feedback guides collection discovery
+
+* **Flexible Publishing Options**: Share your expertise with granular visibility control:
+  - **Public:** Fully discoverable in marketplace browse
+  - **Unlisted:** Accessible via direct link only (share with specific teams)
+  - **Private:** Owner-only access (default)
+  - Update visibility anytime
+  - Must have at least 1 RAG case/document to publish
+  - Maintain full ownership and control
+
+* **Cost Reduction Through Reuse**: Leverage proven patterns to minimize token consumption:
+  - Reuse champion execution strategies instead of trial-and-error
+  - Access domain expertise without rebuilding from scratch
+  - Community-validated patterns reduce failed attempts
+  - Lower onboarding costs for new users and use cases
+  - Network effects: more users = more valuable patterns
+
+* **Secure Access Control**: Enterprise-grade authorization and privacy:
+  - JWT-authenticated API endpoints
+  - Ownership validation on all operations
+  - Cannot subscribe to own collections
+  - Must be owner to publish or modify
+  - Usernames visible for transparency and attribution
+  - Privacy-first design with granular visibility controls
+
+* **REST API Integration**: Programmatic marketplace operations for automation:
+  - Browse collections with search/filter parameters
+  - Subscribe/unsubscribe programmatically
+  - Fork collections via API for CI/CD workflows
+  - Publish collections as part of deployment pipelines
+  - Rate collections for automated quality tracking
+  - Full CRUD operations for marketplace management
+
+The marketplace transforms the Trusted Data Agent from a single-user tool into a **collaborative intelligence platform**. By enabling pattern sharing, community validation, and knowledge reuse, it reduces costs, improves quality, and accelerates time-to-value for all users. Whether you're publishing your expertise or subscribing to community wisdom, the marketplace creates a powerful ecosystem where collective intelligence amplifies individual capabilities.
 
 ### Two-Tier Repository Architecture
 
@@ -172,13 +488,85 @@ The Optimizer deconstructs every user request into a sophisticated, hierarchical
 
 Before and during execution, the Optimizer actively seeks to enhance performance and efficiency.
 
-* **Plan Hydration**: The agent intelligently inspects a new plan to see if its initial steps require data that was already generated in the *immediately preceding turn*. If so, it "hydrates" the new plan by injecting the previous results, skipping redundant tool calls and delivering answers faster.
+* **Plan Hydration**: The agent intelligently inspects a new plan to see if its initial steps require data that was already generated in the *immediately preceding turn*. If so, it "hydrates" the new plan by injecting the previous results, skipping redundant tool calls and delivering answers faster. This is particularly effective for follow-up clarifications and iterative refinements.
 
-* **Tactical Fast Path**: For simple, single-tool phases where all required arguments are known, the Optimizer bypasses the tactical LLM call entirely and executes the tool directly, dramatically reducing latency.
+* **Tactical Fast Path**: For simple, single-tool phases where all required arguments are known, the Optimizer bypasses the tactical LLM call entirely and executes the tool directly, dramatically reducing latency. This eliminates unnecessary LLM calls for trivial interactions while maintaining conversational fluidity.
 
-* **Specialized Orchestrators**: The agent is equipped with programmatic orchestrators to handle common complex patterns. For example, it can recognize a date range query (e.g., "last week") and automatically execute a single-day tool iteratively for each day in the range.
+* **Specialized Orchestrators**: The agent is equipped with programmatic orchestrators to handle common complex patterns. For example, it can recognize a date range query (e.g., "last week") and automatically execute a single-day tool iteratively for each day in the range. The **Comparative Llama Invocation Orchestrator** executes deterministic prompt sequences across multiple LLMs, collects responses, and generates analytical comparisons for model behavior analysis.
 
 * **Context Distillation**: To prevent context window overflow with large datasets, the agent automatically distills large tool outputs into concise metadata summaries before passing them to the LLM for planning, ensuring robust performance even with enterprise-scale data.
+
+### RAG-Powered Continuous Improvement
+
+The agent learns from every successful interaction, building an ever-growing repository of "champion" strategies that guide future planning. This closed-loop learning system transforms individual successes into organizational knowledge.
+
+* **Automatic Case Capture**: Every completed session is analyzed and archived:
+  - Full conversation history with query-response pairs
+  - Complete tool invocation sequences with arguments
+  - Strategic plan and tactical execution details
+  - Token usage and cost metrics
+  - Success indicators (no errors, user satisfaction signals)
+
+* **Efficiency Analysis and Scoring**: Each case is evaluated for optimization potential:
+  - Token reduction opportunities (e.g., plan hydration candidates)
+  - Fast-path opportunities (e.g., queries that didn't need tools)
+  - Tool selection improvements (e.g., more direct paths to answers)
+  - Context management efficiency (e.g., Turn Summaries vs. Full Context)
+  - Before/after cost comparison for savings attribution
+
+* **Champion Strategy Selection**: The RAG system identifies best-in-class examples:
+  - Lowest token count for similar query patterns
+  - Fastest execution time for interactive workloads
+  - Highest success rate for complex multi-step tasks
+  - Most elegant tool orchestration sequences
+  - User-endorsed solutions (via explicit feedback)
+
+* **Few-Shot Learning Injection**: Planning-time retrieval enhances strategic decisions:
+  - `_retrieve_similar_plans()` searches the Planner Repository for analogous cases
+  - Top-K similar cases injected into strategic planner context
+  - LLM leverages past successes to guide current planning
+  - Continuous improvement without model retraining
+  - Per-user savings attribution for efficiency tracking
+
+* **Asynchronous Processing**: Zero user-facing latency:
+  - Case archiving happens in background threads
+  - RAG retrieval during planning overlaps with user response rendering
+  - No blocking operations on critical path
+  - Graceful degradation if RAG system unavailable
+
+### Performance Metrics and Resource Limits
+
+The engine provides comprehensive observability and built-in safeguards against runaway execution.
+
+**Real-Time Performance Tracking:**
+
+* **Token Consumption Monitoring**: Per-turn and cumulative tracking:
+  - Input tokens (prompt + context + few-shot examples)
+  - Output tokens (strategic plan + tactical steps + tool arguments + final response)
+  - Token-to-cost mapping with provider-specific pricing
+  - Historical trends and anomaly detection
+
+* **Execution Time Profiling**: Detailed timing breakdown:
+  - Strategic planning latency
+  - Tactical loop execution time per iteration
+  - Tool invocation duration (network + processing)
+  - Response generation time
+  - End-to-end query latency with percentile metrics
+
+* **Resource Utilization**: System-level metrics:
+  - Active session count and concurrency
+  - MCP server connection pool status
+  - ChromaDB vector store query performance
+  - SQLite database read/write latency
+  - Memory footprint per session
+
+**Built-in Safeguards:**
+
+* **Tactical Loop Iteration Limit**: Maximum 15 cycles per query to prevent infinite loops
+* **Maximum Tool Invocations**: Cap on tool calls per tactical iteration to contain runaway execution
+* **Context Window Management**: Automatic context pruning when approaching model limits
+* **Timeout Enforcement**: Configurable query timeout with graceful degradation
+* **Error Accumulation Threshold**: Abort after N consecutive tool failures to prevent thrashing
 
 ### Autonomous Self-Correction & Healing
 
