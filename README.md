@@ -1,7 +1,7 @@
 # Uderia Platform (Trusted Data Agent)
 ### Cloud-Level Reasoning. Zero-Trust Privacy.
 
-The **Uderia Platform** empowers secure, local models to perform like giants—and tames powerful cloud models for verified compliance. Finally, an AI platform that doesn't force you to choose between intelligence and sovereignty.
+The **Uderia Platform** delivers enterprise-grade AI orchestration with unmatched flexibility. Whether you leverage hyperscaler intelligence for maximum capability, run private local models for absolute sovereignty, or blend both approaches, you get cloud-level reasoning with complete control over your data and costs.
 
 Experience a fundamental transformation in how you work with enterprise data:
 
