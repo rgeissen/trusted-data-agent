@@ -1733,7 +1733,11 @@ Under the AGPLv3, you are free to use, modify, and distribute this software. How
 
 This list reflects the recent enhancements and updates to the Uderia Platform, as shown on the application's welcome screen.
 
-*   **27-Nov-2025:** Document Upload Template - LLM-powered RAG generation from PDF/TXT/DOC/DOCX
+*   **02-Dec-2025:** Financial Governance - Dashboards and LiteLLM Integration
+*   **01-Dec-2025:** Planner Constructor: SQL Query - Document Context
+*   **01-Dec-2025:** Planner Constructor: SQL Query - Database Context
+*   **29-Nov-2025:** Knowledge Repository Constructor - Document Storage
+*   **28-Nov-2025:** Knowledge Repository Integration
 *   **25-Nov-2025:** Multi-User Authentication - JWT tokens, access tokens, user tiers
 *   **22-Nov-2025:** Profile System - Modular Configuration & Temporary Overrides
 *   **21-Nov-2025:** Planner Repository Constructors - Modular Plugin System
