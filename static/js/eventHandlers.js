@@ -1025,7 +1025,7 @@ function getSystemPromptSummaryHTML() {
             ${devFlagHtml}
             <div class="border-t border-white/10 pt-4 mt-4">
                 <h4 class="text-md font-bold text-yellow-300 mb-2">New features available</h4>
-                <p class="text-xs text-gray-400 mb-3">Latest enhancements and updates to the Trusted Data Agent.</p>
+                <p class="text-xs text-gray-400 mb-3">Latest enhancements and updates to the Uderia Platform.</p>
                 <div class="whats-new-container">
                     <ul class="list-disc list-inside text-xs text-gray-300 space-y-1">
                        <li><strong>06-Nov-2025:</strong> UI Real-Time Monitoring of Rest Requests</li>

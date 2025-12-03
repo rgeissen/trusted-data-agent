@@ -1,6 +1,6 @@
 # REST API Scripts
 
-This directory contains helper scripts for interacting with the Trusted Data Agent REST API.
+This directory contains helper scripts for interacting with the Uderia Platform REST API.
 
 ## Prerequisites
 

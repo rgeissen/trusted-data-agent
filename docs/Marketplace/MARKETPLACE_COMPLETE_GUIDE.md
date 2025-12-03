@@ -813,7 +813,7 @@ All endpoints return standardized error format:
 
 ## Conclusion
 
-The Intelligence Marketplace transforms the Trusted Data Agent from a single-user tool into a collaborative platform. By enabling users to share, discover, and reuse proven RAG collections, the marketplace:
+The Intelligence Marketplace transforms the Uderia Platform from a single-user tool into a collaborative platform. By enabling users to share, discover, and reuse proven RAG collections, the marketplace:
 
 - **Reduces token costs** through pattern reuse
 - **Improves quality** via community ratings

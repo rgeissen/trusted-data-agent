@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Trusted Data Agent now supports **profile-based classification** for MCP (Model Context Protocol) tools, prompts, and resources. Each profile can have its own classification mode, allowing you to customize how capabilities are organized in the UI.
+The Uderia Platform now supports **profile-based classification** for MCP (Model Context Protocol) tools, prompts, and resources. Each profile can have its own classification mode, allowing you to customize how capabilities are organized in the UI.
 
 ## Classification Modes
 

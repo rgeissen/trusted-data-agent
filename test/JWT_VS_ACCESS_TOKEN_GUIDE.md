@@ -1,6 +1,6 @@
 # JWT vs Access Token: Complete Comparison
 
-This document provides a detailed comparison of the two authentication methods for session creation in the Trusted Data Agent REST API.
+This document provides a detailed comparison of the two authentication methods for session creation in the Uderia Platform REST API.
 
 ## Side-by-Side Comparison
 

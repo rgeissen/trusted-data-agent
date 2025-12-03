@@ -1,7 +1,7 @@
 #!/bin/bash
 # rest_run_query.sh
 #
-# This script automates the entire process of querying the Trusted Data Agent API.
+# This script automates the entire process of querying the Uderia Platform API.
 # It creates a session, submits a user's question, and then monitors the
 # progress until a final result is received.
 #

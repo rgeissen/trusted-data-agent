@@ -1,6 +1,6 @@
 # TDA Keys Directory
 
-This directory contains security-related keys and certificates for the Trusted Data Agent.
+This directory contains security-related keys and certificates for the Uderia Platform.
 
 ## Files
 

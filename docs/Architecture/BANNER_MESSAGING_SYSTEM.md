@@ -4,7 +4,7 @@ TDA has **two distinct banner systems** for displaying messages to users.
 
 ## 1. Application-Level Banner
 
-**Location:** Top navigation bar (next to "Trusted Data Agent" title and GitHub star)
+**Location:** Top navigation bar (next to "Uderia Platform" title and GitHub star)
 
 **Element ID:** `header-status-message`
 

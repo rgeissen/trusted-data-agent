@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Trusted Data Agent now supports **multi-user Docker deployments** with proper credential isolation. When running in a Docker container with `TDA_CONFIGURATION_PERSISTENCE=false`, credentials are never saved to disk or browser storage, ensuring each user must provide their own credentials per session.
+The Uderia Platform now supports **multi-user Docker deployments** with proper credential isolation. When running in a Docker container with `TDA_CONFIGURATION_PERSISTENCE=false`, credentials are never saved to disk or browser storage, ensuring each user must provide their own credentials per session.
 
 ## How It Works
 

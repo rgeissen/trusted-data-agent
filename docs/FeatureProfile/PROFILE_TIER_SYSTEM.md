@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Trusted Data Agent now implements a **3-tier hierarchical profile system** for role-based access control (RBAC). Every authenticated user is assigned one of three profile tiers:
+The Uderia Platform now implements a **3-tier hierarchical profile system** for role-based access control (RBAC). Every authenticated user is assigned one of three profile tiers:
 
 1. **User** (default) - Basic access
 2. **Developer** - Advanced features

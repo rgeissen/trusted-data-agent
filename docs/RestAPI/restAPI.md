@@ -1,4 +1,4 @@
-# Trusted Data Agent REST API Documentation
+# Uderia Platform REST API Documentation
 
 ## Table of Contents
 
@@ -30,7 +30,7 @@
 
 ## 1. Introduction
 
-Welcome to the Trusted Data Agent (TDA) REST API. This API provides a programmatic interface to interact with the agent's powerful data analysis and querying capabilities.
+Welcome to the Uderia Platform (TDA) REST API. This API provides a programmatic interface to interact with the agent's powerful data analysis and querying capabilities.
 
 The API is designed around an **asynchronous task-based architecture**. This pattern is ideal for handling potentially long-running agent processes in a robust and scalable way. Instead of holding a connection open while the agent works, you initiate a task and then poll a status endpoint to get progress updates and the final result. You can also cancel a running task if needed.
 
@@ -115,7 +115,7 @@ curl -s http://localhost:5000/api/v1/tasks/$TASK_ID \
 
 ## 2. Authentication
 
-The Trusted Data Agent REST API requires authentication for all endpoints except public registration. We support two authentication methods optimized for different use cases.
+The Uderia Platform REST API requires authentication for all endpoints except public registration. We support two authentication methods optimized for different use cases.
 
 ### 2.1. Access Tokens (Recommended)
 
@@ -1493,7 +1493,7 @@ import os
 from typing import Optional, Dict, Any
 
 class TDAClient:
-    """Trusted Data Agent API Client"""
+    """Uderia Platform API Client"""
     
     def __init__(self, base_url: str = "http://localhost:5000"):
         self.base_url = base_url.rstrip('/')

@@ -1,5 +1,5 @@
 /**
- * Authentication Client for Trusted Data Agent
+ * Authentication Client for Uderia Platform
  * 
  * Handles user authentication, token management, and session persistence.
  * Provides methods for login, logout, registration, and token refresh.

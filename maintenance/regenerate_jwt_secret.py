@@ -2,7 +2,7 @@
 """
 Regenerate JWT Secret Key
 
-This script generates a new JWT secret key for your Trusted Data Agent installation.
+This script generates a new JWT secret key for your Uderia Platform installation.
 Run this script after installing the application to ensure your JWT tokens are secure.
 
 WARNING: Running this script will invalidate all existing user sessions.

@@ -8,7 +8,7 @@
 
 /**
  * Show application-level banner message
- * Location: Top navigation bar (next to "Trusted Data Agent" title)
+ * Location: Top navigation bar (next to "Uderia Platform" title)
  * 
  * Use for:
  * - Global configuration changes

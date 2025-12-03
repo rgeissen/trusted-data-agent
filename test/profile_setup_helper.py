@@ -229,7 +229,7 @@ def print_profile_setup_requirement():
     print("PROFILE SETUP REQUIRED")
     print("=" * 70)
     print("""
-The Trusted Data Agent now uses profiles for REST API session creation.
+The Uderia Platform now uses profiles for REST API session creation.
 
 A profile consists of:
   • LLM Provider (e.g., Google, OpenAI, AWS Bedrock)

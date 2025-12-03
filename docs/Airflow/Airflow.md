@@ -1,6 +1,6 @@
 ## TDA DAG (tda_00_execute_questions)
 
-This README documents the modern TDA Airflow DAG for automating queries with the Trusted Data Agent. It uses the profile-based architecture with Bearer token authentication and async polling.
+This README documents the modern TDA Airflow DAG for automating queries with the Uderia Platform. It uses the profile-based architecture with Bearer token authentication and async polling.
 
 ## Files
 

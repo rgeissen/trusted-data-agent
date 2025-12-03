@@ -315,7 +315,7 @@ async def main(args): # MODIFIED: Accept args
     await hypercorn.asyncio.serve(app, config)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run the Trusted Data Agent web client.")
+    parser = argparse.ArgumentParser(description="Run the Uderia Platform web client.")
     parser.add_argument(
         "--host",
         type=str,

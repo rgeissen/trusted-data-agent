@@ -1,6 +1,6 @@
 # Session Creation Test - Both Authentication Methods
 
-This directory contains test scripts to demonstrate and verify session creation using both authentication approaches supported by the Trusted Data Agent REST API.
+This directory contains test scripts to demonstrate and verify session creation using both authentication approaches supported by the Uderia Platform REST API.
 
 ## ⚠️ Prerequisites: Profile Configuration
 

@@ -1,7 +1,7 @@
-# Trusted Data Agent (TDA) Flowise Integration
+# Uderia Platform (TDA) Flowise Integration
 
 ## 1. Overview
-This document details the architecture and configuration of the Flowise workflow used to interface with the Trusted Data Agent (TDA) REST API. The workflow handles user sessions, submits asynchronous queries, and polls for results using a direct Bearer token.
+This document details the architecture and configuration of the Flowise workflow used to interface with the Uderia Platform (TDA) REST API. The workflow handles user sessions, submits asynchronous queries, and polls for results using a direct Bearer token.
 
 ---
 ## 2. Agent Flow

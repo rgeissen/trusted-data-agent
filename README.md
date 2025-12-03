@@ -1,7 +1,7 @@
-# Trusted Data Agent
+# Uderia Platform (Trusted Data Agent)
 ### Query it. Automate it. Zero Friction.
 
-The **Trusted Data Agent** represents a paradigm shift in data interaction, taking you from question to insight to action in seconds. Experience the industry-leading AI conversational engine for your most complex enterprise data.
+The **Uderia Platform** represents a paradigm shift in data interaction, taking you from question to insight to action in seconds. Experience the industry-leading AI conversational engine for your most complex enterprise data.
 
 Go from conversational discovery to a production-ready, automated workflow with zero friction. It represents a fundamental change in how you work, moving **from days to seconds**, **from guesswork to clarity**, and **from high cost to high efficiency**, while always ensuring **data sovereignty**.
 
@@ -39,13 +39,13 @@ This solution establishes a new standard for AI-driven data analytics, built on 
 
 ## Core Principles: A Superior Approach
 
-The Trusted Data Agent transcends typical data chat applications by delivering a seamless and powerful experience based on six core principles:
+The Uderia Platform transcends typical data chat applications by delivering a seamless and powerful experience based on six core principles:
 
 ### 🚀 Actionable
 Go from conversational discovery to a production-ready, automated workflow in seconds. The agent's unique two-in-one approach means your interactive queries can be immediately operationalized via a REST API, eliminating the friction and redundancy of traditional data operations. What once took data experts weeks is now at your fingertips.
 
 ### 🔍 Transparent
-Eliminate the "black box" of AI. The Trusted Data Agent is built on a foundation of absolute trust, with a Live Status Window that shows you every step of the agent's thought process. From the initial high-level plan to every tool execution and self-correction, you have a clear, real-time view, leaving no room for guesswork.
+Eliminate the "black box" of AI. The Uderia Platform is built on a foundation of absolute trust, with a Live Status Window that shows you every step of the agent's thought process. From the initial high-level plan to every tool execution and self-correction, you have a clear, real-time view, leaving no room for guesswork.
 
 ### ⚡ Efficient
 Powered by the intelligent Fusion Optimizer, the agent features a revolutionary multi-layered architecture for resilient and cost-effective task execution. Through strategic and tactical planning, proactive optimization, and autonomous self-correction, the agent ensures enterprise-grade performance and reliability.
@@ -65,7 +65,7 @@ Transform isolated expertise into collective intelligence. The Intelligence Mark
 
 ## 🌟 Key Features
 
-The Trusted Data Agent's features are organized around the six core principles that define its value proposition. Each principle is realized through a comprehensive set of capabilities designed to deliver enterprise-grade AI orchestration.
+The Uderia Platform's features are organized around the six core principles that define its value proposition. Each principle is realized through a comprehensive set of capabilities designed to deliver enterprise-grade AI orchestration.
 
 ---
 
@@ -467,7 +467,7 @@ The cost management system stores all pricing data locally in SQLite (`llm_model
   - Rate collections for automated quality tracking
   - Full CRUD operations for marketplace management
 
-The marketplace transforms the Trusted Data Agent from a single-user tool into a **collaborative intelligence platform**. By enabling pattern sharing, community validation, and knowledge reuse, it reduces costs, improves quality, and accelerates time-to-value for all users. Whether you're publishing your expertise or subscribing to community wisdom, the marketplace creates a powerful ecosystem where collective intelligence amplifies individual capabilities.
+The marketplace transforms the Uderia Platform from a single-user tool into a **collaborative intelligence platform**. By enabling pattern sharing, community validation, and knowledge reuse, it reduces costs, improves quality, and accelerates time-to-value for all users. Whether you're publishing your expertise or subscribing to community wisdom, the marketplace creates a powerful ecosystem where collective intelligence amplifies individual capabilities.
 
 [⬆️ Back to Table of Contents](#table-of-contents)
 
@@ -517,7 +517,7 @@ This separation ensures that execution patterns (how to accomplish tasks) remain
 
 ## 🎯 The Heart of the Application - The Engine & its Fusion Optimizer
 
-The Trusted Data Agent is engineered to be far more than a simple LLM wrapper. Its revolutionary core is the **Fusion Optimizer**, a multi-layered engine designed for resilient, intelligent, and efficient task execution in complex enterprise environments. It transforms the agent from a mere tool into a reliable analytical partner.
+The Uderia Platform is engineered to be far more than a simple LLM wrapper. Its revolutionary core is the **Fusion Optimizer**, a multi-layered engine designed for resilient, intelligent, and efficient task execution in complex enterprise environments. It transforms the agent from a mere tool into a reliable analytical partner.
 
 ### 🧠 The Multi-Layered Planning Process
 
@@ -641,7 +641,7 @@ The Optimizer is built with enterprise-grade reliability in mind.
 
 ## 🧬 Retrieval-Augmented Generation (RAG) for Self-Improving AI
 
-The Trusted Data Agent integrates a powerful **Retrieval-Augmented Generation (RAG)** system designed to create a self-improving agent. This closed-loop feedback mechanism allows the agent's Planner to learn from its own past successes, continuously enhancing its decision-making capabilities over time.
+The Uderia Platform integrates a powerful **Retrieval-Augmented Generation (RAG)** system designed to create a self-improving agent. This closed-loop feedback mechanism allows the agent's Planner to learn from its own past successes, continuously enhancing its decision-making capabilities over time.
 
 The core value of this RAG implementation is its ability to automatically identify and leverage the most efficient strategies for given tasks. It works by:
 
@@ -677,7 +677,7 @@ For a comprehensive overview of the RAG architecture, template development, and 
 
 ### System Overview
 
-The Trusted Data Agent is built on a modern, asynchronous client-server architecture with four primary layers:
+The Uderia Platform is built on a modern, asynchronous client-server architecture with four primary layers:
 
 ```
 ┌──────────┐      ┌─────────────┐      ┌──────────┐      ┌─────┐      ┌─────────┐
@@ -1010,7 +1010,7 @@ python -m trusted_data_agent.main --all-models
 
 ## 📖 User Guide
 
-This comprehensive guide covers everything you need to know to use the Trusted Data Agent effectively, from basic operations to advanced features and automation.
+This comprehensive guide covers everything you need to know to use the Uderia Platform effectively, from basic operations to advanced features and automation.
 
 ---
 
@@ -1028,7 +1028,7 @@ Without these configurations, the **"Start Conversation"** button will remain di
 
 #### Initial Configuration
 
-The Trusted Data Agent uses a modern, modular configuration system that separates infrastructure (MCP Servers, LLM Providers) from usage patterns (Profiles). This architecture provides maximum flexibility for different use cases.
+The Uderia Platform uses a modern, modular configuration system that separates infrastructure (MCP Servers, LLM Providers) from usage patterns (Profiles). This architecture provides maximum flexibility for different use cases.
 
 **Configuration Flow:** MCP Servers → LLM Providers → Profiles → Start Conversation
 
@@ -1365,7 +1365,7 @@ To test the raw intelligence of a model without the agent's tool-using logic, yo
 
 ### Advanced Context Management
 
-The Trusted Data Agent provides several advanced features for managing the context that is sent to the Large Language Model (LLM). Understanding and using these features can help you refine the agent's behavior, save costs by reducing token count, and get more accurate results.
+The Uderia Platform provides several advanced features for managing the context that is sent to the Large Language Model (LLM). Understanding and using these features can help you refine the agent's behavior, save costs by reducing token count, and get more accurate results.
 
 ### Understanding Context Elements
 
@@ -1432,7 +1432,7 @@ When activated, this mode disables the **LLM Conversation History**. The agent b
 
 ### REST API Integration
 
-The Trusted Data Agent includes a powerful, asynchronous REST API to enable programmatic control, automation, and integration into larger enterprise workflows.
+The Uderia Platform includes a powerful, asynchronous REST API to enable programmatic control, automation, and integration into larger enterprise workflows.
 
 This API exposes the core functionalities of the agent, allowing developers to build custom applications, automate complex analytical tasks, and manage the agent's configuration without using the web interface.
 
@@ -1494,7 +1494,7 @@ For complete technical details, endpoint definitions, and cURL examples, please 
 
 ### Real-Time Monitoring
 
-The Trusted Data Agent's UI serves as a powerful, real-time monitoring tool that provides full visibility into all agent workloads, regardless of whether they are initiated from the user interface or the REST API. This capability is particularly valuable for developers and administrators interacting with the agent programmatically.
+The Uderia Platform's UI serves as a powerful, real-time monitoring tool that provides full visibility into all agent workloads, regardless of whether they are initiated from the user interface or the REST API. This capability is particularly valuable for developers and administrators interacting with the agent programmatically.
 
 When a task is triggered via a REST call, it is not a "black box" operation. Instead, the entire execution workflow is visualized in real-time within the UI's Live Status panel. This provides a granular, step-by-step view of the agent's process, including:
 
@@ -1502,7 +1502,7 @@ When a task is triggered via a REST call, it is not a "black box" operation. Ins
 *   **Tool Execution:** Watch as the agent executes specific tools and gathers data.
 *   **Response Synthesis:** Observe the final phase where the agent synthesizes the gathered information into a coherent answer.
 
-This provides a level of transparency typically not available for REST API interactions, offering a "glass box" view into the agent's operations. The key benefit is that you can trigger a complex workflow through a single API call and then use the UI to visually monitor its progress, understand how it's being executed, and immediately diagnose any issues that may arise. This turns the UI into an essential tool for the development, debugging, and monitoring of any integration with the Trusted Data Agent.
+This provides a level of transparency typically not available for REST API interactions, offering a "glass box" view into the agent's operations. The key benefit is that you can trigger a complex workflow through a single API call and then use the UI to visually monitor its progress, understand how it's being executed, and immediately diagnose any issues that may arise. This turns the UI into an essential tool for the development, debugging, and monitoring of any integration with the Uderia Platform.
 
 ---
 
@@ -1510,7 +1510,7 @@ This provides a level of transparency typically not available for REST API inter
 
 #### From Interactive UI to Automated REST API
 
-The Trusted Data Agent is designed to facilitate a seamless transition from interactive development in the UI to automated, operational workflows via its REST API. This process allows you to build, test, and refine complex data interactions in an intuitive conversational interface and then deploy them as robust, repeatable tasks.
+The Uderia Platform is designed to facilitate a seamless transition from interactive development in the UI to automated, operational workflows via its REST API. This process allows you to build, test, and refine complex data interactions in an intuitive conversational interface and then deploy them as robust, repeatable tasks.
 
 **Step 1: Develop and Refine in the UI**
 
@@ -1548,9 +1548,9 @@ curl -X POST http://localhost:5000/api/v1/sessions/{session_id}/query \
   }'
 ```
 
-This allows you to integrate the Trusted Data Agent into larger automated systems, CI/CD pipelines, or other applications.
+This allows you to integrate the Uderia Platform into larger automated systems, CI/CD pipelines, or other applications.
 
-For more advanced orchestration and scheduling, the Trusted Data Agent also integrates with Apache Airflow. You can find detailed documentation and example DAGs in the [Airflow Integration Guide (docs/Airflow/Airflow.md)](docs/Airflow/Airflow.md).
+For more advanced orchestration and scheduling, the Uderia Platform also integrates with Apache Airflow. You can find detailed documentation and example DAGs in the [Airflow Integration Guide (docs/Airflow/Airflow.md)](docs/Airflow/Airflow.md).
 
 For visual workflow construction and no-code/low-code integration, the agent provides example flows for the Flowise UI. These can be found in the [Flowise Integration Guide (docs/Flowise/Flowise.md)](docs/Flowise/Flowise.md).
 
@@ -1584,7 +1584,7 @@ This hybrid approach gives you the best of both worlds: the automation and scala
 
 ## Docker Deployment
 
-The Trusted Data Agent can be deployed in Docker containers for production use, testing, and multi-user scenarios. The application includes built-in support for credential isolation in shared deployments.
+The Uderia Platform can be deployed in Docker containers for production use, testing, and multi-user scenarios. The application includes built-in support for credential isolation in shared deployments.
 
 ### Quick Start with Docker
 
@@ -1718,13 +1718,13 @@ Under the AGPLv3, you are free to use, modify, and distribute this software. How
 
 * **Author/Initiator:** Rainer Geissendoerfer, rainer.geissendoerfer@teradata.com , teradata.com.
 
-* **Source Code & Contributions:** The Trusted Data Agent is licensed under the GNU Affero General Public License v3.0. Contributions are highly welcome. Please visit the main Git repository to report issues or submit pull requests.
+* **Source Code & Contributions:** The Uderia Platform is licensed under the GNU Affero General Public License v3.0. Contributions are highly welcome. Please visit the main Git repository to report issues or submit pull requests.
 
 * **Git Repository:** <https://github.com/rgeissen/trusted-data-agent.git>
 
 ## Appendix: Feature Update List
 
-This list reflects the recent enhancements and updates to the Trusted Data Agent, as shown on the application's welcome screen.
+This list reflects the recent enhancements and updates to the Uderia Platform, as shown on the application's welcome screen.
 
 *   **27-Nov-2025:** Document Upload Template - LLM-powered RAG generation from PDF/TXT/DOC/DOCX
 *   **25-Nov-2025:** Multi-User Authentication - JWT tokens, access tokens, user tiers
