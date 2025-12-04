@@ -784,9 +784,6 @@ function hideWelcomeScreen() {
     const chatFooter = document.getElementById('chat-footer');
     const chatContainer = document.getElementById('chat-container');
     
-    console.log('[hideWelcomeScreen] Hiding welcome screen and showing chat');
-    console.log('[hideWelcomeScreen] Elements:', { welcomeScreen, chatLog, chatFooter, chatContainer });
-    
     if (welcomeScreen && chatLog) {
         welcomeScreen.classList.add('hidden');
         chatLog.classList.remove('hidden');
@@ -800,8 +797,6 @@ function hideWelcomeScreen() {
             chatContainer.style.flexDirection = 'column';
         }
     }
-    
-    console.log('[hideWelcomeScreen] Chat should now be visible');
 }
 
 // Make function available globally

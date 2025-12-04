@@ -10,6 +10,7 @@ import { renderChart, isPrivilegedUser, isPromptCustomForModel, getNormalizedMod
 // We need access to the functions that will handle save/cancel from the input
 import { handleSessionRenameSave, handleSessionRenameCancel } from './handlers/sessionManagement.js';
 import { handleReplayQueryClick } from './eventHandlers.js';
+import { checkServerStatus, loadAllSessions } from './api.js';
 
 
 // NOTE: This module no longer imports from eventHandlers.js, breaking a circular dependency.
@@ -114,6 +115,11 @@ export function renderHistoricalTrace(originalPlan = [], executionTrace = [], tu
 
 
 export function addMessage(role, content, turnId = null, isValid = true, source = null, profileTag = null) { // eslint-disable-line no-unused-vars
+    // Hide welcome screen when adding a message
+    if (window.hideWelcomeScreen) {
+        window.hideWelcomeScreen();
+    }
+    
     const wrapper = document.createElement('div');
     wrapper.className = `message-bubble group flex items-start gap-4 ${role === 'user' ? 'justify-end' : ''}`;
     const icon = document.createElement('div');
@@ -2212,7 +2218,7 @@ function performViewSwitch(viewId) {
             return;
         }
         
-        API.checkServerStatus().then(async (status) => {
+        checkServerStatus().then(async (status) => {
             if (!status.isConfigured) {
                 // Application not configured - show welcome screen
                 console.log('[handleViewSwitch] Application not configured, showing welcome screen');
@@ -2235,7 +2241,7 @@ function performViewSwitch(viewId) {
                 } else {
                     // No session ID in state - fetch sessions and load most recent
                     console.log('[handleViewSwitch] No session ID in state, fetching sessions');
-                    const sessions = await API.loadAllSessions();
+                    const sessions = await loadAllSessions();
                     const activeSessions = sessions ? sessions.filter(s => !s.archived) : [];
                     
                     if (activeSessions && activeSessions.length > 0) {
