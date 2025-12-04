@@ -11,6 +11,9 @@ class ExecutionDashboard {
         this.velocityChart = null;
         this.viewAllSessions = false;
         this.hasViewAllSessionsFeature = false;
+        this.refreshInterval = null;
+        this.autoRefreshEnabled = true;
+        this.refreshIntervalMs = 30000; // 30 seconds
     }
 
     /**
@@ -44,6 +47,35 @@ class ExecutionDashboard {
         
         // Load initial data
         await this.refreshDashboard();
+        
+        // Start auto-refresh
+        this.startAutoRefresh();
+    }
+    
+    /**
+     * Start auto-refresh interval
+     */
+    startAutoRefresh() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+        }
+        
+        if (this.autoRefreshEnabled) {
+            this.refreshInterval = setInterval(() => {
+                console.log('[ExecutionDashboard] Auto-refreshing...');
+                this.refreshDashboard();
+            }, this.refreshIntervalMs);
+        }
+    }
+    
+    /**
+     * Stop auto-refresh interval
+     */
+    stopAutoRefresh() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+            this.refreshInterval = null;
+        }
     }
 
     /**

@@ -3940,11 +3940,35 @@ if (document.readyState === 'loading') {
 }
 
 // Export functions for use in other modules
+// Auto-refresh state for Intelligence KPIs
+let ragKpiRefreshInterval = null;
+const RAG_KPI_REFRESH_INTERVAL_MS = 30000; // 30 seconds
+
+function startAutoRefresh() {
+    if (ragKpiRefreshInterval) {
+        clearInterval(ragKpiRefreshInterval);
+    }
+    
+    ragKpiRefreshInterval = setInterval(() => {
+        console.log('[Intelligence] Auto-refreshing KPIs...');
+        calculateRagImpactKPIs();
+    }, RAG_KPI_REFRESH_INTERVAL_MS);
+}
+
+function stopAutoRefresh() {
+    if (ragKpiRefreshInterval) {
+        clearInterval(ragKpiRefreshInterval);
+        ragKpiRefreshInterval = null;
+    }
+}
+
 window.ragCollectionManagement = {
     toggleRagCollection,
     deleteRagCollection,
     refreshRagCollection,
     openEditCollectionModal,
     calculateRagImpactKPIs,
-    openAddRagCollectionModal
+    openAddRagCollectionModal,
+    startAutoRefresh,
+    stopAutoRefresh
 };

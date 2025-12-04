@@ -2142,6 +2142,16 @@ function performViewSwitch(viewId) {
         // Calculate and display RAG impact KPIs
         if (window.ragCollectionManagement && window.ragCollectionManagement.calculateRagImpactKPIs) {
             window.ragCollectionManagement.calculateRagImpactKPIs();
+            
+            // Start auto-refresh for Intelligence KPIs
+            if (window.ragCollectionManagement.startAutoRefresh) {
+                window.ragCollectionManagement.startAutoRefresh();
+            }
+        }
+    } else {
+        // Stop Intelligence auto-refresh when leaving the view
+        if (window.ragCollectionManagement && window.ragCollectionManagement.stopAutoRefresh) {
+            window.ragCollectionManagement.stopAutoRefresh();
         }
     }
     
@@ -2158,6 +2168,11 @@ function performViewSwitch(viewId) {
             window.executionDashboard.initialize();
         } else {
             console.error('[UI DEBUG] ExecutionDashboard not initialized');
+        }
+    } else {
+        // Stop Executions auto-refresh when leaving the view
+        if (window.executionDashboard && window.executionDashboard.stopAutoRefresh) {
+            window.executionDashboard.stopAutoRefresh();
         }
     }
     
