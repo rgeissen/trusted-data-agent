@@ -573,6 +573,16 @@ async def toggle_prompt_status():
 
     return jsonify({"status": "success", "message": f"Prompt '{prompt_name}' status updated."})
 
+@api_bp.route("/app-settings", methods=["GET"])
+async def get_app_settings():
+    """
+    Returns application-level settings that are relevant to the frontend.
+    No authentication required for public settings.
+    """
+    return jsonify({
+        "github_api_enabled": APP_CONFIG.GITHUB_API_ENABLED
+    })
+
 @api_bp.route("/prompt/<prompt_name>", methods=["GET"])
 async def get_prompt_content(prompt_name):
     """

@@ -12,6 +12,7 @@ class AppConfig:
     """
     # --- Feature Flags & Behavior ---
     ALL_MODELS_UNLOCKED = False # If True, bypasses model certification checks, allowing all models from a provider to be used.
+    GITHUB_API_ENABLED = False # If True, enables GitHub API calls to fetch star count. Default is False to avoid rate limiting during development.
     CHARTING_ENABLED = True # Master switch to enable or disable the agent's ability to generate charts.
     DEFAULT_CHARTING_INTENSITY = "medium" # Controls how proactively the agent suggests charts. Options: "none", "medium", "heavy".
     ALLOW_SYNTHESIS_FROM_HISTORY = True # If True, allows the planner to generate an answer directly from conversation history without using tools.

@@ -329,11 +329,18 @@ if __name__ == "__main__":
         help="Port to bind the server to."
     )
     parser.add_argument("--all-models", action="store_true", help="Allow selection of all available models.")
+    parser.add_argument("--gitcall", action="store_true", help="Enable GitHub API calls to fetch star count.")
     args = parser.parse_args()
 
     if args.all_models:
         APP_CONFIG.ALL_MODELS_UNLOCKED = True
         print("\n--- DEV MODE: All models will be selectable. ---\n")
+
+    if args.gitcall:
+        APP_CONFIG.GITHUB_API_ENABLED = True
+        print("\n--- GITHUB API ENABLED: Star count will be fetched from GitHub. ---\n")
+    else:
+        print("\n--- GITHUB API DISABLED: Use --gitcall to enable star count fetching. ---\n")
 
     print("\n--- CHARTING ENABLED: Charting configuration is active. ---\n")
 

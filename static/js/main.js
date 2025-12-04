@@ -679,14 +679,34 @@ function ensureUserUUID() {
 
 /**
  * Fetches the current star count for the GitHub repository and updates the UI.
+ * Only executes if GitHub API is enabled via the --gitcall flag.
+ * Hides the button completely if disabled.
  */
 async function fetchGitHubStarCount() {
+    const starButtonElement = document.querySelector('a[href="https://github.com/rgeissen/trusted-data-agent"]');
     const starCountElement = document.getElementById('github-star-count');
-    const starIconElement = document.getElementById('github-star-icon');
     
-    
-    if (!starCountElement) {
-        console.error('fetchGitHubStarCount: star count element not found');
+    if (!starCountElement || !starButtonElement) {
+        console.error('fetchGitHubStarCount: star elements not found');
+        return;
+    }
+
+    // Check if GitHub API is enabled
+    try {
+        const settingsResponse = await fetch('/app-settings');
+        if (settingsResponse.ok) {
+            const settings = await settingsResponse.json();
+            if (!settings.github_api_enabled) {
+                console.log('GitHub API disabled. Use --gitcall flag to enable. Button hidden.');
+                starButtonElement.style.display = 'none';
+                return;
+            }
+            // If enabled, ensure button is visible
+            starButtonElement.style.display = 'flex';
+        }
+    } catch (error) {
+        console.error('Error checking app settings:', error);
+        starButtonElement.style.display = 'none';
         return;
     }
 
@@ -826,8 +846,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('[Startup] Restored session ID from localStorage:', savedSessionId);
     }
 
-    // Fetch GitHub star count - DEACTIVATED to conserve API credits
-    // fetchGitHubStarCount();
+    // Fetch GitHub star count
+    fetchGitHubStarCount();
 
     // REMOVED: loadInitialConfig() - obsolete with new configuration system
     // The new configuration system uses configState which loads from localStorage automatically
