@@ -830,6 +830,9 @@ function _renderStandardStep(eventData, parentContainer, isFinal = false) {
  */
 export function resetStatusWindowForNewTask() {
     DOM.statusWindowContent.innerHTML = '';
+    // Remove any existing scroll spacer
+    const existingSpacer = document.getElementById('status-scroll-spacer');
+    if (existingSpacer) existingSpacer.remove();
     state.currentStatusId = 0;
     state.isRestTaskActive = false;
     state.activeRestTaskId = null;
@@ -982,8 +985,27 @@ export function updateStatusWindow(eventData, isFinal = false, source = 'interac
     const parentEl = state.currentPhaseContainerEl ? state.currentPhaseContainerEl.querySelector('.status-phase-content') : DOM.statusWindowContent;
     _renderStandardStep(eventData, parentEl, isFinal);
 
+    // Ensure there is a small spacer at the end so the last item isn't clipped
+    let spacer = document.getElementById('status-scroll-spacer');
+    if (!spacer) {
+        spacer = document.createElement('div');
+        spacer.id = 'status-scroll-spacer';
+        spacer.style.height = '20px';
+        spacer.style.minHeight = '20px';
+        spacer.style.flexShrink = '0';
+        DOM.statusWindowContent.appendChild(spacer);
+    }
+
+    // Auto-scroll the latest step fully into view
     if (!state.isMouseOverStatus) {
-        DOM.statusWindowContent.scrollTop = DOM.statusWindowContent.scrollHeight;
+        const lastStep = parentEl.querySelector(':scope > .status-step:last-of-type')
+            || DOM.statusWindowContent.querySelector('.status-step:last-of-type');
+        if (lastStep && typeof lastStep.scrollIntoView === 'function') {
+            lastStep.scrollIntoView({ behavior: 'auto', block: 'end' });
+        } else {
+            // Fallback
+            DOM.statusWindowContent.scrollTop = DOM.statusWindowContent.scrollHeight;
+        }
     }
 }
 
