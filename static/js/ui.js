@@ -985,27 +985,43 @@ export function updateStatusWindow(eventData, isFinal = false, source = 'interac
     const parentEl = state.currentPhaseContainerEl ? state.currentPhaseContainerEl.querySelector('.status-phase-content') : DOM.statusWindowContent;
     _renderStandardStep(eventData, parentEl, isFinal);
 
-    // Ensure there is a small spacer at the end so the last item isn't clipped
-    let spacer = document.getElementById('status-scroll-spacer');
-    if (!spacer) {
-        spacer = document.createElement('div');
-        spacer.id = 'status-scroll-spacer';
-        spacer.style.height = '20px';
-        spacer.style.minHeight = '20px';
-        spacer.style.flexShrink = '0';
-        DOM.statusWindowContent.appendChild(spacer);
+    // Breathing space handled via CSS padding-bottom; avoid DOM spacers to prevent layout jumps.
+
+    // Simplified and user-friendly auto-scroll:
+    // - Attach a scroll listener once to detect manual scroll-up and pause auto-stick.
+    // - Only stick to bottom when auto-scroll is enabled (user near bottom).
+    const container = DOM.statusWindowContent;
+    if (!state._statusScrollInitialized) {
+        state._statusAutoScrollEnabled = true; // assume start near bottom
+        container.addEventListener('scroll', () => {
+            const dist = container.scrollHeight - container.scrollTop - container.clientHeight;
+            // If user moves away from bottom beyond threshold, disable auto-scroll
+            if (dist > 40) {
+                state._statusAutoScrollEnabled = false;
+            } else {
+                // Near bottom again -> re-enable
+                state._statusAutoScrollEnabled = true;
+            }
+        }, { passive: true });
+        state._statusScrollInitialized = true;
     }
 
-    // Auto-scroll the latest step fully into view
-    if (!state.isMouseOverStatus) {
-        const lastStep = parentEl.querySelector(':scope > .status-step:last-of-type')
-            || DOM.statusWindowContent.querySelector('.status-step:last-of-type');
-        if (lastStep && typeof lastStep.scrollIntoView === 'function') {
-            lastStep.scrollIntoView({ behavior: 'auto', block: 'end' });
-        } else {
-            // Fallback
-            DOM.statusWindowContent.scrollTop = DOM.statusWindowContent.scrollHeight;
-        }
+    // If the container is at the very top (e.g., after plan reload), do not auto-stick.
+    if (container.scrollTop === 0) {
+        state._statusAutoScrollEnabled = false;
+    }
+
+    if (state._statusAutoScrollEnabled) {
+        // Use rAF to ensure layout finalized before scrolling
+        requestAnimationFrame(() => {
+            const lastStep = parentEl.querySelector(':scope > .status-step:last-of-type')
+                || container.querySelector('.status-step:last-of-type');
+            if (lastStep && typeof lastStep.scrollIntoView === 'function') {
+                lastStep.scrollIntoView({ behavior: 'auto', block: 'end' });
+            } else {
+                container.scrollTop = container.scrollHeight;
+            }
+        });
     }
 }
 

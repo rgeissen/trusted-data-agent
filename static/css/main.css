@@ -673,6 +673,17 @@ details.resource-selected > summary {
      transition: opacity 0.2s ease-in-out;
 }
 
+/* Keep the status window header visible while scrolling */
+#status-window > header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    /* Ensure header has an opaque-ish background so content doesn't show through */
+    background: var(--sidebar-bg, rgba(36, 52, 71, 0.98));
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
 /* Enable scrolling in status window and session history content */
 #status-window-content {
     overflow-y: auto !important;
@@ -684,6 +695,8 @@ details.resource-selected > summary {
     /* Important: set height explicitly to force scrollbar when content overflows */
     height: 100% !important;
     max-height: 100% !important;
+    padding-bottom: 96px; /* breathing space so last event is fully visible */
+    scroll-padding-bottom: 96px; /* align scrollIntoView end positioning */
 }
 
 /* Make scrollbar visible */
