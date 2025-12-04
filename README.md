@@ -22,13 +22,13 @@ Whether on-premises or in the cloud, you get **enterprise results** with **optim
 ### Table Of Contents
 
 1. [Core Principles: A Superior Approach](#core-principles-a-superior-approach)
-2. [Key Features](#-key-features)
+2. [Key Features](#key-features)
 3. [The Heart of the Application - The Engine & its Fusion Optimizer](#the-heart-of-the-application---the-engine-its-fusion-optimizer)
-4. [Retrieval-Augmented Generation (RAG) for Self-Improving AI](#-retrieval-augmented-generation-rag-for-self-improving-ai)
-5. [How It Works: Architecture](#%EF%B8%8F-how-it-works-architecture)
-6. [Installation and Setup Guide](#-installation-and-setup-guide)
+4. [Retrieval-Augmented Generation (RAG) for Self-Improving AI](#retrieval-augmented-generation-rag-for-self-improving-ai)
+5. [How It Works: Architecture](#how-it-works-architecture)
+6. [Installation and Setup Guide](#installation-and-setup-guide)
 7. [Developer Mode: Unlocking Models](#developer-mode-unlocking-models)
-8. [User Guide](#-user-guide)
+8. [User Guide](#user-guide)
    - [Getting Started](#getting-started)
    - [Using the Interface](#using-the-interface)
    - [Advanced Context Management](#advanced-context-management)
@@ -38,7 +38,7 @@ Whether on-premises or in the cloud, you get **enterprise results** with **optim
    - [Troubleshooting](#troubleshooting)
 9. [Docker Deployment](#docker-deployment)
 10. [License](#license)
-11. [Author & Contributions](#author--contributions)
+11. [Author & Contributions](#author-contributions)
 12. [Appendix: Feature Update List](#appendix-feature-update-list)
 
 
@@ -193,7 +193,7 @@ Build trust through complete visibility into every decision, action, and data po
 
 ### ⚡ Efficient: Intelligent Optimization Engine
 
-The Fusion Optimizer and self-improving RAG system deliver enterprise-grade performance, cost efficiency, and reliability. See the dedicated section below (**[The Heart of the Application - The Engine & its Fusion Optimizer](#the-heart-of-the-application---the-engine--its-fusion-optimizer)**) for comprehensive details on:
+The Fusion Optimizer and self-improving RAG system deliver enterprise-grade performance, cost efficiency, and reliability. See the dedicated section below (**[The Heart of the Application - The Engine & its Fusion Optimizer](#the-heart-of-the-application---the-engine-its-fusion-optimizer)**) for comprehensive details on:
 
 * Multi-layered strategic and tactical planning
 * Proactive optimization (Plan Hydration, Tactical Fast Path, Specialized Orchestrators)
