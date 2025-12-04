@@ -679,12 +679,13 @@ function ensureUserUUID() {
 
 /**
  * Fetches the current star count for the GitHub repository and updates the UI.
- * Only executes if GitHub API is enabled via the --gitcall flag.
+ * GitHub API is enabled by default. Use --nogitcall flag to disable.
  * Hides the button completely if disabled.
  */
 async function fetchGitHubStarCount() {
     const starButtonElement = document.querySelector('a[href="https://github.com/rgeissen/uderia"]');
     const starCountElement = document.getElementById('github-star-count');
+    const starIconElement = starButtonElement ? starButtonElement.querySelector('svg') : null;
     
     if (!starCountElement || !starButtonElement) {
         console.error('fetchGitHubStarCount: star elements not found');
@@ -696,8 +697,9 @@ async function fetchGitHubStarCount() {
         const settingsResponse = await fetch('/app-settings');
         if (settingsResponse.ok) {
             const settings = await settingsResponse.json();
+            console.log('GitHub API enabled status:', settings.github_api_enabled);
             if (!settings.github_api_enabled) {
-                console.log('GitHub API disabled. Use --gitcall flag to enable. Button hidden.');
+                console.log('GitHub API disabled. Use default (no --nogitcall flag) to enable. Button hidden.');
                 starButtonElement.style.display = 'none';
                 return;
             }
@@ -711,6 +713,7 @@ async function fetchGitHubStarCount() {
     }
 
     try {
+        console.log('Fetching GitHub star count from API...');
         const response = await fetch('https://api.github.com/repos/rgeissen/uderia', {
             method: 'GET',
             headers: {
@@ -723,6 +726,7 @@ async function fetchGitHubStarCount() {
         if (response.ok) {
             const data = await response.json();
             const starCount = data.stargazers_count || 0;
+            console.log('GitHub star count fetched:', starCount);
             // Format the number with comma separators
             starCountElement.textContent = starCount.toLocaleString('en-US');
             
@@ -739,6 +743,7 @@ async function fetchGitHubStarCount() {
             
         } else {
             const errorText = await response.text();
+            console.error('GitHub API response not OK:', response.status, errorText);
             starCountElement.textContent = '-';
         }
     } catch (error) {
