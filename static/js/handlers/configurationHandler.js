@@ -2592,16 +2592,22 @@ async function showProfileModal(profileId = null) {
             allTools = Object.values(resources.tools || {}).flat().map(t => t.name);
             allPrompts = Object.values(resources.prompts || {}).flat().map(p => p.name);
 
+            // For new profiles (isEdit=false), default all to checked
+            // For existing profiles with empty tools array (not yet classified or inheriting), default all to checked
+            // For existing profiles with populated arrays, respect their saved selections
+            const toolsNotYetConfigured = profile && (!profile.tools || profile.tools.length === 0);
+            const promptsNotYetConfigured = profile && (!profile.prompts || profile.prompts.length === 0);
+            
             toolsContainer.innerHTML = allTools.map(tool => `
                 <label class="flex items-center gap-2 text-sm text-gray-300">
-                    <input type="checkbox" value="${escapeHtml(tool)}" ${profile?.tools?.includes(tool) || profile?.tools?.includes('*') || !profile ? 'checked' : ''}>
+                    <input type="checkbox" value="${escapeHtml(tool)}" ${!isEdit || toolsNotYetConfigured || profile?.tools?.includes(tool) || profile?.tools?.includes('*') ? 'checked' : ''}>
                     ${escapeHtml(tool)}
                 </label>
             `).join('') || '<span class="text-gray-400">No tools found.</span>';
 
             promptsContainer.innerHTML = allPrompts.map(prompt => `
                 <label class="flex items-center gap-2 text-sm text-gray-300">
-                    <input type="checkbox" value="${escapeHtml(prompt)}" ${profile?.prompts?.includes(prompt) || profile?.prompts?.includes('*') || !profile ? 'checked' : ''}>
+                    <input type="checkbox" value="${escapeHtml(prompt)}" ${!isEdit || promptsNotYetConfigured || profile?.prompts?.includes(prompt) || profile?.prompts?.includes('*') ? 'checked' : ''}>
                     ${escapeHtml(prompt)}
                 </label>
             `).join('') || '<span class="text-gray-400">No prompts found.</span>';
@@ -2635,19 +2641,19 @@ async function showProfileModal(profileId = null) {
     
     // Helper function to create collection entry with toggles
     const createCollectionEntry = (coll, isPlanner) => {
-        // For planner collections: check ragCollections array
-        // For knowledge collections: check knowledgeConfig.collections array
+        // For new profiles (!isEdit), default all to checked
+        // For existing profiles being edited (isEdit=true), respect their saved selections
         let isQueryEnabled;
         if (isPlanner) {
-            isQueryEnabled = profile?.ragCollections?.includes(coll.id) || profile?.ragCollections?.includes('*') || !profile;
+            isQueryEnabled = !isEdit || profile?.ragCollections?.includes(coll.id) || profile?.ragCollections?.includes('*');
         } else {
             // Knowledge repository: check if it's in knowledgeConfig.collections
             const knowledgeCollectionIds = profile?.knowledgeConfig?.collections?.map(c => c.id) || [];
-            isQueryEnabled = knowledgeCollectionIds.includes(coll.id) || !profile;
+            isQueryEnabled = !isEdit || knowledgeCollectionIds.includes(coll.id);
         }
         
-        const isAutocompleteEnabled = profile?.autocompleteCollections?.includes(coll.id) || profile?.autocompleteCollections?.includes('*') || !profile;
-        // Knowledge repositories: default autocomplete to OFF
+        const isAutocompleteEnabled = !isEdit || profile?.autocompleteCollections?.includes(coll.id) || profile?.autocompleteCollections?.includes('*');
+        // Knowledge repositories: default autocomplete to OFF for both new and existing profiles
         const defaultAutocomplete = isPlanner ? isAutocompleteEnabled : false;
         
         // Use explicit Tailwind classes instead of string interpolation
