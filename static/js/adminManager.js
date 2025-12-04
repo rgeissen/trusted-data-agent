@@ -921,11 +921,15 @@ const AdminManager = {
         }).join('');
 
         // Add event listeners to checkboxes
-        tbody.querySelectorAll('.pane-visibility-checkbox').forEach(checkbox => {
+        const checkboxes = tbody.querySelectorAll('.pane-visibility-checkbox');
+        console.log(`[AdminManager] Found ${checkboxes.length} pane visibility checkboxes`);
+        
+        checkboxes.forEach(checkbox => {
             checkbox.addEventListener('change', (e) => {
                 const paneId = e.target.dataset.paneId;
                 const tier = e.target.dataset.tier;
                 const visible = e.target.checked;
+                console.log(`[AdminManager] Checkbox changed: paneId=${paneId}, tier=${tier}, visible=${visible}`);
                 this.updatePaneVisibility(paneId, tier, visible);
             });
         });
