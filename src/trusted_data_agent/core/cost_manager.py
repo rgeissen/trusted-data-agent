@@ -35,6 +35,9 @@ class CostManager:
         except ImportError:
             logger.warning("LiteLLM library not available - will use manual pricing only")
             self._litellm = None
+        
+        # Load bootstrap costs from tda_config.json if not already loaded
+        self._ensure_bootstrap_costs_loaded()
     
     def sync_from_litellm(self) -> Dict[str, any]:
         """
@@ -411,6 +414,90 @@ class CostManager:
                 logger.error(f"Failed to update fallback cost: {e}", exc_info=True)
                 db.rollback()
                 return False
+    
+    def _ensure_bootstrap_costs_loaded(self):
+        """
+        Load default costs from tda_config.json if not already loaded.
+        This is called during CostManager initialization to ensure bootstrap costs
+        are available without requiring manual sync.
+        """
+        import json
+        from pathlib import Path
+        
+        try:
+            # Check if we already have config_default entries
+            with get_db_session() as db:
+                stmt = select(LLMModelCost).where(LLMModelCost.source == 'config_default').limit(1)
+                existing = db.execute(stmt).scalar_one_or_none()
+                
+                if existing:
+                    logger.debug("Bootstrap costs already loaded")
+                    return
+            
+            # Load from tda_config.json
+            config_path = Path(__file__).parent.parent.parent.parent / 'tda_config.json'
+            
+            if not config_path.exists():
+                logger.warning(f"tda_config.json not found at {config_path} - skipping bootstrap costs")
+                return
+            
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            
+            default_costs = config.get('default_model_costs', [])
+            
+            if not default_costs:
+                logger.debug("No default_model_costs in tda_config.json")
+                return
+            
+            # Load bootstrap costs
+            with get_db_session() as db:
+                loaded_count = 0
+                
+                for cost_entry in default_costs:
+                    provider = cost_entry.get('provider')
+                    model = cost_entry.get('model')
+                    input_cost = cost_entry.get('input_cost_per_million')
+                    output_cost = cost_entry.get('output_cost_per_million')
+                    notes = cost_entry.get('notes', '')
+                    
+                    if not all([provider, model, input_cost is not None, output_cost is not None]):
+                        continue
+                    
+                    # Check if entry already exists (don't overwrite)
+                    stmt = select(LLMModelCost).where(
+                        LLMModelCost.provider == provider,
+                        LLMModelCost.model == model
+                    )
+                    existing = db.execute(stmt).scalar_one_or_none()
+                    
+                    if existing:
+                        continue
+                    
+                    # Insert config default
+                    import uuid
+                    new_cost = LLMModelCost(
+                        id=str(uuid.uuid4()),
+                        provider=provider,
+                        model=model,
+                        input_cost_per_million=input_cost,
+                        output_cost_per_million=output_cost,
+                        is_manual_entry=False,
+                        is_fallback=False,
+                        source='config_default',
+                        last_updated=datetime.now(timezone.utc),
+                        notes=notes
+                    )
+                    db.add(new_cost)
+                    loaded_count += 1
+                
+                db.commit()
+                
+                if loaded_count > 0:
+                    logger.info(f"Loaded {loaded_count} bootstrap costs from tda_config.json")
+                
+        except Exception as e:
+            logger.warning(f"Failed to load bootstrap costs: {e}")
 
 
 # Singleton instance

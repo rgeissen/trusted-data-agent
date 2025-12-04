@@ -110,7 +110,7 @@ class CostManagementHandler {
             const data = await response.json();
 
             if (response.ok) {
-                showToast(
+                window.showNotification(
                     `Sync completed: ${data.synced_count} models processed (${data.new_models.length} new, ${data.updated_models.length} updated)`,
                     data.errors.length > 0 ? 'warning' : 'success'
                 );
@@ -123,11 +123,11 @@ class CostManagementHandler {
                 await this.loadCostData();
                 await this.loadCostAnalytics();
             } else {
-                showToast(`Sync failed: ${data.message || 'Unknown error'}`, 'error');
+                window.showNotification(`Sync failed: ${data.message || 'Unknown error'}`, 'error');
             }
         } catch (error) {
             console.error('[CostManagement] Sync error:', error);
-            showToast(`Sync failed: ${error.message}`, 'error');
+            window.showNotification(`Sync failed: ${error.message}`, 'error');
         } finally {
             btn.disabled = false;
             btn.innerHTML = originalHTML;
@@ -143,19 +143,31 @@ class CostManagementHandler {
             });
 
             const data = await response.json();
-            console.log('[CostManagement] Loaded cost data:', { count: data.costs?.length, status: data.status });
+            console.log('[CostManagement] Loaded cost data:', { 
+                count: data.costs?.length, 
+                status: data.status,
+                responseOk: response.ok,
+                statusCode: response.status 
+            });
 
             if (response.ok) {
-                this.costs = data.costs;
+                this.costs = data.costs || [];
+                console.log('[CostManagement] Costs array set:', {
+                    costsLength: this.costs.length,
+                    firstCost: this.costs[0]
+                });
                 this.filterAndRenderCosts();
                 this.updateFallbackInputs();
             } else {
-                console.error('[CostManagement] Failed to load costs:', data);
-                showToast('Failed to load cost data', 'error');
+                console.error('[CostManagement] Failed to load costs:', {
+                    status: response.status,
+                    data: data
+                });
+                window.showNotification(`Failed to load cost data: ${data.message || 'Unknown error'}`, 'error');
             }
         } catch (error) {
             console.error('[CostManagement] Load costs error:', error);
-            showToast(`Failed to load cost data: ${error.message}`, 'error');
+            window.showNotification(`Failed to load cost data: ${error.message}`, 'error');
         }
     }
 
@@ -174,13 +186,23 @@ class CostManagementHandler {
             this.filteredCosts = nonFallbackCosts;
         }
 
-        // Sort: Manual entries first, then by provider/model
+        // Sort: config_default first, then manual entries, then LiteLLM entries
         this.filteredCosts.sort((a, b) => {
-            // Manual entries come first
-            if (a.is_manual_entry && !b.is_manual_entry) return -1;
-            if (!a.is_manual_entry && b.is_manual_entry) return 1;
+            // Priority order: config_default > manual > litellm
+            const getPriority = (cost) => {
+                if (cost.source === 'config_default') return 0;
+                if (cost.is_manual_entry || cost.source === 'manual') return 1;
+                return 2; // litellm or other
+            };
             
-            // Within same type, sort by provider then model
+            const priorityA = getPriority(a);
+            const priorityB = getPriority(b);
+            
+            if (priorityA !== priorityB) {
+                return priorityA - priorityB;
+            }
+            
+            // Within same priority, sort by provider then model
             if (a.provider !== b.provider) {
                 return a.provider.localeCompare(b.provider);
             }
@@ -353,7 +375,7 @@ class CostManagementHandler {
         const outputCost = parseFloat(outputField.value);
 
         if (isNaN(inputCost) || isNaN(outputCost) || inputCost < 0 || outputCost < 0) {
-            showToast('Invalid cost values', 'error');
+            window.showNotification('Invalid cost values', 'error');
             return;
         }
 
@@ -374,14 +396,14 @@ class CostManagementHandler {
             const data = await response.json();
 
             if (response.ok) {
-                showToast('Cost updated successfully', 'success');
+                window.showNotification('Cost updated successfully', 'success');
                 await this.loadCostData();
             } else {
-                showToast(`Update failed: ${data.message || 'Unknown error'}`, 'error');
+                window.showNotification(`Update failed: ${data.message || 'Unknown error'}`, 'error');
             }
         } catch (error) {
             console.error('[CostManagement] Update cost error:', error);
-            showToast(`Update failed: ${error.message}`, 'error');
+            window.showNotification(`Update failed: ${error.message}`, 'error');
         }
     }
 
@@ -401,14 +423,14 @@ class CostManagementHandler {
             const data = await response.json();
 
             if (response.ok) {
-                showToast('Cost entry deleted', 'success');
+                window.showNotification('Cost entry deleted', 'success');
                 await this.loadCostData();
             } else {
-                showToast(`Delete failed: ${data.message || 'Unknown error'}`, 'error');
+                window.showNotification(`Delete failed: ${data.message || 'Unknown error'}`, 'error');
             }
         } catch (error) {
             console.error('[CostManagement] Delete cost error:', error);
-            showToast(`Delete failed: ${error.message}`, 'error');
+            window.showNotification(`Delete failed: ${error.message}`, 'error');
         }
     }
 
@@ -422,7 +444,7 @@ class CostManagementHandler {
         const outputCost = parseFloat(outputField.value);
 
         if (isNaN(inputCost) || isNaN(outputCost) || inputCost < 0 || outputCost < 0) {
-            showToast('Invalid fallback cost values', 'error');
+            window.showNotification('Invalid fallback cost values', 'error');
             return;
         }
 
@@ -442,14 +464,14 @@ class CostManagementHandler {
             const data = await response.json();
 
             if (response.ok) {
-                showToast('Fallback cost updated successfully', 'success');
+                window.showNotification('Fallback cost updated successfully', 'success');
                 await this.loadCostData();
             } else {
-                showToast(`Update failed: ${data.message || 'Unknown error'}`, 'error');
+                window.showNotification(`Update failed: ${data.message || 'Unknown error'}`, 'error');
             }
         } catch (error) {
             console.error('[CostManagement] Save fallback cost error:', error);
-            showToast(`Update failed: ${error.message}`, 'error');
+            window.showNotification(`Update failed: ${error.message}`, 'error');
         }
     }
 
@@ -479,7 +501,7 @@ class CostManagementHandler {
 
     async addManualCost(provider, model, inputCost, outputCost, notes = null) {
         if (isNaN(inputCost) || isNaN(outputCost) || inputCost < 0 || outputCost < 0) {
-            showToast('Invalid cost values - must be positive numbers', 'error');
+            window.showNotification('Invalid cost values - must be positive numbers', 'error');
             return;
         }
 
@@ -502,15 +524,15 @@ class CostManagementHandler {
             const data = await response.json();
 
             if (response.ok) {
-                showToast(`Manual cost entry added for ${provider}/${model}`, 'success');
+                window.showNotification(`Manual cost entry added for ${provider}/${model}`, 'success');
                 await this.loadCostData();
                 await this.loadCostAnalytics();
             } else {
-                showToast(`Add failed: ${data.message || 'Unknown error'}`, 'error');
+                window.showNotification(`Add failed: ${data.message || 'Unknown error'}`, 'error');
             }
         } catch (error) {
             console.error('[CostManagement] Add manual cost error:', error);
-            showToast(`Add failed: ${error.message}`, 'error');
+            window.showNotification(`Add failed: ${error.message}`, 'error');
         }
     }
 
