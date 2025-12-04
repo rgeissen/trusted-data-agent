@@ -39,6 +39,11 @@ _initialize_sessions_dir()
 
 # --- Removed global _SESSIONS dictionary ---
 
+# --- Notification Deduplication Cache ---
+# Track last notification state per session to avoid spam
+# Key: session_id, Value: dict with provider, model, profile_tag
+_last_notification_state = {}
+
 # --- File I/O Helper Functions ---
 
 def _get_session_path(user_uuid: str, session_id: str) -> Path | None:
@@ -115,25 +120,40 @@ def _save_session(user_uuid: str, session_id: str, session_data: dict):
             json.dump(session_data, f, indent=2) # Use indent for readability
         app_logger.debug(f"Successfully saved session '{session_id}' for user '{user_uuid}'.")
 
-        # --- MODIFICATION START: Send session_model_update notification ---
+        # --- MODIFICATION START: Send session_model_update notification (with deduplication) ---
         notification_queues = APP_STATE.get("notification_queues", {}).get(user_uuid, set())
         if notification_queues:
-            notification_payload = {
-                "session_id": session_id,
-                "models_used": session_data.get("models_used", []),
-                "profile_tags_used": session_data.get("profile_tags_used", []),
-                "last_updated": session_data.get("last_updated"),
+            # Check if notification state has changed
+            current_state = {
                 "provider": session_data.get("provider"),
                 "model": session_data.get("model"),
-                "name": session_data.get("name", "Unnamed Session"),
+                "profile_tag": session_data.get("profile_tag"),
             }
-            app_logger.debug(f"_save_session sending notification for session {session_id}: provider={notification_payload['provider']}, model={notification_payload['model']}, profile_tags_used={notification_payload['profile_tags_used']}")
-            notification = {
-                "type": "session_model_update",
-                "payload": notification_payload
-            }
-            for queue in notification_queues:
-                asyncio.create_task(queue.put(notification))
+            last_state = _last_notification_state.get(session_id)
+            
+            # Only send notification if state changed or this is the first notification
+            if last_state != current_state:
+                notification_payload = {
+                    "session_id": session_id,
+                    "models_used": session_data.get("models_used", []),
+                    "profile_tags_used": session_data.get("profile_tags_used", []),
+                    "last_updated": session_data.get("last_updated"),
+                    "provider": current_state["provider"],
+                    "model": current_state["model"],
+                    "name": session_data.get("name", "Unnamed Session"),
+                }
+                app_logger.debug(f"_save_session sending notification for session {session_id}: provider={notification_payload['provider']}, model={notification_payload['model']}, profile_tags_used={notification_payload['profile_tags_used']} (state changed)")
+                notification = {
+                    "type": "session_model_update",
+                    "payload": notification_payload
+                }
+                for queue in notification_queues:
+                    asyncio.create_task(queue.put(notification))
+                
+                # Update cache
+                _last_notification_state[session_id] = current_state
+            else:
+                app_logger.debug(f"_save_session skipping notification for session {session_id}: state unchanged")
         # --- MODIFICATION END ---
 
         return True # Indicate success

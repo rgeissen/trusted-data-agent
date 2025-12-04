@@ -2171,7 +2171,15 @@ function performViewSwitch(viewId) {
     // 7. If switching to Executions view, initialize dashboard
     if (viewId === 'executions-view') {
         if (window.executionDashboard) {
-            window.executionDashboard.initialize();
+            // Initialize once, then always refresh when entering the view
+            if (!window.executionDashboard._isInitialized) {
+                window.executionDashboard.initialize();
+                window.executionDashboard._isInitialized = true;
+            } else {
+                // Refresh data and restart auto-refresh when re-entering the view
+                window.executionDashboard.refreshDashboard();
+                window.executionDashboard.startAutoRefresh();
+            }
         } else {
             console.error('[UI DEBUG] ExecutionDashboard not initialized');
         }

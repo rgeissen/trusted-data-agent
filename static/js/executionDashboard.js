@@ -13,7 +13,7 @@ class ExecutionDashboard {
         this.hasViewAllSessionsFeature = false;
         this.refreshInterval = null;
         this.autoRefreshEnabled = true;
-        this.refreshIntervalMs = 30000; // 30 seconds
+        this.refreshIntervalMs = 60000; // 60 seconds (reduced from 30 to minimize server load)
     }
 
     /**
