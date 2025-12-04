@@ -695,8 +695,8 @@ details.resource-selected > summary {
     /* Important: set height explicitly to force scrollbar when content overflows */
     height: 100% !important;
     max-height: 100% !important;
-    padding-bottom: 96px; /* breathing space so last event is fully visible */
-    scroll-padding-bottom: 96px; /* align scrollIntoView end positioning */
+    padding-bottom: 128px; /* extra breathing space for last event visibility */
+    scroll-padding-bottom: 128px; /* align scrollIntoView end positioning */
 }
 
 /* Make scrollbar visible */
@@ -929,6 +929,7 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
 
 .status-item:hover .status-label {
     color: white;
+    scroll-margin-bottom: 128px; /* ensure last step scrolled into view is fully visible */
     text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
     letter-spacing: 0.1em;
 }
