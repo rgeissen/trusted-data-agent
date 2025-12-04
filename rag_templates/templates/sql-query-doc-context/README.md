@@ -152,5 +152,5 @@ Be specific with context topics:
 MIT License - See LICENSE file for details
 
 ## Support
-- GitHub Issues: https://github.com/rgeissen/trusted-data-agent/issues
-- Documentation: https://github.com/rgeissen/trusted-data-agent/docs
+- GitHub Issues: https://github.com/rgeissen/uderia/issues
+- Documentation: https://github.com/rgeissen/uderia/docs

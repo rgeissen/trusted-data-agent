@@ -1,16 +1,16 @@
 version: '3.8'
 
 services:
-  trusted-data-agent:
+  uderia:
     # This 'build' section tells Compose to use your Dockerfile
     build:
       context: . # Assumes Dockerfile is in this directory
       dockerfile: Dockerfile
     # This will be the name of the image after it's built
-    image: trusted-data-agent-v10:latest
+    image: uderia-v10:latest
     
     # This is the container name from your JSON config
-    container_name: trusted-data-agent-v10
+    container_name: uderia-v10
     
     # This 'command' overrides the default CMD in the Dockerfile
     # It's taken directly from the "cmd" field in your JSON
@@ -23,9 +23,9 @@ services:
       
     volumes:
       # Mount the entire application directory for development
-      # IMPORTANT: Ensure /volume2/docker/trusted-data-agent-v10 contains your latest code
+      # IMPORTANT: Ensure /volume2/docker/uderia-v10 contains your latest code
       # including all fixes for authentication and configuration
-      - /volume2/docker/trusted-data-agent-v10:/app
+      - /volume2/docker/uderia-v10:/app
       
     environment:
       # Application-specific variables

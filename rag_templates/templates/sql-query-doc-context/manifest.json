@@ -6,10 +6,10 @@
   "description": "Two-phase strategy: Execute SQL statement and generate final report. Generates question/SQL pairs from technical documentation (DBA guides, performance docs) with configurable context topics.",
   "author": "TDA Core Team",
   "license": "MIT",
-  "homepage": "https://github.com/rgeissen/trusted-data-agent",
+  "homepage": "https://github.com/rgeissen/uderia",
   "repository": {
     "type": "git",
-    "url": "https://github.com/rgeissen/trusted-data-agent"
+    "url": "https://github.com/rgeissen/uderia"
   },
   "keywords": [
     "sql",

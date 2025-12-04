@@ -6,10 +6,10 @@
   "description": "Document-based knowledge repository with chunking strategies for semantic search. Upload PDFs, DOCX, TXT, or MD files for RAG retrieval without MCP requirements.",
   "author": "TDA Core Team",
   "license": "AGPL-3.0",
-  "homepage": "https://github.com/rgeissen/trusted-data-agent",
+  "homepage": "https://github.com/rgeissen/uderia",
   "repository": {
     "type": "git",
-    "url": "https://github.com/rgeissen/trusted-data-agent"
+    "url": "https://github.com/rgeissen/uderia"
   },
   "keywords": [
     "knowledge",

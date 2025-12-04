@@ -350,6 +350,6 @@ See `TEMPLATE_PLUGIN_DEVELOPMENT.md` for detailed guide on:
 ## Support
 
 For issues or questions:
-- GitHub: https://github.com/rgeissen/trusted-data-agent
+- GitHub: https://github.com/rgeissen/uderia
 - Check logs: `logs/` directory
 - Validate templates: Check browser console and server logs

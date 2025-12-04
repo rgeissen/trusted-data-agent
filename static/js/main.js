@@ -683,7 +683,7 @@ function ensureUserUUID() {
  * Hides the button completely if disabled.
  */
 async function fetchGitHubStarCount() {
-    const starButtonElement = document.querySelector('a[href="https://github.com/rgeissen/trusted-data-agent"]');
+    const starButtonElement = document.querySelector('a[href="https://github.com/rgeissen/uderia"]');
     const starCountElement = document.getElementById('github-star-count');
     
     if (!starCountElement || !starButtonElement) {
@@ -711,7 +711,7 @@ async function fetchGitHubStarCount() {
     }
 
     try {
-        const response = await fetch('https://api.github.com/repos/rgeissen/trusted-data-agent', {
+        const response = await fetch('https://api.github.com/repos/rgeissen/uderia', {
             method: 'GET',
             headers: {
                 'Accept': 'application/vnd.github.v3+json'

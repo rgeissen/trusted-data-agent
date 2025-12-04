@@ -805,8 +805,8 @@ Option 2: Shared Container → TDA_CONFIGURATION_PERSISTENCE=false (sequential a
 ### Step 1: Clone the Repository
 
 ```
-git clone [https://github.com/rgeissen/trusted-data-agent.git](https://github.com/rgeissen/trusted-data-agent.git)
-cd trusted-data-agent
+git clone [https://github.com/rgeissen/uderia.git](https://github.com/rgeissen/uderia.git)
+cd uderia
 
 ```
 
@@ -878,7 +878,7 @@ Copy and paste the following content into `pyproject.toml`:
 
 ```
 [project]
-name = "trusted-data-agent"
+name = "uderia"
 version = "0.1.0"
 requires-python = ">=3.8"
 
@@ -1597,14 +1597,14 @@ The Uderia Platform can be deployed in Docker containers for production use, tes
 
 ```bash
 # Build the image
-docker build -t trusted-data-agent:latest .
+docker build -t uderia:latest .
 
 # Run with persistence disabled (recommended for shared/testing environments)
 docker run -d \
   -p 5050:5000 \
   -e TDA_CONFIGURATION_PERSISTENCE=false \
   -e CORS_ALLOWED_ORIGINS=https://your-domain.com \
-  trusted-data-agent:latest
+  uderia:latest
 ```
 
 ### Multi-User Deployment Considerations
@@ -1727,7 +1727,7 @@ Under the AGPLv3, you are free to use, modify, and distribute this software. How
 
 * **Source Code & Contributions:** The Uderia Platform is licensed under the GNU Affero General Public License v3.0. Contributions are highly welcome. Please visit the main Git repository to report issues or submit pull requests.
 
-* **Git Repository:** <https://github.com/rgeissen/trusted-data-agent.git>
+* **Git Repository:** <https://github.com/rgeissen/uderia.git>
 
 ## Appendix: Feature Update List
 

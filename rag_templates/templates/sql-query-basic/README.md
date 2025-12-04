@@ -250,8 +250,8 @@ AGPL-3.0 - See LICENSE file
 
 ## Support
 
-- **Documentation**: https://github.com/rgeissen/trusted-data-agent/docs
-- **Issues**: https://github.com/rgeissen/trusted-data-agent/issues
+- **Documentation**: https://github.com/rgeissen/uderia/docs
+- **Issues**: https://github.com/rgeissen/uderia/issues
 - **Template Guide**: See `TEMPLATE_PLUGIN_DEVELOPMENT.md`
 
 ## Related Templates

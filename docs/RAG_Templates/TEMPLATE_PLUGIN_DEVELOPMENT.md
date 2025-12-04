@@ -357,6 +357,6 @@ See existing templates for reference:
 ## Support
 
 For questions or issues:
-- GitHub: https://github.com/rgeissen/trusted-data-agent
+- GitHub: https://github.com/rgeissen/uderia
 - Check server logs for template loading errors
 - Validate JSON syntax in manifest and template files

@@ -212,4 +212,4 @@ AGPL-3.0
 
 ## Support
 
-For issues or questions, please visit: https://github.com/rgeissen/trusted-data-agent
+For issues or questions, please visit: https://github.com/rgeissen/uderia

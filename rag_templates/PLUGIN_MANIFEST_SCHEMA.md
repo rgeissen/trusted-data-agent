@@ -272,10 +272,10 @@ See `schemas/README.md` for complete template validation rules.
   "description": "Two-phase strategy: Execute SQL statement and generate final report",
   "author": "TDA Core Team",
   "license": "AGPL-3.0",
-  "homepage": "https://github.com/rgeissen/trusted-data-agent",
+  "homepage": "https://github.com/rgeissen/uderia",
   "repository": {
     "type": "git",
-    "url": "https://github.com/rgeissen/trusted-data-agent"
+    "url": "https://github.com/rgeissen/uderia"
   },
   "keywords": ["sql", "database", "query", "teradata", "postgresql"],
   "compatibility": {
