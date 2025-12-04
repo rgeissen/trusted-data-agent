@@ -99,7 +99,7 @@ def test_profile_badges_after_restart():
     try:
         # Step 4: Inspect session JSON file
         print("[4] Checking session file...")
-        session_file = Path(f"/Users/rainer.geissendoerfer/my_private_code/trusted-data-agent/tda_sessions/{user_uuid}/{session_id}.json")
+        session_file = Path(f"/Users/rainer.geissendoerfer/my_private_code/uderia/tda_sessions/{user_uuid}/{session_id}.json")
         
         if not session_file.exists():
             print(f"❌ Session file not found: {session_file}")

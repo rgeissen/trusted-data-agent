@@ -114,7 +114,7 @@ jq --version  # Install: brew install jq (macOS) or apt-get install jq (Linux)
 
 ```bash
 # Python (recommended)
-cd /Users/rainer.geissendoerfer/my_private_code/trusted-data-agent
+cd /Users/rainer.geissendoerfer/my_private_code/uderia
 python test/test_session_creation_methods.py
 
 # You'll be prompted for credentials, then it will:
@@ -125,7 +125,7 @@ python test/test_session_creation_methods.py
 
 ```bash
 # Bash
-cd /Users/rainer.geissendoerfer/my_private_code/trusted-data-agent
+cd /Users/rainer.geissendoerfer/my_private_code/uderia
 bash test/test_session_creation_methods.sh
 
 # Same flow as Python, but using curl and jq

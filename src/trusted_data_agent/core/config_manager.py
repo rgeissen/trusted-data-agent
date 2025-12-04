@@ -38,8 +38,9 @@ class ConfigManager:
             config_path: Path to the config file. If None, uses project root.
         """
         if config_path is None:
-            # Calculate project root (3 levels up from this file)
-            project_root = Path(__file__).resolve().parents[3]
+            # Use the get_project_root utility to find the correct project root
+            from trusted_data_agent.core.utils import get_project_root
+            project_root = get_project_root()
             config_path = project_root / self.DEFAULT_CONFIG_FILENAME
         
         self.config_path = Path(config_path)

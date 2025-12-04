@@ -251,9 +251,10 @@ def create_app():
                 from trusted_data_agent.agent.rag_retriever import RAGRetriever
                 from trusted_data_agent.agent.rag_template_manager import get_template_manager
                 from trusted_data_agent.core.config_manager import get_config_manager
+                from trusted_data_agent.core.utils import get_project_root
                 
-                # Calculate paths
-                project_root = Path(__file__).resolve().parents[2]
+                # Calculate paths using get_project_root to handle both installed and editable installs
+                project_root = get_project_root()
                 rag_cases_dir = project_root / APP_CONFIG.RAG_CASES_DIR
                 persist_dir = project_root / APP_CONFIG.RAG_PERSIST_DIR
                 

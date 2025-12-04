@@ -74,7 +74,7 @@ Implemented `_rerank_knowledge_with_llm()`:
 - Graceful fallback to similarity order on errors
 
 ### Task 7: Prompt Template Update ✅
-**File**: `trusted-data-agent-license/encrypt_prompts.py`
+**File**: `uderia-license/encrypt_prompts.py`
 
 Added `{knowledge_context}` placeholder to `WORKFLOW_META_PLANNING_PROMPT`:
 - Placed after `{rag_few_shot_examples}` for proper context ordering
@@ -257,7 +257,7 @@ All files pass Pylance validation:
 - `src/trusted_data_agent/agent/planner.py` (+330 lines)
 
 ### Prompt Templates
-- `trusted-data-agent-license/encrypt_prompts.py` (+3 lines)
+- `uderia-license/encrypt_prompts.py` (+3 lines)
 - `src/trusted_data_agent/agent/prompts.dat` (regenerated)
 
 ### Documentation

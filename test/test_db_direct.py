@@ -2,7 +2,9 @@
 """Direct database test to isolate the issue."""
 
 import sys
-sys.path.insert(0, '/Users/rainergeissendoerfer/my_private_code/trusted-data-agent/src')
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 from trusted_data_agent.core.collection_db import CollectionDatabase
 

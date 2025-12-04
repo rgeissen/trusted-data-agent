@@ -252,7 +252,7 @@ curl -X GET http://localhost:5000/api/v1/sessions \
 curl http://localhost:5000/
 
 # Start the server
-cd /path/to/trusted-data-agent
+cd /path/to/uderia
 python -m trusted_data_agent.main
 ```
 

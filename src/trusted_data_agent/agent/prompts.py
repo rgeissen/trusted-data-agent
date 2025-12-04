@@ -26,7 +26,8 @@ def _verify_license_and_load_prompts():
     global _LOADED_PROMPTS
 
     # --- 1. Define Paths ---
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    from trusted_data_agent.core.utils import get_project_root
+    project_root = str(get_project_root())
     keys_dir = os.path.join(project_root, "tda_keys")
     public_key_path = os.path.join(keys_dir, "public_key.pem")
     license_path = os.path.join(keys_dir, "license.key")

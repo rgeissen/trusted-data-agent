@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import uuid # Import uuid
+from pathlib import Path
 
 try:
     from google.cloud import texttospeech
@@ -14,6 +15,48 @@ except ImportError:
 from trusted_data_agent.core.config import APP_STATE, AppConfig
 
 app_logger = logging.getLogger("quart.app")
+
+
+def get_project_root() -> Path:
+    """
+    Get the correct project root directory.
+    
+    Works by finding the location of the tda_auth.db or tda_config.json files
+    or by looking for the uderia/rag/trusted_data_agent markers.
+    
+    This solves the issue where pip install -e . installs from one location
+    but the application actually runs from another.
+    
+    Returns:
+        Path to the project root (uderia directory)
+    """
+    # First, check if TDA_AUTH_DB_URL environment variable points us to the right place
+    db_url = os.environ.get('TDA_AUTH_DB_URL', '')
+    if db_url.startswith('sqlite:///'):
+        db_path = Path(db_url.replace('sqlite:///', ''))
+        if db_path.exists():
+            return db_path.parent
+    
+    # Check common locations where tda_config.json might be
+    current_script = Path(__file__).resolve()
+    
+    # Go up from this file (src/trusted_data_agent/core/utils.py) -> 3 levels to project root
+    candidate = current_script.parents[3]
+    if (candidate / "tda_config.json").exists() or (candidate / "tda_auth.db").exists():
+        return candidate
+    
+    # If the above doesn't work, try checking current working directory
+    cwd = Path.cwd()
+    if (cwd / "tda_config.json").exists() or (cwd / "tda_auth.db").exists():
+        return cwd
+    
+    # Check if there's a pyproject.toml or setup.py indicating this is the project root
+    if (cwd / "pyproject.toml").exists() and (cwd / "src" / "trusted_data_agent").exists():
+        return cwd
+    
+    # Fallback to the calculated path (original behavior)
+    app_logger.warning(f"Could not find project root markers, using calculated path: {candidate}")
+    return candidate
 
 # --- MODIFICATION START: Add generate_task_id function ---
 def generate_task_id() -> str:

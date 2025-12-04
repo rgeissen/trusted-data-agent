@@ -52,7 +52,7 @@ print(f"  Profile tags used: {session_with_override.get('profile_tags_used')}")
 print()
 
 # Load the session file directly
-session_file = Path(f"/Users/rainer.geissendoerfer/my_private_code/trusted-data-agent/tda_sessions/{user_uuid}/{session_id}.json")
+session_file = Path(f"/Users/rainer.geissendoerfer/my_private_code/uderia/tda_sessions/{user_uuid}/{session_id}.json")
 
 if not session_file.exists():
     print(f"❌ Session file not found: {session_file}")

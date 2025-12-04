@@ -531,7 +531,7 @@ Content-Type: application/json
 ### File Structure
 
 ```
-trusted-data-agent/
+uderia/
 ├── src/trusted_data_agent/
 │   ├── api/
 │   │   └── rest_routes.py          # Marketplace endpoints
@@ -850,7 +850,7 @@ The Intelligence Marketplace transforms the Uderia Platform from a single-user t
 - Frontend: `static/js/handlers/marketplaceHandler.js` (~765 lines)
 
 **Contact:**
-- Project Repo: [trusted-data-agent](https://github.com/your-org/trusted-data-agent)
+- Project Repo: [uderia](https://github.com/your-org/uderia)
 - Issues: GitHub Issues tracker
 - Discussions: GitHub Discussions
 

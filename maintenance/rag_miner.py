@@ -207,10 +207,10 @@ class SessionMiner:
 
 if __name__ == '__main__':
     # --- MODIFICATION START: Correct project root and default path logic ---
-    # SCRIPT_DIR is .../trusted-data-agent/docs/RAG
+    # SCRIPT_DIR is .../uderia/maintenance
     SCRIPT_DIR = Path(__file__).resolve().parent 
-    # PROJECT_ROOT is .../trusted-data-agent (go up 2 levels)
-    PROJECT_ROOT = SCRIPT_DIR.parent.parent
+    # PROJECT_ROOT is .../uderia (go up 1 level)
+    PROJECT_ROOT = SCRIPT_DIR.parent
     # Use the correct, original default paths
     DEFAULT_SESSIONS_DIR = PROJECT_ROOT / "tda_sessions"
     DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "rag" / "tda_rag_cases"

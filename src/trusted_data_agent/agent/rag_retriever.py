@@ -1842,7 +1842,7 @@ class RAGRetriever:
 if __name__ == "__main__":
     # Assuming tda_rag_cases is in the parent directory of this script
     script_dir = Path(__file__).resolve().parent
-    project_root = script_dir.parent.parent.parent # trusted-data-agent
+    project_root = script_dir.parent.parent.parent # uderia
     rag_cases_dir = project_root / "rag" / "tda_rag_cases"
     persist_dir = project_root / ".chromadb_rag_cache" # Persistent storage for ChromaDB
 

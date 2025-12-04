@@ -12,15 +12,14 @@ import google.generativeai as genai
 from trusted_data_agent.agent.prompts import PROVIDER_SYSTEM_PROMPTS
 # --- MODIFICATION START: Import APP_CONFIG ---
 from trusted_data_agent.core.config import APP_STATE, APP_CONFIG
-from trusted_data_agent.core.utils import generate_session_id # Import generate_session_id
+from trusted_data_agent.core.utils import generate_session_id, get_project_root # Import generate_session_id and get_project_root
 from trusted_data_agent.agent.rag_template_generator import RAGTemplateGenerator
 # --- MODIFICATION END ---
 
 
 # --- Define SESSIONS_DIR relative to project root ---
-# Assume this script is in src/trusted_data_agent/core
-# Go up three levels to get to the project root
-_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+# Use the new get_project_root() function to find the correct project root
+_PROJECT_ROOT = get_project_root()
 SESSIONS_DIR = _PROJECT_ROOT / "tda_sessions"
 
 

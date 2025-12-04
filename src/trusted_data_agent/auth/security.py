@@ -39,8 +39,10 @@ def _get_or_create_jwt_secret() -> str:
         logger.info("Using JWT secret key from TDA_JWT_SECRET_KEY environment variable")
         return env_key
     
-    # Check for persistent key file
-    key_dir = Path(__file__).parent.parent.parent.parent / 'tda_keys'
+    # Use get_project_root to find the correct location
+    from trusted_data_agent.core.utils import get_project_root
+    project_root = get_project_root()
+    key_dir = project_root / 'tda_keys'
     key_file = key_dir / 'jwt_secret.key'
     
     try:

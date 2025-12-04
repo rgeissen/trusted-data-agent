@@ -94,7 +94,7 @@ Both processes connect to the same `.chromadb_rag_cache/` database. If both are 
 
 ### Basic Command
 
-From the `trusted-data-agent` root directory:
+From the `uderia` root directory:
 
 ```bash
 # Ensure your virtual environment is active

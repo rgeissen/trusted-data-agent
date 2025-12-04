@@ -164,7 +164,7 @@ def test_profile_override_per_message():
     try:
         # Step 7: Inspect session history for profile tags
         print("[8] Checking session history for profile tags...")
-        session_file = Path(f"/Users/rainer.geissendoerfer/my_private_code/trusted-data-agent/tda_sessions/{user_uuid}/{session_id}.json")
+        session_file = Path(f"/Users/rainer.geissendoerfer/my_private_code/uderia/tda_sessions/{user_uuid}/{session_id}.json")
         
         if not session_file.exists():
             print(f"❌ Session file not found: {session_file}")

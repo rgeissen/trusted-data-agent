@@ -33,7 +33,7 @@ docker run -d \
   -p 5050:5000 \
   -e TDA_CONFIGURATION_PERSISTENCE=false \
   -e CORS_ALLOWED_ORIGINS=https://your-domain.com \
-  trusted-data-agent:latest
+  uderia:latest
 ```
 
 ## User Experience

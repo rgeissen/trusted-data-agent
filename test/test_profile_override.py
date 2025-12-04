@@ -104,7 +104,7 @@ def test_profile_override():
         print(f"✓ Query submitted: {task_id_default}")
         
         # Check which profile was used
-        session_file = Path(f"/Users/rainer.geissendoerfer/my_private_code/trusted-data-agent/tda_sessions/{user_uuid}/{session_id}.json")
+        session_file = Path(f"/Users/rainer.geissendoerfer/my_private_code/uderia/tda_sessions/{user_uuid}/{session_id}.json")
         with open(session_file) as f:
             session_data = json.load(f)
         

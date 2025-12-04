@@ -1,4 +1,4 @@
-# Uderia Platform
+# Uderia Platform - Your Trusted Data Agent
 ### Cloud-Level Reasoning. Zero-Trust Privacy.
 
 The **Uderia Platform** delivers enterprise-grade AI orchestration with unmatched flexibility. Whether you leverage hyperscaler intelligence for maximum capability, run private local models for absolute sovereignty, or blend both approaches, you get cloud-level reasoning with complete control over your data and costs.
@@ -1625,7 +1625,7 @@ docker run -d \
   -v $(pwd)/tda_auth.db:/app/tda_auth.db \
   -v $(pwd)/tda_sessions:/app/tda_sessions \
   -e CORS_ALLOWED_ORIGINS=https://your-domain.com \
-  trusted-data-agent:latest
+  uderia:latest
 ```
 
 **Important Security Steps:**

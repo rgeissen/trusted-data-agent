@@ -29,7 +29,7 @@ async def test():
         print(f"✓ Session created: {session_id}")
         
         # Check the file
-        session_file = Path(f"/Users/rainer.geissendoerfer/my_private_code/trusted-data-agent/tda_sessions/{user_uuid}/{session_id}.json")
+        session_file = Path(f"/Users/rainer.geissendoerfer/my_private_code/uderia/tda_sessions/{user_uuid}/{session_id}.json")
         
         if session_file.exists():
             import json
