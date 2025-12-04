@@ -23,7 +23,7 @@ Whether on-premises or in the cloud, you get **enterprise results** with **optim
 
 1. [Core Principles: A Superior Approach](#core-principles-a-superior-approach)
 2. [Key Features](#-key-features)
-3. [The Heart of the Application - The Engine & its Fusion Optimizer](#-the-heart-of-the-application---the-engine--its-fusion-optimizer)
+3. [The Heart of the Application - The Engine & its Fusion Optimizer](#the-heart-of-the-application---the-engine-its-fusion-optimizer)
 4. [Retrieval-Augmented Generation (RAG) for Self-Improving AI](#-retrieval-augmented-generation-rag-for-self-improving-ai)
 5. [How It Works: Architecture](#%EF%B8%8F-how-it-works-architecture)
 6. [Installation and Setup Guide](#-installation-and-setup-guide)
