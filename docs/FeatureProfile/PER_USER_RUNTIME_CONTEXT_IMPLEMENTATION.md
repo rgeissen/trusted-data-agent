@@ -3,7 +3,7 @@
 ## Status: PHASES 1-4 COMPLETE ✅
 
 ## Overview
-Implementation of per-user runtime context isolation to prevent configuration conflicts when multiple users execute sessions in parallel with `TDA_CONFIGURATION_PERSISTENCE=false`.
+Implementation of per-user runtime context isolation to prevent configuration conflicts when multiple users execute sessions in parallel.
 
 **All core phases complete!** The system now supports full multi-user isolation with automatic memory cleanup.
 
@@ -64,7 +64,7 @@ Added 19 helper functions to `config.py`:
    - `APP_STATE['server_configs']` → `set_user_server_configs(temp_server_configs, user_uuid)`
 5. Updated call to `mcp_adapter.load_and_categorize_mcp_resources()` to pass `user_uuid`
 
-**Impact**: Configuration changes now isolated per user when `TDA_CONFIGURATION_PERSISTENCE=false`
+**Impact**: Configuration changes now isolated per user.
 
 #### File 2: `src/trusted_data_agent/api/routes.py`
 **Changes**:
@@ -131,7 +131,7 @@ Added 19 helper functions to `config.py`:
 **Changes**:
 1. Added `user_context_cleanup_worker()` async function that:
    - Reads environment variables for configuration
-   - Only runs when `TDA_CONFIGURATION_PERSISTENCE=false` (multi-user mode)
+   
    - Periodically calls `cleanup_inactive_user_contexts()` based on interval
    - Handles errors gracefully without crashing
 2. Started cleanup worker as background task in `create_app()` during startup
@@ -146,7 +146,7 @@ Added 19 helper functions to `config.py`:
 - [ ] Unit tests for all 19 helper functions in `config.py`
 - [ ] Integration tests for multi-user parallel execution scenarios
 - [ ] Test profile override with multiple concurrent users
-- [ ] Verify backward compatibility with `TDA_CONFIGURATION_PERSISTENCE=true`
+
 
 ### Documentation
 - [ ] Update README.md with multi-user configuration behavior
@@ -159,7 +159,7 @@ Added 19 helper functions to `config.py`:
 All `set_user_*()` helpers implement:
 ```python
 def set_user_provider(value, user_uuid=None):
-    if not APP_CONFIG.CONFIGURATION_PERSISTENCE and user_uuid:
+    if user_uuid:
         context = get_user_runtime_context(user_uuid)
         context['provider'] = value
     APP_CONFIG.CURRENT_PROVIDER = value  # Always update global
@@ -200,14 +200,7 @@ All modified files pass Python syntax checks with no errors.
 
 ### Environment Variables
 
-**Multi-User Mode:**
-```bash
-# Enable multi-user mode (disable configuration persistence)
-export TDA_CONFIGURATION_PERSISTENCE=false
 
-# Filter sessions by user UUID
-export TDA_SESSIONS_FILTER_BY_USER=true
-```
 
 **Cleanup Settings:**
 ```bash
@@ -218,30 +211,12 @@ export TDA_USER_CONTEXT_CLEANUP_INTERVAL=300
 export TDA_USER_CONTEXT_MAX_AGE_HOURS=24
 ```
 
-## Next Steps
 
-1. **Test the Implementation**:
-   ```bash
-   # Set environment for multi-user mode
-   export TDA_CONFIGURATION_PERSISTENCE=false
-   export TDA_SESSIONS_FILTER_BY_USER=true
-   export TDA_USER_CONTEXT_CLEANUP_INTERVAL=300
-   export TDA_USER_CONTEXT_MAX_AGE_HOURS=24
-   
-   # Start the application
-   python -m trusted_data_agent.main
-   
-   # Test with multiple concurrent users making different configurations
-   ```
-
-2. **Write Tests**: Create comprehensive test suite for per-user isolation
-
-3. **Monitor**: Track memory usage of `USER_RUNTIME_CONTEXTS` in production using logs
 
 ## Benefits Achieved
 
 ✅ **Isolation**: User A can configure Amazon/Claude while User B uses Google/Gemini simultaneously
-✅ **Backward Compatible**: Works with both `TDA_CONFIGURATION_PERSISTENCE=true/false`
+
 ✅ **Incremental**: Changes applied gradually without breaking existing functionality
 ✅ **Memory Efficient**: Cleanup task prevents unbounded growth of runtime contexts
 ✅ **Profile Support**: Profile overrides (@TAG) now work correctly in multi-user scenarios

@@ -263,7 +263,7 @@ Maintain complete control over your data exposure strategy with flexible deploym
   - Single-user development (local Python process)
   - Multi-user production (load-balanced containers or shared instance)
   - HTTPS support via reverse proxy configuration
-  - `TDA_CONFIGURATION_PERSISTENCE` flag for shared deployments
+  
   - Docker volume mounts for persistent data
 
 * **Voice Conversation Privacy**: Optional Google Cloud TTS with user-provided credentials:
@@ -768,7 +768,7 @@ Local Machine → Python Process → localhost:5050
 **Multi-User (Production):**
 ```
 Option 1: Load Balancer → Multiple Container Instances (port 5050, 5051, 5052...)
-Option 2: Shared Container → TDA_CONFIGURATION_PERSISTENCE=false (sequential access)
+
 ```
 
 **Security Considerations:**
@@ -776,7 +776,7 @@ Option 2: Shared Container → TDA_CONFIGURATION_PERSISTENCE=false (sequential a
 - **Credentials:** LLM/MCP credentials never logged or exposed in UI
 - **Isolation:** Session data segregated by user UUID
 - **Transport:** HTTPS recommended for production (configure via reverse proxy)
-- **Configuration:** `TDA_CONFIGURATION_PERSISTENCE=false` for multi-user shared deployments
+
 
 [⬆️ Back to Table of Contents](#table-of-contents)
 
@@ -1602,7 +1602,7 @@ docker build -t uderia:latest .
 # Run with persistence disabled (recommended for shared/testing environments)
 docker run -d \
   -p 5050:5050 \
-  -e TDA_CONFIGURATION_PERSISTENCE=false \
+  
   -e CORS_ALLOWED_ORIGINS=https://your-domain.com \
   uderia:latest
 ```
@@ -1666,7 +1666,7 @@ You can bake MCP Server configuration into the Docker image:
 2. **Build the image** - MCP configuration is included
 3. **Users only need to configure LLM credentials** - much simpler onboarding!
 
-**Note:** Pre-configured MCP servers persist even with `TDA_CONFIGURATION_PERSISTENCE=false`, while user LLM credentials remain session-only.
+
 
 ### Detailed Docker Documentation
 

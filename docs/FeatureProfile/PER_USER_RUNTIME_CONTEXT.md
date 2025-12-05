@@ -89,56 +89,56 @@ def get_user_runtime_context(user_uuid: str) -> dict:
 
 def get_user_provider(user_uuid: str = None) -> str:
     """Get current provider for user. Falls back to global if no user_uuid."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
+    if user_uuid:
         return get_user_runtime_context(user_uuid).get("provider")
     return APP_CONFIG.CURRENT_PROVIDER
 
 
 def set_user_provider(provider: str, user_uuid: str = None):
     """Set current provider for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
+    if user_uuid:
         get_user_runtime_context(user_uuid)["provider"] = provider
     APP_CONFIG.CURRENT_PROVIDER = provider  # Also set global for backward compatibility
 
 
 def get_user_model(user_uuid: str = None) -> str:
     """Get current model for user. Falls back to global if no user_uuid."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
+    if user_uuid:
         return get_user_runtime_context(user_uuid).get("model")
     return APP_CONFIG.CURRENT_MODEL
 
 
 def set_user_model(model: str, user_uuid: str = None):
     """Set current model for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
+    if user_uuid:
         get_user_runtime_context(user_uuid)["model"] = model
     APP_CONFIG.CURRENT_MODEL = model  # Also set global for backward compatibility
 
 
 def get_user_llm_instance(user_uuid: str = None):
     """Get LLM instance for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
+    if user_uuid:
         return get_user_runtime_context(user_uuid).get("llm_instance")
     return APP_STATE.get("llm")
 
 
 def set_user_llm_instance(llm_instance, user_uuid: str = None):
     """Set LLM instance for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
+    if user_uuid:
         get_user_runtime_context(user_uuid)["llm_instance"] = llm_instance
     APP_STATE["llm"] = llm_instance  # Also set global for backward compatibility
 
 
 def get_user_mcp_client(user_uuid: str = None):
     """Get MCP client for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
+    if user_uuid:
         return get_user_runtime_context(user_uuid).get("mcp_client")
     return APP_STATE.get("mcp_client")
 
 
 def set_user_mcp_client(mcp_client, user_uuid: str = None):
     """Set MCP client for user."""
-    if user_uuid and not APP_CONFIG.CONFIGURATION_PERSISTENCE:
+    if user_uuid:
         get_user_runtime_context(user_uuid)["mcp_client"] = mcp_client
     APP_STATE["mcp_client"] = mcp_client  # Also set global for backward compatibility
 
@@ -148,7 +148,7 @@ def cleanup_inactive_user_contexts(max_age_hours: int = 24):
     Remove runtime contexts for users who haven't accessed in max_age_hours.
     Called periodically to prevent memory leaks.
     """
-    if APP_CONFIG.CONFIGURATION_PERSISTENCE:
+    
         return  # Only cleanup in multi-user mode
     
     contexts = APP_STATE.get("user_runtime_contexts", {})
@@ -199,7 +199,7 @@ Add periodic cleanup to `main.py` startup:
 
 ```python
 # In main.py startup
-if not APP_CONFIG.CONFIGURATION_PERSISTENCE:
+
     # Schedule cleanup every hour
     async def periodic_cleanup():
         while True:
@@ -291,17 +291,7 @@ self.current_provider = get_user_provider(self.user_uuid)
 
 ## Behavior Modes
 
-### Mode 1: `TDA_CONFIGURATION_PERSISTENCE=true` (Current Default)
 
-- **Behavior**: Uses global `APP_CONFIG` (backward compatible)
-- **Helper functions**: Fall back to global variables
-- **User isolation**: None (shared configuration)
-
-### Mode 2: `TDA_CONFIGURATION_PERSISTENCE=false` (Multi-User)
-
-- **Behavior**: Uses per-user runtime contexts
-- **Helper functions**: Return user-specific values
-- **User isolation**: Full (each user has own provider/model)
 
 ## Testing Strategy
 

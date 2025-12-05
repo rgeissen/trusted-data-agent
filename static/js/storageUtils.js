@@ -1,7 +1,7 @@
 /**
  * storageUtils.js
  * Wrapper for localStorage that respects server configuration persistence settings
- * When server has TDA_CONFIGURATION_PERSISTENCE=false, localStorage operations are skipped
+ 
  */
 
 import { state } from './state.js';
