@@ -3,6 +3,49 @@
   "created_at": "2025-11-18T15:42:02.792618+00:00",
   "last_modified": "2025-11-27T21:54:01.252686+00:00",
   "enable_mcp_classification": false,
+  "default_consumption_profile": "Unlimited",
+  "consumption_profiles": [
+    {
+      "name": "Free",
+      "description": "Free tier with basic limits",
+      "prompts_per_hour": 50,
+      "prompts_per_day": 500,
+      "config_changes_per_hour": 5,
+      "input_tokens_per_month": 100000,
+      "output_tokens_per_month": 50000,
+      "is_active": true
+    },
+    {
+      "name": "Pro",
+      "description": "Professional tier with higher limits",
+      "prompts_per_hour": 200,
+      "prompts_per_day": 2000,
+      "config_changes_per_hour": 20,
+      "input_tokens_per_month": 500000,
+      "output_tokens_per_month": 250000,
+      "is_active": true
+    },
+    {
+      "name": "Enterprise",
+      "description": "Enterprise tier with high limits",
+      "prompts_per_hour": 500,
+      "prompts_per_day": 5000,
+      "config_changes_per_hour": 50,
+      "input_tokens_per_month": 2000000,
+      "output_tokens_per_month": 1000000,
+      "is_active": true
+    },
+    {
+      "name": "Unlimited",
+      "description": "Unlimited tier with no token limits",
+      "prompts_per_hour": 1000,
+      "prompts_per_day": 10000,
+      "config_changes_per_hour": 100,
+      "input_tokens_per_month": null,
+      "output_tokens_per_month": null,
+      "is_active": true
+    }
+  ],
   "rag_collections": [],
   "mcp_servers": [
     {

@@ -81,6 +81,9 @@ def init_database():
         # Initialize document upload configurations
         _initialize_document_upload_configs()
         
+        # Bootstrap consumption profiles from tda_config.json
+        _bootstrap_consumption_profiles()
+        
         return True
     except Exception as e:
         logger.error(f"Failed to initialize authentication database: {e}", exc_info=True)
@@ -435,6 +438,63 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def _bootstrap_consumption_profiles():
+    """
+    Bootstrap consumption profiles from tda_config.json if they don't exist.
+    """
+    try:
+        import json
+        from pathlib import Path
+        from trusted_data_agent.auth.models import ConsumptionProfile
+        
+        # Load tda_config.json
+        config_path = Path(__file__).resolve().parents[3] / "tda_config.json"
+        if not config_path.exists():
+            logger.warning("tda_config.json not found, skipping consumption profiles bootstrap")
+            return
+        
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        
+        profiles_config = config.get('consumption_profiles', [])
+        if not profiles_config:
+            logger.info("No consumption profiles defined in tda_config.json")
+            return
+        
+        default_profile_name = config.get('default_consumption_profile', 'Unlimited')
+        
+        with get_db_session() as session:
+            for profile_data in profiles_config:
+                # Check if profile already exists
+                existing = session.query(ConsumptionProfile).filter_by(
+                    name=profile_data['name']
+                ).first()
+                
+                if existing:
+                    continue
+                
+                # Create new profile
+                profile = ConsumptionProfile(
+                    name=profile_data['name'],
+                    description=profile_data.get('description', ''),
+                    prompts_per_hour=profile_data.get('prompts_per_hour'),
+                    prompts_per_day=profile_data.get('prompts_per_day'),
+                    config_changes_per_hour=profile_data.get('config_changes_per_hour'),
+                    input_tokens_per_month=profile_data.get('input_tokens_per_month'),
+                    output_tokens_per_month=profile_data.get('output_tokens_per_month'),
+                    is_default=(profile_data['name'] == default_profile_name),
+                    is_active=profile_data.get('is_active', True)
+                )
+                session.add(profile)
+                logger.info(f"Bootstrapped consumption profile: {profile_data['name']}")
+            
+            session.commit()
+            logger.info("Consumption profiles bootstrap completed")
+    
+    except Exception as e:
+        logger.error(f"Failed to bootstrap consumption profiles: {e}", exc_info=True)
 
 
 # Initialize database on module import (authentication is always enabled)
