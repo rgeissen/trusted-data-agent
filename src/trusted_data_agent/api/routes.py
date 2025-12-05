@@ -286,6 +286,90 @@ async def get_rag_questions(current_user):
     return jsonify({"questions": unique_questions})
 
 
+@api_bp.route("/consumption_warnings", methods=["GET"])
+async def consumption_warnings():
+    """
+    Returns consumption usage warnings for the welcome screen.
+    Checks hourly, daily, and monthly limits and returns the highest percentage.
+    """
+    user_uuid = _get_user_uuid_from_request()
+    if not user_uuid:
+        return jsonify({"warning_level": None, "percentage": 0, "message": "Not authenticated"}), 401
+
+    try:
+        from trusted_data_agent.auth.consumption_enforcer import ConsumptionEnforcer
+        from trusted_data_agent.auth.models import User
+        from trusted_data_agent.auth.database import get_db_session
+        
+        # Check if user is admin (no limits)
+        with get_db_session() as session:
+            user = session.query(User).filter_by(id=user_uuid).first()
+            is_admin = user.is_admin if user else False
+        
+        if is_admin:
+            return jsonify({"warning_level": None, "percentage": 0, "message": "Admin - No limits"})
+        
+        # Get consumption enforcer and check usage
+        enforcer = ConsumptionEnforcer(user_uuid)
+        usage = enforcer.get_current_usage()
+        
+        # Calculate highest percentage across all limits
+        max_percentage = 0
+        limit_name = ""
+        
+        # Check hourly prompts
+        if usage.get('prompts_per_hour_limit') and usage['prompts_per_hour_limit'] > 0:
+            hourly_pct = (usage['prompts_this_hour'] / usage['prompts_per_hour_limit']) * 100
+            if hourly_pct > max_percentage:
+                max_percentage = hourly_pct
+                limit_name = "hourly prompts"
+        
+        # Check daily prompts
+        if usage.get('prompts_per_day_limit') and usage['prompts_per_day_limit'] > 0:
+            daily_pct = (usage['prompts_today'] / usage['prompts_per_day_limit']) * 100
+            if daily_pct > max_percentage:
+                max_percentage = daily_pct
+                limit_name = "daily prompts"
+        
+        # Check monthly input tokens
+        if usage.get('input_tokens_per_month_limit') and usage['input_tokens_per_month_limit'] > 0:
+            input_pct = (usage['input_tokens_this_month'] / usage['input_tokens_per_month_limit']) * 100
+            if input_pct > max_percentage:
+                max_percentage = input_pct
+                limit_name = "monthly input tokens"
+        
+        # Check monthly output tokens
+        if usage.get('output_tokens_per_month_limit') and usage['output_tokens_per_month_limit'] > 0:
+            output_pct = (usage['output_tokens_this_month'] / usage['output_tokens_per_month_limit']) * 100
+            if output_pct > max_percentage:
+                max_percentage = output_pct
+                limit_name = "monthly output tokens"
+        
+        # Determine warning level
+        warning_level = None
+        message = ""
+        
+        if max_percentage >= 100:
+            warning_level = "critical"
+            message = f"You've reached your {limit_name} limit ({int(max_percentage)}%). New requests will be blocked."
+        elif max_percentage >= 95:
+            warning_level = "urgent"
+            message = f"You've used {int(max_percentage)}% of your {limit_name} quota. You're very close to the limit."
+        elif max_percentage >= 80:
+            warning_level = "warning"
+            message = f"You've used {int(max_percentage)}% of your {limit_name} quota. Consider managing your usage."
+        
+        return jsonify({
+            "warning_level": warning_level,
+            "percentage": round(max_percentage, 1),
+            "message": message,
+            "usage": usage
+        })
+        
+    except Exception as e:
+        app_logger.error(f"Error fetching consumption warnings: {e}", exc_info=True)
+        return jsonify({"warning_level": None, "percentage": 0, "message": "Error checking consumption"}), 500
+
 @api_bp.route("/simple_chat", methods=["POST"])
 async def simple_chat():
     """
@@ -294,6 +378,29 @@ async def simple_chat():
     """
     if not APP_STATE.get('llm'):
         return jsonify({"error": "LLM not configured."}), 400
+
+    # Check consumption limits
+    user_uuid = _get_user_uuid_from_request()
+    if user_uuid:
+        try:
+            from trusted_data_agent.auth.consumption_enforcer import ConsumptionEnforcer
+            from trusted_data_agent.auth.models import User
+            from trusted_data_agent.auth.database import get_db_session
+            
+            # Check if user is admin
+            with get_db_session() as session:
+                user = session.query(User).filter_by(id=user_uuid).first()
+                is_admin = user.is_admin if user else False
+            
+            if not is_admin:
+                enforcer = ConsumptionEnforcer(user_uuid)
+                can_proceed, error_message = enforcer.can_execute_prompt()
+                
+                if not can_proceed:
+                    return jsonify({"error": error_message, "type": "rate_limit_exceeded"}), 429
+        except Exception as e:
+            app_logger.error(f"Error checking consumption limits: {e}", exc_info=True)
+            # Fail open
 
     data = await request.get_json()
     message = data.get("message")
@@ -1520,6 +1627,33 @@ async def ask_stream():
             yield PlanExecutor._format_sse({"error": "Authentication required. Please login."}, "error")
         return Response(error_gen(), mimetype="text/event-stream")
 
+    # Check consumption limits before allowing execution
+    try:
+        from trusted_data_agent.auth.consumption_enforcer import ConsumptionEnforcer
+        from trusted_data_agent.auth.models import User
+        from trusted_data_agent.auth.database import get_db_session
+        
+        # Check if user is admin - admins bypass consumption checks
+        with get_db_session() as session:
+            user = session.query(User).filter_by(id=user_uuid).first()
+            is_admin = user.is_admin if user else False
+        
+        if not is_admin:
+            enforcer = ConsumptionEnforcer(user_uuid)
+            can_proceed, error_message = enforcer.can_execute_prompt()
+            
+            if not can_proceed:
+                async def limit_error_gen():
+                    yield PlanExecutor._format_sse({
+                        "error": error_message,
+                        "type": "rate_limit_exceeded"
+                    }, "error")
+                return Response(limit_error_gen(), mimetype="text/event-stream")
+    except Exception as e:
+        app_logger.error(f"Error checking consumption limits for user {user_uuid}: {e}", exc_info=True)
+        # Fail open - allow execution if consumption check fails
+        pass
+
     if not APP_STATE.get('mcp_tools'):
         async def error_gen():
             yield PlanExecutor._format_sse({
@@ -1653,6 +1787,32 @@ async def invoke_prompt_stream():
         async def error_gen():
             yield PlanExecutor._format_sse({"error": "Authentication required. Please login."}, "error")
         return Response(error_gen(), mimetype="text/event-stream")
+
+    # Check consumption limits before proceeding
+    try:
+        from trusted_data_agent.auth.consumption_enforcer import ConsumptionEnforcer
+        from trusted_data_agent.auth.models import User
+        from trusted_data_agent.auth.database import get_db_session
+        
+        # Check if user is admin (admins bypass consumption limits)
+        with get_db_session() as session:
+            user = session.query(User).filter_by(id=user_uuid).first()
+            is_admin = user.is_admin if user else False
+        
+        if not is_admin:
+            enforcer = ConsumptionEnforcer(user_uuid)
+            can_proceed, error_message = enforcer.can_execute_prompt()
+            
+            if not can_proceed:
+                async def limit_error_gen():
+                    yield PlanExecutor._format_sse({
+                        "error": error_message,
+                        "type": "rate_limit_exceeded"
+                    }, "error")
+                return Response(limit_error_gen(), mimetype="text/event-stream")
+    except Exception as e:
+        app_logger.error(f"Error checking consumption limits: {e}", exc_info=True)
+        # Fail open: allow execution if enforcement check fails
 
     if not APP_STATE.get('mcp_tools'):
         async def error_gen():

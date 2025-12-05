@@ -1250,6 +1250,92 @@ async function showWelcomeScreen() {
     if (window.updateAuthUI) {
         window.updateAuthUI();
     }
+    
+    // Fetch and display consumption warnings
+    await fetchConsumptionWarnings();
+}
+
+/**
+ * Fetch consumption warnings from the API
+ */
+async function fetchConsumptionWarnings() {
+    try {
+        const token = localStorage.getItem('tda_auth_token');
+        const userUUID = localStorage.getItem('user_uuid');
+        
+        if (!token || !userUUID) {
+            // Hide warning banner if not authenticated
+            document.getElementById('consumption-warning-banner')?.classList.add('hidden');
+            return;
+        }
+        
+        const response = await fetch('/api/v1/consumption_warnings', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'X-User-UUID': userUUID
+            }
+        });
+        
+        if (!response.ok) {
+            // Hide warning banner if error
+            document.getElementById('consumption-warning-banner')?.classList.add('hidden');
+            return;
+        }
+        
+        const data = await response.json();
+        displayConsumptionWarning(data);
+    } catch (error) {
+        console.error('Error fetching consumption warnings:', error);
+        document.getElementById('consumption-warning-banner')?.classList.add('hidden');
+    }
+}
+
+/**
+ * Display consumption warning banner based on usage data
+ */
+function displayConsumptionWarning(data) {
+    const banner = document.getElementById('consumption-warning-banner');
+    const warning80 = document.getElementById('consumption-warning-80');
+    const warning95 = document.getElementById('consumption-warning-95');
+    const warning100 = document.getElementById('consumption-warning-100');
+    
+    if (!banner || !warning80 || !warning95 || !warning100) return;
+    
+    // Hide all warnings first
+    warning80.classList.add('hidden');
+    warning95.classList.add('hidden');
+    warning100.classList.add('hidden');
+    banner.classList.add('hidden');
+    
+    // If no warning level, don't show anything
+    if (!data.warning_level) return;
+    
+    // Show appropriate warning based on level
+    let activeWarning;
+    if (data.warning_level === 'critical' || data.percentage >= 100) {
+        activeWarning = warning100;
+        document.getElementById('consumption-warning-100-message').textContent = data.message;
+        document.getElementById('consumption-percentage-100').textContent = `${Math.round(data.percentage)}%`;
+        document.getElementById('consumption-progress-100').style.width = `${Math.min(data.percentage, 100)}%`;
+    } else if (data.warning_level === 'urgent' || data.percentage >= 95) {
+        activeWarning = warning95;
+        document.getElementById('consumption-warning-95-message').textContent = data.message;
+        document.getElementById('consumption-percentage-95').textContent = `${Math.round(data.percentage)}%`;
+        document.getElementById('consumption-progress-95').style.width = `${Math.min(data.percentage, 100)}%`;
+    } else if (data.warning_level === 'warning' || data.percentage >= 80) {
+        activeWarning = warning80;
+        document.getElementById('consumption-warning-80-message').textContent = data.message;
+        document.getElementById('consumption-percentage-80').textContent = `${Math.round(data.percentage)}%`;
+        document.getElementById('consumption-progress-80').style.width = `${Math.min(data.percentage, 100)}%`;
+    }
+    
+    // Show the banner and active warning with smooth animation
+    if (activeWarning) {
+        banner.classList.remove('hidden');
+        setTimeout(() => {
+            activeWarning.classList.remove('hidden');
+        }, 100);
+    }
 }
 
 /**

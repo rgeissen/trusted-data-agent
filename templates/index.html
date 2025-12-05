@@ -570,6 +570,79 @@
                                             </div>
                                         </div>
 
+                                        <!-- Consumption Warning Banner - Elegant & Non-Invasive -->
+                                        <div id="consumption-warning-banner" class="hidden mt-12 max-w-3xl mx-auto">
+                                            <!-- 80% Warning - Yellow -->
+                                            <div id="consumption-warning-80" class="hidden glass-panel border-l-4 border-yellow-500 bg-yellow-500/10 rounded-lg p-5 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:shadow-yellow-500/20">
+                                                <div class="flex items-start gap-4">
+                                                    <div class="flex-shrink-0">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                        </svg>
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        <h4 class="text-yellow-400 font-semibold text-base mb-1">Approaching Consumption Limit</h4>
+                                                        <p class="text-gray-300 text-sm leading-relaxed mb-2" id="consumption-warning-80-message">You've used a significant portion of your quota.</p>
+                                                        <div class="flex items-center gap-3 mt-3">
+                                                            <div class="flex-1">
+                                                                <div class="h-2 bg-gray-700/50 rounded-full overflow-hidden">
+                                                                    <div id="consumption-progress-80" class="h-full bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                                                </div>
+                                                            </div>
+                                                            <span id="consumption-percentage-80" class="text-yellow-400 font-semibold text-sm min-w-[3rem] text-right">0%</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- 95% Warning - Orange -->
+                                            <div id="consumption-warning-95" class="hidden glass-panel border-l-4 border-orange-500 bg-orange-500/10 rounded-lg p-5 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:shadow-orange-500/20">
+                                                <div class="flex items-start gap-4">
+                                                    <div class="flex-shrink-0">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        </svg>
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        <h4 class="text-orange-400 font-semibold text-base mb-1">Almost at Limit</h4>
+                                                        <p class="text-gray-300 text-sm leading-relaxed mb-2" id="consumption-warning-95-message">You're very close to your consumption limit.</p>
+                                                        <div class="flex items-center gap-3 mt-3">
+                                                            <div class="flex-1">
+                                                                <div class="h-2 bg-gray-700/50 rounded-full overflow-hidden">
+                                                                    <div id="consumption-progress-95" class="h-full bg-gradient-to-r from-orange-500 to-orange-400 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                                                </div>
+                                                            </div>
+                                                            <span id="consumption-percentage-95" class="text-orange-400 font-semibold text-sm min-w-[3rem] text-right">0%</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- 100% Warning - Red -->
+                                            <div id="consumption-warning-100" class="hidden glass-panel border-l-4 border-red-500 bg-red-500/10 rounded-lg p-5 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:shadow-red-500/20">
+                                                <div class="flex items-start gap-4">
+                                                    <div class="flex-shrink-0">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        </svg>
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        <h4 class="text-red-400 font-semibold text-base mb-1">Consumption Limit Reached</h4>
+                                                        <p class="text-gray-300 text-sm leading-relaxed mb-2" id="consumption-warning-100-message">You've reached your consumption limit.</p>
+                                                        <div class="flex items-center gap-3 mt-3">
+                                                            <div class="flex-1">
+                                                                <div class="h-2 bg-gray-700/50 rounded-full overflow-hidden">
+                                                                    <div id="consumption-progress-100" class="h-full bg-gradient-to-r from-red-500 to-red-400 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                                                </div>
+                                                            </div>
+                                                            <span id="consumption-percentage-100" class="text-red-400 font-semibold text-sm min-w-[3rem] text-right">0%</span>
+                                                        </div>
+                                                        <p class="text-gray-400 text-xs mt-3 italic">Contact your administrator to upgrade your plan or request additional capacity.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         <!-- What's New Section - Timeline Design -->
                                         <div class="mt-16 pt-12 border-t border-white/10 text-left max-w-4xl mx-auto">
                                             <div class="text-center mb-10">
