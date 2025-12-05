@@ -2274,8 +2274,22 @@ function performViewSwitch(viewId) {
                 return;
             }
             
-            // Application is configured - proceed with session loading if needed
-            console.log('[handleViewSwitch] Application configured, no session loaded, checking for session to load');
+            // Application is configured - but check if conversation mode has been initialized
+            // Import conversationInitializer to check initialization state
+            const { getInitializationState } = await import('./conversationInitializer.js');
+            const initState = getInitializationState();
+            
+            if (!initState.initialized) {
+                // Not yet initialized - show welcome screen with "Start Conversation" button
+                console.log('[handleViewSwitch] Application configured but conversation not initialized, showing welcome screen');
+                if (window.showWelcomeScreen) {
+                    window.showWelcomeScreen();
+                }
+                return;
+            }
+            
+            // Application is configured AND initialized - proceed with session loading if needed
+            console.log('[handleViewSwitch] Application configured and initialized, no session loaded, checking for session to load');
             
             // Dynamically import sessionManagement to load session
             const { handleLoadSession } = await import('./handlers/sessionManagement.js');
