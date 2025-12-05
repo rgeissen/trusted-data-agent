@@ -805,7 +805,7 @@ Option 2: Shared Container → TDA_CONFIGURATION_PERSISTENCE=false (sequential a
 ### Step 1: Clone the Repository
 
 ```
-git clone [https://github.com/rgeissen/uderia.git](https://github.com/rgeissen/uderia.git)
+git clone https://github.com/rgeissen/uderia.git
 cd uderia
 
 ```
