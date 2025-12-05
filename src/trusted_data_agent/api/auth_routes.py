@@ -1715,3 +1715,132 @@ async def get_user_quota_status(current_user):
             'status': 'error',
             'message': 'Failed to fetch quota status'
         }), 500
+
+
+@auth_bp.route('/user/consumption-summary', methods=['GET'])
+@require_auth
+async def get_all_users_consumption_summary(current_user):
+    """
+    Get consumption summary for all users from session files (admin-only).
+    Aggregates tokens by user and period from actual session data.
+    
+    Query Parameters:
+        period: Optional YYYY-MM format (defaults to current month)
+    
+    Returns:
+        200: List of user consumption data
+        403: Forbidden (non-admin)
+        500: Server error
+    """
+    try:
+        # Admin check
+        if not current_user.is_admin:
+            return jsonify({
+                'status': 'error',
+                'message': 'Admin access required'
+            }), 403
+        
+        from pathlib import Path
+        from datetime import datetime, timezone
+        from collections import defaultdict
+        import json
+        
+        # Get period parameter or use current month
+        period = request.args.get('period')
+        if not period:
+            period = datetime.now(timezone.utc).strftime("%Y-%m")
+        
+        # Validate period format
+        try:
+            datetime.strptime(period, "%Y-%m")
+        except ValueError:
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid period format. Use YYYY-MM'
+            }), 400
+        
+        project_root = Path(__file__).resolve().parents[3]
+        sessions_base = project_root / 'tda_sessions'
+        
+        if not sessions_base.exists():
+            return jsonify({
+                'status': 'success',
+                'period': period,
+                'users': []
+            }), 200
+        
+        # Aggregate tokens by user
+        user_tokens = defaultdict(lambda: {'input': 0, 'output': 0})
+        
+        # Scan all user directories
+        for user_dir in sessions_base.iterdir():
+            if not user_dir.is_dir():
+                continue
+            
+            user_id = user_dir.name
+            
+            # Scan session files for this user
+            for session_file in user_dir.glob('*.json'):
+                try:
+                    with open(session_file, 'r', encoding='utf-8') as f:
+                        session_data = json.load(f)
+                    
+                    # Filter by period using created_at timestamp
+                    created_at = session_data.get('created_at')
+                    if created_at:
+                        try:
+                            dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                            session_period = dt.strftime("%Y-%m")
+                            
+                            # Only include sessions from the requested period
+                            if session_period == period:
+                                input_tokens = session_data.get('input_tokens', 0)
+                                output_tokens = session_data.get('output_tokens', 0)
+                                user_tokens[user_id]['input'] += input_tokens
+                                user_tokens[user_id]['output'] += output_tokens
+                        except Exception as e:
+                            logger.debug(f"Could not parse created_at for session {session_file.name}: {e}")
+                            continue
+                
+                except Exception as e:
+                    logger.debug(f"Could not read session file {session_file}: {e}")
+                    continue
+        
+        # Get user details and consumption profiles from database
+        from trusted_data_agent.auth.token_quota import get_user_consumption_profile
+        
+        users_list = []
+        
+        with get_db_session() as db_session:
+            for user_id, tokens in user_tokens.items():
+                # Get user from database
+                user = db_session.query(User).filter_by(id=user_id).first()
+                if not user:
+                    continue
+                
+                # Get consumption profile
+                profile = get_user_consumption_profile(user_id)
+                
+                users_list.append({
+                    'user_id': user_id,
+                    'username': user.username,
+                    'email': user.email,
+                    'profile_name': profile['name'] if profile else 'No Profile',
+                    'profile_id': profile['id'] if profile else None,
+                    'input_tokens': tokens['input'],
+                    'output_tokens': tokens['output'],
+                    'total_tokens': tokens['input'] + tokens['output']
+                })
+        
+        return jsonify({
+            'status': 'success',
+            'period': period,
+            'users': users_list
+        }), 200
+    
+    except Exception as e:
+        logger.error(f"Get consumption summary error: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch consumption summary'
+        }), 500

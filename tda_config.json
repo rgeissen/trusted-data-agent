@@ -117,7 +117,7 @@
   "active_profile_id": null,
   "default_profile_id": null,
   "active_for_consumption_profile_ids": [],
-  window.getComputedStyle(document.getElementById('feature-config-tab')).display  "default_consumption_profile": "Unlimited",
+  "default_consumption_profile": "Unlimited",
   "rate_limit_enabled": "on",
   "window_defaults": {
     "session_history_expanded": false,

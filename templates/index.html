@@ -1912,6 +1912,18 @@
                     <div class="flex-1 overflow-y-auto">
                         <!-- Tab 1: User Management -->
                         <div id="user-management-tab" class="admin-tab-content active">
+                            <!-- Sub-Tab Navigation -->
+                            <div class="flex gap-2 border-b border-white/10 mb-6">
+                                <button class="user-management-subtab active px-4 py-2 text-sm font-medium transition-all border-b-2 border-[#F15F22] text-white" data-subtab="user-tier-subtab">
+                                    User Tiers
+                                </button>
+                                <button class="user-management-subtab px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-all border-b-2 border-transparent hover:border-white/20" data-subtab="user-consumption-subtab">
+                                    User Consumption
+                                </button>
+                            </div>
+
+                            <!-- Sub-Tab: User Tiers -->
+                            <div id="user-tier-subtab" class="user-management-subtab-content active">
                             <div class="space-y-6">
                                 <div class="glass-panel rounded-xl p-6">
                                     <div class="flex justify-between items-center mb-6">
@@ -1943,6 +1955,7 @@
                                                     <th class="px-6 py-3">Username</th>
                                                     <th class="px-6 py-3">Email</th>
                                                     <th class="px-6 py-3">Current Tier</th>
+                                                    <th class="px-6 py-3">Consumption Profile</th>
                                                     <th class="px-6 py-3">Features</th>
                                                     <th class="px-6 py-3">Actions</th>
                                                 </tr>
@@ -2002,6 +2015,101 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                                                 </svg>
                                             </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            </div>
+
+                            <!-- Sub-Tab: User Consumption -->
+                            <div id="user-consumption-subtab" class="user-management-subtab-content hidden">
+                                <div class="space-y-6">
+                                    <div class="glass-panel rounded-xl p-6">
+                                        <div class="flex justify-between items-center mb-6">
+                                            <div>
+                                                <h3 class="text-xl font-bold text-white">User Token Consumption</h3>
+                                                <p class="text-sm text-gray-400 mt-1">Monitor and manage user token usage and consumption profiles</p>
+                                            </div>
+                                            <button type="button" id="refresh-consumption-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md transition-colors text-white font-medium text-sm">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                </svg>
+                                                Refresh
+                                            </button>
+                                        </div>
+
+                                        <!-- Consumption Table -->
+                                        <div class="overflow-x-auto">
+                                            <table class="w-full text-sm text-left">
+                                                <thead class="text-xs uppercase bg-gray-700/50 text-gray-400">
+                                                    <tr>
+                                                        <th class="px-6 py-3 cursor-pointer hover:text-white transition-colors" data-sort="username">
+                                                            <div class="flex items-center gap-1">
+                                                                Username
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+                                                                </svg>
+                                                            </div>
+                                                        </th>
+                                                        <th class="px-6 py-3">Consumption Profile</th>
+                                                        <th class="px-6 py-3 cursor-pointer hover:text-white transition-colors" data-sort="tokens_used_today">
+                                                            <div class="flex items-center gap-1">
+                                                                Tokens Used Today
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+                                                                </svg>
+                                                            </div>
+                                                        </th>
+                                                        <th class="px-6 py-3">Daily Limit</th>
+                                                        <th class="px-6 py-3 cursor-pointer hover:text-white transition-colors" data-sort="usage_percentage">
+                                                            <div class="flex items-center gap-1">
+                                                                Usage %
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+                                                                </svg>
+                                                            </div>
+                                                        </th>
+                                                        <th class="px-6 py-3">Status</th>
+                                                        <th class="px-6 py-3 text-center">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="user-consumption-table-body" class="divide-y divide-gray-700">
+                                                    <!-- Consumption data will be loaded here -->
+                                                    <tr>
+                                                        <td colspan="7" class="px-6 py-8 text-center text-gray-400">
+                                                            <svg class="animate-spin h-8 w-8 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                            </svg>
+                                                            Loading consumption data...
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- Consumption Statistics -->
+                                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                        <div class="glass-panel rounded-xl p-6">
+                                            <h4 class="text-sm font-medium text-gray-400 mb-3">Total Input Tokens</h4>
+                                            <p id="consumption-total-input-tokens" class="text-2xl font-bold text-blue-400">0</p>
+                                            <p id="consumption-period-label-1" class="text-xs text-gray-500 mt-1">December 2025</p>
+                                        </div>
+                                        <div class="glass-panel rounded-xl p-6">
+                                            <h4 class="text-sm font-medium text-gray-400 mb-3">Total Output Tokens</h4>
+                                            <p id="consumption-total-output-tokens" class="text-2xl font-bold text-purple-400">0</p>
+                                            <p id="consumption-period-label-2" class="text-xs text-gray-500 mt-1">December 2025</p>
+                                        </div>
+                                        <div class="glass-panel rounded-xl p-6">
+                                            <h4 class="text-sm font-medium text-gray-400 mb-3">Active Users</h4>
+                                            <p id="consumption-active-users-count" class="text-2xl font-bold text-green-400">0</p>
+                                            <p id="consumption-period-label-3" class="text-xs text-gray-500 mt-1">With token usage</p>
+                                        </div>
+                                        <div class="glass-panel rounded-xl p-6">
+                                            <h4 class="text-sm font-medium text-gray-400 mb-3">Avg Tokens/User</h4>
+                                            <p id="consumption-avg-tokens-per-user" class="text-2xl font-bold text-orange-400">0</p>
+                                            <p id="consumption-period-label-4" class="text-xs text-gray-500 mt-1">December 2025</p>
                                         </div>
                                     </div>
                                 </div>
@@ -3573,6 +3681,16 @@
                         <option value="developer">Developer</option>
                         <option value="admin">Admin</option>
                     </select>
+                </div>
+                
+                <div>
+                    <label for="user-form-consumption-profile" class="block text-sm font-medium text-gray-300 mb-2">Consumption Profile</label>
+                    <select id="user-form-consumption-profile"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Default (Based on Tier)</option>
+                        <!-- Profiles will be loaded dynamically -->
+                    </select>
+                    <p class="text-xs text-gray-400 mt-1">Override default consumption limits for this user</p>
                 </div>
                 
                 <div class="flex gap-2 pt-4">

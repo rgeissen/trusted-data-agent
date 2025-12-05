@@ -473,6 +473,14 @@ def update_token_count(user_uuid: str, session_id: str, input_tokens: int, outpu
         session_data['output_tokens'] = session_data.get('output_tokens', 0) + output_tokens
         if not _save_session(user_uuid, session_id, session_data):
             app_logger.error(f"Failed to save session after updating tokens for {session_id}")
+        
+        # Record token usage for consumption tracking and quota enforcement
+        try:
+            from trusted_data_agent.auth.token_quota import record_token_usage
+            record_token_usage(user_uuid, input_tokens, output_tokens)
+            app_logger.debug(f"Recorded token usage for user {user_uuid}: input={input_tokens}, output={output_tokens}")
+        except Exception as e:
+            app_logger.error(f"Failed to record token usage for user {user_uuid}: {e}")
     else:
         app_logger.warning(f"Could not update tokens: Session {session_id} not found for user {user_uuid}.")
 

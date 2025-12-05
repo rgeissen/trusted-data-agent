@@ -864,34 +864,49 @@ const AdminManager = {
         try {
             const token = localStorage.getItem('tda_auth_token');
             
-            // Get all users
-            const users = this.currentUsers.length > 0 ? this.currentUsers : [];
-            if (users.length === 0) {
-                await this.loadUsers();
-            }
-
-            // Load consumption data for each user
-            const consumptionPromises = this.currentUsers.map(async (user) => {
-                try {
-                    const response = await fetch(`/api/v1/auth/user/quota-status`, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json',
-                            'X-User-ID': user.id
-                        }
-                    });
-                    const data = await response.json();
-                    return {
-                        user,
-                        consumption: data.status === 'success' ? data : null
-                    };
-                } catch (error) {
-                    console.error(`Error loading consumption for ${user.username}:`, error);
-                    return { user, consumption: null };
+            // Use new endpoint that aggregates from session files (same source as Execution Insights)
+            const response = await fetch(`/api/v1/auth/user/consumption-summary`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
                 }
             });
 
-            const consumptionData = await Promise.all(consumptionPromises);
+            const data = await response.json();
+            
+            if (data.status !== 'success') {
+                throw new Error(data.message || 'Failed to load consumption data');
+            }
+
+            // Transform data to match expected format
+            const consumptionData = data.users.map(userData => {
+                return {
+                    user: {
+                        id: userData.user_id,
+                        username: userData.username,
+                        email: userData.email
+                    },
+                    consumption: {
+                        period: data.period,
+                        profile_name: userData.profile_name,
+                        profile_id: userData.profile_id,
+                        input_tokens: {
+                            used: userData.input_tokens,
+                            limit: null,  // Will be populated from profile if needed
+                            remaining: null,
+                            percentage_used: 0
+                        },
+                        output_tokens: {
+                            used: userData.output_tokens,
+                            limit: null,
+                            remaining: null,
+                            percentage_used: 0
+                        },
+                        has_quota: userData.profile_id !== null
+                    }
+                };
+            });
+
             this.currentConsumptionData = consumptionData;
             this.renderUserConsumption(consumptionData);
             this.updateConsumptionKPIs(consumptionData);
@@ -928,49 +943,35 @@ const AdminManager = {
                     bVal = (b.user.consumption_profile_name || 'Unlimited').toLowerCase();
                     break;
                 case 'input':
-                    aVal = a.consumption?.current_usage?.input_tokens || 0;
-                    bVal = b.consumption?.current_usage?.input_tokens || 0;
+                    aVal = a.consumption?.input_tokens?.used || 0;
+                    bVal = b.consumption?.input_tokens?.used || 0;
                     break;
                 case 'output':
-                    aVal = a.consumption?.current_usage?.output_tokens || 0;
-                    bVal = b.consumption?.current_usage?.output_tokens || 0;
+                    aVal = a.consumption?.output_tokens?.used || 0;
+                    bVal = b.consumption?.output_tokens?.used || 0;
                     break;
                 case 'total':
-                    aVal = a.consumption?.current_usage?.total_tokens || 0;
-                    bVal = b.consumption?.current_usage?.total_tokens || 0;
+                    const aInput = a.consumption?.input_tokens?.used || 0;
+                    const aOutput = a.consumption?.output_tokens?.used || 0;
+                    aVal = aInput + aOutput;
+                    const bInput = b.consumption?.input_tokens?.used || 0;
+                    const bOutput = b.consumption?.output_tokens?.used || 0;
+                    bVal = bInput + bOutput;
                     break;
                 case 'inputPercent':
-                    if (a.consumption?.profile?.input_tokens_per_month) {
-                        aVal = (a.consumption.current_usage?.input_tokens || 0) / a.consumption.profile.input_tokens_per_month;
-                    } else {
-                        aVal = 0;
-                    }
-                    if (b.consumption?.profile?.input_tokens_per_month) {
-                        bVal = (b.consumption.current_usage?.input_tokens || 0) / b.consumption.profile.input_tokens_per_month;
-                    } else {
-                        bVal = 0;
-                    }
+                    aVal = a.consumption?.input_tokens?.percentage_used || 0;
+                    bVal = b.consumption?.input_tokens?.percentage_used || 0;
                     break;
                 case 'outputPercent':
-                    if (a.consumption?.profile?.output_tokens_per_month) {
-                        aVal = (a.consumption.current_usage?.output_tokens || 0) / a.consumption.profile.output_tokens_per_month;
-                    } else {
-                        aVal = 0;
-                    }
-                    if (b.consumption?.profile?.output_tokens_per_month) {
-                        bVal = (b.consumption.current_usage?.output_tokens || 0) / b.consumption.profile.output_tokens_per_month;
-                    } else {
-                        bVal = 0;
-                    }
+                    aVal = a.consumption?.output_tokens?.percentage_used || 0;
+                    bVal = b.consumption?.output_tokens?.percentage_used || 0;
                     break;
                 case 'status':
                     // Status priority: Critical > Warning > Moderate > Good > Unlimited
                     const getStatusPriority = (item) => {
-                        if (!item.consumption?.profile?.input_tokens_per_month && !item.consumption?.profile?.output_tokens_per_month) return 0;
-                        const inputPercent = item.consumption?.profile?.input_tokens_per_month ? 
-                            ((item.consumption.current_usage?.input_tokens || 0) / item.consumption.profile.input_tokens_per_month) * 100 : 0;
-                        const outputPercent = item.consumption?.profile?.output_tokens_per_month ? 
-                            ((item.consumption.current_usage?.output_tokens || 0) / item.consumption.profile.output_tokens_per_month) * 100 : 0;
+                        if (!item.consumption?.input_tokens?.limit && !item.consumption?.output_tokens?.limit) return 0;
+                        const inputPercent = item.consumption?.input_tokens?.percentage_used || 0;
+                        const outputPercent = item.consumption?.output_tokens?.percentage_used || 0;
                         const maxPercent = Math.max(inputPercent, outputPercent);
                         if (maxPercent >= 90) return 4;
                         if (maxPercent >= 75) return 3;
@@ -1034,9 +1035,9 @@ const AdminManager = {
         }
 
         tbody.innerHTML = consumptionData.map(({ user, consumption }) => {
-            const profileName = user.consumption_profile_name || 'Unlimited';
+            const profileName = user.consumption_profile_name || consumption?.profile_name || 'Unlimited';
             
-            if (!consumption || !consumption.current_usage) {
+            if (!consumption) {
                 return `
                     <tr class="bg-gray-800/50 hover:bg-gray-700/50 transition-colors">
                         <td class="px-6 py-4 font-medium text-white">${this.escapeHtml(user.username)}</td>
@@ -1045,20 +1046,21 @@ const AdminManager = {
                                 ${this.escapeHtml(profileName)}
                             </span>
                         </td>
-                        <td colspan="6" class="px-6 py-4 text-center text-gray-500 text-sm">No usage data for this period</td>
+                        <td colspan="6" class="px-6 py-4 text-center text-gray-500 text-sm">Failed to load consumption data</td>
                     </tr>
                 `;
             }
 
-            const usage = consumption.current_usage;
-            const limits = consumption.profile;
-            const inputPercent = limits.input_tokens_per_month ? 
-                Math.round((usage.input_tokens / limits.input_tokens_per_month) * 100) : 0;
-            const outputPercent = limits.output_tokens_per_month ? 
-                Math.round((usage.output_tokens / limits.output_tokens_per_month) * 100) : 0;
+            const inputTokens = consumption.input_tokens?.used || 0;
+            const outputTokens = consumption.output_tokens?.used || 0;
+            const totalTokens = inputTokens + outputTokens;
+            const inputLimit = consumption.input_tokens?.limit;
+            const outputLimit = consumption.output_tokens?.limit;
+            const inputPercent = consumption.input_tokens?.percentage_used || 0;
+            const outputPercent = consumption.output_tokens?.percentage_used || 0;
             
             const getStatusBadge = () => {
-                if (!limits.input_tokens_per_month && !limits.output_tokens_per_month) {
+                if (!inputLimit && !outputLimit) {
                     return '<span class="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400">Unlimited</span>';
                 }
                 const maxPercent = Math.max(inputPercent, outputPercent);
@@ -1068,38 +1070,36 @@ const AdminManager = {
                 return '<span class="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400">Good</span>';
             };
 
+            // Calculate max usage percentage
+            const maxPercent = Math.max(inputPercent, outputPercent);
+            const limitDisplay = (inputLimit && outputLimit) ? 
+                `${this.formatTokens(Math.max(inputLimit, outputLimit))}` : 
+                '<span class="text-gray-500">∞</span>';
+
             return `
                 <tr class="bg-gray-800/50 hover:bg-gray-700/50 transition-colors">
                     <td class="px-6 py-4 font-medium text-white">${this.escapeHtml(user.username)}</td>
                     <td class="px-6 py-4">
-                        <span class="px-3 py-1 rounded-full text-xs font-semibold ${this.getProfileBadgeClass(limits.name)}">
-                            ${this.escapeHtml(limits.name)}
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold ${this.getProfileBadgeClass(profileName)}">
+                            ${this.escapeHtml(profileName)}
                         </span>
                     </td>
-                    <td class="px-6 py-4 text-center text-gray-300">${this.formatTokens(usage.input_tokens)}</td>
-                    <td class="px-6 py-4 text-center text-gray-300">${this.formatTokens(usage.output_tokens)}</td>
-                    <td class="px-6 py-4 text-center text-gray-300 font-semibold">${this.formatTokens(usage.total_tokens)}</td>
+                    <td class="px-6 py-4 text-center text-gray-300 font-semibold">${this.formatTokens(totalTokens)}</td>
+                    <td class="px-6 py-4 text-center text-gray-300">${limitDisplay}</td>
                     <td class="px-6 py-4 text-center">
-                        ${limits.input_tokens_per_month ? 
+                        ${(inputLimit || outputLimit) ? 
                             `<div class="flex flex-col items-center">
-                                <span class="text-sm ${inputPercent >= 90 ? 'text-red-400' : inputPercent >= 75 ? 'text-orange-400' : 'text-gray-300'}">${inputPercent}%</span>
+                                <span class="text-sm ${maxPercent >= 90 ? 'text-red-400' : maxPercent >= 75 ? 'text-orange-400' : 'text-gray-300'}">${Math.round(maxPercent)}%</span>
                                 <div class="w-full bg-gray-700 rounded-full h-1.5 mt-1">
-                                    <div class="h-1.5 rounded-full ${inputPercent >= 90 ? 'bg-red-500' : inputPercent >= 75 ? 'bg-orange-500' : 'bg-blue-500'}" style="width: ${Math.min(inputPercent, 100)}%"></div>
-                                </div>
-                            </div>` 
-                            : '<span class="text-gray-500">∞</span>'}
-                    </td>
-                    <td class="px-6 py-4 text-center">
-                        ${limits.output_tokens_per_month ? 
-                            `<div class="flex flex-col items-center">
-                                <span class="text-sm ${outputPercent >= 90 ? 'text-red-400' : outputPercent >= 75 ? 'text-orange-400' : 'text-gray-300'}">${outputPercent}%</span>
-                                <div class="w-full bg-gray-700 rounded-full h-1.5 mt-1">
-                                    <div class="h-1.5 rounded-full ${outputPercent >= 90 ? 'bg-red-500' : outputPercent >= 75 ? 'bg-orange-500' : 'bg-purple-500'}" style="width: ${Math.min(outputPercent, 100)}%"></div>
+                                    <div class="h-1.5 rounded-full ${maxPercent >= 90 ? 'bg-red-500' : maxPercent >= 75 ? 'bg-orange-500' : 'bg-blue-500'}" style="width: ${Math.min(maxPercent, 100)}%"></div>
                                 </div>
                             </div>` 
                             : '<span class="text-gray-500">∞</span>'}
                     </td>
                     <td class="px-6 py-4 text-center">${getStatusBadge()}</td>
+                    <td class="px-6 py-4 text-center">
+                        <button class="text-blue-400 hover:text-blue-300 text-sm" onclick="AdminManager.viewUserDetails('${user.id}')">View</button>
+                    </td>
                 </tr>
             `;
         }).join('');
@@ -1114,10 +1114,12 @@ const AdminManager = {
         let activeUsers = 0;
 
         consumptionData.forEach(({ consumption }) => {
-            if (consumption && consumption.current_usage) {
-                totalInput += consumption.current_usage.input_tokens || 0;
-                totalOutput += consumption.current_usage.output_tokens || 0;
-                if (consumption.current_usage.total_tokens > 0) {
+            if (consumption) {
+                const inputUsed = consumption.input_tokens?.used || 0;
+                const outputUsed = consumption.output_tokens?.used || 0;
+                totalInput += inputUsed;
+                totalOutput += outputUsed;
+                if (inputUsed > 0 || outputUsed > 0) {
                     activeUsers++;
                 }
             }
@@ -1125,15 +1127,42 @@ const AdminManager = {
 
         const avgTokens = activeUsers > 0 ? Math.round((totalInput + totalOutput) / activeUsers) : 0;
 
-        const totalInputElem = document.getElementById('total-input-tokens');
-        const totalOutputElem = document.getElementById('total-output-tokens');
-        const activeUsersElem = document.getElementById('active-users-count');
-        const avgTokensElem = document.getElementById('avg-tokens-per-user');
+        const totalInputElem = document.getElementById('consumption-total-input-tokens');
+        const totalOutputElem = document.getElementById('consumption-total-output-tokens');
+        const activeUsersElem = document.getElementById('consumption-active-users-count');
+        const avgTokensElem = document.getElementById('consumption-avg-tokens-per-user');
 
         if (totalInputElem) totalInputElem.textContent = this.formatTokens(totalInput);
         if (totalOutputElem) totalOutputElem.textContent = this.formatTokens(totalOutput);
         if (activeUsersElem) activeUsersElem.textContent = activeUsers;
         if (avgTokensElem) avgTokensElem.textContent = this.formatTokens(avgTokens);
+
+        // Update period labels based on actual data
+        const period = consumptionData.length > 0 && consumptionData[0].consumption?.period 
+            ? consumptionData[0].consumption.period 
+            : null;
+        
+        if (period) {
+            const periodLabel = this.formatPeriodLabel(period);
+            const periodLabel1 = document.getElementById('consumption-period-label-1');
+            const periodLabel2 = document.getElementById('consumption-period-label-2');
+            const periodLabel4 = document.getElementById('consumption-period-label-4');
+            
+            if (periodLabel1) periodLabel1.textContent = periodLabel;
+            if (periodLabel2) periodLabel2.textContent = periodLabel;
+            if (periodLabel4) periodLabel4.textContent = periodLabel;
+        }
+    },
+
+    /**
+     * Format period string (YYYY-MM) to readable format
+     */
+    formatPeriodLabel(period) {
+        const [year, month] = period.split('-');
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+        const monthIndex = parseInt(month, 10) - 1;
+        return `${monthNames[monthIndex]} ${year}`;
     },
 
     /**
