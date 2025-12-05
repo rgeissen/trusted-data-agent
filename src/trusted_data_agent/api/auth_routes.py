@@ -1283,3 +1283,433 @@ async def update_rate_limit_settings():
             'status': 'error',
             'message': 'Failed to update rate limit settings'
         }), 500
+
+
+# ============================================================================
+# CONSUMPTION PROFILE MANAGEMENT
+# ============================================================================
+
+@auth_bp.route('/admin/consumption-profiles', methods=['GET'])
+@require_admin
+async def get_consumption_profiles(current_user):
+    """
+    Get all consumption profiles.
+    
+    Admin only endpoint.
+    
+    Returns:
+        200: List of consumption profiles
+        401: Unauthorized
+        403: Forbidden (not admin)
+        500: Server error
+    """
+    from trusted_data_agent.auth.models import ConsumptionProfile
+    
+    try:
+        with get_db_session() as session:
+            profiles = session.query(ConsumptionProfile).order_by(
+                ConsumptionProfile.is_default.desc(),
+                ConsumptionProfile.name
+            ).all()
+            
+            return jsonify({
+                'status': 'success',
+                'profiles': [profile.to_dict() for profile in profiles]
+            }), 200
+    
+    except Exception as e:
+        logger.error(f"Get consumption profiles error: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch consumption profiles'
+        }), 500
+
+
+@auth_bp.route('/admin/consumption-profiles', methods=['POST'])
+@require_admin
+async def create_consumption_profile(current_user):
+    """
+    Create a new consumption profile.
+    
+    Admin only endpoint.
+    
+    Request Body:
+        {
+            "name": "Pro Tier",
+            "description": "Professional tier with higher limits",
+            "prompts_per_hour": 200,
+            "prompts_per_day": 2000,
+            "config_changes_per_hour": 20,
+            "input_tokens_per_month": 500000,
+            "output_tokens_per_month": 250000,
+            "is_default": false
+        }
+    
+    Returns:
+        201: Profile created successfully
+        400: Invalid request data
+        401: Unauthorized
+        403: Forbidden (not admin)
+        409: Profile name already exists
+        500: Server error
+    """
+    from trusted_data_agent.auth.models import ConsumptionProfile
+    
+    try:
+        data = await request.get_json()
+        
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': 'No data provided'
+            }), 400
+        
+        # Validate required fields
+        name = data.get('name', '').strip()
+        if not name:
+            return jsonify({
+                'status': 'error',
+                'message': 'Profile name is required'
+            }), 400
+        
+        with get_db_session() as session:
+            # Check if name already exists
+            existing = session.query(ConsumptionProfile).filter_by(name=name).first()
+            if existing:
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Profile with name "{name}" already exists'
+                }), 409
+            
+            # If this is to be the default, unset other defaults
+            is_default = data.get('is_default', False)
+            if is_default:
+                session.query(ConsumptionProfile).update({'is_default': False})
+            
+            # Create new profile
+            profile = ConsumptionProfile(
+                name=name,
+                description=data.get('description'),
+                prompts_per_hour=data.get('prompts_per_hour', 100),
+                prompts_per_day=data.get('prompts_per_day', 1000),
+                config_changes_per_hour=data.get('config_changes_per_hour', 10),
+                input_tokens_per_month=data.get('input_tokens_per_month'),
+                output_tokens_per_month=data.get('output_tokens_per_month'),
+                is_default=is_default,
+                is_active=data.get('is_active', True)
+            )
+            
+            session.add(profile)
+            session.commit()
+            session.refresh(profile)
+            
+            log_audit_event_detailed(
+                user_id=current_user.id,
+                action='create_consumption_profile',
+                resource='consumption_profiles',
+                status='success',
+                details=f'Created profile: {name}'
+            )
+            
+            logger.info(f"Admin {current_user.username} created consumption profile: {name}")
+            
+            return jsonify({
+                'status': 'success',
+                'message': 'Consumption profile created successfully',
+                'profile': profile.to_dict()
+            }), 201
+    
+    except Exception as e:
+        logger.error(f"Create consumption profile error: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to create consumption profile'
+        }), 500
+
+
+@auth_bp.route('/admin/consumption-profiles/<int:profile_id>', methods=['PUT'])
+@require_admin
+async def update_consumption_profile(current_user, profile_id: int):
+    """
+    Update an existing consumption profile.
+    
+    Admin only endpoint.
+    
+    Returns:
+        200: Profile updated successfully
+        400: Invalid request data
+        401: Unauthorized
+        403: Forbidden (not admin)
+        404: Profile not found
+        500: Server error
+    """
+    from trusted_data_agent.auth.models import ConsumptionProfile
+    
+    try:
+        data = await request.get_json()
+        
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': 'No data provided'
+            }), 400
+        
+        with get_db_session() as session:
+            profile = session.query(ConsumptionProfile).filter_by(id=profile_id).first()
+            
+            if not profile:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Consumption profile not found'
+                }), 404
+            
+            # If setting as default, unset other defaults
+            if data.get('is_default') and not profile.is_default:
+                session.query(ConsumptionProfile).filter(
+                    ConsumptionProfile.id != profile_id
+                ).update({'is_default': False})
+            
+            # Update fields
+            if 'name' in data:
+                new_name = data['name'].strip()
+                if new_name != profile.name:
+                    # Check for name conflicts
+                    existing = session.query(ConsumptionProfile).filter(
+                        ConsumptionProfile.name == new_name,
+                        ConsumptionProfile.id != profile_id
+                    ).first()
+                    if existing:
+                        return jsonify({
+                            'status': 'error',
+                            'message': f'Profile with name "{new_name}" already exists'
+                        }), 409
+                    profile.name = new_name
+            
+            if 'description' in data:
+                profile.description = data['description']
+            if 'prompts_per_hour' in data:
+                profile.prompts_per_hour = int(data['prompts_per_hour'])
+            if 'prompts_per_day' in data:
+                profile.prompts_per_day = int(data['prompts_per_day'])
+            if 'config_changes_per_hour' in data:
+                profile.config_changes_per_hour = int(data['config_changes_per_hour'])
+            if 'input_tokens_per_month' in data:
+                profile.input_tokens_per_month = data['input_tokens_per_month']
+            if 'output_tokens_per_month' in data:
+                profile.output_tokens_per_month = data['output_tokens_per_month']
+            if 'is_default' in data:
+                profile.is_default = bool(data['is_default'])
+            if 'is_active' in data:
+                profile.is_active = bool(data['is_active'])
+            
+            session.commit()
+            session.refresh(profile)
+            
+            log_audit_event_detailed(
+                user_id=current_user.id,
+                action='update_consumption_profile',
+                resource='consumption_profiles',
+                status='success',
+                details=f'Updated profile: {profile.name}'
+            )
+            
+            logger.info(f"Admin {current_user.username} updated consumption profile: {profile.name}")
+            
+            return jsonify({
+                'status': 'success',
+                'message': 'Consumption profile updated successfully',
+                'profile': profile.to_dict()
+            }), 200
+    
+    except Exception as e:
+        logger.error(f"Update consumption profile error: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to update consumption profile'
+        }), 500
+
+
+@auth_bp.route('/admin/consumption-profiles/<int:profile_id>', methods=['DELETE'])
+@require_admin
+async def delete_consumption_profile(current_user, profile_id: int):
+    """
+    Delete a consumption profile.
+    
+    Admin only endpoint.
+    Cannot delete if users are assigned to it.
+    
+    Returns:
+        200: Profile deleted successfully
+        400: Cannot delete (users assigned)
+        401: Unauthorized
+        403: Forbidden (not admin)
+        404: Profile not found
+        500: Server error
+    """
+    from trusted_data_agent.auth.models import ConsumptionProfile
+    
+    try:
+        with get_db_session() as session:
+            profile = session.query(ConsumptionProfile).filter_by(id=profile_id).first()
+            
+            if not profile:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Consumption profile not found'
+                }), 404
+            
+            # Check if any users are assigned to this profile
+            user_count = len(profile.users) if profile.users else 0
+            if user_count > 0:
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Cannot delete profile. {user_count} user(s) are assigned to it.',
+                    'user_count': user_count
+                }), 400
+            
+            profile_name = profile.name
+            session.delete(profile)
+            session.commit()
+            
+            log_audit_event_detailed(
+                user_id=current_user.id,
+                action='delete_consumption_profile',
+                resource='consumption_profiles',
+                status='success',
+                details=f'Deleted profile: {profile_name}'
+            )
+            
+            logger.info(f"Admin {current_user.username} deleted consumption profile: {profile_name}")
+            
+            return jsonify({
+                'status': 'success',
+                'message': 'Consumption profile deleted successfully'
+            }), 200
+    
+    except Exception as e:
+        logger.error(f"Delete consumption profile error: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to delete consumption profile'
+        }), 500
+
+
+@auth_bp.route('/admin/users/<user_id>/consumption-profile', methods=['PUT'])
+@require_admin
+async def assign_user_consumption_profile(current_user, user_id: str):
+    """
+    Assign a consumption profile to a user.
+    
+    Admin only endpoint.
+    
+    Request Body:
+        {
+            "profile_id": 1  # or null to unassign
+        }
+    
+    Returns:
+        200: Profile assigned successfully
+        400: Invalid request data
+        401: Unauthorized
+        403: Forbidden (not admin)
+        404: User or profile not found
+        500: Server error
+    """
+    from trusted_data_agent.auth.models import ConsumptionProfile
+    
+    try:
+        data = await request.get_json()
+        
+        if not data or 'profile_id' not in data:
+            return jsonify({
+                'status': 'error',
+                'message': 'profile_id is required'
+            }), 400
+        
+        profile_id = data['profile_id']
+        
+        with get_db_session() as session:
+            user = session.query(User).filter_by(id=user_id).first()
+            
+            if not user:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'User not found'
+                }), 404
+            
+            # If profile_id is null, unassign profile
+            if profile_id is None:
+                user.consumption_profile_id = None
+                action_desc = 'unassigned'
+            else:
+                # Verify profile exists
+                profile = session.query(ConsumptionProfile).filter_by(
+                    id=profile_id,
+                    is_active=True
+                ).first()
+                
+                if not profile:
+                    return jsonify({
+                        'status': 'error',
+                        'message': 'Consumption profile not found or inactive'
+                    }), 404
+                
+                user.consumption_profile_id = profile_id
+                action_desc = f'assigned to {profile.name}'
+            
+            session.commit()
+            session.refresh(user)
+            
+            log_audit_event_detailed(
+                user_id=current_user.id,
+                action='assign_consumption_profile',
+                resource='users',
+                status='success',
+                details=f'User {user.username} {action_desc}'
+            )
+            
+            logger.info(f"Admin {current_user.username} {action_desc} consumption profile for user {user.username}")
+            
+            return jsonify({
+                'status': 'success',
+                'message': f'Consumption profile {action_desc} successfully',
+                'user': user.to_dict()
+            }), 200
+    
+    except Exception as e:
+        logger.error(f"Assign consumption profile error: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to assign consumption profile'
+        }), 500
+
+
+@auth_bp.route('/user/quota-status', methods=['GET'])
+@require_auth
+async def get_user_quota_status(current_user):
+    """
+    Get current user's quota status and usage.
+    
+    Authenticated endpoint.
+    
+    Returns:
+        200: Quota status information
+        401: Unauthorized
+        500: Server error
+    """
+    from trusted_data_agent.auth.token_quota import get_user_quota_status
+    
+    try:
+        quota_status = get_user_quota_status(current_user.id)
+        
+        return jsonify({
+            'status': 'success',
+            'quota': quota_status
+        }), 200
+    
+    except Exception as e:
+        logger.error(f"Get quota status error: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch quota status'
+        }), 500

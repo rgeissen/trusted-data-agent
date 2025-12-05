@@ -267,6 +267,7 @@ def rate_limit(limit: int, window: int, bucket_key: Optional[str] = None):
 def check_user_prompt_quota(user_id: str) -> Tuple[bool, str]:
     """
     Check if user has exceeded prompt execution quotas.
+    Uses consumption profile if assigned, otherwise falls back to system defaults.
     
     Args:
         user_id: User's unique identifier
@@ -277,9 +278,24 @@ def check_user_prompt_quota(user_id: str) -> Tuple[bool, str]:
     if not _is_rate_limit_enabled():
         return True, ""
     
-    config = _get_rate_limit_config()
-    user_prompts_per_hour = config.get('user_prompts_per_hour', 100)
-    user_prompts_per_day = config.get('user_prompts_per_day', 1000)
+    # Try to get limits from user's consumption profile
+    try:
+        from trusted_data_agent.auth.token_quota import get_user_consumption_profile
+        profile = get_user_consumption_profile(user_id)
+        
+        if profile:
+            user_prompts_per_hour = profile.prompts_per_hour
+            user_prompts_per_day = profile.prompts_per_day
+        else:
+            # Fall back to system defaults
+            config = _get_rate_limit_config()
+            user_prompts_per_hour = config.get('user_prompts_per_hour', 100)
+            user_prompts_per_day = config.get('user_prompts_per_day', 1000)
+    except Exception as e:
+        logger.warning(f"Error fetching consumption profile, using system defaults: {e}")
+        config = _get_rate_limit_config()
+        user_prompts_per_hour = config.get('user_prompts_per_hour', 100)
+        user_prompts_per_day = config.get('user_prompts_per_day', 1000)
     
     # Check hourly limit
     allowed, retry_after = check_rate_limit(
@@ -310,6 +326,7 @@ def check_user_prompt_quota(user_id: str) -> Tuple[bool, str]:
 def check_user_config_quota(user_id: str) -> Tuple[bool, str]:
     """
     Check if user has exceeded configuration change quotas.
+    Uses consumption profile if assigned, otherwise falls back to system defaults.
     
     Args:
         user_id: User's unique identifier
@@ -320,8 +337,21 @@ def check_user_config_quota(user_id: str) -> Tuple[bool, str]:
     if not _is_rate_limit_enabled():
         return True, ""
     
-    config = _get_rate_limit_config()
-    user_configs_per_hour = config.get('user_configs_per_hour', 10)
+    # Try to get limits from user's consumption profile
+    try:
+        from trusted_data_agent.auth.token_quota import get_user_consumption_profile
+        profile = get_user_consumption_profile(user_id)
+        
+        if profile:
+            user_configs_per_hour = profile.config_changes_per_hour
+        else:
+            # Fall back to system defaults
+            config = _get_rate_limit_config()
+            user_configs_per_hour = config.get('user_configs_per_hour', 10)
+    except Exception as e:
+        logger.warning(f"Error fetching consumption profile, using system defaults: {e}")
+        config = _get_rate_limit_config()
+        user_configs_per_hour = config.get('user_configs_per_hour', 10)
     
     allowed, retry_after = check_rate_limit(
         f"user:{user_id}",

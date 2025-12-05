@@ -44,11 +44,16 @@ class User(Base):
     failed_login_attempts = Column(Integer, default=0, nullable=False)
     locked_until = Column(DateTime(timezone=True), nullable=True)
     
+    # Consumption profile
+    consumption_profile_id = Column(Integer, ForeignKey('consumption_profiles.id'), nullable=True, index=True)
+    
     # Relationships
     auth_tokens = relationship("AuthToken", back_populates="user", cascade="all, delete-orphan")
     credentials = relationship("UserCredential", back_populates="user", cascade="all, delete-orphan")
     preferences = relationship("UserPreference", back_populates="user", uselist=False, cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="user", cascade="all, delete-orphan")
+    consumption_profile = relationship("ConsumptionProfile", back_populates="users")
+    token_usage = relationship("UserTokenUsage", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User(id='{self.id}', username='{self.username}', email='{self.email}')>"
@@ -64,7 +69,9 @@ class User(Base):
             'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None,
             'is_active': self.is_active,
             'is_admin': self.is_admin,
-            'profile_tier': self.profile_tier
+            'profile_tier': self.profile_tier,
+            'consumption_profile_id': self.consumption_profile_id,
+            'consumption_profile': self.consumption_profile.to_dict() if self.consumption_profile else None
         }
         
         if include_sensitive:
@@ -530,4 +537,98 @@ class LLMModelCost(Base):
             'source': self.source,
             'last_updated': self.last_updated.isoformat() if self.last_updated else None,
             'notes': self.notes
+        }
+
+
+class ConsumptionProfile(Base):
+    """Consumption profile model for managing user rate limits and token quotas."""
+    
+    __tablename__ = 'consumption_profiles'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False, unique=True, index=True)
+    description = Column(Text, nullable=True)
+    
+    # Rate limiting parameters (per user with this profile)
+    prompts_per_hour = Column(Integer, nullable=False, default=100)
+    prompts_per_day = Column(Integer, nullable=False, default=1000)
+    config_changes_per_hour = Column(Integer, nullable=False, default=10)
+    
+    # Token consumption limits (monthly)
+    input_tokens_per_month = Column(Integer, nullable=True)  # NULL = unlimited
+    output_tokens_per_month = Column(Integer, nullable=True)  # NULL = unlimited
+    
+    # Profile metadata
+    is_default = Column(Boolean, default=False, nullable=False, index=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    users = relationship("User", back_populates="consumption_profile")
+    
+    def __repr__(self):
+        return f"<ConsumptionProfile(id={self.id}, name='{self.name}')>"
+    
+    def to_dict(self):
+        """Convert profile to dictionary for API responses."""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'prompts_per_hour': self.prompts_per_hour,
+            'prompts_per_day': self.prompts_per_day,
+            'config_changes_per_hour': self.config_changes_per_hour,
+            'input_tokens_per_month': self.input_tokens_per_month,
+            'output_tokens_per_month': self.output_tokens_per_month,
+            'is_default': self.is_default,
+            'is_active': self.is_active,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'user_count': len(self.users) if self.users else 0
+        }
+
+
+class UserTokenUsage(Base):
+    """Track token consumption per user per month for quota enforcement."""
+    
+    __tablename__ = 'user_token_usage'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String(36), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    
+    # Period tracking (YYYY-MM format for monthly tracking)
+    period = Column(String(7), nullable=False, index=True)  # e.g., "2025-12"
+    
+    # Token consumption
+    input_tokens_used = Column(Integer, nullable=False, default=0)
+    output_tokens_used = Column(Integer, nullable=False, default=0)
+    total_tokens_used = Column(Integer, nullable=False, default=0)
+    
+    # Timestamps
+    first_usage_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    last_usage_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    user = relationship("User", back_populates="token_usage")
+    
+    # Unique constraint: one record per user per period
+    __table_args__ = (
+        Index('idx_user_token_usage_user_period', 'user_id', 'period', unique=True),
+    )
+    
+    def __repr__(self):
+        return f"<UserTokenUsage(user_id='{self.user_id}', period='{self.period}', total={self.total_tokens_used})>"
+    
+    def to_dict(self):
+        """Convert usage record to dictionary for API responses."""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'period': self.period,
+            'input_tokens_used': self.input_tokens_used,
+            'output_tokens_used': self.output_tokens_used,
+            'total_tokens_used': self.total_tokens_used,
+            'first_usage_at': self.first_usage_at.isoformat() if self.first_usage_at else None,
+            'last_usage_at': self.last_usage_at.isoformat() if self.last_usage_at else None
         }
