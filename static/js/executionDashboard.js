@@ -14,6 +14,8 @@ class ExecutionDashboard {
         this.refreshInterval = null;
         this.autoRefreshEnabled = true;
         this.refreshIntervalMs = 60000; // 60 seconds (reduced from 30 to minimize server load)
+        this.currentPerformanceView = 'my'; // 'my' or 'system'
+        this.isAdmin = false;
     }
 
     /**
@@ -163,7 +165,8 @@ class ExecutionDashboard {
     }
 
     /**
-     * Refresh all dashboard data
+     * Refresh all dashboard data (used on initial load and when sessions toggle changes)
+     * Always fetches analytics based on current tab view AND sessions based on viewAllSessions toggle
      */
     async refreshDashboard() {
         
@@ -174,17 +177,24 @@ class ExecutionDashboard {
             // Load analytics and sessions in parallel
             const headers = this._getHeaders();
             
-            // Build sessions URL with all_users parameter if enabled
-            const sessionsUrl = this.viewAllSessions 
+            // Determine which consumption endpoint to use based on current tab view
+            const consumptionUrl = (this.currentPerformanceView === 'system' && this.isAdmin)
+                ? '/api/v1/consumption/system-summary'
+                : '/api/v1/consumption/summary';
+            
+            // Build sessions URL - only controlled by viewAllSessions toggle
+            const sessionsUrl = this.viewAllSessions
                 ? '/api/v1/sessions?limit=100&all_users=true'
                 : '/api/v1/sessions?limit=100';
             
-            console.log('[ExecutionDashboard] Fetching sessions with URL:', sessionsUrl);
-            console.log('[ExecutionDashboard] View all sessions enabled:', this.viewAllSessions);
+            console.log('[ExecutionDashboard] Refreshing full dashboard');
+            console.log('[ExecutionDashboard] Current view:', this.currentPerformanceView);
+            console.log('[ExecutionDashboard] Fetching consumption from:', consumptionUrl);
+            console.log('[ExecutionDashboard] Fetching sessions from:', sessionsUrl);
             
             // Fetch consumption metrics (fast DB query with velocity and model distribution) and sessions list
             const [consumptionResponse, sessionsResponse] = await Promise.all([
-                fetch('/api/v1/consumption/summary', { method: 'GET', headers: headers }),
+                fetch(consumptionUrl, { method: 'GET', headers: headers }),
                 fetch(sessionsUrl, { method: 'GET', headers: headers })
             ]);
 
@@ -932,6 +942,7 @@ Tokens: ${c.output_tokens || 0}
                 const data = await response.json();
                 if (data.status === 'success' && data.features) {
                     this.hasViewAllSessionsFeature = data.features.includes('view_all_sessions');
+                    this.isAdmin = this.hasViewAllSessionsFeature;
                     
                     // Show/hide the toggle based on feature availability
                     const toggleContainer = document.getElementById('view-all-sessions-container');
@@ -942,11 +953,86 @@ Tokens: ${c.output_tokens || 0}
                             toggleContainer.classList.add('hidden');
                         }
                     }
+                    
+                    // Show System Performance tab for admins
+                    if (this.isAdmin) {
+                        const systemTab = document.getElementById('tab-system-performance');
+                        if (systemTab) {
+                            systemTab.classList.remove('hidden');
+                        }
+                    }
                 }
             }
         } catch (error) {
             console.error('Error checking VIEW_ALL_SESSIONS feature:', error);
             this.hasViewAllSessionsFeature = false;
+            this.isAdmin = false;
+        }
+    }
+    
+    /**
+     * Switch between My Performance and System Performance tabs
+     * Only refreshes the analytics/metrics section, not the session gallery
+     */
+    async switchPerformanceTab(view) {
+        if (view === 'system' && !this.isAdmin) {
+            console.warn('System performance view is admin-only');
+            return;
+        }
+        
+        this.currentPerformanceView = view;
+        
+        // Update tab styling (match Intelligence Pane repository tabs)
+        const myTab = document.getElementById('tab-my-performance');
+        const systemTab = document.getElementById('tab-system-performance');
+        
+        if (view === 'my') {
+            myTab.classList.remove('text-gray-400', 'border-transparent');
+            myTab.classList.add('text-[#F15F22]', 'border-[#F15F22]');
+            systemTab.classList.remove('text-[#F15F22]', 'border-[#F15F22]');
+            systemTab.classList.add('text-gray-400', 'border-transparent');
+        } else {
+            systemTab.classList.remove('text-gray-400', 'border-transparent');
+            systemTab.classList.add('text-[#F15F22]', 'border-[#F15F22]');
+            myTab.classList.remove('text-[#F15F22]', 'border-[#F15F22]');
+            myTab.classList.add('text-gray-400', 'border-transparent');
+        }
+        
+        // Refresh only the analytics section (not session gallery)
+        await this.refreshAnalytics();
+    }
+    
+    /**
+     * Refresh only the analytics/metrics section (used by tab switching)
+     * Does NOT touch the session gallery at all
+     */
+    async refreshAnalytics() {
+        try {
+            const headers = this._getHeaders();
+            
+            // Determine which endpoint to use based on current view
+            const consumptionUrl = (this.currentPerformanceView === 'system' && this.isAdmin)
+                ? '/api/v1/consumption/system-summary'
+                : '/api/v1/consumption/summary';
+            
+            console.log('[ExecutionDashboard] Refreshing analytics only from:', consumptionUrl);
+            
+            const consumptionResponse = await fetch(consumptionUrl, { method: 'GET', headers: headers });
+
+            if (!consumptionResponse.ok) {
+                console.error('[ExecutionDashboard] API error - consumption:', consumptionResponse.status);
+                throw new Error('Failed to fetch analytics data');
+            }
+
+            this.analyticsData = await consumptionResponse.json();
+            
+            // Render only the analytics section - do NOT touch session gallery
+            this.renderAnalytics();
+
+        } catch (error) {
+            console.error('Error refreshing analytics:', error);
+            // Do NOT call showErrorState as it affects the session gallery
+            // Just log the error - the metrics will show stale data
         }
     }
 

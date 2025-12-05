@@ -975,6 +975,18 @@
                                 </button>
                             </div>
                             
+                            <!-- Performance Tabs (Admin: My Performance + System Performance | User: My Performance only) -->
+                            <div id="performance-tabs-container" class="mb-6">
+                                <div class="flex border-b border-gray-700 mb-6">
+                                    <button id="tab-my-performance" class="px-6 py-3 font-medium text-sm border-b-2 border-[#F15F22] text-[#F15F22] transition-colors" onclick="window.executionDashboard.switchPerformanceTab('my')">
+                                        My Performance
+                                    </button>
+                                    <button id="tab-system-performance" class="hidden px-6 py-3 font-medium text-sm border-b-2 border-transparent text-gray-400 hover:text-gray-300 transition-colors" onclick="window.executionDashboard.switchPerformanceTab('system')">
+                                        System Performance
+                                    </button>
+                                </div>
+                            </div>
+                            
                             <!-- Metrics Grid -->
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                                 <!-- Total Sessions Card -->

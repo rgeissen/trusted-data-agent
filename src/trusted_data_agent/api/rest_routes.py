@@ -5094,6 +5094,151 @@ async def get_consumption_summary():
         return jsonify({"error": str(e)}), 500
 
 
+@rest_api_bp.route('/v1/consumption/system-summary', methods=['GET'])
+@require_admin
+async def get_system_consumption_summary():
+    """
+    Get system-wide consumption summary (all users aggregated) - Admin only.
+    Returns aggregated metrics for the entire system.
+    """
+    try:
+        from trusted_data_agent.auth.database import get_db_session
+        from trusted_data_agent.auth.models import UserConsumption, ConsumptionTurn
+        from sqlalchemy import func, desc
+        from datetime import datetime, timedelta
+        
+        with get_db_session() as db_session:
+            # Aggregate all user consumption data
+            result = db_session.query(
+                func.count(UserConsumption.user_id).label('total_users'),
+                func.sum(UserConsumption.total_input_tokens).label('total_input_tokens'),
+                func.sum(UserConsumption.total_output_tokens).label('total_output_tokens'),
+                func.sum(UserConsumption.total_tokens).label('total_tokens'),
+                func.sum(UserConsumption.total_sessions).label('total_sessions'),
+                func.sum(UserConsumption.total_turns).label('total_turns'),
+                func.sum(UserConsumption.successful_turns).label('successful_turns'),
+                func.sum(UserConsumption.failed_turns).label('failed_turns'),
+                func.sum(UserConsumption.rag_guided_turns).label('rag_guided_turns'),
+                func.sum(UserConsumption.estimated_cost_usd).label('total_cost_cents'),
+                func.sum(UserConsumption.sessions_last_24h).label('sessions_last_24h'),
+                func.sum(UserConsumption.turns_last_24h).label('turns_last_24h')
+            ).first()
+            
+            # Calculate derived metrics
+            total_users = result.total_users or 0
+            total_tokens = result.total_tokens or 0
+            total_turns = result.total_turns or 0
+            successful_turns = result.successful_turns or 0
+            rag_guided_turns = result.rag_guided_turns or 0
+            
+            success_rate = (successful_turns / total_turns * 100) if total_turns > 0 else 0
+            rag_activation_rate = (rag_guided_turns / total_turns * 100) if total_turns > 0 else 0
+            avg_tokens_per_user = (total_tokens / total_users) if total_users > 0 else 0
+            
+            # Count active users (users with token usage)
+            active_users = db_session.query(func.count(UserConsumption.user_id)).filter(
+                UserConsumption.total_tokens > 0
+            ).scalar() or 0
+            
+            # Get velocity data (last 30 days, all users aggregated)
+            thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+            velocity_query = db_session.query(
+                func.date(ConsumptionTurn.created_at).label('date'),
+                func.count(ConsumptionTurn.id).label('count')
+            ).filter(
+                ConsumptionTurn.created_at >= thirty_days_ago
+            ).group_by(
+                func.date(ConsumptionTurn.created_at)
+            ).order_by('date').all()
+            
+            velocity_data = [{'date': str(row.date), 'count': row.count or 0} for row in velocity_query]
+            
+            # Get model distribution (all users aggregated)
+            model_dist_query = db_session.query(
+                ConsumptionTurn.model,
+                func.count(ConsumptionTurn.id).label('count')
+            ).filter(
+                ConsumptionTurn.model.isnot(None)
+            ).group_by(
+                ConsumptionTurn.model
+            ).all()
+            
+            # Calculate percentages
+            total_model_count = sum(row.count for row in model_dist_query)
+            model_distribution = {
+                row.model: round(row.count / total_model_count * 100, 1)
+                for row in model_dist_query
+            } if total_model_count > 0 else {}
+            
+            # Get top expensive sessions (all users)
+            top_sessions_query = db_session.query(
+                ConsumptionTurn.session_id,
+                func.max(ConsumptionTurn.session_name).label('session_name'),
+                func.sum(ConsumptionTurn.total_tokens).label('total_tokens')
+            ).filter(
+                ConsumptionTurn.session_id.isnot(None)
+            ).group_by(
+                ConsumptionTurn.session_id
+            ).order_by(desc('total_tokens')).limit(5).all()
+            
+            top_expensive_queries = [
+                {
+                    'session_id': row.session_id,
+                    'name': row.session_name or 'Unnamed Session',
+                    'tokens': row.total_tokens or 0
+                }
+                for row in top_sessions_query
+            ]
+            
+            # Get top expensive questions (all users)
+            top_questions_query = db_session.query(
+                ConsumptionTurn.user_query,
+                ConsumptionTurn.session_id,
+                ConsumptionTurn.total_tokens
+            ).filter(
+                ConsumptionTurn.user_query.isnot(None),
+                ConsumptionTurn.user_query != ''
+            ).order_by(desc(ConsumptionTurn.total_tokens)).limit(5).all()
+            
+            top_expensive_questions = [
+                {
+                    'query': row.user_query[:100],  # Truncate long queries
+                    'session_id': row.session_id,
+                    'tokens': row.total_tokens or 0
+                }
+                for row in top_questions_query
+            ]
+            
+            summary = {
+                'total_users': total_users,
+                'active_users': active_users,
+                'total_input_tokens': result.total_input_tokens or 0,
+                'total_output_tokens': result.total_output_tokens or 0,
+                'total_tokens': total_tokens,
+                'avg_tokens_per_user': int(avg_tokens_per_user),
+                'total_sessions': result.total_sessions or 0,
+                'total_turns': total_turns,
+                'successful_turns': successful_turns,
+                'failed_turns': result.failed_turns or 0,
+                'success_rate_percent': round(success_rate, 2),
+                'rag_guided_turns': rag_guided_turns,
+                'rag_activation_rate_percent': round(rag_activation_rate, 2),
+                'estimated_cost_usd': (result.total_cost_cents or 0) / 100.0,
+                'sessions_last_24h': result.sessions_last_24h or 0,
+                'turns_last_24h': result.turns_last_24h or 0,
+                'velocity_data': velocity_data,
+                'model_distribution': model_distribution,
+                'top_expensive_queries': top_expensive_queries,
+                'top_expensive_questions': top_expensive_questions
+            }
+            
+            return jsonify(summary), 200
+    
+    except Exception as e:
+        app_logger.error(f"Error getting system consumption summary: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
 @rest_api_bp.route('/v1/consumption/users', methods=['GET'])
 @require_admin
 async def get_all_users_consumption():
