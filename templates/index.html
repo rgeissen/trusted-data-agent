@@ -2301,9 +2301,13 @@
                                             <thead class="text-xs uppercase bg-gray-700/50 text-gray-400">
                                                 <tr>
                                                     <th class="px-6 py-3">Profile Name</th>
-                                                    <th class="px-6 py-3">Daily Token Limit</th>
-                                                    <th class="px-6 py-3">Request Limit per Minute</th>
-                                                    <th class="px-6 py-3">Active</th>
+                                                    <th class="px-6 py-3">Description</th>
+                                                    <th class="px-6 py-3 text-center">Prompts/Hour</th>
+                                                    <th class="px-6 py-3 text-center">Prompts/Day</th>
+                                                    <th class="px-6 py-3 text-center">Input Tokens/Month</th>
+                                                    <th class="px-6 py-3 text-center">Output Tokens/Month</th>
+                                                    <th class="px-6 py-3 text-center">Users</th>
+                                                    <th class="px-6 py-3 text-center">Active</th>
                                                     <th class="px-6 py-3 text-center">Actions</th>
                                                 </tr>
                                             </thead>
@@ -6164,5 +6168,111 @@
             </form>
         </div>
     </div>
+
+    <!-- Consumption Profile Modal -->
+    <div id="consumption-profile-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-800 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-700">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-2xl font-bold text-white" id="consumption-profile-modal-title">Create Consumption Profile</h3>
+                    <p class="text-sm text-gray-400 mt-1">Configure token limits and rate limiting for user tiers</p>
+                </div>
+                <button id="close-consumption-profile-modal" class="p-2 hover:bg-gray-700 rounded-lg transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <form id="consumption-profile-form" class="space-y-6">
+                <input type="hidden" id="consumption-profile-id" value="">
+
+                <!-- Profile Name -->
+                <div>
+                    <label for="consumption-profile-name" class="block text-sm font-medium text-gray-300 mb-2">
+                        Profile Name <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" id="consumption-profile-name" required
+                           class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none text-white"
+                           placeholder="e.g., Enterprise, Standard, Free">
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label for="consumption-profile-description" class="block text-sm font-medium text-gray-300 mb-2">
+                        Description
+                    </label>
+                    <textarea id="consumption-profile-description" rows="2"
+                              class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none text-white resize-none"
+                              placeholder="Brief description of this consumption tier..."></textarea>
+                </div>
+
+                <!-- Rate Limits -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="consumption-profile-prompts-hour" class="block text-sm font-medium text-gray-300 mb-2">
+                            Prompts per Hour <span class="text-red-400">*</span>
+                        </label>
+                        <input type="number" id="consumption-profile-prompts-hour" min="0" required
+                               class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none text-white"
+                               placeholder="100">
+                    </div>
+                    <div>
+                        <label for="consumption-profile-prompts-day" class="block text-sm font-medium text-gray-300 mb-2">
+                            Prompts per Day <span class="text-red-400">*</span>
+                        </label>
+                        <input type="number" id="consumption-profile-prompts-day" min="0" required
+                               class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none text-white"
+                               placeholder="1000">
+                    </div>
+                </div>
+
+                <!-- Token Limits -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="consumption-profile-input-tokens" class="block text-sm font-medium text-gray-300 mb-2">
+                            Input Tokens per Month
+                        </label>
+                        <input type="number" id="consumption-profile-input-tokens" min="0"
+                               class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none text-white"
+                               placeholder="Leave empty for unlimited">
+                        <p class="text-xs text-gray-400 mt-1">Empty = Unlimited</p>
+                    </div>
+                    <div>
+                        <label for="consumption-profile-output-tokens" class="block text-sm font-medium text-gray-300 mb-2">
+                            Output Tokens per Month
+                        </label>
+                        <input type="number" id="consumption-profile-output-tokens" min="0"
+                               class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none text-white"
+                               placeholder="Leave empty for unlimited">
+                        <p class="text-xs text-gray-400 mt-1">Empty = Unlimited</p>
+                    </div>
+                </div>
+
+                <!-- Status Toggles -->
+                <div class="flex gap-6">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" id="consumption-profile-is-active" class="w-4 h-4 rounded border-gray-600 bg-gray-700 text-[#F15F22] focus:ring-2 focus:ring-[#F15F22] focus:ring-offset-0">
+                        <span class="ml-3 text-sm font-medium text-gray-300">Active</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" id="consumption-profile-is-default" class="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0">
+                        <span class="ml-3 text-sm font-medium text-gray-300">Default Profile</span>
+                    </label>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="flex justify-end gap-3 pt-4 border-t border-gray-600">
+                    <button type="button" id="cancel-consumption-profile" class="px-4 py-2 rounded-md bg-gray-600 hover:bg-gray-500 transition-colors font-semibold text-white">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 rounded-md bg-[#F15F22] hover:bg-[#D9501A] transition-colors font-semibold text-white">
+                        Save Profile
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 </body>
 </html>

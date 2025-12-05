@@ -83,18 +83,18 @@ const AdminManager = {
             createProfileBtn.addEventListener('click', () => this.showCreateProfileModal());
         }
 
-        // Profile modal handlers
-        const profileModalClose = document.getElementById('profile-modal-close');
+        // Consumption Profile modal handlers
+        const profileModalClose = document.getElementById('close-consumption-profile-modal');
         if (profileModalClose) {
             profileModalClose.addEventListener('click', () => this.hideProfileModal());
         }
         
-        const profileFormCancel = document.getElementById('profile-form-cancel');
+        const profileFormCancel = document.getElementById('cancel-consumption-profile');
         if (profileFormCancel) {
             profileFormCancel.addEventListener('click', () => this.hideProfileModal());
         }
         
-        const profileForm = document.getElementById('profile-form');
+        const profileForm = document.getElementById('consumption-profile-form');
         if (profileForm) {
             profileForm.addEventListener('submit', (e) => this.handleProfileFormSubmit(e));
         }
@@ -698,6 +698,26 @@ const AdminManager = {
                 this.deleteProfile(profileId);
             });
         });
+
+        // Update KPIs
+        this.updateProfileKPIs();
+    },
+
+    /**
+     * Update consumption profile KPIs
+     */
+    updateProfileKPIs() {
+        const totalProfiles = this.currentProfiles.length;
+        const activeProfiles = this.currentProfiles.filter(p => p.is_active).length;
+        const assignedUsers = this.currentProfiles.reduce((sum, p) => sum + (p.user_count || 0), 0);
+
+        const totalElem = document.getElementById('total-profiles-count');
+        const activeElem = document.getElementById('active-profiles-count');
+        const assignedElem = document.getElementById('assigned-users-count');
+
+        if (totalElem) totalElem.textContent = totalProfiles;
+        if (activeElem) activeElem.textContent = activeProfiles;
+        if (assignedElem) assignedElem.textContent = assignedUsers;
     },
 
     /**
@@ -744,15 +764,16 @@ const AdminManager = {
      * Show create profile modal
      */
     showCreateProfileModal() {
-        const modal = document.getElementById('profile-modal-overlay');
-        const title = document.getElementById('profile-modal-title');
-        const form = document.getElementById('profile-form');
+        const modal = document.getElementById('consumption-profile-modal');
+        const title = document.getElementById('consumption-profile-modal-title');
+        const form = document.getElementById('consumption-profile-form');
         
         if (!modal || !title || !form) return;
         
         title.textContent = 'Create Consumption Profile';
         form.reset();
-        document.getElementById('profile-form-id').value = '';
+        document.getElementById('consumption-profile-id').value = '';
+        document.getElementById('consumption-profile-is-active').checked = true;
         modal.classList.remove('hidden');
     },
 
@@ -763,23 +784,23 @@ const AdminManager = {
         const profile = this.currentProfiles.find(p => p.id === profileId);
         if (!profile) return;
         
-        const modal = document.getElementById('profile-modal-overlay');
-        const title = document.getElementById('profile-modal-title');
+        const modal = document.getElementById('consumption-profile-modal');
+        const title = document.getElementById('consumption-profile-modal-title');
         
         if (!modal || !title) return;
         
         title.textContent = 'Edit Consumption Profile';
         
         // Fill form with profile data
-        document.getElementById('profile-form-id').value = profile.id;
-        document.getElementById('profile-form-name').value = profile.name;
-        document.getElementById('profile-form-description').value = profile.description || '';
-        document.getElementById('profile-form-is-default').checked = profile.is_default;
-        document.getElementById('profile-form-prompts-hour').value = profile.prompts_per_hour || '';
-        document.getElementById('profile-form-prompts-day').value = profile.prompts_per_day || '';
-        document.getElementById('profile-form-config-hour').value = profile.config_changes_per_hour || '';
-        document.getElementById('profile-form-input-tokens').value = profile.input_tokens_per_month || '';
-        document.getElementById('profile-form-output-tokens').value = profile.output_tokens_per_month || '';
+        document.getElementById('consumption-profile-id').value = profile.id;
+        document.getElementById('consumption-profile-name').value = profile.name;
+        document.getElementById('consumption-profile-description').value = profile.description || '';
+        document.getElementById('consumption-profile-is-default').checked = profile.is_default;
+        document.getElementById('consumption-profile-is-active').checked = profile.is_active;
+        document.getElementById('consumption-profile-prompts-hour').value = profile.prompts_per_hour || '';
+        document.getElementById('consumption-profile-prompts-day').value = profile.prompts_per_day || '';
+        document.getElementById('consumption-profile-input-tokens').value = profile.input_tokens_per_month || '';
+        document.getElementById('consumption-profile-output-tokens').value = profile.output_tokens_per_month || '';
         
         modal.classList.remove('hidden');
     },
@@ -788,10 +809,10 @@ const AdminManager = {
      * Hide profile modal
      */
     hideProfileModal() {
-        const modal = document.getElementById('profile-modal-overlay');
+        const modal = document.getElementById('consumption-profile-modal');
         if (modal) {
             modal.classList.add('hidden');
-            document.getElementById('profile-form').reset();
+            document.getElementById('consumption-profile-form').reset();
         }
     },
 
@@ -801,20 +822,20 @@ const AdminManager = {
     async handleProfileFormSubmit(e) {
         e.preventDefault();
         
-        const profileId = document.getElementById('profile-form-id').value;
+        const profileId = document.getElementById('consumption-profile-id').value;
         const isEdit = !!profileId;
         
         // Get form values
         const profileData = {
-            name: document.getElementById('profile-form-name').value,
-            description: document.getElementById('profile-form-description').value || null,
-            is_default: document.getElementById('profile-form-is-default').checked,
-            prompts_per_hour: this.parseIntOrNull('profile-form-prompts-hour'),
-            prompts_per_day: this.parseIntOrNull('profile-form-prompts-day'),
-            config_changes_per_hour: this.parseIntOrNull('profile-form-config-hour'),
-            input_tokens_per_month: this.parseIntOrNull('profile-form-input-tokens'),
-            output_tokens_per_month: this.parseIntOrNull('profile-form-output-tokens'),
-            is_active: true
+            name: document.getElementById('consumption-profile-name').value,
+            description: document.getElementById('consumption-profile-description').value || null,
+            is_default: document.getElementById('consumption-profile-is-default').checked,
+            is_active: document.getElementById('consumption-profile-is-active').checked,
+            prompts_per_hour: this.parseIntOrNull('consumption-profile-prompts-hour'),
+            prompts_per_day: this.parseIntOrNull('consumption-profile-prompts-day'),
+            config_changes_per_hour: 10,
+            input_tokens_per_month: this.parseIntOrNull('consumption-profile-input-tokens'),
+            output_tokens_per_month: this.parseIntOrNull('consumption-profile-output-tokens')
         };
         
         try {
