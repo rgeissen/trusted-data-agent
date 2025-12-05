@@ -195,15 +195,54 @@ async def test_llm_credentials(provider: str, model: str, credentials: Dict[str,
                 
         elif provider == "Amazon":
             import json
-            body = json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 5,
-                "messages": [{"role": "user", "content": "test"}]
-            })
+            
+            # Determine provider from model ID or inference profile ARN
+            is_inference_profile = model.startswith("arn:aws:bedrock:")
+            if is_inference_profile:
+                # Extract provider from inference profile ARN
+                # Format: arn:aws:bedrock:region:account:inference-profile/provider.model-name
+                try:
+                    profile_part = model.split('/')[-1]
+                    bedrock_provider = profile_part.split('.')[1] if '.' in profile_part else "unknown"
+                except:
+                    bedrock_provider = "unknown"
+            else:
+                # Direct model ID - extract provider from model ID
+                bedrock_provider = model.split('.')[0]
+            
+            # Build request body based on provider
+            if bedrock_provider == "anthropic":
+                body = json.dumps({
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 5,
+                    "messages": [{"role": "user", "content": "test"}]
+                })
+            elif bedrock_provider == "amazon":
+                # Amazon Nova format
+                body = json.dumps({
+                    "messages": [{"role": "user", "content": [{"text": "test"}]}],
+                    "inferenceConfig": {"maxTokens": 5}
+                })
+            else:
+                # Default format for other providers
+                body = json.dumps({
+                    "prompt": "test",
+                    "max_tokens": 5
+                })
+            
             response = llm_instance.invoke_model(modelId=model, body=body)
             response_body = json.loads(response['body'].read())
-            if response_body.get('content'):
-                return True, f"LLM connection successful ({provider} {model})."
+            
+            # Check response based on provider
+            if bedrock_provider == "anthropic":
+                if response_body.get('content'):
+                    return True, f"LLM connection successful ({provider} {model})."
+            elif bedrock_provider == "amazon":
+                if response_body.get('output', {}).get('message'):
+                    return True, f"LLM connection successful ({provider} {model})."
+            else:
+                if response_body.get('results') or response_body.get('completion'):
+                    return True, f"LLM connection successful ({provider} {model})."
                 
         elif provider == "Ollama":
             response = await llm_instance.generate(model=model, prompt="test")

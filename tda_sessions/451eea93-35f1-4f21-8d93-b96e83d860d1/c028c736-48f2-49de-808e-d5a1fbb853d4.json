@@ -1,0 +1,50 @@
+{
+  "id": "c028c736-48f2-49de-808e-d5a1fbb853d4",
+  "user_uuid": "451eea93-35f1-4f21-8d93-b96e83d860d1",
+  "system_prompt_template": null,
+  "charting_intensity": "medium",
+  "provider": "Amazon",
+  "model": "arn:aws:bedrock:eu-central-1:960887920495:inference-profile/eu.amazon.nova-lite-v1:0",
+  "profile_tag": "ADAAT",
+  "profile_id": null,
+  "profile_tags_used": [
+    "ADAAT"
+  ],
+  "models_used": [
+    "Amazon/arn:aws:bedrock:eu-central-1:960887920495:inference-profile/eu.amazon.nova-lite-v1:0"
+  ],
+  "session_history": [
+    {
+      "role": "user",
+      "content": "what is the system version?",
+      "isValid": true,
+      "turn_number": 1,
+      "source": "text"
+    }
+  ],
+  "chat_object": [
+    {
+      "role": "user",
+      "content": "what is the system version?",
+      "isValid": true,
+      "turn_number": 1
+    }
+  ],
+  "name": "New Chat",
+  "created_at": "2025-12-06T00:48:29.611200",
+  "last_updated": "2025-12-06T00:48:47.520088",
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "last_turn_data": {
+    "workflow_history": []
+  },
+  "full_context_sent": false,
+  "license_info": {
+    "holder": "GNU Affero General Public License v3.0",
+    "issued_at": "2025-11-10T19:25:00.506556+00:00",
+    "expires_at": "2026-11-10T19:25:00.506556+00:00",
+    "version": "1.5-tiered",
+    "tier": "App Developer",
+    "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
+  }
+}

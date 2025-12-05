@@ -370,6 +370,18 @@ async def switch_profile_context(profile_id: str, user_uuid: str, validate_llm: 
             set_user_friendli_details(friendli_details, user_uuid)
         elif provider == "Amazon":
             set_user_aws_region(credentials.get("aws_region"), user_uuid)
+            # Extract provider from inference profile ARN if applicable
+            if model.startswith("arn:aws:bedrock:"):
+                try:
+                    profile_part = model.split('/')[-1]
+                    model_provider = profile_part.split('.')[1]
+                    set_user_model_provider_in_profile(model_provider, user_uuid)
+                    app_logger.info(f"Detected inference profile provider: {model_provider}")
+                except Exception as e:
+                    app_logger.warning(f"Failed to extract provider from inference profile ARN: {e}")
+                    set_user_model_provider_in_profile(None, user_uuid)
+            else:
+                set_user_model_provider_in_profile(None, user_uuid)
         
         # Load MCP server configuration from profile
         mcp_server_id = profile.get('mcpServerId')

@@ -1149,7 +1149,7 @@ export function showLLMConfigurationModal(configId = null) {
                     <div class="flex items-center">
                         <input id="listing-${option.id}" name="listing_method" type="radio" value="${option.value}" 
                             ${checked ? 'checked' : ''} 
-                            data-credential="listingMethod"
+                            data-credential="listing_method"
                             class="h-4 w-4 border-gray-300 text-[#F15F22] focus:ring-[#F15F22]">
                         <label for="listing-${option.id}" class="ml-2 text-sm text-gray-300">${escapeHtml(option.label)}</label>
                     </div>
