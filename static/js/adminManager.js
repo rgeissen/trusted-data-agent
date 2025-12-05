@@ -6,6 +6,10 @@
 const AdminManager = {
     currentUsers: [],
     currentFeatures: [],
+    currentProfiles: [],
+    currentConsumptionData: [],
+    consumptionSortColumn: 'username',
+    consumptionSortDirection: 'asc',
     featureChanges: {},
 
     /**
@@ -48,6 +52,51 @@ const AdminManager = {
         const userFormCancel = document.getElementById('user-form-cancel');
         if (userFormCancel) {
             userFormCancel.addEventListener('click', () => this.hideUserModal());
+        }
+
+        // User Management Sub-tabs
+        document.querySelectorAll('.user-management-subtab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                const subtabName = e.currentTarget.dataset.subtab;
+                this.switchUserManagementSubtab(subtabName);
+            });
+        });
+
+        // Refresh consumption button
+        const refreshConsumptionBtn = document.getElementById('refresh-consumption-btn');
+        if (refreshConsumptionBtn) {
+            refreshConsumptionBtn.addEventListener('click', () => this.loadUserConsumption());
+        }
+
+        // Consumption table sorting
+        document.addEventListener('click', (e) => {
+            const th = e.target.closest('th[data-sort]');
+            if (th && th.closest('#user-consumption-subtab')) {
+                const sortBy = th.dataset.sort;
+                this.sortConsumptionTable(sortBy);
+            }
+        });
+
+        // Consumption Profiles
+        const createProfileBtn = document.getElementById('create-profile-btn');
+        if (createProfileBtn) {
+            createProfileBtn.addEventListener('click', () => this.showCreateProfileModal());
+        }
+
+        // Profile modal handlers
+        const profileModalClose = document.getElementById('profile-modal-close');
+        if (profileModalClose) {
+            profileModalClose.addEventListener('click', () => this.hideProfileModal());
+        }
+        
+        const profileFormCancel = document.getElementById('profile-form-cancel');
+        if (profileFormCancel) {
+            profileFormCancel.addEventListener('click', () => this.hideProfileModal());
+        }
+        
+        const profileForm = document.getElementById('profile-form');
+        if (profileForm) {
+            profileForm.addEventListener('submit', (e) => this.handleProfileFormSubmit(e));
         }
         
         const userForm = document.getElementById('user-form');
@@ -211,6 +260,13 @@ const AdminManager = {
         // Load data for the active tab
         if (tabName === 'user-management-tab') {
             this.loadUsers();
+            // Load the active sub-tab
+            const activeSubtab = document.querySelector('.user-management-subtab.active');
+            if (activeSubtab && activeSubtab.dataset.subtab === 'user-consumption-subtab') {
+                this.loadUserConsumption();
+            }
+        } else if (tabName === 'consumption-profiles-tab') {
+            this.loadProfiles();
         } else if (tabName === 'feature-config-tab') {
             this.loadFeatures();
         } else if (tabName === 'pane-config-tab') {
@@ -231,10 +287,47 @@ const AdminManager = {
     },
 
     /**
+     * Switch User Management sub-tabs
+     */
+    switchUserManagementSubtab(subtabName) {
+        // Update sub-tab buttons
+        document.querySelectorAll('.user-management-subtab').forEach(tab => {
+            if (tab.dataset.subtab === subtabName) {
+                tab.classList.add('active', 'border-[#F15F22]', 'text-white');
+                tab.classList.remove('text-gray-400', 'border-transparent');
+            } else {
+                tab.classList.remove('active', 'border-[#F15F22]', 'text-white');
+                tab.classList.add('text-gray-400', 'border-transparent');
+            }
+        });
+
+        // Update sub-tab content
+        document.querySelectorAll('.user-management-subtab-content').forEach(content => {
+            if (content.id === subtabName) {
+                content.classList.remove('hidden');
+                content.classList.add('active');
+            } else {
+                content.classList.add('hidden');
+                content.classList.remove('active');
+            }
+        });
+
+        // Load data for the active sub-tab
+        if (subtabName === 'user-consumption-subtab') {
+            this.loadUserConsumption();
+        }
+    },
+
+    /**
      * Load all users from API
      */
     async loadUsers() {
         try {
+            // Load profiles first if not loaded yet
+            if (this.currentProfiles.length === 0) {
+                await this.loadProfilesForDropdown();
+            }
+
             const token = localStorage.getItem('tda_auth_token');
             const response = await fetch('/api/v1/admin/users', {
                 headers: {
@@ -275,7 +368,7 @@ const AdminManager = {
         if (this.currentUsers.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="px-6 py-8 text-center text-gray-400">
+                    <td colspan="6" class="px-6 py-8 text-center text-gray-400">
                         No users found
                     </td>
                 </tr>
@@ -285,7 +378,17 @@ const AdminManager = {
 
         tbody.innerHTML = this.currentUsers
             .filter(user => user.is_active !== false)  // Filter out inactive users
-            .map(user => `
+            .map(user => {
+                // Get the default profile (Unlimited)
+                const defaultProfile = this.currentProfiles.find(p => p.is_default);
+                const userProfileId = user.consumption_profile_id || (defaultProfile ? defaultProfile.id : null);
+                const userProfileName = user.consumption_profile_name || (defaultProfile ? defaultProfile.name : 'None');
+                
+                const profileOptions = this.currentProfiles.map(profile => 
+                    `<option value="${profile.id}" ${userProfileId === profile.id ? 'selected' : ''}>${this.escapeHtml(profile.name)}</option>`
+                ).join('');
+                
+                return `
             <tr class="bg-gray-800/50 hover:bg-gray-700/50 transition-colors">
                 <td class="px-6 py-4 font-medium text-white">${this.escapeHtml(user.username)}</td>
                 <td class="px-6 py-4 text-gray-300">${this.escapeHtml(user.email || '')}</td>
@@ -293,6 +396,9 @@ const AdminManager = {
                     <span class="px-3 py-1 rounded-full text-xs font-semibold ${this.getTierBadgeClass(user.profile_tier)}">
                         ${user.profile_tier.toUpperCase()}
                     </span>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold ${this.getProfileBadgeClass(userProfileName)}">${this.escapeHtml(userProfileName)}</span>
                 </td>
                 <td class="px-6 py-4 text-gray-400 text-sm">
                     ${user.feature_count || 0} features
@@ -308,6 +414,13 @@ const AdminManager = {
                             <option value="developer" ${user.profile_tier === 'developer' ? 'selected' : ''}>Developer</option>
                             <option value="admin" ${user.profile_tier === 'admin' ? 'selected' : ''}>Admin</option>
                         </select>
+                        <select 
+                            class="profile-select p-2 bg-gray-700 border border-gray-600 rounded-md text-sm text-white focus:ring-2 focus:ring-[#F15F22] focus:border-[#F15F22] outline-none"
+                            data-user-id="${user.id}"
+                            title="Assign Consumption Profile"
+                        >
+                            ${profileOptions}
+                        </select>
                         <button class="edit-user-btn p-2 text-blue-400 hover:text-blue-300 transition-colors" data-user-id="${user.id}" title="Edit User">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -321,14 +434,24 @@ const AdminManager = {
                     </div>
                 </td>
             </tr>
-        `).join('');
+        `;
+            }).join('');
 
-        // Attach change listeners
+        // Attach change listeners for tier
         tbody.querySelectorAll('.tier-select').forEach(select => {
             select.addEventListener('change', async (e) => {
                 const userId = e.target.dataset.userId;
                 const newTier = e.target.value;
                 await this.changeUserTier(userId, newTier);
+            });
+        });
+        
+        // Attach change listeners for profile
+        tbody.querySelectorAll('.profile-select').forEach(select => {
+            select.addEventListener('change', async (e) => {
+                const userId = e.target.dataset.userId;
+                const profileId = e.target.value ? parseInt(e.target.value) : null;
+                await this.assignUserProfile(userId, profileId);
             });
         });
         
@@ -359,6 +482,19 @@ const AdminManager = {
             'admin': 'bg-red-500/20 text-red-400 border border-red-400/30'
         };
         return classes[tier] || classes['user'];
+    },
+
+    /**
+     * Get badge class for consumption profile
+     */
+    getProfileBadgeClass(profileName) {
+        const classes = {
+            'Free': 'bg-blue-500/20 text-blue-400 border border-blue-400/30',
+            'Pro': 'bg-purple-500/20 text-purple-400 border border-purple-400/30',
+            'Enterprise': 'bg-orange-500/20 text-orange-400 border border-orange-400/30',
+            'Unlimited': 'bg-green-500/20 text-green-400 border border-green-400/30'
+        };
+        return classes[profileName] || 'bg-gray-500/20 text-gray-400 border border-gray-400/30';
     },
 
     /**
@@ -407,6 +543,633 @@ const AdminManager = {
             console.error('[AdminManager] Error changing user tier:', error);
             window.showNotification('error', 'Failed to update user tier');
             await this.loadUsers();
+        }
+    },
+
+    /**
+     * Assign consumption profile to user
+     */
+    async assignUserProfile(userId, profileId) {
+        try {
+            const token = localStorage.getItem('tda_auth_token');
+            const response = await fetch(`/api/v1/auth/admin/users/${userId}/consumption-profile`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ profile_id: profileId })
+            });
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                const profileName = profileId ? this.currentProfiles.find(p => p.id === profileId)?.name : 'Default';
+                window.showNotification('success', `User profile updated to ${profileName}`);
+                await this.loadUsers();
+                await this.updateProfileStats();
+            } else {
+                window.showNotification('error', data.message || 'Failed to assign profile');
+                await this.loadUsers();
+            }
+        } catch (error) {
+            console.error('[AdminManager] Error assigning profile:', error);
+            window.showNotification('error', 'Failed to assign profile');
+            await this.loadUsers();
+        }
+    },
+
+    /**
+     * Load profiles for dropdown (silent, no rendering)
+     */
+    async loadProfilesForDropdown() {
+        try {
+            const token = localStorage.getItem('tda_auth_token');
+            const response = await fetch('/api/v1/auth/admin/consumption-profiles', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                this.currentProfiles = data.profiles;
+            }
+        } catch (error) {
+            console.error('[AdminManager] Error loading profiles:', error);
+        }
+    },
+
+    /**
+     * Load all consumption profiles from API
+     */
+    async loadProfiles() {
+        try {
+            const token = localStorage.getItem('tda_auth_token');
+            const response = await fetch('/api/v1/auth/admin/consumption-profiles', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                this.currentProfiles = data.profiles;
+                this.renderProfiles();
+                this.updateProfileStats();
+            } else {
+                window.showNotification('error', data.message || 'Failed to load profiles');
+            }
+        } catch (error) {
+            console.error('[AdminManager] Error loading profiles:', error);
+            window.showNotification('error', 'Failed to load profiles');
+        }
+    },
+
+    /**
+     * Render profiles table
+     */
+    renderProfiles() {
+        const tbody = document.getElementById('profiles-table-body');
+        if (!tbody) return;
+
+        if (this.currentProfiles.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="px-6 py-8 text-center text-gray-400">
+                        No profiles found
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = this.currentProfiles.map(profile => `
+            <tr class="bg-gray-800/50 hover:bg-gray-700/50 transition-colors">
+                <td class="px-6 py-4 font-medium text-white">
+                    ${this.escapeHtml(profile.name)}
+                    ${profile.is_default ? '<span class="ml-2 px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded">DEFAULT</span>' : ''}
+                </td>
+                <td class="px-6 py-4 text-gray-300 text-sm">${this.escapeHtml(profile.description || '')}</td>
+                <td class="px-6 py-4 text-center text-gray-300">${profile.prompts_per_hour || '∞'}</td>
+                <td class="px-6 py-4 text-center text-gray-300">${profile.prompts_per_day || '∞'}</td>
+                <td class="px-6 py-4 text-center text-gray-300">${this.formatTokens(profile.input_tokens_per_month)}</td>
+                <td class="px-6 py-4 text-center text-gray-300">${this.formatTokens(profile.output_tokens_per_month)}</td>
+                <td class="px-6 py-4 text-center">
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold ${this.getProfileBadgeClass(profile.name)}">${profile.user_count || 0}</span>
+                </td>
+                <td class="px-6 py-4 text-center">
+                    <span class="px-2 py-1 rounded text-xs ${profile.is_active ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}">
+                        ${profile.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex gap-2 justify-center">
+                        <button class="edit-profile-btn p-2 text-blue-400 hover:text-blue-300 transition-colors" data-profile-id="${profile.id}" title="Edit Profile">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </button>
+                        <button class="delete-profile-btn p-2 text-red-400 hover:text-red-300 transition-colors ${profile.user_count > 0 ? 'opacity-50 cursor-not-allowed' : ''}" 
+                                data-profile-id="${profile.id}" 
+                                title="${profile.user_count > 0 ? 'Cannot delete profile with assigned users' : 'Delete Profile'}"
+                                ${profile.user_count > 0 ? 'disabled' : ''}>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+
+        // Attach event listeners
+        tbody.querySelectorAll('.edit-profile-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const profileId = parseInt(e.currentTarget.dataset.profileId);
+                this.showEditProfileModal(profileId);
+            });
+        });
+
+        tbody.querySelectorAll('.delete-profile-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const profileId = parseInt(e.currentTarget.dataset.profileId);
+                this.deleteProfile(profileId);
+            });
+        });
+    },
+
+    /**
+     * Format token values for display
+     */
+    formatTokens(tokens) {
+        if (tokens === null || tokens === undefined) return '∞';
+        if (tokens >= 1000000) return `${(tokens / 1000000).toFixed(1)}M`;
+        if (tokens >= 1000) return `${(tokens / 1000).toFixed(0)}K`;
+        return tokens.toString();
+    },
+
+    /**
+     * Update profile statistics
+     */
+    updateProfileStats() {
+        const stats = {
+            'Free': 0,
+            'Pro': 0,
+            'Enterprise': 0,
+            'Unlimited': 0
+        };
+
+        this.currentProfiles.forEach(profile => {
+            if (stats.hasOwnProperty(profile.name)) {
+                stats[profile.name] = profile.user_count || 0;
+            }
+        });
+
+        const elements = {
+            'Free': 'free-profile-count',
+            'Pro': 'pro-profile-count',
+            'Enterprise': 'enterprise-profile-count',
+            'Unlimited': 'unlimited-profile-count'
+        };
+
+        Object.entries(elements).forEach(([name, id]) => {
+            const elem = document.getElementById(id);
+            if (elem) elem.textContent = stats[name];
+        });
+    },
+
+    /**
+     * Show create profile modal
+     */
+    showCreateProfileModal() {
+        const modal = document.getElementById('profile-modal-overlay');
+        const title = document.getElementById('profile-modal-title');
+        const form = document.getElementById('profile-form');
+        
+        if (!modal || !title || !form) return;
+        
+        title.textContent = 'Create Consumption Profile';
+        form.reset();
+        document.getElementById('profile-form-id').value = '';
+        modal.classList.remove('hidden');
+    },
+
+    /**
+     * Show edit profile modal
+     */
+    showEditProfileModal(profileId) {
+        const profile = this.currentProfiles.find(p => p.id === profileId);
+        if (!profile) return;
+        
+        const modal = document.getElementById('profile-modal-overlay');
+        const title = document.getElementById('profile-modal-title');
+        
+        if (!modal || !title) return;
+        
+        title.textContent = 'Edit Consumption Profile';
+        
+        // Fill form with profile data
+        document.getElementById('profile-form-id').value = profile.id;
+        document.getElementById('profile-form-name').value = profile.name;
+        document.getElementById('profile-form-description').value = profile.description || '';
+        document.getElementById('profile-form-is-default').checked = profile.is_default;
+        document.getElementById('profile-form-prompts-hour').value = profile.prompts_per_hour || '';
+        document.getElementById('profile-form-prompts-day').value = profile.prompts_per_day || '';
+        document.getElementById('profile-form-config-hour').value = profile.config_changes_per_hour || '';
+        document.getElementById('profile-form-input-tokens').value = profile.input_tokens_per_month || '';
+        document.getElementById('profile-form-output-tokens').value = profile.output_tokens_per_month || '';
+        
+        modal.classList.remove('hidden');
+    },
+
+    /**
+     * Hide profile modal
+     */
+    hideProfileModal() {
+        const modal = document.getElementById('profile-modal-overlay');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.getElementById('profile-form').reset();
+        }
+    },
+
+    /**
+     * Handle profile form submission
+     */
+    async handleProfileFormSubmit(e) {
+        e.preventDefault();
+        
+        const profileId = document.getElementById('profile-form-id').value;
+        const isEdit = !!profileId;
+        
+        // Get form values
+        const profileData = {
+            name: document.getElementById('profile-form-name').value,
+            description: document.getElementById('profile-form-description').value || null,
+            is_default: document.getElementById('profile-form-is-default').checked,
+            prompts_per_hour: this.parseIntOrNull('profile-form-prompts-hour'),
+            prompts_per_day: this.parseIntOrNull('profile-form-prompts-day'),
+            config_changes_per_hour: this.parseIntOrNull('profile-form-config-hour'),
+            input_tokens_per_month: this.parseIntOrNull('profile-form-input-tokens'),
+            output_tokens_per_month: this.parseIntOrNull('profile-form-output-tokens'),
+            is_active: true
+        };
+        
+        try {
+            const token = localStorage.getItem('tda_auth_token');
+            const url = isEdit 
+                ? `/api/v1/auth/admin/consumption-profiles/${profileId}`
+                : '/api/v1/auth/admin/consumption-profiles';
+            const method = isEdit ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(profileData)
+            });
+            
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                window.showNotification('success', `Profile ${isEdit ? 'updated' : 'created'} successfully`);
+                this.hideProfileModal();
+                await this.loadProfiles();
+                await this.loadUsers(); // Refresh users to update dropdowns
+            } else {
+                window.showNotification('error', data.message || `Failed to ${isEdit ? 'update' : 'create'} profile`);
+            }
+        } catch (error) {
+            console.error('[AdminManager] Error saving profile:', error);
+            window.showNotification('error', `Failed to ${isEdit ? 'update' : 'create'} profile`);
+        }
+    },
+
+    /**
+     * Parse integer or return null
+     */
+    parseIntOrNull(elementId) {
+        const value = document.getElementById(elementId).value.trim();
+        return value === '' ? null : parseInt(value);
+    },
+
+    /**
+     * Load user consumption data
+     */
+    async loadUserConsumption() {
+        try {
+            const token = localStorage.getItem('tda_auth_token');
+            
+            // Get all users
+            const users = this.currentUsers.length > 0 ? this.currentUsers : [];
+            if (users.length === 0) {
+                await this.loadUsers();
+            }
+
+            // Load consumption data for each user
+            const consumptionPromises = this.currentUsers.map(async (user) => {
+                try {
+                    const response = await fetch(`/api/v1/auth/user/quota-status`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                            'X-User-ID': user.id
+                        }
+                    });
+                    const data = await response.json();
+                    return {
+                        user,
+                        consumption: data.status === 'success' ? data : null
+                    };
+                } catch (error) {
+                    console.error(`Error loading consumption for ${user.username}:`, error);
+                    return { user, consumption: null };
+                }
+            });
+
+            const consumptionData = await Promise.all(consumptionPromises);
+            this.currentConsumptionData = consumptionData;
+            this.renderUserConsumption(consumptionData);
+            this.updateConsumptionKPIs(consumptionData);
+            
+        } catch (error) {
+            console.error('[AdminManager] Error loading consumption:', error);
+            window.showNotification('error', 'Failed to load consumption data');
+        }
+    },
+
+    /**
+     * Sort consumption table
+     */
+    sortConsumptionTable(column) {
+        // Toggle direction if clicking same column
+        if (this.consumptionSortColumn === column) {
+            this.consumptionSortDirection = this.consumptionSortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.consumptionSortColumn = column;
+            this.consumptionSortDirection = 'asc';
+        }
+
+        // Sort the data
+        const sortedData = [...this.currentConsumptionData].sort((a, b) => {
+            let aVal, bVal;
+
+            switch (column) {
+                case 'username':
+                    aVal = a.user.username.toLowerCase();
+                    bVal = b.user.username.toLowerCase();
+                    break;
+                case 'profile':
+                    aVal = (a.user.consumption_profile_name || 'Unlimited').toLowerCase();
+                    bVal = (b.user.consumption_profile_name || 'Unlimited').toLowerCase();
+                    break;
+                case 'input':
+                    aVal = a.consumption?.current_usage?.input_tokens || 0;
+                    bVal = b.consumption?.current_usage?.input_tokens || 0;
+                    break;
+                case 'output':
+                    aVal = a.consumption?.current_usage?.output_tokens || 0;
+                    bVal = b.consumption?.current_usage?.output_tokens || 0;
+                    break;
+                case 'total':
+                    aVal = a.consumption?.current_usage?.total_tokens || 0;
+                    bVal = b.consumption?.current_usage?.total_tokens || 0;
+                    break;
+                case 'inputPercent':
+                    if (a.consumption?.profile?.input_tokens_per_month) {
+                        aVal = (a.consumption.current_usage?.input_tokens || 0) / a.consumption.profile.input_tokens_per_month;
+                    } else {
+                        aVal = 0;
+                    }
+                    if (b.consumption?.profile?.input_tokens_per_month) {
+                        bVal = (b.consumption.current_usage?.input_tokens || 0) / b.consumption.profile.input_tokens_per_month;
+                    } else {
+                        bVal = 0;
+                    }
+                    break;
+                case 'outputPercent':
+                    if (a.consumption?.profile?.output_tokens_per_month) {
+                        aVal = (a.consumption.current_usage?.output_tokens || 0) / a.consumption.profile.output_tokens_per_month;
+                    } else {
+                        aVal = 0;
+                    }
+                    if (b.consumption?.profile?.output_tokens_per_month) {
+                        bVal = (b.consumption.current_usage?.output_tokens || 0) / b.consumption.profile.output_tokens_per_month;
+                    } else {
+                        bVal = 0;
+                    }
+                    break;
+                case 'status':
+                    // Status priority: Critical > Warning > Moderate > Good > Unlimited
+                    const getStatusPriority = (item) => {
+                        if (!item.consumption?.profile?.input_tokens_per_month && !item.consumption?.profile?.output_tokens_per_month) return 0;
+                        const inputPercent = item.consumption?.profile?.input_tokens_per_month ? 
+                            ((item.consumption.current_usage?.input_tokens || 0) / item.consumption.profile.input_tokens_per_month) * 100 : 0;
+                        const outputPercent = item.consumption?.profile?.output_tokens_per_month ? 
+                            ((item.consumption.current_usage?.output_tokens || 0) / item.consumption.profile.output_tokens_per_month) * 100 : 0;
+                        const maxPercent = Math.max(inputPercent, outputPercent);
+                        if (maxPercent >= 90) return 4;
+                        if (maxPercent >= 75) return 3;
+                        if (maxPercent >= 50) return 2;
+                        return 1;
+                    };
+                    aVal = getStatusPriority(a);
+                    bVal = getStatusPriority(b);
+                    break;
+                default:
+                    return 0;
+            }
+
+            // Compare
+            if (typeof aVal === 'string') {
+                return this.consumptionSortDirection === 'asc' ? 
+                    aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+            } else {
+                return this.consumptionSortDirection === 'asc' ? 
+                    aVal - bVal : bVal - aVal;
+            }
+        });
+
+        // Update sort indicators
+        document.querySelectorAll('#user-consumption-subtab th[data-sort]').forEach(th => {
+            const svg = th.querySelector('svg');
+            if (th.dataset.sort === column) {
+                th.classList.add('text-[#F15F22]');
+                if (svg) {
+                    svg.style.opacity = '1';
+                    svg.style.transform = this.consumptionSortDirection === 'desc' ? 'rotate(180deg)' : 'rotate(0deg)';
+                }
+            } else {
+                th.classList.remove('text-[#F15F22]');
+                if (svg) {
+                    svg.style.opacity = '0.5';
+                    svg.style.transform = 'rotate(0deg)';
+                }
+            }
+        });
+
+        this.renderUserConsumption(sortedData);
+    },
+
+    /**
+     * Render user consumption table
+     */
+    renderUserConsumption(consumptionData) {
+        const tbody = document.getElementById('user-consumption-table-body');
+        if (!tbody) return;
+
+        if (consumptionData.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="px-6 py-8 text-center text-gray-400">
+                        No consumption data available
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = consumptionData.map(({ user, consumption }) => {
+            const profileName = user.consumption_profile_name || 'Unlimited';
+            
+            if (!consumption || !consumption.current_usage) {
+                return `
+                    <tr class="bg-gray-800/50 hover:bg-gray-700/50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-white">${this.escapeHtml(user.username)}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-3 py-1 rounded-full text-xs font-semibold ${this.getProfileBadgeClass(profileName)}">
+                                ${this.escapeHtml(profileName)}
+                            </span>
+                        </td>
+                        <td colspan="6" class="px-6 py-4 text-center text-gray-500 text-sm">No usage data for this period</td>
+                    </tr>
+                `;
+            }
+
+            const usage = consumption.current_usage;
+            const limits = consumption.profile;
+            const inputPercent = limits.input_tokens_per_month ? 
+                Math.round((usage.input_tokens / limits.input_tokens_per_month) * 100) : 0;
+            const outputPercent = limits.output_tokens_per_month ? 
+                Math.round((usage.output_tokens / limits.output_tokens_per_month) * 100) : 0;
+            
+            const getStatusBadge = () => {
+                if (!limits.input_tokens_per_month && !limits.output_tokens_per_month) {
+                    return '<span class="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400">Unlimited</span>';
+                }
+                const maxPercent = Math.max(inputPercent, outputPercent);
+                if (maxPercent >= 90) return '<span class="px-2 py-1 rounded text-xs bg-red-500/20 text-red-400">Critical</span>';
+                if (maxPercent >= 75) return '<span class="px-2 py-1 rounded text-xs bg-orange-500/20 text-orange-400">Warning</span>';
+                if (maxPercent >= 50) return '<span class="px-2 py-1 rounded text-xs bg-yellow-500/20 text-yellow-400">Moderate</span>';
+                return '<span class="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400">Good</span>';
+            };
+
+            return `
+                <tr class="bg-gray-800/50 hover:bg-gray-700/50 transition-colors">
+                    <td class="px-6 py-4 font-medium text-white">${this.escapeHtml(user.username)}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold ${this.getProfileBadgeClass(limits.name)}">
+                            ${this.escapeHtml(limits.name)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-center text-gray-300">${this.formatTokens(usage.input_tokens)}</td>
+                    <td class="px-6 py-4 text-center text-gray-300">${this.formatTokens(usage.output_tokens)}</td>
+                    <td class="px-6 py-4 text-center text-gray-300 font-semibold">${this.formatTokens(usage.total_tokens)}</td>
+                    <td class="px-6 py-4 text-center">
+                        ${limits.input_tokens_per_month ? 
+                            `<div class="flex flex-col items-center">
+                                <span class="text-sm ${inputPercent >= 90 ? 'text-red-400' : inputPercent >= 75 ? 'text-orange-400' : 'text-gray-300'}">${inputPercent}%</span>
+                                <div class="w-full bg-gray-700 rounded-full h-1.5 mt-1">
+                                    <div class="h-1.5 rounded-full ${inputPercent >= 90 ? 'bg-red-500' : inputPercent >= 75 ? 'bg-orange-500' : 'bg-blue-500'}" style="width: ${Math.min(inputPercent, 100)}%"></div>
+                                </div>
+                            </div>` 
+                            : '<span class="text-gray-500">∞</span>'}
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        ${limits.output_tokens_per_month ? 
+                            `<div class="flex flex-col items-center">
+                                <span class="text-sm ${outputPercent >= 90 ? 'text-red-400' : outputPercent >= 75 ? 'text-orange-400' : 'text-gray-300'}">${outputPercent}%</span>
+                                <div class="w-full bg-gray-700 rounded-full h-1.5 mt-1">
+                                    <div class="h-1.5 rounded-full ${outputPercent >= 90 ? 'bg-red-500' : outputPercent >= 75 ? 'bg-orange-500' : 'bg-purple-500'}" style="width: ${Math.min(outputPercent, 100)}%"></div>
+                                </div>
+                            </div>` 
+                            : '<span class="text-gray-500">∞</span>'}
+                    </td>
+                    <td class="px-6 py-4 text-center">${getStatusBadge()}</td>
+                </tr>
+            `;
+        }).join('');
+    },
+
+    /**
+     * Update consumption KPIs
+     */
+    updateConsumptionKPIs(consumptionData) {
+        let totalInput = 0;
+        let totalOutput = 0;
+        let activeUsers = 0;
+
+        consumptionData.forEach(({ consumption }) => {
+            if (consumption && consumption.current_usage) {
+                totalInput += consumption.current_usage.input_tokens || 0;
+                totalOutput += consumption.current_usage.output_tokens || 0;
+                if (consumption.current_usage.total_tokens > 0) {
+                    activeUsers++;
+                }
+            }
+        });
+
+        const avgTokens = activeUsers > 0 ? Math.round((totalInput + totalOutput) / activeUsers) : 0;
+
+        const totalInputElem = document.getElementById('total-input-tokens');
+        const totalOutputElem = document.getElementById('total-output-tokens');
+        const activeUsersElem = document.getElementById('active-users-count');
+        const avgTokensElem = document.getElementById('avg-tokens-per-user');
+
+        if (totalInputElem) totalInputElem.textContent = this.formatTokens(totalInput);
+        if (totalOutputElem) totalOutputElem.textContent = this.formatTokens(totalOutput);
+        if (activeUsersElem) activeUsersElem.textContent = activeUsers;
+        if (avgTokensElem) avgTokensElem.textContent = this.formatTokens(avgTokens);
+    },
+
+    /**
+     * Delete profile
+     */
+    async deleteProfile(profileId) {
+        const profile = this.currentProfiles.find(p => p.id === profileId);
+        if (!profile) return;
+
+        if (profile.user_count > 0) {
+            window.showNotification('error', 'Cannot delete profile with assigned users');
+            return;
+        }
+
+        if (!confirm(`Delete profile "${profile.name}"?`)) return;
+
+        try {
+            const token = localStorage.getItem('tda_auth_token');
+            const response = await fetch(`/api/v1/auth/admin/consumption-profiles/${profileId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                window.showNotification('success', 'Profile deleted successfully');
+                await this.loadProfiles();
+            } else {
+                window.showNotification('error', data.message || 'Failed to delete profile');
+            }
+        } catch (error) {
+            console.error('[AdminManager] Error deleting profile:', error);
+            window.showNotification('error', 'Failed to delete profile');
         }
     },
 
@@ -1941,12 +2704,18 @@ const AdminManager = {
             const data = await response.json();
             const settings = data.settings || {};
 
-            // Update checkbox
+            // Update checkboxes
             const enabled = settings.rate_limit_enabled?.value === 'true';
             const checkbox = document.getElementById('rate-limit-enabled');
             if (checkbox) {
                 checkbox.checked = enabled;
                 this.toggleRateLimitSettings(enabled);
+            }
+            
+            const globalOverride = settings.rate_limit_global_override?.value === 'true';
+            const overrideCheckbox = document.getElementById('rate-limit-global-override');
+            if (overrideCheckbox) {
+                overrideCheckbox.checked = globalOverride;
             }
 
             // Update input fields
@@ -2009,6 +2778,7 @@ const AdminManager = {
             // Collect settings
             const settings = {
                 rate_limit_enabled: document.getElementById('rate-limit-enabled')?.checked ? 'true' : 'false',
+                rate_limit_global_override: document.getElementById('rate-limit-global-override')?.checked ? 'true' : 'false',
                 rate_limit_user_prompts_per_hour: document.getElementById('rate-limit-user-prompts-per-hour')?.value || '100',
                 rate_limit_user_prompts_per_day: document.getElementById('rate-limit-user-prompts-per-day')?.value || '1000',
                 rate_limit_user_configs_per_hour: document.getElementById('rate-limit-user-configs-per-hour')?.value || '10',

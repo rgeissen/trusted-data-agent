@@ -410,6 +410,14 @@ async def manage_users():
                     logger.warning(f"Failed to get user features for {user.username}: {e}")
                     feature_count = 0
                 
+                # Get consumption profile information
+                consumption_profile_id = None
+                consumption_profile_name = None
+                if hasattr(user, 'consumption_profile_id') and user.consumption_profile_id:
+                    consumption_profile_id = user.consumption_profile_id
+                    if hasattr(user, 'consumption_profile') and user.consumption_profile:
+                        consumption_profile_name = user.consumption_profile.name
+                
                 user_list.append({
                     'id': user.id,
                     'user_uuid': user.id,
@@ -419,6 +427,8 @@ async def manage_users():
                     'is_active': user.is_active,
                     'is_admin': user.is_admin,
                     'profile_tier': user.profile_tier,
+                    'consumption_profile_id': consumption_profile_id,
+                    'consumption_profile_name': consumption_profile_name,
                     'feature_count': feature_count,
                     'is_current_user': current_user and user.id == current_user.id,
                     'created_at': user.created_at.isoformat(),

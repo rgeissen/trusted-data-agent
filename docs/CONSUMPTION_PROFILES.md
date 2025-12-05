@@ -4,6 +4,57 @@
 
 The consumption profiles feature allows administrators to manage user quotas and rate limits through reusable profile templates. Users can be assigned to profiles that define their monthly token limits and rate limiting parameters.
 
+## Rate Limiting & Consumption Profile Precedence
+
+**Important:** Rate limiting must be **enabled** for consumption profiles to be enforced. As of the latest update, rate limiting is **enabled by default** to ensure consumption profiles work correctly.
+
+### Precedence Hierarchy (for authenticated users):
+
+1. **Global Override Mode** (Emergency) - When enabled, forces global limits on ALL users, ignoring consumption profiles
+2. **Consumption Profiles** (Default) - Per-user profiles take precedence when assigned
+3. **Global Settings Fallback** - Applied when user has no consumption profile assigned
+4. **Hardcoded Defaults** - Last resort if database unavailable
+
+### Key Settings in Application Configuration:
+
+- **Enable Rate Limiting** - Master switch; must be ON for profiles to work (enabled by default)
+- **Global Override Mode** - Emergency toggle to override all profiles with global limits (disabled by default)
+- **Per-User Limits** - Fallback values when user has no profile
+- **Per-IP Limits** - Always enforced for anonymous/unauthenticated traffic (not affected by profiles)
+
+## Configuration
+
+You can configure rate limiting and consumption profiles in `tda_config.json`:
+
+```json
+{
+  "rate_limit_enabled": "on",
+  "default_consumption_profile": "Unlimited"
+}
+```
+
+**Configuration Parameters:**
+
+### `rate_limit_enabled`
+Controls whether rate limiting is enabled system-wide.
+
+**Supported Values:**
+- `"on"` / `"true"` / `"1"` / `"yes"` - Enable rate limiting and consumption profile enforcement **[Default]**
+- `"off"` / `"false"` / `"0"` / `"no"` - Disable rate limiting (not recommended for production)
+
+**Important:** Must be enabled for consumption profiles to work.
+
+### `default_consumption_profile`
+Determines which profile is assigned to new users.
+
+**Supported Values:**
+- `"Free"` - Basic limits (50 prompts/hour, 100K input tokens/month)
+- `"Pro"` - Professional limits (200 prompts/hour, 500K input tokens/month)
+- `"Enterprise"` - High limits (500 prompts/hour, 2M input tokens/month)
+- `"Unlimited"` - No token limits (1000 prompts/hour, unlimited tokens) **[Default]**
+
+This setting determines which profile is marked as `is_default=True` during migration and will be automatically assigned to new users.
+
 ## Implementation Status
 
 ✅ **Completed Components:**

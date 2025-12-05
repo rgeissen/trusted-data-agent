@@ -50,6 +50,8 @@ def _get_rate_limit_config():
             for setting in settings:
                 if setting.setting_key == 'rate_limit_enabled':
                     config['enabled'] = setting.setting_value.lower() == 'true'
+                elif setting.setting_key == 'rate_limit_global_override':
+                    config['global_override'] = setting.setting_value.lower() == 'true'
                 elif setting.setting_key == 'rate_limit_user_prompts_per_hour':
                     config['user_prompts_per_hour'] = int(setting.setting_value)
                 elif setting.setting_key == 'rate_limit_user_prompts_per_day':
@@ -73,7 +75,8 @@ def _get_rate_limit_config():
         logger.warning(f"Failed to load rate limit config from database, using environment variables: {e}")
         # Fall back to environment variables
         config = {
-            'enabled': os.environ.get('TDA_RATE_LIMIT_ENABLED', 'false').lower() == 'true',
+            'enabled': os.environ.get('TDA_RATE_LIMIT_ENABLED', 'true').lower() == 'true',
+            'global_override': os.environ.get('TDA_RATE_LIMIT_GLOBAL_OVERRIDE', 'false').lower() == 'true',
             'user_prompts_per_hour': int(os.environ.get('TDA_USER_PROMPTS_PER_HOUR', '100')),
             'user_prompts_per_day': int(os.environ.get('TDA_USER_PROMPTS_PER_DAY', '1000')),
             'user_configs_per_hour': int(os.environ.get('TDA_USER_CONFIGS_PER_HOUR', '10')),
@@ -278,24 +281,29 @@ def check_user_prompt_quota(user_id: str) -> Tuple[bool, str]:
     if not _is_rate_limit_enabled():
         return True, ""
     
-    # Try to get limits from user's consumption profile
-    try:
-        from trusted_data_agent.auth.token_quota import get_user_consumption_profile
-        profile = get_user_consumption_profile(user_id)
-        
-        if profile:
-            user_prompts_per_hour = profile.prompts_per_hour
-            user_prompts_per_day = profile.prompts_per_day
-        else:
-            # Fall back to system defaults
-            config = _get_rate_limit_config()
-            user_prompts_per_hour = config.get('user_prompts_per_hour', 100)
-            user_prompts_per_day = config.get('user_prompts_per_day', 1000)
-    except Exception as e:
-        logger.warning(f"Error fetching consumption profile, using system defaults: {e}")
-        config = _get_rate_limit_config()
+    config = _get_rate_limit_config()
+    
+    # Check if global override is enabled (emergency mode)
+    if config.get('global_override', False):
         user_prompts_per_hour = config.get('user_prompts_per_hour', 100)
         user_prompts_per_day = config.get('user_prompts_per_day', 1000)
+    else:
+        # Try to get limits from user's consumption profile
+        try:
+            from trusted_data_agent.auth.token_quota import get_user_consumption_profile
+            profile = get_user_consumption_profile(user_id)
+            
+            if profile:
+                user_prompts_per_hour = profile.prompts_per_hour
+                user_prompts_per_day = profile.prompts_per_day
+            else:
+                # Fall back to system defaults
+                user_prompts_per_hour = config.get('user_prompts_per_hour', 100)
+                user_prompts_per_day = config.get('user_prompts_per_day', 1000)
+        except Exception as e:
+            logger.warning(f"Error fetching consumption profile, using system defaults: {e}")
+            user_prompts_per_hour = config.get('user_prompts_per_hour', 100)
+            user_prompts_per_day = config.get('user_prompts_per_day', 1000)
     
     # Check hourly limit
     allowed, retry_after = check_rate_limit(
@@ -337,21 +345,25 @@ def check_user_config_quota(user_id: str) -> Tuple[bool, str]:
     if not _is_rate_limit_enabled():
         return True, ""
     
-    # Try to get limits from user's consumption profile
-    try:
-        from trusted_data_agent.auth.token_quota import get_user_consumption_profile
-        profile = get_user_consumption_profile(user_id)
-        
-        if profile:
-            user_configs_per_hour = profile.config_changes_per_hour
-        else:
-            # Fall back to system defaults
-            config = _get_rate_limit_config()
-            user_configs_per_hour = config.get('user_configs_per_hour', 10)
-    except Exception as e:
-        logger.warning(f"Error fetching consumption profile, using system defaults: {e}")
-        config = _get_rate_limit_config()
+    config = _get_rate_limit_config()
+    
+    # Check if global override is enabled (emergency mode)
+    if config.get('global_override', False):
         user_configs_per_hour = config.get('user_configs_per_hour', 10)
+    else:
+        # Try to get limits from user's consumption profile
+        try:
+            from trusted_data_agent.auth.token_quota import get_user_consumption_profile
+            profile = get_user_consumption_profile(user_id)
+            
+            if profile:
+                user_configs_per_hour = profile.config_changes_per_hour
+            else:
+                # Fall back to system defaults
+                user_configs_per_hour = config.get('user_configs_per_hour', 10)
+        except Exception as e:
+            logger.warning(f"Error fetching consumption profile, using system defaults: {e}")
+            user_configs_per_hour = config.get('user_configs_per_hour', 10)
     
     allowed, retry_after = check_rate_limit(
         f"user:{user_id}",

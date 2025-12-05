@@ -13,6 +13,7 @@ Usage:
 """
 
 import sys
+import json
 import logging
 from pathlib import Path
 from datetime import datetime, timezone
@@ -152,9 +153,25 @@ def add_consumption_profile_id_to_users():
     logger.info("✓ consumption_profile_id column added to users")
 
 
+def load_config():
+    """Load configuration to get default consumption profile."""
+    config_path = Path(__file__).parent.parent / "tda_config.json"
+    try:
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+            return config.get('default_consumption_profile', 'Unlimited')
+    except Exception as e:
+        logger.warning(f"Could not load config, using 'Unlimited' as default: {e}")
+        return 'Unlimited'
+
+
 def create_default_profiles():
     """Create default consumption profiles."""
     logger.info("Creating default consumption profiles...")
+    
+    # Load config to determine which profile should be default
+    default_profile_name = load_config()
+    logger.info(f"Default consumption profile from config: {default_profile_name}")
     
     default_profiles = [
         {
@@ -165,7 +182,7 @@ def create_default_profiles():
             'config_changes_per_hour': 5,
             'input_tokens_per_month': 100000,
             'output_tokens_per_month': 50000,
-            'is_default': True,
+            'is_default': (default_profile_name == 'Free'),
             'is_active': True
         },
         {
@@ -176,7 +193,7 @@ def create_default_profiles():
             'config_changes_per_hour': 20,
             'input_tokens_per_month': 500000,
             'output_tokens_per_month': 250000,
-            'is_default': False,
+            'is_default': (default_profile_name == 'Pro'),
             'is_active': True
         },
         {
@@ -187,7 +204,7 @@ def create_default_profiles():
             'config_changes_per_hour': 50,
             'input_tokens_per_month': 2000000,
             'output_tokens_per_month': 1000000,
-            'is_default': False,
+            'is_default': (default_profile_name == 'Enterprise'),
             'is_active': True
         },
         {
@@ -198,7 +215,7 @@ def create_default_profiles():
             'config_changes_per_hour': 100,
             'input_tokens_per_month': None,  # Unlimited
             'output_tokens_per_month': None,  # Unlimited
-            'is_default': False,
+            'is_default': (default_profile_name == 'Unlimited'),
             'is_active': True
         }
     ]

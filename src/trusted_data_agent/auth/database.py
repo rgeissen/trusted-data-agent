@@ -289,10 +289,26 @@ def _initialize_default_system_settings():
     This includes rate limiting configuration.
     """
     from trusted_data_agent.auth.models import SystemSettings
+    import json
+    from pathlib import Path
     
-    # Default rate limiting settings (disabled by default)
+    # Load rate_limit_enabled default from config
+    rate_limit_default = 'true'  # Fallback default
+    try:
+        config_path = Path(__file__).parent.parent.parent / 'tda_config.json'
+        if config_path.exists():
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+                rate_limit_config = config.get('rate_limit_enabled', 'on')
+                # Convert 'on'/'off' to 'true'/'false'
+                rate_limit_default = 'true' if rate_limit_config.lower() in ('on', 'true', '1', 'yes') else 'false'
+    except Exception as e:
+        logger.warning(f"Could not load rate_limit_enabled from config, using default: {e}")
+    
+    # Default rate limiting settings (configurable via tda_config.json)
     default_settings = {
-        'rate_limit_enabled': ('false', 'Enable or disable rate limiting system-wide'),
+        'rate_limit_enabled': (rate_limit_default, 'Enable or disable rate limiting system-wide'),
+        'rate_limit_global_override': ('false', 'Override all consumption profiles with global limits'),
         'rate_limit_user_prompts_per_hour': ('100', 'Maximum prompts per hour for authenticated users'),
         'rate_limit_user_prompts_per_day': ('1000', 'Maximum prompts per day for authenticated users'),
         'rate_limit_user_configs_per_hour': ('10', 'Maximum configuration changes per hour for authenticated users'),

@@ -278,7 +278,26 @@ def get_user_quota_status(user_id: str) -> Dict:
     try:
         profile = get_user_consumption_profile(user_id)
         period = get_current_period()
-        usage = get_user_token_usage(user_id, period)
+        
+        # Get usage and convert to dict within session context
+        with get_db_session() as session:
+            usage_obj = session.query(UserTokenUsage).filter_by(
+                user_id=user_id,
+                period=period
+            ).first()
+            
+            if usage_obj:
+                usage = {
+                    'input_tokens_used': usage_obj.input_tokens_used,
+                    'output_tokens_used': usage_obj.output_tokens_used,
+                    'total_tokens_used': usage_obj.total_tokens_used
+                }
+            else:
+                usage = {
+                    'input_tokens_used': 0,
+                    'output_tokens_used': 0,
+                    'total_tokens_used': 0
+                }
         
         if not profile:
             return {
@@ -287,13 +306,13 @@ def get_user_quota_status(user_id: str) -> Dict:
                 'profile_name': None,
                 'input_tokens': {
                     'limit': None,
-                    'used': usage.input_tokens_used,
+                    'used': usage['input_tokens_used'],
                     'remaining': None,
                     'percentage_used': 0
                 },
                 'output_tokens': {
                     'limit': None,
-                    'used': usage.output_tokens_used,
+                    'used': usage['output_tokens_used'],
                     'remaining': None,
                     'percentage_used': 0
                 },
@@ -307,14 +326,14 @@ def get_user_quota_status(user_id: str) -> Dict:
         input_remaining = None
         input_percentage = 0
         if profile['input_tokens_per_month'] is not None:
-            input_remaining = max(0, profile['input_tokens_per_month'] - usage.input_tokens_used)
-            input_percentage = min(100, (usage.input_tokens_used / profile['input_tokens_per_month']) * 100)
+            input_remaining = max(0, profile['input_tokens_per_month'] - usage['input_tokens_used'])
+            input_percentage = min(100, (usage['input_tokens_used'] / profile['input_tokens_per_month']) * 100)
         
         output_remaining = None
         output_percentage = 0
         if profile['output_tokens_per_month'] is not None:
-            output_remaining = max(0, profile['output_tokens_per_month'] - usage.output_tokens_used)
-            output_percentage = min(100, (usage.output_tokens_used / profile['output_tokens_per_month']) * 100)
+            output_remaining = max(0, profile['output_tokens_per_month'] - usage['output_tokens_used'])
+            output_percentage = min(100, (usage['output_tokens_used'] / profile['output_tokens_per_month']) * 100)
         
         return {
             'has_quota': True,
@@ -323,13 +342,13 @@ def get_user_quota_status(user_id: str) -> Dict:
             'profile_id': profile['id'],
             'input_tokens': {
                 'limit': profile['input_tokens_per_month'],
-                'used': usage.input_tokens_used,
+                'used': usage['input_tokens_used'],
                 'remaining': input_remaining,
                 'percentage_used': round(input_percentage, 1)
             },
             'output_tokens': {
                 'limit': profile['output_tokens_per_month'],
-                'used': usage.output_tokens_used,
+                'used': usage['output_tokens_used'],
                 'remaining': output_remaining,
                 'percentage_used': round(output_percentage, 1)
             },

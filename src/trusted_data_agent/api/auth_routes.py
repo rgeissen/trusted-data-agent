@@ -1129,6 +1129,7 @@ async def get_rate_limit_settings(current_user):
             # Fetch all rate limit related settings
             rate_limit_keys = [
                 'rate_limit_enabled',
+                'rate_limit_global_override',
                 'rate_limit_user_prompts_per_hour',
                 'rate_limit_user_prompts_per_day',
                 'rate_limit_user_configs_per_hour',
@@ -1197,6 +1198,7 @@ async def update_rate_limit_settings():
         # Valid setting keys
         valid_keys = {
             'rate_limit_enabled',
+            'rate_limit_global_override',
             'rate_limit_user_prompts_per_hour',
             'rate_limit_user_prompts_per_day',
             'rate_limit_user_configs_per_hour',
@@ -1218,10 +1220,10 @@ async def update_rate_limit_settings():
             
             for key, value in data.items():
                 # Convert value to string
-                value_str = str(value).lower() if key == 'rate_limit_enabled' else str(value)
+                value_str = str(value).lower() if key in ('rate_limit_enabled', 'rate_limit_global_override') else str(value)
                 
-                # Validate boolean for enabled flag
-                if key == 'rate_limit_enabled' and value_str not in ('true', 'false'):
+                # Validate boolean flags
+                if key in ('rate_limit_enabled', 'rate_limit_global_override') and value_str not in ('true', 'false'):
                     return jsonify({
                         'status': 'error',
                         'message': f'Invalid value for {key}: must be true or false'
@@ -1265,7 +1267,7 @@ async def update_rate_limit_settings():
                 user_id=current_user.id,
                 action='update_rate_limit_settings',
                 resource='system_settings',
-                status='success',
+                success=True,
                 details=f'Updated settings: {", ".join(updated_settings)}'
             )
             
@@ -1407,7 +1409,7 @@ async def create_consumption_profile(current_user):
                 user_id=current_user.id,
                 action='create_consumption_profile',
                 resource='consumption_profiles',
-                status='success',
+                success=True,
                 details=f'Created profile: {name}'
             )
             
@@ -1509,7 +1511,7 @@ async def update_consumption_profile(current_user, profile_id: int):
                 user_id=current_user.id,
                 action='update_consumption_profile',
                 resource='consumption_profiles',
-                status='success',
+                success=True,
                 details=f'Updated profile: {profile.name}'
             )
             
@@ -1575,7 +1577,7 @@ async def delete_consumption_profile(current_user, profile_id: int):
                 user_id=current_user.id,
                 action='delete_consumption_profile',
                 resource='consumption_profiles',
-                status='success',
+                success=True,
                 details=f'Deleted profile: {profile_name}'
             )
             
@@ -1664,7 +1666,7 @@ async def assign_user_consumption_profile(current_user, user_id: str):
                 user_id=current_user.id,
                 action='assign_consumption_profile',
                 resource='users',
-                status='success',
+                success=True,
                 details=f'User {user.username} {action_desc}'
             )
             
