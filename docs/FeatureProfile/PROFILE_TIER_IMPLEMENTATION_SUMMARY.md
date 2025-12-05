@@ -172,7 +172,7 @@ if not can_manage_user(admin_user, target_user_id):
 ### Check User's Tier
 
 ```bash
-curl -X GET http://127.0.0.1:5000/api/v1/auth/me \
+curl -X GET http://127.0.0.1:5050/api/v1/auth/me \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -190,7 +190,7 @@ Response:
 ### Promote User to Developer
 
 ```bash
-curl -X PATCH http://127.0.0.1:5000/api/v1/admin/users/<user_id>/tier \
+curl -X PATCH http://127.0.0.1:5050/api/v1/admin/users/<user_id>/tier \
   -H "Authorization: Bearer <admin_token>" \
   -H "Content-Type: application/json" \
   -d '{"profile_tier":"developer"}'
@@ -213,7 +213,7 @@ Response:
 ### Get Tier Distribution
 
 ```bash
-curl -X GET http://127.0.0.1:5000/api/v1/admin/stats \
+curl -X GET http://127.0.0.1:5050/api/v1/admin/stats \
   -H "Authorization: Bearer <admin_token>"
 ```
 
@@ -274,7 +274,7 @@ if has_tier(user, 'developer'):
 
 2. **Register new user (defaults to 'user' tier):**
    ```bash
-   curl -X POST http://127.0.0.1:5000/api/v1/auth/register \
+   curl -X POST http://127.0.0.1:5050/api/v1/auth/register \
      -H "Content-Type: application/json" \
      -d '{"username":"test1","email":"test1@test.com","password":"Pass123!"}'
    ```
@@ -282,13 +282,13 @@ if has_tier(user, 'developer'):
 3. **Login as admin and promote user:**
    ```bash
    # First, promote yourself to admin
-   curl -X PATCH http://127.0.0.1:5000/api/v1/admin/users/<your_id>/tier \
+   curl -X PATCH http://127.0.0.1:5050/api/v1/admin/users/<your_id>/tier \
      -H "Authorization: Bearer <token>" \
      -H "Content-Type: application/json" \
      -d '{"profile_tier":"admin"}'
    
    # Then promote another user
-   curl -X PATCH http://127.0.0.1:5000/api/v1/admin/users/<user_id>/tier \
+   curl -X PATCH http://127.0.0.1:5050/api/v1/admin/users/<user_id>/tier \
      -H "Authorization: Bearer <admin_token>" \
      -H "Content-Type: application/json" \
      -d '{"profile_tier":"developer"}'

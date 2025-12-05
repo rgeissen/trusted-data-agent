@@ -8,7 +8,7 @@ import json
 import time
 from datetime import datetime
 
-BASE_URL = "http://127.0.0.1:5000"
+BASE_URL = "http://127.0.0.1:5050"
 API_V1_BASE = f"{BASE_URL}/api/v1"
 AUTH_BASE = f"{BASE_URL}/api/v1/auth"
 

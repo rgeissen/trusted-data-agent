@@ -10,7 +10,7 @@ USERNAME=""
 PASSWORD=""
 TOKEN_NAME="API Token"
 EXPIRES_IN_DAYS=90
-BASE_URL="http://127.0.0.1:5000"
+BASE_URL="http://127.0.0.1:5050"
 
 if [ -z "$1" ] || [ -z "$2" ]; then
   echo "Usage: ./create_access_token.sh <username> <password> [token_name] [expires_in_days]" >&2

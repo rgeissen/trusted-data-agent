@@ -9,7 +9,7 @@ import json
 import time
 from pathlib import Path
 
-BASE_URL = "http://127.0.0.1:5000"
+BASE_URL = "http://127.0.0.1:5050"
 API_V1_BASE = f"{BASE_URL}/api/v1"
 AUTH_BASE = f"{BASE_URL}/api/v1/auth"
 
@@ -169,7 +169,7 @@ def test_profile_badges_in_loaded_session():
     print("=" * 70)
     print()
     print("NEXT STEPS:")
-    print("1. Load the session in the UI at http://localhost:5000")
+    print("1. Load the session in the UI at http://localhost:5050")
     print("2. Look at each user message")
     print("3. You should see profile badges like @GOGET or @FRGOT")
     print("4. Messages with overridden profiles will show the override profile badge")

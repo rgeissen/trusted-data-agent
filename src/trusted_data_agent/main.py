@@ -326,7 +326,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--port",
         type=int,
-        default=5000,
+        default=5050,
         help="Port to bind the server to."
     )
     parser.add_argument("--all-models", action="store_true", help="Allow selection of all available models.")

@@ -149,7 +149,7 @@ Cancels a running task.
 ./rest_stop_task.sh task-123-456 "$TDA_ACCESS_TOKEN"
 
 # Cancel with custom base URL
-./rest_stop_task.sh task-123-456 "$TDA_ACCESS_TOKEN" --base-url http://remote-server:5000
+./rest_stop_task.sh task-123-456 "$TDA_ACCESS_TOKEN" --base-url http://remote-server:5050
 ```
 
 **Output:** Shows cancellation status and server response.
@@ -186,7 +186,7 @@ For convenience, you can set these environment variables:
 # Required for authentication
 export TDA_ACCESS_TOKEN="tda_your_token_here"
 
-# Optional (defaults to http://127.0.0.1:5000)
+# Optional (defaults to http://127.0.0.1:5050)
 export TDA_BASE_URL="https://tda.company.com"
 ```
 
@@ -238,7 +238,7 @@ The `sample_configs/` directory contains example configuration files for all sup
 echo $TDA_ACCESS_TOKEN
 
 # Test token
-curl -X GET http://localhost:5000/api/v1/sessions \
+curl -X GET http://localhost:5050/api/v1/sessions \
   -H "Authorization: Bearer $TDA_ACCESS_TOKEN"
 ```
 
@@ -249,7 +249,7 @@ curl -X GET http://localhost:5000/api/v1/sessions \
 **Solution:**
 ```bash
 # Check if server is running
-curl http://localhost:5000/
+curl http://localhost:5050/
 
 # Start the server
 cd /path/to/uderia
@@ -266,7 +266,7 @@ python -m trusted_data_agent.main
 ./rest_config.sh sample_configs/config_google.json
 
 # Or via web UI
-open http://localhost:5000
+open http://localhost:5050
 # Go to Config tab and configure
 ```
 
@@ -292,12 +292,12 @@ If you have old scripts using `X-TDA-User-UUID`:
 
 **Old format:**
 ```bash
-curl -H "X-TDA-User-UUID: user-uuid-here" http://localhost:5000/api/v1/sessions
+curl -H "X-TDA-User-UUID: user-uuid-here" http://localhost:5050/api/v1/sessions
 ```
 
 **New format:**
 ```bash
-curl -H "Authorization: Bearer tda_your_token_here" http://localhost:5000/api/v1/sessions
+curl -H "Authorization: Bearer tda_your_token_here" http://localhost:5050/api/v1/sessions
 ```
 
 **Migration steps:**

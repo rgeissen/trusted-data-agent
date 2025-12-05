@@ -8,7 +8,7 @@ This README documents the modern TDA Airflow DAG for automating queries with the
   - **Purpose**: Read a `questions.txt` file (one question per line) and run a session/submit/poll workflow for each question using Bearer token authentication and profile-based configuration.
   - **Files used**: `questions.txt` (placed in the same directory as the DAG). Lines starting with `#` are ignored.
   - **Key Airflow artifacts used**:
-    - Connection: `tda_api_conn` — base URL of TDA API (e.g., `http://localhost:5000`).
+    - Connection: `tda_api_conn` — base URL of TDA API (e.g., `http://localhost:5050`).
     - Variables (required):
       - `tda_api_key` — A valid TDA API key.
     - Variables (optional):
@@ -31,7 +31,7 @@ This README documents the modern TDA Airflow DAG for automating queries with the
 
 1. **Set up the Airflow Connection** (Admin → Connections):
    - Connection ID: `tda_api_conn`
-   - Host: Base URL of TDA API (e.g., `http://localhost:5000`)
+   - Host: Base URL of TDA API (e.g., `http://localhost:5050`)
    - Leave other fields empty
 
 2. **Create required Airflow Variables** (Admin → Variables):
@@ -59,7 +59,7 @@ Use the TDA Configuration UI (Credentials → Profiles tab) to:
 
 Alternatively, use the REST API:
 ```bash
-curl -X GET http://localhost:5000/api/v1/profiles \
+curl -X GET http://localhost:5050/api/v1/profiles \
   -H "Authorization: Bearer {tda_api_key}"
 ```
 

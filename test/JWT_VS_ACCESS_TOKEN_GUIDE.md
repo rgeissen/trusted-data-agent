@@ -66,7 +66,7 @@ This document provides a detailed comparison of the two authentication methods f
 ┌─────────────────────────────────────────┐
 │ 5. USE FOR API CALLS                    │
 │    curl -H "Authorization: Bearer $JWT" │
-│         http://localhost:5000/api/v1/   │
+│         http://localhost:5050/api/v1/   │
 │         sessions                        │
 └──────────────┬──────────────────────────┘
                │
@@ -125,7 +125,7 @@ This document provides a detailed comparison of the two authentication methods f
 ┌─────────────────────────────────────────┐
 │ 6. USE FOR API CALLS                    │
 │    curl -H "Authorization: Bearer $TOK" │
-│         http://localhost:5000/api/v1/   │
+│         http://localhost:5050/api/v1/   │
 │         sessions                        │
 │                                         │
 │    On each API call:                    │
@@ -190,7 +190,7 @@ curl -H "Authorization: Bearer $TOKEN" /api/v1/sessions
     TDA_ACCESS_TOKEN: ${{ secrets.TDA_ACCESS_TOKEN }}
   run: |
     curl -H "Authorization: Bearer $TDA_ACCESS_TOKEN" \
-         http://tda-server:5000/api/v1/sessions
+         http://tda-server:5050/api/v1/sessions
 ```
 
 ✅ Microservice integration
@@ -267,7 +267,7 @@ export TDA_TEST_TOKEN="tda_test_xxxxx"
 import requests
 from datetime import datetime
 
-BASE_URL = "http://localhost:5000"
+BASE_URL = "http://localhost:5050"
 
 # 1. Login
 response = requests.post(
@@ -291,7 +291,7 @@ print(f"Created session: {session_id} (valid for 24 hours)")
 import requests
 import os
 
-BASE_URL = "http://localhost:5000"
+BASE_URL = "http://localhost:5050"
 
 # 1. Login (one-time, to create access token)
 response = requests.post(
@@ -326,7 +326,7 @@ print(f"Created session: {session_id} (using 90-day token)")
 ```bash
 #!/bin/bash
 
-BASE_URL="http://localhost:5000"
+BASE_URL="http://localhost:5050"
 
 # 1. Login
 JWT=$(curl -s -X POST "$BASE_URL/auth/login" \
@@ -345,7 +345,7 @@ echo "Session ID: $(echo $SESSION | jq -r '.session_id')"
 ```bash
 #!/bin/bash
 
-BASE_URL="http://localhost:5000"
+BASE_URL="http://localhost:5050"
 
 # 1. Login (one-time)
 JWT=$(curl -s -X POST "$BASE_URL/auth/login" \

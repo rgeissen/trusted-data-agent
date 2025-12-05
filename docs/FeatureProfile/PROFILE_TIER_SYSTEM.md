@@ -317,18 +317,18 @@ The `is_admin` boolean field is maintained for backward compatibility:
 
 ```bash
 # Register user (defaults to 'user' tier)
-curl -X POST http://127.0.0.1:5000/api/v1/auth/register \
+curl -X POST http://127.0.0.1:5050/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{"username":"user1","email":"user1@test.com","password":"Pass123!"}'
 
 # Promote to developer (requires admin token)
-curl -X PATCH http://127.0.0.1:5000/api/v1/admin/users/<user_id>/tier \
+curl -X PATCH http://127.0.0.1:5050/api/v1/admin/users/<user_id>/tier \
   -H "Authorization: Bearer <admin_token>" \
   -H "Content-Type: application/json" \
   -d '{"profile_tier":"developer"}'
 
 # Promote to admin
-curl -X PATCH http://127.0.0.1:5000/api/v1/admin/users/<user_id>/tier \
+curl -X PATCH http://127.0.0.1:5050/api/v1/admin/users/<user_id>/tier \
   -H "Authorization: Bearer <admin_token>" \
   -H "Content-Type: application/json" \
   -d '{"profile_tier":"admin"}'
@@ -337,7 +337,7 @@ curl -X PATCH http://127.0.0.1:5000/api/v1/admin/users/<user_id>/tier \
 ### Verify Tier
 
 ```bash
-curl -X GET http://127.0.0.1:5000/api/v1/auth/me \
+curl -X GET http://127.0.0.1:5050/api/v1/auth/me \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -369,7 +369,7 @@ audit.log_admin_action(
 
 **Query Audit Logs:**
 ```bash
-curl -X GET http://127.0.0.1:5000/api/v1/auth/me/audit-logs \
+curl -X GET http://127.0.0.1:5050/api/v1/auth/me/audit-logs \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -444,13 +444,13 @@ Potential additions to the tier system:
 
 **Check tier:**
 ```bash
-curl -X GET http://127.0.0.1:5000/api/v1/auth/me \
+curl -X GET http://127.0.0.1:5050/api/v1/auth/me \
   -H "Authorization: Bearer <token>"
 ```
 
 **Promote if needed:**
 ```bash
-curl -X PATCH http://127.0.0.1:5000/api/v1/admin/users/<user_id>/tier \
+curl -X PATCH http://127.0.0.1:5050/api/v1/admin/users/<user_id>/tier \
   -H "Authorization: Bearer <admin_token>" \
   -H "Content-Type: application/json" \
   -d '{"profile_tier":"developer"}'

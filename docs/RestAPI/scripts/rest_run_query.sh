@@ -54,11 +54,11 @@ if [ -z "$ACCESS_TOKEN" ] || [ -z "$USER_QUESTION" ]; then
   echo "Example: ./rest_run_query.sh tda_1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p \"What is the business description for the DEMO_DB database?\" --session-id x-y-z --verbose" >&2
   echo "" >&2
   echo "To get an access token:" >&2
-  echo "  1. Login: curl -X POST http://localhost:5000/auth/login -H 'Content-Type: application/json' -d '{\"username\":\"your_user\",\"password\":\"your_pass\"}' | jq -r '.token'" >&2
-  echo "  2. Create token: curl -X POST http://localhost:5000/api/v1/auth/tokens -H 'Authorization: Bearer YOUR_JWT' -H 'Content-Type: application/json' -d '{\"name\":\"My Token\"}' | jq -r '.token'" >&2
+  echo "  1. Login: curl -X POST http://localhost:5050/auth/login -H 'Content-Type: application/json' -d '{\"username\":\"your_user\",\"password\":\"your_pass\"}' | jq -r '.token'" >&2
+  echo "  2. Create token: curl -X POST http://localhost:5050/api/v1/auth/tokens -H 'Authorization: Bearer YOUR_JWT' -H 'Content-Type: application/json' -d '{\"name\":\"My Token\"}' | jq -r '.token'" >&2
   exit 1
 fi
-BASE_URL="http://127.0.0.1:5000"
+BASE_URL="http://127.0.0.1:5050"
 
 # Function to print messages, redirecting to stderr if not verbose
 log_message() {

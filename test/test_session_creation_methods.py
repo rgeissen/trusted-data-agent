@@ -10,7 +10,7 @@ Usage:
     python test/test_session_creation_methods.py
 
 Requirements:
-    - Server running at http://localhost:5000
+    - Server running at http://localhost:5050
     - Test user credentials (will prompt for input)
     - User must have a configured default profile (LLM + MCP Server)
       OR script will attempt to create one from existing configs
@@ -29,7 +29,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from profile_setup_helper import ProfileSetupHelper, print_profile_setup_requirement
 
 # Configuration
-BASE_URL = "http://127.0.0.1:5000"
+BASE_URL = "http://127.0.0.1:5050"
 API_V1_BASE = f"{BASE_URL}/api/v1"
 AUTH_BASE = f"{BASE_URL}/api/v1/auth"
 

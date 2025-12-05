@@ -8,7 +8,7 @@ import json
 import time
 from pathlib import Path
 
-BASE_URL = "http://127.0.0.1:5000"
+BASE_URL = "http://127.0.0.1:5050"
 API_V1_BASE = f"{BASE_URL}/api/v1"
 AUTH_BASE = f"{BASE_URL}/api/v1/auth"
 
@@ -200,7 +200,7 @@ def test_profile_badges_after_restart():
     print("=" * 70)
     print()
     print("NEXT STEPS:")
-    print("1. Check the UI at http://localhost:5000")
+    print("1. Check the UI at http://localhost:5050")
     print("2. Look for the session in the left sidebar")
     print("3. The profile badge should appear with:")
     print(f"   • Provider color from profile: {profile.get('color') if profile else 'N/A'}")

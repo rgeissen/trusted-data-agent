@@ -12,7 +12,7 @@ See test_session_creation_methods.py for complete session workflow.
 import requests
 import json
 
-BASE_URL = "http://127.0.0.1:5000"
+BASE_URL = "http://127.0.0.1:5050"
 
 def print_profile_info(jwt_token):
     """Display profile configuration status."""
@@ -40,7 +40,7 @@ def print_profile_info(jwt_token):
                     print(f"    MCP: {default_profile.get('mcpServerId')}")
             else:
                 print(f"  ⚠️  To use session creation, configure a profile:")
-                print(f"      1. Open http://localhost:5000")
+                print(f"      1. Open http://localhost:5050")
                 print(f"      2. Go to Configuration")
                 print(f"      3. Create a profile (LLM + MCP)")
                 print(f"      4. Mark as default")

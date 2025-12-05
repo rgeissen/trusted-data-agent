@@ -30,7 +30,7 @@ environment:
 ### Alternative: docker run
 ```bash
 docker run -d \
-  -p 5050:5000 \
+  -p 5050:5050 \
   -e TDA_CONFIGURATION_PERSISTENCE=false \
   -e CORS_ALLOWED_ORIGINS=https://your-domain.com \
   uderia:latest

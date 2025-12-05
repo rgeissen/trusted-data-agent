@@ -10,7 +10,7 @@ This directory contains test scripts to demonstrate and verify session creation 
 
 ### Quick Setup
 
-1. **Open the web UI** at http://localhost:5000
+1. **Open the web UI** at http://localhost:5050
 2. **Click Configuration** panel (bottom left)
 3. **Add LLM Provider** (if not already added)
 4. **Add MCP Server** (if not already added)
@@ -90,7 +90,7 @@ bash test/test_session_creation_methods.sh
 
 ### For Both Tests
 - Server running: `python -m trusted_data_agent.main`
-- Server accessible at: `http://localhost:5000`
+- Server accessible at: `http://localhost:5050`
 - Valid user credentials
 - **User must have a configured default profile (LLM + MCP Server combination)** ⚠️
 
@@ -99,11 +99,11 @@ bash test/test_session_creation_methods.sh
 ### Customize Server URL
 ```bash
 # Python
-export TDA_SERVER=http://localhost:5000
+export TDA_SERVER=http://localhost:5050
 python test/test_session_creation_methods.py
 
 # Bash
-export BASE_URL=http://localhost:5000
+export BASE_URL=http://localhost:5050
 bash test/test_session_creation_methods.sh
 ```
 
@@ -189,7 +189,7 @@ bash test/test_session_creation_methods.sh
 ### "No default profile found"
 - **Cause:** User doesn't have a profile configured
 - **Solution:** 
-  1. Open web UI at http://localhost:5000
+  1. Open web UI at http://localhost:5050
   2. Go to Configuration panel
   3. Add LLM Provider (if needed)
   4. Add MCP Server (if needed)
@@ -199,7 +199,7 @@ bash test/test_session_creation_methods.sh
 ### "Profile is incomplete"
 - **Cause:** Profile exists but missing LLM or MCP Server
 - **Solution:**
-  1. Open web UI at http://localhost:5000
+  1. Open web UI at http://localhost:5050
   2. Edit the profile in Configuration panel
   3. Add missing LLM Provider or MCP Server
   4. Save the profile
@@ -250,25 +250,25 @@ This ensures:
 **Create session with JWT:**
 ```bash
 # 1. Login
-JWT=$(curl -s -X POST http://localhost:5000/auth/login \
+JWT=$(curl -s -X POST http://localhost:5050/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"user","password":"pass"}' | jq -r '.token')
 
 # 2. Create session
-curl -s -X POST http://localhost:5000/api/v1/sessions \
+curl -s -X POST http://localhost:5050/api/v1/sessions \
   -H "Authorization: Bearer $JWT"
 ```
 
 **Create session with Access Token:**
 ```bash
 # 1. Create access token (using JWT from above)
-TOKEN=$(curl -s -X POST http://localhost:5000/api/v1/auth/tokens \
+TOKEN=$(curl -s -X POST http://localhost:5050/api/v1/auth/tokens \
   -H "Authorization: Bearer $JWT" \
   -H "Content-Type: application/json" \
   -d '{"name":"my_token","expires_in_days":90}' | jq -r '.token')
 
 # 2. Create session
-curl -s -X POST http://localhost:5000/api/v1/sessions \
+curl -s -X POST http://localhost:5050/api/v1/sessions \
   -H "Authorization: Bearer $TOKEN"
 ```
 

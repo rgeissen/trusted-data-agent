@@ -284,7 +284,7 @@ docs/RestAPI/
 
 ### "Cannot connect to server"
 - Start the server: `python -m trusted_data_agent.main`
-- Check the URL is correct (default: `http://localhost:5000`)
+- Check the URL is correct (default: `http://localhost:5050`)
 
 ### "jq: command not found" (Bash test)
 - Install: `brew install jq` (macOS) or `sudo apt-get install jq` (Ubuntu)

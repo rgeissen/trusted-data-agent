@@ -17,8 +17,8 @@ RUN sed -i '1s/^\xEF\xBB\xBF//' src/trusted_data_agent/main.py
 # Install the application in editable mode to make the 'src' package discoverable
 RUN pip install -e .
 
-# Make port 5000 available to the world outside this container
-EXPOSE 5000
+# Make port 5050 available to the world outside this container
+EXPOSE 5050
 
 # The command to run when the container launches
 CMD ["python", "-m", "trusted_data_agent.main"]

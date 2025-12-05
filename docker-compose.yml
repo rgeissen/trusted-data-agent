@@ -14,12 +14,11 @@ services:
     
     # This 'command' overrides the default CMD in the Dockerfile
     # It's taken directly from the "cmd" field in your JSON
-    command: python -m trusted_data_agent.main --host 0.0.0.0 --port 5000
+    command: python -m trusted_data_agent.main --host 0.0.0.0 --port 5050
     
-    # Port mapping not needed with host network mode
-    # The container will listen on port 5000 on the host directly
-    # ports:
-    #   - "5050:5000"
+    # Port mapping is now configured to expose port 5050 on the host
+    ports:
+      - "5050:5050"
       
     volumes:
       # Mount the entire application directory for development
@@ -31,9 +30,8 @@ services:
       # Application-specific variables
       - CORS_ALLOWED_ORIGINS=https://tda.uderia.com
       
-    # Using host network mode to access MCP server directly
-    # This shares the host's network stack with the container
-    network_mode: host
+    networks:
+      - tda_network
       
     # This is a high-risk setting from your JSON ("privileged": true).
     # It gives the container root access to your host machine.
@@ -43,8 +41,8 @@ services:
     # For production, you might want to change this to "unless-stopped".
     restart: "no"
 
-# Network section commented out when using host network mode
-# networks:
-#   tda_network:
-#     driver: bridge
-#     name: TDA_Network
+# Define the bridge network
+networks:
+  tda_network:
+    driver: bridge
+    name: TDA_Network

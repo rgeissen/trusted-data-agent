@@ -23,7 +23,7 @@ import requests
 from datetime import datetime, timedelta
 
 # Configuration
-BASE_URL = os.getenv('TDA_BASE_URL', 'http://127.0.0.1:5000')
+BASE_URL = os.getenv('TDA_BASE_URL', 'http://127.0.0.1:5050')
 TEST_USERNAME = f"test_access_token_{int(time.time())}"
 TEST_EMAIL = f"{TEST_USERNAME}@example.com"
 TEST_PASSWORD = "TestPassword123!"

@@ -52,7 +52,7 @@ log_message() {
 }
 
 # --- 2. Initialization ---
-BASE_URL="http://127.0.0.1:5000"
+BASE_URL="http://127.0.0.1:5050"
 FULL_URL="$BASE_URL$TASK_URL_PATH"
 EVENTS_SEEN=0
 

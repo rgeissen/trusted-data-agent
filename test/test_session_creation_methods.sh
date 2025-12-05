@@ -13,14 +13,14 @@
 # Requirements:
 #     - curl
 #     - jq
-#     - Server running at http://localhost:5000
+#     - Server running at http://localhost:5050
 #     - User must have a configured default profile (LLM + MCP Server)
 #############################################################################
 
 set -euo pipefail
 
 # Configuration
-BASE_URL="${BASE_URL:-http://localhost:5000}"
+BASE_URL="${BASE_URL:-http://localhost:5050}"
 API_V1="${BASE_URL}/api/v1"
 AUTH_BASE="${BASE_URL}/api/v1/auth"
 
@@ -129,7 +129,7 @@ show_profile_setup_requirement() {
     echo -e "The REST API requires a configured profile (LLM + MCP Server)."
     echo -e ""
     echo -e "${YELLOW}To configure a profile:${NC}"
-    echo -e "  1. Open the web UI at http://localhost:5000"
+    echo -e "  1. Open the web UI at http://localhost:5050"
     echo -e "  2. Click 'Configuration' panel"
     echo -e "  3. Add an LLM Provider (if not already added)"
     echo -e "  4. Add an MCP Server (if not already added)"

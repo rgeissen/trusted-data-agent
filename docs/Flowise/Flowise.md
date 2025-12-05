@@ -26,7 +26,7 @@ The agent flow is defined in [TDA Conversation Agents.json](./scripts/TDA%20Conv
 Accepts runtime variables from the chat interface or calling application.
 
 * **Variables:**
-    * `baseUrl`: The TDA server address (e.g., `http://192.168.0.100:5000`).
+    * `baseUrl`: The TDA server address (e.g., `http://192.168.0.100:5050`).
     * `apiToken`: Direct API token for authentication.
     * `prompt`: The natural language query from the user.
     * `sessionId`: (Optional) An existing session ID to maintain context for multi-turn conversations.

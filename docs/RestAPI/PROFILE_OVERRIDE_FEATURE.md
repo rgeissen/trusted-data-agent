@@ -13,7 +13,7 @@ The REST API now supports optional **profile overrides** for individual queries.
 ### 1. Basic Query (Uses Default Profile)
 
 ```bash
-curl -X POST http://localhost:5000/api/v1/sessions/{session_id}/query \
+curl -X POST http://localhost:5050/api/v1/sessions/{session_id}/query \
   -H "Authorization: Bearer {jwt_token}" \
   -H "Content-Type: application/json" \
   -d '{"prompt": "What is the system version?"}'
@@ -26,7 +26,7 @@ curl -X POST http://localhost:5000/api/v1/sessions/{session_id}/query \
 ### 2. Query with Profile Override
 
 ```bash
-curl -X POST http://localhost:5000/api/v1/sessions/{session_id}/query \
+curl -X POST http://localhost:5050/api/v1/sessions/{session_id}/query \
   -H "Authorization: Bearer {jwt_token}" \
   -H "Content-Type: application/json" \
   -d '{
@@ -64,7 +64,7 @@ When loading a session:
 To see available profiles and get their IDs:
 
 ```bash
-curl -X GET http://localhost:5000/api/v1/profiles \
+curl -X GET http://localhost:5050/api/v1/profiles \
   -H "Authorization: Bearer {jwt_token}"
 ```
 
@@ -99,7 +99,7 @@ Response:
 import requests
 import json
 
-BASE_URL = "http://localhost:5000"
+BASE_URL = "http://localhost:5050"
 API_BASE = f"{BASE_URL}/api/v1"
 
 # Login
@@ -145,7 +145,7 @@ query2 = requests.post(
 ### Node.js/JavaScript
 
 ```javascript
-const baseUrl = 'http://localhost:5000';
+const baseUrl = 'http://localhost:5050';
 const apiBase = `${baseUrl}/api/v1`;
 
 // Login
@@ -226,7 +226,7 @@ Each profile badge shows:
 If you specify an invalid `profile_id`:
 
 ```bash
-curl -X POST http://localhost:5000/api/v1/sessions/{session_id}/query \
+curl -X POST http://localhost:5050/api/v1/sessions/{session_id}/query \
   -H "Authorization: Bearer {jwt_token}" \
   -H "Content-Type: application/json" \
   -d '{"prompt": "Test", "profile_id": "invalid-id"}'
@@ -239,7 +239,7 @@ curl -X POST http://localhost:5000/api/v1/sessions/{session_id}/query \
 You can check which profiles were used in a session:
 
 ```bash
-curl -X GET http://localhost:5000/api/v1/sessions/{session_id}/details \
+curl -X GET http://localhost:5050/api/v1/sessions/{session_id}/details \
   -H "Authorization: Bearer {jwt_token}"
 ```
 

@@ -28,7 +28,7 @@
 
 ### List Templates
 ```bash
-curl http://localhost:5000/api/v1/rag/templates
+curl http://localhost:5050/api/v1/rag/templates
 ```
 
 Response:
@@ -46,12 +46,12 @@ Response:
 
 ### Get Template Details
 ```bash
-curl http://localhost:5000/api/v1/rag/templates/sql_query_v1/plugin-info
+curl http://localhost:5050/api/v1/rag/templates/sql_query_v1/plugin-info
 ```
 
 ### Generate Questions (LLM)
 ```bash
-curl -X POST http://localhost:5000/api/v1/rag/generate-questions \
+curl -X POST http://localhost:5050/api/v1/rag/generate-questions \
   -H "Content-Type: application/json" \
   -d '{
     "template_id": "sql_query_v1",
@@ -78,7 +78,7 @@ Response:
 
 ### Populate Collection
 ```bash
-curl -X POST http://localhost:5000/api/v1/rag/collections/1/populate \
+curl -X POST http://localhost:5050/api/v1/rag/collections/1/populate \
   -H "Content-Type: application/json" \
   -d '{
     "template_type": "sql_query",

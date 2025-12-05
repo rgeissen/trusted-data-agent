@@ -49,13 +49,13 @@ The API is designed around an **asynchronous task-based architecture**. This pat
 
 All API endpoints are relative to your TDA instance:
 ```
-http://your-tda-host:5000/api
+http://your-tda-host:5050/api
 ```
 
 For local development:
 ```
-http://localhost:5000/api
-http://127.0.0.1:5000/api
+http://localhost:5050/api
+http://127.0.0.1:5050/api
 ```
 
 ### Prerequisites for REST API
@@ -82,12 +82,12 @@ The typical REST API workflow involves five steps:
 
 ```bash
 # 1. Login to get JWT (one-time or per session)
-JWT=$(curl -s -X POST http://localhost:5000/api/v1/auth/login \
+JWT=$(curl -s -X POST http://localhost:5050/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"your_password"}' | jq -r '.access_token')
 
 # 2. Create access token for API automation (one-time)
-TOKEN=$(curl -s -X POST http://localhost:5000/api/v1/auth/tokens \
+TOKEN=$(curl -s -X POST http://localhost:5050/api/v1/auth/tokens \
   -H "Authorization: Bearer $JWT" \
   -H "Content-Type: application/json" \
   -d '{"name":"my_app","expires_in_days":90}' | jq -r '.token')
@@ -95,19 +95,19 @@ TOKEN=$(curl -s -X POST http://localhost:5000/api/v1/auth/tokens \
 # Note: Configure Profile in UI or API (set LLM + MCP, mark as default)
 
 # 3. Create session (uses your default profile)
-SESSION=$(curl -s -X POST http://localhost:5000/api/v1/sessions \
+SESSION=$(curl -s -X POST http://localhost:5050/api/v1/sessions \
   -H "Authorization: Bearer $TOKEN")
 SESSION_ID=$(echo $SESSION | jq -r '.session_id')
 
 # 4. Submit query
-TASK=$(curl -s -X POST http://localhost:5000/api/v1/sessions/$SESSION_ID/query \
+TASK=$(curl -s -X POST http://localhost:5050/api/v1/sessions/$SESSION_ID/query \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"prompt":"Show me available databases"}')
 TASK_ID=$(echo $TASK | jq -r '.task_id')
 
 # 5. Check result
-curl -s http://localhost:5000/api/v1/tasks/$TASK_ID \
+curl -s http://localhost:5050/api/v1/tasks/$TASK_ID \
   -H "Authorization: Bearer $TOKEN" | jq '.result'
 ```
 
@@ -145,7 +145,7 @@ Example: `tda_1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p`
 Include the token in the `Authorization` header with the `Bearer` scheme:
 
 ```bash
-curl -X GET http://localhost:5000/api/v1/sessions \
+curl -X GET http://localhost:5050/api/v1/sessions \
   -H "Authorization: Bearer tda_1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p"
 ```
 
@@ -165,13 +165,13 @@ JWT (JSON Web Tokens) are short-lived session tokens automatically managed by th
 
 ```bash
 # Login to get JWT token
-JWT=$(curl -s -X POST http://localhost:5000/auth/login \
+JWT=$(curl -s -X POST http://localhost:5050/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"your_username","password":"your_password"}' \
   | jq -r '.token')
 
 # Use JWT token in API calls
-curl -X GET http://localhost:5000/api/v1/sessions \
+curl -X GET http://localhost:5050/api/v1/sessions \
   -H "Authorization: Bearer $JWT"
 ```
 
@@ -180,7 +180,7 @@ curl -X GET http://localhost:5000/api/v1/sessions \
 #### Step 1: Register an Account
 
 ```bash
-curl -X POST http://localhost:5000/auth/register \
+curl -X POST http://localhost:5050/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "username": "api_user",
@@ -205,7 +205,7 @@ curl -X POST http://localhost:5000/auth/register \
 #### Step 2: Login to Get JWT Token
 
 ```bash
-curl -X POST http://localhost:5000/auth/login \
+curl -X POST http://localhost:5050/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "username": "api_user",
@@ -232,7 +232,7 @@ curl -X POST http://localhost:5000/auth/login \
 ```bash
 JWT="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 
-curl -X POST http://localhost:5000/api/v1/auth/tokens \
+curl -X POST http://localhost:5050/api/v1/auth/tokens \
   -H "Authorization: Bearer $JWT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -260,7 +260,7 @@ curl -X POST http://localhost:5000/api/v1/auth/tokens \
 ```bash
 TOKEN="tda_1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p"
 
-curl -X POST http://localhost:5000/api/v1/sessions \
+curl -X POST http://localhost:5050/api/v1/sessions \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -684,7 +684,7 @@ Submits a natural language query to a specific session. This initiates a backgro
 
 Basic query with default profile:
 ```bash
-curl -X POST http://localhost:5000/api/v1/sessions/{session_id}/query \
+curl -X POST http://localhost:5050/api/v1/sessions/{session_id}/query \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"prompt": "What is the system version?"}'
@@ -692,7 +692,7 @@ curl -X POST http://localhost:5000/api/v1/sessions/{session_id}/query \
 
 Query with specific profile override:
 ```bash
-curl -X POST http://localhost:5000/api/v1/sessions/{session_id}/query \
+curl -X POST http://localhost:5050/api/v1/sessions/{session_id}/query \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1071,7 +1071,7 @@ Generate question/SQL pairs from uploaded technical documentation (PDF, TXT, DOC
     * `files` (file[], required): One or more document files (PDF, TXT, DOC, DOCX)
 * **Example Request**:
     ```bash
-    curl -X POST http://localhost:5000/api/v1/rag/generate-questions-from-documents \
+    curl -X POST http://localhost:5050/api/v1/rag/generate-questions-from-documents \
       -H "Authorization: Bearer YOUR_JWT_TOKEN" \
       -F "subject=performance tuning" \
       -F "count=10" \
@@ -1495,7 +1495,7 @@ from typing import Optional, Dict, Any
 class TDAClient:
     """Uderia Platform API Client"""
     
-    def __init__(self, base_url: str = "http://localhost:5000"):
+    def __init__(self, base_url: str = "http://localhost:5050"):
         self.base_url = base_url.rstrip('/')
         self.jwt_token: Optional[str] = None
         self.access_token: Optional[str] = None
@@ -1721,7 +1721,7 @@ if __name__ == "__main__":
 set -euo pipefail
 
 # Configuration
-TDA_URL="${TDA_URL:-http://localhost:5000}"
+TDA_URL="${TDA_URL:-http://localhost:5050}"
 TDA_TOKEN="${TDA_ACCESS_TOKEN}"
 DATABASE="${DATABASE:-production}"
 
@@ -1791,7 +1791,7 @@ done
 const axios = require('axios');
 
 class TDAClient {
-    constructor(baseURL = 'http://localhost:5000') {
+    constructor(baseURL = 'http://localhost:5050') {
         this.baseURL = baseURL;
         this.jwtToken = null;
         this.accessToken = null;
@@ -1934,13 +1934,13 @@ class TDAClient {
 **Create Access Token:**
 ```bash
 # Login first
-JWT=$(curl -s -X POST http://localhost:5000/auth/login \
+JWT=$(curl -s -X POST http://localhost:5050/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"your_user","password":"your_pass"}' \
   | jq -r '.token')
 
 # Create token
-TOKEN=$(curl -s -X POST http://localhost:5000/api/v1/auth/tokens \
+TOKEN=$(curl -s -X POST http://localhost:5050/api/v1/auth/tokens \
   -H "Authorization: Bearer $JWT" \
   -H "Content-Type: application/json" \
   -d '{"name":"Production","expires_in_days":90}' \
@@ -1955,12 +1955,12 @@ echo "Save this token securely!"
 TOKEN="tda_your_token_here"
 
 # Create session
-SESSION=$(curl -s -X POST http://localhost:5000/api/v1/sessions \
+SESSION=$(curl -s -X POST http://localhost:5050/api/v1/sessions \
   -H "Authorization: Bearer $TOKEN" \
   | jq -r '.session_id')
 
 # Submit query
-TASK=$(curl -s -X POST http://localhost:5000/api/v1/sessions/$SESSION/query \
+TASK=$(curl -s -X POST http://localhost:5050/api/v1/sessions/$SESSION/query \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"prompt":"Show all databases"}' \
@@ -1968,12 +1968,12 @@ TASK=$(curl -s -X POST http://localhost:5000/api/v1/sessions/$SESSION/query \
 
 # Poll for result
 while true; do
-    STATUS=$(curl -s http://localhost:5000/api/v1/tasks/$TASK \
+    STATUS=$(curl -s http://localhost:5050/api/v1/tasks/$TASK \
       -H "Authorization: Bearer $TOKEN" \
       | jq -r '.status')
     
     if [ "$STATUS" = "complete" ]; then
-        curl -s http://localhost:5000/api/v1/tasks/$TASK \
+        curl -s http://localhost:5050/api/v1/tasks/$TASK \
           -H "Authorization: Bearer $TOKEN" | jq '.result'
         break
     fi
@@ -2046,7 +2046,7 @@ TOKEN = "tda_1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p"
 BASE_URL = "https://tda.company.com"
 
 # ⚠️ Development only
-BASE_URL = "http://localhost:5000"
+BASE_URL = "http://localhost:5050"
 ```
 
 **Certificate Verification:**
@@ -2197,11 +2197,11 @@ def list_token_usage():
 **Solution:**
 ```bash
 # List your tokens to check status
-curl -X GET http://localhost:5000/api/v1/auth/tokens \
+curl -X GET http://localhost:5050/api/v1/auth/tokens \
   -H "Authorization: Bearer $JWT"
 
 # Create new token if needed
-curl -X POST http://localhost:5000/api/v1/auth/tokens \
+curl -X POST http://localhost:5050/api/v1/auth/tokens \
   -H "Authorization: Bearer $JWT" \
   -H "Content-Type: application/json" \
   -d '{"name":"New Token","expires_in_days":90}'
@@ -2284,19 +2284,19 @@ def ensure_authenticated(client):
 **Solution:**
 1. Get your available profiles:
 ```bash
-curl -X GET http://localhost:5000/api/v1/profiles \
+curl -X GET http://localhost:5050/api/v1/profiles \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 2. Use a valid profile ID from the list, or omit `profile_id` to use default:
 ```bash
 # Without override (uses default profile)
-curl -X POST http://localhost:5000/api/v1/sessions/{id}/query \
+curl -X POST http://localhost:5050/api/v1/sessions/{id}/query \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"prompt": "Your question"}'
 
 # With valid override
-curl -X POST http://localhost:5000/api/v1/sessions/{id}/query \
+curl -X POST http://localhost:5050/api/v1/sessions/{id}/query \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"prompt": "Your question", "profile_id": "profile-valid-id"}'
 ```
@@ -2329,7 +2329,7 @@ if task['status'] == 'error':
 **Solution:**
 ```bash
 # Check if server is running
-curl http://localhost:5000/
+curl http://localhost:5050/
 
 # Verify correct port
 ps aux | grep trusted_data_agent
@@ -2436,7 +2436,7 @@ print("Body:", response.text)
 ```bash
 # Verify token is valid
 TOKEN="tda_your_token"
-curl -v http://localhost:5000/api/v1/sessions \
+curl -v http://localhost:5050/api/v1/sessions \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -2446,7 +2446,7 @@ If you continue to experience issues:
 
 1. **Check the logs:** `logs/tda.log` on the server
 2. **Verify configuration:** Web UI → Config tab
-3. **Test basic connectivity:** `curl http://localhost:5000/`
+3. **Test basic connectivity:** `curl http://localhost:5050/`
 4. **Check token status:** `GET /api/v1/auth/tokens`
 5. **Review error events:** Check task `events` array for detailed execution logs
 
@@ -2528,11 +2528,11 @@ If you continue to experience issues:
 **Usage:**
 ```bash
 # Query with default profile (no profile_id needed)
-curl -X POST http://localhost:5000/api/v1/sessions/{id}/query \
+curl -X POST http://localhost:5050/api/v1/sessions/{id}/query \
   -d '{"prompt": "Your question"}'
 
 # Query with profile override
-curl -X POST http://localhost:5000/api/v1/sessions/{id}/query \
+curl -X POST http://localhost:5050/api/v1/sessions/{id}/query \
   -d '{"prompt": "Your question", "profile_id": "profile-xxx"}'
 ```
 
@@ -2576,14 +2576,14 @@ curl -X POST http://localhost:5000/api/v1/sessions/{id}/query \
 
 Before:
 ```bash
-curl -X GET http://localhost:5000/api/v1/sessions \
+curl -X GET http://localhost:5050/api/v1/sessions \
   -H "X-TDA-User-UUID: user-uuid-here" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 After:
 ```bash
-curl -X GET http://localhost:5000/api/v1/sessions \
+curl -X GET http://localhost:5050/api/v1/sessions \
   -H "Authorization: Bearer $TOKEN"
 ```
 

@@ -12,7 +12,7 @@ Note: For LLM-assisted question generation, use the web UI workflow:
 
 Usage:
     python example_template_population.py --collection-id 1 --database mydb
-    python example_template_population.py --server http://localhost:5000 --collection-id 1
+    python example_template_population.py --server http://localhost:5050 --collection-id 1
 """
 
 import requests
@@ -104,8 +104,8 @@ def main():
     parser = argparse.ArgumentParser(description="Populate RAG collection with SQL examples")
     parser.add_argument(
         "--server",
-        default="http://localhost:5000",
-        help="TDA server URL (default: http://localhost:5000)"
+        default="http://localhost:5050",
+        help="TDA server URL (default: http://localhost:5050)"
     )
     parser.add_argument(
         "--collection-id",

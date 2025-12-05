@@ -14,7 +14,7 @@ from typing import Dict, Any, Optional, Tuple
 class ProfileSetupHelper:
     """Helper class for profile setup in tests."""
     
-    def __init__(self, base_url: str = "http://127.0.0.1:5000"):
+    def __init__(self, base_url: str = "http://127.0.0.1:5050"):
         self.base_url = base_url
         self.api_v1_base = f"{base_url}/api/v1"
         self.auth_base = f"{base_url}/api/v1/auth"
@@ -236,7 +236,7 @@ A profile consists of:
   • MCP Server (for data access)
 
 To configure a profile:
-  1. Open the web UI at http://localhost:5000
+print("  1. Open the web UI at http://localhost:5050")
   2. Click "Configuration" panel
   3. Add an LLM Provider (if not already added)
   4. Add an MCP Server (if not already added)

@@ -762,12 +762,12 @@ The Uderia Platform is built on a modern, asynchronous client-server architectur
 
 **Single-User (Development):**
 ```
-Local Machine → Python Process → localhost:5000
+Local Machine → Python Process → localhost:5050
 ```
 
 **Multi-User (Production):**
 ```
-Option 1: Load Balancer → Multiple Container Instances (port 5000, 5001, 5002...)
+Option 1: Load Balancer → Multiple Container Instances (port 5050, 5051, 5052...)
 Option 2: Shared Container → TDA_CONFIGURATION_PERSISTENCE=false (sequential access)
 ```
 
@@ -950,11 +950,11 @@ python -m trusted_data_agent.main
 The application will:
 - Automatically create `tda_auth.db` (SQLite database with encrypted credentials)
 - Initialize default admin account: `admin` / `admin` (⚠️ **change immediately!**)
-- Start the web server on `http://localhost:5000`
+- Start the web server on `http://localhost:5050`
 
 ### Step 8: First Login and Security
 
-1. **Open your browser** to `http://localhost:5000`
+1. **Open your browser** to `http://localhost:5050`
 2. **Login** with default credentials: `admin` / `admin`
 3. **⚠️ IMPORTANT:** Immediately change the admin password in the **Administration** panel
 4. **Bootstrap Applied** - On first login, your account receives the template configuration from `tda_config.json`
@@ -1041,7 +1041,7 @@ The Uderia Platform uses a modern, modular configuration system that separates i
 
 ##### Step 1: Configure MCP Servers
 
-1. **Login:** Navigate to `http://localhost:5000` and login with your credentials.
+1. **Login:** Navigate to `http://localhost:5050` and login with your credentials.
 
 2. **Navigate to Setup:** Click on the **Setup** panel in the left sidebar (person icon).
 
@@ -1469,7 +1469,7 @@ export TDA_ACCESS_TOKEN="tda_9DqZMBXh-OK4H4F7iI2t3EcGctldT-iX"
 ./docs/RestAPI/scripts/rest_run_query.sh "$TDA_ACCESS_TOKEN" "What tables exist?"
 
 # Or directly with curl
-curl -X POST http://localhost:5000/api/v1/configure \
+curl -X POST http://localhost:5050/api/v1/configure \
   -H "Authorization: Bearer $TDA_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"provider": "Google", "model": "gemini-2.0-flash-exp"}'
@@ -1547,7 +1547,7 @@ With your workflow defined, you can transition to the REST API for operational u
 export TDA_TOKEN="tda_9DqZMBXh-OK4H4F7iI2t3EcGctldT-iX"
 
 # Execute query in a session
-curl -X POST http://localhost:5000/api/v1/sessions/{session_id}/query \
+curl -X POST http://localhost:5050/api/v1/sessions/{session_id}/query \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TDA_TOKEN" \
   -d '{
@@ -1601,7 +1601,7 @@ docker build -t uderia:latest .
 
 # Run with persistence disabled (recommended for shared/testing environments)
 docker run -d \
-  -p 5050:5000 \
+  -p 5050:5050 \
   -e TDA_CONFIGURATION_PERSISTENCE=false \
   -e CORS_ALLOWED_ORIGINS=https://your-domain.com \
   uderia:latest
@@ -1621,7 +1621,7 @@ docker run -d \
 #### Initial Setup:
 ```bash
 docker run -d \
-  -p 5000:5000 \
+  -p 5050:5050 \
   -v $(pwd)/tda_auth.db:/app/tda_auth.db \
   -v $(pwd)/tda_sessions:/app/tda_sessions \
   -e CORS_ALLOWED_ORIGINS=https://your-domain.com \

@@ -194,7 +194,7 @@ Authorization: Bearer <token>
 
 **Usage Example:**
 ```bash
-curl -X GET http://127.0.0.1:5000/api/v1/auth/me/features \
+curl -X GET http://127.0.0.1:5050/api/v1/auth/me/features \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -517,7 +517,7 @@ def test_user_feature_access():
 
 ```bash
 # User tier trying to access developer feature (should fail)
-curl -X POST http://127.0.0.1:5000/api/v1/rag/collections \
+curl -X POST http://127.0.0.1:5050/api/v1/rag/collections \
   -H "Authorization: Bearer <user_token>" \
   -H "Content-Type: application/json" \
   -d '{"name":"test"}'
@@ -529,7 +529,7 @@ curl -X POST http://127.0.0.1:5000/api/v1/rag/collections \
 # }
 
 # Developer tier accessing same feature (should succeed)
-curl -X POST http://127.0.0.1:5000/api/v1/rag/collections \
+curl -X POST http://127.0.0.1:5050/api/v1/rag/collections \
   -H "Authorization: Bearer <developer_token>" \
   -H "Content-Type: application/json" \
   -d '{"name":"test"}'
