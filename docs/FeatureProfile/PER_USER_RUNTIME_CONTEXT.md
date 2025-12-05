@@ -342,7 +342,7 @@ def test_context_cleanup():
 1. **Multi-user simultaneous configuration**: Two users configure different providers
 2. **Session persistence**: User A's sessions use correct provider after User B configures
 3. **Cleanup verification**: Old user contexts are removed after inactivity
-4. **Backward compatibility**: Works correctly with `persistence=true`
+4. **Backward compatibility**: Works correctly with existing configurations
 
 ## Rollout Plan
 

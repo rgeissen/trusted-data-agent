@@ -112,7 +112,6 @@ Eliminate the friction between conversational exploration and production automat
 
 * **Docker Deployment Support**: Production-ready containerization:
   - Multi-user support in single shared container
-  - Configuration persistence flag for shared deployments
   - Environment variable overrides
   - Volume mounts for sessions, logs, and keys
   - Load balancer ready for horizontal scaling
@@ -799,6 +798,8 @@ Option 1: Load Balancer → Multiple Container Instances (port 5050, 5051, 5052.
   * For **Azure**, you will need an **Azure OpenAI Endpoint**, **API Key**, **API Version**, and a **Model Deployment Name**.
 
   * For AWS, you will need an **AWS Access Key ID**, **Secret Access Key**, and the **Region** for your Bedrock service.
+
+  * You can obtain a Friendli.AI API key from the [Friendli Suite](https://suite.friendli.ai/).
 
   * For Ollama, download and install it from [ollama.com](https://ollama.com/) and pull a model (e.g., `ollama run llama2`).
 
@@ -1599,10 +1600,9 @@ The Uderia Platform can be deployed in Docker containers for production use, tes
 # Build the image
 docker build -t uderia:latest .
 
-# Run with persistence disabled (recommended for shared/testing environments)
+# Run the container
 docker run -d \
   -p 5050:5050 \
-  
   -e CORS_ALLOWED_ORIGINS=https://your-domain.com \
   uderia:latest
 ```

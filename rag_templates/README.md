@@ -112,7 +112,7 @@ manager.update_template_config("sql_query_v1", {
 4. Set status to `"active"` to enable
 5. Restart application to load new template
 
-## Configuration Persistence
+## Runtime Configuration
 
 Template configurations can be edited at runtime via the UI:
 

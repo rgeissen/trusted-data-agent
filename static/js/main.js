@@ -937,17 +937,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         const status = await API.checkServerStatus();
         
-        // Set configuration persistence flag from server
-        if (typeof status.configurationPersistence !== 'undefined') {
-            state.configurationPersistence = status.configurationPersistence;
-            
-            // Show warning banner if persistence is disabled
-            const persistenceBanner = document.getElementById('persistence-warning-banner');
-            if (!state.configurationPersistence && persistenceBanner) {
-                persistenceBanner.classList.remove('hidden');
-            }
-            
-            // Note: Credentials are ALWAYS stored in localStorage regardless of persistence setting
+        // Note: Credentials are ALWAYS stored in localStorage
             // When persistence is disabled, localStorage is the ONLY place credentials are stored
             // When persistence is enabled, credentials are in backend AND localStorage
         }

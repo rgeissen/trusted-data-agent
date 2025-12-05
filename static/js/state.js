@@ -31,7 +31,6 @@ export const state = {
     defaultPromptsCache: {},
     currentPhaseContainerEl: null,
     appConfig: {},
-    configurationPersistence: true, // Server-controlled persistence flag
     // --- MODIFICATION START: Add state for TTS conversation flow ---
     ttsState: 'IDLE', // Can be 'IDLE', 'AWAITING_OBSERVATION_CONFIRMATION'
     ttsObservationBuffer: '', // Stores key observations while waiting for user confirmation

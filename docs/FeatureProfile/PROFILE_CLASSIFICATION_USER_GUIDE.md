@@ -376,7 +376,7 @@ A: Yes! Each profile independently controls its classification mode.
 A: System falls back to `light` mode automatically and logs the error.
 
 **Q: Is classification stored in the database?**  
-A: Results are cached in `tda_config.json` (or user-specific config if persistence disabled).
+A: Results are cached in the user's database configuration.
 
 **Q: Can I see classification in API responses?**  
 A: Yes, use `GET /api/v1/profiles/{id}/classification` endpoint.

@@ -1,20 +1,14 @@
 /**
  * storageUtils.js
- * Wrapper for localStorage that respects server configuration persistence settings
- 
+ * Safe wrapper for localStorage with error handling
  */
 
-import { state } from './state.js';
-
 /**
- * Safe localStorage.setItem that respects configuration persistence
+ * Safe localStorage.setItem with error handling
  * @param {string} key - The localStorage key
  * @param {string} value - The value to store
  */
 export function safeSetItem(key, value) {
-    if (!state.configurationPersistence) {
-        return;
-    }
     try {
         localStorage.setItem(key, value);
     } catch (error) {
@@ -23,14 +17,11 @@ export function safeSetItem(key, value) {
 }
 
 /**
- * Safe localStorage.getItem that respects configuration persistence
+ * Safe localStorage.getItem with error handling
  * @param {string} key - The localStorage key
  * @returns {string|null} - The stored value or null
  */
 export function safeGetItem(key) {
-    if (!state.configurationPersistence) {
-        return null;
-    }
     try {
         return localStorage.getItem(key);
     } catch (error) {
@@ -40,13 +31,10 @@ export function safeGetItem(key) {
 }
 
 /**
- * Safe localStorage.removeItem that respects configuration persistence
+ * Safe localStorage.removeItem with error handling
  * @param {string} key - The localStorage key
  */
 export function safeRemoveItem(key) {
-    if (!state.configurationPersistence) {
-        return;
-    }
     try {
         localStorage.removeItem(key);
     } catch (error) {
