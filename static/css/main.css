@@ -200,7 +200,7 @@ body {
     inset: -3px;
     border-radius: 50%;
     background: radial-gradient(circle at 30% 30%, 
-                                rgba(241, 95, 34, 0.3) 0%, 
+                                rgba(30, 64, 175, 0.4) 0%, 
                                 transparent 70%);
     opacity: 0;
     transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
