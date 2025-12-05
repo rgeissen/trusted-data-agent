@@ -2131,6 +2131,15 @@ button[data-action="delete-mcp"]:hover {
     animation: welcomeFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.8s both;
 }
 
+/* Welcome screen title and tagline animations */
+#welcome-screen .welcome-uderia-title {
+    animation: welcomeFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+#welcome-screen .welcome-tagline {
+    animation: welcomeFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+
 /* Refined animation keyframes with sophisticated easing */
 @keyframes welcomeFadeInUp {
     0% {
