@@ -1306,12 +1306,12 @@ select:disabled, input:disabled, button:disabled, fieldset:disabled {
 }
 /* User badge - positioned below and right of U avatar */
 .turn-badge.user-badge {
-    top: 29px !important;
+    top: 24px !important;
     right: -7px !important;
 }
 /* Assistant badge - positioned below and left of A avatar */  
 .turn-badge.assistant-badge {
-    top: 29px !important;
+    top: 24px !important;
     left: -3px !important;
 }
 /* --- MODIFICATION END --- */
@@ -2035,7 +2035,6 @@ button[data-action="delete-mcp"]:hover {
 
 /* Enhanced CTA button with sophisticated effects */
 #welcome-screen .welcome-cta-button {
-    animation: welcomeFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
     background: linear-gradient(135deg, #F15F22 0%, #D9501A 100%);
     box-shadow: 0 10px 30px rgba(241, 95, 34, 0.3),
                 0 0 0 0 rgba(241, 95, 34, 0.4);
