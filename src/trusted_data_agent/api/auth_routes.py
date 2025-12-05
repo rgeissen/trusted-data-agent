@@ -1162,7 +1162,7 @@ async def get_rate_limit_settings(current_user):
 
 @auth_bp.route('/admin/rate-limit-settings', methods=['PUT'])
 @require_admin
-async def update_rate_limit_settings():
+async def update_rate_limit_settings(current_user):
     """
     Update rate limiting configuration settings.
     
@@ -1183,8 +1183,6 @@ async def update_rate_limit_settings():
         500: Server error
     """
     from trusted_data_agent.auth.models import SystemSettings
-    
-    current_user = get_current_user()
     
     try:
         data = await request.get_json()
@@ -1230,7 +1228,7 @@ async def update_rate_limit_settings():
                     }), 400
                 
                 # Validate integer for numeric settings
-                if key != 'rate_limit_enabled':
+                if key not in ('rate_limit_enabled', 'rate_limit_global_override'):
                     try:
                         int_value = int(value_str)
                         if int_value < 0:

@@ -119,6 +119,7 @@
   "active_for_consumption_profile_ids": [],
   "default_consumption_profile": "Unlimited",
   "rate_limit_enabled": "on",
+  "rate_limit_global_override": "off",
   "window_defaults": {
     "session_history_expanded": false,
     "resources_expanded": false,

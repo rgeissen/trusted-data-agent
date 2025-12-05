@@ -2517,6 +2517,17 @@
                                                 </div>
                                             </div>
 
+                                            <!-- Global Override Toggle -->
+                                            <div class="p-4 bg-gray-700/50 rounded-lg">
+                                                <div class="flex items-start gap-3">
+                                                    <input type="checkbox" id="rate-limit-global-override" class="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-offset-0" disabled>
+                                                    <div class="flex-1">
+                                                        <label for="rate-limit-global-override" class="block text-sm font-semibold text-white cursor-pointer">Global Override</label>
+                                                        <p class="text-xs text-gray-400 mt-1">When enabled, the global limits below override individual consumption profile settings for all users. Use for emergency rate limiting.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <!-- Rate Limit Settings (visible when enabled) -->
                                             <div id="rate-limit-settings" class="hidden space-y-4">
                                                 <!-- User Limits -->

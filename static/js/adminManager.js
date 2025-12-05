@@ -216,7 +216,12 @@ const AdminManager = {
         // Rate Limiting
         const rateLimitEnabledCheckbox = document.getElementById('rate-limit-enabled');
         if (rateLimitEnabledCheckbox) {
-            rateLimitEnabledCheckbox.addEventListener('change', (e) => this.toggleRateLimitSettings(e.target.checked));
+            rateLimitEnabledCheckbox.addEventListener('change', (e) => this.toggleGlobalOverrideAvailability(e.target.checked));
+        }
+
+        const globalOverrideCheckbox = document.getElementById('rate-limit-global-override');
+        if (globalOverrideCheckbox) {
+            globalOverrideCheckbox.addEventListener('change', (e) => this.toggleRateLimitSettings(e.target.checked));
         }
 
         const saveRateLimitBtn = document.getElementById('save-rate-limit-btn');
@@ -2759,13 +2764,14 @@ const AdminManager = {
             const checkbox = document.getElementById('rate-limit-enabled');
             if (checkbox) {
                 checkbox.checked = enabled;
-                this.toggleRateLimitSettings(enabled);
+                this.toggleGlobalOverrideAvailability(enabled);
             }
             
             const globalOverride = settings.rate_limit_global_override?.value === 'true';
             const overrideCheckbox = document.getElementById('rate-limit-global-override');
             if (overrideCheckbox) {
                 overrideCheckbox.checked = globalOverride;
+                this.toggleRateLimitSettings(globalOverride);
             }
 
             // Update input fields
@@ -2803,10 +2809,25 @@ const AdminManager = {
     /**
      * Toggle rate limit settings visibility
      */
-    toggleRateLimitSettings(enabled) {
+    toggleGlobalOverrideAvailability(rateLimitEnabled) {
+        const globalOverrideCheckbox = document.getElementById('rate-limit-global-override');
+        
+        // Enable/disable Global Override checkbox based on rate limiting state
+        if (globalOverrideCheckbox) {
+            globalOverrideCheckbox.disabled = !rateLimitEnabled;
+            if (!rateLimitEnabled) {
+                globalOverrideCheckbox.checked = false;
+                // Also hide settings when rate limiting is disabled
+                this.toggleRateLimitSettings(false);
+            }
+        }
+    },
+
+    toggleRateLimitSettings(globalOverrideEnabled) {
         const settingsDiv = document.getElementById('rate-limit-settings');
+        
         if (settingsDiv) {
-            if (enabled) {
+            if (globalOverrideEnabled) {
                 settingsDiv.classList.remove('hidden');
             } else {
                 settingsDiv.classList.add('hidden');
