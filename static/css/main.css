@@ -2005,7 +2005,6 @@ button[data-action="delete-mcp"]:hover {
 
 /* Enhanced typography hierarchy */
 #welcome-screen h1 {
-    animation: welcomeFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
     background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -2016,7 +2015,6 @@ button[data-action="delete-mcp"]:hover {
 }
 
 #welcome-screen p {
-    animation: welcomeFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
     letter-spacing: -0.01em;
 }
 
@@ -2027,8 +2025,7 @@ button[data-action="delete-mcp"]:hover {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    animation: welcomeFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both,
-               shimmer 3s ease-in-out infinite;
+    animation: shimmer 3s ease-in-out infinite;
 }
 
 @keyframes shimmer {
@@ -2129,15 +2126,6 @@ button[data-action="delete-mcp"]:hover {
 
 #welcome-screen .welcome-feature-card:nth-child(4) {
     animation: welcomeFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.8s both;
-}
-
-/* Welcome screen title and tagline animations */
-#welcome-screen .welcome-uderia-title {
-    animation: welcomeFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
-}
-
-#welcome-screen .welcome-tagline {
-    animation: welcomeFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
 }
 
 /* Refined animation keyframes with sophisticated easing */
