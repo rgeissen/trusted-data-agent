@@ -938,9 +938,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const status = await API.checkServerStatus();
         
         // Note: Credentials are ALWAYS stored in localStorage
-            // When persistence is disabled, localStorage is the ONLY place credentials are stored
-            // When persistence is enabled, credentials are in backend AND localStorage
-        }
         
         // Update RAG indicator based on status
         if (DOM.ragStatusDot && state.appConfig.rag_enabled) {

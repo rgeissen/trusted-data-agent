@@ -12,7 +12,7 @@
     <!-- TODO: For production, build Tailwind with: npm install -D tailwindcss postcss autoprefixer && npx tailwindcss build -->
     <style>
         html {
-            font-size: 16px;
+            font-size: 13px;
         }
         :root {
             --tw-ring-shadow: 0 0 0 0 rgb(59 130 246 / 0);
@@ -219,7 +219,13 @@
         <nav id="app-side-nav" class="collapsed flex flex-col h-full bg-black/30 p-4 border-r border-white/10 space-y-4">
             <!-- Navigation Links -->
             <div class="flex flex-col space-y-2">
-                <!-- Reordered: Conversation, Executions, Intelligence, Marketplace, Setup, Administration -->
+                <!-- Reordered: Setup, Conversation, Executions, Intelligence, Marketplace, Administration -->
+                <a href="#" id="view-switch-credentials" data-view="credentials-view" class="view-switch-button flex items-center gap-x-3 px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="nav-link-text font-semibold">Setup</span>
+                </a>
                 <a href="#" id="view-switch-conversation" data-view="conversation-view" class="view-switch-button flex items-center gap-x-3 px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7S2 13.866 2 10 5.582 3 10 3s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zm-4 0H9v2h2V9z" clip-rule="evenodd" />
@@ -248,12 +254,6 @@
                         <polyline points="9 22 9 12 15 12 15 22"></polyline>
                     </svg>
                     <span class="nav-link-text font-semibold">Marketplace</span>
-                </a>
-                <a href="#" id="view-switch-credentials" data-view="credentials-view" class="view-switch-button flex items-center gap-x-3 px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
-                    </svg>
-                    <span class="nav-link-text font-semibold">Setup</span>
                 </a>
                 <a href="#" id="view-switch-admin" data-view="admin-view" class="view-switch-button hidden flex items-center gap-x-3 px-3 py-3 text-sm text-gray-200 rounded-md hover:bg-white/10">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
