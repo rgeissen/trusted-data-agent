@@ -1,24 +1,24 @@
 {
-  "case_id": "b758e4dc-167d-5423-af72-a53a920bafb9",
+  "case_id": "ee12e9d5-34d5-5380-a32b-1e87d23e7e08",
   "metadata": {
-    "session_id": "cb7dd4bc-2463-4daf-88c8-b3233396f703",
-    "turn_id": 1,
+    "session_id": "594dbd97-9220-4518-9665-eec0b7aa2caf",
+    "turn_id": 2,
     "is_success": true,
-    "task_id": "task-4247a246-d668-4161-8e79-9d2225385da3",
+    "task_id": "task-420bdba4-93c6-4278-9deb-3ce8380d007a",
     "collection_id": 1,
     "has_orchestration": false,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-12-05T16:55:50.852401+00:00",
+    "timestamp": "2025-12-05T19:49:37.942691+00:00",
     "user_feedback_score": 0,
     "llm_config": {
       "provider": "Google",
       "model": "gemini-2.0-flash",
       "profile_tag": "GOGET",
-      "input_tokens": 9234,
-      "output_tokens": 119
+      "input_tokens": 13591,
+      "output_tokens": 118
     },
-    "is_most_efficient": true,
+    "is_most_efficient": false,
     "strategy_metrics": {
       "phase_count": 2,
       "steps_per_phase": {
@@ -27,18 +27,18 @@
       },
       "total_steps": 2
     },
-    "user_uuid": "ae27c987-a039-4ee7-9311-5058b6684e94"
+    "user_uuid": "ab0d80fb-faa8-4627-aec7-0f53ae08ff1f"
   },
   "intent": {
-    "user_query": "how many databases are on the system?"
+    "user_query": "what is the system version?"
   },
   "successful_strategy": {
     "phases": [
       {
         "phase": 1,
-        "goal": "Get a list of all databases on the system.",
+        "goal": "Get the Teradata database system version information.",
         "relevant_tools": [
-          "base_databaseList"
+          "dba_databaseVersion"
         ],
         "arguments": {}
       },

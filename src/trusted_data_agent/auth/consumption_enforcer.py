@@ -53,42 +53,91 @@ class ConsumptionEnforcer:
             user_id: The UUID of the user
         """
         self.user_id = user_id
-        self._user = None
-        self._profile = None
+        # Store profile attributes as instance variables to avoid detached instance errors
+        self.profile_name = None
+        self.is_active = None
+        self.prompts_per_hour = None
+        self.prompts_per_day = None
+        self.config_changes_per_hour = None
+        self.input_tokens_per_month = None
+        self.output_tokens_per_month = None
         self._load_user_and_profile()
     
     def _load_user_and_profile(self):
         """Load user and their consumption profile from database."""
         try:
             with get_db_session() as session:
-                self._user = session.query(User).filter_by(id=self.user_id).first()
+                from trusted_data_agent.auth.models import SystemSettings
                 
-                if not self._user:
+                user = session.query(User).filter_by(id=self.user_id).first()
+                
+                if not user:
                     raise ValueError(f"User {self.user_id} not found")
                 
-                # Load consumption profile
-                if self._user.consumption_profile_id:
-                    self._profile = session.query(ConsumptionProfile).filter_by(
-                        id=self._user.consumption_profile_id
-                    ).first()
-                else:
-                    # Get default profile
-                    self._profile = session.query(ConsumptionProfile).filter_by(
-                        is_default=True
-                    ).first()
+                # Check if global override is enabled
+                global_override_setting = session.query(SystemSettings).filter_by(
+                    setting_key='rate_limit_global_override'
+                ).first()
                 
-                if not self._profile:
-                    logger.warning(f"No consumption profile found for user {self.user_id}, using unlimited")
-                    # Create a virtual unlimited profile
-                    self._profile = type('Profile', (), {
-                        'name': 'Unlimited',
-                        'prompts_per_hour': None,
-                        'prompts_per_day': None,
-                        'config_changes_per_hour': None,
-                        'input_tokens_per_month': None,
-                        'output_tokens_per_month': None,
-                        'is_active': True
-                    })()
+                use_global_override = (
+                    global_override_setting and 
+                    global_override_setting.setting_value.lower() == 'true'
+                )
+                
+                if use_global_override:
+                    # Use global rate limit settings instead of consumption profile
+                    logger.info(f"Using global override settings for user {self.user_id}")
+                    
+                    # Load global settings from SystemSettings
+                    def get_setting_value(key, default):
+                        setting = session.query(SystemSettings).filter_by(setting_key=key).first()
+                        if setting:
+                            try:
+                                return int(setting.setting_value)
+                            except ValueError:
+                                return default
+                        return default
+                    
+                    self.profile_name = 'Global Override'
+                    self.is_active = True
+                    self.prompts_per_hour = get_setting_value('rate_limit_user_prompts_per_hour', 100)
+                    self.prompts_per_day = get_setting_value('rate_limit_user_prompts_per_day', 1000)
+                    self.config_changes_per_hour = get_setting_value('rate_limit_user_configs_per_hour', 10)
+                    # Global override doesn't have token limits
+                    self.input_tokens_per_month = None
+                    self.output_tokens_per_month = None
+                else:
+                    # Load consumption profile (normal mode)
+                    profile = None
+                    if user.consumption_profile_id:
+                        profile = session.query(ConsumptionProfile).filter_by(
+                            id=user.consumption_profile_id
+                        ).first()
+                    else:
+                        # Get default profile
+                        profile = session.query(ConsumptionProfile).filter_by(
+                            is_default=True
+                        ).first()
+                    
+                    if profile:
+                        # Copy attributes from ORM object to avoid detached instance errors
+                        self.profile_name = profile.name
+                        self.is_active = profile.is_active
+                        self.prompts_per_hour = profile.prompts_per_hour
+                        self.prompts_per_day = profile.prompts_per_day
+                        self.config_changes_per_hour = profile.config_changes_per_hour
+                        self.input_tokens_per_month = profile.input_tokens_per_month
+                        self.output_tokens_per_month = profile.output_tokens_per_month
+                    else:
+                        logger.warning(f"No consumption profile found for user {self.user_id}, using unlimited")
+                        # Set unlimited profile attributes
+                        self.profile_name = 'Unlimited'
+                        self.is_active = True
+                        self.prompts_per_hour = None
+                        self.prompts_per_day = None
+                        self.config_changes_per_hour = None
+                        self.input_tokens_per_month = None
+                        self.output_tokens_per_month = None
         
         except Exception as e:
             logger.error(f"Failed to load user/profile for {self.user_id}: {e}")
@@ -97,10 +146,10 @@ class ConsumptionEnforcer:
     def is_unlimited(self) -> bool:
         """Check if user has unlimited access."""
         return (
-            self._profile.prompts_per_hour is None and
-            self._profile.prompts_per_day is None and
-            self._profile.input_tokens_per_month is None and
-            self._profile.output_tokens_per_month is None
+            self.prompts_per_hour is None and
+            self.prompts_per_day is None and
+            self.input_tokens_per_month is None and
+            self.output_tokens_per_month is None
         )
     
     # ========================================================================
@@ -114,7 +163,7 @@ class ConsumptionEnforcer:
         Returns:
             Tuple of (can_proceed: bool, error_message: Optional[str])
         """
-        if not self._profile.is_active:
+        if not self.is_active:
             return False, "Your consumption profile is inactive. Please contact administrator."
         
         if self.is_unlimited():
@@ -125,26 +174,26 @@ class ConsumptionEnforcer:
                 now = datetime.utcnow()
                 
                 # Check hourly limit
-                if self._profile.prompts_per_hour is not None:
+                if self.prompts_per_hour is not None:
                     hour_ago = now - timedelta(hours=1)
                     hourly_count = session.query(func.count()).filter(
                         UserTokenUsage.user_id == self.user_id,
                         UserTokenUsage.last_usage_at >= hour_ago
                     ).scalar() or 0
                     
-                    if hourly_count >= self._profile.prompts_per_hour:
-                        return False, f"Hourly prompt limit exceeded ({self._profile.prompts_per_hour} prompts/hour)"
+                    if hourly_count >= self.prompts_per_hour:
+                        return False, f"Hourly prompt limit exceeded ({self.prompts_per_hour} prompts/hour)"
                 
                 # Check daily limit
-                if self._profile.prompts_per_day is not None:
+                if self.prompts_per_day is not None:
                     day_ago = now - timedelta(days=1)
                     daily_count = session.query(func.count()).filter(
                         UserTokenUsage.user_id == self.user_id,
                         UserTokenUsage.last_usage_at >= day_ago
                     ).scalar() or 0
                     
-                    if daily_count >= self._profile.prompts_per_day:
-                        return False, f"Daily prompt limit exceeded ({self._profile.prompts_per_day} prompts/day)"
+                    if daily_count >= self.prompts_per_day:
+                        return False, f"Daily prompt limit exceeded ({self.prompts_per_day} prompts/day)"
                 
                 # Check monthly token limits
                 current_period = now.strftime('%Y-%m')
@@ -154,13 +203,13 @@ class ConsumptionEnforcer:
                 ).first()
                 
                 if usage:
-                    if self._profile.input_tokens_per_month is not None:
-                        if usage.input_tokens_used >= self._profile.input_tokens_per_month:
-                            return False, f"Monthly input token limit exceeded ({self._profile.input_tokens_per_month:,} tokens)"
+                    if self.input_tokens_per_month is not None:
+                        if usage.input_tokens_used >= self.input_tokens_per_month:
+                            return False, f"Monthly input token limit exceeded ({self.input_tokens_per_month:,} tokens)"
                     
-                    if self._profile.output_tokens_per_month is not None:
-                        if usage.output_tokens_used >= self._profile.output_tokens_per_month:
-                            return False, f"Monthly output token limit exceeded ({self._profile.output_tokens_per_month:,} tokens)"
+                    if self.output_tokens_per_month is not None:
+                        if usage.output_tokens_used >= self.output_tokens_per_month:
+                            return False, f"Monthly output token limit exceeded ({self.output_tokens_per_month:,} tokens)"
                 
                 return True, None
         
@@ -199,10 +248,10 @@ class ConsumptionEnforcer:
         Returns:
             Tuple of (can_proceed: bool, error_message: Optional[str])
         """
-        if not self._profile.is_active:
+        if not self.is_active:
             return False, "Your consumption profile is inactive. Please contact administrator."
         
-        if self._profile.config_changes_per_hour is None:
+        if self.config_changes_per_hour is None:
             return True, None
         
         try:
@@ -219,8 +268,8 @@ class ConsumptionEnforcer:
                     AuditLog.timestamp >= hour_ago
                 ).scalar() or 0
                 
-                if config_changes >= self._profile.config_changes_per_hour:
-                    return False, f"Hourly configuration change limit exceeded ({self._profile.config_changes_per_hour} changes/hour)"
+                if config_changes >= self.config_changes_per_hour:
+                    return False, f"Hourly configuration change limit exceeded ({self.config_changes_per_hour} changes/hour)"
                 
                 return True, None
         
@@ -290,30 +339,30 @@ class ConsumptionEnforcer:
                 ).scalar() or 0
                 
                 return {
-                    'profile_name': self._profile.name,
+                    'profile_name': self.profile_name,
                     'is_unlimited': self.is_unlimited(),
                     'prompts': {
                         'hourly': {
                             'used': hourly_prompts,
-                            'limit': self._profile.prompts_per_hour,
-                            'remaining': self._profile.prompts_per_hour - hourly_prompts if self._profile.prompts_per_hour else None
+                            'limit': self.prompts_per_hour,
+                            'remaining': self.prompts_per_hour - hourly_prompts if self.prompts_per_hour else None
                         },
                         'daily': {
                             'used': daily_prompts,
-                            'limit': self._profile.prompts_per_day,
-                            'remaining': self._profile.prompts_per_day - daily_prompts if self._profile.prompts_per_day else None
+                            'limit': self.prompts_per_day,
+                            'remaining': self.prompts_per_day - daily_prompts if self.prompts_per_day else None
                         }
                     },
                     'tokens': {
                         'input': {
                             'used': usage.input_tokens_used if usage else 0,
-                            'limit': self._profile.input_tokens_per_month,
-                            'remaining': self._profile.input_tokens_per_month - (usage.input_tokens_used if usage else 0) if self._profile.input_tokens_per_month else None
+                            'limit': self.input_tokens_per_month,
+                            'remaining': self.input_tokens_per_month - (usage.input_tokens_used if usage else 0) if self.input_tokens_per_month else None
                         },
                         'output': {
                             'used': usage.output_tokens_used if usage else 0,
-                            'limit': self._profile.output_tokens_per_month,
-                            'remaining': self._profile.output_tokens_per_month - (usage.output_tokens_used if usage else 0) if self._profile.output_tokens_per_month else None
+                            'limit': self.output_tokens_per_month,
+                            'remaining': self.output_tokens_per_month - (usage.output_tokens_used if usage else 0) if self.output_tokens_per_month else None
                         }
                     },
                     'period': current_period

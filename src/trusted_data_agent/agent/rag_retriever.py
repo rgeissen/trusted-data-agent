@@ -272,9 +272,6 @@ class RAGRetriever:
         
         if not flat_cases:
             logger.debug("No flat case files found to migrate.")
-            # Ensure collection_0 exists for future cases
-            collection_0_dir = self._get_collection_dir(0)
-            collection_0_dir.mkdir(parents=True, exist_ok=True)
             return
         
         logger.info(f"Migrating {len(flat_cases)} cases to nested collection structure...")

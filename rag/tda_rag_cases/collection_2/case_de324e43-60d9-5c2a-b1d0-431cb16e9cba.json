@@ -1,22 +1,22 @@
 {
-  "case_id": "897f0895-bad2-5680-919c-052d123c2edf",
+  "case_id": "de324e43-60d9-5c2a-b1d0-431cb16e9cba",
   "metadata": {
-    "session_id": "cb7dd4bc-2463-4daf-88c8-b3233396f703",
-    "turn_id": 2,
+    "session_id": "796bd3e0-668a-4c75-86d5-60dbf036b3e8",
+    "turn_id": 1,
     "is_success": true,
-    "task_id": "task-ac8a7927-8add-4bc6-8c2e-1a77d0d97bc4",
-    "collection_id": 1,
+    "task_id": "task-a61fdcc7-a515-4caf-8f05-3adfd96d650d",
+    "collection_id": 2,
     "has_orchestration": false,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-12-05T16:57:11.160869+00:00",
+    "timestamp": "2025-12-05T20:13:58.845966+00:00",
     "user_feedback_score": 0,
     "llm_config": {
-      "provider": "Google",
-      "model": "gemini-2.0-flash",
-      "profile_tag": "GOGET",
-      "input_tokens": 13304,
-      "output_tokens": 268
+      "provider": "OpenAI",
+      "model": "gpt-4o-mini",
+      "profile_tag": "DEOGT",
+      "input_tokens": 8264,
+      "output_tokens": 199
     },
     "is_most_efficient": true,
     "strategy_metrics": {
@@ -28,10 +28,10 @@
       },
       "total_steps": 7
     },
-    "user_uuid": "ae27c987-a039-4ee7-9311-5058b6684e94"
+    "user_uuid": "92fddcfc-056a-4a21-8f2c-07388786ae17"
   },
   "intent": {
-    "user_query": "educate yourself on the table ddls in fitness_db"
+    "user_query": "educate yourself on the table ddls in database fitness_db"
   },
   "successful_strategy": {
     "phases": [

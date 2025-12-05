@@ -320,6 +320,17 @@ Transparent, real-time cost tracking with fine-grained control over spending at 
   - RAG case population priorities for maximum savings
   - Profile configuration suggestions for workload patterns
 
+* **Consumption Profile Enforcement**: Granular usage controls and quotas:
+  - Four predefined tiers: Free, Pro, Enterprise, Unlimited
+  - Per-user prompt rate limits (hourly and daily)
+  - Monthly token quotas (input and output tokens separately)
+  - Configuration change rate limits per hour
+  - Profile activation/deactivation for testing
+  - Global override mode for emergency rate limiting
+  - Admin bypass for unrestricted system access
+  - Real-time enforcement with clear error messages
+  - Database-backed consumption tracking and audit trail
+
 ---
 
 ### 🤝 Collaborative: Build and Share Intelligence
@@ -973,7 +984,133 @@ The application will:
 - ✅ Soft-delete audit trail for revoked tokens
 - ✅ Session management with persistent context
 - ✅ Bootstrap configuration copied to each user on first login
+- ✅ Consumption profile enforcement with granular usage quotas
 - ℹ️ Rate limiting disabled by default (configurable in Administration → App Config)
+
+---
+
+### Consumption Profiles and Usage Quotas
+
+The Uderia Platform includes a comprehensive **consumption profile enforcement system** that provides granular control over resource usage across different user tiers and deployment scenarios.
+
+#### Overview
+
+Consumption profiles enable administrators to:
+- Set per-user rate limits on prompts (hourly and daily)
+- Enforce monthly token quotas (input and output tokens tracked separately)
+- Control configuration change frequency
+- Test profiles before activation
+- Override profiles with global emergency limits
+- Track usage in real-time with detailed audit trails
+
+#### Predefined Profile Tiers
+
+Four consumption profiles are available out-of-the-box:
+
+| Profile | Prompts/Hour | Prompts/Day | Input Tokens/Month | Output Tokens/Month | Config Changes/Hour |
+|---------|--------------|-------------|-------------------|---------------------|---------------------|
+| **Free** | 50 | 500 | 100,000 | 50,000 | 5 |
+| **Pro** | 200 | 2,000 | 500,000 | 250,000 | 10 |
+| **Enterprise** | 500 | 5,000 | 2,000,000 | 1,000,000 | 20 |
+| **Unlimited** | 1,000 | 10,000 | ∞ | ∞ | 50 |
+
+By default, new users receive the **Unlimited** profile. Administrators can change the default profile or assign specific profiles to individual users.
+
+#### Profile Management
+
+**Administrators can:**
+- Create and configure custom consumption profiles
+- Assign profiles to specific users
+- Activate/deactivate profiles for testing without deleting them
+- View real-time consumption statistics per user
+- Set global override mode for emergency rate limiting
+
+**Profile Testing:**
+Each profile includes a **"Toggle Active for Consumption"** button that:
+1. Temporarily activates the profile for testing
+2. Classifies and validates profile configuration
+3. Shows real-time enforcement without affecting other users
+4. Allows safe testing before production deployment
+
+#### Rate Limiting Configuration
+
+Access rate limiting controls through **Administration → App Config → Security & Rate Limiting**:
+
+**Enable Rate Limiting:**
+- Master switch for all consumption enforcement
+- Must be enabled for profiles to work
+- Disabled by default for single-user installations
+
+**Global Override Mode:**
+- Emergency toggle to override ALL user profiles
+- Forces global limits on all users (including Enterprise/Unlimited)
+- Per-user fallback limits applied when profiles aren't assigned
+- Useful for system-wide capacity management
+
+**Per-User Limits (when Global Override is enabled):**
+- Prompts per Hour (default: 100)
+- Prompts per Day (default: 1,000)
+- Configuration Changes per Hour (default: 10)
+
+**Per-IP Limits (always enforced for anonymous traffic):**
+- Login attempts per minute
+- Registrations per hour
+- API calls per minute
+
+#### Enforcement Behavior
+
+**For authenticated users:**
+1. **Admin users** bypass all consumption limits
+2. **Regular users** with profiles assigned → profile limits enforced
+3. **Users without profiles** → falls back to default profile or global limits
+4. **Global override enabled** → overrides all profiles with global settings
+
+**Error handling:**
+- Clear error messages when limits are exceeded
+- Retry-after information in responses
+- Fail-open design: allows execution if enforcement check fails
+- Full audit trail in logs and database
+
+#### Usage Tracking and Reporting
+
+The system maintains detailed consumption records:
+- **Per-turn tracking** - Individual prompt costs and token usage
+- **Session aggregation** - Cumulative costs per conversation
+- **User summaries** - Total consumption across all sessions
+- **Historical trends** - Month-over-month usage analytics
+- **Audit trail** - Complete record of all consumption events
+
+View consumption details through:
+- **Dashboard** - Real-time cost and usage overview
+- **REST API** - Programmatic access to consumption data
+- **Database exports** - Complete audit trail for compliance
+
+#### Best Practices
+
+**For single-user installations:**
+- Leave rate limiting disabled (default)
+- Use Unlimited profile for maximum flexibility
+
+**For team deployments:**
+- Enable rate limiting
+- Assign profiles based on user roles
+- Use Global Override for emergency capacity management
+- Monitor consumption trends through Dashboard
+
+**For testing:**
+- Use "Toggle Active for Consumption" to test profiles
+- Set low limits (1 prompt/hour) to verify enforcement
+- Check logs for detailed enforcement flow
+- Test with non-admin users for accurate results
+
+**For production:**
+- Enable rate limiting before go-live
+- Set appropriate default profile for new users
+- Monitor consumption patterns and adjust profiles
+- Use token quotas to manage monthly costs
+- Review audit logs periodically for anomalies
+
+---
 
 **Supported LLM Providers:**
 - AWS Bedrock (requires: Access Key, Secret Key, Region)
@@ -1733,6 +1870,7 @@ Under the AGPLv3, you are free to use, modify, and distribute this software. How
 
 This list reflects the recent enhancements and updates to the Uderia Platform, as shown on the application's welcome screen.
 
+*   **05-Dec-2025:** Consumption Profile Enforcement - Rate Limiting and Usage Quotas
 *   **02-Dec-2025:** Financial Governance - Dashboards and LiteLLM Integration
 *   **01-Dec-2025:** Planner Constructor: SQL Query - Document Context
 *   **01-Dec-2025:** Planner Constructor: SQL Query - Database Context

@@ -166,9 +166,9 @@ def ensure_user_default_profile(user_id: str):
         # This ensures MCP servers and LLM configs are copied to user's database storage
         user_config = config_manager.load_config(user_id)
         
-        # No longer auto-create a default profile - user will activate their first profile
-        # which will then become their default profile
-        logger.info(f"Bootstrapped user {user_id}: {len(mcp_servers)} MCP servers, {len(llm_configs)} LLM configs")
+        # Verify profiles were bootstrapped
+        profiles = user_config.get('profiles', [])
+        logger.info(f"Bootstrapped user {user_id}: {len(mcp_servers)} MCP servers, {len(llm_configs)} LLM configs, {len(profiles)} profiles")
         
         # Create Default Collection for this user
         logger.info(f"Creating Default Collection for user {user_id}")

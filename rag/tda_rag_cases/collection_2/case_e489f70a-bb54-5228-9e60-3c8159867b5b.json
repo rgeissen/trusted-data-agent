@@ -1,0 +1,69 @@
+{
+  "case_id": "e489f70a-bb54-5228-9e60-3c8159867b5b",
+  "metadata": {
+    "session_id": "5e972012-bd9b-43ac-892b-09865f0cd2ec",
+    "turn_id": 2,
+    "is_success": true,
+    "task_id": "task-cfcca0b4-cedd-43ff-b027-17b44becb5c3",
+    "collection_id": 2,
+    "has_orchestration": false,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": true,
+    "timestamp": "2025-12-05T19:54:35.128667+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "OpenAI",
+      "model": "gpt-4o-mini",
+      "profile_tag": "DEOGT",
+      "input_tokens": 9362,
+      "output_tokens": 186
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 3,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1,
+        "3": 1
+      },
+      "total_steps": 3
+    },
+    "user_uuid": "92fddcfc-056a-4a21-8f2c-07388786ae17"
+  },
+  "intent": {
+    "user_query": "how many databases are on the system?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Get a list of all databases in the Teradata system.",
+        "relevant_tools": [
+          "base_databaseList"
+        ],
+        "arguments": {}
+      },
+      {
+        "phase": 2,
+        "goal": "Count the number of databases retrieved in the previous phase.",
+        "relevant_tools": [
+          "TDA_LLMTask"
+        ],
+        "arguments": {
+          "task_description": "Count the number of databases.",
+          "source_data": [
+            "result_of_phase_1"
+          ]
+        }
+      },
+      {
+        "phase": 3,
+        "goal": "Generate the final report based on the count of databases.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

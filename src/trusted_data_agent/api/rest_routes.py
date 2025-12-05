@@ -4995,8 +4995,14 @@ async def get_consumption_summary():
     Get comprehensive consumption summary for current user (DB-backed, <50ms).
     Replaces file-scanning approach with O(1) database lookup.
     """
+    from trusted_data_agent.auth.middleware import get_current_user
+    
+    current_user = get_current_user()
+    if not current_user:
+        return jsonify({"error": "Authentication required"}), 401
+    
     try:
-        user_uuid = _get_user_uuid_from_request()
+        user_uuid = current_user.id
         
         from trusted_data_agent.auth.database import get_db_session
         from trusted_data_agent.auth.consumption_manager import ConsumptionManager
@@ -5428,6 +5434,10 @@ async def get_sessions_list():
             app_logger.info(f"Scanning {len(scan_dirs)} user directories")
         else:
             # User-specific mode
+            if not user_uuid:
+                app_logger.warning("No user_uuid available for user-specific session fetch")
+                return jsonify({"sessions": [], "total": 0}), 200
+            
             app_logger.info(f"Fetching sessions for user: {user_uuid}")
             sessions_root = sessions_base / user_uuid
             if not sessions_root.exists():

@@ -1,0 +1,607 @@
+{
+  "id": "594dbd97-9220-4518-9665-eec0b7aa2caf",
+  "user_uuid": "ab0d80fb-faa8-4627-aec7-0f53ae08ff1f",
+  "system_prompt_template": null,
+  "charting_intensity": "medium",
+  "provider": "Google",
+  "model": "gemini-2.0-flash",
+  "profile_tag": "GOGET",
+  "profile_id": null,
+  "profile_tags_used": [
+    "GOGET"
+  ],
+  "models_used": [
+    "Google/gemini-2.0-flash"
+  ],
+  "session_history": [
+    {
+      "role": "user",
+      "content": "what",
+      "isValid": true,
+      "turn_number": 1,
+      "source": "text"
+    },
+    {
+      "role": "assistant",
+      "content": "<div class=\"response-card summary-card mb-4\"><p class=\"text-gray-300 mb-4\">Not enough information found in the provided context</p></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'><div class='response-card'><p class=\"text-gray-300 mb-4\">Not enough information found in the provided context</p></div></div></details>",
+      "isValid": true,
+      "turn_number": 1
+    },
+    {
+      "role": "user",
+      "content": "what is the system version?",
+      "isValid": true,
+      "turn_number": 2,
+      "source": "text"
+    },
+    {
+      "role": "assistant",
+      "content": "<div class=\"response-card summary-card mb-4\">\n<div class=\"key-metric-card bg-gray-900/50 p-4 rounded-lg mb-4 text-center\">\n    <div class=\"text-4xl font-bold text-white\">20.00.22.31</div>\n    <div class=\"text-base text-gray-400 mt-1\">System Version</div>\n</div>\n<h3 class=\"text-lg font-bold text-white mb-3 border-b border-gray-700 pb-2\">Key Observations</h3><ul class=\"list-disc list-outside space-y-2 text-gray-300 mb-4 pl-5\"><li>The RELEASE version also matches the system version, indicating consistency.</li><li>The system's language support mode is set to Standard.</li></ul></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>base_readQuery</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"InfoKey\": \"VERSION\", \"InfoData\": \"20.00.22.31\"}, {\"InfoKey\": \"LANGUAGE SUPPORT MODE\", \"InfoData\": \"Standard\"}, {\"InfoKey\": \"RELEASE\", \"InfoData\": \"20.00.22.31\"}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>InfoKey</th><th>InfoData</th></tr></thead>\n                    <tbody>\n        <tr><td>VERSION</td><td>20.00.22.31</td></tr><tr><td>LANGUAGE SUPPORT MODE</td><td>Standard</td></tr><tr><td>RELEASE</td><td>20.00.22.31</td></tr></tbody></table></div></div>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>TDA_FinalReport</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"direct_answer\": \"The system version is 20.00.22.31.\", \"key_metric\": {\"value\": \"20.00.22.31\", \"label\": \"System Version\"}, \"key_observations\": [{\"text\": \"The RELEASE version also matches the system version, indicating consistency.\"}, {\"text\": \"The system&apos;s language support mode is set to Standard.\"}], \"synthesis\": []}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>direct_answer</th><th>key_metric</th><th>key_observations</th><th>synthesis</th></tr></thead>\n                    <tbody>\n        <tr><td>The system version is 20.00.22.31.</td><td>{'value': '20.00.22.31', 'label': 'System Version'}</td><td>[{'text': 'The RELEASE version also matches the system version, indicating consistency.'}, {'text': \"The system's language support mode is set to Standard.\"}]</td><td>[]</td></tr></tbody></table></div></div></div></details>",
+      "isValid": true,
+      "turn_number": 2
+    }
+  ],
+  "chat_object": [
+    {
+      "role": "user",
+      "content": "You are a helpful assistant.",
+      "turn_number": 0
+    },
+    {
+      "role": "model",
+      "content": "Understood.",
+      "turn_number": 0
+    },
+    {
+      "role": "user",
+      "content": "what",
+      "isValid": true,
+      "turn_number": 1
+    },
+    {
+      "role": "model",
+      "content": "Not enough information found in the provided context",
+      "isValid": true,
+      "turn_number": 1
+    },
+    {
+      "role": "user",
+      "content": "what is the system version?",
+      "isValid": true,
+      "turn_number": 2
+    },
+    {
+      "role": "model",
+      "content": "The system version is 20.00.22.31.",
+      "isValid": true,
+      "turn_number": 2
+    }
+  ],
+  "name": "What Conversations",
+  "created_at": "2025-12-05T20:49:14.628743",
+  "last_updated": "2025-12-05T20:49:37.974488",
+  "input_tokens": 26930,
+  "output_tokens": 333,
+  "last_turn_data": {
+    "workflow_history": [
+      {
+        "turn": 1,
+        "user_query": "what",
+        "original_plan": [
+          {
+            "phase": 1,
+            "goal": "Provide answer from knowledge context",
+            "relevant_tools": [
+              "TDA_ContextReport"
+            ],
+            "arguments": {
+              "answer_from_context": "Not enough information found in the provided context"
+            }
+          }
+        ],
+        "execution_trace": [
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Calling LLM for Planning",
+                "details": {
+                  "summary": "Generating a strategic meta-plan for the goal",
+                  "full_text": "what",
+                  "call_id": "c2aecb6e-ef52-404b-9ff6-807388e6a9f6",
+                  "execution_depth": 0,
+                  "input_tokens": 12757,
+                  "output_tokens": 82
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "system_message",
+                "timestamp": "2025-12-05T19:49:20.261354+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Strategic Meta-Plan Generated",
+                "details": [
+                  {
+                    "phase": 1,
+                    "goal": "Provide answer from knowledge context",
+                    "relevant_tools": [
+                      "TDA_ContextReport"
+                    ],
+                    "arguments": {
+                      "answer_from_context": "Not enough information found in the provided context"
+                    }
+                  }
+                ]
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_generated",
+                "timestamp": "2025-12-05T19:49:20.261995+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Starting Plan Phase 1/1",
+                "details": {
+                  "phase_num": 1,
+                  "total_phases": 1,
+                  "goal": "Provide answer from knowledge context",
+                  "phase_details": {
+                    "phase": 1,
+                    "goal": "Provide answer from knowledge context",
+                    "relevant_tools": [
+                      "TDA_ContextReport"
+                    ],
+                    "arguments": {
+                      "answer_from_context": "Not enough information found in the provided context"
+                    }
+                  },
+                  "execution_depth": 0
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_start",
+                "timestamp": "2025-12-05T19:49:20.262555+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_ContextReport",
+              "arguments": {
+                "answer_from_context": "Not enough information found in the provided context"
+              },
+              "metadata": {
+                "phase_number": 1,
+                "execution_depth": 0,
+                "timestamp": "2025-12-05T19:49:20.262752+00:00"
+              }
+            },
+            "result": {
+              "status": "success",
+              "metadata": {
+                "tool_name": "TDA_ContextReport"
+              },
+              "results": [
+                {
+                  "response": "Not enough information found in the provided context"
+                }
+              ]
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Ending Plan Phase 1/1",
+                "details": {
+                  "phase_num": 1,
+                  "total_phases": 1,
+                  "status": "completed"
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_end",
+                "timestamp": "2025-12-05T19:49:20.262800+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "LLM has generated the final answer",
+                "details": "Not enough information found in the provided context"
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": null,
+                "timestamp": "2025-12-05T19:49:20.264306+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          }
+        ],
+        "final_summary": "Not enough information found in the provided context",
+        "timestamp": "2025-12-05T19:49:20.264515+00:00",
+        "provider": "Google",
+        "model": "gemini-2.0-flash",
+        "profile_tag": "GOGET",
+        "task_id": "task-e7b47f1e-8cd1-4f87-a42f-76db13ce30b6",
+        "turn_input_tokens": 12757,
+        "turn_output_tokens": 82,
+        "session_id": "594dbd97-9220-4518-9665-eec0b7aa2caf",
+        "rag_source_collection_id": null,
+        "knowledge_accessed": [],
+        "knowledge_retrieval_event": null,
+        "isValid": true,
+        "feedback": "down"
+      },
+      {
+        "turn": 2,
+        "user_query": "what is the system version?",
+        "original_plan": [
+          {
+            "phase": 1,
+            "goal": "Get the Teradata database system version information.",
+            "relevant_tools": [
+              "dba_databaseVersion"
+            ],
+            "arguments": {}
+          },
+          {
+            "phase": 2,
+            "goal": "Generate the final report based on the data gathered.",
+            "relevant_tools": [
+              "TDA_FinalReport"
+            ],
+            "arguments": {}
+          }
+        ],
+        "execution_trace": [
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Calling LLM for Planning",
+                "details": {
+                  "summary": "Generating a strategic meta-plan for the goal",
+                  "full_text": "what is the system version?",
+                  "call_id": "dcb4f4f1-4dd4-40ea-ab9c-7ee18beef375",
+                  "execution_depth": 0,
+                  "input_tokens": 13591,
+                  "output_tokens": 118
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "system_message",
+                "timestamp": "2025-12-05T19:49:36.192170+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Strategic Meta-Plan Generated",
+                "details": [
+                  {
+                    "phase": 1,
+                    "goal": "Get the Teradata database system version information.",
+                    "relevant_tools": [
+                      "dba_databaseVersion"
+                    ],
+                    "arguments": {}
+                  },
+                  {
+                    "phase": 2,
+                    "goal": "Generate the final report based on the data gathered.",
+                    "relevant_tools": [
+                      "TDA_FinalReport"
+                    ],
+                    "arguments": {}
+                  }
+                ]
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_generated",
+                "timestamp": "2025-12-05T19:49:36.192739+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Starting Plan Phase 1/2",
+                "details": {
+                  "phase_num": 1,
+                  "total_phases": 2,
+                  "goal": "Get the Teradata database system version information.",
+                  "phase_details": {
+                    "phase": 1,
+                    "goal": "Get the Teradata database system version information.",
+                    "relevant_tools": [
+                      "dba_databaseVersion"
+                    ],
+                    "arguments": {}
+                  },
+                  "execution_depth": 0
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_start",
+                "timestamp": "2025-12-05T19:49:36.192814+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Plan Optimization",
+                "details": "FASTPATH initiated for 'dba_databaseVersion'."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_optimization",
+                "timestamp": "2025-12-05T19:49:36.192898+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "dba_databaseVersion",
+              "arguments": {},
+              "metadata": {
+                "phase_number": 1,
+                "execution_depth": 0,
+                "timestamp": "2025-12-05T19:49:36.192975+00:00"
+              }
+            },
+            "result": {
+              "status": "success",
+              "results": [
+                {
+                  "InfoKey": "VERSION",
+                  "InfoData": "20.00.22.31"
+                },
+                {
+                  "InfoKey": "LANGUAGE SUPPORT MODE",
+                  "InfoData": "Standard"
+                },
+                {
+                  "InfoKey": "RELEASE",
+                  "InfoData": "20.00.22.31"
+                }
+              ],
+              "metadata": {
+                "tool_name": "base_readQuery",
+                "sql": "select InfoKey, InfoData FROM DBC.DBCInfoV;\n",
+                "columns": [
+                  {
+                    "name": "InfoKey",
+                    "type": "str"
+                  },
+                  {
+                    "name": "InfoData",
+                    "type": "str"
+                  }
+                ],
+                "row_count": 3
+              }
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Ending Plan Phase 1/2",
+                "details": {
+                  "phase_num": 1,
+                  "total_phases": 2,
+                  "status": "completed"
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_end",
+                "timestamp": "2025-12-05T19:49:36.647277+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Starting Plan Phase 2/2",
+                "details": {
+                  "phase_num": 2,
+                  "total_phases": 2,
+                  "goal": "Generate the final report based on the data gathered.",
+                  "phase_details": {
+                    "phase": 2,
+                    "goal": "Generate the final report based on the data gathered.",
+                    "relevant_tools": [
+                      "TDA_FinalReport"
+                    ],
+                    "arguments": {}
+                  },
+                  "execution_depth": 0
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_start",
+                "timestamp": "2025-12-05T19:49:36.647330+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Plan Optimization",
+                "details": "FASTPATH initiated for 'TDA_FinalReport'."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_optimization",
+                "timestamp": "2025-12-05T19:49:36.647377+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_FinalReport",
+              "arguments": {},
+              "metadata": {
+                "phase_number": 2,
+                "execution_depth": 0,
+                "timestamp": "2025-12-05T19:49:36.647432+00:00"
+              }
+            },
+            "result": {
+              "status": "success",
+              "metadata": {
+                "call_id": "afed273d-287a-4cec-9dc1-46574ec60943",
+                "tool_name": "TDA_FinalReport",
+                "input_tokens": 520,
+                "output_tokens": 130
+              },
+              "results": [
+                {
+                  "direct_answer": "The system version is 20.00.22.31.",
+                  "key_metric": {
+                    "value": "20.00.22.31",
+                    "label": "System Version"
+                  },
+                  "key_observations": [
+                    {
+                      "text": "The RELEASE version also matches the system version, indicating consistency."
+                    },
+                    {
+                      "text": "The system's language support mode is set to Standard."
+                    }
+                  ],
+                  "synthesis": []
+                }
+              ],
+              "corrections": []
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Ending Plan Phase 2/2",
+                "details": {
+                  "phase_num": 2,
+                  "total_phases": 2,
+                  "status": "completed"
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_end",
+                "timestamp": "2025-12-05T19:49:37.941312+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "LLM has generated the final answer",
+                "details": "The system version is 20.00.22.31."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": null,
+                "timestamp": "2025-12-05T19:49:37.942374+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          }
+        ],
+        "final_summary": "The system version is 20.00.22.31.",
+        "timestamp": "2025-12-05T19:49:37.942691+00:00",
+        "provider": "Google",
+        "model": "gemini-2.0-flash",
+        "profile_tag": "GOGET",
+        "task_id": "task-420bdba4-93c6-4278-9deb-3ce8380d007a",
+        "turn_input_tokens": 13591,
+        "turn_output_tokens": 118,
+        "session_id": "594dbd97-9220-4518-9665-eec0b7aa2caf",
+        "rag_source_collection_id": 1,
+        "knowledge_accessed": [],
+        "knowledge_retrieval_event": null,
+        "isValid": true,
+        "case_id": "ee12e9d5-34d5-5380-a32b-1e87d23e7e08"
+      }
+    ]
+  },
+  "full_context_sent": false,
+  "license_info": {
+    "holder": "GNU Affero General Public License v3.0",
+    "issued_at": "2025-11-10T19:25:00.506556+00:00",
+    "expires_at": "2026-11-10T19:25:00.506556+00:00",
+    "version": "1.5-tiered",
+    "tier": "App Developer",
+    "prompt_key": "tiXkSyjQUW1_w1wO3Xr07g20CE2hbkmhapVdD3-voHI="
+  }
+}

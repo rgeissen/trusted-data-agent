@@ -1,42 +1,42 @@
 {
-  "id": "9f383881-d31a-41aa-aaf7-408f4e149f2e",
-  "user_uuid": "ae27c987-a039-4ee7-9311-5058b6684e94",
+  "id": "2e9af843-378d-4bb2-9623-c2841084b999",
+  "user_uuid": "92fddcfc-056a-4a21-8f2c-07388786ae17",
   "system_prompt_template": null,
   "charting_intensity": "medium",
-  "provider": "Google",
-  "model": "gemini-2.0-flash",
-  "profile_tag": "GOGET",
+  "provider": "OpenAI",
+  "model": "gpt-4o-mini",
+  "profile_tag": "DEOGT",
   "profile_id": null,
   "profile_tags_used": [
-    "GOGET"
+    "DEOGT"
   ],
   "models_used": [
-    "Google/gemini-2.0-flash"
+    "OpenAI/gpt-4o-mini"
   ],
   "session_history": [
     {
       "role": "user",
-      "content": "what is the current date?",
+      "content": "what is the system version?",
       "isValid": true,
       "turn_number": 1,
       "source": "text"
     },
     {
       "role": "assistant",
-      "content": "<div class=\"response-card summary-card mb-4\">\n<div class=\"key-metric-card bg-gray-900/50 p-4 rounded-lg mb-4 text-center\">\n    <div class=\"text-2xl font-bold text-white\">2025-12-05</div>\n    <div class=\"text-base text-gray-400 mt-1\">Current Date</div>\n</div>\n</div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>TDA_CurrentDate</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"current_date\": \"2025-12-05\"}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>current_date</th></tr></thead>\n                    <tbody>\n        <tr><td>2025-12-05</td></tr></tbody></table></div></div>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>TDA_FinalReport</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"direct_answer\": \"The current date is 2025-12-05.\", \"key_metric\": {\"value\": \"2025-12-05\", \"label\": \"Current Date\"}, \"key_observations\": [], \"synthesis\": []}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>direct_answer</th><th>key_metric</th><th>key_observations</th><th>synthesis</th></tr></thead>\n                    <tbody>\n        <tr><td>The current date is 2025-12-05.</td><td>{'value': '2025-12-05', 'label': 'Current Date'}</td><td>[]</td><td>[]</td></tr></tbody></table></div></div></div></details>",
+      "content": "<div class=\"response-card summary-card mb-4\">\n<div class=\"key-metric-card bg-gray-900/50 p-4 rounded-lg mb-4 text-center\">\n    <div class=\"text-4xl font-bold text-white\">20.00.22.31</div>\n    <div class=\"text-base text-gray-400 mt-1\">System Version</div>\n</div>\n<h3 class=\"text-lg font-bold text-white mb-3 border-b border-gray-700 pb-2\">Key Observations</h3><ul class=\"list-disc list-outside space-y-2 text-gray-300 mb-4 pl-5\"><li>The system also supports standard language mode.</li><li>The release version matches the system version: 20.00.22.31.</li></ul></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>base_readQuery</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"InfoKey\": \"VERSION\", \"InfoData\": \"20.00.22.31\"}, {\"InfoKey\": \"LANGUAGE SUPPORT MODE\", \"InfoData\": \"Standard\"}, {\"InfoKey\": \"RELEASE\", \"InfoData\": \"20.00.22.31\"}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>InfoKey</th><th>InfoData</th></tr></thead>\n                    <tbody>\n        <tr><td>VERSION</td><td>20.00.22.31</td></tr><tr><td>LANGUAGE SUPPORT MODE</td><td>Standard</td></tr><tr><td>RELEASE</td><td>20.00.22.31</td></tr></tbody></table></div></div>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>TDA_FinalReport</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"direct_answer\": \"The system version is 20.00.22.31.\", \"key_metric\": {\"value\": \"20.00.22.31\", \"label\": \"System Version\"}, \"key_observations\": [{\"text\": \"The system also supports standard language mode.\"}, {\"text\": \"The release version matches the system version: 20.00.22.31.\"}], \"synthesis\": []}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>direct_answer</th><th>key_metric</th><th>key_observations</th><th>synthesis</th></tr></thead>\n                    <tbody>\n        <tr><td>The system version is 20.00.22.31.</td><td>{'value': '20.00.22.31', 'label': 'System Version'}</td><td>[{'text': 'The system also supports standard language mode.'}, {'text': 'The release version matches the system version: 20.00.22.31.'}]</td><td>[]</td></tr></tbody></table></div></div></div></details>",
       "isValid": true,
       "turn_number": 1
     },
     {
       "role": "user",
-      "content": "what is the system version?",
+      "content": "what is the current date?",
       "isValid": true,
       "turn_number": 2,
       "source": "text"
     },
     {
       "role": "assistant",
-      "content": "<div class=\"response-card summary-card mb-4\">\n<div class=\"key-metric-card bg-gray-900/50 p-4 rounded-lg mb-4 text-center\">\n    <div class=\"text-4xl font-bold text-white\">20.00.22.31</div>\n    <div class=\"text-base text-gray-400 mt-1\">System Version</div>\n</div>\n<h3 class=\"text-lg font-bold text-white mb-3 border-b border-gray-700 pb-2\">Key Observations</h3><ul class=\"list-disc list-outside space-y-2 text-gray-300 mb-4 pl-5\"><li>The system's release version is also 20.00.22.31, matching the system version.</li><li>The system's language support mode is Standard.</li></ul></div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>base_readQuery</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"InfoKey\": \"VERSION\", \"InfoData\": \"20.00.22.31\"}, {\"InfoKey\": \"LANGUAGE SUPPORT MODE\", \"InfoData\": \"Standard\"}, {\"InfoKey\": \"RELEASE\", \"InfoData\": \"20.00.22.31\"}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>InfoKey</th><th>InfoData</th></tr></thead>\n                    <tbody>\n        <tr><td>VERSION</td><td>20.00.22.31</td></tr><tr><td>LANGUAGE SUPPORT MODE</td><td>Standard</td></tr><tr><td>RELEASE</td><td>20.00.22.31</td></tr></tbody></table></div></div>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>TDA_FinalReport</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"direct_answer\": \"The system version is 20.00.22.31.\", \"key_metric\": {\"value\": \"20.00.22.31\", \"label\": \"System Version\"}, \"key_observations\": [{\"text\": \"The system&apos;s release version is also 20.00.22.31, matching the system version.\"}, {\"text\": \"The system&apos;s language support mode is Standard.\"}], \"synthesis\": []}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>direct_answer</th><th>key_metric</th><th>key_observations</th><th>synthesis</th></tr></thead>\n                    <tbody>\n        <tr><td>The system version is 20.00.22.31.</td><td>{'value': '20.00.22.31', 'label': 'System Version'}</td><td>[{'text': \"The system's release version is also 20.00.22.31, matching the system version.\"}, {'text': \"The system's language support mode is Standard.\"}]</td><td>[]</td></tr></tbody></table></div></div></div></details>",
+      "content": "<div class=\"response-card summary-card mb-4\">\n<div class=\"key-metric-card bg-gray-900/50 p-4 rounded-lg mb-4 text-center\">\n    <div class=\"text-2xl font-bold text-white\">2025-12-05</div>\n    <div class=\"text-base text-gray-400 mt-1\">Current Date</div>\n</div>\n</div><details class='response-card bg-white/5 open:bg-white/10 mb-4 rounded-lg border border-white/10'><summary class='p-4 font-bold text-lg text-white cursor-pointer hover:bg-white/10 rounded-t-lg'>Collateral Report for: <code>Ad-hoc Query</code></summary><div class='p-4'>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>TDA_CurrentDate</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"current_date\": \"2025-12-05\"}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>current_date</th></tr></thead>\n                    <tbody>\n        <tr><td>2025-12-05</td></tr></tbody></table></div></div>\n        <div class=\"response-card mb-4\">\n            <div class=\"flex justify-between items-center mb-2\">\n                <h4 class=\"text-lg font-semibold text-white\">Data: Result for <code>TDA_FinalReport</code></h4>\n                <button class=\"copy-button\" data-copy-type=\"table\" data-table='[{\"direct_answer\": \"The current date is December 5, 2025.\", \"key_metric\": {\"value\": \"2025-12-05\", \"label\": \"Current Date\"}, \"key_observations\": [], \"synthesis\": []}]'>\n                    <svg xmlns=\"[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z\"/><path d=\"M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1H-.5A.5.5 0 0 1-1 7z\"/></svg> Copy Table\n                </button>\n            </div>\n            <div class='table-container'>\n                <table class='assistant-table'>\n                    <thead><tr><th>direct_answer</th><th>key_metric</th><th>key_observations</th><th>synthesis</th></tr></thead>\n                    <tbody>\n        <tr><td>The current date is December 5, 2025.</td><td>{'value': '2025-12-05', 'label': 'Current Date'}</td><td>[]</td><td>[]</td></tr></tbody></table></div></div></div></details>",
       "isValid": true,
       "turn_number": 2
     }
@@ -44,351 +44,38 @@
   "chat_object": [
     {
       "role": "user",
-      "content": "You are a helpful assistant.",
-      "turn_number": 0
+      "content": "what is the system version?",
+      "isValid": true,
+      "turn_number": 1
     },
     {
-      "role": "model",
-      "content": "Understood.",
-      "turn_number": 0
+      "role": "assistant",
+      "content": "The system version is 20.00.22.31.",
+      "isValid": true,
+      "turn_number": 1
     },
     {
       "role": "user",
       "content": "what is the current date?",
       "isValid": true,
-      "turn_number": 1
-    },
-    {
-      "role": "model",
-      "content": "The current date is 2025-12-05.",
-      "isValid": true,
-      "turn_number": 1
-    },
-    {
-      "role": "user",
-      "content": "what is the system version?",
-      "isValid": true,
       "turn_number": 2
     },
     {
-      "role": "model",
-      "content": "The system version is 20.00.22.31.",
+      "role": "assistant",
+      "content": "The current date is December 5, 2025.",
       "isValid": true,
       "turn_number": 2
     }
   ],
-  "name": "Current Date Inquiry",
-  "created_at": "2025-12-05T17:44:08.315205",
-  "last_updated": "2025-12-05T17:44:40.207520",
-  "input_tokens": 20863,
-  "output_tokens": 448,
+  "name": "System Version Inquiry",
+  "created_at": "2025-12-05T21:03:16.142857",
+  "last_updated": "2025-12-05T21:03:41.399753",
+  "input_tokens": 18532,
+  "output_tokens": 340,
   "last_turn_data": {
     "workflow_history": [
       {
         "turn": 1,
-        "user_query": "what is the current date?",
-        "original_plan": [
-          {
-            "phase": 1,
-            "goal": "Get the current system date.",
-            "relevant_tools": [
-              "TDA_CurrentDate"
-            ],
-            "arguments": {}
-          },
-          {
-            "phase": 2,
-            "goal": "Generate the final report based on the current date.",
-            "relevant_tools": [
-              "TDA_FinalReport"
-            ],
-            "arguments": {}
-          }
-        ],
-        "execution_trace": [
-          {
-            "action": {
-              "tool_name": "TDA_SystemLog",
-              "arguments": {
-                "message": "Calling LLM for Planning",
-                "details": {
-                  "summary": "Generating a strategic meta-plan for the goal",
-                  "full_text": "what is the current date?",
-                  "call_id": "56081bf7-231b-49d4-b7f6-9876978003c7",
-                  "execution_depth": 0,
-                  "input_tokens": 9481,
-                  "output_tokens": 116
-                }
-              },
-              "metadata": {
-                "execution_depth": 0,
-                "type": "system_message",
-                "timestamp": "2025-12-05T16:44:17.211964+00:00"
-              }
-            },
-            "result": {
-              "status": "info"
-            }
-          },
-          {
-            "action": {
-              "tool_name": "TDA_SystemLog",
-              "arguments": {
-                "message": "Strategic Meta-Plan Generated",
-                "details": [
-                  {
-                    "phase": 1,
-                    "goal": "Get the current system date.",
-                    "relevant_tools": [
-                      "TDA_CurrentDate"
-                    ],
-                    "arguments": {}
-                  },
-                  {
-                    "phase": 2,
-                    "goal": "Generate the final report based on the current date.",
-                    "relevant_tools": [
-                      "TDA_FinalReport"
-                    ],
-                    "arguments": {}
-                  }
-                ]
-              },
-              "metadata": {
-                "execution_depth": 0,
-                "type": "plan_generated",
-                "timestamp": "2025-12-05T16:44:17.212461+00:00"
-              }
-            },
-            "result": {
-              "status": "info"
-            }
-          },
-          {
-            "action": {
-              "tool_name": "TDA_SystemLog",
-              "arguments": {
-                "message": "Starting Plan Phase 1/2",
-                "details": {
-                  "phase_num": 1,
-                  "total_phases": 2,
-                  "goal": "Get the current system date.",
-                  "phase_details": {
-                    "phase": 1,
-                    "goal": "Get the current system date.",
-                    "relevant_tools": [
-                      "TDA_CurrentDate"
-                    ],
-                    "arguments": {}
-                  },
-                  "execution_depth": 0
-                }
-              },
-              "metadata": {
-                "execution_depth": 0,
-                "type": "phase_start",
-                "timestamp": "2025-12-05T16:44:17.212533+00:00"
-              }
-            },
-            "result": {
-              "status": "info"
-            }
-          },
-          {
-            "action": {
-              "tool_name": "TDA_SystemLog",
-              "arguments": {
-                "message": "Plan Optimization",
-                "details": "FASTPATH initiated for 'TDA_CurrentDate'."
-              },
-              "metadata": {
-                "execution_depth": 0,
-                "type": "plan_optimization",
-                "timestamp": "2025-12-05T16:44:17.212574+00:00"
-              }
-            },
-            "result": {
-              "status": "info"
-            }
-          },
-          {
-            "action": {
-              "tool_name": "TDA_CurrentDate",
-              "arguments": {},
-              "metadata": {
-                "phase_number": 1,
-                "execution_depth": 0,
-                "timestamp": "2025-12-05T16:44:17.212618+00:00"
-              }
-            },
-            "result": {
-              "status": "success",
-              "metadata": {
-                "tool_name": "TDA_CurrentDate"
-              },
-              "results": [
-                {
-                  "current_date": "2025-12-05"
-                }
-              ]
-            }
-          },
-          {
-            "action": {
-              "tool_name": "TDA_SystemLog",
-              "arguments": {
-                "message": "Ending Plan Phase 1/2",
-                "details": {
-                  "phase_num": 1,
-                  "total_phases": 2,
-                  "status": "completed"
-                }
-              },
-              "metadata": {
-                "execution_depth": 0,
-                "type": "phase_end",
-                "timestamp": "2025-12-05T16:44:17.212832+00:00"
-              }
-            },
-            "result": {
-              "status": "info"
-            }
-          },
-          {
-            "action": {
-              "tool_name": "TDA_SystemLog",
-              "arguments": {
-                "message": "Starting Plan Phase 2/2",
-                "details": {
-                  "phase_num": 2,
-                  "total_phases": 2,
-                  "goal": "Generate the final report based on the current date.",
-                  "phase_details": {
-                    "phase": 2,
-                    "goal": "Generate the final report based on the current date.",
-                    "relevant_tools": [
-                      "TDA_FinalReport"
-                    ],
-                    "arguments": {}
-                  },
-                  "execution_depth": 0
-                }
-              },
-              "metadata": {
-                "execution_depth": 0,
-                "type": "phase_start",
-                "timestamp": "2025-12-05T16:44:17.212860+00:00"
-              }
-            },
-            "result": {
-              "status": "info"
-            }
-          },
-          {
-            "action": {
-              "tool_name": "TDA_SystemLog",
-              "arguments": {
-                "message": "Plan Optimization",
-                "details": "FASTPATH initiated for 'TDA_FinalReport'."
-              },
-              "metadata": {
-                "execution_depth": 0,
-                "type": "plan_optimization",
-                "timestamp": "2025-12-05T16:44:17.212891+00:00"
-              }
-            },
-            "result": {
-              "status": "info"
-            }
-          },
-          {
-            "action": {
-              "tool_name": "TDA_FinalReport",
-              "arguments": {},
-              "metadata": {
-                "phase_number": 2,
-                "execution_depth": 0,
-                "timestamp": "2025-12-05T16:44:17.212922+00:00"
-              }
-            },
-            "result": {
-              "status": "success",
-              "metadata": {
-                "call_id": "d69c4061-3cad-4373-8449-30256871829b",
-                "tool_name": "TDA_FinalReport",
-                "input_tokens": 366,
-                "output_tokens": 69
-              },
-              "results": [
-                {
-                  "direct_answer": "The current date is 2025-12-05.",
-                  "key_metric": {
-                    "value": "2025-12-05",
-                    "label": "Current Date"
-                  },
-                  "key_observations": [],
-                  "synthesis": []
-                }
-              ],
-              "corrections": []
-            }
-          },
-          {
-            "action": {
-              "tool_name": "TDA_SystemLog",
-              "arguments": {
-                "message": "Ending Plan Phase 2/2",
-                "details": {
-                  "phase_num": 2,
-                  "total_phases": 2,
-                  "status": "completed"
-                }
-              },
-              "metadata": {
-                "execution_depth": 0,
-                "type": "phase_end",
-                "timestamp": "2025-12-05T16:44:17.929464+00:00"
-              }
-            },
-            "result": {
-              "status": "info"
-            }
-          },
-          {
-            "action": {
-              "tool_name": "TDA_SystemLog",
-              "arguments": {
-                "message": "LLM has generated the final answer",
-                "details": "The current date is 2025-12-05."
-              },
-              "metadata": {
-                "execution_depth": 0,
-                "type": null,
-                "timestamp": "2025-12-05T16:44:17.930111+00:00"
-              }
-            },
-            "result": {
-              "status": "info"
-            }
-          }
-        ],
-        "final_summary": "The current date is 2025-12-05.",
-        "timestamp": "2025-12-05T16:44:17.930420+00:00",
-        "provider": "Google",
-        "model": "gemini-2.0-flash",
-        "profile_tag": "GOGET",
-        "task_id": "task-be18b454-5412-440f-b489-a6963c416c15",
-        "turn_input_tokens": 9481,
-        "turn_output_tokens": 116,
-        "session_id": "9f383881-d31a-41aa-aaf7-408f4e149f2e",
-        "rag_source_collection_id": 1,
-        "knowledge_accessed": [],
-        "knowledge_retrieval_event": null,
-        "isValid": true,
-        "case_id": "b574a02a-a5ef-535e-bab7-fde65b40d77d"
-      },
-      {
-        "turn": 2,
         "user_query": "what is the system version?",
         "original_plan": [
           {
@@ -417,16 +104,16 @@
                 "details": {
                   "summary": "Generating a strategic meta-plan for the goal",
                   "full_text": "what is the system version?",
-                  "call_id": "19063df1-af60-49df-9851-069200cc26db",
+                  "call_id": "2b8c066a-bddd-424f-8373-87d5a7db8a85",
                   "execution_depth": 0,
-                  "input_tokens": 10430,
-                  "output_tokens": 117
+                  "input_tokens": 8457,
+                  "output_tokens": 94
                 }
               },
               "metadata": {
                 "execution_depth": 0,
                 "type": "system_message",
-                "timestamp": "2025-12-05T16:44:38.429080+00:00"
+                "timestamp": "2025-12-05T20:03:26.038585+00:00"
               }
             },
             "result": {
@@ -460,7 +147,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "plan_generated",
-                "timestamp": "2025-12-05T16:44:38.429408+00:00"
+                "timestamp": "2025-12-05T20:03:26.039344+00:00"
               }
             },
             "result": {
@@ -490,7 +177,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "phase_start",
-                "timestamp": "2025-12-05T16:44:38.429460+00:00"
+                "timestamp": "2025-12-05T20:03:26.039535+00:00"
               }
             },
             "result": {
@@ -507,7 +194,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "plan_optimization",
-                "timestamp": "2025-12-05T16:44:38.429489+00:00"
+                "timestamp": "2025-12-05T20:03:26.039623+00:00"
               }
             },
             "result": {
@@ -521,7 +208,7 @@
               "metadata": {
                 "phase_number": 1,
                 "execution_depth": 0,
-                "timestamp": "2025-12-05T16:44:38.429515+00:00"
+                "timestamp": "2025-12-05T20:03:26.039698+00:00"
               }
             },
             "result": {
@@ -571,7 +258,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "phase_end",
-                "timestamp": "2025-12-05T16:44:38.814006+00:00"
+                "timestamp": "2025-12-05T20:03:26.517013+00:00"
               }
             },
             "result": {
@@ -601,7 +288,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "phase_start",
-                "timestamp": "2025-12-05T16:44:38.814051+00:00"
+                "timestamp": "2025-12-05T20:03:26.517062+00:00"
               }
             },
             "result": {
@@ -618,7 +305,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "plan_optimization",
-                "timestamp": "2025-12-05T16:44:38.814093+00:00"
+                "timestamp": "2025-12-05T20:03:26.517104+00:00"
               }
             },
             "result": {
@@ -632,16 +319,16 @@
               "metadata": {
                 "phase_number": 2,
                 "execution_depth": 0,
-                "timestamp": "2025-12-05T16:44:38.814135+00:00"
+                "timestamp": "2025-12-05T20:03:26.517163+00:00"
               }
             },
             "result": {
               "status": "success",
               "metadata": {
-                "call_id": "9f7a0f49-bd11-476a-b692-1109f5203752",
+                "call_id": "3d059831-2d6f-4e61-838e-945c8626e3e7",
                 "tool_name": "TDA_FinalReport",
-                "input_tokens": 520,
-                "output_tokens": 142
+                "input_tokens": 471,
+                "output_tokens": 103
               },
               "results": [
                 {
@@ -652,10 +339,10 @@
                   },
                   "key_observations": [
                     {
-                      "text": "The system's release version is also 20.00.22.31, matching the system version."
+                      "text": "The system also supports standard language mode."
                     },
                     {
-                      "text": "The system's language support mode is Standard."
+                      "text": "The release version matches the system version: 20.00.22.31."
                     }
                   ],
                   "synthesis": []
@@ -678,7 +365,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": "phase_end",
-                "timestamp": "2025-12-05T16:44:40.176564+00:00"
+                "timestamp": "2025-12-05T20:03:29.436626+00:00"
               }
             },
             "result": {
@@ -695,7 +382,7 @@
               "metadata": {
                 "execution_depth": 0,
                 "type": null,
-                "timestamp": "2025-12-05T16:44:40.177976+00:00"
+                "timestamp": "2025-12-05T20:03:29.437408+00:00"
               }
             },
             "result": {
@@ -704,19 +391,322 @@
           }
         ],
         "final_summary": "The system version is 20.00.22.31.",
-        "timestamp": "2025-12-05T16:44:40.178334+00:00",
-        "provider": "Google",
-        "model": "gemini-2.0-flash",
-        "profile_tag": "GOGET",
-        "task_id": "task-b485f59e-ef22-45a8-b750-7f214ade19c5",
-        "turn_input_tokens": 10430,
-        "turn_output_tokens": 117,
-        "session_id": "9f383881-d31a-41aa-aaf7-408f4e149f2e",
-        "rag_source_collection_id": 1,
+        "timestamp": "2025-12-05T20:03:29.437771+00:00",
+        "provider": "OpenAI",
+        "model": "gpt-4o-mini",
+        "profile_tag": "DEOGT",
+        "task_id": "task-2d14d51a-35a4-4fb3-aa83-c5396ddb8708",
+        "turn_input_tokens": 8457,
+        "turn_output_tokens": 94,
+        "session_id": "2e9af843-378d-4bb2-9623-c2841084b999",
+        "rag_source_collection_id": 2,
         "knowledge_accessed": [],
         "knowledge_retrieval_event": null,
         "isValid": true,
-        "case_id": "4bb85f40-0bd8-52a3-895e-64175a101549"
+        "case_id": "cc388454-280b-553e-a7cc-a0e5a1c70fb1"
+      },
+      {
+        "turn": 2,
+        "user_query": "what is the current date?",
+        "original_plan": [
+          {
+            "phase": 1,
+            "goal": "Get the current system date.",
+            "relevant_tools": [
+              "TDA_CurrentDate"
+            ],
+            "arguments": {}
+          },
+          {
+            "phase": 2,
+            "goal": "Generate the final report based on the data gathered.",
+            "relevant_tools": [
+              "TDA_FinalReport"
+            ],
+            "arguments": {}
+          }
+        ],
+        "execution_trace": [
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Calling LLM for Planning",
+                "details": {
+                  "summary": "Generating a strategic meta-plan for the goal",
+                  "full_text": "what is the current date?",
+                  "call_id": "b905b616-3bab-4b72-acf4-9e1e39048d92",
+                  "execution_depth": 0,
+                  "input_tokens": 9164,
+                  "output_tokens": 84
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "system_message",
+                "timestamp": "2025-12-05T20:03:39.507271+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Strategic Meta-Plan Generated",
+                "details": [
+                  {
+                    "phase": 1,
+                    "goal": "Get the current system date.",
+                    "relevant_tools": [
+                      "TDA_CurrentDate"
+                    ],
+                    "arguments": {}
+                  },
+                  {
+                    "phase": 2,
+                    "goal": "Generate the final report based on the data gathered.",
+                    "relevant_tools": [
+                      "TDA_FinalReport"
+                    ],
+                    "arguments": {}
+                  }
+                ]
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_generated",
+                "timestamp": "2025-12-05T20:03:39.507680+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Starting Plan Phase 1/2",
+                "details": {
+                  "phase_num": 1,
+                  "total_phases": 2,
+                  "goal": "Get the current system date.",
+                  "phase_details": {
+                    "phase": 1,
+                    "goal": "Get the current system date.",
+                    "relevant_tools": [
+                      "TDA_CurrentDate"
+                    ],
+                    "arguments": {}
+                  },
+                  "execution_depth": 0
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_start",
+                "timestamp": "2025-12-05T20:03:39.507756+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Plan Optimization",
+                "details": "FASTPATH initiated for 'TDA_CurrentDate'."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_optimization",
+                "timestamp": "2025-12-05T20:03:39.507798+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_CurrentDate",
+              "arguments": {},
+              "metadata": {
+                "phase_number": 1,
+                "execution_depth": 0,
+                "timestamp": "2025-12-05T20:03:39.507838+00:00"
+              }
+            },
+            "result": {
+              "status": "success",
+              "metadata": {
+                "tool_name": "TDA_CurrentDate"
+              },
+              "results": [
+                {
+                  "current_date": "2025-12-05"
+                }
+              ]
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Ending Plan Phase 1/2",
+                "details": {
+                  "phase_num": 1,
+                  "total_phases": 2,
+                  "status": "completed"
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_end",
+                "timestamp": "2025-12-05T20:03:39.508218+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Starting Plan Phase 2/2",
+                "details": {
+                  "phase_num": 2,
+                  "total_phases": 2,
+                  "goal": "Generate the final report based on the data gathered.",
+                  "phase_details": {
+                    "phase": 2,
+                    "goal": "Generate the final report based on the data gathered.",
+                    "relevant_tools": [
+                      "TDA_FinalReport"
+                    ],
+                    "arguments": {}
+                  },
+                  "execution_depth": 0
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_start",
+                "timestamp": "2025-12-05T20:03:39.508247+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Plan Optimization",
+                "details": "FASTPATH initiated for 'TDA_FinalReport'."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "plan_optimization",
+                "timestamp": "2025-12-05T20:03:39.508277+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_FinalReport",
+              "arguments": {},
+              "metadata": {
+                "phase_number": 2,
+                "execution_depth": 0,
+                "timestamp": "2025-12-05T20:03:39.508309+00:00"
+              }
+            },
+            "result": {
+              "status": "success",
+              "metadata": {
+                "call_id": "3b3e86ac-e706-4fa2-9f0a-a1a406629fd6",
+                "tool_name": "TDA_FinalReport",
+                "input_tokens": 366,
+                "output_tokens": 56
+              },
+              "results": [
+                {
+                  "direct_answer": "The current date is December 5, 2025.",
+                  "key_metric": {
+                    "value": "2025-12-05",
+                    "label": "Current Date"
+                  },
+                  "key_observations": [],
+                  "synthesis": []
+                }
+              ],
+              "corrections": []
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "Ending Plan Phase 2/2",
+                "details": {
+                  "phase_num": 2,
+                  "total_phases": 2,
+                  "status": "completed"
+                }
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": "phase_end",
+                "timestamp": "2025-12-05T20:03:41.369584+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          },
+          {
+            "action": {
+              "tool_name": "TDA_SystemLog",
+              "arguments": {
+                "message": "LLM has generated the final answer",
+                "details": "The current date is December 5, 2025."
+              },
+              "metadata": {
+                "execution_depth": 0,
+                "type": null,
+                "timestamp": "2025-12-05T20:03:41.370965+00:00"
+              }
+            },
+            "result": {
+              "status": "info"
+            }
+          }
+        ],
+        "final_summary": "The current date is December 5, 2025.",
+        "timestamp": "2025-12-05T20:03:41.371279+00:00",
+        "provider": "OpenAI",
+        "model": "gpt-4o-mini",
+        "profile_tag": "DEOGT",
+        "task_id": "task-481ab644-4f69-4545-8b10-32676471f23b",
+        "turn_input_tokens": 9164,
+        "turn_output_tokens": 84,
+        "session_id": "2e9af843-378d-4bb2-9623-c2841084b999",
+        "rag_source_collection_id": null,
+        "knowledge_accessed": [],
+        "knowledge_retrieval_event": null,
+        "isValid": true,
+        "case_id": "ad9b40eb-8049-5006-b8a5-f945505aaadd"
       }
     ]
   },

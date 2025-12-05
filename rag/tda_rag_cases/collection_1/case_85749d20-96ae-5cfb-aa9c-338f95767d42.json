@@ -1,21 +1,21 @@
 {
-  "case_id": "0ede1ba6-e827-5274-ad93-4e14d611cf06",
+  "case_id": "85749d20-96ae-5cfb-aa9c-338f95767d42",
   "metadata": {
-    "session_id": "a8fa4d0e-1f90-47cf-a11b-0b7da41a6a2d",
+    "session_id": "79a74a44-7ce2-417e-a9dd-e4ed9652e469",
     "turn_id": 2,
     "is_success": true,
-    "task_id": "task-8ca6c388-a93d-4a3a-8e66-c7ef460f6380",
+    "task_id": "task-97df8ccc-8924-404f-9641-d65324ef0f5c",
     "collection_id": 1,
     "has_orchestration": false,
     "had_plan_improvements": false,
     "had_tactical_improvements": false,
-    "timestamp": "2025-12-05T16:44:04.084986+00:00",
+    "timestamp": "2025-12-05T19:47:37.792865+00:00",
     "user_feedback_score": 0,
     "llm_config": {
       "provider": "Google",
       "model": "gemini-2.0-flash",
       "profile_tag": "GOGET",
-      "input_tokens": 10364,
+      "input_tokens": 13936,
       "output_tokens": 116
     },
     "is_most_efficient": true,
@@ -27,7 +27,7 @@
       },
       "total_steps": 2
     },
-    "user_uuid": "ae27c987-a039-4ee7-9311-5058b6684e94"
+    "user_uuid": "ab0d80fb-faa8-4627-aec7-0f53ae08ff1f"
   },
   "intent": {
     "user_query": "what is the current date?"
@@ -44,7 +44,7 @@
       },
       {
         "phase": 2,
-        "goal": "Generate the final report based on the current date.",
+        "goal": "Generate the final report based on the data gathered.",
         "relevant_tools": [
           "TDA_FinalReport"
         ],
