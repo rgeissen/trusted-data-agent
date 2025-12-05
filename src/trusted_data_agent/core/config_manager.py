@@ -45,7 +45,7 @@ class ConfigManager:
         
         self.config_path = Path(config_path)
         self._user_configs = {}  # Memory cache for loaded user configs from database
-        app_logger.info(f"ConfigManager initialized with path: {self.config_path}")
+        pass  # ConfigManager initialized
     
     def _get_default_config(self) -> Dict[str, Any]:
         """

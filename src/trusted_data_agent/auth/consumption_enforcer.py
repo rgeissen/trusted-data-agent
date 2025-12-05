@@ -86,8 +86,6 @@ class ConsumptionEnforcer:
                 
                 if use_global_override:
                     # Use global rate limit settings instead of consumption profile
-                    logger.info(f"Using global override settings for user {self.user_id}")
-                    
                     # Load global settings from SystemSettings
                     def get_setting_value(key, default):
                         setting = session.query(SystemSettings).filter_by(setting_key=key).first()

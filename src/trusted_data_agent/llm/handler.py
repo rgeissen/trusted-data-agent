@@ -462,8 +462,8 @@ async def call_llm_api(llm_instance: any, prompt: str, user_uuid: str = None, se
 
     response_text = ""
     input_tokens, output_tokens = 0, 0
-    actual_provider = get_user_provider(user_uuid) # Capture current provider
-    actual_model = get_user_model(user_uuid)     # Capture current model
+    # NOTE: Don't capture provider/model from global config here - they get updated during profile override
+    # We'll capture the actual values used at the end of the function from APP_CONFIG
 
     max_retries = APP_CONFIG.LLM_API_MAX_RETRIES
     base_delay = APP_CONFIG.LLM_API_BASE_DELAY
@@ -781,6 +781,10 @@ async def call_llm_api(llm_instance: any, prompt: str, user_uuid: str = None, se
         update_token_count(user_uuid, session_id, input_tokens, output_tokens)
     # --- MODIFICATION END ---
 
+    # Capture the actual provider and model used (from APP_CONFIG which gets updated during profile override)
+    actual_provider = APP_CONFIG.CURRENT_PROVIDER
+    actual_model = APP_CONFIG.CURRENT_MODEL
+    
     return response_text, input_tokens, output_tokens, actual_provider, actual_model
 
 def _is_model_certified(model_name: str, certified_list: list[str]) -> bool:

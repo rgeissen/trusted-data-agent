@@ -62,9 +62,7 @@ def init_database():
     On first initialization, creates a default admin account.
     """
     try:
-        logger.info(f"Initializing authentication database at: {DATABASE_URL}")
         Base.metadata.create_all(bind=engine)
-        logger.info("Authentication database initialized successfully")
         
         # Create collections table (for marketplace)
         _create_collections_table()
@@ -197,7 +195,7 @@ def _create_collections_table():
         conn.commit()
         conn.close()
         
-        logger.info("Collections and subscriptions tables initialized successfully")
+        pass  # Collections table initialized
         
     except Exception as e:
         logger.error(f"Error creating collections table: {e}", exc_info=True)
@@ -242,7 +240,7 @@ def _create_template_defaults_table():
         conn.commit()
         conn.close()
         
-        logger.info("Template defaults table initialized successfully")
+        pass  # Template defaults initialized
         
     except Exception as e:
         logger.error(f"Error creating template defaults table: {e}", exc_info=True)
@@ -280,7 +278,7 @@ def _create_default_admin_if_needed():
                     "⚠️  CHANGE THIS PASSWORD IMMEDIATELY after first login!"
                 )
             else:
-                logger.info(f"Database already has {user_count} user(s), skipping default admin creation")
+                pass  # Database already initialized
                 
     except Exception as e:
         logger.error(f"Error checking/creating default admin account: {e}", exc_info=True)
@@ -335,7 +333,7 @@ def _initialize_default_system_settings():
                     logger.debug(f"Initialized system setting: {key} = {value}")
             
             session.commit()
-            logger.info("System settings initialized successfully")
+            pass  # System settings initialized
             
     except Exception as e:
         logger.error(f"Error initializing system settings: {e}", exc_info=True)
@@ -379,7 +377,7 @@ def _initialize_document_upload_configs():
                     logger.debug(f"Initialized document upload config for provider: {provider}")
             
             session.commit()
-            logger.info("Document upload configurations initialized successfully")
+            pass  # Document upload configs initialized
             
     except Exception as e:
         logger.error(f"Error initializing document upload configs: {e}", exc_info=True)
@@ -491,7 +489,7 @@ def _bootstrap_consumption_profiles():
                 logger.info(f"Bootstrapped consumption profile: {profile_data['name']}")
             
             session.commit()
-            logger.info("Consumption profiles bootstrap completed")
+            pass  # Consumption profiles initialized
     
     except Exception as e:
         logger.error(f"Failed to bootstrap consumption profiles: {e}", exc_info=True)

@@ -42,16 +42,13 @@ class RAGRetriever:
         if self.persist_directory:
             self.persist_directory.mkdir(parents=True, exist_ok=True)
             self.client = chromadb.PersistentClient(path=str(self.persist_directory))
-            logger.info(f"ChromaDB initialized with persistence at: {self.persist_directory}")
         else:
             self.client = chromadb.Client()
-            logger.info("ChromaDB initialized in in-memory mode.")
 
         # Initialize embedding function
         self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name=self.embedding_model_name
         )
-        logger.info(f"Embedding model loaded: {self.embedding_model_name}")
 
         # --- MODIFICATION START: Support multiple collections ---
         # Store collections as a dict: {collection_id: chromadb_collection_object}
@@ -330,16 +327,12 @@ class RAGRetriever:
         
         current_mcp_server_id = APP_CONFIG.CURRENT_MCP_SERVER_ID
         
-        logger.info(f"Loading collections: {len(planner_collections)} planner, {len(knowledge_collections)} knowledge")
-        
         # Planner collections are filtered by MCP server
         # Knowledge collections are always loaded (not tied to MCP servers)
         # If no MCP server configured, load all enabled collections for viewing
         if not current_mcp_server_id:
-            logger.info("No MCP server configured - loading all enabled collections for viewing")
             filter_by_mcp = False
         else:
-            logger.info(f"Loading RAG collections for MCP server ID: '{current_mcp_server_id}'")
             filter_by_mcp = True
         
         for coll_meta in collections_list:
@@ -367,7 +360,6 @@ class RAGRetriever:
                     metadata={"hnsw:space": "cosine"}
                 )
                 self.collections[coll_id] = collection
-                logger.info(f"Loaded {repo_type} collection '{coll_id}' (ChromaDB: '{coll_name}')")
             except KeyError as e:
                 if "'_type'" in str(e):
                     logger.error(f"Collection '{coll_id}' has corrupted metadata (missing _type field). Attempting to delete and recreate...")
@@ -382,7 +374,6 @@ class RAGRetriever:
                             metadata={"hnsw:space": "cosine"}
                         )
                         self.collections[coll_id] = collection
-                        logger.info(f"Successfully recreated collection '{coll_id}' (ChromaDB: '{coll_name}')")
                     except Exception as delete_error:
                         logger.error(f"Failed to recover collection '{coll_id}': {delete_error}. Run maintenance/reset_chromadb.py to fix.", exc_info=True)
                 else:
@@ -390,24 +381,13 @@ class RAGRetriever:
             except Exception as e:
                 logger.error(f"Failed to load collection '{coll_id}': {e}", exc_info=True)
         
-        if not self.collections:
-            if filter_by_mcp:
-                logger.warning(f"No active RAG collections loaded for MCP server ID '{current_mcp_server_id}'!")
-            else:
-                logger.info("No enabled RAG collections found")
-        else:
-            if filter_by_mcp:
-                logger.info(f"Loaded {len(self.collections)} collection(s) for MCP server ID '{current_mcp_server_id}'")
-            else:
-                logger.info(f"Loaded {len(self.collections)} enabled collection(s) for viewing")
+        if not self.collections and filter_by_mcp:
+            logger.warning(f"No active RAG collections loaded for MCP server ID '{current_mcp_server_id}'!")
         
         # Refresh vector stores for all collections if configured
         if APP_CONFIG.RAG_REFRESH_ON_STARTUP:
-            logger.info("RAG_REFRESH_ON_STARTUP is True. Refreshing all vector stores...")
             for coll_id in self.collections:
                 self._maintain_vector_store(coll_id)
-        else:
-            logger.info("RAG_REFRESH_ON_STARTUP is False. Using cached vector stores.")
     
     def _auto_rebuild_if_needed(self):
         """
@@ -855,7 +835,7 @@ class RAGRetriever:
                     except Exception as e:
                         logger.debug(f"Error loading cache for {case_file}: {e}")
             
-            logger.info(f"Loaded feedback cache with {len(self.feedback_cache)} entries")
+            pass  # Feedback cache loaded
         except Exception as e:
             logger.error(f"Error loading feedback cache: {e}")
 
@@ -1049,7 +1029,6 @@ class RAGRetriever:
         
         collection = self.collections[collection_id]
         collection_dir = self._get_collection_dir(collection_id)
-        logger.info(f"Starting vector store maintenance for collection '{collection_id}' at {collection_dir}...")
         
         # 1. Get current state from disk and DB
         disk_case_ids = {p.stem for p in collection_dir.glob("case_*.json")}
@@ -1060,7 +1039,6 @@ class RAGRetriever:
         # 2. Identify cases to delete from DB
         ids_to_delete = list(db_case_ids - disk_case_ids)
         if ids_to_delete:
-            logger.info(f"Found {len(ids_to_delete)} stale cases to remove from collection '{collection_id}'.")
             collection.delete(ids=ids_to_delete)
 
         # 3. Iterate through disk cases to add or update
@@ -1108,12 +1086,11 @@ class RAGRetriever:
                             documents=[document_content] # Ensure embedding is updated too
                         )
                         updated_count += 1
-                        logger.info(f"Updated case {case_id_stem} in collection '{collection_id}' because content has changed.")
 
             except Exception as e:
                 logger.error(f"Failed to process RAG case file {case_file.name}: {e}", exc_info=True)
         
-        logger.info(f"Vector store maintenance complete for '{collection_id}'. Added: {added_count}, Updated: {updated_count}, Removed: {len(ids_to_delete)}.")
+        logger.debug(f"Vector store maintenance for '{collection_id}': +{added_count} ={updated_count} -{len(ids_to_delete)}")
 
     def _summarize_strategy(self, case_data: Dict[str, Any]) -> str:
         """

@@ -96,7 +96,7 @@ async def rag_processing_worker():
     A single, persistent background worker that processes turns from the
     RAG queue one by one, ensuring no race conditions.
     """
-    app_logger.info("RAG processing worker started and waiting for queue items.")
+    pass  # RAG worker started
     while True:
         try:
             # 1. Wait for a turn_summary to arrive in the queue
@@ -208,14 +208,10 @@ def create_app():
         Runs once before the server starts serving requests.
         Used to start background tasks like our RAG worker and initialize RAG independently.
         """
-        app_logger.info("Application starting up... Launching background tasks.")
-        
         # Initialize authentication database (always required)
         try:
             from trusted_data_agent.auth.database import init_database
-            app_logger.info("Initializing authentication database...")
             init_database()
-            app_logger.info("Authentication database initialized successfully")
         except Exception as e:
             app_logger.error(f"Failed to initialize authentication database: {e}", exc_info=True)
             raise  # Fatal error - cannot run without auth database
@@ -236,11 +232,6 @@ def create_app():
                     global_settings = json.load(f)
                 if "enable_mcp_classification" in global_settings:
                     APP_CONFIG.ENABLE_MCP_CLASSIFICATION = global_settings["enable_mcp_classification"]
-                    app_logger.info(f"MCP Classification (GLOBAL) loaded from settings file: {APP_CONFIG.ENABLE_MCP_CLASSIFICATION}")
-                else:
-                    app_logger.info(f"MCP Classification (GLOBAL) from environment: {APP_CONFIG.ENABLE_MCP_CLASSIFICATION}")
-            else:
-                app_logger.info(f"MCP Classification (GLOBAL) from environment: {APP_CONFIG.ENABLE_MCP_CLASSIFICATION}")
         except Exception as e:
             app_logger.warning(f"Failed to load global settings file: {e}. Using environment default: {APP_CONFIG.ENABLE_MCP_CLASSIFICATION}")
         
@@ -262,30 +253,24 @@ def create_app():
                 config_manager = get_config_manager()
                 collections_list = config_manager.get_rag_collections()
                 APP_STATE["rag_collections"] = collections_list
-                app_logger.info(f"Pre-loaded {len(collections_list)} RAG collections from persistent config")
                 
                 # Initialize RAG template manager
-                app_logger.info("Initializing RAG Template Manager...")
                 template_manager = get_template_manager()
                 templates = template_manager.list_templates()
                 APP_STATE['rag_template_manager'] = template_manager
-                app_logger.info(f"RAG Template Manager initialized with {len(templates)} template(s): {[t['template_id'] for t in templates]}")
                 
                 # Initialize RAG retriever
-                app_logger.info(f"Initializing RAGRetriever at startup with cases dir: {rag_cases_dir}")
                 retriever_instance = RAGRetriever(
                     rag_cases_dir=rag_cases_dir,
                     embedding_model_name=APP_CONFIG.RAG_EMBEDDING_MODEL,
                     persist_directory=persist_dir
                 )
                 APP_STATE['rag_retriever_instance'] = retriever_instance
-                app_logger.info("RAGRetriever initialized successfully at startup - ready for use")
                 
             except Exception as e:
                 app_logger.error(f"Failed to initialize RAG at startup: {e}", exc_info=True)
                 APP_STATE["rag_collections"] = []
         else:
-            app_logger.info("RAG is disabled in configuration")
             APP_STATE["rag_collections"] = []
         
         # Start the single RAG worker as a background task

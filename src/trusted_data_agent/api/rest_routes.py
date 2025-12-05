@@ -5393,7 +5393,6 @@ async def get_sessions_list():
         current_user = get_current_user()
         if current_user:
             user_uuid = current_user.id
-            app_logger.info(f"Fetching sessions for user: {user_uuid}")
         else:
             user_uuid = _get_user_uuid_from_request()
         
@@ -5427,18 +5426,17 @@ async def get_sessions_list():
         # Determine which sessions to scan based on all_users parameter or filter setting
         if all_users or not APP_CONFIG.SESSIONS_FILTER_BY_USER:
             # All users mode
-            app_logger.info(f"Fetching all users' sessions (all_users={all_users}, SESSIONS_FILTER_BY_USER={APP_CONFIG.SESSIONS_FILTER_BY_USER})")
+            pass  # Fetching all users' sessions
             if not sessions_base.exists():
                 return jsonify({"sessions": [], "total": 0}), 200
             scan_dirs = [d for d in sessions_base.iterdir() if d.is_dir()]
-            app_logger.info(f"Scanning {len(scan_dirs)} user directories")
+            pass  # Scanning directories
         else:
             # User-specific mode
             if not user_uuid:
                 app_logger.warning("No user_uuid available for user-specific session fetch")
                 return jsonify({"sessions": [], "total": 0}), 200
             
-            app_logger.info(f"Fetching sessions for user: {user_uuid}")
             sessions_root = sessions_base / user_uuid
             if not sessions_root.exists():
                 return jsonify({"sessions": [], "total": 0}), 200

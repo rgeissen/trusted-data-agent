@@ -391,28 +391,18 @@ async def simple_chat():
             from trusted_data_agent.auth.models import User
             from trusted_data_agent.auth.database import get_db_session
             
-            app_logger.info(f"[CONSUMPTION] simple_chat: Starting consumption check for user {user_uuid}")
-            
             # Check if user is admin
             with get_db_session() as session:
                 user = session.query(User).filter_by(id=user_uuid).first()
                 is_admin = user.is_admin if user else False
-                app_logger.info(f"[CONSUMPTION] simple_chat: User is_admin: {is_admin}")
             
             if not is_admin:
-                app_logger.info(f"[CONSUMPTION] simple_chat: User is not admin, checking limits...")
                 enforcer = ConsumptionEnforcer(user_uuid)
-                app_logger.info(f"[CONSUMPTION] simple_chat: Enforcer created with profile: {enforcer.profile_name}, active: {enforcer.is_active}")
                 can_proceed, error_message = enforcer.can_execute_prompt()
-                app_logger.info(f"[CONSUMPTION] simple_chat: Enforcement result: can_proceed={can_proceed}, error={error_message}")
                 
                 if not can_proceed:
-                    app_logger.warning(f"[CONSUMPTION] simple_chat: Blocking request for user {user_uuid}: {error_message}")
+                    app_logger.warning(f"Consumption limit exceeded (simple_chat) for user {user_uuid}: {error_message}")
                     return jsonify({"error": error_message, "type": "rate_limit_exceeded"}), 429
-                else:
-                    app_logger.info(f"[CONSUMPTION] simple_chat: Request allowed for user {user_uuid}")
-            else:
-                app_logger.info(f"[CONSUMPTION] simple_chat: Admin user - bypassing consumption checks")
         except Exception as e:
             app_logger.error(f"Error checking consumption limits: {e}", exc_info=True)
             # Fail open
@@ -776,7 +766,7 @@ async def subscribe_notifications():
         app_logger.error("Missing user_uuid query parameter in notification subscription request.")
         abort(400, description="user_uuid query parameter is required.")
 
-    app_logger.info(f"User {user_uuid} subscribed to notifications.")
+    pass  # User subscribed
 
     async def notification_generator():
         queue = asyncio.Queue()
@@ -1450,24 +1440,38 @@ async def new_session():
     charting_intensity = data.get("charting_intensity", APP_CONFIG.DEFAULT_CHARTING_INTENSITY) if APP_CONFIG.CHARTING_ENABLED else "none"
     system_prompt_template = data.get("system_prompt")
 
-    # Get profile tag from DEFAULT profile (not first active)
+    # Get profile tag and LLM config from DEFAULT profile (not first active)
     from trusted_data_agent.core.config_manager import get_config_manager
     config_manager = get_config_manager()
     default_profile_id = config_manager.get_default_profile_id(user_uuid)
     profile_tag = None
+    profile_provider = APP_CONFIG.CURRENT_PROVIDER  # Fallback to global config
+    
     if default_profile_id:
         profiles = config_manager.get_profiles(user_uuid)
         default_profile = next((p for p in profiles if p.get("id") == default_profile_id), None)
         if default_profile:
             profile_tag = default_profile.get("tag")
-            app_logger.info(f"Creating session with default profile: {default_profile.get('name')} (@{profile_tag})")
+            
+            # Get provider from the profile's LLM configuration
+            llm_config_id = default_profile.get('llmConfigurationId')
+            if llm_config_id:
+                llm_configs = config_manager.get_llm_configurations(user_uuid)
+                llm_config = next((cfg for cfg in llm_configs if cfg['id'] == llm_config_id), None)
+                if llm_config:
+                    profile_provider = llm_config.get('provider', APP_CONFIG.CURRENT_PROVIDER)
+                    app_logger.info(f"Creating session with default profile: {default_profile.get('name')} (@{profile_tag}), provider: {profile_provider}")
+                else:
+                    app_logger.warning(f"LLM config {llm_config_id} not found, using global provider")
+            else:
+                app_logger.info(f"Creating session with default profile: {default_profile.get('name')} (@{profile_tag}), no LLM config (using global)")
         else:
             app_logger.warning(f"Default profile ID {default_profile_id} not found in profiles list")
 
     try:
         session_id = session_manager.create_session(
             user_uuid=user_uuid,
-            provider=APP_CONFIG.CURRENT_PROVIDER,
+            provider=profile_provider,
             llm_instance=APP_STATE.get('llm'),
             charting_intensity=charting_intensity,
             system_prompt_template=system_prompt_template,
@@ -1648,33 +1652,23 @@ async def ask_stream():
         from trusted_data_agent.auth.models import User
         from trusted_data_agent.auth.database import get_db_session
         
-        app_logger.info(f"[CONSUMPTION] Starting consumption check for user {user_uuid}")
-        
         # Check if user is admin - admins bypass consumption checks
         with get_db_session() as session:
             user = session.query(User).filter_by(id=user_uuid).first()
             is_admin = user.is_admin if user else False
-            app_logger.info(f"[CONSUMPTION] User is_admin: {is_admin}")
         
         if not is_admin:
-            app_logger.info(f"[CONSUMPTION] User is not admin, checking limits...")
             enforcer = ConsumptionEnforcer(user_uuid)
-            app_logger.info(f"[CONSUMPTION] Enforcer created with profile: {enforcer.profile_name}, active: {enforcer.is_active}")
             can_proceed, error_message = enforcer.can_execute_prompt()
-            app_logger.info(f"[CONSUMPTION] Enforcement result: can_proceed={can_proceed}, error={error_message}")
             
             if not can_proceed:
-                app_logger.warning(f"[CONSUMPTION] Blocking request for user {user_uuid}: {error_message}")
+                app_logger.warning(f"Consumption limit exceeded for user {user_uuid}: {error_message}")
                 async def limit_error_gen():
                     yield PlanExecutor._format_sse({
                         "error": error_message,
                         "type": "rate_limit_exceeded"
                     }, "error")
                 return Response(limit_error_gen(), mimetype="text/event-stream")
-            else:
-                app_logger.info(f"[CONSUMPTION] Request allowed for user {user_uuid}")
-        else:
-            app_logger.info(f"[CONSUMPTION] Admin user - bypassing consumption checks")
     except Exception as e:
         app_logger.error(f"Error checking consumption limits for user {user_uuid}: {e}", exc_info=True)
         # Fail open - allow execution if consumption check fails
@@ -1820,33 +1814,23 @@ async def invoke_prompt_stream():
         from trusted_data_agent.auth.models import User
         from trusted_data_agent.auth.database import get_db_session
         
-        app_logger.info(f"[CONSUMPTION] invoke_prompt_stream: Starting consumption check for user {user_uuid}")
-        
         # Check if user is admin (admins bypass consumption limits)
         with get_db_session() as session:
             user = session.query(User).filter_by(id=user_uuid).first()
             is_admin = user.is_admin if user else False
-            app_logger.info(f"[CONSUMPTION] invoke_prompt_stream: User is_admin: {is_admin}")
         
         if not is_admin:
-            app_logger.info(f"[CONSUMPTION] invoke_prompt_stream: User is not admin, checking limits...")
             enforcer = ConsumptionEnforcer(user_uuid)
-            app_logger.info(f"[CONSUMPTION] invoke_prompt_stream: Enforcer created with profile: {enforcer.profile_name}, active: {enforcer.is_active}")
             can_proceed, error_message = enforcer.can_execute_prompt()
-            app_logger.info(f"[CONSUMPTION] invoke_prompt_stream: Enforcement result: can_proceed={can_proceed}, error={error_message}")
             
             if not can_proceed:
-                app_logger.warning(f"[CONSUMPTION] invoke_prompt_stream: Blocking request for user {user_uuid}: {error_message}")
+                app_logger.warning(f"Consumption limit exceeded (invoke_prompt) for user {user_uuid}: {error_message}")
                 async def limit_error_gen():
                     yield PlanExecutor._format_sse({
                         "error": error_message,
                         "type": "rate_limit_exceeded"
                     }, "error")
                 return Response(limit_error_gen(), mimetype="text/event-stream")
-            else:
-                app_logger.info(f"[CONSUMPTION] invoke_prompt_stream: Request allowed for user {user_uuid}")
-        else:
-            app_logger.info(f"[CONSUMPTION] invoke_prompt_stream: Admin user - bypassing consumption checks")
     except Exception as e:
         app_logger.error(f"Error checking consumption limits: {e}", exc_info=True)
         # Fail open: allow execution if enforcement check fails

@@ -93,9 +93,51 @@ class PlanExecutor:
         self.original_structured_prompts = None  # Will store original structured_prompts if overridden
         self.original_provider_details = {}  # Will store provider-specific config (Friendli, Azure, AWS)
         
-        # Snapshot model and provider for this turn
-        self.current_model = get_user_model(user_uuid)
-        self.current_provider = get_user_provider(user_uuid)
+        # Snapshot model and provider for this turn from active profile (default or override)
+        # Don't use global config as it may not match the profile being used
+        try:
+            from trusted_data_agent.core.config_manager import get_config_manager
+            config_manager = get_config_manager()
+            
+            # Determine which profile will be used (override or default)
+            active_profile_id = profile_override_id if profile_override_id else config_manager.get_default_profile_id(user_uuid)
+            
+            if active_profile_id:
+                profiles = config_manager.get_profiles(user_uuid)
+                active_profile = next((p for p in profiles if p.get("id") == active_profile_id), None)
+                
+                if active_profile:
+                    # Get LLM configuration from the active profile
+                    llm_config_id = active_profile.get('llmConfigurationId')
+                    if llm_config_id:
+                        llm_configs = config_manager.get_llm_configurations(user_uuid)
+                        llm_config = next((cfg for cfg in llm_configs if cfg['id'] == llm_config_id), None)
+                        
+                        if llm_config:
+                            self.current_provider = llm_config.get('provider', get_user_provider(user_uuid))
+                            self.current_model = llm_config.get('model', get_user_model(user_uuid))
+                            app_logger.debug(f"Initialized consumption tracking with profile model: {self.current_provider}/{self.current_model}")
+                        else:
+                            # Fallback to global config if LLM config not found
+                            self.current_model = get_user_model(user_uuid)
+                            self.current_provider = get_user_provider(user_uuid)
+                    else:
+                        # Fallback to global config if no LLM config in profile
+                        self.current_model = get_user_model(user_uuid)
+                        self.current_provider = get_user_provider(user_uuid)
+                else:
+                    # Fallback to global config if profile not found
+                    self.current_model = get_user_model(user_uuid)
+                    self.current_provider = get_user_provider(user_uuid)
+            else:
+                # Fallback to global config if no active profile
+                self.current_model = get_user_model(user_uuid)
+                self.current_provider = get_user_provider(user_uuid)
+        except Exception as e:
+            # Fallback to global config on error
+            app_logger.warning(f"Failed to get model/provider from profile, using global config: {e}")
+            self.current_model = get_user_model(user_uuid)
+            self.current_provider = get_user_provider(user_uuid)
         # --- MODIFICATION END ---
 
         self.structured_collected_data = {}
