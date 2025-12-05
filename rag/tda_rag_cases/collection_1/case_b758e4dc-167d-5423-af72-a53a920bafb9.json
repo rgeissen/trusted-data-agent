@@ -1,0 +1,55 @@
+{
+  "case_id": "b758e4dc-167d-5423-af72-a53a920bafb9",
+  "metadata": {
+    "session_id": "cb7dd4bc-2463-4daf-88c8-b3233396f703",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "task-4247a246-d668-4161-8e79-9d2225385da3",
+    "collection_id": 1,
+    "has_orchestration": false,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-12-05T16:55:50.852401+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Google",
+      "model": "gemini-2.0-flash",
+      "profile_tag": "GOGET",
+      "input_tokens": 9234,
+      "output_tokens": 119
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "user_uuid": "ae27c987-a039-4ee7-9311-5058b6684e94"
+  },
+  "intent": {
+    "user_query": "how many databases are on the system?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Get a list of all databases on the system.",
+        "relevant_tools": [
+          "base_databaseList"
+        ],
+        "arguments": {}
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

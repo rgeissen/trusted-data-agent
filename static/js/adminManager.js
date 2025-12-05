@@ -890,8 +890,8 @@ const AdminManager = {
         try {
             const token = localStorage.getItem('tda_auth_token');
             
-            // Use new endpoint that aggregates from session files (same source as Execution Insights)
-            const response = await fetch(`/api/v1/auth/user/consumption-summary`, {
+            // Use new DB-backed endpoint for fast consumption queries
+            const response = await fetch(`/api/v1/consumption/users?limit=1000`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -900,12 +900,19 @@ const AdminManager = {
 
             const data = await response.json();
             
-            if (data.status !== 'success') {
-                throw new Error(data.message || 'Failed to load consumption data');
+            if (!data.users) {
+                throw new Error('Invalid response format');
             }
 
             // Transform data to match expected format
             const consumptionData = data.users.map(userData => {
+                const inputPercentage = userData.input_tokens_limit 
+                    ? (userData.total_input_tokens / userData.input_tokens_limit * 100)
+                    : 0;
+                const outputPercentage = userData.output_tokens_limit
+                    ? (userData.total_output_tokens / userData.output_tokens_limit * 100)
+                    : 0;
+                
                 return {
                     user: {
                         id: userData.user_id,
@@ -913,22 +920,22 @@ const AdminManager = {
                         email: userData.email
                     },
                     consumption: {
-                        period: data.period,
-                        profile_name: userData.profile_name,
-                        profile_id: userData.profile_id,
+                        period: userData.current_period,
+                        profile_name: 'N/A',
+                        profile_id: null,
                         input_tokens: {
-                            used: userData.input_tokens,
-                            limit: null,  // Will be populated from profile if needed
-                            remaining: null,
-                            percentage_used: 0
+                            used: userData.total_input_tokens,
+                            limit: userData.input_tokens_limit,
+                            remaining: userData.input_tokens_remaining,
+                            percentage_used: Math.round(inputPercentage)
                         },
                         output_tokens: {
-                            used: userData.output_tokens,
-                            limit: null,
-                            remaining: null,
-                            percentage_used: 0
+                            used: userData.total_output_tokens,
+                            limit: userData.output_tokens_limit,
+                            remaining: userData.output_tokens_remaining,
+                            percentage_used: Math.round(outputPercentage)
                         },
-                        has_quota: userData.profile_id !== null
+                        has_quota: userData.input_tokens_limit !== null || userData.output_tokens_limit !== null
                     }
                 };
             });

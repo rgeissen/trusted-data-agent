@@ -799,6 +799,10 @@ class ConsumptionTurn(Base):
     session_id = Column(String(36), nullable=False, index=True)
     turn_number = Column(Integer, nullable=False)
     
+    # Query and session context
+    user_query = Column(Text, nullable=True)  # The user's question/prompt
+    session_name = Column(String(255), nullable=True)  # Session display name
+    
     # Token usage
     input_tokens = Column(Integer, nullable=False)
     output_tokens = Column(Integer, nullable=False)
@@ -840,6 +844,8 @@ class ConsumptionTurn(Base):
             'user_id': self.user_id,
             'session_id': self.session_id,
             'turn_number': self.turn_number,
+            'user_query': self.user_query,
+            'session_name': self.session_name,
             'input_tokens': self.input_tokens,
             'output_tokens': self.output_tokens,
             'total_tokens': self.total_tokens,

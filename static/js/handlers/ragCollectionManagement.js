@@ -1173,23 +1173,35 @@ async function calculateRagImpactKPIs() {
         let globalMetrics = null;
         
         try {
-            const analyticsResponse = await fetch('/api/v1/sessions/analytics', {
+            const analyticsResponse = await fetch('/api/v1/consumption/summary', {
                 headers: { 'Authorization': `Bearer ${window.authClient.getToken()}` }
             });
             if (analyticsResponse.ok) {
-                const analyticsData = await analyticsResponse.json();
-                ragMetrics = analyticsData.rag_metrics || ragMetrics;
-                isAdmin = analyticsData.is_admin || false;
+                const consumptionData = await analyticsResponse.json();
                 
-                // Get global metrics for admins
-                if (isAdmin && analyticsData.rag_metrics_global) {
-                    globalMetrics = {
-                        tokensSaved: analyticsData.rag_metrics_global.tokens_saved || 0,
-                        costSaved: analyticsData.rag_metrics_global.cost_saved || 0,
-                        totalImprovements: analyticsData.rag_metrics_global.total_improvements || 0,
-                        totalSessions: analyticsData.rag_metrics_global.total_sessions || 0
-                    };
-                }
+                // Extract RAG metrics from consumption data
+                ragMetrics = {
+                    rag_guided_turns: consumptionData.rag_guided_turns || 0,
+                    total_turns: consumptionData.total_turns || 0,
+                    activation_rate: consumptionData.rag_activation_rate_percent || 0,
+                    avg_rag_tokens: 0,
+                    avg_non_rag_tokens: 0,
+                    efficiency_gain: consumptionData.rag_activation_rate_percent || 0,
+                    tokens_saved: consumptionData.rag_output_tokens_saved || 0,
+                    cost_saved: consumptionData.rag_cost_saved_usd || 0.0
+                };
+                
+                // Check if user is admin (from user object if available)
+                isAdmin = false;
+                
+                // For now, global metrics same as user metrics
+                // TODO: Add admin-only global endpoint if needed
+                globalMetrics = {
+                    tokensSaved: ragMetrics.tokens_saved,
+                    costSaved: ragMetrics.cost_saved,
+                    totalImprovements: ragMetrics.rag_guided_turns,
+                    totalSessions: consumptionData.total_sessions || 0
+                };
             }
         } catch (error) {
             console.warn('Failed to fetch RAG metrics:', error);

@@ -462,6 +462,18 @@ def update_session_name(user_uuid: str, session_id: str, new_name: str):
         if not _save_session(user_uuid, session_id, session_data):
              app_logger.error(f"Failed to save session after updating name for {session_id}")
         else:
+            # --- CONSUMPTION TRACKING: Update session name in database ---
+            try:
+                from trusted_data_agent.auth.database import get_db_session
+                from trusted_data_agent.auth.consumption_manager import ConsumptionManager
+                
+                with get_db_session() as db_session:
+                    manager = ConsumptionManager(db_session)
+                    manager.update_session_name(user_uuid, session_id, new_name)
+            except Exception as e:
+                app_logger.warning(f"Failed to update session name in consumption database: {e}")
+            # --- CONSUMPTION TRACKING END ---
+            
             # --- MODIFICATION START: Send session_name_update notification ---
             notification_queues = APP_STATE.get("notification_queues", {}).get(user_uuid, set())
             if notification_queues:
@@ -639,6 +651,11 @@ def update_last_turn_data(user_uuid: str, session_id: str, turn_data: dict):
                 cost_usd = cost_manager.calculate_cost(provider, model, input_tokens, output_tokens)
                 cost_usd_cents = int(cost_usd * 100)  # Convert to cents
                 
+                # Reload session to get latest name (might have been updated after initial load)
+                current_session = _load_session(user_uuid, session_id)
+                session_name = (current_session.get('name') if current_session else None) or session_data.get('name') or 'Untitled Session'
+                user_query = turn_data.get('user_query', '')
+                
                 # Record the turn
                 manager.record_turn(
                     user_id=user_uuid,
@@ -651,8 +668,12 @@ def update_last_turn_data(user_uuid: str, session_id: str, turn_data: dict):
                     status=status,
                     rag_used=rag_used,
                     rag_tokens_saved=rag_tokens_saved,
-                    cost_usd_cents=cost_usd_cents
+                    cost_usd_cents=cost_usd_cents,
+                    user_query=user_query,
+                    session_name=session_name
                 )
+                
+                app_logger.debug(f"Recorded turn with session_name='{session_name}', user_query='{user_query[:50] if user_query else None}...')")
                 
                 app_logger.debug(f"Recorded turn metrics for user {user_uuid}, session {session_id}, turn {turn_number}")
         except Exception as e:

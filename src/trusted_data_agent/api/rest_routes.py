@@ -5000,10 +5000,92 @@ async def get_consumption_summary():
         
         from trusted_data_agent.auth.database import get_db_session
         from trusted_data_agent.auth.consumption_manager import ConsumptionManager
+        from trusted_data_agent.auth.models import ConsumptionTurn
+        from sqlalchemy import func
+        from datetime import datetime, timezone, timedelta
         
         with get_db_session() as db_session:
             manager = ConsumptionManager(db_session)
             summary = manager.get_consumption_summary(user_uuid)
+            
+            # Calculate velocity data (last 24 hours) from consumption_turns table
+            now = datetime.now(timezone.utc)
+            last_24h = now - timedelta(hours=24)
+            
+            # Query turns grouped by hour for last 24 hours
+            velocity_query = db_session.query(
+                func.strftime('%Y-%m-%d %H:00:00', ConsumptionTurn.created_at).label('hour'),
+                func.count(ConsumptionTurn.id).label('count')
+            ).filter(
+                ConsumptionTurn.user_id == user_uuid,
+                ConsumptionTurn.created_at >= last_24h
+            ).group_by('hour').order_by('hour')
+            
+            velocity_results = velocity_query.all()
+            velocity_data = [{"hour": hour, "count": count} for hour, count in velocity_results]
+            
+            # Calculate model distribution from recent activity
+            model_query = db_session.query(
+                ConsumptionTurn.model,
+                func.count(ConsumptionTurn.id).label('count')
+            ).filter(
+                ConsumptionTurn.user_id == user_uuid
+            ).group_by(ConsumptionTurn.model)
+            
+            model_results = model_query.all()
+            total_model_count = sum(count for _, count in model_results)
+            model_distribution = {
+                model: round(count / total_model_count * 100, 1)
+                for model, count in model_results
+            } if total_model_count > 0 else {}
+            
+            # Get top expensive sessions (by total tokens per session)
+            expensive_sessions_query = db_session.query(
+                ConsumptionTurn.session_id,
+                func.max(ConsumptionTurn.session_name).label('session_name'),
+                func.sum(ConsumptionTurn.total_tokens).label('total_tokens'),
+                func.sum(ConsumptionTurn.cost_usd_cents).label('total_cost')
+            ).filter(
+                ConsumptionTurn.user_id == user_uuid
+            ).group_by(ConsumptionTurn.session_id).order_by(
+                func.sum(ConsumptionTurn.total_tokens).desc()
+            ).limit(5)
+            
+            expensive_sessions = []
+            for session_id, session_name, tokens, cost in expensive_sessions_query.all():
+                expensive_sessions.append({
+                    'session_id': session_id,
+                    'name': session_name or 'Untitled Session',
+                    'tokens': tokens,
+                    'cost': cost / 100.0 if cost else 0.0
+                })
+            
+            # Get top expensive individual turns (questions)
+            expensive_turns_query = db_session.query(
+                ConsumptionTurn.session_id,
+                ConsumptionTurn.turn_number,
+                ConsumptionTurn.user_query,
+                ConsumptionTurn.total_tokens,
+                ConsumptionTurn.cost_usd_cents
+            ).filter(
+                ConsumptionTurn.user_id == user_uuid
+            ).order_by(ConsumptionTurn.total_tokens.desc()).limit(5)
+            
+            expensive_questions = []
+            for session_id, turn_num, user_query, tokens, cost in expensive_turns_query.all():
+                expensive_questions.append({
+                    'session_id': session_id,
+                    'turn': turn_num,
+                    'query': user_query or 'No query text',
+                    'tokens': tokens,
+                    'cost': cost / 100.0 if cost else 0.0
+                })
+            
+            # Add all analytics data to summary
+            summary['velocity_data'] = velocity_data
+            summary['model_distribution'] = model_distribution
+            summary['top_expensive_queries'] = expensive_sessions
+            summary['top_expensive_questions'] = expensive_questions
             
             return jsonify(summary), 200
     

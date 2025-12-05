@@ -99,17 +99,38 @@ class ConsumptionManager:
         consumption = self.get_or_create_consumption(user_id)
         now = datetime.now(timezone.utc)
         
+        # Ensure reset times are timezone-aware for comparison
+        # Handle both None and timezone-naive datetimes from database
+        try:
+            hour_reset = consumption.hour_reset_at
+            if hour_reset and hour_reset.tzinfo is None:
+                hour_reset = hour_reset.replace(tzinfo=timezone.utc)
+                # Update the database record to be timezone-aware
+                consumption.hour_reset_at = hour_reset
+        except (TypeError, AttributeError):
+            hour_reset = None
+        
+        try:
+            day_reset = consumption.day_reset_at
+            if day_reset and day_reset.tzinfo is None:
+                day_reset = day_reset.replace(tzinfo=timezone.utc)
+                # Update the database record to be timezone-aware
+                consumption.day_reset_at = day_reset
+        except (TypeError, AttributeError):
+            day_reset = None
+        
         # Reset hourly counter if needed
-        if now >= consumption.hour_reset_at:
+        if not hour_reset or now >= hour_reset:
             consumption.requests_this_hour = 0
             consumption.hour_reset_at = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
-            self.db.commit()
         
         # Reset daily counter if needed
-        if now >= consumption.day_reset_at:
+        if not day_reset or now >= day_reset:
             consumption.requests_today = 0
             consumption.day_reset_at = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
-            self.db.commit()
+        
+        # Commit all changes at once
+        self.db.commit()
         
         # Check hourly limit
         if consumption.requests_this_hour >= consumption.prompts_per_hour_limit:
@@ -182,7 +203,9 @@ class ConsumptionManager:
         status: str,
         rag_used: bool = False,
         rag_tokens_saved: int = 0,
-        cost_usd_cents: int = 0
+        cost_usd_cents: int = 0,
+        user_query: str = None,
+        session_name: str = None
     ) -> None:
         """
         Record a completed turn with full metrics.
@@ -252,6 +275,8 @@ class ConsumptionManager:
             user_id=user_id,
             session_id=session_id,
             turn_number=turn_number,
+            user_query=user_query,
+            session_name=session_name,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             total_tokens=total_tokens,
@@ -269,6 +294,29 @@ class ConsumptionManager:
         
         logger.debug(f"Recorded turn for user {user_id}, session {session_id}, turn {turn_number}: "
                     f"{total_tokens} tokens, status={status}, rag={rag_used}")
+    
+    def update_session_name(self, user_id: str, session_id: str, session_name: str) -> None:
+        """
+        Update session_name for all turns in a session.
+        Call this when a session name is generated/changed.
+        
+        Args:
+            user_id: User ID
+            session_id: Session ID
+            session_name: New session name
+        """
+        # Update all turns for this session
+        turns = self.db.query(ConsumptionTurn).filter(
+            ConsumptionTurn.user_id == user_id,
+            ConsumptionTurn.session_id == session_id
+        ).all()
+        
+        for turn in turns:
+            turn.session_name = session_name
+        
+        if turns:
+            self.db.commit()
+            logger.debug(f"Updated session_name to '{session_name}' for {len(turns)} turns in session {session_id}")
     
     def increment_session_count(self, user_id: str, is_new_session: bool = True) -> None:
         """

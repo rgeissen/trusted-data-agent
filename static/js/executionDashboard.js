@@ -182,17 +182,19 @@ class ExecutionDashboard {
             console.log('[ExecutionDashboard] Fetching sessions with URL:', sessionsUrl);
             console.log('[ExecutionDashboard] View all sessions enabled:', this.viewAllSessions);
             
-            const [analyticsResponse, sessionsResponse] = await Promise.all([
-                fetch('/api/v1/sessions/analytics', { method: 'GET', headers: headers }),
+            // Fetch consumption metrics (fast DB query with velocity and model distribution) and sessions list
+            const [consumptionResponse, sessionsResponse] = await Promise.all([
+                fetch('/api/v1/consumption/summary', { method: 'GET', headers: headers }),
                 fetch(sessionsUrl, { method: 'GET', headers: headers })
             ]);
 
-            if (!analyticsResponse.ok || !sessionsResponse.ok) {
-                console.error('[ExecutionDashboard] API error - analytics:', analyticsResponse.status, 'sessions:', sessionsResponse.status);
+            if (!consumptionResponse.ok || !sessionsResponse.ok) {
+                console.error('[ExecutionDashboard] API error - consumption:', consumptionResponse.status, 'sessions:', sessionsResponse.status);
                 throw new Error('Failed to fetch dashboard data');
             }
 
-            this.analyticsData = await analyticsResponse.json();
+            // Use consumption data directly (includes velocity_data and model_distribution from DB)
+            this.analyticsData = await consumptionResponse.json();
             const sessionsData = await sessionsResponse.json();
             console.log('[ExecutionDashboard] Raw sessions response:', sessionsData);
             
@@ -218,12 +220,12 @@ class ExecutionDashboard {
         const data = this.analyticsData;
 
         // Update metric cards
-        document.getElementById('metric-total-sessions').textContent = data.total_sessions.toLocaleString();
-        document.getElementById('metric-total-tokens').textContent = data.total_tokens.total.toLocaleString();
-        document.getElementById('metric-input-tokens').textContent = data.total_tokens.input.toLocaleString();
-        document.getElementById('metric-output-tokens').textContent = data.total_tokens.output.toLocaleString();
-        document.getElementById('metric-success-rate').textContent = `${data.success_rate}%`;
-        document.getElementById('metric-estimated-cost').textContent = `$${data.estimated_cost.toFixed(2)}`;
+        document.getElementById('metric-total-sessions').textContent = (data.total_sessions || 0).toLocaleString();
+        document.getElementById('metric-total-tokens').textContent = (data.total_tokens || 0).toLocaleString();
+        document.getElementById('metric-input-tokens').textContent = (data.total_input_tokens || 0).toLocaleString();
+        document.getElementById('metric-output-tokens').textContent = (data.total_output_tokens || 0).toLocaleString();
+        document.getElementById('metric-success-rate').textContent = `${data.success_rate_percent || 0}%`;
+        document.getElementById('metric-estimated-cost').textContent = `$${(data.estimated_cost_usd || 0).toFixed(2)}`;
 
         // Render velocity sparkline
         this.renderVelocitySparkline(data.velocity_data);
@@ -339,7 +341,7 @@ class ExecutionDashboard {
                     <span class="text-xs font-bold text-red-400">${index + 1}</span>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm text-white truncate" title="${session.query}">${session.query}</p>
+                    <p class="text-sm text-white truncate" title="${session.name}">${session.name}</p>
                     <p class="text-xs text-gray-500">ID: ${session.session_id}</p>
                 </div>
                 <div class="flex-shrink-0 text-xs font-semibold text-red-400">${session.tokens.toLocaleString()}</div>
