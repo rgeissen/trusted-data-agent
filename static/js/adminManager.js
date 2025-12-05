@@ -295,14 +295,14 @@ const AdminManager = {
      * Switch User Management sub-tabs
      */
     switchUserManagementSubtab(subtabName) {
-        // Update sub-tab buttons
+        // Update sub-tab buttons (filled rounded button style)
         document.querySelectorAll('.user-management-subtab').forEach(tab => {
             if (tab.dataset.subtab === subtabName) {
-                tab.classList.add('active', 'border-[#F15F22]', 'text-white');
-                tab.classList.remove('text-gray-400', 'border-transparent');
+                tab.classList.add('active', 'bg-[#F15F22]', 'text-white');
+                tab.classList.remove('bg-gray-700/50', 'text-gray-400', 'hover:bg-gray-700');
             } else {
-                tab.classList.remove('active', 'border-[#F15F22]', 'text-white');
-                tab.classList.add('text-gray-400', 'border-transparent');
+                tab.classList.remove('active', 'bg-[#F15F22]', 'text-white');
+                tab.classList.add('bg-gray-700/50', 'text-gray-400', 'hover:bg-gray-700');
             }
         });
 

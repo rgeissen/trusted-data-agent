@@ -821,6 +821,11 @@ function hideWelcomeScreen() {
             chatContainer.style.display = 'flex';
             chatContainer.style.flexDirection = 'column';
         }
+        
+        // Show all panels (History, Live Status, Resource) when welcome screen is hidden
+        document.querySelectorAll('[data-requires-config="true"]').forEach(panel => {
+            panel.style.display = '';  // Reset to default (CSS will control visibility)
+        });
     }
 }
 
@@ -1095,6 +1100,11 @@ async function showWelcomeScreen() {
         if (chatFooter) {
             chatFooter.classList.add('hidden');
         }
+        
+        // Hide all panels (History, Live Status, Resource) when welcome screen is shown
+        document.querySelectorAll('[data-requires-config="true"]').forEach(panel => {
+            panel.style.display = 'none';
+        });
     }
     
     // Check if user has previously saved MCP servers and LLM providers
