@@ -632,3 +632,291 @@ class UserTokenUsage(Base):
             'first_usage_at': self.first_usage_at.isoformat() if self.first_usage_at else None,
             'last_usage_at': self.last_usage_at.isoformat() if self.last_usage_at else None
         }
+
+
+class UserConsumption(Base):
+    """Real-time consumption tracking for performance optimization and enforcement."""
+    
+    __tablename__ = 'user_consumption'
+    
+    # Primary key
+    user_id = Column(String(36), ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
+    
+    # === TOKEN TRACKING ===
+    # Current period (monthly)
+    current_period = Column(String(7), nullable=False, index=True)  # e.g., "2025-12"
+    period_started_at = Column(DateTime(timezone=True), nullable=False)
+    
+    # Cumulative token counts (current period)
+    total_input_tokens = Column(Integer, nullable=False, default=0)
+    total_output_tokens = Column(Integer, nullable=False, default=0)
+    total_tokens = Column(Integer, nullable=False, default=0)
+    
+    # Profile limits (cached from consumption_profile)
+    input_tokens_limit = Column(Integer, nullable=True)  # NULL = unlimited
+    output_tokens_limit = Column(Integer, nullable=True)  # NULL = unlimited
+    
+    # === QUALITY METRICS ===
+    successful_turns = Column(Integer, nullable=False, default=0)
+    failed_turns = Column(Integer, nullable=False, default=0)
+    total_turns = Column(Integer, nullable=False, default=0)
+    # success_rate_percent computed as (successful_turns / total_turns * 100)
+    
+    # === RAG METRICS ===
+    rag_guided_turns = Column(Integer, nullable=False, default=0)  # Turns that used RAG
+    rag_output_tokens_saved = Column(Integer, nullable=False, default=0)  # Efficiency gain
+    champion_cases_created = Column(Integer, nullable=False, default=0)
+    collections_subscribed = Column(Text, nullable=True)  # JSON array of collection IDs
+    
+    # === COST TRACKING ===
+    estimated_cost_usd = Column(Integer, nullable=False, default=0)  # In cents (USD × 100)
+    rag_cost_saved_usd = Column(Integer, nullable=False, default=0)  # In cents
+    
+    # === RATE LIMITING ===
+    requests_this_hour = Column(Integer, nullable=False, default=0)
+    requests_today = Column(Integer, nullable=False, default=0)
+    hour_reset_at = Column(DateTime(timezone=True), nullable=False)
+    day_reset_at = Column(DateTime(timezone=True), nullable=False)
+    
+    # Rate limits (cached from consumption_profile)
+    prompts_per_hour_limit = Column(Integer, nullable=False, default=100)
+    prompts_per_day_limit = Column(Integer, nullable=False, default=1000)
+    
+    # === VELOCITY TRACKING ===
+    sessions_last_24h = Column(Integer, nullable=False, default=0)
+    turns_last_24h = Column(Integer, nullable=False, default=0)
+    peak_requests_per_hour = Column(Integer, nullable=False, default=0)
+    peak_requests_per_day = Column(Integer, nullable=False, default=0)
+    
+    # === MODEL USAGE ===
+    models_used = Column(Text, nullable=True)  # JSON object: {"gemini-2.0-flash": 150, "claude-3-5-haiku": 75}
+    providers_used = Column(Text, nullable=True)  # JSON object: {"Google": 150, "Anthropic": 75}
+    
+    # === SESSION TRACKING ===
+    total_sessions = Column(Integer, nullable=False, default=0)
+    active_sessions = Column(Integer, nullable=False, default=0)  # Currently open sessions
+    
+    # === TIMESTAMPS ===
+    first_usage_at = Column(DateTime(timezone=True), nullable=True)
+    last_usage_at = Column(DateTime(timezone=True), nullable=True)
+    last_updated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    # === RELATIONSHIPS ===
+    user = relationship("User")
+    
+    # === INDEXES ===
+    __table_args__ = (
+        Index('idx_consumption_period', 'current_period'),
+        Index('idx_consumption_last_usage', 'last_usage_at'),
+        Index('idx_consumption_rate_limits', 'requests_this_hour', 'requests_today'),
+    )
+    
+    def __repr__(self):
+        return f"<UserConsumption(user_id='{self.user_id}', period='{self.current_period}', total_tokens={self.total_tokens})>"
+    
+    def to_dict(self):
+        """Convert consumption to dictionary for API responses."""
+        import json
+        
+        # Calculate computed metrics
+        success_rate = (self.successful_turns / self.total_turns * 100) if self.total_turns > 0 else 0.0
+        rag_activation_rate = (self.rag_guided_turns / self.total_turns * 100) if self.total_turns > 0 else 0.0
+        
+        # Parse JSON fields
+        models_used = json.loads(self.models_used) if self.models_used else {}
+        providers_used = json.loads(self.providers_used) if self.providers_used else {}
+        collections_subscribed = json.loads(self.collections_subscribed) if self.collections_subscribed else []
+        
+        return {
+            'user_id': self.user_id,
+            'current_period': self.current_period,
+            'period_started_at': self.period_started_at.isoformat() if self.period_started_at else None,
+            
+            # Token metrics
+            'total_input_tokens': self.total_input_tokens,
+            'total_output_tokens': self.total_output_tokens,
+            'total_tokens': self.total_tokens,
+            'input_tokens_limit': self.input_tokens_limit,
+            'output_tokens_limit': self.output_tokens_limit,
+            'input_tokens_remaining': (self.input_tokens_limit - self.total_input_tokens) if self.input_tokens_limit else None,
+            'output_tokens_remaining': (self.output_tokens_limit - self.total_output_tokens) if self.output_tokens_limit else None,
+            
+            # Quality metrics
+            'successful_turns': self.successful_turns,
+            'failed_turns': self.failed_turns,
+            'total_turns': self.total_turns,
+            'success_rate_percent': round(success_rate, 2),
+            
+            # RAG metrics
+            'rag_guided_turns': self.rag_guided_turns,
+            'rag_activation_rate_percent': round(rag_activation_rate, 2),
+            'rag_output_tokens_saved': self.rag_output_tokens_saved,
+            'champion_cases_created': self.champion_cases_created,
+            'collections_subscribed': collections_subscribed,
+            
+            # Cost metrics
+            'estimated_cost_usd': self.estimated_cost_usd / 100.0,  # Convert cents to dollars
+            'rag_cost_saved_usd': self.rag_cost_saved_usd / 100.0,
+            
+            # Rate limiting
+            'requests_this_hour': self.requests_this_hour,
+            'requests_today': self.requests_today,
+            'hour_reset_at': self.hour_reset_at.isoformat() if self.hour_reset_at else None,
+            'day_reset_at': self.day_reset_at.isoformat() if self.day_reset_at else None,
+            'prompts_per_hour_limit': self.prompts_per_hour_limit,
+            'prompts_per_day_limit': self.prompts_per_day_limit,
+            'requests_hour_remaining': self.prompts_per_hour_limit - self.requests_this_hour,
+            'requests_day_remaining': self.prompts_per_day_limit - self.requests_today,
+            
+            # Velocity
+            'sessions_last_24h': self.sessions_last_24h,
+            'turns_last_24h': self.turns_last_24h,
+            'peak_requests_per_hour': self.peak_requests_per_hour,
+            'peak_requests_per_day': self.peak_requests_per_day,
+            
+            # Model usage
+            'models_used': models_used,
+            'providers_used': providers_used,
+            
+            # Session tracking
+            'total_sessions': self.total_sessions,
+            'active_sessions': self.active_sessions,
+            
+            # Timestamps
+            'first_usage_at': self.first_usage_at.isoformat() if self.first_usage_at else None,
+            'last_usage_at': self.last_usage_at.isoformat() if self.last_usage_at else None,
+            'last_updated_at': self.last_updated_at.isoformat() if self.last_updated_at else None
+        }
+
+
+class ConsumptionTurn(Base):
+    """Granular turn-level tracking for audit trail and analytics."""
+    
+    __tablename__ = 'consumption_turns'
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    session_id = Column(String(36), nullable=False, index=True)
+    turn_number = Column(Integer, nullable=False)
+    
+    # Token usage
+    input_tokens = Column(Integer, nullable=False)
+    output_tokens = Column(Integer, nullable=False)
+    total_tokens = Column(Integer, nullable=False)
+    
+    # Model info
+    provider = Column(String(50), nullable=False)
+    model = Column(String(100), nullable=False)
+    
+    # Cost
+    cost_usd_cents = Column(Integer, nullable=False, default=0)  # In cents
+    
+    # Quality
+    status = Column(String(20), nullable=False)  # success, failure, partial
+    
+    # RAG
+    rag_used = Column(Boolean, nullable=False, default=False)
+    rag_tokens_saved = Column(Integer, nullable=False, default=0)
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    
+    # Relationships
+    user = relationship("User")
+    
+    # Indexes
+    __table_args__ = (
+        Index('idx_turn_user_session', 'user_id', 'session_id'),
+        Index('idx_turn_created', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f"<ConsumptionTurn(user_id='{self.user_id}', session='{self.session_id}', turn={self.turn_number})>"
+    
+    def to_dict(self):
+        """Convert turn to dictionary for API responses."""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'session_id': self.session_id,
+            'turn_number': self.turn_number,
+            'input_tokens': self.input_tokens,
+            'output_tokens': self.output_tokens,
+            'total_tokens': self.total_tokens,
+            'provider': self.provider,
+            'model': self.model,
+            'cost_usd': self.cost_usd_cents / 100.0,
+            'status': self.status,
+            'rag_used': self.rag_used,
+            'rag_tokens_saved': self.rag_tokens_saved,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class ConsumptionPeriodsArchive(Base):
+    """Historical snapshots for period rollover and analytics."""
+    
+    __tablename__ = 'consumption_periods_archive'
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    period = Column(String(7), nullable=False, index=True)  # e.g., "2025-12"
+    
+    # Snapshot of metrics at period end
+    total_input_tokens = Column(Integer, nullable=False)
+    total_output_tokens = Column(Integer, nullable=False)
+    total_tokens = Column(Integer, nullable=False)
+    successful_turns = Column(Integer, nullable=False)
+    failed_turns = Column(Integer, nullable=False)
+    total_turns = Column(Integer, nullable=False)
+    rag_guided_turns = Column(Integer, nullable=False)
+    rag_output_tokens_saved = Column(Integer, nullable=False)
+    champion_cases_created = Column(Integer, nullable=False)
+    estimated_cost_usd = Column(Integer, nullable=False)  # In cents
+    rag_cost_saved_usd = Column(Integer, nullable=False)  # In cents
+    total_sessions = Column(Integer, nullable=False)
+    
+    # Period boundaries
+    period_started_at = Column(DateTime(timezone=True), nullable=False)
+    period_ended_at = Column(DateTime(timezone=True), nullable=False)
+    archived_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    user = relationship("User")
+    
+    # Indexes
+    __table_args__ = (
+        Index('idx_archive_user_period', 'user_id', 'period', unique=True),
+        Index('idx_archive_period', 'period'),
+    )
+    
+    def __repr__(self):
+        return f"<ConsumptionPeriodsArchive(user_id='{self.user_id}', period='{self.period}')>"
+    
+    def to_dict(self):
+        """Convert archive to dictionary for API responses."""
+        success_rate = (self.successful_turns / self.total_turns * 100) if self.total_turns > 0 else 0.0
+        rag_activation_rate = (self.rag_guided_turns / self.total_turns * 100) if self.total_turns > 0 else 0.0
+        
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'period': self.period,
+            'total_input_tokens': self.total_input_tokens,
+            'total_output_tokens': self.total_output_tokens,
+            'total_tokens': self.total_tokens,
+            'successful_turns': self.successful_turns,
+            'failed_turns': self.failed_turns,
+            'total_turns': self.total_turns,
+            'success_rate_percent': round(success_rate, 2),
+            'rag_guided_turns': self.rag_guided_turns,
+            'rag_activation_rate_percent': round(rag_activation_rate, 2),
+            'rag_output_tokens_saved': self.rag_output_tokens_saved,
+            'champion_cases_created': self.champion_cases_created,
+            'estimated_cost_usd': self.estimated_cost_usd / 100.0,
+            'rag_cost_saved_usd': self.rag_cost_saved_usd / 100.0,
+            'total_sessions': self.total_sessions,
+            'period_started_at': self.period_started_at.isoformat() if self.period_started_at else None,
+            'period_ended_at': self.period_ended_at.isoformat() if self.period_ended_at else None,
+            'archived_at': self.archived_at.isoformat() if self.archived_at else None
+        }

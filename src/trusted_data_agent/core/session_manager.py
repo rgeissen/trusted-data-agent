@@ -207,6 +207,22 @@ def create_session(user_uuid: str, provider: str, llm_instance: any, charting_in
 
     if _save_session(user_uuid, session_id, session_data):
         app_logger.info(f"Successfully created and saved session '{session_id}' for user '{user_uuid}'.")
+        
+        # --- CONSUMPTION TRACKING START ---
+        # Increment session count in consumption database
+        try:
+            from trusted_data_agent.auth.database import get_db_session
+            from trusted_data_agent.auth.consumption_manager import ConsumptionManager
+            
+            with get_db_session() as db_session:
+                manager = ConsumptionManager(db_session)
+                manager.increment_session_count(user_uuid, is_new_session=True)
+                app_logger.debug(f"Incremented session count for user {user_uuid}")
+        except Exception as e:
+            # Non-critical: File storage is source of truth, DB is performance cache
+            app_logger.warning(f"Failed to update session count for user {user_uuid}: {e}")
+        # --- CONSUMPTION TRACKING END ---
+        
         return session_id
     else:
         app_logger.error(f"Failed to save newly created session '{session_id}' for user '{user_uuid}'.")
@@ -481,6 +497,25 @@ def update_token_count(user_uuid: str, session_id: str, input_tokens: int, outpu
             app_logger.debug(f"Recorded token usage for user {user_uuid}: input={input_tokens}, output={output_tokens}")
         except Exception as e:
             app_logger.error(f"Failed to record token usage for user {user_uuid}: {e}")
+        
+        # --- CONSUMPTION TRACKING START ---
+        # Dual-write to consumption database for performance optimization
+        # This enables O(1) lookups for rate limiting and quota checks
+        try:
+            from trusted_data_agent.auth.database import get_db_session
+            from trusted_data_agent.auth.consumption_manager import ConsumptionManager
+            
+            # Note: This is a lightweight update - no full turn data yet
+            # Full turn metrics will be recorded in update_last_turn_data
+            with get_db_session() as db_session:
+                manager = ConsumptionManager(db_session)
+                # Just increment request counter here (called at start of turn)
+                manager.increment_request_counter(user_uuid)
+                app_logger.debug(f"Incremented request counter for user {user_uuid}")
+        except Exception as e:
+            # Non-critical: File storage is source of truth, DB is performance cache
+            app_logger.warning(f"Failed to update consumption tracking for user {user_uuid}: {e}")
+        # --- CONSUMPTION TRACKING END ---
     else:
         app_logger.warning(f"Could not update tokens: Session {session_id} not found for user {user_uuid}.")
 
@@ -575,6 +610,55 @@ def update_last_turn_data(user_uuid: str, session_id: str, turn_data: dict):
 
         # Append the new turn data (contains original_plan and user_query now)
         session_data["last_turn_data"]["workflow_history"].append(turn_data)
+
+        # --- CONSUMPTION TRACKING START ---
+        # Record full turn metrics to consumption database
+        # This provides comprehensive per-turn tracking with cost, RAG, quality metrics
+        try:
+            from trusted_data_agent.auth.database import get_db_session
+            from trusted_data_agent.auth.consumption_manager import ConsumptionManager
+            from trusted_data_agent.core.cost_manager import get_cost_manager
+            
+            with get_db_session() as db_session:
+                manager = ConsumptionManager(db_session)
+                
+                # Extract turn metrics
+                turn_number = len(session_data["last_turn_data"]["workflow_history"])
+                input_tokens = turn_data.get('turn_input_tokens', 0)
+                output_tokens = turn_data.get('turn_output_tokens', 0)
+                provider = turn_data.get('provider', 'Unknown')
+                model = turn_data.get('model', 'unknown')
+                status = turn_data.get('status', 'success')
+                
+                # RAG metrics
+                rag_used = turn_data.get('rag_source_collection_id') is not None
+                rag_tokens_saved = turn_data.get('rag_efficiency_gain', 0) if rag_used else 0
+                
+                # Calculate cost
+                cost_manager = get_cost_manager()
+                cost_usd = cost_manager.calculate_cost(provider, model, input_tokens, output_tokens)
+                cost_usd_cents = int(cost_usd * 100)  # Convert to cents
+                
+                # Record the turn
+                manager.record_turn(
+                    user_id=user_uuid,
+                    session_id=session_id,
+                    turn_number=turn_number,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    provider=provider,
+                    model=model,
+                    status=status,
+                    rag_used=rag_used,
+                    rag_tokens_saved=rag_tokens_saved,
+                    cost_usd_cents=cost_usd_cents
+                )
+                
+                app_logger.debug(f"Recorded turn metrics for user {user_uuid}, session {session_id}, turn {turn_number}")
+        except Exception as e:
+            # Non-critical: File storage is source of truth, DB is performance cache
+            app_logger.warning(f"Failed to record turn metrics for user {user_uuid}: {e}")
+        # --- CONSUMPTION TRACKING END ---
 
         if not _save_session(user_uuid, session_id, session_data):
             app_logger.error(f"Failed to save session after updating last turn data for {session_id}")

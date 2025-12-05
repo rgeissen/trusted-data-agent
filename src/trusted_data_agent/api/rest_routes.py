@@ -4985,6 +4985,166 @@ async def get_sessions_analytics():
         return jsonify({"error": str(e)}), 500
 
 
+# ============================================================================
+# CONSUMPTION TRACKING API ENDPOINTS (Optimized DB-backed)
+# ============================================================================
+
+@rest_api_bp.route('/v1/consumption/summary', methods=['GET'])
+async def get_consumption_summary():
+    """
+    Get comprehensive consumption summary for current user (DB-backed, <50ms).
+    Replaces file-scanning approach with O(1) database lookup.
+    """
+    try:
+        user_uuid = _get_user_uuid_from_request()
+        
+        from trusted_data_agent.auth.database import get_db_session
+        from trusted_data_agent.auth.consumption_manager import ConsumptionManager
+        
+        with get_db_session() as db_session:
+            manager = ConsumptionManager(db_session)
+            summary = manager.get_consumption_summary(user_uuid)
+            
+            return jsonify(summary), 200
+    
+    except Exception as e:
+        app_logger.error(f"Error getting consumption summary: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@rest_api_bp.route('/v1/consumption/users', methods=['GET'])
+@require_admin
+async def get_all_users_consumption():
+    """
+    Get consumption data for all users (admin only, for Admin dashboard).
+    Query params: threshold (filter users near limit), sort, limit, offset
+    """
+    try:
+        from trusted_data_agent.auth.database import get_db_session
+        from trusted_data_agent.auth.models import UserConsumption, User
+        
+        # Parse query params
+        threshold = request.args.get('threshold', type=float)  # e.g., 80.0 for 80%
+        sort_by = request.args.get('sort', 'total_tokens')  # total_tokens, success_rate, etc.
+        limit = request.args.get('limit', type=int, default=100)
+        offset = request.args.get('offset', type=int, default=0)
+        
+        with get_db_session() as db_session:
+            query = db_session.query(UserConsumption, User).join(
+                User, UserConsumption.user_id == User.id
+            )
+            
+            # Apply threshold filter if specified
+            if threshold:
+                query = query.filter(
+                    (UserConsumption.total_input_tokens * 100.0 / UserConsumption.input_tokens_limit >= threshold) |
+                    (UserConsumption.total_output_tokens * 100.0 / UserConsumption.output_tokens_limit >= threshold)
+                ).filter(
+                    (UserConsumption.input_tokens_limit.isnot(None)) |
+                    (UserConsumption.output_tokens_limit.isnot(None))
+                )
+            
+            # Apply sorting
+            if sort_by == 'total_tokens':
+                query = query.order_by(UserConsumption.total_tokens.desc())
+            elif sort_by == 'success_rate':
+                query = query.order_by(
+                    (UserConsumption.successful_turns * 100.0 / UserConsumption.total_turns).desc()
+                )
+            elif sort_by == 'cost':
+                query = query.order_by(UserConsumption.estimated_cost_usd.desc())
+            
+            # Pagination
+            total_count = query.count()
+            results = query.limit(limit).offset(offset).all()
+            
+            # Format response
+            users_data = []
+            for consumption, user in results:
+                data = consumption.to_dict()
+                data['username'] = user.username
+                data['email'] = user.email
+                data['is_admin'] = user.is_admin
+                users_data.append(data)
+            
+            return jsonify({
+                'users': users_data,
+                'total_count': total_count,
+                'limit': limit,
+                'offset': offset
+            }), 200
+    
+    except Exception as e:
+        app_logger.error(f"Error getting all users consumption: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@rest_api_bp.route('/v1/consumption/turns', methods=['GET'])
+async def get_consumption_turns():
+    """
+    Get turn-level consumption details for current user.
+    Query params: session_id, limit, offset
+    """
+    try:
+        user_uuid = _get_user_uuid_from_request()
+        
+        from trusted_data_agent.auth.database import get_db_session
+        from trusted_data_agent.auth.models import ConsumptionTurn
+        
+        # Parse query params
+        session_id = request.args.get('session_id')
+        limit = request.args.get('limit', type=int, default=50)
+        offset = request.args.get('offset', type=int, default=0)
+        
+        with get_db_session() as db_session:
+            query = db_session.query(ConsumptionTurn).filter_by(user_id=user_uuid)
+            
+            if session_id:
+                query = query.filter_by(session_id=session_id)
+            
+            query = query.order_by(ConsumptionTurn.created_at.desc())
+            
+            total_count = query.count()
+            turns = query.limit(limit).offset(offset).all()
+            
+            return jsonify({
+                'turns': [turn.to_dict() for turn in turns],
+                'total_count': total_count,
+                'limit': limit,
+                'offset': offset
+            }), 200
+    
+    except Exception as e:
+        app_logger.error(f"Error getting consumption turns: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@rest_api_bp.route('/v1/consumption/history', methods=['GET'])
+async def get_consumption_history():
+    """
+    Get historical period archives for current user.
+    Returns archived monthly consumption data for trend analysis.
+    """
+    try:
+        user_uuid = _get_user_uuid_from_request()
+        
+        from trusted_data_agent.auth.database import get_db_session
+        from trusted_data_agent.auth.models import ConsumptionPeriodsArchive
+        
+        with get_db_session() as db_session:
+            archives = db_session.query(ConsumptionPeriodsArchive).filter_by(
+                user_id=user_uuid
+            ).order_by(ConsumptionPeriodsArchive.period.desc()).limit(12).all()
+            
+            return jsonify({
+                'history': [archive.to_dict() for archive in archives]
+            }), 200
+    
+    except Exception as e:
+        app_logger.error(f"Error getting consumption history: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
 @rest_api_bp.route('/v1/sessions', methods=['GET'])
 async def get_sessions_list():
     """

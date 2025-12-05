@@ -617,6 +617,39 @@ class PlanExecutor:
     async def run(self):
         """The main, unified execution loop for the agent."""
         final_answer_override = None
+        
+        # --- CONSUMPTION ENFORCEMENT START ---
+        # Check rate limits and token quotas BEFORE execution
+        try:
+            from trusted_data_agent.auth.database import get_db_session
+            from trusted_data_agent.auth.consumption_manager import ConsumptionManager
+            
+            with get_db_session() as db_session:
+                manager = ConsumptionManager(db_session)
+                
+                # Check rate limits
+                rate_allowed, rate_reason = manager.check_rate_limits(self.user_uuid)
+                if not rate_allowed:
+                    error_msg = f"Rate limit exceeded: {rate_reason}"
+                    app_logger.warning(f"Blocking execution for user {self.user_uuid}: {error_msg}")
+                    raise ValueError(error_msg)
+                
+                # Check token quotas
+                quota_allowed, quota_reason = manager.check_token_quota(self.user_uuid)
+                if not quota_allowed:
+                    error_msg = f"Token quota exceeded: {quota_reason}"
+                    app_logger.warning(f"Blocking execution for user {self.user_uuid}: {error_msg}")
+                    raise ValueError(error_msg)
+                
+                app_logger.debug(f"Consumption checks passed for user {self.user_uuid}")
+        except ValueError:
+            # Re-raise quota/rate limit errors
+            raise
+        except Exception as e:
+            # Non-critical: If enforcement fails, allow execution (fail-open)
+            app_logger.error(f"Failed to check consumption limits for user {self.user_uuid}: {e}")
+        # --- CONSUMPTION ENFORCEMENT END ---
+        
         # --- MODIFICATION START: Calculate turn number once and store on self ---
         self.current_turn_number = 1
         session_data = session_manager.get_session(self.user_uuid, self.session_id)
