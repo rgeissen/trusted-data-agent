@@ -46,7 +46,7 @@ logs/
 *.log
 
 # Session data (optional - exclude if contains sensitive data)
-# tda_sessions/
+tda_sessions/
 
 # Sensitive data
 *.env
