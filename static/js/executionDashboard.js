@@ -316,13 +316,13 @@ class ExecutionDashboard {
             .sort((a, b) => b[1] - a[1])
             .map(([model, percentage]) => `
                 <div class="flex items-center gap-2">
-                    <div class="flex-1 flex items-center gap-2">
-                        <span class="text-sm text-white truncate" title="${model}">${model}</span>
-                        <div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div class="flex-1 flex items-center gap-2 min-w-0">
+                        <span class="text-sm text-white truncate max-w-[200px]" title="${model}">${model}</span>
+                        <div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden min-w-[40px]">
                             <div class="h-full bg-teradata-orange rounded-full" style="width: ${percentage}%"></div>
                         </div>
                     </div>
-                    <span class="text-sm text-gray-400 w-12 text-right">${percentage}%</span>
+                    <span class="text-sm text-gray-400 w-12 text-right flex-shrink-0">${percentage}%</span>
                 </div>
             `).join('');
 
