@@ -368,6 +368,19 @@
                                 <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                             </button>
                         </header>
+                        <!-- Show Utility Sessions Toggle (only visible if utility sessions exist) -->
+                        <div id="sidebar-show-utility-sessions-container" class="hidden px-4 py-2 border-b border-white/10">
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                                <input type="checkbox" id="sidebar-show-utility-sessions-toggle" checked class="w-4 h-4 text-purple-500 bg-gray-700 border-gray-600 rounded focus:ring-purple-500 focus:ring-2">
+                                <div class="flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-purple-400 group-hover:text-purple-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    <span class="text-xs text-gray-300 group-hover:text-white transition-colors">Show Utility</span>
+                                </div>
+                            </label>
+                        </div>
                         <div id="session-list" class="flex-1 p-2 overflow-y-auto space-y-2">
                             <!-- Session items will be dynamically added here -->
                         </div>
@@ -1149,6 +1162,36 @@
                                         </button>
                                     </div>
                                     
+                                    <!-- Filters -->
+                                    <select id="session-filter-status" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-teradata-orange transition-colors">
+                                        <option value="all">All Status</option>
+                                        <option value="success">Success</option>
+                                        <option value="partial">Partial</option>
+                                        <option value="failed">Failed</option>
+                                    </select>
+                                    
+                                    <select id="session-sort" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-teradata-orange transition-colors">
+                                        <option value="recent">Most Recent</option>
+                                        <option value="oldest">Oldest First</option>
+                                        <option value="tokens">Most Tokens</option>
+                                        <option value="turns">Most Turns</option>
+                                    </select>
+                                    
+                                    <!-- Toggles -->
+                                    <!-- Show Utility Sessions Toggle (only visible if utility sessions exist) -->
+                                    <div id="show-utility-sessions-container" class="hidden">
+                                        <label class="flex items-center gap-3 px-4 py-2 bg-white/5 border border-white/10 rounded-lg cursor-pointer hover:bg-white/10 transition-all group">
+                                            <input type="checkbox" id="show-utility-sessions-toggle" checked class="w-4 h-4 text-purple-500 bg-gray-700 border-gray-600 rounded focus:ring-purple-500 focus:ring-2">
+                                            <div class="flex items-center gap-2">
+                                                <svg class="w-4 h-4 text-purple-400 group-hover:text-purple-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                </svg>
+                                                <span class="text-sm text-white font-medium">Show Utility Sessions</span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    
                                     <!-- View All Sessions Toggle (Developer/Admin Only) -->
                                     <div id="view-all-sessions-container" class="hidden">
                                         <label class="flex items-center gap-3 px-4 py-2 bg-white/5 border border-white/10 rounded-lg cursor-pointer hover:bg-white/10 transition-all group">
@@ -1161,19 +1204,6 @@
                                             </div>
                                         </label>
                                     </div>
-                                    
-                                    <select id="session-filter-status" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-teradata-orange transition-colors">
-                                        <option value="all">All Status</option>
-                                        <option value="success">Success</option>
-                                        <option value="partial">Partial</option>
-                                        <option value="failed">Failed</option>
-                                    </select>
-                                    <select id="session-sort" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-teradata-orange transition-colors">
-                                        <option value="recent">Most Recent</option>
-                                        <option value="oldest">Oldest First</option>
-                                        <option value="tokens">Most Tokens</option>
-                                        <option value="turns">Most Turns</option>
-                                    </select>
                                 </div>
                             </div>
                             
@@ -3927,12 +3957,12 @@
         </div>
     </div>
     
-    <!-- Add Knowledge Collection Modal -->
+    <!-- Add Planner Repository Modal -->
     <div id="add-rag-collection-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden opacity-0">
         <div id="add-rag-collection-modal-content" class="glass-panel rounded-xl shadow-2xl w-full max-w-7xl p-6 transform scale-95 opacity-0 max-h-[90vh] overflow-y-auto">
             <!-- Modal Header -->
             <div class="flex items-center justify-between mb-6">
-                <h2 class="text-2xl font-bold text-white">Add Knowledge Collection</h2>
+                <h2 class="text-2xl font-bold text-white">Add Planner Repository</h2>
                 <button type="button" id="add-rag-collection-modal-close" class="p-2 rounded-full text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>

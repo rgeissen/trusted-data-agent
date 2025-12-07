@@ -1284,10 +1284,10 @@ class PlanExecutor:
 
                 # --- MODIFICATION START: Add "Producer" logic to send turn to RAG worker ---
                 # Skip RAG processing for temporary API sessions (e.g., prompt execution, question generation)
-                skip_rag_for_temp_sessions = self.user_uuid in [
-                    "api-prompt-executor",
-                    "api-prompt-executor-raw",
-                    "api-question-generator"
+                # Check the source parameter to determine if this is a temporary/utility execution
+                skip_rag_for_temp_sessions = self.source in [
+                    "prompt_library_raw",
+                    "question_generator"
                 ]
                 
                 if APP_CONFIG.RAG_ENABLED and APP_STATE.get('rag_processing_queue') and self.rag_retriever and not skip_rag_for_temp_sessions:
@@ -1301,7 +1301,7 @@ class PlanExecutor:
                         # Log error if queue.put fails, but don't crash the executor
                         app_logger.error(f"Failed to add turn summary to RAG processing queue: {e}", exc_info=True)
                 elif skip_rag_for_temp_sessions:
-                    app_logger.debug(f"Skipping RAG processing for temporary session user_uuid: {self.user_uuid}")
+                    app_logger.debug(f"Skipping RAG processing for temporary execution with source: {self.source}")
                 # --- MODIFICATION END ---
 
 

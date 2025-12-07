@@ -287,14 +287,15 @@ async def execute_prompt(prompt_name: str):
         
         # Create a temporary session and use the agent execution service
         # This ensures tools are properly registered and execution is autonomous
-        temp_user_uuid = "api-prompt-executor"
         llm_instance = APP_STATE.get("llm")
         
         temp_session_id = session_manager.create_session(
-            user_uuid=temp_user_uuid,
+            user_uuid=user_uuid,
             provider=APP_CONFIG.CURRENT_PROVIDER,
             llm_instance=llm_instance,
-            charting_intensity="medium"
+            charting_intensity="medium",
+            is_temporary=True,
+            temporary_purpose=f"Prompt execution: {prompt_name}"
         )
         
         app_logger.info(f"Executing MCP prompt '{prompt_name}' via agent execution service with temp session: {temp_session_id}")
@@ -305,7 +306,7 @@ async def execute_prompt(prompt_name: str):
         
         # Execute using the agent execution service which handles tool registration properly
         result_payload = await execution_service.run_agent_execution(
-            user_uuid=temp_user_uuid,
+            user_uuid=user_uuid,
             session_id=temp_session_id,
             user_input=prompt_text,
             event_handler=dummy_event_handler,  # Provide dummy handler instead of None
@@ -320,11 +321,16 @@ async def execute_prompt(prompt_name: str):
         actual_provider = APP_CONFIG.CURRENT_PROVIDER
         actual_model = APP_CONFIG.CURRENT_MODEL
         
-        # Clean up the temporary session
+        # Archive the temporary session (don't delete - keep for transparency)
         try:
-            session_manager.delete_session(temp_user_uuid, temp_session_id)
+            app_logger.info(f"Attempting to archive temporary session: {temp_session_id}")
+            success = session_manager.archive_session(user_uuid, temp_session_id)
+            if success:
+                app_logger.info(f"Successfully archived temporary session: {temp_session_id}")
+            else:
+                app_logger.error(f"Failed to archive temporary session {temp_session_id}: archive_session returned False")
         except Exception as e:
-            app_logger.warning(f"Failed to delete temp session {temp_session_id}: {e}")
+            app_logger.error(f"Exception while archiving temp session {temp_session_id}: {e}", exc_info=True)
         
         app_logger.info(f"Prompt '{prompt_name}' executed successfully. Tokens: in={input_tokens}, out={output_tokens}")
         
@@ -549,13 +555,19 @@ async def execute_prompt_raw(prompt_name: str):
         if not prompt_text:
             return jsonify({"status": "error", "message": "Could not extract text from prompt"}), 500
         
-        # Create temporary session
-        temp_user_uuid = "api-prompt-executor-raw"
+        # Get authenticated user UUID for session creation
+        user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({"status": "error", "message": "Authentication required"}), 401
+        
+        # Create temporary session for the authenticated user
         temp_session_id = session_manager.create_session(
-            user_uuid=temp_user_uuid,
+            user_uuid=user_uuid,
             provider=APP_CONFIG.CURRENT_PROVIDER,
             llm_instance=llm_instance,
-            charting_intensity="medium"
+            charting_intensity="medium",
+            is_temporary=True,
+            temporary_purpose=f"Prompt execution: {prompt_name}"
         )
         
         app_logger.info(f"Executing prompt '{prompt_name}' (raw) with temp session: {temp_session_id}")
@@ -566,18 +578,23 @@ async def execute_prompt_raw(prompt_name: str):
         
         # Execute via agent execution service
         result_payload = await execution_service.run_agent_execution(
-            user_uuid=temp_user_uuid,
+            user_uuid=user_uuid,
             session_id=temp_session_id,
             user_input=prompt_text,
             event_handler=dummy_event_handler,
             source='prompt_library_raw'
         )
         
-        # Clean up temp session
+        # Archive temp session (don't delete - keep for transparency)
         try:
-            session_manager.delete_session(temp_user_uuid, temp_session_id)
+            app_logger.info(f"Attempting to archive temporary session: {temp_session_id}")
+            success = session_manager.archive_session(user_uuid, temp_session_id)
+            if success:
+                app_logger.info(f"Successfully archived temporary session: {temp_session_id}")
+            else:
+                app_logger.error(f"Failed to archive temporary session {temp_session_id}: archive_session returned False")
         except Exception as e:
-            app_logger.warning(f"Failed to delete temp session: {e}")
+            app_logger.error(f"Exception while archiving temp session {temp_session_id}: {e}", exc_info=True)
         
         # Extract data from result
         execution_trace = result_payload.get('execution_trace', [])
@@ -907,6 +924,11 @@ Return ONLY a JSON array: [{{"question": "...", "sql": "..."}}]"""
 
         app_logger.info(f"Generating {count} RAG questions for subject '{subject}' in database '{database_name}' (context: {len(full_context)} chars)")
         
+        # Get authenticated user UUID
+        user_uuid = _get_user_uuid_from_request()
+        if not user_uuid:
+            return jsonify({"status": "error", "message": "Authentication required"}), 401
+        
         # Call LLM directly using the handler to avoid agent execution framework and TDA_FinalReport validation
         from trusted_data_agent.llm import handler as llm_handler
         
@@ -915,7 +937,7 @@ Return ONLY a JSON array: [{{"question": "...", "sql": "..."}}]"""
             response_text, input_tokens, output_tokens, provider, model = await llm_handler.call_llm_api(
                 llm_instance=llm_instance,
                 prompt=prompt_text,
-                user_uuid="api-question-generator",
+                user_uuid=user_uuid,
                 session_id=None,
                 dependencies={'STATE': APP_STATE, 'CONFIG': APP_CONFIG},
                 reason="Generating RAG questions",
@@ -1286,7 +1308,7 @@ Return ONLY a JSON array: [{{"question": "...", "sql": "..."}}]"""
             response_text, input_tokens, output_tokens, provider, model = await llm_handler.call_llm_api(
                 llm_instance=llm_instance,
                 prompt=prompt_text,
-                user_uuid="api-document-question-generator",
+                user_uuid=user_uuid,
                 session_id=None,
                 dependencies={'STATE': APP_STATE, 'CONFIG': APP_CONFIG},
                 reason="Generating RAG questions from documents",
@@ -2756,8 +2778,15 @@ async def populate_collection_from_template(collection_id: int):
         generator = RAGTemplateGenerator(retriever)
         
         # Validate examples first
+        app_logger.info(f"Validating {len(examples)} examples before population")
         validation_issues = generator.validate_sql_examples(examples)
         if validation_issues:
+            app_logger.error(f"Validation failed: {validation_issues}")
+            # Log all failing examples for debugging
+            for issue in validation_issues:
+                idx = issue['example_index'] - 1  # Convert to 0-based index
+                if idx < len(examples):
+                    app_logger.error(f"Failed example {issue['example_index']}: {examples[idx]}")
             return jsonify({
                 "status": "error", 
                 "message": "Validation failed for some examples",
@@ -5570,6 +5599,8 @@ async def get_sessions_list():
                         "has_errors": has_errors,
                         "archived": session_data.get("archived", False),
                         "archived_at": session_data.get("archived_at"),
+                        "is_temporary": session_data.get("is_temporary", False),
+                        "temporary_purpose": session_data.get("temporary_purpose"),
                         "last_turn_data": {
                             "workflow_history": workflow_history
                         }

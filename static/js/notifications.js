@@ -141,6 +141,10 @@ export function subscribeToNotifications() {
                 // Add the new session to the UI list, but do not make it active
                 const sessionItem = UI.addSessionToList(newSession, false);
                 DOM.sessionList.prepend(sessionItem);
+                // Update utility sessions filter visibility
+                if (window.updateUtilitySessionsFilter) {
+                    window.updateUtilitySessionsFilter();
+                }
                 break;
             }
             case 'session_name_update': {

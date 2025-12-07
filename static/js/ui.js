@@ -1360,7 +1360,14 @@ export function addSessionToList(session, isActive = false) {
     const sessionItem = document.createElement('div');
     sessionItem.id = `session-${session.id}`;
     sessionItem.dataset.sessionId = session.id;
+    sessionItem.dataset.isTemporary = session.is_temporary ? 'true' : 'false';
     sessionItem.className = 'session-item w-full text-left p-3 rounded-lg hover:bg-white/10 transition-colors cursor-pointer';
+    
+    // Add purple left border for utility sessions
+    if (session.is_temporary) {
+        sessionItem.style.borderLeft = '3px solid rgba(139, 92, 246, 0.6)';
+        sessionItem.style.paddingLeft = '0.625rem'; // Adjust padding to compensate for border
+    }
 
     if (isActive) {
         document.querySelectorAll('.session-item').forEach(item => item.classList.remove('active'));
@@ -1373,10 +1380,30 @@ export function addSessionToList(session, isActive = false) {
     const topRow = document.createElement('div');
     topRow.className = 'flex justify-between items-center';
 
+    const nameContainer = document.createElement('div');
+    nameContainer.className = 'flex-1 min-w-0';
+    
     const nameSpan = document.createElement('span');
-    nameSpan.className = 'session-name-span font-semibold text-sm text-white truncate';
+    nameSpan.className = 'session-name-span font-semibold text-sm text-white truncate block';
     nameSpan.textContent = session.name;
-    topRow.appendChild(nameSpan);
+    nameContainer.appendChild(nameSpan);
+    
+    // Add utility indicator badge for temporary sessions
+    if (session.is_temporary) {
+        const utilityBadge = document.createElement('span');
+        utilityBadge.className = 'inline-flex items-center gap-1 mt-0.5 text-xs text-purple-400';
+        utilityBadge.innerHTML = `
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span class="truncate">${session.temporary_purpose || 'utility'}</span>
+        `;
+        utilityBadge.title = session.temporary_purpose || 'Utility session';
+        nameContainer.appendChild(utilityBadge);
+    }
+    
+    topRow.appendChild(nameContainer);
 
     const actionsDiv = document.createElement('div');
     actionsDiv.className = 'session-actions flex-shrink-0 flex items-center';

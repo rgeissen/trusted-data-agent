@@ -520,11 +520,18 @@ class RAGTemplateGenerator:
                     "issue": "Empty or whitespace-only SQL statement"
                 })
             
-            # Basic SQL validation
+            # Basic SQL validation - check for SQL keywords (expanded list for Teradata)
             if sql_statement and sql_statement.strip():
                 sql_upper = sql_statement.strip().upper()
-                # Check for basic SQL keywords
-                if not any(keyword in sql_upper for keyword in ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'DROP', 'ALTER']):
+                # Check for SQL keywords - expanded to include Teradata-specific and common SQL commands
+                sql_keywords = [
+                    'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'DROP', 'ALTER',
+                    'MERGE', 'GRANT', 'REVOKE', 'SHOW', 'DESCRIBE', 'EXPLAIN',
+                    'SET', 'CALL', 'EXECUTE', 'EXEC', 'BEGIN', 'COMMIT', 'ROLLBACK',
+                    'WITH', 'REPLACE', 'LOCK', 'UNLOCK', 'TRUNCATE', 'RENAME',
+                    'COMMENT', 'HELP', 'DATABASE', 'TABLE', 'VIEW', 'INDEX', 'PROCEDURE'
+                ]
+                if not any(keyword in sql_upper for keyword in sql_keywords):
                     issues.append({
                         "example_index": idx,
                         "field": "sql_statement",

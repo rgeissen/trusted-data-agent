@@ -347,6 +347,12 @@ ${guidelinesText}`;
  * Open the Add RAG Collection modal
  */
 async function openAddRagCollectionModal() {
+    // Update modal title for Planner Repository
+    const modalTitle = addRagCollectionModalContent.querySelector('h2');
+    if (modalTitle) {
+        modalTitle.textContent = 'Add Planner Repository';
+    }
+    
     // Populate MCP server dropdown
     populateMcpServerDropdown();
     

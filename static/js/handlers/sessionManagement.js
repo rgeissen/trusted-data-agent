@@ -279,3 +279,49 @@ export async function handleDeleteSessionClick(deleteButton) {
         }
     );
 }
+
+/**
+ * Initialize utility sessions filter for the sidebar
+ */
+export function initializeUtilitySessionsFilter() {
+    const toggle = document.getElementById('sidebar-show-utility-sessions-toggle');
+    const container = document.getElementById('sidebar-show-utility-sessions-container');
+    
+    if (!toggle || !container) return;
+    
+    // Load saved preference
+    const savedPref = localStorage.getItem('sidebarShowUtilitySessions');
+    let showUtility = savedPref !== null ? savedPref === 'true' : true; // Default to showing
+    toggle.checked = showUtility;
+    
+    // Function to update session visibility
+    const updateSessionVisibility = () => {
+        const sessions = document.querySelectorAll('.session-item');
+        let hasUtilitySessions = false;
+        
+        sessions.forEach(item => {
+            const isTemporary = item.dataset.isTemporary === 'true';
+            if (isTemporary) {
+                hasUtilitySessions = true;
+                item.style.display = showUtility ? '' : 'none';
+            }
+        });
+        
+        // Show/hide the toggle container based on whether utility sessions exist
+        container.classList.toggle('hidden', !hasUtilitySessions);
+    };
+    
+    // Apply initial state
+    updateSessionVisibility();
+    
+    // Handle toggle changes
+    toggle.addEventListener('change', (e) => {
+        showUtility = e.target.checked;
+        localStorage.setItem('sidebarShowUtilitySessions', showUtility);
+        updateSessionVisibility();
+    });
+    
+    // Re-check visibility whenever sessions are added/removed
+    // This will be called after sessions are loaded
+    window.updateUtilitySessionsFilter = updateSessionVisibility;
+}

@@ -870,6 +870,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const { wireRepositoryTabs } = await import('./eventHandlers.js');
     wireRepositoryTabs();
     
+    // Initialize utility sessions filter for sidebar
+    const { initializeUtilitySessionsFilter } = await import('./handlers/sessionManagement.js');
+    initializeUtilitySessionsFilter();
+    
     // Initialize Execution Dashboard
     if (window.ExecutionDashboard) {
         window.executionDashboard = new window.ExecutionDashboard();

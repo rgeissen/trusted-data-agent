@@ -1765,6 +1765,11 @@ export async function reconnectAndLoad() {
                             DOM.sessionList.appendChild(sessionItem);
                         });
                         
+                        // Update utility sessions filter visibility
+                        if (window.updateUtilitySessionsFilter) {
+                            window.updateUtilitySessionsFilter();
+                        }
+                        
                         // Load the selected session
                         await handleLoadSession(sessionToLoad);
                     } else {

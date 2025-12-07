@@ -164,9 +164,9 @@ def _save_session(user_uuid: str, session_id: str, session_data: dict):
 
 # --- Public Session Management Functions ---
 
-def create_session(user_uuid: str, provider: str, llm_instance: any, charting_intensity: str, system_prompt_template: str | None = None, profile_tag: str | None = None, profile_id: str | None = None) -> str:
+def create_session(user_uuid: str, provider: str, llm_instance: any, charting_intensity: str, system_prompt_template: str | None = None, profile_tag: str | None = None, profile_id: str | None = None, is_temporary: bool = False, temporary_purpose: str | None = None) -> str:
     session_id = generate_session_id()
-    app_logger.info(f"Attempting to create session '{session_id}' for user '{user_uuid}'.")
+    app_logger.info(f"Attempting to create session '{session_id}' for user '{user_uuid}' (temporary: {is_temporary}).")
 
     # Note: chat_object cannot be directly serialized to JSON.
     # We will store history as a plain list.
@@ -202,7 +202,9 @@ def create_session(user_uuid: str, provider: str, llm_instance: any, charting_in
         "last_turn_data": {"workflow_history": []},
         # --- MODIFICATION END ---
         "full_context_sent": False,
-        "license_info": APP_STATE.get("license_info") # Store license info at creation time
+        "license_info": APP_STATE.get("license_info"), # Store license info at creation time
+        "is_temporary": is_temporary, # Mark if this is a temporary/utility session
+        "temporary_purpose": temporary_purpose # Optional description of the temporary session purpose
     }
 
     if _save_session(user_uuid, session_id, session_data):

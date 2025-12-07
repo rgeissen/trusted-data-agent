@@ -16,6 +16,7 @@ class ExecutionDashboard {
         this.refreshIntervalMs = 60000; // 60 seconds (reduced from 30 to minimize server load)
         this.currentPerformanceView = 'my'; // 'my' or 'system'
         this.isAdmin = false;
+        this.showUtilitySessions = true; // Default to showing utility sessions
     }
 
     /**
@@ -43,6 +44,12 @@ class ExecutionDashboard {
     async initialize() {
         // Check if user has VIEW_ALL_SESSIONS feature
         await this.checkViewAllSessionsFeature();
+        
+        // Load saved utility sessions filter preference
+        const savedUtilityPref = localStorage.getItem('showUtilitySessions');
+        if (savedUtilityPref !== null) {
+            this.showUtilitySessions = savedUtilityPref === 'true';
+        }
         
         // Set up event listeners
         this.setupEventListeners();
@@ -148,6 +155,19 @@ class ExecutionDashboard {
         document.getElementById('session-sort')?.addEventListener('change', () => {
             this.filterAndRenderSessions();
         });
+        
+        // Show utility sessions toggle
+        const showUtilityToggle = document.getElementById('show-utility-sessions-toggle');
+        if (showUtilityToggle) {
+            // Set initial state from preference
+            showUtilityToggle.checked = this.showUtilitySessions;
+            
+            showUtilityToggle.addEventListener('change', (e) => {
+                this.showUtilitySessions = e.target.checked;
+                localStorage.setItem('showUtilitySessions', e.target.checked);
+                this.filterAndRenderSessions();
+            });
+        }
 
         // Inspector close button
         document.getElementById('close-inspector-btn')?.addEventListener('click', () => {
@@ -399,16 +419,8 @@ class ExecutionDashboard {
         `).join('');
 
         container.innerHTML = html;
-        
-        // Add click event listeners
-        container.querySelectorAll('.expensive-question-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const questionText = item.getAttribute('data-question-text');
-                this.searchForQuestion(questionText);
-            });
-        });
     }
-
+        
     /**
      * Filter and render session cards (Tier 2)
      */
@@ -417,6 +429,16 @@ class ExecutionDashboard {
         const filterStatus = document.getElementById('session-filter-status')?.value || 'all';
         const sortBy = document.getElementById('session-sort')?.value || 'recent';
 
+        // Check if there are any utility sessions and show/hide toggle accordingly
+        const hasUtilitySessions = this.sessionsData.some(s => s.is_temporary);
+        const utilityToggleContainer = document.getElementById('show-utility-sessions-container');
+        if (utilityToggleContainer) {
+            if (hasUtilitySessions) {
+                utilityToggleContainer.classList.remove('hidden');
+            } else {
+                utilityToggleContainer.classList.add('hidden');
+            }
+        }
 
         // Filter sessions - search in both session name and questions within the session
         let filteredSessions = this.sessionsData.filter(session => {
@@ -436,7 +458,9 @@ class ExecutionDashboard {
             
             const matchesSearch = matchesSessionName || matchesQuestion;
             const matchesStatus = filterStatus === 'all' || session.status === filterStatus;
-            return matchesSearch && matchesStatus;
+            const matchesUtilityFilter = this.showUtilitySessions || !session.is_temporary;
+            
+            return matchesSearch && matchesStatus && matchesUtilityFilter;
         });
 
 
@@ -619,17 +643,32 @@ class ExecutionDashboard {
 
         const statusColor = statusColors[session.status] || statusColors.empty;
         const date = session.created_at ? new Date(session.created_at).toLocaleString() : 'Unknown';
+        
+        // Determine if this is a utility/temporary session
+        const isUtility = session.is_temporary || false;
+        const utilityPurpose = session.temporary_purpose || 'Utility session';
 
         return `
-            <div id="session-card-${session.id}" class="rounded-xl p-4 border transition-all cursor-pointer group ${session.archived ? 'opacity-75' : ''}" 
-                 style="background-color: var(--card-bg); border-color: ${session.archived ? 'rgba(75, 85, 99, 0.5)' : 'var(--border-primary)'};" 
+            <div id="session-card-${session.id}" class="rounded-xl p-4 border transition-all cursor-pointer group ${session.archived ? 'opacity-75' : ''} ${isUtility ? 'border-l-4' : ''}" 
+                 style="background-color: var(--card-bg); border-color: ${session.archived ? 'rgba(75, 85, 99, 0.5)' : 'var(--border-primary)'}; ${isUtility ? 'border-left-color: rgba(139, 92, 246, 0.6);' : ''}" 
                  onmouseover="this.style.borderColor='rgba(241, 95, 34, 0.5)'" 
                  onmouseout="this.style.borderColor='${session.archived ? 'rgba(75, 85, 99, 0.5)' : 'var(--border-primary)'}'">
                 <div class="flex items-start justify-between mb-3">
-                    <h3 class="text-white font-semibold truncate flex-1 group-hover:text-teradata-orange transition-colors" title="${session.name}">
-                        ${session.name}
-                        ${session.archived ? '<span class="ml-2 text-xs text-gray-500">[Archived]</span>' : ''}
-                    </h3>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-white font-semibold truncate group-hover:text-teradata-orange transition-colors" title="${session.name}">
+                            ${session.name}
+                            ${session.archived ? '<span class="ml-2 text-xs text-gray-500">[Archived]</span>' : ''}
+                        </h3>
+                        ${isUtility ? `
+                            <div class="flex items-center gap-1.5 mt-1 text-xs text-purple-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span class="truncate" title="${utilityPurpose}">${utilityPurpose}</span>
+                            </div>
+                        ` : ''}
+                    </div>
                     <div class="flex items-center gap-2 flex-shrink-0 ml-2">
                         <button class="activate-session-btn p-1.5 rounded hover:bg-teradata-orange/20 text-gray-400 hover:text-teradata-orange transition-colors" 
                                 data-session-id="${session.id}" 
@@ -638,6 +677,7 @@ class ExecutionDashboard {
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                             </svg>
                         </button>
+                        ${isUtility ? '<span class="px-2 py-1 text-xs font-semibold rounded border bg-purple-500/20 text-purple-400 border-purple-500/50" title="Utility/temporary session">utility</span>' : ''}
                         ${session.archived ? '<span class="px-2 py-1 text-xs font-semibold rounded border bg-gray-500/20 text-gray-400 border-gray-500/50">archived</span>' : ''}
                         <span class="px-2 py-1 text-xs font-semibold rounded border ${statusColor}">
                             ${session.status}

@@ -136,6 +136,12 @@ export async function finalizeConfiguration(config, switchToConversationView = t
                 const sessionItem = UI.addSessionToList(session, isActive);
                 DOM.sessionList.appendChild(sessionItem);
             });
+            
+            // Update utility sessions filter visibility
+            if (window.updateUtilitySessionsFilter) {
+                window.updateUtilitySessionsFilter();
+            }
+            
             // If the previously active session still exists and is not archived, ensure it is loaded.
             // Otherwise, load the most recent active session.
             const sessionToLoad = activeSessions.find(s => s.id === currentSessionId) ? currentSessionId : activeSessions[0].id;

@@ -257,33 +257,32 @@ export function createTemplateCard(template, index, filterType = 'planner') {
             console.log('[Deploy] Full template object:', template);
             
             try {
-                // Ensure profile is initialized (MCP + LLM) by creating a session if needed
-                console.log('[Deploy] Ensuring profile is initialized...');
+                // Check if conversation mode is fully initialized
+                console.log('[Deploy] Checking conversation initialization...');
                 try {
-                    const sessionResponse = await fetch('/session', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('tda_auth_token')}`
-                        },
-                        body: JSON.stringify({})
-                    });
+                    // Import conversationInitializer to check if system is fully initialized
+                    const { getInitializationState } = await import('../../conversationInitializer.js');
+                    const initState = getInitializationState();
                     
-                    if (!sessionResponse.ok) {
-                        const error = await sessionResponse.json();
-                        console.error('[Deploy] Profile initialization failed:', error);
-                        if (window.showToast) {
-                            window.showToast('error', `Profile not configured: ${error.error || 'Please configure MCP and LLM in Settings'}`);
+                    console.log('[Deploy] Initialization state:', initState);
+                    
+                    // If not initialized, show helpful banner
+                    if (!initState.initialized) {
+                        console.log('[Deploy] Conversation not initialized');
+                        if (window.showAppBanner) {
+                            window.showAppBanner(
+                                'Please initialize the system first. Go to Setup and click "Save & Connect", or go to Conversations and click "Start Conversation".',
+                                'info'
+                            );
                         }
                         return;
                     }
-                    console.log('[Deploy] Profile initialized successfully');
-                } catch (initError) {
-                    console.error('[Deploy] Profile initialization error:', initError);
-                    if (window.showToast) {
-                        window.showToast('error', 'Failed to initialize profile. Please check your configuration.');
-                    }
-                    return;
+                    
+                    console.log('[Deploy] System fully initialized, proceeding...');
+                } catch (error) {
+                    console.error('[Deploy] Failed to check initialization:', error);
+                    // If we can't check, just proceed (fail open rather than fail closed)
+                    console.log('[Deploy] Could not verify initialization state, proceeding anyway...');
                 }
                 
                 // Load saved defaults with authentication

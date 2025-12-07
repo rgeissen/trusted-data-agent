@@ -22,9 +22,9 @@ services:
       
     volumes:
       # Mount the entire application directory for development
-      # IMPORTANT: Ensure /volume2/docker/uderia-v10 contains your latest code
+      # IMPORTANT: Ensure /mnt/hdd_storage/docker/uderia contains your latest code
       # including all fixes for authentication and configuration
-      - /volume2/docker/uderia-v10:/app
+      -/mnt/hdd_storage/docker/uderia:/app
       
     environment:
       # Application-specific variables
