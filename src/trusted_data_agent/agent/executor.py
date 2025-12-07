@@ -1455,6 +1455,20 @@ class PlanExecutor:
             if is_delegated_prompt_phase:
                 prompt_name = current_phase.get('executable_prompt')
                 prompt_args = current_phase.get('arguments', {})
+                
+                # Safeguard: Skip if prompt_name is None or empty (shouldn't happen after planner cleanup, but defensive)
+                if not prompt_name or prompt_name in ['None', 'null', '']:
+                    app_logger.warning(f"Skipping delegated prompt phase with invalid prompt_name: '{prompt_name}'. Phase: {current_phase}")
+                    error_event = {
+                        "step": "Plan Optimization",
+                        "details": f"Skipping invalid prompt execution step. The plan phase contained an unusable prompt reference.",
+                        "type": "workaround"
+                    }
+                    self._log_system_event(error_event)
+                    yield self._format_sse(error_event)
+                    self.current_phase_index += 1
+                    continue
+                
                 async for event in self._run_sub_prompt(prompt_name, prompt_args):
                     yield event
             else:
@@ -1477,6 +1491,18 @@ class PlanExecutor:
         Creates and runs a sub-executor for a delegated prompt, adopting its
         final state upon completion to ensure a continuous and complete workflow.
         """
+        # Safety check: Don't execute if prompt_name is invalid (final defensive layer)
+        if not prompt_name or prompt_name in ['None', 'null', '']:
+            error_event = {
+                "step": "Plan Optimization",
+                "details": f"Skipping execution of invalid prompt reference. The system prevented an error.",
+                "type": "workaround"
+            }
+            self._log_system_event(error_event)
+            yield self._format_sse(error_event)
+            app_logger.error(f"Attempted to run sub-prompt with invalid name: '{prompt_name}'")
+            return
+        
         event_data = {
             "step": "Prompt Execution Granted",
             "details": f"Executing prompt '{prompt_name}' as part of the plan.",

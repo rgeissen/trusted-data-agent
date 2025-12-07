@@ -199,7 +199,17 @@ class Planner:
         for phase in self.executor.meta_plan:
             original_phase = copy.deepcopy(phase)
             correction_made = False
+            correction_type = None
+            
+            # Correction 1: Clean up null/None/empty executable_prompt values
+            if 'executable_prompt' in phase and phase['executable_prompt'] in [None, 'None', 'null', '', 'undefined']:
+                invalid_value = phase['executable_prompt']
+                app_logger.warning(f"PLAN CORRECTION: Removing invalid executable_prompt value: '{invalid_value}'")
+                del phase['executable_prompt']
+                correction_made = True
+                correction_type = "invalid_prompt"
 
+            # Correction 2: Prompt misclassified as tool
             if 'relevant_tools' in phase and isinstance(phase['relevant_tools'], list) and phase['relevant_tools']:
                 capability_name = phase['relevant_tools'][0]
                 if capability_name in all_prompts:
@@ -207,7 +217,9 @@ class Planner:
                     phase['executable_prompt'] = capability_name
                     del phase['relevant_tools']
                     correction_made = True
+                    correction_type = "prompt_as_tool"
 
+            # Correction 3: Tool misclassified as prompt
             elif 'executable_prompt' in phase and isinstance(phase['executable_prompt'], str):
                 capability_name = phase['executable_prompt']
                 if capability_name in all_tools:
@@ -215,17 +227,26 @@ class Planner:
                     phase['relevant_tools'] = [capability_name]
                     del phase['executable_prompt']
                     correction_made = True
+                    correction_type = "tool_as_prompt"
 
             if correction_made:
+                # Determine the appropriate message based on correction type
+                if correction_type == "invalid_prompt":
+                    summary = "Plan contained invalid prompt reference. The system has removed it to prevent execution errors."
+                elif correction_type == "prompt_as_tool":
+                    summary = "Planner misclassified a prompt as a tool. The system has corrected the plan to ensure proper execution."
+                elif correction_type == "tool_as_prompt":
+                    summary = "Planner misclassified a tool as a prompt. The system has corrected the plan to ensure proper execution."
+                else:
+                    summary = "Plan has been corrected by the system."
+                
                 event_data = {
-                    "step": "System Correction",
+                    "step": "Plan Optimization",
                     "type": "workaround",
-                    "details": {
-                        "summary": "Planner misclassified a capability. The system has corrected the plan to ensure proper execution.",
-                        "correction": {
-                            "from": original_phase,
-                            "to": phase
-                        }
+                    "details": summary,
+                    "correction": {
+                        "from": original_phase,
+                        "to": phase
                     }
                 }
                 self.executor._log_system_event(event_data)

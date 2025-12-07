@@ -1098,12 +1098,27 @@ export function updateTokenDisplay(data) {
     const normalDisplay = document.getElementById('token-normal-display');
     const awsMessage = document.getElementById('token-aws-message');
 
-    if (state.currentProvider === 'Amazon') {
+    // Check if we have token data (for any provider including Amazon)
+    const hasTokenData = (data.statement_input > 0 || data.statement_output > 0 || 
+                         data.total_input > 0 || data.total_output > 0);
+
+    // Check if this is an AWS model that doesn't support token counting
+    // Only Cohere, Mistral, and AI21 don't provide token counts
+    const isUnsupportedAwsModel = state.currentProvider === 'Amazon' && 
+        state.currentModel && (
+            state.currentModel.toLowerCase().includes('cohere') ||
+            state.currentModel.toLowerCase().includes('mistral') ||
+            state.currentModel.toLowerCase().includes('ai21')
+        );
+
+    if (isUnsupportedAwsModel && !hasTokenData) {
+        // Only show warning message for Cohere/Mistral/AI21 without token data
         normalDisplay.classList.add('hidden');
         awsMessage.classList.remove('hidden');
         return;
     }
 
+    // Show normal display for all other cases (including Nova, Titan, Llama, Claude)
     normalDisplay.classList.remove('hidden');
     awsMessage.classList.add('hidden');
 

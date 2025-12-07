@@ -742,9 +742,39 @@ async def call_llm_api(llm_instance: any, prompt: str, user_uuid: str = None, se
 
                 response_text = _sanitize_llm_output(raw_text)
 
-                # Token counts (Anthropic specific for now)
-                input_tokens = response_body.get('usage', {}).get('input_tokens', 0) if bedrock_provider == 'anthropic' else 0
-                output_tokens = response_body.get('usage', {}).get('output_tokens', 0) if bedrock_provider == 'anthropic' else 0
+                # Token counts - Extract based on provider response format
+                input_tokens = 0
+                output_tokens = 0
+                
+                if bedrock_provider == 'anthropic':
+                    # Anthropic Claude: usage.input_tokens, usage.output_tokens
+                    input_tokens = response_body.get('usage', {}).get('input_tokens', 0)
+                    output_tokens = response_body.get('usage', {}).get('output_tokens', 0)
+                    
+                elif bedrock_provider == 'amazon':
+                    # Amazon Titan/Nova models have two formats:
+                    if 'usage' in response_body:
+                        # New format (Titan Premier, Nova): usage.inputTokens, usage.outputTokens
+                        input_tokens = response_body.get('usage', {}).get('inputTokens', 0)
+                        output_tokens = response_body.get('usage', {}).get('outputTokens', 0)
+                    elif 'inputTextTokenCount' in response_body:
+                        # Legacy format (Titan Express): inputTextTokenCount, results[0].tokenCount
+                        input_tokens = response_body.get('inputTextTokenCount', 0)
+                        if response_body.get('results'):
+                            output_tokens = response_body['results'][0].get('tokenCount', 0)
+                            
+                elif bedrock_provider == 'meta':
+                    # Meta Llama: prompt_token_count, generation_token_count
+                    input_tokens = response_body.get('prompt_token_count', 0)
+                    output_tokens = response_body.get('generation_token_count', 0)
+                    
+                # Note: Cohere, Mistral, and AI21 models don't return token counts
+                # For these providers, tokens will remain 0
+                
+                if input_tokens > 0 or output_tokens > 0:
+                    app_logger.debug(f"Bedrock token usage - Provider: {bedrock_provider}, Input: {input_tokens}, Output: {output_tokens}")
+                else:
+                    app_logger.warning(f"No token usage data available for Bedrock provider: {bedrock_provider}")
 
                 break # Exit retry loop on success
             else:
