@@ -432,120 +432,53 @@
                                 <!-- Welcome Screen for Unconfigured State -->
                                 <div id="welcome-screen" class="hidden h-full overflow-y-auto">
                                     <div class="max-w-6xl mx-auto text-center space-y-8 p-4 sm:p-8 pb-20 pt-8 sm:pt-12">
-                                        <!-- Top Tagline -->
-                                        <div class="text-base sm:text-lg text-gray-400 font-normal tracking-wide flex items-center justify-center gap-2 flex-wrap" style="letter-spacing: 0.05em; opacity: 0.9;">
-                                            <span>Zero-Trust Sovereignty</span>
-                                            <span class="text-[#F15F22]" style="opacity: 0.6;">•</span>
-                                            <span>Cloud-Level Intelligence</span>
-                                            <span class="text-[#F15F22]" style="opacity: 0.6;">•</span>
-                                            <span>Extreme Efficiency</span>
-                                        </div>
-                                        
                                         <!-- Logo/Icon with Uderia Platform branding -->
-                                        <div class="flex flex-col items-center justify-center border-t border-b border-white/10" style="margin-top: 4rem; margin-bottom: 0; padding-top: 4rem; padding-bottom: 4rem;">
-                                            <div class="flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-16">
-                                                <!-- UDERIA Platform text - LEFT side -->
-                                                <div class="text-center order-2 lg:order-1 welcome-uderia-title">
-                                                    <div class="text-6xl sm:text-7xl font-bold text-white tracking-wide" style="letter-spacing: 0.02em; line-height: 0.9;">UDERIA</div>
-                                                    <div class="text-xl sm:text-2xl font-light text-gray-400 tracking-widest mt-5" style="letter-spacing: 0.2em; text-transform: uppercase;">Platform</div>
+                                        <div class="flex flex-col items-center justify-center border-t border-b border-white/10" style="margin-top: 2rem; margin-bottom: 0; padding-top: 3rem; padding-bottom: 4rem;">
+                                            <div class="w-full flex flex-col items-center justify-center gap-8">
+                                                <div class="w-full flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-16">
+                                                    <!-- UDERIA Platform text - LEFT side -->
+                                                    <div class="flex-1 order-2 lg:order-1 welcome-uderia-title text-center lg:text-right">
+                                                        <div class="inline-block">
+                                                            <div class="text-6xl sm:text-7xl font-bold text-white" style="letter-spacing: 0.02em; line-height: 0.9;">UDERIA</div>
+                                                            <div class="text-xl sm:text-2xl font-light text-gray-400 text-center" style="text-transform: uppercase; margin-top: 0.5rem;">PLATFORM</div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <!-- Logo - CENTER -->
+                                                    <div class="w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center flex-shrink-0 order-1 lg:order-2" style="filter: drop-shadow(0 20px 50px rgba(241, 95, 34, 0.5));">
+                                                        <!-- Uderia Logo SVG -->
+                                                        <svg width="100%" height="100%" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                            <g id="SovereignFrame">
+                                                                <path d="M45 50 L45 150 L75 165 L75 65 Z" fill="#374151"/>
+                                                                <path d="M75 65 L75 165 L85 160 L85 60 Z" fill="#4B5563"/>
+                                                                <path d="M45 50 L75 65 L85 60 L55 45 Z" fill="#6B7280"/>
+                                                                <path d="M135 60 L135 160 L145 165 L145 65 Z" fill="#4B5563"/>
+                                                                <path d="M145 65 L145 165 L175 150 L175 50 Z" fill="#374151"/>
+                                                                <path d="M135 60 L165 45 L175 50 L145 65 Z" fill="#6B7280"/>
+                                                            </g>
+                                                            <g id="FusionCore">
+                                                                <ellipse cx="110" cy="175" rx="40" ry="12" fill="#F15F22" fill-opacity="0.3"/>
+                                                                <path d="M85 160 L85 140 L135 140 L135 160 L110 175 L85 160 Z" fill="#F15F22"/> 
+                                                                <path d="M85 160 L110 175 L110 155 L85 140 Z" fill="#D9501A"/>
+                                                                <path d="M135 160 L110 175 L110 155 L135 140 Z" fill="#C2410C"/>
+                                                                <path d="M85 140 L110 125 L135 140 L110 155 Z" fill="#FF8C50"/>
+                                                            </g>
+                                                        </svg>
+                                                    </div>
+                                                    
+                                                    <!-- Main Heading with gradient text - RIGHT side -->
+                                                    <div class="text-center lg:text-left flex-1 order-3 welcome-tagline">
+                                                        <h1 class="text-2xl sm:text-3xl md:text-4xl font-light text-white leading-tight m-0 p-0" style="line-height: 1.2; margin-bottom: 0;">
+                                                            <span style="white-space: nowrap;">Cloud-Level Reasoning.</span><br/>
+                                                            <span class="text-[#F15F22] font-semibold" style="white-space: nowrap;">Zero-Trust Privacy.</span>
+                                                        </h1>
+                                                    </div>
                                                 </div>
-                                                
-                                                <!-- Logo - CENTER -->
-                                                <div class="w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center order-1 lg:order-2" style="filter: drop-shadow(0 20px 50px rgba(241, 95, 34, 0.5));">
-                                                    <!-- Uderia Logo SVG -->
-                                                    <svg width="100%" height="100%" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                        <g id="SovereignFrame">
-                                                            <path d="M45 50 L45 150 L75 165 L75 65 Z" fill="#374151"/>
-                                                            <path d="M75 65 L75 165 L85 160 L85 60 Z" fill="#4B5563"/>
-                                                            <path d="M45 50 L75 65 L85 60 L55 45 Z" fill="#6B7280"/>
-                                                            <path d="M135 60 L135 160 L145 165 L145 65 Z" fill="#4B5563"/>
-                                                            <path d="M145 65 L145 165 L175 150 L175 50 Z" fill="#374151"/>
-                                                            <path d="M135 60 L165 45 L175 50 L145 65 Z" fill="#6B7280"/>
-                                                        </g>
-                                                        <g id="FusionCore">
-                                                            <ellipse cx="110" cy="175" rx="40" ry="12" fill="#F15F22" fill-opacity="0.3"/>
-                                                            <path d="M85 160 L85 140 L135 140 L135 160 L110 175 L85 160 Z" fill="#F15F22"/> 
-                                                            <path d="M85 160 L110 175 L110 155 L85 140 Z" fill="#D9501A"/>
-                                                            <path d="M135 160 L110 175 L110 155 L135 140 Z" fill="#C2410C"/>
-                                                            <path d="M85 140 L110 125 L135 140 L110 155 Z" fill="#FF8C50"/>
-                                                        </g>
-                                                    </svg>
-                                                </div>
-                                                
-                                                <!-- Main Heading with gradient text - RIGHT side -->
-                                                <div class="text-left order-3 welcome-tagline">
-                                                    <h1 class="text-2xl sm:text-3xl md:text-4xl font-light text-white leading-tight m-0 p-0" style="line-height: 1.2; margin-bottom: 0;">
-                                                        Cloud-Level Reasoning.<br/>
-                                                        <span class="text-[#F15F22] font-semibold">Zero-Trust Privacy.</span>
-                                                    </h1>
-                                                </div>
-                                            </div>
-                                            
-                                            <!-- Subtle separator -->
-                                            <div class="w-full max-w-4xl h-px bg-gradient-to-r from-transparent via-white/5 to-transparent my-8"></div>
-                                            
-                                            <!-- Feature Badges - Compact badges in single row -->
-                                            <div class="flex items-center justify-center gap-3 flex-nowrap overflow-x-auto px-4" style="max-width: 100%;">
-                                            <!-- Actionable -->
-                                            <div class="flex items-center gap-2 glass-panel px-3 py-2 rounded-lg transition-all duration-300 hover:shadow-lg group">
-                                                <div class="w-7 h-7 rounded-md flex items-center justify-center transition-transform duration-300 group-hover:scale-110" style="background-color: rgba(241, 95, 34, 0.25);">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="var(--teradata-orange)" viewBox="0 0 24 24">
-                                                        <path d="M13 3L4 13h7l-1 7 9-10h-7l1-7z" />
-                                                    </svg>
-                                                </div>
-                                                <span class="text-white font-medium text-xs">Actionable</span>
-                                            </div>
-                                            <!-- Transparent -->
-                                            <div class="flex items-center gap-2 glass-panel px-3 py-2 rounded-lg transition-all duration-300 hover:shadow-lg group">
-                                                <div class="w-7 h-7 bg-[#10b981]/20 rounded-md flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:bg-[#10b981]/30">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#10b981]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                    </svg>
-                                                </div>
-                                                <span class="text-white font-medium text-xs">Transparent</span>
-                                            </div>
-                                            <!-- Efficient -->
-                                            <div class="flex items-center gap-2 glass-panel px-3 py-2 rounded-lg transition-all duration-300 hover:shadow-lg group">
-                                                <div class="w-7 h-7 bg-[#06b6d4]/20 rounded-md flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:bg-[#06b6d4]/30">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#06b6d4]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                                    </svg>
-                                                </div>
-                                                <span class="text-white font-medium text-xs">Efficient</span>
-                                            </div>
-                                            <!-- Sovereignty -->
-                                            <div class="flex items-center gap-2 glass-panel px-3 py-2 rounded-lg transition-all duration-300 hover:shadow-lg group">
-                                                <div class="w-7 h-7 bg-[#8b5cf6]/20 rounded-md flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:bg-[#8b5cf6]/30">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#8b5cf6]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                                    </svg>
-                                                </div>
-                                                <span class="text-white font-medium text-xs">Sovereignty</span>
-                                            </div>
-                                            <!-- FinGov -->
-                                            <div class="flex items-center gap-2 glass-panel px-3 py-2 rounded-lg transition-all duration-300 hover:shadow-lg group">
-                                                <div class="w-7 h-7 bg-[#eab308]/20 rounded-md flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:bg-[#eab308]/30">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#eab308]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                </div>
-                                                <span class="text-white font-medium text-xs">FinGov</span>
-                                            </div>
-                                            <!-- Collaborative -->
-                                            <div class="flex items-center gap-2 glass-panel px-3 py-2 rounded-lg transition-all duration-300 hover:shadow-lg group">
-                                                <div class="w-7 h-7 bg-[#ec4899]/20 rounded-md flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:bg-[#ec4899]/30">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#ec4899]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                                    </svg>
-                                                </div>
-                                                <span class="text-white font-medium text-xs">Collaborative</span>
-                                            </div>
                                             </div>
                                         </div>
                                         
                                         <!-- CTA Button -->
-                                        <div class="flex flex-col items-center gap-6 mt-12 pt-8 border-t border-white/10">
+                                        <div class="flex flex-col items-center gap-6 mt-12">
                                             <button id="welcome-configure-btn" class="welcome-cta-button group relative px-8 py-3.5 bg-teradata-orange hover:bg-teradata-orange-dark text-white text-lg font-semibold rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center gap-3">
                                                 <!-- Animated glow effect -->
                                                 <div class="welcome-button-glow"></div>
