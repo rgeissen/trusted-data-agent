@@ -208,7 +208,9 @@ async def test_llm_credentials(provider: str, model: str, credentials: Dict[str,
                     bedrock_provider = "unknown"
             else:
                 # Direct model ID - extract provider from model ID
-                bedrock_provider = model.split('.')[0]
+                # Handle version suffix (e.g., amazon.nova-lite-v1:0 -> amazon)
+                model_base = model.split(':')[0]  # Remove version suffix if present
+                bedrock_provider = model_base.split('.')[0]
             
             # Build request body based on provider
             if bedrock_provider == "anthropic":
@@ -230,7 +232,13 @@ async def test_llm_credentials(provider: str, model: str, credentials: Dict[str,
                     "max_tokens": 5
                 })
             
-            response = llm_instance.invoke_model(modelId=model, body=body)
+            try:
+                response = llm_instance.invoke_model(modelId=model, body=body)
+            except Exception as invoke_error:
+                error_msg = str(invoke_error)
+                if "ValidationException" in error_msg or "ResourceNotFoundException" in error_msg:
+                    return False, f"Model '{model}' not available in your AWS region or not accessible with your credentials. Error: {error_msg}"
+                raise
             response_body = json.loads(response['body'].read())
             
             # Check response based on provider

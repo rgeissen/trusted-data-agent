@@ -96,9 +96,9 @@
       "id": "1763892145444-ix871l09b"
     },
     {
-      "name": "Amazon - titantextexpress",
+      "name": "Amazon - NovaLite",
       "provider": "Amazon",
-      "model": "amazon.titan-text-express-v1",
+      "model": "amazon.nova-lite-v1:0",
       "credentials": {},
       "id": "1763892251792-fvxyy5msd"
     }
