@@ -14,15 +14,22 @@ class CostManagementHandler {
         this.filteredCosts = [];
         this.analytics = null;
         this.currentPage = 1;
-        this.pageSize = 50; // Increased for smoother infinite scroll
+        this.pageSize = 20; // Match HTML default
         this.searchTerm = '';
         this.isLoadingMore = false;
+        this.lastScrollTop = 0;
         this.init();
     }
 
     init() {
         console.log('[CostManagement] Initializing cost management handler');
         this.attachEventListeners();
+        
+        // Sync pageSize with dropdown value on init
+        const pageSizeSelect = document.getElementById('costs-page-size');
+        if (pageSizeSelect && pageSizeSelect.value) {
+            this.pageSize = parseInt(pageSizeSelect.value);
+        }
     }
 
     attachEventListeners() {
@@ -64,22 +71,31 @@ class CostManagementHandler {
             });
         }
 
-        // Infinite scroll on table container
-        const tableContainer = document.querySelector('#cost-management-tab .overflow-x-auto');
-        if (tableContainer) {
-            tableContainer.addEventListener('scroll', () => {
-                if (this.isLoadingMore) return;
-                
-                const scrollTop = tableContainer.scrollTop;
-                const scrollHeight = tableContainer.scrollHeight;
-                const clientHeight = tableContainer.clientHeight;
-                
-                // Load more when within 100px of bottom
-                if (scrollTop + clientHeight >= scrollHeight - 100) {
-                    this.loadMoreRows();
-                }
-            });
-        }
+        // Infinite scroll will be attached when tab is activated
+        this.scrollHandler = () => {
+            if (this.isLoadingMore) return;
+            
+            const tableContainer = document.querySelector('#cost-management-tab .overflow-x-auto');
+            if (!tableContainer) return;
+            
+            const scrollTop = tableContainer.scrollTop;
+            const scrollHeight = tableContainer.scrollHeight;
+            const clientHeight = tableContainer.clientHeight;
+            
+            // Only trigger if user actually scrolled down (not just content expanding)
+            if (scrollTop <= this.lastScrollTop && this.lastScrollTop > 0) {
+                this.lastScrollTop = scrollTop;
+                return;
+            }
+            this.lastScrollTop = scrollTop;
+            
+            // Only load more if we have scrollable content and are near the bottom (200px threshold)
+            const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
+            
+            if (scrollHeight > clientHeight && distanceFromBottom <= 200) {
+                this.loadMoreRows();
+            }
+        };
 
         // Tab activation - load data when Cost tab is shown
         const costTab = document.querySelector('[data-tab="cost-management-tab"]');
@@ -88,6 +104,16 @@ class CostManagementHandler {
                 this.loadCostData();
                 this.loadCostAnalytics();
             });
+        }
+    }
+
+    attachScrollListener() {
+        const tableContainer = document.querySelector('#cost-management-tab .overflow-x-auto');
+        if (tableContainer) {
+            // Remove existing listener if any
+            tableContainer.removeEventListener('scroll', this.scrollHandler);
+            // Attach new listener with passive option for better performance
+            tableContainer.addEventListener('scroll', this.scrollHandler, { passive: true });
         }
     }
 
@@ -219,6 +245,12 @@ class CostManagementHandler {
 
         this.renderCostsTable();
         this.updatePaginationControls();
+        
+        // Reset scroll position tracking
+        this.lastScrollTop = 0;
+        
+        // Attach scroll listener after rendering (need to wait for DOM update)
+        setTimeout(() => this.attachScrollListener(), 100);
     }
 
     renderCostsTable() {
@@ -266,11 +298,15 @@ class CostManagementHandler {
         
         this.appendCostRows(newRows);
         this.updatePaginationControls();
-        this.isLoadingMore = false;
+        
+        // Small delay before allowing next load
+        setTimeout(() => {
+            this.isLoadingMore = false;
+        }, 100);
     }
     
     appendCostRows(costs) {
-        const tbody = document.querySelector('#costs-table tbody');
+        const tbody = document.getElementById('costs-table-body');
         if (!tbody) return;
         
         const rowsHtml = costs.map(cost => this.renderCostRow(cost)).join('');

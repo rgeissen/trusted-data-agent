@@ -160,18 +160,54 @@ class CostManager:
         else:
             return 'Unknown'
     
+    def _normalize_model_name(self, model: str) -> str:
+        """
+        Normalize model name by stripping ARN prefixes and regional identifiers.
+        
+        Examples:
+            arn:aws:bedrock:eu-central-1:123:inference-profile/eu.amazon.nova-lite-v1:0 
+                -> amazon.nova-lite-v1:0
+            us.amazon.nova-pro-v1:0 -> amazon.nova-pro-v1:0
+            eu.anthropic.claude-3-5-sonnet-20241022-v2:0 -> anthropic.claude-3-5-sonnet-20241022-v2:0
+        
+        Args:
+            model: Raw model identifier
+        
+        Returns:
+            Normalized model name suitable for cost table lookup
+        """
+        # Strip ARN prefix if present
+        if model.startswith('arn:'):
+            # Extract model name from ARN: arn:aws:bedrock:region:account:inference-profile/MODEL
+            parts = model.split('/')
+            if len(parts) > 1:
+                model = parts[-1]  # Get the last part after final /
+        
+        # Strip regional prefix (us., eu., etc.)
+        if '.' in model:
+            parts = model.split('.', 1)
+            # Check if first part is a region code (2-3 letter region identifiers)
+            if len(parts[0]) <= 3 and parts[0].isalpha():
+                model = parts[1]  # Remove regional prefix
+        
+        return model
+    
     def get_model_cost(self, provider: str, model: str) -> Optional[Tuple[float, float]]:
         """
         Get pricing for a specific model.
         
         Args:
-            provider: Provider name (e.g., 'Google', 'Anthropic')
-            model: Model name (e.g., 'gemini-2.0-flash')
+            provider: Provider name (e.g., 'Google', 'Anthropic', 'Amazon')
+            model: Model name (e.g., 'gemini-2.0-flash', ARN, or inference profile)
         
         Returns:
             Tuple of (input_cost_per_million, output_cost_per_million) or None if not found
         """
+        # Normalize model name to strip ARNs and regional prefixes
+        normalized_model = self._normalize_model_name(model)
+        
         with get_db_session() as db:
+            # Try exact match first
             stmt = select(LLMModelCost).where(
                 LLMModelCost.provider == provider,
                 LLMModelCost.model == model
@@ -180,6 +216,18 @@ class CostManager:
             
             if cost_entry:
                 return (cost_entry.input_cost_per_million, cost_entry.output_cost_per_million)
+            
+            # Try normalized model name
+            if normalized_model != model:
+                stmt = select(LLMModelCost).where(
+                    LLMModelCost.provider == provider,
+                    LLMModelCost.model == normalized_model
+                )
+                cost_entry = db.execute(stmt).scalar_one_or_none()
+                
+                if cost_entry:
+                    logger.debug(f"Found cost for normalized model: {model} -> {normalized_model}")
+                    return (cost_entry.input_cost_per_million, cost_entry.output_cost_per_million)
             
             return None
     
