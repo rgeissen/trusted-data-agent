@@ -228,6 +228,65 @@ class Planner:
                     del phase['executable_prompt']
                     correction_made = True
                     correction_type = "tool_as_prompt"
+            
+            # Correction 4: Remove hallucinated/extraneous arguments that don't exist in tool schema
+            # Also mark phases that need argument refinement at execution time
+            if 'relevant_tools' in phase and isinstance(phase['relevant_tools'], list) and phase['relevant_tools']:
+                tool_name = phase['relevant_tools'][0]
+                tool_def = all_tools.get(tool_name)
+                
+                if tool_def and hasattr(tool_def, 'args') and isinstance(tool_def.args, dict):
+                    # Get all valid argument names from tool schema (including synonyms)
+                    from trusted_data_agent.core.config import AppConfig
+                    valid_args = set()
+                    required_args = set()
+                    
+                    for schema_arg_name, arg_details in tool_def.args.items():
+                        valid_args.add(schema_arg_name)
+                        
+                        # Find canonical name by checking synonym map
+                        canonical_name = schema_arg_name
+                        for canonical, synonyms in AppConfig.ARGUMENT_SYNONYM_MAP.items():
+                            if schema_arg_name in synonyms:
+                                canonical_name = canonical
+                                valid_args.update(synonyms)
+                                break
+                        
+                        # Track required arguments (using canonical name)
+                        if isinstance(arg_details, dict) and arg_details.get('required', False):
+                            required_args.add(canonical_name)
+                    
+                    # Ensure arguments dict exists
+                    if 'arguments' not in phase:
+                        phase['arguments'] = {}
+                    
+                    # Find extraneous arguments
+                    provided_args = set(phase['arguments'].keys())
+                    extraneous_args = provided_args - valid_args
+                    
+                    # Check for missing required arguments (canonicalized)
+                    provided_canonical = set()
+                    for arg in provided_args:
+                        # Find canonical name for this provided arg
+                        canonical_arg = arg
+                        for canonical, synonyms in AppConfig.ARGUMENT_SYNONYM_MAP.items():
+                            if arg in synonyms:
+                                canonical_arg = canonical
+                                break
+                        provided_canonical.add(canonical_arg)
+                    missing_required = required_args - provided_canonical
+                    
+                    if extraneous_args:
+                        app_logger.warning(f"PLAN CORRECTION: Tool '{tool_name}' received hallucinated arguments: {extraneous_args}")
+                        for arg_name in extraneous_args:
+                            del phase['arguments'][arg_name]
+                        correction_made = True
+                        correction_type = "extraneous_args"
+                    
+                    # If we removed args and now required args are missing, mark for refinement
+                    if extraneous_args and missing_required:
+                        app_logger.warning(f"PLAN CORRECTION: After removing hallucinated args, tool '{tool_name}' is missing required arguments: {missing_required}")
+                        phase['_needs_refinement'] = True  # Flag for executor to force refinement
 
             if correction_made:
                 # Determine the appropriate message based on correction type
@@ -237,6 +296,8 @@ class Planner:
                     summary = "Planner misclassified a prompt as a tool. The system has corrected the plan to ensure proper execution."
                 elif correction_type == "tool_as_prompt":
                     summary = "Planner misclassified a tool as a prompt. The system has corrected the plan to ensure proper execution."
+                elif correction_type == "extraneous_args":
+                    summary = "Plan contained hallucinated arguments not accepted by the tool. The system has removed them to prevent validation errors."
                 else:
                     summary = "Plan has been corrected by the system."
                 

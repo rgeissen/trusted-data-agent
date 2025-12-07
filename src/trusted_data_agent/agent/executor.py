@@ -1469,8 +1469,34 @@ class PlanExecutor:
                     self.current_phase_index += 1
                     continue
                 
+                # Send phase_start event for delegated prompt phases
+                phase_num = current_phase.get("phase", self.current_phase_index + 1)
+                phase_goal = current_phase.get("goal", "No goal defined.")
+                event_data = {
+                    "step": f"Starting Plan Phase {phase_num}/{len(self.meta_plan)}",
+                    "type": "phase_start",
+                    "details": {
+                        "phase_num": phase_num,
+                        "total_phases": len(self.meta_plan),
+                        "goal": phase_goal,
+                        "phase_details": current_phase,
+                        "execution_depth": self.execution_depth
+                    }
+                }
+                self._log_system_event(event_data)
+                yield self._format_sse(event_data)
+                
                 async for event in self._run_sub_prompt(prompt_name, prompt_args):
                     yield event
+                
+                # Send phase_end event after sub-prompt completes
+                event_data = {
+                    "step": f"Ending Plan Phase {phase_num}/{len(self.meta_plan)}",
+                    "type": "phase_end",
+                    "details": {"phase_num": phase_num, "total_phases": len(self.meta_plan), "status": "completed"}
+                }
+                self._log_system_event(event_data)
+                yield self._format_sse(event_data)
             else:
                 # --- MODIFICATION START: Pass replay prefix conceptually ---
                 # PhaseExecutor needs modification to accept and use this prefix

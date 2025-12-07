@@ -1203,10 +1203,16 @@ class PhaseExecutor:
         extraneous_canonical_args = provided_canonical_arg_names - tool_canonical_arg_names_all
         missing_required_args = tool_canonical_arg_names_required - provided_canonical_arg_names
 
+        # Check if planner marked this phase as needing refinement (after stripping extraneous args)
+        force_refinement = phase.get('_needs_refinement', False)
+        if '_needs_refinement' in phase:
+            del phase['_needs_refinement']  # Clean up internal flag
+
         # Skip refinement if:
         # 1. No arguments are missing OR the only missing arguments are NOT required, AND
-        # 2. No extraneous arguments were provided (LLM didn't hallucinate extra args)
-        if not missing_required_args and not extraneous_canonical_args:
+        # 2. No extraneous arguments were provided (LLM didn't hallucinate extra args), AND
+        # 3. Planner didn't flag this phase as needing refinement
+        if not missing_required_args and not extraneous_canonical_args and not force_refinement:
             if missing_canonical_args:
                 app_logger.debug(f"Argument check for tool '{tool_name}': Only optional arguments missing ({missing_canonical_args}). Skipping refinement.")
             else:
