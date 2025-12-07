@@ -209,15 +209,15 @@ def create_session(user_uuid: str, provider: str, llm_instance: any, charting_in
         app_logger.info(f"Successfully created and saved session '{session_id}' for user '{user_uuid}'.")
         
         # --- CONSUMPTION TRACKING START ---
-        # Increment session count in consumption database
+        # Increment session count in consumption database (only if truly new)
         try:
             from trusted_data_agent.auth.database import get_db_session
             from trusted_data_agent.auth.consumption_manager import ConsumptionManager
             
             with get_db_session() as db_session:
                 manager = ConsumptionManager(db_session)
-                manager.increment_session_count(user_uuid, is_new_session=True)
-                app_logger.debug(f"Incremented session count for user {user_uuid}")
+                manager.increment_session_count(user_uuid, session_id, is_new_session=True)
+                app_logger.debug(f"Updated session count for user {user_uuid}, session {session_id}")
         except Exception as e:
             # Non-critical: File storage is source of truth, DB is performance cache
             app_logger.warning(f"Failed to update session count for user {user_uuid}: {e}")

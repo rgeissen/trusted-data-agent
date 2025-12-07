@@ -213,6 +213,7 @@ class ConfigurationState {
         this.profiles = [];
         this.activeProfileId = null;
         this.initialized = false;
+        this.profileTestStatus = {}; // Track test status: profileId -> { tested: boolean, passed: boolean, timestamp: number }
     }
 
     async initialize() {
@@ -613,6 +614,14 @@ class ConfigurationState {
             if (response.ok) {
                 // Reload servers from backend to get the updated list
                 await this.loadMCPServers();
+                
+                // Clear test status for all profiles using this MCP server
+                this.profiles.forEach(profile => {
+                    if (profile.mcpServerId === serverId) {
+                        delete this.profileTestStatus[profile.id];
+                    }
+                });
+                
                 // Dispatch event to mark config as dirty
                 document.dispatchEvent(new CustomEvent('profile-modified', { 
                     detail: { source: 'mcp-server-update' } 
@@ -713,6 +722,14 @@ class ConfigurationState {
             
             if (response.ok) {
                 await this.loadLLMConfigurations();
+                
+                // Clear test status for all profiles using this LLM configuration
+                this.profiles.forEach(profile => {
+                    if (profile.llmConfigurationId === configId) {
+                        delete this.profileTestStatus[profile.id];
+                    }
+                });
+                
                 // Dispatch event to mark config as dirty
                 document.dispatchEvent(new CustomEvent('profile-modified', { 
                     detail: { source: 'llm-config-update' } 
@@ -993,9 +1010,9 @@ function attachLLMEventListeners() {
     
     // Edit LLM button
     document.querySelectorAll('[data-action="edit-llm"]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
             const configId = e.target.dataset.configId;
-            showLLMConfigurationModal(configId);
+            await showLLMConfigurationModal(configId);
         });
     });
 
@@ -1022,9 +1039,36 @@ function attachLLMEventListeners() {
 }
 
 // Placeholder for LLM configuration modal (to be implemented)
-export function showLLMConfigurationModal(configId = null) {
-    const config = configId ? configState.llmConfigurations.find(c => c.id === configId) : null;
+export async function showLLMConfigurationModal(configId = null) {
+    let config = configId ? configState.llmConfigurations.find(c => c.id === configId) : null;
     const isEdit = !!config;
+    
+    // If editing, fetch the full configuration with decrypted credentials
+    if (isEdit && configId) {
+        try {
+            const headers = {};
+            const authToken = localStorage.getItem('tda_auth_token');
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+            
+            const response = await fetch(`/api/v1/llm/configurations/${configId}`, { 
+                method: 'GET',
+                headers 
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                if (result.status === 'success' && result.configuration) {
+                    config = result.configuration;
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch configuration with credentials:', error);
+            // Continue with config from state (without credentials)
+        }
+    }
+    
     const selectedProvider = config?.provider || 'Google';
 
     // Build provider options
@@ -1847,19 +1891,39 @@ export function renderProfiles() {
     container.innerHTML = configState.profiles.map(profile => {
         const isDefault = profile.id === configState.defaultProfileId;
         const isActiveForConsumption = configState.activeForConsumptionProfileIds.includes(profile.id);
+        const testStatus = configState.profileTestStatus[profile.id];
+        const testsPassedForDefault = testStatus?.passed === true;
 
         return `
         <div class="bg-white/5 border ${isDefault ? 'border-[#F15F22]' : 'border-white/10'} rounded-lg p-4" data-profile-id="${profile.id}">
             <div class="flex items-start justify-between">
                 <div class="flex items-start gap-3 flex-1">
                     <div class="flex flex-col items-center gap-2">
-                        <button title="Set as Default" data-action="set-default-profile" data-profile-id="${profile.id}" class="p-1 rounded-full ${isDefault ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400'}">
+                        <button title="${isDefault ? 'Current Default Profile' : (testsPassedForDefault ? 'Set as Default' : 'Run tests before setting as default')}" 
+                                data-action="set-default-profile" 
+                                data-profile-id="${profile.id}" 
+                                class="p-1 rounded-full ${isDefault ? 'text-yellow-400' : (testsPassedForDefault ? 'text-gray-500 hover:text-yellow-400' : 'text-gray-700 cursor-not-allowed opacity-40')}"
+                                ${!isDefault && !testsPassedForDefault ? 'disabled' : ''}>
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/></svg>
                         </button>
-                        <div class="flex items-center" title="Active for Consumption">
-                           <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" data-action="toggle-active-consumption" data-profile-id="${profile.id}" ${isActiveForConsumption ? 'checked' : ''} class="sr-only peer" style="position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border-width: 0 !important;">
-                                <div class="w-11 h-6 bg-gray-800/50 border border-gray-500 rounded-full peer peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teradata-orange"></div>
+                        <div class="flex items-center" title="${(() => {
+                            const testStatus = configState.profileTestStatus[profile.id];
+                            if (isActiveForConsumption) return 'Active for Consumption';
+                            if (!testStatus?.tested || !testStatus?.passed) return 'Test profile before activating';
+                            return 'Activate for Consumption';
+                        })()}">
+                           <label class="relative inline-flex items-center ${(() => {
+                               const testStatus = configState.profileTestStatus[profile.id];
+                               if (isActiveForConsumption || (testStatus?.tested && testStatus?.passed)) return 'cursor-pointer';
+                               return 'cursor-not-allowed opacity-50';
+                           })()}">
+                                <input type="checkbox" data-action="toggle-active-consumption" data-profile-id="${profile.id}" ${isActiveForConsumption ? 'checked' : ''} ${(() => {
+                                    const testStatus = configState.profileTestStatus[profile.id];
+                                    if (isActiveForConsumption) return '';
+                                    if (!testStatus?.tested || !testStatus?.passed) return 'disabled';
+                                    return '';
+                                })()} class="sr-only peer" style="position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border-width: 0 !important;">
+                                <div class="w-11 h-6 bg-gray-800/50 border border-gray-500 rounded-full peer peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teradata-orange peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
                             </label>
                         </div>
                     </div>
@@ -1919,7 +1983,18 @@ export function renderProfiles() {
                             </span></p>
                             ` : ''}
                         </div>
-                        <div class="mt-2 text-xs" id="test-results-${profile.id}"></div>
+                        <div class="mt-2 text-xs" id="test-results-${profile.id}">${(() => {
+                            const testStatus = configState.profileTestStatus[profile.id];
+                            // If test results exist, show them
+                            if (testStatus?.results) {
+                                return testStatus.results;
+                            }
+                            // Otherwise show warning if not active and not tested/passed
+                            if (!isActiveForConsumption && (!testStatus?.tested || !testStatus?.passed)) {
+                                return '<span class="text-yellow-400">⚠ Run test before activating profile</span>';
+                            }
+                            return '';
+                        })()}</div>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
@@ -1972,21 +2047,109 @@ function attachProfileEventListeners() {
     });
     document.querySelectorAll('[data-action="set-default-profile"]').forEach(btn => {
         btn.addEventListener('click', async (e) => {
-            const profileId = e.currentTarget.dataset.profileId;
-            await configState.setDefaultProfile(profileId);
+            const button = e.currentTarget;
+            const profileId = button.dataset.profileId;
+            const profile = configState.profiles.find(p => p.id === profileId);
             
-            // Auto-activate the default profile if it's not already active
-            if (!configState.activeForConsumptionProfileIds.includes(profileId)) {
-                const activeIds = [...configState.activeForConsumptionProfileIds, profileId];
-                await configState.setActiveForConsumptionProfiles(activeIds);
+            if (!profile) {
+                showNotification('error', 'Profile not found');
+                return;
             }
             
-            renderProfiles();
-            renderLLMProviders(); // Re-render to update default/active badges
-            renderMCPServers(); // Re-render to update default/active badges
-            updateReconnectButton(); // Update Reconnect & Load button state
+            // If already default, no need to do anything
+            const isAlreadyDefault = profileId === configState.defaultProfileId;
+            if (isAlreadyDefault) {
+                return;
+            }
             
-            showNotification('success', 'Default profile successfully changed');
+            // Validation: Check if profile tests have passed (only for non-default profiles)
+            const testStatus = configState.profileTestStatus[profileId];
+            if (!testStatus || !testStatus.passed) {
+                showNotification('error', 'Profile must pass all tests before it can be set as default. Please run tests first.');
+                return;
+            }
+            
+            try {
+                // Disable button during processing
+                button.disabled = true;
+                const originalHTML = button.innerHTML;
+                button.innerHTML = '<svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+                
+                // Step 1: If profile has inherit_classification enabled, disable it
+                // (Default profiles cannot inherit from themselves)
+                if (profile.inherit_classification) {
+                    showNotification('info', 'Disabling classification inheritance for new default profile...');
+                    await configState.updateProfile(profileId, {
+                        inherit_classification: false
+                    });
+                    await configState.loadProfiles();
+                }
+                
+                // Step 2: Set as default
+                await configState.setDefaultProfile(profileId);
+                
+                // Step 3: Auto-activate the default profile if it's not already active
+                if (!configState.activeForConsumptionProfileIds.includes(profileId)) {
+                    const activeIds = [...configState.activeForConsumptionProfileIds, profileId];
+                    await configState.setActiveForConsumptionProfiles(activeIds);
+                }
+                
+                // Step 4: Check if classification exists
+                const updatedProfile = configState.profiles.find(p => p.id === profileId);
+                const classificationResults = updatedProfile?.classification_results || {};
+                const toolsDict = classificationResults.tools || {};
+                const promptsDict = classificationResults.prompts || {};
+                const totalTools = Object.values(toolsDict).reduce((sum, tools) => sum + tools.length, 0);
+                const totalPrompts = Object.values(promptsDict).reduce((sum, prompts) => sum + prompts.length, 0);
+                const hasClassification = totalTools > 0 || totalPrompts > 0;
+                
+                // Step 5: If no classification exists, trigger automatic reclassification
+                if (!hasClassification) {
+                    showNotification('info', `Running classification for default profile "${profile.name}"...`);
+                    
+                    const headers = { 'Content-Type': 'application/json' };
+                    const authToken = localStorage.getItem('tda_auth_token');
+                    if (authToken) {
+                        headers['Authorization'] = `Bearer ${authToken}`;
+                    }
+                    
+                    const response = await fetch(`/api/v1/profiles/${profileId}/reclassify`, {
+                        method: 'POST',
+                        headers: headers,
+                        credentials: 'include'
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok && result.status === 'success') {
+                        showNotification('success', `Default profile "${profile.name}" classified successfully`);
+                    } else {
+                        showNotification('warning', `Default profile set, but classification failed: ${result.message || 'Unknown error'}`);
+                    }
+                } else {
+                    showNotification('success', `Default profile changed to "${profile.name}"`);
+                }
+                
+                // Step 6: Reload and re-render
+                await configState.loadProfiles();
+                renderProfiles();
+                renderLLMProviders(); // Re-render to update default/active badges
+                renderMCPServers(); // Re-render to update default/active badges
+                updateReconnectButton(); // Update Reconnect & Load button state
+                
+                // Restore button
+                button.disabled = false;
+                button.innerHTML = originalHTML;
+                
+            } catch (error) {
+                console.error('Set default profile error:', error);
+                showNotification('error', `Failed to set default profile: ${error.message}`);
+                
+                // Restore button
+                button.disabled = false;
+                const originalHTML = '★';
+                button.innerHTML = originalHTML;
+            }
         });
     });
 
@@ -2006,6 +2169,13 @@ function attachProfileEventListeners() {
             let activeIds = configState.activeForConsumptionProfileIds;
 
             if (isChecked) {
+                // Check if profile has been tested successfully
+                const testStatus = configState.profileTestStatus[profileId];
+                if (!testStatus?.tested || !testStatus?.passed) {
+                    e.target.checked = false; // Revert the checkbox
+                    showNotification('error', 'Please run and pass the test before activating this profile.');
+                    return;
+                }
                 // Test the profile first before any other checks
                 const resultsContainer = document.getElementById(`test-results-${profileId}`);
                 if (resultsContainer) {
@@ -2130,6 +2300,29 @@ function attachProfileEventListeners() {
                     html += `<p class="${statusClass}">${value.message}</p>`;
                 }
                 resultsContainer.innerHTML = html;
+
+                // Update test status
+                configState.profileTestStatus[profileId] = {
+                    tested: true,
+                    passed: all_successful,
+                    timestamp: Date.now(),
+                    results: html  // Store the formatted results
+                };
+                
+                // Re-render profiles to update activation toggle state and star button
+                renderProfiles();
+                
+                // Restore test results after re-render
+                const newResultsContainer = document.getElementById(`test-results-${profileId}`);
+                if (newResultsContainer) {
+                    newResultsContainer.innerHTML = html;
+                }
+                
+                if (all_successful) {
+                    showNotification('success', 'Profile test passed! You can now set it as default or activate it.');
+                } else {
+                    showNotification('error', 'Profile test failed. Please fix the issues before activating.');
+                }
 
                 // Just display results - don't auto-activate the profile
                 // User can manually activate via the toggle switch if tests pass
@@ -3054,6 +3247,9 @@ async function showProfileModal(profileId = null) {
                 // Reload profiles to get updated needs_reclassification flag from backend
                 await configState.loadProfiles();
                 
+                // Clear test status since profile has been modified
+                delete configState.profileTestStatus[profileId];
+                
                 // Check if reclassification flag was newly set during this update
                 const updatedProfile = configState.profiles.find(p => p.id === profileId);
                 const hasReclassificationFlag = updatedProfile?.needs_reclassification || false;
@@ -3067,9 +3263,9 @@ async function showProfileModal(profileId = null) {
                 modal.classList.add('hidden');
                 
                 if (flagWasNewlySet) {
-                    showNotification('warning', 'Profile updated - Reclassification recommended');
+                    showNotification('warning', 'Profile updated - Reclassification recommended. Please test the profile before activating.');
                 } else {
-                    showNotification('success', 'Profile updated successfully');
+                    showNotification('success', 'Profile updated successfully. Please test the profile before activating.');
                 }
             } else {
                 await configState.addProfile(profileData);
@@ -3111,7 +3307,7 @@ export async function initializeConfigurationUI() {
     // Add LLM configuration button
     const addLLMConfigBtn = document.getElementById('add-llm-config-btn');
     if (addLLMConfigBtn) {
-        addLLMConfigBtn.addEventListener('click', () => showLLMConfigurationModal());
+        addLLMConfigBtn.addEventListener('click', async () => await showLLMConfigurationModal());
     }
 
     // Add Profile button

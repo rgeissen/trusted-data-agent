@@ -3683,6 +3683,59 @@ async def create_llm_configuration():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@rest_api_bp.route("/v1/llm/configurations/<config_id>", methods=["GET"])
+async def get_llm_configuration(config_id: str):
+    """Get a single LLM configuration with decrypted credentials (for editing)."""
+    try:
+        user_uuid = _get_user_uuid_from_request()
+        from trusted_data_agent.core.config_manager import get_config_manager
+        from trusted_data_agent.auth import encryption
+        from trusted_data_agent.auth.admin import get_current_user_from_request
+        config_manager = get_config_manager()
+        
+        # Find the configuration
+        configurations = config_manager.get_llm_configurations(user_uuid)
+        config = next((c for c in configurations if c.get("id") == config_id), None)
+        
+        if not config:
+            return jsonify({
+                "status": "error",
+                "message": "LLM configuration not found"
+            }), 404
+        
+        # Decrypt credentials if available
+        provider = config.get("provider")
+        if provider:
+            current_user = get_current_user_from_request()
+            if current_user:
+                try:
+                    app_logger.info(f"Retrieving credentials for provider {provider}, user {current_user.username} (id={current_user.id})")
+                    credentials = encryption.decrypt_credentials(current_user.id, provider)
+                    if credentials:
+                        # Add decrypted credentials to config
+                        config = config.copy()  # Don't modify the original
+                        config["credentials"] = credentials
+                        app_logger.info(f"Successfully decrypted credentials for provider {provider}")
+                    else:
+                        app_logger.warning(f"No encrypted credentials found for provider {provider}")
+                        config["credentials"] = {}
+                except Exception as e:
+                    app_logger.error(f"Error decrypting credentials: {e}", exc_info=True)
+                    config["credentials"] = {}
+            else:
+                app_logger.warning("No authenticated user - cannot decrypt credentials")
+                config["credentials"] = {}
+        
+        return jsonify({
+            "status": "success",
+            "configuration": config
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error getting LLM configuration: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @rest_api_bp.route("/v1/llm/configurations/<config_id>", methods=["PUT"])
 async def update_llm_configuration(config_id: str):
     """Update an existing LLM configuration."""

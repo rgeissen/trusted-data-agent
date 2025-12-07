@@ -318,21 +318,34 @@ class ConsumptionManager:
             self.db.commit()
             logger.debug(f"Updated session_name to '{session_name}' for {len(turns)} turns in session {session_id}")
     
-    def increment_session_count(self, user_id: str, is_new_session: bool = True) -> None:
+    def increment_session_count(self, user_id: str, session_id: str, is_new_session: bool = True) -> None:
         """
-        Increment session counters.
+        Increment session counters only if this session hasn't been seen before.
         
         Args:
             user_id: User ID
-            is_new_session: True for new session, False for existing
+            session_id: Session ID to check
+            is_new_session: True for new session, False for existing (legacy parameter, now verified)
         """
         consumption = self.get_or_create_consumption(user_id)
         now = datetime.now(timezone.utc)
         
         if is_new_session:
-            consumption.total_sessions += 1
-            consumption.active_sessions += 1
-            consumption.sessions_last_24h += 1
+            # Check if this session already exists in consumption_turns table
+            # Only increment if we've never seen this session_id before
+            existing_session = self.db.query(ConsumptionTurn).filter(
+                ConsumptionTurn.user_id == user_id,
+                ConsumptionTurn.session_id == session_id
+            ).first()
+            
+            if not existing_session:
+                # Truly a new session - increment counters
+                consumption.total_sessions += 1
+                consumption.active_sessions += 1
+                consumption.sessions_last_24h += 1
+                logger.info(f"New session detected for user {user_id}: {session_id}")
+            else:
+                logger.debug(f"Session {session_id} already exists for user {user_id}, not incrementing")
         
         consumption.last_updated_at = now
         self.db.commit()
@@ -513,3 +526,35 @@ class ConsumptionManager:
         
         logger.info(f"Cleaned up {deleted} turn records older than {days_to_keep} days")
         return deleted
+    
+    def reconcile_session_count(self, user_id: str) -> Dict[str, int]:
+        """
+        Reconcile session count with actual distinct sessions in consumption_turns.
+        This fixes any discrepancies caused by duplicate increments.
+        
+        Args:
+            user_id: User ID to reconcile
+            
+        Returns:
+            Dictionary with old_count, new_count, and difference
+        """
+        from sqlalchemy import func
+        
+        consumption = self.get_or_create_consumption(user_id)
+        old_count = consumption.total_sessions
+        
+        # Count actual distinct sessions in consumption_turns
+        actual_count = self.db.query(func.count(func.distinct(ConsumptionTurn.session_id))).filter(
+            ConsumptionTurn.user_id == user_id
+        ).scalar() or 0
+        
+        if old_count != actual_count:
+            logger.info(f"Reconciling session count for user {user_id}: {old_count} -> {actual_count}")
+            consumption.total_sessions = actual_count
+            self.db.commit()
+        
+        return {
+            'old_count': old_count,
+            'new_count': actual_count,
+            'difference': actual_count - old_count
+        }

@@ -1,22 +1,22 @@
 {
-  "case_id": "f4187606-a08e-5b69-913c-16fede7003df",
+  "case_id": "5e9c6cb4-b9f1-5006-ba55-e1a65b198f7b",
   "metadata": {
-    "session_id": "e5fba43b-6472-464d-9920-f82d7c4c9e3f",
-    "turn_id": 1,
+    "session_id": "64871fef-76bd-4100-9be4-3cb8a0d785a5",
+    "turn_id": 2,
     "is_success": true,
-    "task_id": "task-1b489ae8-24f5-4223-8f5d-2c45e81b4ccb",
+    "task_id": "task-dbd89848-4417-4aa3-acf0-fa143c6a6460",
     "collection_id": 1,
     "has_orchestration": false,
     "had_plan_improvements": false,
-    "had_tactical_improvements": true,
-    "timestamp": "2025-12-05T23:50:18.109797+00:00",
+    "had_tactical_improvements": false,
+    "timestamp": "2025-12-07T10:39:06.233335+00:00",
     "user_feedback_score": 0,
     "llm_config": {
-      "provider": "Amazon",
-      "model": "arn:aws:bedrock:eu-central-1:960887920495:inference-profile/eu.amazon.nova-lite-v1:0",
-      "profile_tag": "ADAAT",
-      "input_tokens": 0,
-      "output_tokens": 0
+      "provider": "Friendli",
+      "model": "google/gemma-3-27b-it",
+      "profile_tag": "FRGOT",
+      "input_tokens": 10725,
+      "output_tokens": 196
     },
     "is_most_efficient": true,
     "strategy_metrics": {
@@ -27,7 +27,7 @@
       },
       "total_steps": 2
     },
-    "user_uuid": "451eea93-35f1-4f21-8d93-b96e83d860d1"
+    "user_uuid": "3d2dfb6d-bd57-4532-916f-32bdea7c7a65"
   },
   "intent": {
     "user_query": "what is the current date?"
@@ -36,7 +36,7 @@
     "phases": [
       {
         "phase": 1,
-        "goal": "Retrieve the current system date in YYYY-MM-DD format.",
+        "goal": "Get the current date.",
         "relevant_tools": [
           "TDA_CurrentDate"
         ],
@@ -44,7 +44,7 @@
       },
       {
         "phase": 2,
-        "goal": "Generate the final report based on the data gathered.",
+        "goal": "Generate the final report based on the current date.",
         "relevant_tools": [
           "TDA_FinalReport"
         ],
