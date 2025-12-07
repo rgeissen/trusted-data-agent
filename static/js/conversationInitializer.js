@@ -8,13 +8,16 @@
 
 import { showAppBanner } from './bannerSystem.js';
 
-// Initialization state tracking
+// Initialization state tracking - make globally accessible for easy checking
 const initState = {
     initialized: false,
     inProgress: false,
     lastInitTimestamp: null,
     errors: []
 };
+
+// Expose state globally for synchronous access (no dynamic imports needed)
+window.__conversationInitState = initState;
 
 /**
  * Main initialization function - Central entry point for conversation mode

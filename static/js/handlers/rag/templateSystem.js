@@ -259,31 +259,39 @@ export function createTemplateCard(template, index, filterType = 'planner') {
             try {
                 // Check if conversation mode is fully initialized
                 console.log('[Deploy] Checking conversation initialization...');
-                try {
-                    // Import conversationInitializer to check if system is fully initialized
-                    const { getInitializationState } = await import('../../conversationInitializer.js');
-                    const initState = getInitializationState();
-                    
-                    console.log('[Deploy] Initialization state:', initState);
-                    
-                    // If not initialized, show helpful banner
-                    if (!initState.initialized) {
-                        console.log('[Deploy] Conversation not initialized');
-                        if (window.showAppBanner) {
-                            window.showAppBanner(
-                                'Please initialize the system first. Go to Setup and click "Save & Connect", or go to Conversations and click "Start Conversation".',
-                                'info'
-                            );
-                        }
-                        return;
+                
+                // Helper: derive initialization if global state is missing
+                const deriveInitState = () => {
+                    // Consider initialized if conversation view is active and a session is loaded
+                    const conversationView = document.getElementById('conversation-view');
+                    const isConversationVisible = conversationView && !conversationView.classList.contains('hidden');
+                    const hasSessionLoaded = window.state && window.state.sessionLoaded === true;
+                    // Also check header dots for connected state
+                    const mcpDot = document.getElementById('mcp-status-dot');
+                    const llmDot = document.getElementById('llm-status-dot');
+                    const ctxDot = document.getElementById('context-status-dot');
+                    const sseDot = document.getElementById('sse-status-dot');
+                    const indicatorsGreen = [mcpDot, llmDot, ctxDot, sseDot].every(dot => dot ? dot.classList.contains('connected') || dot.classList.contains('idle') : true);
+                    return { initialized: Boolean(isConversationVisible && hasSessionLoaded && indicatorsGreen) };
+                };
+                
+                // Use global init state if present, otherwise derive
+                const initState = window.__conversationInitState || deriveInitState();
+                console.log('[Deploy] Initialization state:', initState);
+                
+                // Only proceed if explicitly initialized
+                if (!initState || !initState.initialized) {
+                    console.log('[Deploy] Conversation not initialized');
+                    if (window.showAppBanner) {
+                        window.showAppBanner(
+                            'Please initialize the system first. Go to Setup and click "Save & Connect", or go to Conversations and click "Start Conversation".',
+                            'info'
+                        );
                     }
-                    
-                    console.log('[Deploy] System fully initialized, proceeding...');
-                } catch (error) {
-                    console.error('[Deploy] Failed to check initialization:', error);
-                    // If we can't check, just proceed (fail open rather than fail closed)
-                    console.log('[Deploy] Could not verify initialization state, proceeding anyway...');
+                    return;
                 }
+                
+                console.log('[Deploy] System fully initialized, proceeding...');
                 
                 // Load saved defaults with authentication
                 console.log('[Deploy] Fetching defaults...');

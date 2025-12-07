@@ -1816,30 +1816,37 @@ async function checkLlmConfiguration() {
 async function handleGenerateContext() {
     // Check if conversation mode is fully initialized
     console.log('[Generate Context] Checking conversation initialization...');
-    try {
-        const { getInitializationState } = await import('../conversationInitializer.js');
-        const initState = getInitializationState();
-        
-        console.log('[Generate Context] Initialization state:', initState);
-        
-        // If not initialized, show helpful banner
-        if (!initState.initialized) {
-            console.log('[Generate Context] Conversation not initialized');
-            if (window.showAppBanner) {
-                window.showAppBanner(
-                    'Please initialize the system first. Go to Setup and click "Save & Connect", or go to Conversations and click "Start Conversation".',
-                    'info'
-                );
-            }
-            return;
+    
+    // Helper: derive initialization if global state is missing
+    const deriveInitState = () => {
+        const conversationView = document.getElementById('conversation-view');
+        const isConversationVisible = conversationView && !conversationView.classList.contains('hidden');
+        const hasSessionLoaded = window.state && window.state.sessionLoaded === true;
+        const mcpDot = document.getElementById('mcp-status-dot');
+        const llmDot = document.getElementById('llm-status-dot');
+        const ctxDot = document.getElementById('context-status-dot');
+        const sseDot = document.getElementById('sse-status-dot');
+        const indicatorsGreen = [mcpDot, llmDot, ctxDot, sseDot].every(dot => dot ? dot.classList.contains('connected') || dot.classList.contains('idle') : true);
+        return { initialized: Boolean(isConversationVisible && hasSessionLoaded && indicatorsGreen) };
+    };
+    
+    // Use global init state if present, otherwise derive
+    const initState = window.__conversationInitState || deriveInitState();
+    console.log('[Generate Context] Initialization state:', initState);
+    
+    // Only proceed if explicitly initialized
+    if (!initState || !initState.initialized) {
+        console.log('[Generate Context] Conversation not initialized');
+        if (window.showAppBanner) {
+            window.showAppBanner(
+                'Please initialize the system first. Go to Setup and click "Save & Connect", or go to Conversations and click "Start Conversation".',
+                'info'
+            );
         }
-        
-        console.log('[Generate Context] System fully initialized, proceeding...');
-    } catch (error) {
-        console.error('[Generate Context] Failed to check initialization:', error);
-        // If we can't check, just proceed (fail open rather than fail closed)
-        console.log('[Generate Context] Could not verify initialization state, proceeding anyway...');
+        return;
     }
+    
+    console.log('[Generate Context] System fully initialized, proceeding...');
     
     try {
         // Get the database name from dynamically generated field

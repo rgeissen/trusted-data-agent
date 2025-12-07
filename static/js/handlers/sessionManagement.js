@@ -164,6 +164,14 @@ export async function handleLoadSession(sessionId, isNewSession = false) {
         // This will reset the status display to the globally configured model
         UI.updateStatusPromptName(data.provider, data.model);
         // --- MODIFICATION END ---
+        
+        // Mark conversation as initialized after successful session load
+        if (window.__conversationInitState) {
+            window.__conversationInitState.initialized = true;
+            window.__conversationInitState.lastInitTimestamp = Date.now();
+            window.__conversationInitState.inProgress = false;
+            console.log('[handleLoadSession] Marked conversation as initialized');
+        }
     } catch (error) {
         UI.addMessage('assistant', `Error loading session: ${error.message}`);
     } finally {

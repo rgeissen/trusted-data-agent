@@ -16,6 +16,8 @@ import { handleViewSwitch } from './ui.js';
 import { initializeVoiceRecognition } from './voice.js';
 import { subscribeToNotifications } from './notifications.js';
 import { initializeMarketplace } from './handlers/marketplaceHandler.js';
+// Import conversationInitializer early to ensure window.__conversationInitState is available
+import './conversationInitializer.js';
 
 // Session header profile display
 function updateSessionHeaderProfile(defaultProfile, overrideProfile) {

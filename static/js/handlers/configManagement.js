@@ -184,12 +184,11 @@ export async function finalizeConfiguration(config, switchToConversationView = t
     
     // Mark conversation mode as initialized for deploy button validation
     // This ensures that after normal startup (page refresh), the system is marked as initialized
-    try {
-        const { setInitialized } = await import('../conversationInitializer.js');
-        setInitialized();
+    if (window.__conversationInitState) {
+        window.__conversationInitState.initialized = true;
+        window.__conversationInitState.lastInitTimestamp = Date.now();
+        window.__conversationInitState.inProgress = false;
         console.log('[finalizeConfiguration] Marked conversation as initialized');
-    } catch (error) {
-        console.warn('[finalizeConfiguration] Could not mark as initialized:', error);
     }
 }
 
