@@ -183,6 +183,17 @@ export function getInitializationState() {
 }
 
 /**
+ * Mark conversation as initialized (called after successful startup or reconnect)
+ * Used when conversation mode is loaded through normal startup flow (page refresh)
+ */
+export function setInitialized() {
+    initState.initialized = true;
+    initState.lastInitTimestamp = Date.now();
+    initState.inProgress = false;
+    console.log('[ConversationInit] Marked as initialized');
+}
+
+/**
  * Force re-initialization (useful after config changes)
  * Call this after profile changes, server reconnections, etc.
  */

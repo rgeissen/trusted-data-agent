@@ -1814,6 +1814,33 @@ async function checkLlmConfiguration() {
  * Handle Generate Context button click
  */
 async function handleGenerateContext() {
+    // Check if conversation mode is fully initialized
+    console.log('[Generate Context] Checking conversation initialization...');
+    try {
+        const { getInitializationState } = await import('../conversationInitializer.js');
+        const initState = getInitializationState();
+        
+        console.log('[Generate Context] Initialization state:', initState);
+        
+        // If not initialized, show helpful banner
+        if (!initState.initialized) {
+            console.log('[Generate Context] Conversation not initialized');
+            if (window.showAppBanner) {
+                window.showAppBanner(
+                    'Please initialize the system first. Go to Setup and click "Save & Connect", or go to Conversations and click "Start Conversation".',
+                    'info'
+                );
+            }
+            return;
+        }
+        
+        console.log('[Generate Context] System fully initialized, proceeding...');
+    } catch (error) {
+        console.error('[Generate Context] Failed to check initialization:', error);
+        // If we can't check, just proceed (fail open rather than fail closed)
+        console.log('[Generate Context] Could not verify initialization state, proceeding anyway...');
+    }
+    
     try {
         // Get the database name from dynamically generated field
         const databaseNameEl = document.getElementById('rag-collection-llm-database-name');
