@@ -1,0 +1,55 @@
+{
+  "case_id": "797f0e79-053d-5a0d-9166-3f85b4150304",
+  "metadata": {
+    "session_id": "e5a53187-49ed-44d8-b3b3-c3c4e3bba3e1",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "task-de088ba7-9bb3-4455-a655-a2caa5492a9e",
+    "collection_id": 1,
+    "has_orchestration": false,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": true,
+    "timestamp": "2025-12-07T13:49:47.177530+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Amazon",
+      "model": "arn:aws:bedrock:eu-central-1:960887920495:inference-profile/eu.amazon.nova-lite-v1:0",
+      "profile_tag": "AWAAT",
+      "input_tokens": 8369,
+      "output_tokens": 53
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 2,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 1
+      },
+      "total_steps": 2
+    },
+    "user_uuid": "82b9231b-08b1-4b1e-bcdf-9762db21f90b"
+  },
+  "intent": {
+    "user_query": "what is the system date?"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Retrieve the current system date.",
+        "relevant_tools": [
+          "TDA_CurrentDate"
+        ],
+        "arguments": {}
+      },
+      {
+        "phase": 2,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}

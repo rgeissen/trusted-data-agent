@@ -1,0 +1,74 @@
+{
+  "case_id": "429e99fb-90a9-50b8-81bf-cfa5269f5c6c",
+  "metadata": {
+    "session_id": "bad22d9b-cb6d-47c2-bf57-c17cb477692b",
+    "turn_id": 1,
+    "is_success": true,
+    "task_id": "task-579cb9ec-a5b7-4bf5-850f-c51c8f84abad",
+    "collection_id": 1,
+    "has_orchestration": false,
+    "had_plan_improvements": false,
+    "had_tactical_improvements": false,
+    "timestamp": "2025-12-07T13:44:43.217708+00:00",
+    "user_feedback_score": 0,
+    "llm_config": {
+      "provider": "Amazon",
+      "model": "arn:aws:bedrock:eu-central-1:960887920495:inference-profile/eu.amazon.nova-lite-v1:0",
+      "profile_tag": "AWAAT",
+      "input_tokens": 8351,
+      "output_tokens": 220
+    },
+    "is_most_efficient": true,
+    "strategy_metrics": {
+      "phase_count": 3,
+      "steps_per_phase": {
+        "1": 1,
+        "2": 5,
+        "3": 1
+      },
+      "total_steps": 7
+    },
+    "user_uuid": "82b9231b-08b1-4b1e-bcdf-9762db21f90b"
+  },
+  "intent": {
+    "user_query": "educate yourself on the table ddls of the fitness_db database"
+  },
+  "successful_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "goal": "Get a list of all tables in the 'fitness_db' database.",
+        "relevant_tools": [
+          "base_tableList"
+        ],
+        "arguments": {
+          "database_name": "fitness_db"
+        }
+      },
+      {
+        "phase": 2,
+        "goal": "Loop through the list of tables and retrieve the DDL for each one.",
+        "relevant_tools": [
+          "base_tableDDL"
+        ],
+        "type": "loop",
+        "loop_over": "result_of_phase_1",
+        "arguments": {
+          "database_name": "fitness_db",
+          "table_name": {
+            "source": "loop_item",
+            "key": "TableName"
+          }
+        }
+      },
+      {
+        "phase": 3,
+        "goal": "Generate the final report based on the data gathered.",
+        "relevant_tools": [
+          "TDA_FinalReport"
+        ],
+        "arguments": {}
+      }
+    ]
+  }
+}
