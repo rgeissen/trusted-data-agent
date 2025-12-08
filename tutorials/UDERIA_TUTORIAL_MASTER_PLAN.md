@@ -213,6 +213,7 @@ of data operations—from your first conversation to production deployment at sc
 Let's dive in.
 ```
 
+
 **Screen Capture Plan:**
 - [ ] Website hero section with tagline "Cloud-Level Reasoning. Zero-Trust Privacy."
 - [ ] Six principles icons/cards appearing sequentially as mentioned
@@ -291,6 +292,7 @@ Everything you need. Within reach. Clean. Organized. Built for speed.
 
 Now let's put it to work.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Login screen with registration option highlighted
@@ -438,6 +440,7 @@ You're not just chatting with AI. You're orchestrating specialized expertise.
 Let's keep going.
 ```
 
+
 **Screen Capture Plan:**
 - [ ] Query typed into input: "What are the top 5 products by revenue this quarter?"
 - [ ] Live Status Panel: Strategic plan appears with phases
@@ -578,6 +581,7 @@ This is actionable intelligence.
 
 Let's see how it works.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Traditional workflow diagram: Analyst → Engineer → API Dev → DevOps (days/weeks)
@@ -1013,6 +1017,7 @@ Infrastructure as personas. Intelligence as a package. Expertise as a profile.
 And YOU as the orchestrator. God mode activated.
 ```
 
+
 **Screen Capture Plan:**
 - [ ] Setup → Profiles landing page showing multiple personas
 - [ ] @DBA Profile detail view - Four tabs visible: Config, Tools, Knowledge, Planners
@@ -1206,6 +1211,7 @@ Your conversational intelligence—fully programmable.
 Production-grade AI orchestration.
 ```
 
+
 **Screen Capture Plan:**
 - [ ] API documentation landing page with six categories
 - [ ] Admin panel: Generate long-lived access token
@@ -1377,6 +1383,7 @@ Same agent. Same queries. Production reliability.
 
 Conversational AI meets enterprise workflows.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Airflow UI: DAG graph view showing task dependencies
@@ -1573,6 +1580,7 @@ No black boxes. No guesswork.
 Complete trust through complete transparency.
 ```
 
+
 **Screen Capture Plan:**
 - [ ] Complex query input: "Compare service ticket resolution times..."
 - [ ] Strategic Plan appears with 4 phases listed
@@ -1755,6 +1763,7 @@ Every tool. Every prompt. Every resource. Visible. Managed.
 
 Know your agent. Trust your agent. Control your agent.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Capabilities Panel (left side) with three tabs
@@ -1958,6 +1967,7 @@ Memory precision + Cost control + Exploratory freedom.
 
 All in your hands.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Session History panel showing 4 turns with checkboxes (all checked)
@@ -2193,6 +2203,7 @@ Your agent. Your rules. Your customization.
 
 Trust through visibility. Power through customization.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Setup → Advanced → System Prompts menu
@@ -2450,6 +2461,7 @@ Complete transparency across entire AI operations.
 
 Production-grade monitoring. Trust through visibility. Control through insight.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Executions View navigation (main menu)
@@ -2762,6 +2774,7 @@ Other tools: Simple Q&A only
 
 Intelligence in architecture. Not just model.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Complex multi-part query input
@@ -3283,6 +3296,7 @@ Continuous improvement. Organizational learning. Cross-tier knowledge transfer.
 This is intelligence that compounds.
 ```
 
+
 **Screen Capture Plan:**
 - [ ] Intelligence → RAG Collections navigation
 - [ ] Planner Repository view with list of cases
@@ -3612,6 +3626,7 @@ Wasteful → Efficient
 
 Proactive optimization. Works smarter, not harder.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Query: "Top 5 products by revenue"
@@ -3953,6 +3968,7 @@ Every token. Every penny. Every optimization. All visible. All actionable.
 This is financial governance for the AI age.
 ```
 
+
 **Screen Capture Plan:**
 - [ ] Session History with turn-level cost displays
 - [ ] Turn 3 expanded: Token breakdown (input/output)
@@ -4168,6 +4184,7 @@ From "stuck with one vendor" to "orchestrating the entire AI ecosystem."
 
 Your data. Your infrastructure. Your choice.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Setup → LLM Providers landing page showing 6+ providers
@@ -4440,6 +4457,7 @@ Cloud-level reasoning. Zero-trust privacy. No compromise.
 Your data stays home. Your intelligence reaches the cloud. Hybrid sovereignty.
 ```
 
+
 **Screen Capture Plan:**
 - [ ] Hybrid architecture diagram: Cloud Planner + Local Executor with data flow arrows
 - [ ] @LOCAL profile configuration showing dual LLM setup
@@ -4697,6 +4715,7 @@ From "shared platform" to "bank-grade multi-tenant security."
 Your data. Your users. Your control. Complete isolation. Total security.
 ```
 
+
 **Screen Capture Plan:**
 - [ ] Login page with credential entry
 - [ ] JWT token structure visualization (decoded payload showing user_id, role, exp)
@@ -4949,6 +4968,7 @@ proven patterns. From costly redundancy to efficient reuse.
 
 The Marketplace isn't a feature. It's a fundamental shift in how organizations learn.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Marketplace landing page with dual-tab interface
@@ -5273,6 +5293,7 @@ From "starting from scratch" to "standing on organizational giants' shoulders."
 
 Capture success. Templatize excellence. Deploy expertise. Multiply impact.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Successful query conversation with "Create Template" button visible
@@ -5662,6 +5683,7 @@ Capture expertise. Chunk and embed. Publish and deploy. Multiply knowledge., ins
 Capture expertise. Chunk and embed. Publish and deploy. Multiply knowledge.
 ```
 
+
 **Screen Capture Plan:**
 - [ ] Marketplace → Knowledge Repositories → "Create Collection" button
 - [ ] Collection setup form:
@@ -6002,6 +6024,7 @@ From unknown quality to community-validated excellence.
 
 Subscribe for convenience. Fork for customization. Rate for quality. Build the ecosystem.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Collection detail page with "Deploy to My Repository" button
@@ -6365,6 +6388,7 @@ From "after-the-fact shock" to "proactive governance."
 Rate limits. Quotas. Visibility. Control. Financial governance.
 ```
 
+
 **Screen Capture Plan:**
 - [ ] Admin → User Management → Consumption Profiles
 - [ ] Four tier cards displayed:
@@ -6678,6 +6702,7 @@ From "after-the-fact reports" to "real-time savings opportunities."
 
 Cost analytics. Pattern detection. RAG ROI tracking. Automated recommendations. Financial intelligence.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Admin → Cost Analytics → Provider Breakdown
@@ -7061,6 +7086,7 @@ From "reactive panic" to "proactive governance."
 
 Budget thresholds. Real-time tracking. Forecasting. Automated alerts. Emergency controls. Financial predictability.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Admin → Financial Governance → Budget Configuration
@@ -7479,6 +7505,7 @@ From "who has access to what?" to "forensic visibility and governance."
 User creation. Role management. Activity tracking. Suspension/reactivation. Bulk operations. Complete control.
 ```
 
+
 **Screen Capture Plan:**
 - [ ] Admin → User Management landing page
 - [ ] User table showing 127 users:
@@ -7677,6 +7704,7 @@ From "authentication blocking automation" to "secure, always-on programmatic acc
 
 Long-lived tokens. Scoped permissions. Rotation. Audit trails. Automation enabled.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Admin → API Tokens → "Generate New Token"
@@ -7901,6 +7929,7 @@ From "fixed configuration" to "customizable, enterprise-ready system."
 Providers. MCP servers. Security. Branding. Complete control.
 ```
 
+
 **Screen Capture Plan:**
 - [ ] Admin → System Configuration landing page (5 categories)
 - [ ] Click "LLM Providers" → Provider list (6 providers)
@@ -8117,6 +8146,7 @@ From "developer-only platform" to "accessible to business users."
 
 Flowise + Uderia: Low-code AI orchestration for everyone.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Flowise dashboard homepage
@@ -8398,6 +8428,7 @@ From "local prototype" to "production-grade, multi-user platform."
 Docker. Compose. Volumes. Environment variables. Scale with confidence.
 ```
 
+
 **Screen Capture Plan:**
 - [ ] VS Code: Open `Dockerfile`
   - Highlight: FROM python:3.13-slim
@@ -8662,6 +8693,7 @@ From "closed platform" to "fully extensible ecosystem."
 
 Custom MCP servers. Plugins. API extensions. Developer Mode. Build anything.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Admin → Users → Edit user account
@@ -9042,6 +9074,7 @@ From "interested observer" to "platform owner."
 
 Installed. Configured. Running. Your Uderia instance is live.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Terminal: Prerequisites check
@@ -9729,6 +9762,7 @@ One person. One profile. Zero data team bottleneck.
 This is @ANALYST. This is Uderia. This is the future of business intelligence.
 ```
 
+
 **Screen Capture Plan:**
 - [ ] Profile indicator: @ANALYST active
 - [ ] Initial query with revenue trends
@@ -10255,6 +10289,7 @@ One DBA. One profile. Zero manual execution plan reading.
 This is @DBA. This is Uderia. This is database administration evolved.
 ```
 
+
 **SCREEN CAPTURE PLAN:**
 - Profile indicator: @DBA active
 - Query analysis with `base_readQuery` showing slow performance
@@ -10752,6 +10787,7 @@ One analyst. One profile. Zero manual Excel work.
 
 This is @QUALITY. This is Uderia. This is data governance evolved.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Profile indicator: @QUALITY active
@@ -11267,6 +11303,7 @@ This is @LOCAL. This is Uderia. This is data sovereignty without compromise.
 
 **The promise kept:** Cloud-level intelligence. Local execution. Zero trade-offs.
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Profile switch: @ANALYST → @LOCAL
@@ -11892,6 +11929,7 @@ This is Uderia.
 
 **This is God Mode.**
 ```
+
 
 **Screen Capture Plan:**
 - [ ] Profile dropdown showing all 5 profiles
