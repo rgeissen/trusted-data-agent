@@ -19,7 +19,7 @@
   - [1.3 First Conversation - Revenue Analysis](#13-first-conversation---revenue-analysis)
 - [Module 2: The Two-in-One Paradigm](#module-2-the-two-in-one-paradigm)
   - [2.1 Conversational Interface → REST API Transformation](#21-conversational-interface--rest-api-transformation)
-  - [2.2 Profile System - "God Mode" Orchestration](#22-profile-system---god-mode-orchestration)
+  - [2.2 Profile System - "Pro Mode" Orchestration](#22-profile-system---god-mode-orchestration)
   - [2.3 REST API Deep Dive](#23-rest-api-deep-dive)
   - [2.4 Airflow Integration for Batch Processing](#24-airflow-integration-for-batch-processing)
 - [Module 3: Transparent Execution](#module-3-transparent-execution)
@@ -60,7 +60,7 @@
   - [10.2 Database Administrator Journey - @DBA Profile](#102-database-administrator-journey---dba-profile)
   - [10.3 Data Quality Analyst Journey - @QUALITY Profile](#103-data-quality-analyst-journey---quality-profile)
   - [10.4 Compliance Officer Journey - @LOCAL Profile](#104-compliance-officer-journey---local-profile)
-  - [10.5 "God Mode" Power User Journey - Multi-Profile Orchestration](#105-god-mode-power-user-journey---multi-profile-orchestration)
+  - [10.5 "Pro Mode" Power User Journey - Multi-Profile Orchestration](#105-god-mode-power-user-journey---multi-profile-orchestration)
 - [Profile Ecosystem Reference](#-profile-ecosystem-reference)
 - [Demo Environment Reference](#-demo-environment-reference)
 
@@ -128,7 +128,7 @@ A core differentiator of Uderia is the ability to **orchestrate a team of specia
    - **Knowledge:** Minimal (reduces overhead)
    - **Appears in:** Modules 4.4, 7.2, 10.5 (optional)
 
-**The "God Mode" Concept:**
+**The "Pro Mode" Concept:**
 
 Rather than being limited to one agent's perspective, Uderia users can **orchestrate an entire team of expert personas**, switching between them as naturally as consulting different colleagues. This allows one person to perform work that traditionally requires multiple specialists:
 
@@ -429,7 +429,7 @@ But imagine switching to:
 One person orchestrating multiple expert personas. Switch like consulting different 
 colleagues.
 
-This is "god mode." We'll explore it in depth soon.
+This is "Pro Mode." We'll explore it in depth soon.
 
 **WELCOME TO UDERIA:**
 
@@ -602,13 +602,12 @@ Let's see how it works.
 ---
 
 ### 2.2 Profile System: Complete AI Personas
-**Duration:** 5-7 minutes  
+**Duration:** 4-5 minutes  
 **Learning Objectives:**
 - Understand profiles as complete AI personas (LLM + Tools + Knowledge + Patterns)
 - See how RAG Knowledge Collections integrate into profiles
 - Learn how Planner Repositories provide learned execution patterns
 - Master profile switching as persona switching
-- Recognize the power of bundled intelligence
 
 **Key Topics to Cover:**
 - [ ] What is a profile? (Four-component persona architecture)
@@ -617,8 +616,6 @@ Let's see how it works.
 - [ ] Component 3: RAG Knowledge Collections (domain expertise)
 - [ ] Component 4: Planner Repositories (execution patterns)
 - [ ] Profile tags and switching (@DBA, @ANALYST, @LOCAL)
-- [ ] Creating profiles as specialized personas
-- [ ] Marketplace integration (subscribing to shared knowledge/planners)
 
 **Narration Script:**
 ```
@@ -676,18 +673,10 @@ tag @DBA.
   - qlty_validateData (quality checks)
 
 **Component 3: RAG Knowledge Collections**
-Let's click into the "Knowledge" tab for this profile.
-
-You see three collections attached:
+Click "Knowledge" tab—three collections attached:
 1. "Teradata SQL Optimization Guide" (23 documents)
-   - Contains best practices for query performance
-   - Index usage strategies
-   - Join optimization techniques
-   
 2. "fitness_db Schema Documentation" (5 documents)
-   - Table relationships
-   - Business logic rules
-   - Data quality constraints
+3. "DBA Best Practices" (12 documents)
    
 3. "Database Administration Runbooks" (12 documents)
    - Troubleshooting procedures
@@ -961,7 +950,7 @@ Result: Customer-level insights without compromising sovereignty.
 
 **Four personas. Four specializations. One seamless workflow. Under 5 minutes.**
 
-This is what we call "God Mode"—you're not limited to one agent's perspective. You 
+This is what we call "Pro Mode"—you're not limited to one agent's perspective. You 
 orchestrate an entire team of specialized experts, each with their own knowledge base 
 and proven execution patterns, switching between them as naturally as asking a colleague 
 for their input.
@@ -979,7 +968,7 @@ Forget "configuration management." Profiles are intelligent personas:
 - @QUALITY enforces your org's standards and has validation playbooks
 - @LOCAL preserves sovereignty while maintaining same capabilities
 
-Switch profiles. Switch personas. Orchestrate experts. Work in god mode.
+Switch profiles. Switch personas. Orchestrate experts. Work in Pro Mode.
 
 And every profile gets smarter:
 - RAG captures successful queries as champion cases
@@ -8754,7 +8743,7 @@ Custom MCP servers. Plugins. API extensions. Developer Mode. Build anything.
 ---
 
 ### 9.4 Installing Your Own Uderia Platform
-**Duration:** 5-6 minutes  
+**Duration:** 4-5 minutes  
 **Learning Objectives:**
 - Clone repository and setup
 - Configure environment
@@ -8762,14 +8751,11 @@ Custom MCP servers. Plugins. API extensions. Developer Mode. Build anything.
 - Verify installation
 
 **Key Topics to Cover:**
-- [ ] Prerequisites (Python, Node.js, etc.)
-- [ ] Git clone from GitHub
-- [ ] Virtual environment setup
-- [ ] Dependencies installation (requirements.txt)
-- [ ] Configuration file setup (tda_config.json)
+- [ ] Prerequisites (Python, Node.js)
+- [ ] Git clone and virtual environment
+- [ ] Dependencies and configuration
 - [ ] Database initialization
 - [ ] First run and verification
-- [ ] Troubleshooting common issues
 
 **Narration Script:**
 ```
@@ -8787,52 +8773,20 @@ node --version     # Node.js 18+ (for optional UI builds)
 git --version      # Git 2.0+
 ```
 
-If missing:
+If missing: Install Python (python.org), Node (nodejs.org), Git (git-scm.com).
 
-```
-INSTALL:
-• Python: python.org
-• Node: nodejs.org
-• Git: git-scm.com
+Also needed: Database (Teradata/PostgreSQL/MySQL) + LLM API keys.
 
-ALSO NEEDED:
-• Database: Teradata, PostgreSQL, MySQL, or SQLite (testing)
-• LLM API Keys: At least one (Anthropic, OpenAI, Google, or local Ollama)
-```
-
-**CLONE REPOSITORY:**
-
-Terminal:
+**CLONE & SETUP:**
 
 ```bash
 cd ~/projects
 git clone https://github.com/your-org/uderia.git
 cd uderia
-```
 
-Repository structure:
-
-```
-uderia/
-├── src/
-│   └── trusted_data_agent/  # Core platform code
-├── static/                   # UI assets
-├── templates/                # HTML templates
-├── requirements.txt          # Python dependencies
-├── tda_config.json          # Configuration (you'll edit)
-├── Dockerfile               # Container setup
-├── docker-compose.yml       # Multi-service orchestration
-└── README.md                # Detailed docs
-```
-
-**VIRTUAL ENVIRONMENT:**
-
-Create isolated Python environment:
-
-```bash
+# Virtual environment
 python3 -m venv venv
-source venv/bin/activate  # macOS/Linux
-# OR
+source venv/bin/activate  # macOS/Linux (or venv\Scripts\activate on Windows)
 venv\Scripts\activate     # Windows
 ```
 
@@ -9197,7 +9151,7 @@ This section defines the core profiles referenced across all modules and demonst
 
 **Tutorial Appearances:**
 - Module 1.3: First conversation (revenue analysis)
-- Module 2.2: Profile introduction and "god mode" demonstration
+- Module 2.2: Profile introduction and "Pro Mode" demonstration
 - Module 4.1: Strategic planning with business context
 - Module 6.2: Marketplace planner repository usage
 - Module 10.1: Complete business analyst journey
@@ -9255,7 +9209,7 @@ This section defines the core profiles referenced across all modules and demonst
 - Uses technical terminology appropriately
 
 **Tutorial Appearances:**
-- Module 2.2: Profile creation and "god mode" demonstration (first persona)
+- Module 2.2: Profile creation and "Pro Mode" demonstration (first persona)
 - Module 3.2: Capabilities discovery (MCP tools showcase)
 - Module 4.1: Strategic planning with SQL optimization
 - Module 8.2: System administration tasks
@@ -9309,7 +9263,7 @@ This section defines the core profiles referenced across all modules and demonst
 - Documents quality scores and metrics
 
 **Tutorial Appearances:**
-- Module 2.2: Profile introduction and "god mode" demonstration (second persona)
+- Module 2.2: Profile introduction and "Pro Mode" demonstration (second persona)
 - Module 3.1: Transparent execution (validation workflows)
 - Module 10.3: Complete data quality analyst journey
 
@@ -9356,7 +9310,7 @@ This section defines the core profiles referenced across all modules and demonst
 - No compromise on intelligence or features
 
 **Tutorial Appearances:**
-- Module 2.2: Profile introduction and "god mode" demonstration (fourth persona)
+- Module 2.2: Profile introduction and "Pro Mode" demonstration (fourth persona)
 - Module 5.2: Hybrid intelligence (local model showcase)
 - Module 5.3: Security and sovereignty
 - Module 10.4: Complete compliance officer journey
@@ -9448,7 +9402,7 @@ This section defines the core profiles referenced across all modules and demonst
 **Goal:** Demonstrate end-to-end workflows mapping personas to real-world user stories
 
 ### 10.1 Business Analyst Journey - @ANALYST Profile
-**Duration:** 5-6 minutes  
+**Duration:** 4-5 minutes  
 **Persona:** Sarah, Product Manager preparing Q4 board presentation  
 **Profile Used:** Primarily @ANALYST, brief @QUALITY validation
 
@@ -9456,20 +9410,16 @@ This section defines the core profiles referenced across all modules and demonst
 - Follow complete exploratory data analysis workflow
 - See conversational iteration and refinement
 - Understand context retention across multi-turn sessions
-- Demonstrate visualization and reporting
 
 **Scenario Narrative:**
 Sarah needs to present Q4 fitness equipment sales performance to the board. She has 2 hours to prepare insights.
 
 **Key Topics to Cover:**
-- [ ] Initial exploratory question: "What are Q4 revenue trends by product category?"
-- [ ] Drilling down: "Why did Cardio equipment decline 18%?"
-- [ ] Customer analysis: "Show demographics of customers who stopped buying Cardio"
-- [ ] Correlation: "Is there a relationship between service tickets and Cardio sales decline?"
-- [ ] Visualization: Generate executive-ready charts
-- [ ] Quick validation: Switch to @QUALITY to verify data completeness
-- [ ] Final synthesis: "Generate executive summary with recommendations"
-- [ ] Export insights and share with team
+- [ ] Initial question: "What are Q4 revenue trends by product category?"
+- [ ] Drill-down: "Why did Cardio equipment decline 18%?"
+- [ ] Customer analysis: Demographics of churned Cardio buyers
+- [ ] Validation: Switch to @QUALITY for data completeness
+- [ ] Final synthesis: Executive summary with recommendations
 
 **Narration Script:**
 ```
@@ -9530,19 +9480,16 @@ Key Insight: Cardio equipment declined 18% QoQ. Requires investigation.
 
 Sarah: *"Why did Cardio equipment decline 18%?"*
 
-Context retained. @ANALYST knows we're discussing Cardio from Q4.
+Context retained. @ANALYST executes 3 queries:
 
 ```
-🔧 Tool: base_readQuery (3 queries executed)
-   • Q4 Cardio sales by month
-   • Q3 Cardio sales comparison
-   • Customer purchase frequency analysis
-
-📊 Tool: TDA_Charting (Line Graph)
-   Trend: Oct $112K → Nov $95K → Dec $80K (progressive decline)
+🔧 Tool: base_readQuery
+   • Q4 Cardio sales by month: Oct $112K → Nov $95K → Dec $80K (progressive decline)
+   • Customer purchase frequency: -34% repeat buyers
+   • Service ticket correlation: +47% complaints about treadmill reliability
 ```
 
-Response:
+Response: Progressive monthly decline linked to product quality issues.
 
 ```
 CARDIO EQUIPMENT DECLINE ANALYSIS:
@@ -9781,7 +9728,7 @@ This is @ANALYST. This is Uderia. This is the future of business intelligence.
 ---
 
 ### 10.2 Database Administrator Journey - @DBA Profile
-**Duration:** 5-6 minutes  
+**Duration:** 4-5 minutes  
 **Persona:** Marcus, DBA investigating slow query performance  
 **Profile Used:** Primarily @DBA, switch to @PROD for API testing
 
@@ -9789,21 +9736,16 @@ This is @ANALYST. This is Uderia. This is the future of business intelligence.
 - Demonstrate technical SQL optimization workflow
 - Show schema analysis and profiling
 - Illustrate performance tuning process
-- Operationalize optimized query via API
 
 **Scenario Narrative:**
 Marcus received complaints that the "Monthly Sales Report" query is taking 45 seconds. He needs to optimize it and deploy the fix.
 
 **Key Topics to Cover:**
-- [ ] Analyze current query: "Show me the execution plan for monthly sales aggregation"
-- [ ] Schema inspection: Use `base_tableDDL` to examine table structures
-- [ ] Identify bottleneck: "What indexes exist on the Sales table?"
-- [ ] Data profiling: Use `qlty_profileColumn` to understand data distribution
-- [ ] Generate optimized SQL: "Rewrite this query with proper index usage"
-- [ ] Benchmark: Compare old vs new execution time
-- [ ] Document: "Generate technical documentation for this optimization"
-- [ ] Operationalize: Switch to @PROD, test via REST API
-- [ ] Deploy: Update Airflow DAG with optimized query
+- [ ] Analyze execution plan for performance bottleneck
+- [ ] Schema inspection and index analysis
+- [ ] Generate optimized SQL with proper indexing
+- [ ] Benchmark: Compare old vs new execution time (45s → 2.1s)
+- [ ] Document optimization and deploy via API
 
 **Narration Script:**
 ```
@@ -9884,25 +9826,21 @@ Impact:
 Recommendation: Index creation + query restructuring required.
 ```
 
-Marcus needs to see the schema.
+**QUERY 2: SCHEMA & OPTIMIZATION**
 
-**QUERY 2: SCHEMA INSPECTION**
-
-Marcus: *"Show me the DDL for the Sales table, focusing on indexes and constraints"*
+Marcus: *"Show DDL and generate optimized version"*
 
 ```
-🔧 Tool: base_tableDDL
-   Table: Sales | Including: Indexes, Primary Keys, Foreign Keys
+🔧 Tool: base_tableDDL → Analyzes schema
+🔧 Tool: TDA_LLMTask → Generates optimized SQL with index recommendation
 ```
 
-Response:
-
+Optimization:
 ```sql
-CREATE TABLE Sales (
-    SaleID INTEGER PRIMARY KEY,
-    SaleDate DATE NOT NULL,
-    CustomerID INTEGER,
-    ProductID INTEGER,
+-- Add index
+CREATE INDEX idx_sales_date ON Sales(SaleDate);
+
+-- Optimized query with BETWEEN and covering index
     TotalAmount DECIMAL(10,2),
     FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID),
     FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
@@ -10807,7 +10745,7 @@ This is @QUALITY. This is Uderia. This is data governance evolved.
 ---
 
 ### 10.4 Compliance Officer Journey - @LOCAL Profile
-**Duration:** 5-6 minutes  
+**Duration:** 4-5 minutes  
 **Persona:** James, Compliance Officer analyzing customer churn (PII-heavy)  
 **Profile Used:** Exclusively @LOCAL (zero cloud exposure)
 
@@ -10815,21 +10753,16 @@ This is @QUALITY. This is Uderia. This is data governance evolved.
 - Demonstrate complete privacy-preserving workflow
 - Show identical capabilities with local execution
 - Emphasize data sovereignty
-- Prove zero compromise on intelligence
 
 **Scenario Narrative:**
 James needs to analyze why premium customers are churning, but the analysis involves sensitive PII (names, emails, addresses, purchase history). Regulatory requirements prohibit sending this data to cloud providers.
 
 **Key Topics to Cover:**
-- [ ] Profile switch: Activate @LOCAL (Ollama)
-- [ ] Verify local execution: "Confirm zero cloud connectivity"
-- [ ] Customer analysis: "Identify customers who stopped purchasing in Q4"
-- [ ] PII-heavy queries: Full access to names, emails, addresses
-- [ ] Purchase pattern analysis: "What products did churned customers previously buy?"
-- [ ] Service ticket correlation: "Did they have unresolved support issues?"
-- [ ] Demographic insights: Age, location, purchase frequency
+- [ ] Activate @LOCAL (Ollama) with sovereignty verification
+- [ ] Customer analysis: Identify churned customers (full PII)
+- [ ] Purchase pattern and service ticket correlation
 - [ ] Generate confidential churn report
-- [ ] Emphasize: All data stayed on-premises, zero cloud API calls
+- [ ] Confirm: Zero cloud API calls, 100% on-premises
 
 **Narration Script:**
 ```
@@ -11322,54 +11255,31 @@ This is @LOCAL. This is Uderia. This is data sovereignty without compromise.
 
 ---
 
-### 10.5 "God Mode" Power User Journey - Multi-Profile Orchestration
-**Duration:** 6-7 minutes  
+### 10.5 "Pro Mode" Power User Journey - Multi-Profile Orchestration
+**Duration:** 5 minutes  
 **Persona:** Elena, Head of Analytics orchestrating complete business intelligence workflow  
 **Profiles Used:** @QUALITY → @DBA → @ANALYST → @LOCAL → @PROD (all profiles in sequence)
 
 **Learning Objectives:**
-- Demonstrate the ultimate "god mode" workflow
+- Demonstrate the ultimate "Pro Mode" workflow
 - Show seamless profile switching
 - Illustrate team orchestration by one person
-- Prove compounding value of specialized personas
 
 **Scenario Narrative:**
 Elena needs to deliver a comprehensive competitive analysis involving data validation, query optimization, business insights, sensitive customer data, and production deployment—all in one afternoon.
 
-**Workflow Orchestration:**
+**Workflow Orchestration (5 Phases, 2 Hours):**
 
-**Phase 1: Data Validation (@QUALITY)**
-- "Validate data quality for Q4 sales and customer data"
-- Identifies 2 anomalies, flags for correction
-- Confirms 99.2% data completeness
-
-**Phase 2: Query Optimization (@DBA)**
-- "Optimize the query for customer lifetime value calculation"
-- Reviews schema, identifies missing index
-- Generates optimized SQL (45s → 2.1s execution time)
-
-**Phase 3: Business Intelligence (@ANALYST)**
-- "Analyze customer lifetime value by segment with visualizations"
-- Generates executive dashboard with 4 charts
-- Provides actionable recommendations
-
-**Phase 4: Sensitive Data Analysis (@LOCAL)**
-- "Identify high-value churned customers by name for retention campaign"
-- Handles PII locally (names, emails, purchase history)
-- Generates confidential retention target list
-
-**Phase 5: Production Deployment (@PROD)**
-- "Operationalize this entire workflow via REST API"
-- Creates Airflow DAG with all optimized queries
-- Schedules weekly execution
+**Phase 1: @QUALITY** - Validates Q4 data (99.2% completeness, 2 anomalies flagged)
+**Phase 2: @DBA** - Optimizes LTV query (45s → 2.1s execution)
+**Phase 3: @ANALYST** - Generates executive dashboard with 4 charts
+**Phase 4: @LOCAL** - Analyzes PII locally (churned customer retention list)
+**Phase 5: @PROD** - Deploys Airflow DAG for weekly automation
 
 **Key Topics to Cover:**
-- [ ] Seamless profile switching (5 switches in one session)
+- [ ] Seamless profile switching (5 profiles, one session)
 - [ ] Context retention across profile changes
-- [ ] Each profile contributing specialized expertise
-- [ ] Zero friction, zero handoffs
-- [ ] Traditional approach: 5 people, 3 days, multiple meetings
-- [ ] Uderia approach: 1 person, 2 hours, god mode activated
+- [ ] Traditional: 5 people, 3 days | Uderia: 1 person, 2 hours
 
 **Narration Script:**
 ```
@@ -11825,7 +11735,7 @@ Let's see what just happened.
 
 ---
 
-## THE GOD MODE SUMMARY
+## THE PRO MODE SUMMARY
 
 Elena started at 2:00 PM. Finished at 2:08 PM.
 
@@ -11869,7 +11779,7 @@ Elena started at 2:00 PM. Finished at 2:08 PM.
 - Waiting for everything before deployment
 - Back-and-forth iterations at each handoff
 
-**Uderia God Mode:**
+**Uderia Pro Mode:**
 
 **Team Required:** Elena (1 person)
 
@@ -11879,7 +11789,7 @@ Elena started at 2:00 PM. Finished at 2:08 PM.
 
 **The Difference:**
 
-| Dimension | Traditional | Uderia God Mode | Improvement |
+| Dimension | Traditional | Uderia Pro Mode | Improvement |
 |-----------|-------------|-----------------|-------------|
 | **People** | 5 specialists | 1 person | 80% reduction |
 | **Time** | 3 days (18 hours) | 12 minutes | **99.3%** faster |
@@ -11901,7 +11811,7 @@ Each profile contributed specialized expertise:
 **Alone, each profile is powerful.**
 **Together, orchestrated by one person, they're unstoppable.**
 
-**THIS IS GOD MODE.**
+**THIS IS PRO MODE.**
 
 One person commanding a team of specialized AI personas.
 
@@ -11927,7 +11837,7 @@ This is @QUALITY + @DBA + @ANALYST + @LOCAL + @PROD.
 
 This is Uderia.
 
-**This is God Mode.**
+**This is Pro Mode.**
 ```
 
 
