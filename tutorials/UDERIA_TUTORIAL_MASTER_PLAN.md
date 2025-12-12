@@ -2,7 +2,7 @@
 ## Comprehensive Tutorial Structure & Narration Guide
 
 **Platform:** Uderia (www.uderia.com)  
-**Tutorial Platform:** Tight.studio  
+**Tutorial Platform:** kapwing  
 **Target Duration per Section:** 2-5 minutes  
 **Last Updated:** December 7, 2025
 
@@ -172,40 +172,65 @@ Each profile has its own knowledge collections and learned execution patterns (p
 Welcome to Uderia—the platform that finally ends the impossible choice between 
 cloud intelligence and data privacy.
 
-For too long, organizations have been forced into a corner: either send your 
-sensitive data to powerful cloud models and sacrifice sovereignty, or run local 
-models and compromise on capability. It's been one or the other—never both.
+Finally, an AI platform that doesn't force you to choose.
 
-Uderia shatters this false dichotomy.
+Uderia empowers secure, local models to perform like giants—and tames powerful 
+cloud models for verified compliance.
 
-Imagine having the reasoning power of Claude, GPT-4, or Gemini—while keeping your 
-most sensitive data completely private on your own infrastructure. That's Uderia's 
-hybrid intelligence architecture: cloud-level planning meets local execution.
+Whether on-prem or in the cloud, you get enterprise results with optimized speed 
+and minimal token cost.
 
-But we go far beyond just hybrid deployment. Uderia is built on six revolutionary 
-principles that transform how you work with enterprise data:
+**CLOUD-LEVEL INTELLIGENCE. ZERO-TRUST SOVEREIGNTY. EXTREME EFFICIENCY.**
 
-First—ACTIONABLE: Your conversational discovery IS your production-ready API. No 
-handoffs. No rebuilding. From insight to automation in seconds, not weeks.
+This is Uderia. You. Data. Freedom.
 
-Second—TRANSPARENT: No more AI black boxes. Watch the agent plan, execute, and 
-self-correct in real-time. Every decision, every tool call, fully visible.
+But how do we deliver on this promise? Through six core principles that transform 
+how you work with enterprise data:
 
-Third—EFFICIENT: Our Fusion Optimizer uses strategic planning, RAG-powered 
-self-learning, and proactive optimization to slash costs from dollars to cents.
+**CLOUD-LEVEL INTELLIGENCE** is based upon two core principles:
 
-Fourth—SOVEREIGNTY: Your data, your rules, your environment. Whether you choose 
-cloud hyperscalers, AWS Bedrock, or fully private Ollama models—you're in control.
+Cloud-level intelligence is ACTIONABLE: Go from conversational discovery to a production-ready, 
+automated workflow in seconds. Your interactive queries can be immediately operationalized via 
+a REST API, eliminating the friction and redundancy of traditional data operations. 
+What once took data experts weeks is now at your fingertips.
 
-Fifth—FINANCIAL GOVERNANCE: Track every token, every penny, in real-time. Complete 
-visibility into LLM spending with comprehensive analytics and cost optimization.
+And cloud-level intelligence is TRANSPARENT: Eliminate the "black box" of AI. The Uderia 
+Platform is built on a foundation of absolute trust, with a Live Status Window that shows 
+you every step of the agent's thought process. From the initial high-level plan to every 
+tool execution and self-correction, you have a clear, real-time view, leaving no room 
+for guesswork.
 
-And sixth—COLLABORATIVE: Transform individual expertise into collective intelligence 
-through our Intelligence Marketplace. Share patterns, subscribe to community wisdom, 
-and amplify capabilities together.
+**ZERO-TRUST SOVEREIGNTY** is based upon two core principles:
+
+Zero-trust sovereignty means SOVEREIGNTY: Your data, your rules, your environment. The agent 
+gives you the ultimate freedom to choose your data exposure strategy. Leverage the power of 
+hyperscaler LLMs, or run fully private models on your own infrastructure with Ollama, 
+keeping your data governed entirely by your rules. The agent connects to the models 
+you trust.
+
+And zero-trust sovereignty is COLLABORATIVE: Transform isolated expertise into collective intelligence. 
+The Intelligence Marketplace enables you to share proven execution patterns and 
+domain knowledge with the community, subscribe to curated collections from experts, 
+and fork specialized repositories for your unique needs. By leveraging community-validated 
+RAG collections, you reduce token costs, accelerate onboarding, and benefit from 
+battle-tested strategies—turning individual insights into a powerful, shared ecosystem.
+
+**EXTREME EFFICIENCY** is based upon two core principles:
+
+Extreme efficiency is EFFICIENT: Powered by the intelligent Fusion Optimizer, the agent 
+features a revolutionary multi-layered architecture for resilient and cost-effective task 
+execution. Through strategic and tactical planning, proactive optimization, and 
+autonomous self-correction, the agent ensures enterprise-grade performance and 
+reliability.
+
+And extreme efficiency means FINANCIAL GOVERNANCE: Complete cost transparency and control 
+over your LLM spending. The agent provides real-time cost tracking, comprehensive analytics, 
+and detailed visibility into every token consumed. With accurate per-model pricing, 
+cost attribution by provider, and powerful administrative tools, you maintain full 
+financial oversight of your AI operations.
 
 This isn't just another data chat tool. Uderia is a complete AI orchestration platform 
-that delivers enterprise results with optimized speed and minimal token cost.
+that delivers enterprise results with cloud-level reasoning and zero-trust privacy.
 
 Over the next few tutorials, you'll see exactly how Uderia transforms every aspect 
 of data operations—from your first conversation to production deployment at scale.
